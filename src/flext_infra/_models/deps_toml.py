@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import Annotated, Literal
 
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.workspace import FlextInfraConfigModelsWorkspace
+from flext_infra._models._config.workspace import FlextInfraModelsConfigWorkspace
 
 
 class FlextInfraModelsDepsToml:
@@ -23,7 +24,7 @@ class FlextInfraModelsDepsToml:
         """Declarative TOML sync model domain."""
 
         class MemberRequirements(
-            FlextInfraConfigModelsWorkspace.DependencyGroupDeclarations
+            FlextInfraModelsConfigWorkspace.DependencyGroupDeclarations
         ):
             """Typed dependency declarations needed to provision one member."""
 
@@ -32,11 +33,11 @@ class FlextInfraModelsDepsToml:
                 m.Field(description="Declared distribution identity"),
             ]
             dependencies: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(description="Production requirement lines"),
             ]
             optional_dependencies: Annotated[
-                t.MappingKV[str, t.StrSequence],
+                Mapping[str, Sequence[str]],
                 m.Field(description="Every declared optional requirement group"),
             ]
 
@@ -58,7 +59,7 @@ class FlextInfraModelsDepsToml:
                 m.Field(description="Operation kind", validate_default=True),
             ] = "list"
             key: str = m.Field(description="TOML key name")
-            values: t.StrSequence = m.Field(description="Expected values")
+            values: Sequence[str] = m.Field(description="Expected values")
             strategy: Annotated[
                 c.Infra.TomlMergeMode,
                 m.Field(description="Merge strategy", validate_default=True),
@@ -77,7 +78,7 @@ class FlextInfraModelsDepsToml:
             ] = "remove"
             key: str = m.Field(description="Key to remove")
             table_path: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(description="Relative sub-table path", validate_default=True),
             ] = ()
 
@@ -86,15 +87,15 @@ class FlextInfraModelsDepsToml:
 
             name: str = m.Field(description="Phase name")
             root_path: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(description="Root path before table_path"),
             ] = (c.Infra.TOOL,)
             table_path: Annotated[
-                t.StrSequence,
+                Sequence[str],
                 m.Field(description="Primary table path"),
             ] = ()
             operations: Annotated[
-                t.SequenceOf[
+                Sequence[
                     Annotated[
                         FlextInfraModelsDepsToml.DepsToml.SetOp
                         | FlextInfraModelsDepsToml.DepsToml.ListOp
@@ -105,7 +106,7 @@ class FlextInfraModelsDepsToml:
                 m.Field(description="Declarative TOML operations"),
             ] = ()
             nested_tables: Annotated[
-                t.SequenceOf[FlextInfraModelsDepsToml.DepsToml.PhaseConfig],
+                Sequence[FlextInfraModelsDepsToml.DepsToml.PhaseConfig],
                 m.Field(description="Nested TOML phase configs"),
             ] = ()
 

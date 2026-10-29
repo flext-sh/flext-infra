@@ -238,6 +238,10 @@ class FlextInfraWorkspacePropagation(s[bool]):
         body = self._write_body(workspace, member, revision)
         if body.failure:
             return r[bool].from_failure(body)
+
+        def conformed(_conformed: p.Infra.CodegenResult) -> bool:
+            return True
+
         published = u.Infra.git_publish_lane(
             m.Infra.GitLaneRequest(
                 repo_root=member_root,
@@ -252,7 +256,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
                     scope=c.Infra.CodegenConformScope.ALL,
                 ),
                 execution_context=self,
-            ).map(lambda _conformed: True),
+            ).map(conformed),
         )
         if published.failure:
             return published

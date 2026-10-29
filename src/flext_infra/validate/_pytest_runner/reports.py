@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 import time
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,7 +17,7 @@ from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
@@ -53,7 +54,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             for item in manifest.markdown_collected
             if item.node_id not in manifest.node_ids
         )
-        violations: t.MutableSequenceOf[str] = []
+        violations: MutableSequence[str] = []
         if not cache_hit and set(diagnostics.reported_node_ids) != set(
             manifest.node_ids,
         ):
@@ -200,9 +201,11 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         inventory_count = None
         owns_no_tests = False
         selection_plan: m.Infra.PytestSelectionPlan | None = None
-        # Testmon operations publish a plan bound to their observed inventory.
-        # Coverage owns no Testmon selection or database.
-        if context.testmon_db is not None:
+        # Incremental and full operations both publish their observed inventory.
+        # Only incremental execution owns a selection database.
+        if context.testmon_db is not None or (
+            context.execution_mode == c.Infra.PytestExecutionMode.FULL
+        ):
             selection_plan = m.Infra.PytestSelectionPlan.model_validate_json(
                 (log.parent / "selection-plan.json").read_text(encoding="utf-8"),
             )
@@ -244,12 +247,12 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         log: Path,
         context: m.Infra.PytestRunContext,
         selection_plan: m.Infra.PytestSelectionPlan | None,
-    ) -> t.Pair[int, int | None]:
+    ) -> tuple[int, int | None]:
         """Reconcile the executed selection against the collection inventory.
 
         Returns:
             The resulting ``(deselected, inventory_count)`` pair; the inventory
-            count stays unset for a run without testmon (coverage).
+            count stays unset for the separate coverage measurement operation.
 
         Raises:
             RuntimeError: If testmon accounting requires the durable selection
@@ -257,7 +260,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 collection inventory.
 
         """
-        if context.testmon_db is None:
+        if context.execution_mode == c.Infra.PytestExecutionMode.COVERAGE:
             return (0, None)
         if selection_plan is None:
             msg = (
@@ -281,7 +284,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         )
         inventory = (
             selected
-            if not selection_plan.inventory_collected
+            if context.execution_mode == c.Infra.PytestExecutionMode.FULL
+            or not selection_plan.inventory_collected
             else m.Infra.PytestCollectionManifest.model_validate_json(
                 (log.parent / "testmon-inventory.json").read_text(encoding="utf-8"),
             )
@@ -437,22 +441,19 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         *,
         context: m.Infra.PytestRunContext,
         suite: m.Infra.PytestDiagnostics,
-    ) -> t.VariadicTuple[t.Pair[str, m.Infra.PytestDiagnostics]]:
+    ) -> tuple[tuple[str, m.Infra.PytestDiagnostics], ...]:
         """Read each subprocess receipt once in execution order.
 
         Whole-project FULL collection belongs to the suite process. Declared
         file and incremental requests retain their separate collection phases.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Pair[str, m.Infra.PytestDiagnostics]]``.
+            The resulting ``tuple[tuple[str, m.Infra.PytestDiagnostics], ...],``.
 
         """
-        if (
-            context.execution_mode == c.Infra.PytestExecutionMode.FULL
-            and self.target_file is None
-        ):
+        if context.execution_mode == c.Infra.PytestExecutionMode.FULL:
             return (("suite", suite),)
-        phases: t.MutableSequenceOf[t.Pair[str, m.Infra.PytestDiagnostics]] = []
+        phases: MutableSequence[tuple[str, m.Infra.PytestDiagnostics]] = []
         if context.testmon_db is not None:
             selection_plan = m.Infra.PytestSelectionPlan.model_validate_json(
                 (report_dir / "selection-plan.json").read_text(encoding="utf-8"),
@@ -526,14 +527,14 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         report_dir: Path,
         diagnostics: m.Infra.PytestDiagnostics,
         *,
-        phases: t.VariadicTuple[t.Pair[str, m.Infra.PytestDiagnostics]],
+        phases: tuple[tuple[str, m.Infra.PytestDiagnostics], ...],
     ) -> None:
         """Persist each typed diagnostics channel."""
         u.Cli.atomic_write_text_file(
             report_dir / "diagnostics.json",
             diagnostics.model_dump_json(indent=2) + "\n",
         ).unwrap()
-        outputs: t.VariadicTuple[t.Triple[str, t.StrSequence, str]] = (
+        outputs: tuple[tuple[str, Sequence[str], str], ...] = (
             ("failed-tests.txt", diagnostics.failed_cases, "\n\n"),
             ("errors.txt", diagnostics.error_traces, "\n\n"),
             (

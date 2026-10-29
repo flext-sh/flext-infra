@@ -6,15 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from flext_infra import FlextInfraCli
-from tests import t, tm
+from tests import tm
 
 
 class TestsFlextInfraInfraMaintenanceCli:
     """Behavior contract for test_infra_maintenance_cli."""
 
     @staticmethod
-    def _run_maintenance(argv: t.StrSequence | None = None) -> int:
+    def _run_maintenance(argv: Sequence[str] | None = None) -> int:
         args = ["maintenance"]
         if argv is not None:
             args.extend(argv)

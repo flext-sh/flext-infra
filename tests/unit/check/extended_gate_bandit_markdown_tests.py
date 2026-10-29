@@ -7,13 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 import pytest
 
 from flext_infra import config
 from flext_infra.gates import FlextInfraBanditGate, FlextInfraMarkdownGate
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -249,7 +250,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         markdown_text: str,
         config_text: str,
         findings_block: bool,
-        codes: t.StrSequence,
+        codes: Sequence[str],
     ) -> None:
         """Test markdown check."""
         project_dir = u.Tests.mk_project(
@@ -352,7 +353,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
     def test_markdown_excludes_non_project_markdown(
         self,
         tmp_path: Path,
-        owner_parts: t.StrSequence,
+        owner_parts: Sequence[str],
     ) -> None:
         """Tracker storage and provider projections are not live project docs."""
         project_dir = u.Tests.mk_project(

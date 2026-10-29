@@ -32,10 +32,10 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra.codegen import FlextInfraCodegenExecution
 
 
-class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
+class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
     """Prove every declared fleet tool is the self-contained locked release."""
 
     uv_executable: Annotated[
@@ -93,7 +93,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         entry: m.Infra.MiseToolEntry,
         lock: t.JsonMapping,
         platform_name: str,
-    ) -> p.Result[t.StrPair]:
+    ) -> p.Result[tuple[str, str]]:
         """Step 1: the locked version and checksum of one declared tool.
 
         The effective release selector (pins layered over the entry) decides
@@ -107,7 +107,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         """
         locked = cls._locked_entry(entry, lock)
         if locked.failure:
-            return r[t.StrPair].from_failure(locked)
+            return r[tuple[str, str]].from_failure(locked)
         version = locked.value.get("version")
         requested = config.Infra.codegen.toolchain.tool_version_pins.get(
             entry.name, entry.version
@@ -116,22 +116,22 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             requested in {c.Infra.MISE_MOVING_SELECTOR, version}
             or version.startswith(f"{requested}.")
         ):
-            return r[t.StrPair].fail(
+            return r[tuple[str, str]].fail(
                 f"{entry.name}: mise.lock pins {version!r}, the toolchain requests "
                 f"{requested}; run make upg",
             )
         if not entry.lock_checksum:
-            return r[t.StrPair].ok((version, ""))
+            return r[tuple[str, str]].ok((version, ""))
         section = locked.value.get(
             c.Infra.MISE_LOCK_PLATFORM_KEY.format(platform=platform_name),
         )
         checksum = section.get("checksum") if isinstance(section, Mapping) else None
         if not isinstance(checksum, str) or not checksum:
-            return r[t.StrPair].fail(
+            return r[tuple[str, str]].fail(
                 f"{entry.name}: mise.lock {version} carries no checksum for "
                 f"{platform_name}; run make upg",
             )
-        return r[t.StrPair].ok((version, checksum))
+        return r[tuple[str, str]].ok((version, checksum))
 
     @staticmethod
     def _contained_binary(
@@ -214,7 +214,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         cls,
         entry: m.Infra.MiseToolEntry,
         version: str,
-        location: t.Pair[Path, Path],
+        location: tuple[Path, Path],
         *,
         probe_root: Path | None = None,
     ) -> p.Result[str]:
@@ -270,7 +270,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         entry: m.Infra.MiseToolEntry,
         lock: t.JsonMapping,
         platform_name: str,
-        location: t.Pair[Path, Path],
+        location: tuple[Path, Path],
     ) -> p.Result[str]:
         """Prove one tool from its resolved (install root, binary), in order.
 
@@ -361,14 +361,14 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         self,
         options: m.Infra.MiseToolchainProofOptions,
         version: str,
-    ) -> p.Result[t.Triple[m.Infra.MiseToolEntry, Path | None, str]]:
+    ) -> p.Result[tuple[m.Infra.MiseToolEntry, Path | None, str]]:
         """Resolve the declared external probe owner, root and version.
 
         Returns:
             The probe entry, its optional install root, and the probe version.
 
         """
-        result_type = r[t.Triple[m.Infra.MiseToolEntry, Path | None, str]]
+        result_type = r[tuple[m.Infra.MiseToolEntry, Path | None, str]]
         entry = options.entry
         if entry.version_probe.tool is None:
             return result_type.ok((entry, None, version))
@@ -492,7 +492,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
     @staticmethod
     def _executed_lock(
         lock_path: Path,
-    ) -> p.Result[t.Pair[str, t.JsonMapping]]:
+    ) -> p.Result[tuple[str, t.JsonMapping]]:
         """Read and parse the committed Mise lock text.
 
         Returns:
@@ -501,11 +501,11 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         """
         source = u.Cli.files_read_text(lock_path)
         if source.failure:
-            return r[t.Pair[str, t.JsonMapping]].from_failure(source)
+            return r[tuple[str, t.JsonMapping]].from_failure(source)
         lock = u.Cli.toml_mapping_from_text_result(source.value)
         if lock.failure:
-            return r[t.Pair[str, t.JsonMapping]].from_failure(lock)
-        return r[t.Pair[str, t.JsonMapping]].ok((source.value, lock.value))
+            return r[tuple[str, t.JsonMapping]].from_failure(lock)
+        return r[tuple[str, t.JsonMapping]].ok((source.value, lock.value))
 
     def _prove_uv_consumer(self, mise_binary: Path) -> p.Result[bool]:
         """Compare the actual consumer to the one locked producer.

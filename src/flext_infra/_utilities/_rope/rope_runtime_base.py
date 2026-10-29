@@ -10,11 +10,57 @@ from collections.abc import Callable
 from importlib import import_module
 from typing import TypeIs, get_protocol_members
 
-from flext_infra import c, p, t
+from flext_infra import c, p
 
 
 class FlextInfraUtilitiesRopeRuntimeBase:
     """Resolve Rope runtime attributes without importing Rope in leaf modules."""
+
+    @staticmethod
+    def source_declaration_region(
+        module: p.Infra.RopeSourceModule,
+        node: p.Infra.RopeAstNode,
+    ) -> tuple[int, int]:
+        """Read an opaque native node's exact region through its SDK index.
+
+        Returns:
+            The original inclusive/exclusive character offsets.
+
+        Raises:
+            ValueError: The native declaration has no valid source region.
+
+        """
+        start, end = module.get_source_binding_index().lines[node]
+        if (
+            start is None
+            or end is None
+            or not 0 <= start < end <= len(module.source_code)
+        ):
+            message = "Native declaration has no valid source region"
+            raise ValueError(message)
+        return start, end
+
+    @classmethod
+    def semantic_capture_region(
+        cls,
+        module: p.Infra.RopeSourceModule,
+        match: p.Infra.RopeContractMatch,
+        name: str,
+    ) -> tuple[int, int]:
+        """Resolve a native scalar capture through the SDK's public region API.
+
+        Returns:
+            The capture's exact half-open source region.
+
+        Raises:
+            ValueError: The capture is missing or outside the supplied source.
+
+        """
+        start, end = match.get_capture_region(name)
+        if not 0 <= start < end <= len(module.source_code):
+            message = f"Native capture is outside its source module: {name}"
+            raise ValueError(message)
+        return start, end
 
     @classmethod
     def require_class_object(
@@ -85,7 +131,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         return value
 
     @classmethod
-    def rope_error_types(cls) -> t.VariadicTuple[type[BaseException]]:
+    def rope_error_types(cls) -> tuple[type[BaseException], ...]:
         """Return the generic Rope exception boundary.
 
         Returns:

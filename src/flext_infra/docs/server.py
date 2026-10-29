@@ -11,9 +11,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, u
 from flext_infra.docs import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
@@ -36,13 +37,13 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
         self,
         repository_root: Path,
         *,
-        projects: t.StrSequence | None = None,
+        projects: Sequence[str] | None = None,
         output_dir: Path | str | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Serve the single matching docs scope (blocks until stopped).
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
 
         """
         scopes_result = u.Infra.build_scopes(
@@ -51,23 +52,23 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
             output_dir=output_dir or c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         )
         if scopes_result.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(scopes_result)
+            return r[Sequence[m.Infra.DocsPhaseReport]].from_failure(scopes_result)
         servable = [
             scope
             for scope in scopes_result.value
             if (scope.path / "mkdocs.yml").exists()
         ]
         if not servable:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 "no docs scope with mkdocs.yml; run `docs generate` first",
             )
         if len(servable) > 1:
             names = ", ".join(scope.name for scope in servable)
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
                 "serve targets exactly one scope; narrow with --project "
                 f"(candidates: {names})",
             )
-        return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok([
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok([
             self._serve_scope(servable[0]),
         ])
 

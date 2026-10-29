@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, u
@@ -14,7 +15,7 @@ from flext_infra.docs import FlextInfraDocServiceBase
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import m, p
 
 
 class FlextInfraDocBuilder(FlextInfraDocServiceBase):
@@ -24,13 +25,13 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
         self,
         repository_root: Path,
         *,
-        projects: t.StrSequence | None = None,
+        projects: Sequence[str] | None = None,
         output_dir: Path | str | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
 
         """
         return self.run_scoped_docs(

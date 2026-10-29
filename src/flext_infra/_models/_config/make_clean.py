@@ -11,13 +11,13 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsMakeClean:
+class FlextInfraModelsConfigMakeClean:
     """Declarative clean policy composed into the Make config family."""
 
-    class MakeCleanSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeCleanSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Disposable artifacts the generated clean verb removes.
 
         Stale caches and traces cause FALSE DIAGNOSES, so the disposable set is
@@ -26,21 +26,21 @@ class FlextInfraConfigModelsMakeClean:
         """
 
         cache_dirs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Cache directory names removed anywhere in the tree"),
         ]
         root_dirs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Directories removed at the project root only"),
         ]
         root_files: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Files removed at the project root only"),
         ]
         trace_globs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Trace/profile globs removed anywhere in the tree"),
         ]
 
 
-__all__: list[str] = ["FlextInfraConfigModelsMakeClean"]
+__all__: list[str] = ["FlextInfraModelsConfigMakeClean"]

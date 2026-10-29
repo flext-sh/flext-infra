@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import ClassVar
 
-from flext_infra import p, t
+from flext_infra import p
 from flext_infra._utilities._rope.rope_runtime_base import (
     FlextInfraUtilitiesRopeRuntimeBase,
 )
@@ -22,13 +22,36 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
 
     _semantic_finders: ClassVar[
         ContextVar[
-            t.MutableMappingKV[
-                t.Pair[p.Infra.RopePyModule, t.VariadicTuple[t.Pair[str, str]]],
+            MutableMapping[
+                tuple[p.Infra.RopePyModule, tuple[tuple[str, str], ...]],
                 p.Infra.RopeSimilarFinder,
             ]
             | None
         ]
     ] = ContextVar("rope_semantic_finders", default=None)
+
+    @classmethod
+    def native_call_parameters(
+        cls, source: str, primary: tuple[int, int]
+    ) -> tuple[Sequence[str], Sequence[tuple[str, str]]] | None:
+        """Read an authored call's argument shape through native Rope Worder.
+
+        Returns:
+            Native call arguments, or None when the position is not a callee.
+
+        Raises:
+            TypeError: The installed Worder lacks the consumed native contract.
+
+        """
+        words = cls.runtime_callable("rope.base.worder", "Worder")(source)
+        if not isinstance(words, p.Infra.RopeWorder):
+            message = "Native Worder does not expose call parameter shapes"
+            raise TypeError(message)
+        offset, _last = words.get_word_range(primary[1] - 1)
+        if not words.is_a_function_being_called(offset):
+            return None
+        first, last = words.get_word_parens_range(offset)
+        return words.get_parameters(first, last - 1)
 
     @classmethod
     @contextmanager
@@ -39,6 +62,9 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
             A context whose native matcher caches cannot escape to another epoch.
 
         """
+        if cls._semantic_finders.get() is not None:
+            yield
+            return
         token = cls._semantic_finders.set({})
         try:
             yield
@@ -51,10 +77,10 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         module: p.Infra.RopePyModule,
         pattern: str,
         *,
-        arguments: t.MappingKV[str, str],
+        arguments: Mapping[str, str],
         start: int = 0,
         end: int | None = None,
-    ) -> t.VariadicTuple[t.Pair[int, int]]:
+    ) -> tuple[tuple[int, int], ...]:
         """Resolve source regions through Rope's identity-aware pattern matcher.
 
         Returns:
@@ -85,7 +111,7 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         cls,
         module: p.Infra.RopePyModule,
         *,
-        arguments: t.MappingKV[str, str] | None = None,
+        arguments: Mapping[str, str] | None = None,
     ) -> p.Infra.RopeSimilarFinder:
         """Create a native matcher for one immutable module and binding context.
 
@@ -121,7 +147,7 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
         captured: p.AttributeProbe | None,
-        constraints: str | t.StrSequence,
+        constraints: str | Sequence[str],
         *,
         name: str,
     ) -> bool:
@@ -149,41 +175,6 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         )
         choices = (constraints,) if isinstance(constraints, str) else constraints
         return any(wildcard.matches(suspect, choice) for choice in choices)
-
-    @classmethod
-    def semantic_capture_region(
-        cls,
-        match: p.Infra.RopeContractMatch,
-        variable: str,
-    ) -> t.Pair[int, int]:
-        """Read a captured region through Rope's native match boundary.
-
-        Args:
-            match: The Rope match object containing captured variables.
-            variable: The name of the captured variable to retrieve the region for.
-
-        Returns:
-            The start and end character positions of the captured region.
-
-        Raises:
-            ValueError: If the specified variable is not captured in the match.
-            TypeError: If the captured region does not conform to the expected format.
-
-        """
-        captured = match.get_ast(variable)
-        if captured is None:
-            message = f"Rope match has no captured variable: {variable}"
-            raise ValueError(message)
-        region = cls.runtime_callable(
-            "rope.refactor.patchedast",
-            "node_region",
-        )(captured)
-        match region:
-            case tuple((int(begin), int(end))):
-                return begin, end
-            case _:
-                message = "Rope capture does not expose its native character region"
-                raise TypeError(message)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeMatching"]

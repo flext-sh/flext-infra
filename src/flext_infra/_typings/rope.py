@@ -7,12 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from ast import ClassDef, Import, ImportFrom
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 import libcst
 import libcst.matchers
-from flext_core import t
 from libcst import (
     Arg,
     BaseStatement,
@@ -29,6 +28,16 @@ from flext_infra._typings import FlextInfraTypesRopeNative
 
 class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     """Rope type aliases — accessed via t.Infra.*."""
+
+    type RopeSourceMemberResolverFactory = Callable[
+        [], FlextInfraProtocolsRopeRuntime.RopeSourceMemberResolver
+    ]
+
+    type FacadeMemberScope = tuple[
+        Callable[[], FlextInfraProtocolsRopeRuntime.RopeSourceMemberResolver],
+        RopeProject,
+        Mapping[str, Mapping[str, Sequence[RopePyObject]]] | None,
+    ]
 
     class Cst:
         """libcst node classes for annotation positions; runtime classes live on c."""
@@ -87,13 +96,13 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     type RopeImplementationPaths = frozenset[RopeSourcePath]
     type RopeMutablePaths = set[RopeSourcePath]
     type RopeCallableSignature = tuple[
-        t.StrSequence,
-        t.StrSequence,
+        Sequence[str],
+        Sequence[str],
         str | None,
-        t.StrSequence,
+        Sequence[str],
         str | None,
-        t.StrSequence,
-        t.SequenceOf[str | None],
+        Sequence[str],
+        Sequence[str | None],
         bool,
     ]
     type PythonClassNode = ClassDef
@@ -107,14 +116,12 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
 
     type RopeProject = FlextInfraProtocolsRopeRuntime.RopeProject
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource
-    type RopeImportLookup = t.MutableMappingKV[
-        t.Triple[str, str, int], RopeResource | None
-    ]
+    type RopeImportLookup = MutableMapping[tuple[str, str, int], RopeResource | None]
     type CodemodImportWalkNode = (
-        t.Pair[Path, t.VariadicTuple[t.Pair[str, RopeResource]]] | None
+        tuple[Path, tuple[tuple[str, RopeResource], ...]] | None
     )
-    type CodemodImportWalkMemo = t.Pair[
-        RopeImportLookup, t.MutableMappingKV[str, CodemodImportWalkNode]
+    type CodemodImportWalkMemo = tuple[
+        RopeImportLookup, MutableMapping[str, CodemodImportWalkNode]
     ]
     type RopeFile = FlextInfraProtocolsRopeRuntime.RopeFile
     type RopeLocation = FlextInfraProtocolsRopeRuntime.RopeLocation
@@ -140,7 +147,7 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
 
     type RopeTransformFn = Callable[
         [RopeProject, RopeResource],
-        t.Pair[str, t.StrSequence],
+        tuple[str, Sequence[str]],
     ]
     type RopeMatchFilter = Callable[
         [RopePyModule, FlextInfraProtocolsRopeRuntime.RopeContractMatch],

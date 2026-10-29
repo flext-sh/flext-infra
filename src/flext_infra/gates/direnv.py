@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
@@ -20,7 +21,7 @@ from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraDirenvGate(FlextInfraGate):
@@ -152,11 +153,11 @@ class FlextInfraDirenvGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """One marker dir drives the base flow; the smoke targets the root.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         del ctx
@@ -171,12 +172,12 @@ class FlextInfraDirenvGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """Activate the workspace environment for one no-op command.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         _ = ctx, check_dirs
@@ -188,11 +189,11 @@ class FlextInfraDirenvGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
         """Pass only on a zero-exit activation.
 
         Returns:
-            The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
 
         """
         _ = project_dir, ctx
@@ -214,4 +215,4 @@ class FlextInfraDirenvGate(FlextInfraGate):
         )
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraDirenvGate",)
+__all__: tuple[str, ...] = ("FlextInfraDirenvGate",)

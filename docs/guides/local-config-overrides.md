@@ -110,9 +110,12 @@ installation operation and its temporary constraints/pip overlay are also retire
 explicit native sources and locked setup are the single installation route.
 
 The approved root target declares one native uv workspace, derived from `.gitmodules`,
-and one root lock. Root CI checks out those declared submodules and installs the
-same workspace noneditable; it does not select a remote-only resolver. Independent
-checkouts retain their own native project declarations. Preserve requirement bounds,
+and composes member locks per [ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md)
+(member `uv.lock` and `mise.lock` are formed by each member's declarations, the workspace
+lock is their composition, and only `make upg` writes locks behind its guard). Root CI
+checks out those declared submodules and installs the composed workspace lock noneditable;
+member CI installs the member's own committed lock; neither selects a remote-only resolver.
+Independent checkouts retain their own native project declarations. Preserve requirement bounds,
 extras, groups, markers, portable dependency metadata and authored native source
 policy; do not aggregate a second dependency graph or discard native tables during
 managed pyproject publication. See uv's official

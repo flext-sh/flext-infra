@@ -13,24 +13,23 @@ import os
 import sys
 import traceback
 from collections import Counter
-from collections.abc import Iterable, Mapping, MutableMapping
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-import libcst as cst
 from flext_cli import u
-from libcst.codemod import CodemodContext
-from libcst.codemod.visitors import RemoveImportsVisitor
 
 from flext_infra import c, codegen, config, gates, m, r, t
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitMutationScopeMixin,
-    FlextInfraUtilitiesGitSemanticPathsMixin,
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesProcess,
+    FlextInfraUtilitiesResourceLimits,
 )
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.process import FlextInfraUtilitiesProcess
-from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitMutationScope,
+    FlextInfraUtilitiesGitSemanticPaths,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -47,7 +46,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         source: str,
         *,
         before_source: str | None = None,
-        settings: t.StrSequence = (),
+        settings: Sequence[str] = (),
     ) -> p.Result[str]:
         """Normalize only what a rewrite changed, then format the candidate.
 
@@ -88,8 +87,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @classmethod
     def normalized_codegen_changes(
         cls,
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.VariadicTuple[m.Cli.FileChange]]:
+        plans: Sequence[m.Infra.CodegenFilePlan],
+    ) -> p.Result[tuple[m.Cli.FileChange, ...]]:
         """Normalize Python destinations once; pass every other plan through.
 
         Check and publication share this view, so they never disagree. A plan
@@ -140,8 +139,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def publish_codegen_plans(
         cls,
         root: Path,
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+        plans: Sequence[m.Infra.CodegenFilePlan],
+    ) -> p.Result[tuple[Path, ...]]:
         """Publish generated plans through the shared file-change publisher.
 
         Python is normalized first; runtime-local index entries are retired and
@@ -152,7 +151,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         result_type = r[tuple[Path, ...]]
-        lock = FlextInfraUtilitiesGitMutationScopeMixin.mutation_lock_path(root)
+        lock = FlextInfraUtilitiesGitMutationScope.mutation_lock_path(root)
         if lock.failure:
             return result_type.from_failure(lock)
         changes = cls.normalized_codegen_changes(plans)
@@ -173,7 +172,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         for plan in plans:
             if plan.index_before is None:
                 continue
-            retired = FlextInfraUtilitiesGitSemanticPathsMixin.git_retire_index_file(
+            retired = FlextInfraUtilitiesGitSemanticPaths.git_retire_index_file(
                 m.Infra.GitIndexRetirementRequest(
                     repo_root=plan.project, entry=plan.index_before
                 ),
@@ -190,8 +189,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @staticmethod
     def _prune_emptied_directories(
         lock_path: Path,
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-        published: t.VariadicTuple[Path],
+        plans: Sequence[m.Infra.CodegenFilePlan],
+        published: tuple[Path, ...],
     ) -> p.Result[bool]:
         """Remove the directories a published deletion left empty.
 
@@ -226,7 +225,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @classmethod
     def normalize_python_text(
-        cls, path: Path, source: str, *, settings: t.StrSequence = ()
+        cls, path: Path, source: str, *, settings: Sequence[str] = ()
     ) -> p.Result[str]:
         """Repair then format one Python candidate through Ruff on stdin.
 
@@ -257,9 +256,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls,
         path: Path,
         source: str,
-        select: t.StrSequence,
+        select: Sequence[str],
         *,
-        settings: t.StrSequence = (),
+        settings: Sequence[str] = (),
     ) -> p.Result[str]:
         """Repair exactly the selected Ruff codes of one candidate on stdin.
 
@@ -280,8 +279,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def _staged_ruff_settings(
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> t.MappingKV[Path, t.StrSequence]:
+        plans: Sequence[m.Infra.CodegenFilePlan],
+    ) -> Mapping[Path, Sequence[str]]:
         """Render each staged pyproject's Ruff table as ``--config`` overrides.
 
         A plan set that rewrites a project's ``pyproject.toml`` also rewrites
@@ -299,7 +298,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Override arguments per project root that stages a pyproject.
 
         """
-        staged: t.MutableMappingKV[Path, t.StrSequence] = {}
+        staged: MutableMapping[Path, Sequence[str]] = {}
         for plan in plans:
             if (
                 plan.path != plan.project / c.PYPROJECT_FILENAME
@@ -317,7 +316,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             # complete staged table below is the whole configuration: a key the
             # staged file drops is dropped here too, never merged from disk.
             overrides: list[str] = ["--isolated"]
-            pending: list[tuple[t.StrSequence, t.JsonValue]] = [
+            pending: list[tuple[Sequence[str], t.JsonValue]] = [
                 ((key,), value) for key, value in ruff.items()
             ]
             while pending:
@@ -337,7 +336,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @classmethod
     def _ruff_stdin_codes(
-        cls, path: Path, source: str, *, settings: t.StrSequence = ()
+        cls, path: Path, source: str, *, settings: Sequence[str] = ()
     ) -> p.Result[frozenset[str]]:
         """Return the Ruff rule codes one candidate reports on stdin.
 
@@ -383,9 +382,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
         cls,
         path: Path,
         source: str,
-        arguments: t.StrSequence,
+        arguments: Sequence[str],
         *,
-        settings: t.StrSequence = (),
+        settings: Sequence[str] = (),
     ) -> p.Result[str]:
         """Run one declared Ruff surface on stdin with the destination's config.
 
@@ -442,8 +441,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def normalize_sources(
         cls,
         repository_root: Path,
-        updates: t.MappingKV[Path, str | None],
-    ) -> p.Result[t.MappingKV[Path, str | None]]:
+        updates: Mapping[Path, str | None],
+    ) -> p.Result[Mapping[Path, str | None]]:
         """Prepare composed sources through the destination's native repair gates.
 
         Returns:
@@ -462,7 +461,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _repair_staged_sources(
         cls,
         root: Path,
-        candidates: t.MappingKV[Path, Path],
+        candidates: Mapping[Path, Path],
     ) -> p.Result[bool]:
         """Delegate every repair phase to the native gates, never copy recipes.
 
@@ -498,8 +497,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 )
         return r[bool].ok(value=True)
 
-    @staticmethod
-    def remove_orphaned_text_imports(original: str, proposed: str) -> str:
+    @classmethod
+    def remove_orphaned_text_imports(cls, original: str, proposed: str) -> str:
         """Remove only imports whose last executable use the transformation removed.
 
         Returns:
@@ -524,34 +523,86 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
         lost = {name for name in lost if not any(name in value for value in strings)}
         # No executable use was lost, so no import can have become orphaned and
-        # the libcst transform would return the proposal byte for byte.
+        # the alias-stripping pass would return the proposal byte for byte.
         if not lost:
             return proposed
-        context = CodemodContext()
-        for imported in ast.walk(after):
+        return cls._strip_lost_import_aliases(
+            proposed,
+            after,
+            frozenset(lost),
+        )
+
+    @classmethod
+    def _strip_lost_import_aliases(
+        cls,
+        proposed: str,
+        tree: ast.Module,
+        lost: frozenset[str],
+    ) -> str:
+        """Remove import statements whose aliases all lost their executable use.
+
+        Returns:
+            The candidate without the orphaned import statements.
+
+        Raises:
+            ValueError: If a partially orphaned import has no complete span.
+
+        """
+
+        def selected_alias(alias: ast.alias) -> bool:
+            return (alias.asname or alias.name.split(".")[0]) in lost
+
+        lines = proposed.splitlines(keepends=True)
+        plans: list[tuple[int, int, str | None]] = []
+        for imported in ast.walk(tree):
             if not isinstance(imported, c.Infra.AST_IMPORT_TYPES):
                 continue
-            for alias in imported.names:
-                if (alias.asname or alias.name.split(".")[0]) not in lost:
-                    continue
-                module = (
-                    "." * imported.level + (imported.module or "")
-                    if isinstance(imported, ast.ImportFrom)
-                    else alias.name
+            selected = [alias for alias in imported.names if selected_alias(alias)]
+            if not selected:
+                continue
+            if imported.end_lineno is None or imported.end_col_offset is None:
+                msg = "orphaned import statement has no complete source span"
+                raise ValueError(msg)
+            start, end = imported.lineno, imported.end_lineno
+            if len(selected) == len(imported.names) and cls._spans_whole_lines(
+                lines, imported
+            ):
+                plans.append((start, end, None))
+                continue
+            indent = lines[start - 1][: imported.col_offset]
+            retained = [alias for alias in imported.names if not selected_alias(alias)]
+            reduced = (
+                ast.ImportFrom(
+                    level=imported.level,
+                    module=imported.module,
+                    names=retained,
                 )
-                RemoveImportsVisitor.remove_unused_import(
-                    context,
-                    module,
-                    alias.name if isinstance(imported, ast.ImportFrom) else None,
-                    alias.asname,
-                )
-        return (
-            RemoveImportsVisitor(context)
-            .transform_module(
-                cst.parse_module(proposed),
+                if isinstance(imported, ast.ImportFrom)
+                else ast.Import(names=retained)
             )
-            .code
+            plans.append((start, end, f"{indent}{ast.unparse(reduced)}\n"))
+        for start, end, replacement in sorted(plans, reverse=True):
+            lines[start - 1 : end] = [replacement] if replacement is not None else []
+        return "".join(lines)
+
+    @staticmethod
+    def _spans_whole_lines(
+        lines: Sequence[str],
+        statement: ast.stmt,
+    ) -> bool:
+        """Return whether one import statement occupies its lines completely.
+
+        Returns:
+            Whether nothing but whitespace and comments shares its lines.
+
+        """
+        head = lines[statement.lineno - 1][: statement.col_offset]
+        tail = (
+            lines[statement.end_lineno - 1][statement.end_col_offset :]
+            if statement.end_lineno is not None and statement.end_col_offset is not None
+            else ""
         )
+        return not head.strip() and (not tail.strip() or tail.strip().startswith("#"))
 
     @classmethod
     def normalize_touched_files(
@@ -594,7 +645,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         fromfile: str,
         tofile: str,
         max_lines: int,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return a bounded unified diff without materializing omitted lines.
 
         Returns:
@@ -621,11 +672,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
 
     @staticmethod
-    def _workspace_tool_command(tool_name: str) -> t.StrSequence:
+    def _workspace_tool_command(tool_name: str) -> Sequence[str]:
         """Resolve one fleet lint tool from the active runtime environment.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             FileNotFoundError: If the active environment lacks the tool.
@@ -671,7 +722,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return normalized_without_unused_imports.strip()
 
     @staticmethod
-    def snapshot_lint_gates() -> t.StrSequence:
+    def snapshot_lint_gates() -> Sequence[str]:
         """Return the lint gates a protected edit validates its snapshots with.
 
         One owner: ``make.check_gates_ci`` (config) — the active budgeted gate set
@@ -693,7 +744,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def _selected_lint_tools(
-        gates: t.StrSequence | None = None,
+        gates: Sequence[str] | None = None,
     ) -> t.StrSequencePairTuple:
         """Return the lint tools for the requested gates (SSOT gates when omitted).
 
@@ -730,8 +781,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @classmethod
     def selected_lint_tool_names(
         cls,
-        gates: t.StrSequence | None = None,
-    ) -> t.StrSequence:
+        gates: Sequence[str] | None = None,
+    ) -> Sequence[str]:
         """Return the canonical lint tool names selected for a gate set.
 
         Returns:
@@ -766,13 +817,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             return resolved_workspace
         return project_root
 
-    _COMMAND_ENV_REMOVE_KEYS: ClassVar[t.StrSequence] = (
+    _COMMAND_ENV_REMOVE_KEYS: ClassVar[Sequence[str]] = (
         c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,
         c.Infra.ENV_VAR_FORCE_COLOR,
     )
 
     @staticmethod
-    def _command_env() -> t.StrMapping:
+    def _command_env() -> Mapping[str, str]:
         """Return subprocess env overrides for lint and validation commands.
 
         ``run_raw`` merges this mapping over ``os.environ``, so keys can only be
@@ -792,12 +843,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         command_cwd: Path,
         tool_name: str,
-        template: t.StrSequence,
-    ) -> t.StrSequence:
+        template: Sequence[str],
+    ) -> Sequence[str]:
         """Build one canonical protected-edit lint command.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         if tool_name == c.Infra.MYPY:
@@ -808,7 +859,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     report_json=True,
                 ),
             )
-        command: t.StrSequence = (
+        command: Sequence[str] = (
             *cls._workspace_tool_command(template[0]),
             *(item.replace("{file}", str(py_file)) for item in template[1:]),
         )
@@ -838,7 +889,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file: Path,
         workspace: Path,
         *,
-        gates: t.StrSequence | None = None,
+        gates: Sequence[str] | None = None,
     ) -> t.StrSequencePairTuple:
         """Return the exact public command plan used by protected linting.
 
@@ -947,7 +998,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file: Path,
         workspace: Path,
         tool_name: str,
-        template: t.StrSequence,
+        template: Sequence[str],
         source: str | None = None,
     ) -> m.Infra.LintGateResult:
         """Run one lint gate and return a validated result model.
@@ -1056,14 +1107,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @classmethod
     def _lint_report_errors(
         cls, tool_name: str, source: str
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Validate the selected tool's native machine report before counting findings.
 
         Returns:
             Complete diagnostic lines, or the original malformed-report failure.
 
         """
-        result = r[t.StrSequence]
+        result = r[Sequence[str]]
         if tool_name == c.Infra.MYPY:
             return cls._mypy_report_errors(source)
         if tool_name == c.Infra.PYRIGHT:
@@ -1085,14 +1136,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return cls._ruff_report_errors(source)
 
     @staticmethod
-    def _pyright_report_errors(source: str) -> p.Result[t.StrSequence]:
+    def _pyright_report_errors(source: str) -> p.Result[Sequence[str]]:
         """Validate native diagnostics and require actual analyzed sources.
 
         Returns:
             Complete findings or the original malformed/empty-analysis failure.
 
         """
-        result = r[t.StrSequence]
+        result = r[Sequence[str]]
         report = u.validate_value(
             m.Infra.PyrightReport, source, from_json=True, strict=True
         )
@@ -1113,14 +1164,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
 
     @staticmethod
-    def _mypy_report_errors(source: str) -> p.Result[t.StrSequence]:
+    def _mypy_report_errors(source: str) -> p.Result[Sequence[str]]:
         """Validate every native JSON-lines diagnostic, retaining hints and failures.
 
         Returns:
             Complete diagnostic lines, or the original malformed-report failure.
 
         """
-        result = r[t.StrSequence]
+        result = r[Sequence[str]]
         lines: list[str] = []
         for line in filter(str.strip, source.splitlines()):
             diagnostic = u.validate_value(
@@ -1139,14 +1190,14 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return result.ok(tuple(lines))
 
     @staticmethod
-    def _ruff_report_errors(source: str) -> p.Result[t.StrSequence]:
+    def _ruff_report_errors(source: str) -> p.Result[Sequence[str]]:
         """Validate Ruff's complete native finding list before projecting diagnostics.
 
         Returns:
             Complete diagnostic lines, or the original malformed-report failure.
 
         """
-        result = r[t.StrSequence]
+        result = r[Sequence[str]]
         loaded = u.Cli.json_parse(source)
         if loaded.failure or not isinstance(loaded.value, list):
             return (
@@ -1190,7 +1241,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @staticmethod
     def lint_execution_errors(
         snapshot: t.Infra.LintSnapshot[m.Infra.LintGateResult],
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return execution failures independently of diagnostic occurrence deltas.
 
         Returns:
@@ -1205,7 +1256,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def _lint_snapshot_from_results(
-        results: t.SequenceOf[m.Infra.LintGateResult],
+        results: Sequence[m.Infra.LintGateResult],
     ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
         """Convert validated lint gate results into the public snapshot contract.
 
@@ -1221,7 +1272,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file: Path,
         workspace: Path,
         *,
-        gates: t.StrSequence | None = None,
+        gates: Sequence[str] | None = None,
         source: str | None = None,
     ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
         """Run selected tools, or uncached Ruff on candidate source at *py_file*.
@@ -1259,10 +1310,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @classmethod
     def lint_snapshots(
         cls,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
         workspace: Path,
         *,
-        gates: t.StrSequence | None = None,
+        gates: Sequence[str] | None = None,
     ) -> MutableMapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]]:
         """Validate files in order while each file runs its tools concurrently.
 
@@ -1298,7 +1349,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def lint_new_errors(
         before: t.Infra.LintSnapshot[m.Infra.LintGateResult],
         after: t.Infra.LintSnapshot[m.Infra.LintGateResult],
-    ) -> t.Infra.LintSnapshot[t.StrSequence]:
+    ) -> t.Infra.LintSnapshot[Sequence[str]]:
         """Return introduced diagnostic occurrences, ignoring shifted coordinates.
 
         Matching consumes each baseline occurrence once; resolving another rule
@@ -1308,7 +1359,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             Only lint errors introduced relative to *before*.
 
         """
-        introduced: t.MutableMappingKV[str, t.StrSequence] = {}
+        introduced: MutableMapping[str, Sequence[str]] = {}
         normalize = FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line
         for tool, candidate in after.items():
             baseline = before.get(tool)

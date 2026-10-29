@@ -1,0 +1,129 @@
+"""Normalized artifact inventory and destination planning for generated docs.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from pathlib import Path
+
+from flext_cli import u
+
+from flext_infra import m, p, r, t
+from flext_infra._utilities._docs import (
+    FlextInfraUtilitiesDocsContract,
+    FlextInfraUtilitiesDocsGenerateSources,
+)
+
+
+class FlextInfraUtilitiesDocsGeneratePlan(
+    FlextInfraUtilitiesDocsGenerateSources,
+):
+    """Normalize rendered artifacts and bind them to exact destination states."""
+
+    @staticmethod
+    def docs_normalize_artifacts(
+        artifacts: Sequence[t.Infra.DocsRenderedArtifactTuple],
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
+        """Validate one unique lexical owner and target without dereferencing.
+
+        Returns:
+            The resulting
+                ``p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]``.
+
+        """
+        normalized: list[t.Infra.DocsRenderedArtifactTuple] = []
+        targets: set[Path] = set()
+        for project, target, content in artifacts:
+            if (
+                not project.is_absolute()
+                or not target.is_absolute()
+                or ".." in project.parts
+                or ".." in target.parts
+            ):
+                return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].fail(
+                    f"docs publication paths must be absolute and lexical: {target}",
+                )
+            if not target.is_relative_to(project):
+                return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].fail(
+                    f"docs publication target escapes project {project}: {target}",
+                )
+            if target in targets:
+                return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].fail(
+                    f"duplicate docs publication target: {target}",
+                )
+            targets.add(target)
+            normalized.append((project, target, content))
+        return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].ok(
+            tuple(normalized),
+        )
+
+    @staticmethod
+    def docs_file_plans(
+        bundle: m.Infra.DocsGenerationBundle,
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Snapshot targets from the canonical rendered artifact inventory.
+
+        Returns:
+            The resulting ``p.Result[tuple[m.Infra.CodegenFilePlan, ...]]``.
+
+        """
+        plans: list[m.Infra.CodegenFilePlan] = []
+        for scoped in bundle.scopes:
+            for artifact in scoped.artifacts:
+                planned = FlextInfraUtilitiesDocsContract.docs_file_plan(
+                    scoped.scope.path,
+                    scoped.scope.path / artifact.relative_path,
+                    artifact.desired_content,
+                    desired_mode=artifact.desired_mode,
+                )
+                if planned.failure:
+                    return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
+                plans.append(planned.value)
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok((
+            *plans,
+            *bundle.metadata_files,
+        ))
+
+    @staticmethod
+    def _prune_generated_tree_artifacts(
+        project: Path,
+        root: Path,
+        rendered: Sequence[tuple[Path, str]],
+    ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
+        """Describe stale files owned by one generated tree as absent artifacts.
+
+        Returns:
+            The resulting
+                ``p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]``.
+
+        """
+        planned = u.Cli.atomic_plan_directory_chain(root)
+        if planned.failure:
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
+                planned,
+            )
+        if planned.value.directories:
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].ok(())
+        inventory = u.Cli.atomic_inventory_physical_tree(root)
+        if inventory.failure:
+            return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].from_failure(
+                inventory,
+            )
+        expected_paths = {
+            path for path, _content in rendered if path.is_relative_to(root)
+        }
+        return r[tuple[t.Infra.DocsRenderedArtifactTuple, ...]].ok(
+            tuple(
+                (project, entry.path, None)
+                for entry in inventory.value.entries
+                if entry.kind == "file"
+                and entry.path.suffix == ".md"
+                and entry.path not in expected_paths
+            ),
+        )
+
+
+__all__: list[str] = ["FlextInfraUtilitiesDocsGeneratePlan"]

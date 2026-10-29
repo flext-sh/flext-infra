@@ -6,11 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import m, p
 from flext_infra._utilities._rope.rope_class_move import (
     FlextInfraUtilitiesRopeClassMove,
 )
@@ -19,15 +18,15 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticNestingTypes,
+    FlextInfraUtilitiesTypesSemanticNesting,
 )
 
 
 class FlextInfraUtilitiesSemanticHelperReferences(
-    FlextInfraUtilitiesSemanticNestingTypes,
+    FlextInfraUtilitiesTypesSemanticNesting,
 ):
     """Plan quoted references while the declaration still has its original identity."""
 
@@ -39,8 +38,8 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         path: Path,
         source: str,
         *,
-        protected: t.Pair[int, int] | None,
-    ) -> t.Pair[str, str | None]:
+        protected: tuple[int, int] | None,
+    ) -> tuple[str, str | None]:
         """Return one file's helper-prepared source and its quoted binding.
 
         Returns:
@@ -55,7 +54,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         resource = project.get_resource(path.relative_to(root).as_posix())
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -83,8 +82,8 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         cls,
         request: m.Infra.ClassMoveRequest,
         *,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
 
         project = request.rope_project
         root = Path(project.root.real_path)
@@ -103,14 +102,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
             origin_module=origin.get_name(),
             target_module=target.get_name(),
         )
-        declaration = next(
-            node
-            for node in ast.parse(sources[request.source_file]).body
-            if isinstance(node, ast.ClassDef) and node.name == request.class_name
-        )
-        if declaration.end_lineno is None:
-            msg = "shared helper declaration has no complete source range"
-            raise ValueError(msg)
+        declaration = cls._helper_declaration_scope(origin, request.class_name)
         prepared = dict(sources)
         quoted_imports: MutableMapping[Path, str] = {}
         for path, source in sources.items():
@@ -119,7 +111,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 project,
                 path,
                 source,
-                protected=(declaration.lineno, declaration.end_lineno)
+                protected=(declaration.get_start(), declaration.get_end())
                 if path == request.source_file
                 else None,
             )
@@ -141,8 +133,8 @@ class FlextInfraUtilitiesSemanticHelperReferences(
     @staticmethod
     def _move_prepared_helper(
         move: m.Infra.ResolvedClassMove,
-        prepared: t.MutableMappingKV[Path, str],
-        quoted_imports: t.MappingKV[Path, str],
+        prepared: MutableMapping[Path, str],
+        quoted_imports: Mapping[Path, str],
     ) -> None:
         """Move the declaration in a closed snapshot and retain quoted imports.
 
@@ -155,10 +147,17 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         root = Path(request.rope_project.root.real_path)
         snapshot = runtime.snapshot_project(request.rope_project, prepared)
         try:
-            line = next(
-                node.lineno
-                for node in ast.parse(prepared[request.source_file]).body
-                if isinstance(node, ast.ClassDef) and node.name == request.class_name
+            origin = runtime.build_string_module(
+                snapshot,
+                prepared[request.source_file],
+                resource=snapshot.get_resource(
+                    request.source_file.relative_to(root).as_posix()
+                ),
+            )
+            line = (
+                FlextInfraUtilitiesSemanticHelperReferences._helper_declaration_scope(
+                    origin, request.class_name
+                ).get_start()
             )
             moved = FlextInfraUtilitiesRopeClassMove.plan_class_move(
                 m.Infra.ClassMoveRequest(
@@ -211,7 +210,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
     def _rebind_origin_imports(
         move: m.Infra.ResolvedClassMove,
         snapshot: p.Infra.RopeProject,
-        prepared: t.MutableMappingKV[Path, str],
+        prepared: MutableMapping[Path, str],
     ) -> None:
         """Point surviving origin imports at the moved declaration.
 
@@ -232,7 +231,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
             module = runtime.build_string_module(snapshot, source, resource=resource)
             imports = runtime.module_imports_for_pymodule(snapshot, module)
             names = original.get_scope().get_names()
-            moved: list[t.Pair[str, str | None]] = []
+            moved: list[tuple[str, str | None]] = []
             for statement in tuple(imports.imports):
                 info = statement.import_info
                 if not isinstance(info, p.Infra.RopeFromImport):
@@ -276,22 +275,14 @@ class FlextInfraUtilitiesSemanticHelperReferences(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        body = ast.parse(source).body
-        declared = {
-            target.id
-            for node in body
-            for target in (
-                node.targets
-                if isinstance(node, ast.Assign)
-                else (node.target,)
-                if isinstance(node, ast.AnnAssign)
-                else ()
-            )
-            if isinstance(target, ast.Name)
-        } | {
-            node.name for node in body if isinstance(node, c.Infra.AST_DEFINITION_TYPES)
-        }
         module = runtime.build_string_module(project, source, resource=resource)
+        declared = {
+            name
+            for name, binding in module.get_scope().get_defined_names().items()
+            if not isinstance(
+                binding, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
+            )
+        }
         imports = runtime.module_imports_for_pymodule(project, module)
         changed = False
         for statement in tuple(imports.imports):
@@ -312,6 +303,33 @@ class FlextInfraUtilitiesSemanticHelperReferences(
                 changed = True
         return imports.get_changed_source() if changed else source
 
+    @staticmethod
+    def _helper_declaration_scope(
+        module: p.Infra.RopePyModule, name: str
+    ) -> p.Infra.RopeScope:
+        """Require exactly one original declaration identity in the native scope.
+
+        Returns:
+            The unique class scope declaring the helper identity.
+
+        Raises:
+            ValueError: If the identity is declared zero or multiple times.
+
+        """
+        declarations = tuple(
+            scope
+            for scope in module.get_scope().get_scopes()
+            if scope.get_kind() in {"Class", "Function"}
+            and scope.pyobject.get_name() == name
+        )
+        if len(declarations) != 1:
+            msg = (
+                "shared helper requires one native declaration: "
+                f"{module.get_name()}:{name}"
+            )
+            raise ValueError(msg)
+        return declarations[0]
+
     @classmethod
     def _moved_quoted_source(
         cls,
@@ -319,15 +337,15 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         resource: p.Infra.RopeResource,
         source: str,
         *,
-        protected: t.Pair[int, int] | None,
-    ) -> t.Pair[str, str | None]:
+        protected: tuple[int, int] | None,
+    ) -> tuple[str, str | None]:
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         request = move.request
         project = request.rope_project
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -382,7 +400,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         imports = runtime.module_imports_for_pymodule(project, module)
         scope = original.get_scope()
         names = scope.get_names()
-        moved: list[t.Pair[str, str | None]] = []
+        moved: list[tuple[str, str | None]] = []
         for statement in tuple(imports.imports):
             info = statement.import_info
             if not isinstance(info, p.Infra.RopeFromImport) or (
@@ -410,23 +428,23 @@ class FlextInfraUtilitiesSemanticHelperReferences(
     @staticmethod
     def _partition_helper_import(
         info: p.Infra.RopeFromImport,
-        names: t.MappingKV[str, p.Infra.RopePyName],
+        names: Mapping[str, p.Infra.RopePyName],
         expected: p.Infra.RopePyName,
         name: str,
-    ) -> t.Pair[
-        t.SequenceOf[t.Pair[str, str | None]],
-        t.SequenceOf[t.Pair[str, str | None]],
+    ) -> tuple[
+        Sequence[tuple[str, str | None]],
+        Sequence[tuple[str, str | None]],
     ]:
         """Separate imports of this declaration from unrelated bindings.
 
         Returns:
-            The resulting ``t.Pair[t.SequenceOf[t.Pair[str, str | None]],
-                t.SequenceOf[t.Pair[str, str | None]]]``.
+            The resulting ``tuple[Sequence[tuple[str, str | None]],
+                Sequence[tuple[str, str | None]]]``.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        kept: list[t.Pair[str, str | None]] = []
-        moved: list[t.Pair[str, str | None]] = []
+        kept: list[tuple[str, str | None]] = []
+        moved: list[tuple[str, str | None]] = []
         for imported, alias in info.names_and_aliases:
             if imported == "*":
                 kept.append((imported, alias))

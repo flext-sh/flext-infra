@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -15,22 +15,22 @@ from flext_cli import m
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
 from flext_infra._models._config import (
-    FlextInfraConfigModelsBeads,
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsMake,
-    FlextInfraConfigModelsRepository,
-    FlextInfraConfigModelsScaffold,
+    FlextInfraModelsConfigBeads,
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigMake,
+    FlextInfraModelsConfigRepository,
+    FlextInfraModelsConfigScaffold,
 )
 
 
-class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
+class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
     """Render context models composed over the repository reference models."""
 
-    class MakeCommandContext(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeCommandContext(FlextInfraModelsConfigContract.ConfigContract):
         """Shared command identity required by every generated Make surface."""
 
         release_verbs: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(
                 description="Release phase commands elected by repository capability"
             ),
@@ -45,11 +45,11 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             m.Field(description="Repository-declared public examples module"),
         ] = None
         workspace_repositories: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
+            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
             m.Field(description="Ordered workspace subproject records"),
         ] = ()
         environment_imports: Annotated[
-            t.VariadicTuple[t.Pair[t.NonEmptyStr, Path]],
+            tuple[tuple[t.NonEmptyStr, Path], ...],
             m.Field(
                 description="Declared package names and source roots for diagnostics"
             ),
@@ -63,7 +63,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             m.Field(description="Runtime-root-local development environment"),
         ] = c.Infra.ENVIRONMENT_DIRECTORY
         contract_env_values: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="OPTIONS or HELP values that display a verb contract"),
         ] = tuple(sorted(c.Infra.PROMOTED_ENV_ENABLED_VALUES))
 
@@ -105,7 +105,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             m.Field(description="Relative workspace root path"),
         ]
         workspace_subprojects: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Declared workspace subproject paths"),
         ] = ()
         uv_link_mode: Annotated[
@@ -113,7 +113,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             m.Field(description="Configured uv installation link mode"),
         ]
         toolchain: Annotated[
-            FlextInfraConfigModelsContract.ToolchainSpec,
+            FlextInfraModelsConfigContract.ToolchainSpec,
             m.Field(description="Canonical toolchain consumed by native bootstrap"),
         ]
         mise_selector: Annotated[
@@ -127,7 +127,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ]
         mise_install_tools: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -142,15 +142,15 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             m.Field(description="Python minor line the environment syncs against"),
         ]
         make: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec,
+            FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Generated Make command contract"),
         ]
         extra_verbs: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(description="Repository-specific public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
-            FlextInfraConfigModelsContexts.ScriptDispatchSpec | None,
+            FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
 
@@ -185,7 +185,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ] = False
         make: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec,
+            FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Generated Make command contract"),
         ]
         mypy_timeout_exit_code: Annotated[
@@ -235,15 +235,15 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ]
         workspace_subprojects: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Ordered workspace subproject paths"),
         ] = ()
         extra_verbs: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(description="Repository-specific additional public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
-            FlextInfraConfigModelsContexts.ScriptDispatchSpec | None,
+            FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Opt-in script command-framework routing contract"),
         ] = None
         workspace_cli_group: Annotated[
@@ -255,7 +255,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ] = ""
 
-    class ProjectRenderContext(FlextInfraConfigModelsContract.ConfigContract):
+    class ProjectRenderContext(FlextInfraModelsConfigContract.ConfigContract):
         """Complete typed input consumed by project scaffold templates."""
 
         dist: t.NonEmptyStr = m.Field(description="Project distribution identity")
@@ -274,19 +274,19 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             m.Field(description="Project-relative Hatch custom build hook module"),
         ] = None
         uv_cache_key_files: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Derived uv editable-build cache-key files"),
         ] = ()
         docs_audit: Annotated[
-            FlextInfraConfigModelsContract.DocsAuditOverridesSpec,
+            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(
                 description="Repository-owned documentation audit declarations",
             ),
         ] = m.Field(
-            default_factory=FlextInfraConfigModelsContract.DocsAuditOverridesSpec
+            default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec
         )
         namespace_scan_dirs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Production source roots rendered as the namespace "
@@ -296,7 +296,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ] = ()
         workspace_integration: Annotated[
-            FlextInfraConfigModelsContexts.WorkspaceIntegrationSpec | None,
+            FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
             m.Field(
                 description=(
                     "Declared integration provider and branch written into the "
@@ -318,7 +318,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             return f"{self.dist.upper().replace('-', '_')}_"
 
         @property
-        def _config_base(self) -> FlextInfraConfigModelsScaffold.ScaffoldConfigBaseSpec:
+        def _config_base(self) -> FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec:
             """ENFORCE-042 config base selected from declared requirements.
 
             The fleet-converged ``_config.py`` inherits only the project's frozen
@@ -369,13 +369,11 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             return self._config_base.module
 
         scaffold: Annotated[
-            FlextInfraConfigModelsScaffold.ScaffoldSpec,
+            FlextInfraModelsConfigScaffold.ScaffoldSpec,
             m.Field(description="New-project scaffold policy"),
         ]
         gitignore_sections: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
-            ],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -384,11 +382,11 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ]
         project_dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Target-owned runtime requirements"),
         ]
         development_dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Development policy composed for the target's kind"),
         ]
         tooling: Annotated[
@@ -396,15 +394,15 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Configured read-only PATH additions for direnv"),
         ] = ()
         beads: Annotated[
-            FlextInfraConfigModelsBeads.BeadsProjectSpec | None,
+            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         ownership_command_prefix: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Configured Beads ownership command"),
         ]
         canonical_project_name: Annotated[
@@ -420,13 +418,13 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             m.Field(description="Python import package name"),
         ]
         packaged_data_paths: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description="Validated relative data paths shipped in distributions",
             ),
         ]
         project_declaration_resource: Annotated[
-            t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None,
+            tuple[t.NonEmptyStr, t.NonEmptyStr] | None,
             m.Field(
                 description=(
                     "Producer declaration source and wheel extra-metadata destination"
@@ -434,7 +432,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ]
         packaged_data_excludes: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Validated files excluded from packaged data roots"),
         ] = ()
         class_stem: Annotated[
@@ -465,7 +463,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ]
         inherited_facets: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -475,7 +473,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ] = ()
         root_packages: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -485,7 +483,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ] = ()
         repository_namespace_packages: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Implicit namespace directories shipped from the repository root"
@@ -493,7 +491,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ] = ()
         root_modules: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -512,7 +510,7 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
             ),
         ]
         runtime_dependency_overlay: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -581,11 +579,11 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         @m.field_validator("hatch_build_hook_path")
         @classmethod
         def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
-            return FlextInfraConfigModelsContexts.validated_hatch_build_hook_path(
+            return FlextInfraModelsConfigContexts.validated_hatch_build_hook_path(
                 value,
             )
 
-    class ProfileSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ProfileSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Execution semantics for one generated Make profile."""
 
         name: Annotated[
@@ -610,4 +608,4 @@ class FlextInfraConfigModelsContexts(FlextInfraConfigModelsRepository):
         ]
 
 
-__all__: list[str] = ["FlextInfraConfigModelsContexts"]
+__all__: list[str] = ["FlextInfraModelsConfigContexts"]

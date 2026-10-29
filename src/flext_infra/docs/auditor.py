@@ -6,27 +6,28 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import m, u
 from flext_infra.docs import (
-    FlextInfraDocAuditorChecksMixin,
     FlextInfraDocAuditorMixin,
-    FlextInfraDocAuditorReportMixin,
+    FlextInfraDocsAuditorChecks,
+    FlextInfraDocsAuditorReport,
     FlextInfraDocServiceBase,
 )
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraDocAuditor(
     FlextInfraDocServiceBase,
     FlextInfraDocAuditorMixin,
-    FlextInfraDocAuditorChecksMixin,
-    FlextInfraDocAuditorReportMixin,
+    FlextInfraDocsAuditorChecks,
+    FlextInfraDocsAuditorReport,
 ):
     """Audit governed docs scopes; every finding is reported.
 
@@ -50,14 +51,14 @@ class FlextInfraDocAuditor(
         self,
         repository_root: Path,
         *,
-        projects: t.StrSequence | None = None,
+        projects: Sequence[str] | None = None,
         output_dir: Path | str | None = None,
         params: m.Infra.AuditScopeParams | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
 
         """
         resolved_params = (

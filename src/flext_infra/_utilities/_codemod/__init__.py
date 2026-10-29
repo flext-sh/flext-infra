@@ -23,10 +23,10 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesCodemodNativeCascade,
     )
     from flext_infra._utilities._codemod.codemod_native_package_utilities import (
-        FlextInfraUtilitiesCodemodNativePackageUtilities,
+        FlextInfraUtilitiesCodemodNativePackage,
     )
     from flext_infra._utilities._codemod.codemod_native_utilities import (
-        FlextInfraUtilitiesCodemodNativeUtilities,
+        FlextInfraUtilitiesCodemodNative,
     )
     from flext_infra._utilities._codemod.codemod_project import (
         FlextInfraUtilitiesCodemodProject,
@@ -43,17 +43,21 @@ if TYPE_CHECKING:
     from flext_infra._utilities._codemod.codemod_type_set_rules import (
         FlextInfraUtilitiesCodemodTypeSetRules,
     )
+    from flext_infra._utilities._codemod.rules_distributions import (
+        FlextInfraUtilitiesCodemodRulesDistributions,
+    )
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodImportLawRules",
+    "FlextInfraUtilitiesCodemodNative",
     "FlextInfraUtilitiesCodemodNativeCascade",
-    "FlextInfraUtilitiesCodemodNativePackageUtilities",
-    "FlextInfraUtilitiesCodemodNativeUtilities",
+    "FlextInfraUtilitiesCodemodNativePackage",
     "FlextInfraUtilitiesCodemodProject",
     "FlextInfraUtilitiesCodemodProjectFacts",
     "FlextInfraUtilitiesCodemodRules",
+    "FlextInfraUtilitiesCodemodRulesDistributions",
     "FlextInfraUtilitiesCodemodScopes",
     "FlextInfraUtilitiesCodemodTypeSetRules",
 )
@@ -65,13 +69,12 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodemodBindingChain": ".codemod_binding_chain",
         "FlextInfraUtilitiesCodemodImportLawRules": ".codemod_import_law_rules",
         "FlextInfraUtilitiesCodemodNativeCascade": ".codemod_native_cascade",
-        "FlextInfraUtilitiesCodemodNativePackageUtilities": (
-            ".codemod_native_package_utilities"
-        ),
-        "FlextInfraUtilitiesCodemodNativeUtilities": ".codemod_native_utilities",
+        "FlextInfraUtilitiesCodemodNativePackage": ".codemod_native_package_utilities",
+        "FlextInfraUtilitiesCodemodNative": ".codemod_native_utilities",
         "FlextInfraUtilitiesCodemodProject": ".codemod_project",
         "FlextInfraUtilitiesCodemodProjectFacts": ".codemod_project_facts",
         "FlextInfraUtilitiesCodemodRules": ".codemod_rules",
+        "FlextInfraUtilitiesCodemodRulesDistributions": ".rules_distributions",
         "FlextInfraUtilitiesCodemodScopes": ".codemod_scopes",
         "FlextInfraUtilitiesCodemodTypeSetRules": ".codemod_type_set_rules",
     }),

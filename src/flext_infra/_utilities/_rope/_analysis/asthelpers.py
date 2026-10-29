@@ -7,53 +7,28 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import ClassVar, TypeGuard
+from typing import ClassVar
 
 from flext_cli import u
 
 from flext_infra import c, m, p, settings, t
+from flext_infra._utilities._rope.rope_ast import FlextInfraUtilitiesRopeAst
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
-class FlextInfraUtilitiesRopeAnalysisAstHelpers:
+class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
     """Shared rope parsing and AST traversal primitives."""
 
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
 
     @staticmethod
-    def ast_node(obj: p.AttributeProbe) -> TypeGuard[t.Infra.RopeAstNode]:
-        """Narrow a rope-provided object to an AST node.
-
-        Returns:
-            The resulting ``TypeGuard[t.Infra.RopeAstNode]``.
-
-        """
-        return isinstance(obj, ast.AST)
-
-    @staticmethod
-    def ensure_ast_node(obj: p.AttributeProbe) -> t.Infra.RopeAstNode:
-        """Ensure an object is an AST node, narrowing the type.
-
-        Returns:
-            The resulting ``t.Infra.RopeAstNode``.
-
-        Raises:
-            TypeError: If Expected AST node, got.
-
-        """
-        if not FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_node(obj):
-            msg = f"Expected AST node, got {type(obj).__name__}"
-            raise TypeError(msg)
-        return obj
-
-    @staticmethod
     def resource_cache_key(
         rope_project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,
-    ) -> t.Triple[str, str, str]:
+    ) -> tuple[str, str, str]:
         """Key export facts by authenticated source, not physical timestamps.
 
         Returns:
@@ -156,11 +131,11 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return cached
 
     @staticmethod
-    def decorator_names(pyfunction: t.Infra.RopePyObject) -> t.StrSequence:
+    def decorator_names(pyfunction: t.Infra.RopePyObject) -> Sequence[str]:
         """Extract decorator names from a rope ``PyFunction`` (no ast import).
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         decorators = getattr(pyfunction, "decorators", None) or ()
@@ -207,7 +182,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return type(node).__name__
 
     @staticmethod
-    def walk_ast_nodes(root: t.Infra.RopeAstNode) -> t.SequenceOf[t.Infra.RopeAstNode]:
+    def walk_ast_nodes(root: t.Infra.RopeAstNode) -> Sequence[t.Infra.RopeAstNode]:
         """Return every AST node reachable from ``root``, ``root`` included.
 
         Returns:
@@ -218,32 +193,11 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
             return []
         return tuple(ast.walk(root))
 
-    @staticmethod
-    def ast_parent_map(
-        root: p.AttributeProbe,
-    ) -> MutableMapping[int, t.Infra.RopeAstNode]:
-        """Return a child-id -> parent map for the full AST reachable from ``root``.
-
-        The shared SSOT for parent lookups across every rope detector.
-
-        Returns:
-            A child-id -> parent map for the full AST reachable from ``root``.
-
-        """
-        parent_map: MutableMapping[int, t.Infra.RopeAstNode] = {}
-        if not isinstance(root, ast.AST):
-            return parent_map
-        for parent in ast.walk(root):
-            owner = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(parent)
-            for child in ast.iter_child_nodes(parent):
-                parent_map[id(child)] = owner
-        return parent_map
-
     @classmethod
     def module_level_node(
         cls,
         node: t.Infra.RopeAstNode,
-        parent_map: t.MappingKV[int, t.Infra.RopeAstNode],
+        parent_map: Mapping[int, t.Infra.RopeAstNode],
     ) -> bool:
         """Return True when ``node`` is a direct child of the module body.
 
@@ -287,7 +241,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return ""
 
     @staticmethod
-    def line_col_range(node: p.AttributeProbe) -> t.Quad[int, int, int, int] | None:
+    def line_col_range(node: p.AttributeProbe) -> tuple[int, int, int, int] | None:
         """Return ``(lineno, col_offset, end_lineno, end_col_offset)`` for an AST node.
 
         Returns:
@@ -310,7 +264,33 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return (lineno, col_offset, end_lineno, end_col_offset)
 
     @staticmethod
-    def assignment_target_names(node: p.AttributeProbe) -> t.StrSequence:
+    def node_span_offsets(
+        source: str,
+        node: p.AttributeProbe,
+    ) -> tuple[int, int] | None:
+        """Resolve one AST node's start and end character offsets in source.
+
+        Returns:
+            The start and end character offsets, or ``None`` without a span.
+
+        """
+        span = FlextInfraUtilitiesRopeAnalysisAstHelpers.line_col_range(node)
+        if span is None:
+            return None
+        start_line, start_column, end_line, end_column = span
+        lines = source.splitlines(keepends=True)
+        prefix = lines[start_line - 1].encode(c.DEFAULT_ENCODING)[:start_column]
+        suffix = lines[end_line - 1].encode(c.DEFAULT_ENCODING)[:end_column]
+        start = sum(len(line) for line in lines[: start_line - 1]) + len(
+            prefix.decode(c.DEFAULT_ENCODING)
+        )
+        end = sum(len(line) for line in lines[: end_line - 1]) + len(
+            suffix.decode(c.DEFAULT_ENCODING)
+        )
+        return start, end
+
+    @staticmethod
+    def assignment_target_names(node: p.AttributeProbe) -> Sequence[str]:
         """Return direct assignment target names represented by one AST node.
 
         Returns:
@@ -320,7 +300,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return FlextInfraUtilitiesRopeAnalysisAstHelpers._assignment_target_names(node)
 
     @staticmethod
-    def _assignment_target_names(node: p.AttributeProbe) -> t.StrSequence:
+    def _assignment_target_names(node: p.AttributeProbe) -> Sequence[str]:
         """Return direct assignment target names represented by one AST node.
 
         Returns:
@@ -342,7 +322,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return tuple(names)
 
     @staticmethod
-    def class_info_from_source(source: str) -> t.SequenceOf[m.Infra.ClassInfo]:
+    def class_info_from_source(source: str) -> Sequence[m.Infra.ClassInfo]:
         """Return class info from the current source text without Rope resource cache.
 
         Returns:
@@ -358,7 +338,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
     @staticmethod
     def class_info_from_module(
         tree: t.Infra.AstModule,
-    ) -> t.SequenceOf[m.Infra.ClassInfo]:
+    ) -> Sequence[m.Infra.ClassInfo]:
         """Read top-level class facts from an existing native module tree.
 
         Returns:

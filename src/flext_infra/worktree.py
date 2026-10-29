@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import FlextInfraGitLanes, c, m, p, r, s, t, u
+from flext_infra import FlextInfraGitLanes, c, m, p, r, s, u
 
 
 class FlextInfraWorktreeService(s[str]):
@@ -143,29 +143,29 @@ class FlextInfraWorktreeService(s[str]):
     @staticmethod
     def _registered_worktrees(
         primary_root: Path,
-    ) -> p.Result[t.VariadicTuple[t.Pair[Path, str]]]:
+    ) -> p.Result[tuple[tuple[Path, str], ...]]:
         """Pair every registered worktree root with the branch it checks out.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[t.Pair[Path, str]]]``.
+            The resulting ``p.Result[tuple[tuple[Path, str], ...]]``.
 
         """
         listed = u.Infra.git_list_worktrees(
             m.Infra.GitRepoRequest(repo_root=primary_root),
         )
         if listed.failure:
-            return r[t.VariadicTuple[t.Pair[Path, str]]].from_failure(listed)
+            return r[tuple[tuple[Path, str], ...]].from_failure(listed)
         entries = tuple(
             (entry.path, entry.branch or "") for entry in listed.value.entries
         )
-        return r[t.VariadicTuple[t.Pair[Path, str]]].ok(entries)
+        return r[tuple[tuple[Path, str], ...]].ok(entries)
 
     @classmethod
     def registered_lanes(
         cls,
         primary_root: Path,
         branch: str,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Return the lanes Git registers for a branch; empty means none exists.
 
         Returns:
@@ -174,8 +174,8 @@ class FlextInfraWorktreeService(s[str]):
         """
         entries = cls._registered_worktrees(primary_root)
         if entries.failure:
-            return r[t.VariadicTuple[Path]].from_failure(entries)
-        return r[t.VariadicTuple[Path]].ok(
+            return r[tuple[Path, ...]].from_failure(entries)
+        return r[tuple[Path, ...]].ok(
             tuple(root for root, registered in entries.value if registered == branch),
         )
 
@@ -199,7 +199,7 @@ class FlextInfraWorktreeService(s[str]):
         cls,
         primary_root: Path,
         epic_lane: Path,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Return every registered lane nested under one epic lane container.
 
         Returns:
@@ -208,9 +208,9 @@ class FlextInfraWorktreeService(s[str]):
         """
         entries = cls._registered_worktrees(primary_root)
         if entries.failure:
-            return r[t.VariadicTuple[Path]].from_failure(entries)
+            return r[tuple[Path, ...]].from_failure(entries)
         container = (epic_lane.resolve() / c.Infra.WORKTREES_DIRNAME).resolve()
-        return r[t.VariadicTuple[Path]].ok(
+        return r[tuple[Path, ...]].ok(
             tuple(
                 sorted(
                     root
@@ -371,7 +371,7 @@ class FlextInfraWorktreeService(s[str]):
             return r[Path].fail(f"worktree lane already exists: {lane.value}")
         return lane
 
-    def _branch_refs(self, branch: str) -> p.Result[t.Pair[bool, bool]]:
+    def _branch_refs(self, branch: str) -> p.Result[tuple[bool, bool]]:
         """Report whether the branch exists locally and on ``origin``.
 
         Returns:
@@ -380,11 +380,11 @@ class FlextInfraWorktreeService(s[str]):
         """
         local = self._ref_exists(f"refs/heads/{branch}")
         if local.failure:
-            return r[t.Pair[bool, bool]].from_failure(local)
+            return r[tuple[bool, bool]].from_failure(local)
         remote = self._ref_exists(f"refs/remotes/origin/{branch}")
         if remote.failure:
-            return r[t.Pair[bool, bool]].from_failure(remote)
-        return r[t.Pair[bool, bool]].ok((local.value, remote.value))
+            return r[tuple[bool, bool]].from_failure(remote)
+        return r[tuple[bool, bool]].ok((local.value, remote.value))
 
     def _create_lane(
         self,

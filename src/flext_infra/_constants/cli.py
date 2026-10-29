@@ -6,11 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from types import MappingProxyType
-from typing import TYPE_CHECKING, ClassVar
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from typing import ClassVar
 
 
 class FlextInfraConstantsCli:
@@ -27,7 +25,7 @@ class FlextInfraConstantsCli:
     PROCESS_EXIT_ERROR_CODE: ClassVar[str] = "EXTERNAL_PROCESS_EXIT"
     "Stable result error code for non-zero external process exits."
 
-    _SHARED_BOOL_FLAG_VALUES: ClassVar[t.VariadicTuple[str]] = (
+    _SHARED_BOOL_FLAG_VALUES: ClassVar[tuple[str, ...]] = (
         "--apply",
         "--check",
         "--check-only",
@@ -42,7 +40,7 @@ class FlextInfraConstantsCli:
         "--audit",
         "--rewrite-constraints",
     )
-    _SHARED_VALUE_FLAG_VALUES: ClassVar[t.VariadicTuple[str]] = (
+    _SHARED_VALUE_FLAG_VALUES: ClassVar[tuple[str, ...]] = (
         "--checks",
         "--docstring-min",
         "--repository-root",
@@ -71,7 +69,7 @@ class FlextInfraConstantsCli:
     )
     SHARED_BOOL_FLAGS: ClassVar[frozenset[str]] = frozenset(_SHARED_BOOL_FLAG_VALUES)
     SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = frozenset(_SHARED_VALUE_FLAG_VALUES)
-    CLI_GROUP_DESCRIPTIONS: ClassVar[t.StrMapping] = MappingProxyType({
+    CLI_GROUP_DESCRIPTIONS: ClassVar[Mapping[str, str]] = MappingProxyType({
         "check": "Lint gates and pyrefly settings management",
         "codegen": "Code generation and workspace standardization",
         "validate": "Infrastructure validators and diagnostics",
@@ -84,4 +82,4 @@ class FlextInfraConstantsCli:
     })
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraConstantsCli",)
+__all__: tuple[str, ...] = ("FlextInfraConstantsCli",)

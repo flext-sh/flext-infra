@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, Self
 
@@ -50,7 +51,7 @@ class FlextInfraModelsRelease:
         """Typed release input before native ownership and service composition."""
 
         projects: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.BeforeValidator(
                 lambda value: (value,) if isinstance(value, str) else value
             ),
@@ -94,7 +95,7 @@ class FlextInfraModelsRelease:
         """Complete paginated asset inventory."""
 
         assets: Annotated[
-            t.VariadicTuple[FlextInfraModelsRelease.GithubReleaseAsset],
+            tuple[FlextInfraModelsRelease.GithubReleaseAsset, ...],
             m.Field(description="All release assets across API pages"),
         ]
 
@@ -108,7 +109,7 @@ class FlextInfraModelsRelease:
         """Complete paginated releases used to distinguish absence from failure."""
 
         releases: Annotated[
-            t.VariadicTuple[FlextInfraModelsRelease.GithubReleaseIdentity],
+            tuple[FlextInfraModelsRelease.GithubReleaseIdentity, ...],
             m.Field(description="All repository releases across API pages"),
         ]
 
@@ -194,7 +195,7 @@ class FlextInfraModelsRelease:
             m.Field(description="Validated public source roots in the sdist"),
         ]
         versions: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Resolved internal dependency versions"),
         ]
 
@@ -214,7 +215,7 @@ class FlextInfraModelsRelease:
             m.Field(description="Build log absolute path"),
         ]
         artifacts: Annotated[
-            t.VariadicTuple[FlextInfraModelsRelease.BuildArtifact],
+            tuple[FlextInfraModelsRelease.BuildArtifact, ...],
             m.Field(description="Validated wheel and sdist artifacts"),
         ] = ()
         commit_oid: Annotated[
@@ -270,7 +271,7 @@ class FlextInfraModelsRelease:
             m.Field(default=None, description="Latest release tag, if any"),
         ] = None
         merges: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(default=(), description="Merged PR subjects since previous_tag"),
         ] = ()
         declared: Annotated[
@@ -320,7 +321,7 @@ class FlextInfraModelsRelease:
             m.Field(description="Total projects with non-zero exit"),
         ]
         records: Annotated[
-            t.VariadicTuple[FlextInfraModelsRelease.BuildRecord],
+            tuple[FlextInfraModelsRelease.BuildRecord, ...],
             m.Field(description="Per-project build records"),
         ] = ()
         dry_run: Annotated[bool, m.Field(description="Metadata-only build report")]

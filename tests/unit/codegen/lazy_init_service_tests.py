@@ -16,7 +16,7 @@ from tests import c, tm, u
 
 if TYPE_CHECKING:
     from flext_infra.codegen import FlextInfraCodegenLazyInit
-from tests import p, t
+from tests import p
 
 
 def expect_read_only_drift(
@@ -44,11 +44,11 @@ class TestsFlextInfraCodegenLazyInitService:
         check_only: bool = True,
         apply_changes: bool = False,
         dry_run: bool = False,
-    ) -> t.Quad[FlextInfraCodegenLazyInit, p.Result[bool], Path, bytes]:
+    ) -> tuple[FlextInfraCodegenLazyInit, p.Result[bool], Path, bytes]:
         """Run one lazy-init pass without writing and return its observable drift.
 
         Returns:
-            The resulting ``t.Quad[FlextInfraCodegenLazyInit, p.Result[bool], Path,
+            The resulting ``tuple[FlextInfraCodegenLazyInit, p.Result[bool], Path,
                 bytes]``.
 
         """
@@ -93,12 +93,12 @@ class TestsFlextInfraCodegenLazyInitService:
         # must remain untouched by publication of the selected checkout.
         u.Tests.write_lazy_init_namespace_module(
             selected_root / "models.py",
-            class_name="FlextTestsSelectedModels",
+            class_name="FlextTestsModelsSelected",
             alias="m",
         )
         u.Tests.write_lazy_init_namespace_module(
             unrelated_root / "models.py",
-            class_name="FlextTestsUnrelatedModels",
+            class_name="FlextTestsModelsUnrelated",
             alias="m",
         )
         unrelated_init = unrelated_root / c.Infra.INIT_PY
@@ -134,22 +134,22 @@ class TestsFlextInfraCodegenLazyInitService:
             package_name="flext_test_unrelated",
         )
         selected_root.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__ = ["FlextTestsSelectedModels", "m"]\n',
+            '__all__ = ["FlextTestsModelsSelected", "m"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
         unrelated_init = unrelated_root / c.Infra.INIT_PY
         unrelated_init.write_text(
-            '__all__ = ["FlextTestsUnrelatedModels", "m"]\n',
+            '__all__ = ["FlextTestsModelsUnrelated", "m"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.write_lazy_init_namespace_module(
             selected_root / "models.py",
-            class_name="FlextTestsSelectedModels",
+            class_name="FlextTestsModelsSelected",
             alias="m",
         )
         u.Tests.write_lazy_init_namespace_module(
             unrelated_root / "models.py",
-            class_name="FlextTestsUnrelatedModels",
+            class_name="FlextTestsModelsUnrelated",
             alias="m",
         )
         unrelated_before = unrelated_init.read_bytes()
@@ -163,8 +163,8 @@ class TestsFlextInfraCodegenLazyInitService:
         )
 
         tm.ok(result.success)
-        tm.that(selected_generated, contains="FlextTestsSelectedModels")
-        tm.that(selected_generated, lacks="FlextTestsUnrelatedModels")
+        tm.that(selected_generated, contains="FlextTestsModelsSelected")
+        tm.that(selected_generated, lacks="FlextTestsModelsUnrelated")
         tm.that(unrelated_init.read_bytes(), eq=unrelated_before)
 
     @staticmethod
@@ -217,7 +217,7 @@ class TestsFlextInfraCodegenLazyInitService:
         )
         u.Tests.write_lazy_init_namespace_module(
             selected_root / "models.py",
-            class_name="FlextTestsSelectedModels",
+            class_name="FlextTestsModelsSelected",
             alias="m",
         )
         private_child = selected_root / "_utilities"
@@ -242,7 +242,7 @@ class TestsFlextInfraCodegenLazyInitService:
         )
 
         tm.ok(result.success)
-        tm.that(generated_root, contains="FlextTestsSelectedModels")
+        tm.that(generated_root, contains="FlextTestsModelsSelected")
         tm.that(generated_root, lacks="FlextTestsConversion")
         tm.that(generated_root, lacks="_utilities")
         tm.that(child_init.read_bytes(), eq=child_init_before)
@@ -433,12 +433,12 @@ class TestsFlextInfraCodegenLazyInitService:
         )
         u.Tests.write_lazy_init_namespace_module(
             first_root / "models.py",
-            class_name="FlextTestsFirstModels",
+            class_name="FlextTestsModelsFirst",
             alias="m",
         )
         u.Tests.write_lazy_init_namespace_module(
             second_root / "models.py",
-            class_name="FlextTestsSecondModels",
+            class_name="FlextTestsModelsSecond",
             alias="m",
         )
         first_init = first_root / c.Infra.INIT_PY
@@ -675,10 +675,10 @@ class TestsFlextInfraCodegenLazyInitService:
             "from typing import TYPE_CHECKING\n\n"
             "if TYPE_CHECKING:\n"
             "    from flext_test_project import m\n\n"
-            "class FlextTestsBaseConstants:\n"
+            "class FlextTestsConstantsBase:\n"
             '    """Base constants class."""\n\n'
             '    VALUE: str = ""\n\n\n'
-            '__all__: list[str] = ["FlextTestsBaseConstants"]\n',
+            '__all__: list[str] = ["FlextTestsConstantsBase"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
         init_path = nested_root / c.Infra.INIT_PY
@@ -697,7 +697,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.ok(apply_result.success)
         tm.ok(check_result.success)
         tm.that(u.Tests.lazy_init_effects(check_service.plan_files()), eq=())
-        tm.that(applied_init, contains="FlextTestsBaseConstants")
+        tm.that(applied_init, contains="FlextTestsConstantsBase")
         # The inherited root alias is a redundant upstream re-export, not a
         # local owner of this nested package: it stays out of __all__.
         tm.that(applied_init, lacks='"m",')

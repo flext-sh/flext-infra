@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraCli, config, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t
+from tests import c, m
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -40,7 +41,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
     def create_release_workspace(
         root: Path,
         *,
-        project_names: t.StrSequence = (),
+        project_names: Sequence[str] = (),
         version: str = "0.1.0",
         initialize_root_git: bool = True,
         initialize_project_git: bool = False,

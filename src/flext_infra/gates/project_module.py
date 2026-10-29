@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import m, p, t, u
+from flext_infra import m, p, u
 from flext_infra.gates import FlextInfraGate
 
 
@@ -19,7 +20,7 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
     @override
     def _get_check_dirs(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """A declared module checks its project without invented file arguments.
 
         Returns:
@@ -31,8 +32,8 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: Sequence[str]
+    ) -> Sequence[str]:
         """Bind the declared command to the elected physical environment.
 
         Returns:
@@ -49,7 +50,7 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Retain the native result without interpreting or suppressing output.
 
         Returns:

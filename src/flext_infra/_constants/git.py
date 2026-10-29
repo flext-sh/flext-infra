@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from enum import StrEnum, unique
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
@@ -151,7 +152,7 @@ class FlextInfraConstantsGit:
         MERGED_WORKTREE = "merged-worktree"
         DETACHED_WORKTREE = "detached-worktree"
 
-    GIT_LANE_VIOLATION_REMEDY: ClassVar[t.MappingKV[LaneViolationKind, str]] = (
+    GIT_LANE_VIOLATION_REMEDY: ClassVar[Mapping[LaneViolationKind, str]] = (
         MappingProxyType({
             LaneViolationKind.STASH: (
                 "preserve every stash parent, index and untracked object; "

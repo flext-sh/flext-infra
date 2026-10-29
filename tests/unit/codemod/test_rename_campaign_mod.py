@@ -232,10 +232,7 @@ class TestsFlextInfraRenameCampaignMod:
         ],
     )
     def test_public_config_rejects_escaping_campaign_paths(
-        self,
-        mod_workspace: Path,
-        csv: str,
-        roots: tuple[str, ...],
+        self, mod_workspace: Path, csv: str, roots: tuple[str, ...]
     ) -> None:
         """A malformed campaign fails at config validation before source edits."""
         config_dir = mod_workspace / "config"

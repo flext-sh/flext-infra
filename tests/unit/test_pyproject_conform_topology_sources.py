@@ -97,7 +97,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
         tmp_path: Path,
         *,
         source_matches: bool,
-    ) -> t.Triple[
+    ) -> tuple[
         Path,
         m.Infra.WorkspaceSpec,
         m.Infra.DependencyCommitSourceSpec,

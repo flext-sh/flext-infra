@@ -10,6 +10,6 @@ valid:
 # `invalid` MUST match: a class-scoped typings alias passed bare.
 invalid:
   - adapter = u.type_adapter(t.JsonMapping)
-  - adapter = m.type_adapter(t.SequenceOf[str])
+  - adapter = m.type_adapter(t.Sequence[str])
   - adapter = TypeAdapter(FlextTypesPydantic.StrictInt)
   - adapter = TypeAdapter(FlextTypingBase.Scalar, config=cfg)

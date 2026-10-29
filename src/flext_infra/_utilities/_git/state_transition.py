@@ -7,15 +7,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFilesMixin
+from flext_infra import c, config, m
+from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFiles
 
 
-class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFilesMixin):
+class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     """Accept only captured, baseline, or planned kind-transition absence."""
 
     @staticmethod
@@ -82,7 +83,7 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         cls,
         original: m.Infra.GitWorktreeFileState | None,
         baseline: m.Infra.GitWorktreeFileState | None,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeFileState | None]:
+    ) -> tuple[m.Infra.GitWorktreeFileState | None, ...]:
         allowed: list[m.Infra.GitWorktreeFileState | None] = [original, baseline]
         if (
             original is not None
@@ -95,18 +96,14 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
     @staticmethod
     def _state_require_encodable_symlinks(
         root: Path,
-        desired: t.IterableOf[
-            m.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState
-        ],
+        desired: Iterable[m.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState],
     ) -> None:
         """Require every desired symlink payload to decode as strict UTF-8."""
         for entry in desired:
             if entry.mode == "120000":
-                payload = (
-                    FlextInfraUtilitiesGitStateTransitionMixin._state_blob_payload(
-                        root,
-                        entry.oid,
-                    )
+                payload = FlextInfraUtilitiesGitStateTransition._state_blob_payload(
+                    root,
+                    entry.oid,
                 )
                 os.fsdecode(payload).encode(c.DEFAULT_ENCODING, errors="strict")
 
@@ -117,8 +114,8 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         path: Path,
         current: m.Infra.GitWorktreeFileState | None,
         *,
-        paths: t.IterableOf[Path],
-        desired: t.MappingKV[
+        paths: Iterable[Path],
+        desired: Mapping[
             Path,
             m.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState,
         ],
@@ -178,7 +175,7 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         snapshot: m.Infra.GitWorktreeStateSnapshot,
         actual: m.Infra.GitWorktreeStateSnapshot,
         root: Path,
-        baseline: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        baseline: Sequence[m.Infra.GitWorktreeIndexEntry],
         *,
         cleanup: bool,
     ) -> None:
@@ -236,7 +233,7 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         root: Path,
         *,
         cleanup: bool,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         actual = cls._state_snapshot(
             m.Infra.GitWorktreeStateRequest(repo_root=root, paths=snapshot.paths),
         )
@@ -252,7 +249,7 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         cls,
         snapshot: m.Infra.GitWorktreeStateSnapshot,
         root: Path,
-        baseline: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        baseline: Sequence[m.Infra.GitWorktreeIndexEntry],
         *,
         cleanup: bool,
     ) -> None:
@@ -307,4 +304,4 @@ class FlextInfraUtilitiesGitStateTransitionMixin(FlextInfraUtilitiesGitStateFile
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStateTransitionMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStateTransition"]

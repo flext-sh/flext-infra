@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -15,13 +16,13 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 def _write_candidate_targets(
     root: Path,
-    targets: t.SequenceOf[m.Infra.CandidateBootstrapTargetSpec],
+    targets: Sequence[m.Infra.CandidateBootstrapTargetSpec],
 ) -> Path:
     """Declare recovery targets through the repository's current config owner.
 
@@ -328,7 +329,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
 
     @staticmethod
-    def _write_runtime_probe(candidate: Path) -> t.StrSequence:
+    def _write_runtime_probe(candidate: Path) -> Sequence[str]:
         """Declare importable descendants of the configured runtime roots.
 
         Returns:

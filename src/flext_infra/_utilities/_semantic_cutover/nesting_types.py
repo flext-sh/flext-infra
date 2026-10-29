@@ -7,13 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, p, t
-from flext_infra._utilities._codemod.codemod_binding_chain import (
-    FlextInfraUtilitiesCodemodBindingChain,
-)
+from flext_infra import c, m, p
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -22,14 +20,14 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
 
 
-class FlextInfraUtilitiesSemanticNestingTypes(
+class FlextInfraUtilitiesTypesSemanticNesting(
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 ):
     """Share native annotation regions and original lexical binding identity."""
@@ -42,11 +40,11 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         source: str,
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
-        protected: t.Pair[int, int] | None = None,
-    ) -> t.VariadicTuple[m.Infra.SourceRewrite]:
+        protected: tuple[int, int] | None = None,
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -62,9 +60,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
             and node.type_params
         )
         constants = cls._quoted_constants(source, tree)
-        regions: t.MutableMappingKV[
-            t.Pair[int, int], t.Pair[str, p.Infra.RopeScope]
-        ] = {}
+        regions: MutableMapping[tuple[int, int], tuple[str, p.Infra.RopeScope]] = {}
         for begin, end, _literal, scope in cls.quoted_type_regions(
             source, project, module
         ):
@@ -110,11 +106,9 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         return tuple(edits)
 
     @staticmethod
-    def _quoted_constants(
-        source: str, tree: ast.Module
-    ) -> list[t.Triple[int, int, str]]:
+    def _quoted_constants(source: str, tree: ast.Module) -> list[tuple[int, int, str]]:
         lines = source.splitlines(keepends=True)
-        constants: list[t.Triple[int, int, str]] = []
+        constants: list[tuple[int, int, str]] = []
         for node in ast.walk(tree):
             if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
                 continue
@@ -139,7 +133,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         source: str,
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
-        protected: t.Pair[int, int] | None = None,
+        protected: tuple[int, int] | None = None,
     ) -> str:
         edits = cls.quoted_type_edits(
             project,
@@ -156,10 +150,10 @@ class FlextInfraUtilitiesSemanticNestingTypes(
 
     @staticmethod
     def require_nesting_binding(
-        native: t.Triple[p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope],
+        native: tuple[p.Infra.RopeProject, p.Infra.RopePyModule, p.Infra.RopeScope],
         expression: str,
         offset: int,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> None:
         """Reuse native reaching-definition proof, including star provenance.
 
@@ -212,7 +206,7 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = expression.partition(".")[0]
         module = scope.pyobject.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
             msg = "quoted type scope has no declaring module"
             raise ValueError(msg)
         local = runtime.expression_name(scope, root)
@@ -225,4 +219,4 @@ class FlextInfraUtilitiesSemanticNestingTypes(
         return expression
 
 
-__all__: list[str] = ["FlextInfraUtilitiesSemanticNestingTypes"]
+__all__: list[str] = ["FlextInfraUtilitiesTypesSemanticNesting"]

@@ -16,12 +16,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import io
 import re
 import textwrap
 import tokenize
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from functools import lru_cache
 from itertools import pairwise
 from operator import itemgetter
@@ -32,12 +31,11 @@ from flext_cli import u
 from flext_infra import c, config, m, p, r, t
 from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyproject,
-)
-from flext_infra._utilities.lint_source_positions import (
     FlextInfraUtilitiesLintSourcePositions,
+    FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
 
 class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
@@ -45,8 +43,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
     @staticmethod
     def blocking_gate_findings(
-        issues: t.SequenceOf[p.Infra.Issue],
-    ) -> t.VariadicTuple[p.Infra.Issue]:
+        issues: Sequence[p.Infra.Issue],
+    ) -> tuple[p.Infra.Issue, ...]:
         """Retain every finding as blocking under the approved quality baseline.
 
         Returns:
@@ -62,7 +60,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         scaffold: m.Infra.ScaffoldProjectSpec,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[t.Triple[str, str, int]]:
+    ) -> p.Result[tuple[str, str, int]]:
         """Resolve the copyright holder, license and year a project declares.
 
         The repository's ``Infra.codegen.repository.project`` declaration owns
@@ -79,11 +77,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             unsupported declaration.
 
         """
-        result_type = r[t.Triple[str, str, int]]
+        result_type = r[tuple[str, str, int]]
         if declared is not None:
             identity = (declared.author_name, declared.license, declared.year)
         else:
-            metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+            metadata = FlextInfraUtilitiesPyprojectConform.read_project_metadata_result(
                 project_root,
                 source_project=source_project,
             )
@@ -96,7 +94,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                     f"project manifest declares no author name: {project_root}",
                 )
             license_id = u.Cli.json_walk_path(
-                FlextInfraUtilitiesPyproject.pyproject_payload(
+                FlextInfraUtilitiesPyprojectConform.pyproject_payload(
                     project_root / c.PYPROJECT_FILENAME,
                     source_project=source_project,
                 ),
@@ -120,8 +118,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
     def _declared_notice_identity(
         project_root: Path,
-        inputs: t.VariadicTuple[bytes | None],
-    ) -> p.Result[t.Triple[str, str, int]]:
+        inputs: tuple[bytes | None, ...],
+    ) -> p.Result[tuple[str, str, int]]:
         """Resolve one project's notice identity once per exact input content.
 
         ``inputs`` holds the bytes of the repository's own codegen layers and
@@ -133,7 +131,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             The ``project_notice_identity`` result for the declared inputs.
 
         """
-        result_type = r[t.Triple[str, str, int]]
+        result_type = r[tuple[str, str, int]]
         artifacts = FlextInfraUtilitiesProjectManagedArtifacts
         declaration = artifacts.load_repository_declaration_inputs(project_root)
         if declaration.failure:
@@ -251,10 +249,10 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     def apply_lint_recipes(
         cls,
         source: str,
-        issues: t.SequenceOf[p.Infra.Issue],
+        issues: Sequence[p.Infra.Issue],
         *,
         path: Path,
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
     ) -> str:
         """Return ``source`` with the declared recipe of every issue applied.
 
@@ -273,7 +271,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             The repaired module source.
 
         """
-        tree = ast.parse(source)
+        tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
         lines = source.splitlines(keepends=True)
         sections, removed, summaries, wants_notice = cls._collected_sections(
             tree,
@@ -294,17 +292,17 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @classmethod
     def _collected_sections(
         cls,
-        tree: ast.Module,
-        issues: t.SequenceOf[p.Infra.Issue],
+        tree: t.Infra.AstModule,
+        issues: Sequence[p.Infra.Issue],
         path: Path,
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-    ) -> t.Quad[
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
+    ) -> tuple[
         MutableMapping[
-            ast.FunctionDef | ast.AsyncFunctionDef,
+            t.Infra.AstFunctionDefinition,
             MutableMapping[str, list[str]],
         ],
-        MutableMapping[ast.FunctionDef | ast.AsyncFunctionDef, set[str]],
-        MutableMapping[ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef, str],
+        MutableMapping[t.Infra.AstFunctionDefinition, set[str]],
+        MutableMapping[t.Infra.AstClassDefinition | t.Infra.AstFunctionDefinition, str],
         bool,
     ]:
         """Dispatch every issue's recipe into section, summary, or notice plans.
@@ -318,12 +316,12 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         sections: MutableMapping[
-            ast.FunctionDef | ast.AsyncFunctionDef,
+            t.Infra.AstFunctionDefinition,
             MutableMapping[str, list[str]],
         ] = {}
-        removed: MutableMapping[ast.FunctionDef | ast.AsyncFunctionDef, set[str]] = {}
+        removed: MutableMapping[t.Infra.AstFunctionDefinition, set[str]] = {}
         summaries: MutableMapping[
-            ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+            t.Infra.AstClassDefinition | t.Infra.AstFunctionDefinition,
             str,
         ] = {}
         wants_notice = False
@@ -375,27 +373,27 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @classmethod
     def _docstring_section_edits(
         cls,
-        lines: t.SequenceOf[str],
-        sections: t.MappingKV[
-            ast.FunctionDef | ast.AsyncFunctionDef,
-            t.MappingKV[str, list[str]],
+        lines: Sequence[str],
+        sections: Mapping[
+            t.Infra.AstFunctionDefinition,
+            Mapping[str, list[str]],
         ],
-        removed: t.MappingKV[ast.FunctionDef | ast.AsyncFunctionDef, set[str]],
+        removed: Mapping[t.Infra.AstFunctionDefinition, set[str]],
         path: Path,
-    ) -> list[t.Triple[int, int, str]]:
+    ) -> list[tuple[int, int, str]]:
         """Build one section edit per documented function.
 
         A function whose docstring both gains and loses entries receives a
         single edit, so the two never overlap.
 
         Returns:
-            The resulting ``list[t.Triple[int, int, str]]``.
+            The resulting ``list[tuple[int, int, str]]``.
 
         Raises:
             ValueError: If a function at line has no docstring.
 
         """
-        edits: list[t.Triple[int, int, str]] = []
+        edits: list[tuple[int, int, str]] = []
         for function in dict.fromkeys((*sections, *removed)):
             docstring = cls._docstring_expr(function)
             if docstring is None:
@@ -456,10 +454,10 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @classmethod
     def _notice_edit(
         cls,
-        lines: t.SequenceOf[str],
-        tree: ast.Module,
+        lines: Sequence[str],
+        tree: t.Infra.AstModule,
         path: Path,
-    ) -> t.Triple[int, int, str]:
+    ) -> tuple[int, int, str]:
         """Build the copyright-notice edit for the module docstring.
 
         A module without a docstring receives one, summarized from its name,
@@ -482,7 +480,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def _applied_edits(
         source: str,
-        edits: t.SequenceOf[t.Triple[int, int, str]],
+        edits: Sequence[tuple[int, int, str]],
     ) -> str:
         """Apply every edit back-to-front over the source text.
 
@@ -502,10 +500,10 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @classmethod
     def _summary_edit(
         cls,
-        lines: t.StrSequence,
-        definition: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+        lines: Sequence[str],
+        definition: t.Infra.AstClassDefinition | t.Infra.AstFunctionDefinition,
         text: str,
-    ) -> t.Triple[int, int, str]:
+    ) -> tuple[int, int, str]:
         """Return the edit that places ``text`` as ``definition``'s summary.
 
         A body on its own line receives the summary before that line. A body
@@ -546,11 +544,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     def _static_method_plan(
         cls,
         source: str,
-        tree: ast.Module,
-        issues: t.SequenceOf[p.Infra.Issue],
+        tree: t.Infra.AstModule,
+        issues: Sequence[p.Infra.Issue],
         path: Path,
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-    ) -> t.VariadicTuple[t.Triple[int, int, str]]:
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
+    ) -> tuple[tuple[int, int, str], ...]:
         """Plan the static-method edits of every finding that selects them.
 
         Returns:
@@ -572,7 +570,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def _recipe_for(
         issue: p.Infra.Issue,
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
         path: Path,
     ) -> c.Infra.LintFixRecipe:
         """Return the declared recipe of one finding.
@@ -592,8 +590,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
     @staticmethod
     def overridden_methods(
-        sources: t.SequenceOf[str],
-    ) -> frozenset[t.Pair[str, str]]:
+        sources: Sequence[str],
+    ) -> frozenset[tuple[str, str]]:
         """Return each ``(class, method)`` on an override chain in ``sources``.
 
         Ruff judges a method alone and cannot see its override chain: both the
@@ -610,11 +608,16 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         bases: MutableMapping[str, set[str]] = {}
         methods: MutableMapping[str, set[str]] = {}
         for source in sources:
-            for node in ast.walk(ast.parse(source)):
-                if not isinstance(node, ast.ClassDef):
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+                FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
+            ):
+                if not isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                     continue
                 bases.setdefault(node.name, set()).update(
-                    ast.unparse(base).rsplit(".", maxsplit=1)[-1] for base in node.bases
+                    FlextInfraUtilitiesRopeAnalysis.Tree.unparse(base).rsplit(
+                        ".", maxsplit=1
+                    )[-1]
+                    for base in node.bases
                 )
                 methods.setdefault(node.name, set()).update(
                     item.name
@@ -643,12 +646,12 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     def overridden_findings(
         cls,
         source: str,
-        issues: t.SequenceOf[p.Infra.Issue],
+        issues: Sequence[p.Infra.Issue],
         *,
         path: Path,
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-        overridden: frozenset[t.Pair[str, str]],
-    ) -> t.VariadicTuple[p.Infra.Issue]:
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
+        overridden: frozenset[tuple[str, str]],
+    ) -> tuple[p.Infra.Issue, ...]:
         """Return the static-method findings the recipe must not convert.
 
         A method on an override chain, or one whose body reads its receiver,
@@ -673,12 +676,13 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     def _static_method_candidates(
         cls,
         source: str,
-        issues: t.SequenceOf[p.Infra.Issue],
+        issues: Sequence[p.Infra.Issue],
         *,
         path: Path,
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-    ) -> t.VariadicTuple[
-        t.Triple[p.Infra.Issue, ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
+    ) -> tuple[
+        tuple[p.Infra.Issue, t.Infra.AstClassDefinition, t.Infra.AstFunctionDefinition],
+        ...,
     ]:
         """Pair each static-method finding with its owner and method.
 
@@ -687,7 +691,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             targets.
 
         """
-        tree = ast.parse(source)
+        tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
         return tuple(
             (issue, owner, method)
             for issue in issues
@@ -696,7 +700,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         )
 
     @staticmethod
-    def _reads_receiver(method: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    def _reads_receiver(method: t.Infra.AstFunctionDefinition) -> bool:
         """Tell whether the body reads its receiver, by name or through ``super()``.
 
         Zero-argument ``super()`` and ``__class__`` bind the receiver
@@ -708,20 +712,21 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         """
         receiver = (*method.args.posonlyargs, *method.args.args)[0].arg
         return any(
-            isinstance(node, ast.Name) and node.id in {receiver, "super", "__class__"}
+            isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+            and node.id in {receiver, "super", "__class__"}
             for statement in method.body
-            for node in ast.walk(statement)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(statement)
         )
 
     @classmethod
     def service_operation_findings(
         cls,
         source: str,
-        issues: t.SequenceOf[p.Infra.Issue],
+        issues: Sequence[p.Infra.Issue],
         *,
         path: Path,
-        recipes: t.MappingKV[str, c.Infra.LintFixRecipe],
-    ) -> t.VariadicTuple[p.Infra.Issue]:
+        recipes: Mapping[str, c.Infra.LintFixRecipe],
+    ) -> tuple[p.Infra.Issue, ...]:
         """Return the static-method findings on methods of a service subclass.
 
         A service operation must stay a plain public instance function
@@ -746,7 +751,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         )
 
     @staticmethod
-    def _declares_service_base(owner: ast.ClassDef) -> bool:
+    def _declares_service_base(owner: t.Infra.AstClassDefinition) -> bool:
         """Return whether the class declares a FLEXT service base.
 
         Bases are matched by their declared root name, so ``s[Status]``,
@@ -755,17 +760,19 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         for base in owner.bases:
-            root = ast.unparse(base).split("[", maxsplit=1)[0]
+            root = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(base).split(
+                "[", maxsplit=1
+            )[0]
             if root.rsplit(".", maxsplit=1)[-1].strip() in c.Infra.SERVICE_BASE_ROOTS:
                 return True
         return False
 
     @staticmethod
     def _receiver_method_at(
-        tree: ast.Module,
+        tree: t.Infra.AstModule,
         issue: p.Infra.Issue,
         path: Path,
-    ) -> t.Pair[ast.ClassDef, ast.FunctionDef | ast.AsyncFunctionDef]:
+    ) -> tuple[t.Infra.AstClassDefinition, t.Infra.AstFunctionDefinition]:
         """Return the class method Ruff reports as never reading its receiver.
 
         Ruff reports the finding at the method's name on its ``def`` line and
@@ -778,8 +785,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             ValueError: If no class method with a receiver matches the finding.
 
         """
-        for owner in ast.walk(tree):
-            if not isinstance(owner, ast.ClassDef):
+        for owner in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree):
+            if not isinstance(owner, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                 continue
             for method in owner.body:
                 if (
@@ -796,10 +803,10 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     def _static_method_edits(
         cls,
         source: str,
-        lines: t.StrSequence,
-        method: ast.FunctionDef | ast.AsyncFunctionDef,
+        lines: Sequence[str],
+        method: t.Infra.AstFunctionDefinition,
         path: Path,
-    ) -> t.VariadicTuple[t.Triple[int, int, str]]:
+    ) -> tuple[tuple[int, int, str], ...]:
         """Declare ``method`` static: drop its receiver, add the decorator.
 
         The receiver is removed with the separator that follows it; a receiver
@@ -876,7 +883,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         return index
 
     @staticmethod
-    def _offset(lines: t.StrSequence, lineno: int, col_offset: int) -> int:
+    def _offset(lines: Sequence[str], lineno: int, col_offset: int) -> int:
         """Convert an AST position (1-based line, UTF-8 column) to a str index.
 
         Returns:
@@ -894,10 +901,10 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @classmethod
     def _literal(
         cls,
-        lines: t.StrSequence,
-        docstring: ast.Expr,
+        lines: Sequence[str],
+        docstring: t.Infra.AstExpressionStatement,
         path: Path,
-    ) -> t.Triple[int, int, str]:
+    ) -> tuple[int, int, str]:
         """Return the span and text of one triple-double-quoted docstring.
 
         Returns:
@@ -927,11 +934,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         return start, end, raw
 
     @staticmethod
-    def _split_literal(raw: str) -> t.Pair[str, str]:
+    def _split_literal(raw: str) -> tuple[str, str]:
         """Split a docstring literal into its string prefix and inner text.
 
         Returns:
-            The resulting ``t.Pair[str, str]``.
+            The resulting ``tuple[str, str]``.
 
         """
         prefix = raw[: len(raw) - len(raw.lstrip("rRuU"))]
@@ -940,41 +947,47 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         return prefix, inner
 
     @staticmethod
-    def _returns_entry(function: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+    def _returns_entry(function: t.Infra.AstFunctionDefinition) -> str:
         """Describe the returned value: the summary's object, else its type.
 
         Returns:
             The resulting ``str``.
 
         """
-        summary = (ast.get_docstring(function) or "").splitlines()[0]
+        summary = (
+            FlextInfraUtilitiesRopeAnalysis.Tree.docstring(function) or ""
+        ).splitlines()[0]
         match = re.match(r"(?i)returns?\s+(?P<rest>.+)", summary.strip().rstrip("."))
         if match:
             rest = match.group("rest")
             return f"{rest[:1].upper()}{rest[1:]}."
         if function.returns is None:
             return "The resulting value."
-        return f"The resulting ``{ast.unparse(function.returns)}``."
+        rendered = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(function.returns)
+        return f"The resulting ``{rendered}``."
 
     @staticmethod
-    def _yields_entry(function: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+    def _yields_entry(function: t.Infra.AstFunctionDefinition) -> str:
         """Describe each yielded value by the iterator's element type.
 
         Returns:
             The resulting ``str``.
 
         """
-        if isinstance(function.returns, ast.Subscript):
+        if isinstance(function.returns, FlextInfraUtilitiesRopeAnalysis.Tree.Subscript):
             element = function.returns.slice
-            if isinstance(element, ast.Tuple) and element.elts:
+            if (
+                isinstance(element, FlextInfraUtilitiesRopeAnalysis.Tree.Tuple)
+                and element.elts
+            ):
                 element = element.elts[0]
-            return f"Each ``{ast.unparse(element)}``."
+            return f"Each ``{FlextInfraUtilitiesRopeAnalysis.Tree.unparse(element)}``."
         return "Each yielded value."
 
     @classmethod
     def _raises_entry(
         cls,
-        function: ast.FunctionDef | ast.AsyncFunctionDef,
+        function: t.Infra.AstFunctionDefinition,
         issue: p.Infra.Issue,
         path: Path,
     ) -> str:
@@ -993,15 +1006,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         name = cls._finding_exception(issue, path)
-        parents = {
-            child: node
-            for node in ast.walk(function)
-            for child in ast.iter_child_nodes(node)
-        }
+        parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(function)
         clauses = [
             cls._raise_condition(function, raised, parents)
-            for raised in ast.walk(function)
-            if isinstance(raised, ast.Raise)
+            for raised in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(function)
+            if isinstance(raised, FlextInfraUtilitiesRopeAnalysis.Tree.Raise)
             and name.rsplit(".", maxsplit=1)[-1] in cls._raised_names(raised, parents)
         ]
         if not clauses:
@@ -1029,8 +1038,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
     @staticmethod
     def _raised_names(
-        raised: ast.Raise,
-        parents: t.MappingKV[ast.AST, ast.AST],
+        raised: t.Infra.AstRaiseStatement,
+        parents: Mapping[int, t.Infra.RopeAstNode],
     ) -> frozenset[str]:
         """Return the exception names one ``raise`` statement raises.
 
@@ -1041,18 +1050,34 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         if raised.exc is not None:
-            target = raised.exc.func if isinstance(raised.exc, ast.Call) else raised.exc
-            return frozenset({ast.unparse(target).rsplit(".", maxsplit=1)[-1]})
-        node: ast.AST = raised
-        while (parent := parents.get(node)) is not None:
-            if isinstance(parent, ast.ExceptHandler) and parent.type is not None:
+            target = (
+                raised.exc.func
+                if isinstance(raised.exc, FlextInfraUtilitiesRopeAnalysis.Tree.Call)
+                else raised.exc
+            )
+            return frozenset({
+                FlextInfraUtilitiesRopeAnalysis.Tree.unparse(target).rsplit(
+                    ".", maxsplit=1
+                )[-1]
+            })
+        node: t.Infra.RopeAstNode = raised
+        while (parent := parents.get(id(node))) is not None:
+            if (
+                isinstance(parent, FlextInfraUtilitiesRopeAnalysis.Tree.ExceptHandler)
+                and parent.type is not None
+            ):
                 caught = (
                     parent.type.elts
-                    if isinstance(parent.type, ast.Tuple)
+                    if isinstance(
+                        parent.type, FlextInfraUtilitiesRopeAnalysis.Tree.Tuple
+                    )
                     else (parent.type,)
                 )
                 return frozenset(
-                    ast.unparse(item).rsplit(".", maxsplit=1)[-1] for item in caught
+                    FlextInfraUtilitiesRopeAnalysis.Tree.unparse(item).rsplit(
+                        ".", maxsplit=1
+                    )[-1]
+                    for item in caught
                 )
             node = parent
         return frozenset()
@@ -1060,9 +1085,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @classmethod
     def _raise_condition(
         cls,
-        function: ast.FunctionDef | ast.AsyncFunctionDef,
-        raised: ast.Raise,
-        parents: t.MappingKV[ast.AST, ast.AST],
+        function: t.Infra.AstFunctionDefinition,
+        raised: t.Infra.AstRaiseStatement,
+        parents: Mapping[int, t.Infra.RopeAstNode],
     ) -> str:
         """Return the clause under which one ``raise`` statement runs.
 
@@ -1072,16 +1097,20 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             exception; else ``always``, for a raise the body always reaches.
 
         """
-        if isinstance(raised.exc, ast.Call) and raised.exc.args:
+        if (
+            isinstance(raised.exc, FlextInfraUtilitiesRopeAnalysis.Tree.Call)
+            and raised.exc.args
+        ):
             message = raised.exc.args[0]
-            if isinstance(message, ast.Name):
+            if isinstance(message, FlextInfraUtilitiesRopeAnalysis.Tree.Name):
                 assigned = [
                     node.value
-                    for node in ast.walk(function)
-                    if isinstance(node, ast.Assign)
+                    for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(function)
+                    if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Assign)
                     and node.lineno < raised.lineno
                     and any(
-                        isinstance(target, ast.Name) and target.id == message.id
+                        isinstance(target, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
+                        and target.id == message.id
                         for target in node.targets
                     )
                 ]
@@ -1098,32 +1127,41 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             )
             if stated:
                 return f"if {stated}"
-        node: ast.AST = raised
-        while (parent := parents.get(node)) is not None and parent is not function:
-            if isinstance(parent, ast.If):
-                test = ast.unparse(parent.test)
+        node: t.Infra.RopeAstNode = raised
+        while (parent := parents.get(id(node))) is not None and parent is not function:
+            if isinstance(parent, FlextInfraUtilitiesRopeAnalysis.Tree.If):
+                test = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(parent.test)
                 return (
                     f"if ``{test}``" if node in parent.body else f"if ``not ({test})``"
                 )
-            if isinstance(parent, ast.ExceptHandler) and parent.type is not None:
-                return f"if a ``{ast.unparse(parent.type)}`` is caught"
+            if (
+                isinstance(parent, FlextInfraUtilitiesRopeAnalysis.Tree.ExceptHandler)
+                and parent.type is not None
+            ):
+                caught = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(parent.type)
+                return f"if a ``{caught}`` is caught"
             node = parent
         return "always"
 
     @staticmethod
-    def _static_text(node: ast.expr) -> str:
+    def _static_text(node: t.Infra.AstExpression) -> str:
         """Return the literal prefix of a string or f-string expression.
 
         Returns:
             The literal prefix of a string or f-string expression.
 
         """
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        if isinstance(
+            node, FlextInfraUtilitiesRopeAnalysis.Tree.Constant
+        ) and isinstance(node.value, str):
             return node.value
-        if isinstance(node, ast.JoinedStr):
+        if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.JoinedStr):
             prefix: list[str] = []
             for part in node.values:
-                if not (isinstance(part, ast.Constant) and isinstance(part.value, str)):
+                if not (
+                    isinstance(part, FlextInfraUtilitiesRopeAnalysis.Tree.Constant)
+                    and isinstance(part.value, str)
+                ):
                     break
                 prefix.append(part.value)
             return "".join(prefix)
@@ -1131,7 +1169,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
     @staticmethod
     def _summary_for(
-        definition: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+        definition: t.Infra.AstClassDefinition | t.Infra.AstFunctionDefinition,
     ) -> str:
         """Derive a one-line summary from a definition's declared name.
 
@@ -1140,7 +1178,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         name = definition.name
-        if isinstance(definition, ast.ClassDef):
+        if isinstance(definition, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
             return (
                 f"Tests for ``{name.removeprefix('Tests')}``."
                 if name.startswith("Tests") and name != "Tests"
@@ -1155,7 +1193,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         cls,
         raw: str,
         indent: str,
-        wanted: t.MappingKV[str, t.StrSequence],
+        wanted: Mapping[str, Sequence[str]],
     ) -> str:
         """Return the docstring literal with the wanted sections appended.
 
@@ -1205,7 +1243,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         return f'{prefix}"""{inner}\n{indent}"""'
 
     @staticmethod
-    def _notice_span(inner: str, path: Path) -> t.Triple[int, int, str]:
+    def _notice_span(inner: str, path: Path) -> tuple[int, int, str]:
         """Locate the notice paragraph span and the text that follows it.
 
         The notice paragraph starts at the line the declared notice pattern
@@ -1251,7 +1289,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                 carries no notice.
 
         """
-        docstring = cls._docstring_expr(ast.parse(source, filename=str(path)))
+        docstring = cls._docstring_expr(
+            FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
+                source, filename=str(path)
+            )
+        )
         if docstring is None:
             msg = f"{path}: module has no docstring carrying a notice"
             raise ValueError(msg)
@@ -1268,7 +1310,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         text = f"{before}\n\n{after}" if before.strip() else after
         updated = cls._with_notice(f'{prefix}"""{text}"""', inner[first:last].strip())
         rewritten = f"{source[:start]}{updated}{source[end:]}"
-        ast.parse(rewritten, filename=str(path))
+        FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
+            rewritten, filename=str(path)
+        )
         return rewritten
 
     @classmethod
@@ -1305,7 +1349,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     def wrap_long_lines(
         cls,
         source: str,
-        line_numbers: t.SequenceOf[int],
+        line_numbers: Sequence[int],
         *,
         limit: int,
     ) -> str:
@@ -1326,7 +1370,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             ValueError: If a repair would change the module AST.
 
         """
-        before = ast.dump(ast.parse(source))
+        before = FlextInfraUtilitiesRopeAnalysis.Tree.dump(
+            FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
+        )
         lines = source.splitlines(keepends=True)
         tokens = tuple(tokenize.generate_tokens(io.StringIO(source).readline))
         for number in sorted(set(line_numbers), reverse=True):
@@ -1342,7 +1388,12 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             if replacement is not None:
                 lines[number - 1] = replacement
         repaired = "".join(lines)
-        if ast.dump(ast.parse(repaired)) != before:
+        if (
+            FlextInfraUtilitiesRopeAnalysis.Tree.dump(
+                FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(repaired)
+            )
+            != before
+        ):
             msg = "line wrap changed the module AST"
             raise ValueError(msg)
         return repaired
@@ -1351,7 +1402,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     def _line_wrap_comment(
         line: str,
         number: int,
-        tokens: t.SequenceOf[tokenize.TokenInfo],
+        tokens: Sequence[tokenize.TokenInfo],
         limit: int,
     ) -> str | None:
         """Reflow one full-line comment into lines within the limit.
@@ -1391,7 +1442,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         cls,
         line: str,
         number: int,
-        tokens: t.SequenceOf[tokenize.TokenInfo],
+        tokens: Sequence[tokenize.TokenInfo],
         limit: int,
     ) -> str | None:
         """Split the longest splittable single-line string literal of one line.
@@ -1424,7 +1475,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         literal: m.Infra.LineWrapLiteral,
         column: int,
         limit: int,
-    ) -> t.SequenceOf[int]:
+    ) -> Sequence[int]:
         """Pick split offsets after spaces so every piece fits the limit.
 
         A split never lands inside an escape sequence or an f-string
@@ -1470,8 +1521,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     def _line_wrap_pieces(
         text: str,
         literal: m.Infra.LineWrapLiteral,
-        cuts: t.SequenceOf[int],
-    ) -> t.StrSequence:
+        cuts: Sequence[int],
+    ) -> Sequence[str]:
         """Split one literal at the given offsets into closed literals.
 
         Returns:
@@ -1490,9 +1541,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @classmethod
     def _line_wrap_literals(
         cls,
-        tokens: t.SequenceOf[tokenize.TokenInfo],
+        tokens: Sequence[tokenize.TokenInfo],
         number: int,
-    ) -> t.SequenceOf[m.Infra.LineWrapLiteral]:
+    ) -> Sequence[m.Infra.LineWrapLiteral]:
         """Return each single-quoted single-line string literal of one line.
 
         Returns:
@@ -1519,9 +1570,9 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
     @staticmethod
     def _line_wrap_bracket_depths(
-        tokens: t.SequenceOf[tokenize.TokenInfo],
+        tokens: Sequence[tokenize.TokenInfo],
         number: int,
-    ) -> t.MappingKV[int, int]:
+    ) -> Mapping[int, int]:
         """Map each token column of one line to its bracket nesting depth.
 
         Returns:
@@ -1543,16 +1594,16 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
     @staticmethod
     def _line_wrap_spans(
-        tokens: t.SequenceOf[tokenize.TokenInfo],
+        tokens: Sequence[tokenize.TokenInfo],
         number: int,
-    ) -> t.SequenceOf[t.Triple[int, int, str]]:
+    ) -> Sequence[tuple[int, int, str]]:
         """Return the column span and opening text of each literal on one line.
 
         Returns:
             ``(start, end, opening)`` per plain or f-string literal of the line.
 
         """
-        spans: list[t.Triple[int, int, str]] = []
+        spans: list[tuple[int, int, str]] = []
         opened: tokenize.TokenInfo | None = None
         for token in tokens:
             if token.type == tokenize.FSTRING_START:

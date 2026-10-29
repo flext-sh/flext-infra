@@ -10,6 +10,7 @@ import os
 import shutil
 import sys
 import time
+from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
 from textwrap import indent
@@ -50,6 +51,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 / cache.database_filename
             )
             testmon_db.parent.mkdir(parents=True, exist_ok=True)
+            policy = config.Infra.tooling.tools.pytest
             return validate.FlextInfraPytestRunner(
                 repository_root=cached_runner_project,
                 ci_context=ci_context,
@@ -64,6 +66,8 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 reports=cache.reports_directory,
                 testmon_db=testmon_db,
                 slow_phase=slow_phase,
+                run_timeout_seconds=policy.run_timeout_seconds,
+                termination_grace_seconds=policy.termination_grace_seconds,
             )
 
         @staticmethod
@@ -139,7 +143,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                     (
                         sys.executable,
                         "-m",
-                        "flext_infra._pytest_entry",
+                        "flext_infra._pytest.entry",
                         "profile",
                         str(output),
                     ),
@@ -289,7 +293,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             )
             options["plugins"] = [
                 *u.Infra.native_tool_setting(
-                    tooling, "mypy", "plugins", TypeForm(t.StrSequence)
+                    tooling, "mypy", "plugins", TypeForm(Sequence[str])
                 ),
                 str(plugin),
             ]
@@ -318,7 +322,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
 
     @staticmethod
-    def python_dependency_projects(root: Path) -> t.VariadicTuple[Path]:
+    def python_dependency_projects(root: Path) -> tuple[Path, ...]:
         """Resolve declared fixture dependencies to actual workspace source owners.
 
         Only dependencies that are declared workspace members are resolved;
@@ -377,8 +381,8 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
     @cache
     def python_dependency_wheels(
         directory: Path,
-        dependency_projects: t.VariadicTuple[Path],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+        dependency_projects: tuple[Path, ...],
+    ) -> p.Result[tuple[Path, ...]]:
         """Build current dependency sources once in the shared worker allocation.
 
         UV reuses its native artifact cache; no installed executor package or
@@ -410,20 +414,20 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                     cwd=project,
                 )
                 if built.failure:
-                    return r[t.VariadicTuple[Path]].from_failure(built)
+                    return r[tuple[Path, ...]].from_failure(built)
                 artifacts = tuple(destination.glob("*.whl"))
                 if len(artifacts) != 1:
-                    return r[t.VariadicTuple[Path]].fail(
+                    return r[tuple[Path, ...]].fail(
                         f"Dependency build must publish one wheel: {destination}",
                     )
                 wheels.extend(artifacts)
-        return r[t.VariadicTuple[Path]].ok(tuple(wheels))
+        return r[tuple[Path, ...]].ok(tuple(wheels))
 
     @staticmethod
     def create_python_environment(
         root: Path,
         *,
-        dependency_projects: t.SequenceOf[Path] = (),
+        dependency_projects: Sequence[Path] = (),
         session_runtime: p.Tests.SessionRuntime | None = None,
     ) -> p.Result[bool]:
         """Provision a physical fixture venv with session-built real dependencies.
@@ -615,7 +619,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         path.chmod(0o755)
 
     @staticmethod
-    def declare_codemod_rules(root: Path, rules: t.StrMapping) -> None:
+    def declare_codemod_rules(root: Path, rules: Mapping[str, str]) -> None:
         """Point ``root`` at a local ast-grep catalog holding exactly ``rules``.
 
         Each key names one rule file and each value is its YAML body.
@@ -635,11 +639,11 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
     @staticmethod
     def run_isolated_make(
-        args: t.StrSequence,
+        args: Sequence[str],
         *,
         cwd: Path,
-        env: t.StrMapping | None = None,
-        private_env: t.MappingKV[str, t.SecretStr] | None = None,
+        env: Mapping[str, str] | None = None,
+        private_env: Mapping[str, t.SecretStr] | None = None,
         capture: bool = True,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run Make without undeclared state inherited from outer pytest.

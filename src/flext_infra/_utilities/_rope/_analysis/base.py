@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import t
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
@@ -30,4 +29,4 @@ class FlextInfraUtilitiesRopeAnalysisBase(
     """Rope-backed semantic analysis composed from its domain responsibilities."""
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesRopeAnalysisBase",)
+__all__: tuple[str, ...] = ("FlextInfraUtilitiesRopeAnalysisBase",)

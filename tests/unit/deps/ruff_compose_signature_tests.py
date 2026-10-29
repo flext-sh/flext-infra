@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -136,7 +137,7 @@ class TestsFlextInfraRuffProjectPolicy:
                 *owners,
                 *lint.ruling_disabled_rules,
                 *u.Infra.native_tool_setting(
-                    policy, "ruff.lint", "ignore", TypeForm(t.StrSequence)
+                    policy, "ruff.lint", "ignore", TypeForm(Sequence[str])
                 ),
             }),
         )
@@ -144,7 +145,7 @@ class TestsFlextInfraRuffProjectPolicy:
             tm.that(
                 actual[key],
                 eq=u.Infra.native_tool_setting(
-                    policy, "ruff.lint", key, TypeForm(t.StrSequence)
+                    policy, "ruff.lint", key, TypeForm(Sequence[str])
                 ),
             )
         tm.that(
@@ -192,14 +193,14 @@ class TestsFlextInfraRuffProjectPolicy:
                     config.Infra.tooling,
                     "ruff.lint",
                     "ignore",
-                    TypeForm(t.StrSequence),
+                    TypeForm(Sequence[str]),
                 ),
             }),
         )
         tm.that(
             lint["select"],
             eq=u.Infra.native_tool_setting(
-                config.Infra.tooling, "ruff.lint", "select", TypeForm(t.StrSequence)
+                config.Infra.tooling, "ruff.lint", "select", TypeForm(Sequence[str])
             ),
         )
         tm.that(

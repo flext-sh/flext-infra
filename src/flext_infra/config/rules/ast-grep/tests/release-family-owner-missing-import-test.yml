@@ -1,10 +1,10 @@
 id: release-family-owner-missing-import
 valid:
-  - |
-    from .release import FlextInfraConfigModelsRelease
-    policy: FlextInfraConfigModelsRelease.ReleasePolicySpec
-  - |
-    class FlextInfraConfigModelsRelease:
-        policy: FlextInfraConfigModelsRelease.ReleasePolicySpec
+- |
+  from .release import FlextInfraModelsConfigRelease
+  policy: FlextInfraModelsConfigRelease.ReleasePolicySpec
+- |
+  class FlextInfraModelsConfigRelease:
+      policy: FlextInfraModelsConfigRelease.ReleasePolicySpec
 invalid:
-  - "policy: FlextInfraConfigModelsRelease.ReleasePolicySpec"
+- "policy: FlextInfraModelsConfigRelease.ReleasePolicySpec"

@@ -18,6 +18,6 @@ valid:
       return test_u.Tests.codegen_file_text(plan)
 invalid:
 - |
-  from tests importu as test_u
+  from tests import u, u as test_u
 
   value = test_u.Tests.codegen_file_text(plan)

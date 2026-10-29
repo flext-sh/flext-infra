@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, u
@@ -14,7 +15,7 @@ from flext_infra.docs import FlextInfraDocServiceBase
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraDocValidator(FlextInfraDocServiceBase):
@@ -23,11 +24,11 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
     def validate_workspace(
         self,
         request: m.Infra.DocsGenerateRequest,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the repository root and governed projects.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
 
         """
         return self.run_scoped_docs(
@@ -59,11 +60,11 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         )
 
     @staticmethod
-    def _run_adr_skill_check(repository_root: Path) -> t.Pair[int, t.StrSequence]:
+    def _run_adr_skill_check(repository_root: Path) -> tuple[int, Sequence[str]]:
         """Run the ADR skill validation check for the root docs scope.
 
         Returns:
-            The resulting ``t.Pair[int, t.StrSequence]``.
+            The resulting ``tuple[int, Sequence[str]]``.
 
         """
         required_skills = u.Infra.docs_load_required_skills(repository_root).unwrap()
@@ -91,7 +92,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         """
         status = c.Infra.ResultStatus.OK
         messages: list[str] = []
-        missing_adr_skills: t.StrSequence = []
+        missing_adr_skills: Sequence[str] = []
         config_exists = (
             scope.path / "docs/architecture/architecture_config.json"
         ).exists()

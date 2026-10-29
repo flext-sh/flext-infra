@@ -16,8 +16,8 @@ import pytest
 from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
+    FlextInfraCodemodRenameSymbols,
     FlextInfraCodemodSemanticApply,
-    FlextInfraRenameSymbols,
 )
 from tests import c, m, tm, u
 
@@ -61,10 +61,12 @@ class TestsFlextInfraApplyRenames:
 
     @staticmethod
     @pytest.fixture
-    def campaign_runtime(mod_workspace: Path) -> None:
+    def campaign_runtime(
+        tmp_path: Path,
+    ) -> None:
         """Every publication consumes its checkout's independently owned runtime."""
-        u.Tests.provision_checkout(mod_workspace)
-        u.Tests.provision_runtime_environment(mod_workspace)
+        u.Tests.provision_checkout(tmp_path)
+        u.Tests.provision_runtime_environment(tmp_path)
 
     @staticmethod
     def test_rejected_joint_runtime_never_publishes_provider_or_receivers(
@@ -496,7 +498,7 @@ class TestsFlextInfraApplyRenames:
         contract = declaration.model_copy(
             update={"line": 9, "scope_path": f"Contract.{old}"}
         )
-        provider = FlextInfraRenameSymbols((
+        provider = FlextInfraCodemodRenameSymbols((
             m.Infra.SemanticRenameDecision(
                 declaration=declaration,
                 replacement_name=new,
@@ -507,7 +509,7 @@ class TestsFlextInfraApplyRenames:
         with u.Infra.open_project(
             mod_workspace, project_roots=(mod_workspace,)
         ) as project:
-            plans = FlextInfraRenameSymbols.plan_candidates(
+            plans = FlextInfraCodemodRenameSymbols.plan_candidates(
                 project, sources, (declaration,), provider
             )
         tm.that({plan.file_path for plan in plans}, eq={definer, consumer})
@@ -590,7 +592,7 @@ class TestsFlextInfraApplyRenames:
         contract = declaration.model_copy(
             update={"line": 9, "scope_path": "Contract.predicate"}
         )
-        provider = FlextInfraRenameSymbols((
+        provider = FlextInfraCodemodRenameSymbols((
             m.Infra.SemanticRenameDecision(
                 declaration=declaration,
                 replacement_name=(
@@ -606,7 +608,7 @@ class TestsFlextInfraApplyRenames:
             ) as project,
             pytest.raises(ValueError, match=error),
         ):
-            FlextInfraRenameSymbols.plan_candidates(
+            FlextInfraCodemodRenameSymbols.plan_candidates(
                 project, {path: source}, (declaration,), provider
             )
         tm.that(path.read_text(), eq=source)

@@ -1,0 +1,19 @@
+id: railroad-try-model-validate
+valid:
+  - return r[m.Sample].from_validation(payload, m.Sample)
+  - |
+    try:
+        return r[m.Sample].ok(m.Sample.model_validate(payload))
+    except ValueError as err:
+        return r[m.Sample].fail(f"custom prefix: {err}", exception=err)
+invalid:
+  - |
+    try:
+        return r[m.Sample].ok(m.Sample.model_validate(payload))
+    except Exception as err:
+        return r[m.Sample].fail(str(err), exception=err)
+  - |
+    try:
+        return r[m.Sample].ok(m.Sample.model_validate(payload))
+    except ValidationError as err:
+        return r.fail(str(err), exception=err)

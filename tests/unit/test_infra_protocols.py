@@ -9,7 +9,7 @@ from __future__ import annotations
 from tests import p, tm
 
 
-class TestsFlextInfraInfraProtocols:
+class TestsFlextInfraProtocolsInfra:
     """Test p class import and structure."""
 
     @staticmethod

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from functools import lru_cache, partial
 from pathlib import Path
 from typing import TYPE_CHECKING, override
@@ -37,6 +38,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
@@ -47,7 +49,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
@@ -61,7 +63,7 @@ from flext_infra._utilities._semantic_cutover.composition import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, MutableMapping
+    from collections.abc import Callable
 
 
 class FlextInfraUtilitiesSemanticCutoverFacadeBases(
@@ -78,14 +80,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         def __init__(
             self,
-            resolve_reference: Callable[[str], t.Triple[str, str, str] | None],
-            equivalent_receiver: Callable[[str, t.Triple[str, str, str]], bool],
+            resolve_reference: Callable[[str], tuple[str, str, str] | None],
+            equivalent_receiver: Callable[[str, tuple[str, str, str]], bool],
             context: CodemodContext,
         ) -> None:
             self.resolve_reference = resolve_reference
             self.equivalent_receiver = equivalent_receiver
             self.context = context
-            self.destinations: t.MutableMappingKV[str, str] = {}
+            self.destinations: MutableMapping[str, str] = {}
 
         @override
         def leave_Attribute(
@@ -149,8 +151,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         def _scoped_target(
             node: t.Infra.Cst.Attribute,
             scope: Scope,
-            target: t.Triple[str, str, str],
-        ) -> t.Triple[str, str, str]:
+            target: tuple[str, str, str],
+        ) -> tuple[str, str, str]:
             """Qualify missing utility imports originating in local scopes.
 
             Returns:
@@ -190,12 +192,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _behavior_lineage(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
+        modules: Mapping[str, tuple[str, bool]],
         module: str,
         receiver: str,
         *,
         project: p.Infra.RopeProject,
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
+    ) -> tuple[tuple[str, str], ...]:
         """Follow the imported facade's declared classes and base bindings.
 
         Returns:
@@ -217,11 +219,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _class_identity_lineage(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
-        identity: t.Pair[str, str],
+        modules: Mapping[str, tuple[str, bool]],
+        identity: tuple[str, str],
         *,
         project: p.Infra.RopeProject,
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
+    ) -> tuple[tuple[str, str], ...]:
         """Linearize one declared class identity through its proven bases.
 
         Returns:
@@ -232,12 +234,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         facade inheritance identities through ``_behavior_base_identity``.
 
         """
-        cache: MutableMapping[t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]] = {}
+        cache: MutableMapping[tuple[str, str], tuple[tuple[str, str], ...]] = {}
 
         def linearize(
-            current: t.Pair[str, str],
-            visiting: frozenset[t.Pair[str, str]],
-        ) -> t.VariadicTuple[t.Pair[str, str]]:
+            current: tuple[str, str],
+            visiting: frozenset[tuple[str, str]],
+        ) -> tuple[tuple[str, str], ...]:
             if current in visiting:
                 msg = f"cyclic facade inheritance identity: {current}"
                 raise ValueError(msg)
@@ -248,7 +250,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if declaration is None:
                 msg = f"facade inheritance identity has no declaration: {current}"
                 raise ValueError(msg)
-            bases: list[t.Pair[str, str]] = []
+            bases: list[tuple[str, str]] = []
             for base in declaration.bases:
                 expression = base.value if isinstance(base, ast.Subscript) else base
                 inherited = cls._behavior_base_identity(
@@ -273,12 +275,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _behavior_base_identity(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
+        modules: Mapping[str, tuple[str, bool]],
         module: str,
         expression: ast.expr,
         *,
         project: p.Infra.RopeProject,
-    ) -> t.Pair[str, str] | None:
+    ) -> tuple[str, str] | None:
         """Resolve a base's declared class, including imported-module attributes.
 
         Returns:
@@ -344,7 +346,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             The declaration reached through each enclosing class body, if any.
 
         """
-        body: t.SequenceOf[ast.stmt] = ast.parse(source).body
+        body: Sequence[ast.stmt] = ast.parse(source).body
         declaration: ast.ClassDef | None = None
         for name in qualified.split("."):
             declaration = next(
@@ -363,10 +365,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def behavior_source_modules(
         cls,
-        sources: t.MappingKV[Path, str],
-        typing_directory: str,
-    ) -> t.MappingKV[str, t.Pair[str, bool]]:
-        """Index contextual packages and expand referenced facade inheritance.
+        sources: Mapping[Path, str],
+    ) -> Mapping[str, tuple[str, bool]]:
+        """Index the repository sources plus the contextual declared modules.
+
+        Per-repository resolution law: only the supplied repository tree and
+        its contextual (non-``src``) modules are indexed. Installed
+        environments are never consulted, so no expansion pass can grow the
+        inventory beyond this repository's own declarations.
 
         Returns:
             Live source modules needed for behavior ownership resolution.
@@ -375,12 +381,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             ValueError: If contextual packages declare the same module identity.
 
         """
-        statements = tuple(
-            statement
-            for source in sources.values()
-            for statement in cls._behavior_imports(source)
-        )
-        contextual: MutableMapping[str, t.Pair[str, bool]] = {}
+        contextual: MutableMapping[str, tuple[str, bool]] = {}
         for path, source in sources.items():
             if c.Infra.DEFAULT_SRC_DIR in path.parts:
                 continue
@@ -397,121 +398,20 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 msg = f"ambiguous contextual behavior module identity: {module}"
                 raise ValueError(msg)
             contextual[module] = (source, path.name == c.Infra.INIT_PY)
-        contextual_packages = {module.partition(".")[0] for module in contextual}
-        statements = tuple(
-            statement
-            for statement in statements
-            if not any(
-                isinstance(node, ast.ImportFrom)
-                and node.module
-                and node.module.partition(".")[0] in contextual_packages
-                for node in ast.walk(ast.parse(statement))
-            )
-        )
-        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-            sources, statements
-        )
+        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(sources)
         modules.update(contextual)
-        directories = frozenset((
-            typing_directory,
-            FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
-                c.Infra.UTILITIES_PY
-            ).directory,
-            FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
-                c.Infra.MODELS_PY
-            ).directory,
-        ))
-        # Provider discovery expands the inventory, never the owners eligible
-        # for a reference. Its declared inheritance lineage elects those owners.
-        base_imports: MutableMapping[str, t.StrTuple] = {}
-        while True:
-            inherited_statements = tuple(
-                statement
-                for module, (source, _package) in modules.items()
-                if directories.intersection(module.split("."))
-                or module.endswith((".typings", ".models", ".utilities"))
-                for statement in (
-                    base_imports[source]
-                    if source in base_imports
-                    else base_imports.setdefault(
-                        source, cls._behavior_base_imports(source)
-                    )
-                )
-            )
-            expanded = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-                sources, (*statements, *inherited_statements)
-            )
-            expanded.update(contextual)
-            if expanded.keys() == modules.keys():
-                break
-            statements = (*statements, *inherited_statements)
-            modules = expanded
         return modules
-
-    @staticmethod
-    def _behavior_imports(source: str) -> t.StrTuple:
-        """Select imports participating in facade or method references.
-
-        Returns:
-            The declared import statements.
-
-        """
-        tree = ast.parse(source)
-        called = {
-            call.func.value.id
-            for call in ast.walk(tree)
-            if isinstance(call, ast.Call)
-            and isinstance(call.func, ast.Attribute)
-            and isinstance(call.func.value, ast.Name)
-        }
-        receiver_names = frozenset((
-            c.Infra.FacadeFamily.T,
-            c.Infra.FacadeFamily.U,
-        ))
-        return tuple(
-            ast.unparse(node)
-            for node in ast.walk(tree)
-            if isinstance(node, ast.ImportFrom)
-            and node.module
-            and not node.level
-            and any(
-                alias.name in receiver_names or (alias.asname or alias.name) in called
-                for alias in node.names
-            )
-        )
-
-    @staticmethod
-    def _behavior_base_imports(source: str) -> t.StrTuple:
-        """Read imported class bases from one provider declaration.
-
-        Returns:
-            The imports that supply declared base names.
-
-        """
-        tree = ast.parse(source)
-        names = {
-            root.id
-            for declaration in tree.body
-            if isinstance(declaration, ast.ClassDef)
-            for base in declaration.bases
-            for root in ast.walk(base)
-            if isinstance(root, ast.Name)
-        }
-        return tuple(
-            ast.unparse(node)
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            and any((alias.asname or alias.name) in names for alias in node.names)
-        )
 
     @classmethod
     def behavior_utility_owners(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
+        modules: Mapping[str, tuple[str, bool]],
         utility_directory: str,
-    ) -> t.Pair[
-        t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
-        frozenset[t.Quad[str, str, str, str]],
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> tuple[
+        Mapping[tuple[str, str], Sequence[tuple[str, str]]],
+        frozenset[tuple[str, str, str, str]],
     ]:
         """Index exported utility methods and their contextual dispatch needs.
 
@@ -519,14 +419,18 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             Discovered method owners and methods requiring facade dispatch.
 
         """
-        owners: MutableMapping[t.Pair[str, str], list[t.Pair[str, str]]] = {}
-        contextual: set[t.Quad[str, str, str, str]] = set()
+        owners: MutableMapping[tuple[str, str], list[tuple[str, str]]] = {}
+        contextual: set[tuple[str, str, str, str]] = set()
         for module, (source, _package) in modules.items():
             parts = module.split(".")
             if utility_directory not in parts:
                 continue
             tree = ast.parse(source)
-            exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(source)
+            exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                    source_project.get_module(module)
+                )
+            )
             for declaration in tree.body:
                 if (
                     not isinstance(declaration, ast.ClassDef)
@@ -570,13 +474,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _typing_behavior_lineage(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
+        modules: Mapping[str, tuple[str, bool]],
         module: str,
         receiver: str,
         typing_directory: str,
         *,
         project: p.Infra.RopeProject,
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
+    ) -> tuple[tuple[str, str], ...]:
         """Elect only a declared typing facade or its retired private binding.
 
         Returns:
@@ -607,10 +511,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _behavior_member_declared(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
-        lineage: t.SequenceOf[t.Pair[str, str]],
+        modules: Mapping[str, tuple[str, bool]],
+        lineage: Sequence[tuple[str, str]],
         member: str,
-        owners: t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
+        owners: Mapping[tuple[str, str], Sequence[tuple[str, str]]],
     ) -> bool:
         """Keep typing-owned bindings, never utility behavior inherited through t.
 
@@ -626,10 +530,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _behavior_effective_declaration(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
-        lineage: t.SequenceOf[t.Pair[str, str]],
+        modules: Mapping[str, tuple[str, bool]],
+        lineage: Sequence[tuple[str, str]],
         member: str,
-    ) -> t.Pair[str, str] | None:
+    ) -> tuple[str, str] | None:
         """Locate the first C3 class that binds a member, including non-method masks.
 
         Returns:
@@ -680,7 +584,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         project: Path,
         path: Path,
         source: str,
-    ) -> t.Pair[frozenset[t.Pair[str, str]], frozenset[t.Pair[str, str]]]:
+    ) -> tuple[frozenset[tuple[str, str]], frozenset[tuple[str, str]]]:
         """Elect self utility and external declaration imports by their real layer.
 
         Returns:
@@ -732,11 +636,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _plan_behavior_consumers(
         cls,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         *,
         native_project: p.Infra.RopeProject,
         source_project: p.Infra.RopeProject,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Resolve removed typing behavior to its unique declared utility owner.
 
         Internal consumers depend on the lower owner, never the utility facade
@@ -752,11 +656,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             ValueError: If a consumer has no declared project owner.
 
         """
-        typing_directory = (
-            FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
-                c.Infra.TYPINGS_PY
-            ).directory
-        )
         owners: MutableMapping[Path, MutableMapping[Path, str]] = {}
         for path, source in sources.items():
             owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
@@ -775,24 +674,28 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         }
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for project_root, owner_sources in owners.items():
-            modules = cls.behavior_source_modules(
-                {**production, **owner_sources}, typing_directory
-            )
-            ownership = cls.behavior_utility_owners(
-                modules,
-                FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
-                    c.Infra.UTILITIES_PY
-                ).directory,
-            )
+            modules = cls.behavior_source_modules({**production, **owner_sources})
+            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+                Path(source_project.root.real_path),
+                planned_sources={**production, **owner_sources},
+                source_project=source_project,
+            ) as (bound_project, _captured):
+                ownership = cls.behavior_utility_owners(
+                    modules,
+                    FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
+                        c.Infra.UTILITIES_PY
+                    ).directory,
+                    source_project=bound_project,
+                )
 
             def rewrite(
                 path: Path,
                 source: str,
                 project_root: Path = project_root,
-                modules: t.MappingKV[str, t.Pair[str, bool]] = modules,
-                ownership: t.Pair[
-                    t.MappingKV[t.Pair[str, str], t.SequenceOf[t.Pair[str, str]]],
-                    frozenset[t.Quad[str, str, str, str]],
+                modules: Mapping[str, tuple[str, bool]] = modules,
+                ownership: tuple[
+                    Mapping[tuple[str, str], Sequence[tuple[str, str]]],
+                    frozenset[tuple[str, str, str, str]],
                 ] = ownership,
             ) -> t.Infra.TransformResult:
                 utility_imports, declaration_imports = cls._behavior_import_roles(
@@ -815,17 +718,17 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if planned.failure:
                 return planned
             edits.extend(planned.value)
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(tuple(edits))
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
 
     @classmethod
     def _behavior_reference_target(
         cls,
         qualified: str,
         request: m.Infra.SemanticBehaviorRewriteRequest,
-        lineage: t.SequenceOf[t.Pair[str, str]],
+        lineage: Sequence[tuple[str, str]],
         *,
         project: p.Infra.RopeProject,
-    ) -> t.Triple[str, str, str] | None:
+    ) -> tuple[str, str, str] | None:
         """Elect a unique relocated method owner in inherited precedence order.
 
         Returns:
@@ -877,9 +780,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     def _equivalent_behavior_receiver(
         cls,
         binding: str,
-        target: t.Triple[str, str, str],
+        target: tuple[str, str, str],
         *,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
+        modules: Mapping[str, tuple[str, bool]],
         project: p.Infra.RopeProject,
     ) -> bool:
         """Prove lexical import equivalence through the effective method owner.
@@ -934,10 +837,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         }
         identities.update(elected_imports)
         model_source = cls._is_model_behavior_source(path, source_project)
-        obsolete: set[t.Pair[str, str]] = set()
-        lineages: MutableMapping[
-            t.Pair[str, str], t.VariadicTuple[t.Pair[str, str]]
-        ] = {
+        obsolete: set[tuple[str, str]] = set()
+        lineages: MutableMapping[tuple[str, str], tuple[tuple[str, str], ...]] = {
             identity: lineage
             for identity in identities
             if (
@@ -954,7 +855,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         # Owner facts are immutable for this request; lexical checks still run
         # for every reference. A new source/candidate creates a fresh resolver.
         @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
-        def resolve(qualified: str) -> t.Triple[str, str, str] | None:
+        def resolve(qualified: str) -> tuple[str, str, str] | None:
             own_import = next(
                 (
                     identity
@@ -1019,8 +920,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         request: m.Infra.SemanticBehaviorRewriteRequest,
         tree: ast.Module,
-        resolve: Callable[[str], t.Triple[str, str, str] | None],
-        obsolete: set[t.Pair[str, str]],
+        resolve: Callable[[str], tuple[str, str, str] | None],
+        obsolete: set[tuple[str, str]],
         *,
         project: p.Infra.RopeProject,
     ) -> t.Infra.TransformResult:
@@ -1083,11 +984,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _typing_consumer_lineage(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
-        identity: t.Pair[str, str],
+        modules: Mapping[str, tuple[str, bool]],
+        identity: tuple[str, str],
         *,
         project: p.Infra.RopeProject,
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
+    ) -> tuple[tuple[str, str], ...]:
         """Resolve a typing consumer against its declared family directory.
 
         Returns:
@@ -1104,7 +1005,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @staticmethod
     def _model_behavior_target(
         native_project: p.Infra.RopeProject | None, qualified: str
-    ) -> t.Triple[str, str, str] | None:
+    ) -> tuple[str, str, str] | None:
         """Require native model ownership before resolving a utility declaration.
 
         Returns:
@@ -1125,12 +1026,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     def _lower_behavior_targets(
         cls,
         request: m.Infra.SemanticBehaviorRewriteRequest,
-        effective: t.Pair[str, str] | None,
+        effective: tuple[str, str] | None,
         member: str,
-        identities: set[t.Pair[str, str]],
+        identities: set[tuple[str, str]],
         *,
         project: p.Infra.RopeProject,
-    ) -> t.VariadicTuple[t.Triple[str, str, str]]:
+    ) -> tuple[tuple[str, str, str], ...]:
         """Elect lower model owners only for context-free static declarations.
 
         Returns:
@@ -1159,7 +1060,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         request: m.Infra.SemanticBehaviorRewriteRequest,
         source: str,
-        changes: t.StrSequence,
+        changes: Sequence[str],
         *,
         project: p.Infra.RopeProject,
     ) -> t.Infra.TransformResult:
@@ -1203,7 +1104,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @staticmethod
     def _behavior_composition_references(
         module: p.Infra.RopeSourceModule,
-        identity: t.Triple[str, str, str],
+        identity: tuple[str, str, str],
         *,
         project: p.Infra.RopeProject,
     ) -> bool:
@@ -1218,7 +1119,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         qualified = f"{imported_module}.{imported_name}"
         binding = runtime.qualified_name(project, qualified)
         receiver = binding.get_object()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(receiver) or not (
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(receiver) or not (
             runtime.same_name(
                 binding,
                 runtime.resolve_symbol(
@@ -1230,7 +1131,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         references = FlextInfraUtilitiesRopeRuntimeRefactors.semantic_regions(
             module, f"${{{local}}}", arguments={local: f"name={qualified},exact"}
         )
-        bases: set[t.Pair[int, int]] = set()
+        bases: set[tuple[int, int]] = set()
         pending = list(module.get_scope().get_scopes())
         while pending:
             scope = pending.pop()
@@ -1238,7 +1139,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             owner = scope.pyobject
             if (
                 scope.get_kind() != c.Infra.RopeScopeKind.CLASS
-                or not FlextInfraUtilitiesRopeRuntimeTypes.py_class(owner)
+                or not FlextInfraUtilitiesTypesRopeRuntime.py_class(owner)
                 or receiver not in owner.get_superclasses()
             ):
                 continue
@@ -1260,7 +1161,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     def _remove_obsolete_behavior_imports(
         context: CodemodContext,
         tree: ast.Module,
-        obsolete: set[t.Pair[str, str]],
+        obsolete: set[tuple[str, str]],
     ) -> None:
         """Schedule removal only for imports whose proven behavior was rebound."""
         for node in ast.walk(tree):
@@ -1274,7 +1175,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
     @staticmethod
     def _require_unambiguous_lower(
-        lower: t.SequenceOf[t.Triple[str, str, str]],
+        lower: Sequence[tuple[str, str, str]],
         qualified: str,
     ) -> None:
         """Fail when more than one lower receiver declares the member.
@@ -1293,9 +1194,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
     @staticmethod
     def _record_obsolete_target(
-        obsolete: set[t.Pair[str, str]],
-        imported: t.Pair[str, str],
-        target: t.Triple[str, str, str] | None,
+        obsolete: set[tuple[str, str]],
+        imported: tuple[str, str],
+        target: tuple[str, str, str] | None,
     ) -> None:
         """Mark an elected import obsolete once its reference target resolves.
 
@@ -1311,8 +1212,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _effective_declaration_node(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
-        effective: t.Pair[str, str] | None,
+        modules: Mapping[str, tuple[str, bool]],
+        effective: tuple[str, str] | None,
     ) -> ast.ClassDef | None:
         """Return the declared class node of an effective declaration.
 
@@ -1378,9 +1279,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     def _plan_facade_bases(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+        findings: Sequence[m.Infra.ModOccurrence],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Close distinct import-base and MRO-composition laws in one candidate.
 
         Returns:
@@ -1406,7 +1307,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             return composed
         for edit in composed.value:
             working[edit.file_path] = edit.updated_source
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -1423,13 +1324,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     def _plan_facade_import_bases(
         cls,
         root: Path,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+        findings: Sequence[m.Infra.ModOccurrence],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan the class-name base for every facade the detector selected.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
 
         """
         selected = frozenset((root / finding.file).resolve() for finding in findings)
@@ -1444,15 +1345,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             )
         }
         if not shapes:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(())
-        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-            sources,
-            tuple(
-                f"from {shape[0]} import {shape[1]}"
-                for found in shapes.values()
-                for shape in found
-            ),
-        )
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(())
+        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(sources)
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
             # A facade may compose several parents by their letters (``class
@@ -1505,7 +1399,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     def _facade_shapes(
         path: Path,
         tree: ast.Module,
-    ) -> t.VariadicTuple[t.Quad[str, str, str, str]]:
+    ) -> tuple[tuple[str, str, str, str], ...]:
         """Return every ``(module, letter, local, facade)`` rebound letter base.
 
         One facade may extend several parents by their letters; the shapes
@@ -1518,7 +1412,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             ValueError: If relative facade base import is not a declared owner in.
 
         """
-        imports: MutableMapping[str, t.Triple[str, str, int]] = {}
+        imports: MutableMapping[str, tuple[str, str, int]] = {}
         rebinds: MutableMapping[str, str] = {}
         for node in tree.body:
             if isinstance(node, ast.ImportFrom):
@@ -1587,7 +1481,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 )
             )
         )
-        reads: list[t.Pair[int, int]] = []
+        reads: list[tuple[int, int]] = []
         pending: list[ast.AST] = list(tree.body)
         while pending:
             node = pending.pop()

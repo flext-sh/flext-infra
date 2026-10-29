@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path, PureWindowsPath
 from types import MappingProxyType
 from typing import Annotated, Self
@@ -13,13 +14,13 @@ from typing import Annotated, Self
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsRefactorCampaigns:
+class FlextInfraModelsConfigRefactorCampaigns:
     """CSV-driven rename campaigns applied by the mod verb's rename phase."""
 
-    class RenameCampaignSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class RenameCampaignSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One declared CSV-driven rename campaign applied by the mod verb."""
 
         rename_definitions: Annotated[
@@ -36,7 +37,7 @@ class FlextInfraConfigModelsRefactorCampaigns:
             ),
         ]
         roots: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -46,16 +47,16 @@ class FlextInfraConfigModelsRefactorCampaigns:
             ),
         ] = ()
         bindings: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            Mapping[str, Sequence[str]],
             m.Field(
                 description=(
                     "CSV expression prefixes mapped "
                     "to current public Rope owner identities"
                 ),
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType[str, t.StrSequence]({}))
+        ] = m.Field(default_factory=lambda: MappingProxyType[str, Sequence[str]]({}))
         text_globs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description=(
                     "Explicit root-relative non-Python "
@@ -73,7 +74,7 @@ class FlextInfraConfigModelsRefactorCampaigns:
             ),
         ] = False
         exclude_globs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 description="Generated projections excluded from campaign targets",
             ),
@@ -116,11 +117,11 @@ class FlextInfraConfigModelsRefactorCampaigns:
                     raise ValueError(msg)
             return self
 
-    class RefactorCsvCampaignsSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class RefactorCsvCampaignsSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Declared CSV-driven rename campaigns for the mod verb's rename phase."""
 
         campaigns: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsRefactorCampaigns.RenameCampaignSpec],
+            tuple[FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec, ...],
             m.Field(default=(), description="Ordered rename campaigns"),
         ] = ()
         semantic_plan: Annotated[
@@ -151,4 +152,4 @@ class FlextInfraConfigModelsRefactorCampaigns:
             return self
 
 
-__all__: list[str] = ["FlextInfraConfigModelsRefactorCampaigns"]
+__all__: list[str] = ["FlextInfraModelsConfigRefactorCampaigns"]

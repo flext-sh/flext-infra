@@ -16,17 +16,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import StrEnum, unique
 from types import MappingProxyType
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import ClassVar, Literal
 
 from flext_core import c
 
 from flext_infra._constants import FlextInfraConstantsSharedInfra
 from flext_infra._constants.config import FlextInfraConstantsConfig
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
@@ -157,7 +155,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     })
     "bd-owned Dolt/daemon runtime entries the composed-project verify tolerates."
     BEADS_CONFIG_VERSION: ClassVar[Literal[1]] = 1
-    CONFORM_NAMESPACE_TABLE: ClassVar[t.VariadicTuple[str]] = (
+    CONFORM_NAMESPACE_TABLE: ClassVar[tuple[str, ...]] = (
         "tool",
         "flext",
         "namespace",
@@ -200,7 +198,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     "Selector resolved only by ``make upg`` into the committed ``mise.lock``."
     MISE_VERSION_PLACEHOLDER: ClassVar[str] = "{version}"
     "Placeholder a toolchain version_probe pattern carries for the lock version."
-    MISE_IDENTITY_PROBE_ENVIRONMENT: ClassVar[t.StrMapping] = MappingProxyType({
+    MISE_IDENTITY_PROBE_ENVIRONMENT: ClassVar[Mapping[str, str]] = MappingProxyType({
         "MISE_DISABLE_UPDATE_WARNING": c.ParserBooleanToken.ONE,
     })
     """Environment of the mise version-identity probes, and of nothing else.
@@ -213,7 +211,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     """
     MISE_LOCK_PLATFORM_KEY: ClassVar[str] = "platforms.{platform}"
     "mise.lock per-platform table key of one locked tool version."
-    MISE_PLATFORM_BY_HOST: ClassVar[t.MappingKV[t.StrPair, str]] = MappingProxyType({
+    MISE_PLATFORM_BY_HOST: ClassVar[Mapping[tuple[str, str], str]] = MappingProxyType({
         ("Linux", "x86_64"): "linux-x64",
         ("Linux", "aarch64"): "linux-arm64",
         ("Darwin", "x86_64"): "macos-x64",
@@ -244,6 +242,8 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     "Scaffold module-skeleton template (replaces the legacy f-string)."
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
+    TEMPLATE_MODEL_PROTOCOL: ClassVar[str] = "model_protocol.py.j2"
+    "Protocol module template consumed by the existing source projector."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
     INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"
     CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"

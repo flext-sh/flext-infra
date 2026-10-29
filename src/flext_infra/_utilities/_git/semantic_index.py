@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
-from flext_infra import c, m, r, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticPathsMixin
+from flext_infra import c, m, r
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticPaths
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,8 +20,8 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraUtilitiesGitSemanticIndexMixin(
-    FlextInfraUtilitiesGitSemanticPathsMixin,
+class FlextInfraUtilitiesGitSemanticIndex(
+    FlextInfraUtilitiesGitSemanticPaths,
 ):
     """Own semantic index operations."""
 
@@ -29,32 +30,36 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         cls,
         repo_root: Path,
         relative_dir: str,
-    ) -> p.Result[t.MappingKV[str, bytes]]:
-        """Read every blob directly under ``relative_dir`` in HEAD.
+        *,
+        revision: str = c.Infra.GIT_HEAD,
+    ) -> p.Result[Mapping[str, bytes]]:
+        """Read every blob directly under ``relative_dir`` at a native revision.
 
         Git objects are immutable, so the content is returned by name without
-        a physical source state. A directory absent from HEAD is the typed
+        a physical source state. A directory absent from the revision is the typed
         empty mapping; an unreadable repository or object fails loud.
+        The default is HEAD; an explicit revision never selects another object
+        after a resolution failure.
 
         Returns:
-            The resulting ``p.Result[t.MappingKV[str, bytes]]``.
+            The resulting ``p.Result[Mapping[str, bytes]]``.
 
         """
         opened = cls._open_repo(repo_root)
         if opened.failure:
-            return r[t.MappingKV[str, bytes]].from_failure(opened)
+            return r[Mapping[str, bytes]].from_failure(opened)
         try:
-            tree = opened.value.head.commit.tree / relative_dir
+            tree = opened.value.commit(revision).tree / relative_dir
         except KeyError:
             # GitPython's only signal for a path absent from the tree.
-            return r[t.MappingKV[str, bytes]].ok({})
+            return r[Mapping[str, bytes]].ok({})
         try:
-            return r[t.MappingKV[str, bytes]].ok({
+            return r[Mapping[str, bytes]].ok({
                 blob.name: cls._state_blob_payload(repo_root, blob.hexsha)
                 for blob in tree.blobs
             })
         except (OSError, ValueError) as exc:
-            return r[t.MappingKV[str, bytes]].fail_op(
+            return r[Mapping[str, bytes]].fail_op(
                 f"read committed blobs {relative_dir} at {repo_root}",
                 exc,
             )
@@ -115,11 +120,11 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         )
 
     @staticmethod
-    def _git_capture_fingerprint(repo: Repo) -> t.Triple[bytes, bytes, bytes]:
+    def _git_capture_fingerprint(repo: Repo) -> tuple[bytes, bytes, bytes]:
         """Capture (paths_z, index_z, head) bytes for fingerprinting.
 
         Returns:
-            The resulting ``t.Triple[bytes, bytes, bytes]``.
+            The resulting ``tuple[bytes, bytes, bytes]``.
 
         """
         paths_z = repo.git.ls_files(
@@ -206,7 +211,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
                 )
 
     @classmethod
-    def git_index_gitlink_paths(cls, repository_root: Path) -> p.Result[t.StrSequence]:
+    def git_index_gitlink_paths(cls, repository_root: Path) -> p.Result[Sequence[str]]:
         """Return every path the index records as a gitlink (mode ``160000``).
 
         Git records a directory that contains its own ``.git`` as a gitlink the
@@ -223,12 +228,12 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             repo = cls._repo(repository_root)
             staged = repo.git.ls_files("--stage")
         except (GitCommandError, InvalidGitRepositoryError, NoSuchPathError) as exc:
-            return r[t.StrSequence].fail(
+            return r[Sequence[str]].fail(
                 f"failed to read the Git index: {exc}",
                 exception=exc,
             )
         except (OSError, ValueError) as exc:
-            return r[t.StrSequence].fail(
+            return r[Sequence[str]].fail(
                 f"failed to read the Git index: {exc}",
                 exception=exc,
             )
@@ -242,7 +247,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             if len(fields) == fields_per_record
             and fields[0] == c.Infra.GIT_GITLINK_MODE_TEXT
         )
-        return r[t.StrSequence].ok(paths)
+        return r[Sequence[str]].ok(paths)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitSemanticIndexMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitSemanticIndex"]

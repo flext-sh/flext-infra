@@ -11,7 +11,7 @@ valid:
         ]
   - |
     class Constants:
-        GATE_KINDS: ClassVar[t.MappingKV[str, str]] = MappingProxyType({"a": "b"})
+        GATE_KINDS: ClassVar[Mapping[str, str]] = MappingProxyType({"a": "b"})
   - _LAZY_IMPORTS = MappingProxyType({})
   - |
     """A docstring mentioning field: Annotated[X, Y] = MappingProxyType({})."""
@@ -25,4 +25,4 @@ invalid:
         ] = MappingProxyType({})
   - |
     class Spec:
-        overrides: Annotated[t.StrMapping, m.Field(description="d")] = MappingProxyType({"k": "v"})
+        overrides: Annotated[Mapping[str, str], m.Field(description="d")] = MappingProxyType({"k": "v"})

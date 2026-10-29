@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -17,7 +18,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -50,7 +51,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
         if module is None or line is None:
             return False
         module = module.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
             message = "Constant declarations require a native source module"
             raise TypeError(message)
         owner = runtime.scope_at(module, module.lines.get_line_start(line)).pyobject
@@ -62,10 +63,10 @@ class FlextInfraUtilitiesSemanticConstantSources:
     def _constant_declaration_bindings(
         cls,
         project: p.Infra.RopeProject,
-        public: t.MappingKV[str, p.Infra.RopePyName],
-    ) -> t.MappingKV[
+        public: Mapping[str, p.Infra.RopePyName],
+    ) -> Mapping[
         Path,
-        t.Pair[p.Infra.RopePyModule, list[t.Pair[p.Infra.RopePyName, int]]],
+        tuple[p.Infra.RopePyModule, list[tuple[p.Infra.RopePyName, int]]],
     ]:
         """Group unique assignments by their native module and definition line.
 
@@ -76,17 +77,17 @@ class FlextInfraUtilitiesSemanticConstantSources:
             TypeError: A declaration has no native source module.
 
         """
-        declarations: t.MutableMappingKV[
+        declarations: MutableMapping[
             Path,
-            t.Pair[
+            tuple[
                 p.Infra.RopePyModule,
-                list[t.Pair[p.Infra.RopePyName, int]],
+                list[tuple[p.Infra.RopePyName, int]],
             ],
         ] = {}
         for reference, candidate in public.items():
             binding = cls._constant_terminal(project, candidate, reference)
             if (
-                not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+                not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(binding)
                 or len(binding.assignments) != 1
             ):
                 continue
@@ -94,7 +95,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             if module is None or line is None:
                 continue
             module = module.get_module()
-            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
                 message = "Constant bindings require a native source module"
                 raise TypeError(message)
             resource = module.get_resource()
@@ -144,11 +145,11 @@ class FlextInfraUtilitiesSemanticConstantSources:
     def _literal_constant_patterns(
         cls,
         project: p.Infra.RopeProject,
-        public: t.MappingKV[str, p.Infra.RopePyName],
+        public: Mapping[str, p.Infra.RopePyName],
         *,
         literal_type: str = "__builtin__.str",
         frozen: bool = False,
-    ) -> t.VariadicTuple[t.Pair[str, str]]:
+    ) -> tuple[tuple[str, str], ...]:
         """Prove exact literal boundaries, decimal tokens and native constructors.
 
         Returns:
@@ -157,7 +158,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         structure = FlextInfraUtilitiesRopeStructure
-        found: list[t.Pair[str, str]] = []
+        found: list[tuple[str, str]] = []
         arguments = dict[str, str]()
         if frozen:
             arguments["frozen"] = "name=__builtin__.frozenset"
@@ -232,7 +233,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        visited: set[t.Pair[Path, str]] = set()
+        visited: set[tuple[Path, str]] = set()
         while isinstance(binding, p.Infra.RopeImportedName):
             resource = runtime.imported_module_resource(project, binding)
             path = Path(resource.real_path).resolve()
@@ -262,7 +263,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 declaration = owner.parent.get_child(c.Infra.CONSTANTS_PY)
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                         declaration, declaration.path
                     ),
                 )
@@ -299,7 +300,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             resource = resource.get_child(c.Infra.INIT_PY)
         return FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 resource, qualified
             ),
         )
@@ -307,7 +308,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
     @classmethod
     def _constant_reference(
         cls,
-        paths: t.MappingKV[str, p.Infra.RopePyName],
+        paths: Mapping[str, p.Infra.RopePyName],
         binding: p.Infra.RopePyName,
         path: Path,
     ) -> str | None:
@@ -337,28 +338,28 @@ class FlextInfraUtilitiesSemanticConstantSources:
         cls,
         project: p.Infra.RopeProject,
         package: str,
-    ) -> t.MappingKV[str, p.Infra.RopePyName]:
+    ) -> Mapping[str, p.Infra.RopePyName]:
         """Enumerate native public facade members without importing the target.
 
         Returns:
             Public reference paths bound to their native declaration identities.
 
         """
-        module = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+        module = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
             project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
         )
         facade = module.get_attributes().get("c")
         if facade is None:
             return {}
-        found: t.MutableMappingKV[str, p.Infra.RopePyName] = {"c": facade}
-        pending: t.MutableSequenceOf[
-            t.Triple[str, p.Infra.RopePyObject, t.VariadicTuple[p.Infra.RopePyObject]]
+        found: MutableMapping[str, p.Infra.RopePyName] = {"c": facade}
+        pending: MutableSequence[
+            tuple[str, p.Infra.RopePyObject, tuple[p.Infra.RopePyObject, ...]]
         ] = [("c", facade.get_object(), ())]
         while pending:
             prefix, owner, ancestors = pending.pop()
             if owner in ancestors:
                 continue
-            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
+            if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(owner):
                 continue
             for name, binding in owner.get_attributes().items():
                 if name.startswith("_"):
@@ -366,7 +367,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 reference = f"{prefix}.{name}"
                 found[reference] = binding
                 value = binding.get_object()
-                if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
+                if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
                     pending.append((reference, value, (*ancestors, owner)))
         return found
 
@@ -381,7 +382,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
 
         """
         return FlextInfraUtilitiesRopeRuntimeModules.same_name(candidate, binding) or (
-            FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
+            FlextInfraUtilitiesTypesRopeRuntime.abstract_class(binding.get_object())
             and binding.get_object()
             in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
                 candidate.get_object()

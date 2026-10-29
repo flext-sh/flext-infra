@@ -11,8 +11,6 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import t
-
 
 class FlextInfraModelsGitWorktreeState:
     """Declarations for independently recoverable index and working files."""
@@ -57,7 +55,7 @@ class FlextInfraModelsGitWorktreeState:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         retained_commits: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(
                 description="Additional child commits referenced by owning gitlinks",
             ),
@@ -67,7 +65,7 @@ class FlextInfraModelsGitWorktreeState:
             m.Field(description="Source repository worktree root"),
         ]
         paths: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Literal owned relative paths; empty selects nothing"),
         ]
 
@@ -170,7 +168,7 @@ class FlextInfraModelsGitWorktreeState:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         retained_commits: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(
                 description=(
                     "Additional resolved commits retained by checkpoint ancestry"
@@ -178,7 +176,7 @@ class FlextInfraModelsGitWorktreeState:
             ),
         ] = ()
         head_entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry],
+            tuple[FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry, ...],
             m.Field(
                 description="Original HEAD entries including deleted gitlink preimages",
             ),
@@ -197,15 +195,15 @@ class FlextInfraModelsGitWorktreeState:
             m.Field(description="Original native branch; absent for detached HEAD"),
         ]
         paths: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Exact literal ownership scope"),
         ]
         index_entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry],
+            tuple[FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry, ...],
             m.Field(description="Captured stage-zero index entries"),
         ]
         files: Annotated[
-            t.VariadicTuple[FlextInfraModelsGitWorktreeState.GitWorktreeFileState],
+            tuple[FlextInfraModelsGitWorktreeState.GitWorktreeFileState, ...],
             m.Field(description="Captured raw working files and gitlink heads"),
         ]
 

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import m
-from flext_infra.codemod import FlextInfraImportNormalizationPhase
+from flext_infra.codemod import FlextInfraCodemodLoopPhaseImportNormalization
 from tests import c, tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
@@ -350,7 +350,9 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         tm.that(u.Cli.process_succeeded(before.outcome), eq=True, msg=before.stderr)
         tm.that(before.stdout.strip(), eq="first provider second provider")
         with pytest.raises(ValueError, match="conflicting inline import providers"):
-            FlextInfraImportNormalizationPhase.apply_files(project, (consumer,))
+            FlextInfraCodemodLoopPhaseImportNormalization.apply_files(
+                project, (consumer,)
+            )
         after = tm.ok(u.Cli.run(command, cwd=project, options=options))
         tm.that(u.Cli.process_succeeded(after.outcome), eq=True, msg=after.stderr)
         tm.that(after.stdout, eq=before.stdout)

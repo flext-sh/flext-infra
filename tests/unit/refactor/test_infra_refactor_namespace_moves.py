@@ -6,19 +6,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import FlextInfraCli
-from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import p, t
+from tests import p
 
 
 @pytest.mark.slow
@@ -54,7 +55,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             tm.that(target.parent.name.startswith("_"), eq=True)
 
     @staticmethod
-    def _module_move_workspace(tmp_path: Path) -> t.Quad[Path, Path, Path, Path]:
+    def _module_move_workspace(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
         """Declare a real published owner and a consumer of its behavior.
 
         Returns:
@@ -97,7 +98,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     @staticmethod
     def _module_move_inputs(
         project: p.Infra.RopeProject,
-    ) -> t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> tuple[Mapping[Path, str], tuple[m.Cli.AtomicFileState, ...]]:
         """Capture the actual public planner inputs once through atomic reads.
 
         Returns:
@@ -245,7 +246,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             )
         else:
             tm.ok(
-                FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+                FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
                     plans,
                     repository_root=root,
                     options=m.Infra.SemanticPublicationOptions(
@@ -438,7 +439,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         content = "VALUE = 'newer package owner'\n"
         initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
         tm.fail(
-            FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
@@ -557,7 +558,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             eq=["RECEIVER"],
         )
         tm.ok(
-            FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
@@ -627,7 +628,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             ),
         )
         tm.fail(
-            FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),

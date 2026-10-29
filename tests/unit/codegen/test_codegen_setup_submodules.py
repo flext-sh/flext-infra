@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config
-from tests import c, p, t, tm, u
+from tests import c, p, tm, u
 
 # The run-scoped template resolves a real toolchain through Make upg before any
 # item starts; each scenario provisions its own physical environment frozen
@@ -27,7 +28,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
     @staticmethod
     @pytest.fixture
     def generated_project_template(
-        resolved_make_templates: t.MappingKV[c.Infra.MakeProfile, Path],
+        resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
     ) -> Path:
         """Return the run's standalone consumer, resolved once by ``make upg``.
 

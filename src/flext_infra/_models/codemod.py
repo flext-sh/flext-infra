@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -72,7 +73,7 @@ class FlextInfraModelsCodemod:
                 ValueError: If binding source snapshots disagree.
 
             """
-            indexed: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+            indexed: MutableMapping[Path, m.Cli.AtomicFileState] = {}
             for state in states:
                 previous = indexed.setdefault(state.path, state)
                 if previous is not state and previous != state:
@@ -95,7 +96,7 @@ class FlextInfraModelsCodemod:
             m.Field(alias="ruleId", min_length=1, description="Native rule ID"),
         ]
         severity: Annotated[
-            Literal["error", "warning", "info", "hint"],
+            c.Infra.NativeRuleSeverity,
             m.Field(description="Native rule severity"),
         ]
         message: Annotated[str, m.Field(description="Native rule diagnostic")]
@@ -153,8 +154,9 @@ class FlextInfraModelsCodemod:
     class AstGrepOwnedPathDiagnostic(AstGrepDiagnostic):
         """A validated owned-path finding in the native scanner wire format."""
 
-        origin: Literal["owned-path"] = m.Field(
-            default="owned-path", description="Native owned-path rule provenance"
+        origin: Literal[c.Infra.ModFindingOrigin.OWNED_PATH] = m.Field(
+            default=c.Infra.ModFindingOrigin.OWNED_PATH,
+            description="Native owned-path rule provenance",
         )
 
         @m.model_serializer
@@ -188,11 +190,11 @@ class FlextInfraModelsCodemod:
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Exact rule receipt identity")]
         operation: Annotated[
-            Literal["flatten-single-wrapper"],
+            Literal[c.Infra.FamilyFlattenOperation.FLATTEN_SINGLE_WRAPPER],
             m.Field(description="Supported semantic family transformation"),
         ]
         collision: Annotated[
-            Literal["prefix-wrapper"],
+            Literal[c.Infra.FamilyCollisionPolicy.PREFIX_WRAPPER],
             m.Field(description="Member-name collision resolution policy"),
         ]
 
@@ -209,36 +211,40 @@ class FlextInfraModelsCodemod:
         )
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable rule identity")]
-        operation: Literal["restructure", "materialize-delegations"] = m.Field(
-            default="restructure",
+        operation: t.DocumentInput[c.Infra.RopeContractOperation] = m.Field(
+            default=c.Infra.RopeContractOperation.RESTRUCTURE,
             description="Native contract operation executed in the shared source epoch",
         )
-        phase: c.Infra.SemanticCutoverPhase = m.Field(
+        source_revision: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description="Explicit Git revision authenticating retired provider "
+            "declarations",
+        )
+        phase: t.DocumentInput[c.Infra.SemanticCutoverPhase] = m.Field(
             default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-            strict=False,
             description="Existing semantic phase owning this rule's execution",
         )
         pattern: Annotated[t.NonEmptyStr, m.Field(description="Native Rope pattern")]
         goal: Annotated[t.NonEmptyStr, m.Field(description="Native Rope replacement")]
         arguments: Annotated[
-            t.MappingKV[str, str | t.StrSequence],
+            Mapping[str, str | Sequence[str]],
             m.Field(
                 description="Native Rope identity constraints or admitted alternatives"
             ),
         ]
-        imports: t.MappingKV[str, str] = m.Field(
-            default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
+        imports: Mapping[str, str] = m.Field(
+            default_factory=u.empty(TypeForm(Mapping[str, str])),
             description="Destination bindings and their native import declarations",
         )
-        bindings: t.MappingKV[str, str] = m.Field(
-            default_factory=u.empty(TypeForm(t.MappingKV[str, str])),
+        bindings: Mapping[str, str] = m.Field(
+            default_factory=u.empty(TypeForm(Mapping[str, str])),
             description="Destination expressions and their required Rope identities",
         )
-        model_bases: t.VariadicTuple[str] = m.Field(
+        model_bases: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Required model ancestry for every matched declaration",
         )
-        unshadowed_builtins: t.VariadicTuple[str] = m.Field(
+        unshadowed_builtins: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Native lexical names required to be interpreter builtins",
         )
@@ -259,11 +265,11 @@ class FlextInfraModelsCodemod:
                 "Capture resolved by a canonical typed factory after declaration"
             ),
         )
-        readonly_origins: t.VariadicTuple[str] = m.Field(
+        readonly_origins: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Native read-only collection identities admitting the capture",
         )
-        drops: t.VariadicTuple[str] = m.Field(
+        drops: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Discarded captures that must be inert native constants",
         )
@@ -271,21 +277,23 @@ class FlextInfraModelsCodemod:
             default=False,
             description="Whether the replacement changes annotation evaluation order",
         )
-        families: t.VariadicTuple[str] = m.Field(
+        families: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Declared facade families admitting the source module",
         )
-        scope_kinds: t.VariadicTuple[
-            Annotated[c.Infra.RopeScopeKind, m.Field(strict=False)]
+        scope_kinds: t.DocumentInput[
+            tuple[t.DocumentInput[c.Infra.RopeScopeKind], ...]
         ] = m.Field(
             default=(),
             description="Native Rope lexical scopes admitting a match",
         )
-        implementation_owner: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+        implementation_owner: (
+            t.DocumentInput[tuple[t.NonEmptyStr, t.NonEmptyStr]] | None
+        ) = m.Field(
             default=None,
             description="Native module and primitive whose backend stays native",
         )
-        receiver_methods: t.VariadicTuple[str] = m.Field(
+        receiver_methods: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Discarded-call interface required of a factory product",
         )
@@ -319,11 +327,13 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Factory capture that must not denote an absent factory",
         )
-        missing_keywords: t.VariadicTuple[str] = m.Field(
+        missing_keywords: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Injected keywords whose presence preserves a composition",
         )
-        ownership_transfer: t.Pair[t.NonEmptyStr, t.NonEmptyStr] | None = m.Field(
+        ownership_transfer: (
+            t.DocumentInput[tuple[t.NonEmptyStr, t.NonEmptyStr]] | None
+        ) = m.Field(
             default=None,
             description="Native module/member retired after receiver transfer",
         )
@@ -377,20 +387,20 @@ class FlextInfraModelsCodemod:
         """The packaged semantic contract policy, validated once on input."""
 
         rules: Annotated[
-            t.SequenceOf[FlextInfraModelsCodemod.RopeContractRule],
+            Sequence[FlextInfraModelsCodemod.RopeContractRule],
             m.Field(description="Ordered, identity-constrained Rope contract rules"),
         ]
 
     class ModFixtureDirectories(FlextInfraModelsBase.FrozenArbitrary):
         """Validated physical directories selected by one ast-grep owner."""
 
-        rule_dirs: t.VariadicTuple[Path] = m.Field(
+        rule_dirs: tuple[Path, ...] = m.Field(
             description="Validated rule directories declared by the ast-grep owner",
         )
-        util_dirs: t.VariadicTuple[Path] = m.Field(
+        util_dirs: tuple[Path, ...] = m.Field(
             description="Validated utility directories declared by the ast-grep owner",
         )
-        test_dirs: t.VariadicTuple[Path] = m.Field(
+        test_dirs: tuple[Path, ...] = m.Field(
             description="Validated fixture directories declared by the ast-grep owner",
         )
 

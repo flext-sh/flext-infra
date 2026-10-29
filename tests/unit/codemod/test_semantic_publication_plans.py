@@ -23,7 +23,7 @@ class TestsFlextInfraSemanticPublicationPlans:
     def _plans(
         root: Path,
         names: t.StrTuple = ("first.py", "second.py"),
-    ) -> t.VariadicTuple[m.Infra.SemanticFilePlan]:
+    ) -> tuple[m.Infra.SemanticFilePlan, ...]:
         plans: list[m.Infra.SemanticFilePlan] = []
         for name in names:
             path = root / name
@@ -74,7 +74,7 @@ class TestsFlextInfraSemanticPublicationPlans:
             u.Cli.atomic_write_text_file(second.path, 'value = "concurrent"\n').unwrap()
         observed = second.path.read_bytes()
         tm.fail(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 (first, second, third),
                 repository_root=mod_workspace,
             ),
@@ -108,7 +108,7 @@ class TestsFlextInfraSemanticPublicationPlans:
             desired_mode=before.mode,
         )
         published = tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 (plan,),
                 repository_root=mod_workspace,
             ),
@@ -155,7 +155,7 @@ class TestsFlextInfraSemanticPublicationPlans:
             },
         )
         tm.fail(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 (first, generated),
                 repository_root=mod_workspace,
             ),
@@ -174,7 +174,7 @@ class TestsFlextInfraSemanticPublicationPlans:
         noop = first.model_copy(update={"desired_content": None, "desired_mode": None})
         tm.that(
             tm.ok(
-                transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+                transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                     (noop,),
                     repository_root=mod_workspace,
                 ),

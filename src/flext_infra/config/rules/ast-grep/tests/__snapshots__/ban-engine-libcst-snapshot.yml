@@ -1,0 +1,62 @@
+id: ban-engine-libcst
+snapshots:
+  from libcst import CSTTransformer:
+    labels:
+    - source: from libcst import CSTTransformer
+      style: primary
+      start: 0
+      end: 33
+    - source: libcst
+      style: secondary
+      start: 5
+      end: 11
+  from libcst.helpers import qualified_name:
+    labels:
+    - source: from libcst.helpers import qualified_name
+      style: primary
+      start: 0
+      end: 41
+    - source: libcst.helpers
+      style: secondary
+      start: 5
+      end: 19
+  import libcst:
+    labels:
+    - source: import libcst
+      style: primary
+      start: 0
+      end: 13
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+  import libcst as cst:
+    labels:
+    - source: import libcst as cst
+      style: primary
+      start: 0
+      end: 20
+    - source: libcst
+      style: secondary
+      start: 7
+      end: 13
+  import libcst.helpers:
+    labels:
+    - source: import libcst.helpers
+      style: primary
+      start: 0
+      end: 21
+    - source: libcst.helpers
+      style: secondary
+      start: 7
+      end: 21
+  import libcst.matchers as cstm:
+    labels:
+    - source: import libcst.matchers as cstm
+      style: primary
+      start: 0
+      end: 30
+    - source: libcst.matchers
+      style: secondary
+      start: 7
+      end: 22

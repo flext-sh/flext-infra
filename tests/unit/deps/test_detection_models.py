@@ -15,7 +15,7 @@ from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests import tm
 
 
-class TestsFlextInfraDepsDetectionModels:
+class TestsFlextInfraModelsDepsDetection:
     """Test flext infra deps detection models behavior."""
 
     @staticmethod

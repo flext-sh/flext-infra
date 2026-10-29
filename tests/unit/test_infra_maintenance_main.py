@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import FlextInfraCli
@@ -19,14 +20,12 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import t
-
 
 class TestsFlextInfraInfraMaintenanceMain:
     """Tests for the maintenance main entry point."""
 
     @staticmethod
-    def _maintenance_main(argv: t.SequenceOf[str] | None = None) -> int:
+    def _maintenance_main(argv: Sequence[str] | None = None) -> int:
         args = ["maintenance"]
         if argv is not None:
             args.extend(argv)

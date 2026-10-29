@@ -11,22 +11,22 @@ from flext_infra._models import (
     FlextInfraModelsCodegenToolchain,
 )
 from flext_infra._models._codegen import (
-    FlextInfraModelsCodegenFixModels,
-    FlextInfraModelsCodegenLazyInitModels,
-    FlextInfraModelsCodegenPipelineModels,
-    FlextInfraModelsCodegenScaffoldModels,
-    FlextInfraModelsCodegenTransactionModels,
+    FlextInfraModelsCodegenFix,
+    FlextInfraModelsCodegenLazyInit,
+    FlextInfraModelsCodegenPipeline,
+    FlextInfraModelsCodegenScaffold,
+    FlextInfraModelsCodegenTransaction,
 )
 
 
 class FlextInfraCodegen(
     FlextInfraModelsCodegenToolchain,
     FlextInfraModelsCodegenRender,
-    FlextInfraModelsCodegenTransactionModels,
-    FlextInfraModelsCodegenScaffoldModels,
-    FlextInfraModelsCodegenFixModels,
-    FlextInfraModelsCodegenLazyInitModels,
-    FlextInfraModelsCodegenPipelineModels,
+    FlextInfraModelsCodegenTransaction,
+    FlextInfraModelsCodegenScaffold,
+    FlextInfraModelsCodegenFix,
+    FlextInfraModelsCodegenLazyInit,
+    FlextInfraModelsCodegenPipeline,
 ):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 

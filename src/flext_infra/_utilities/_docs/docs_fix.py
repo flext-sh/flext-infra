@@ -7,16 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, config, m, t
-from flext_infra._utilities._docs._docs_github_links import (
+from flext_infra import c, config, m
+from flext_infra._utilities._docs import (
+    FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGithubLinks,
 )
-from flext_infra._utilities._docs.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,14 +34,14 @@ class FlextInfraUtilitiesDocsFix:
             A corrected link target when a simple fix is possible.
 
         """
-        if FlextInfraUtilitiesDocs.docs_is_secure_web_url(raw_link):
+        if FlextInfraUtilitiesDocsBase.docs_is_secure_web_url(raw_link):
             return FlextInfraUtilitiesDocsGithubLinks.docs_rewrite_github_url(
                 raw_link,
                 repository_root=md_file.parent,
             )
         result: str | None = None
         if not (
-            FlextInfraUtilitiesDocs.docs_is_external(raw_link)
+            FlextInfraUtilitiesDocsBase.docs_is_external(raw_link)
             or raw_link.startswith(c.Infra.DOCS_FRAGMENT_PREFIX)
         ):
             base = raw_link.split("#", maxsplit=1)[0]
@@ -86,9 +87,9 @@ class FlextInfraUtilitiesDocsFix:
             f"{rel}#block.py",
             "-",
         )
-        replacements: t.MutableMappingKV[m.Cli.MarkdownFence, t.StrPair] = {}
+        replacements: MutableMapping[m.Cli.MarkdownFence, tuple[str, str]] = {}
         for fence in filter(
-            FlextInfraUtilitiesDocs.docs_is_python_fence,
+            FlextInfraUtilitiesDocsBase.docs_is_python_fence,
             u.Cli.markdown_fences(content),
         ):
             fixed = u.Cli.run_raw(
@@ -114,7 +115,7 @@ class FlextInfraUtilitiesDocsFix:
         return u.Cli.markdown_rewrite_fences(content, replacements)
 
     @staticmethod
-    def docs_rewrite_bare_notest(content: str, info_format: str) -> t.Pair[str, int]:
+    def docs_rewrite_bare_notest(content: str, info_format: str) -> tuple[str, int]:
         """Rewrite every bare ``<lang> notest`` fence info through one format.
 
         ``pymdownx.superfences`` rejects the bare second token and leaks the
@@ -142,7 +143,7 @@ class FlextInfraUtilitiesDocsFix:
         md_file: Path,
         *,
         content: str,
-    ) -> t.Pair[str, m.Infra.DocsPhaseItemModel]:
+    ) -> tuple[str, m.Infra.DocsPhaseItemModel]:
         """Plan link, fence and TOC repairs without reading or writing the file.
 
         Returns:
@@ -177,11 +178,11 @@ class FlextInfraUtilitiesDocsFix:
     def docs_write_fix_reports(
         scope: m.Infra.DocScope,
         *,
-        items: t.SequenceOf[m.Infra.DocsPhaseItemModel],
+        items: Sequence[m.Infra.DocsPhaseItemModel],
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""
-        FlextInfraUtilitiesDocs.docs_write_phase_reports(
+        FlextInfraUtilitiesDocsBase.docs_write_phase_reports(
             scope,
             phase="fix",
             table=m.Cli.TableRenderRequest(

@@ -1,0 +1,26 @@
+id: railroad-ifelse-map-callable
+snapshots:
+  "if result.failure:\n    return r[str].from_failure(result)\nelse:\n    return r[str].ok(self._normalize(result.value))\n":
+    fixed: |
+      return result.map(self._normalize)
+    labels:
+    - source: |-
+        if result.failure:
+            return r[str].from_failure(result)
+        else:
+            return r[str].ok(self._normalize(result.value))
+      style: primary
+      start: 0
+      end: 115
+  "if result.success:\n    return outcome.ok(tuple(result.value))\nelse:\n    return outcome.from_failure(result)\n":
+    fixed: |
+      return result.map(tuple)
+    labels:
+    - source: |-
+        if result.success:
+            return outcome.ok(tuple(result.value))
+        else:
+            return outcome.from_failure(result)
+      style: primary
+      start: 0
+      end: 107

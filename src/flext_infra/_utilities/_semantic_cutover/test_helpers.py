@@ -6,17 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import override
 
-import libcst as cst
-
-from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-from flext_infra._utilities._rope.pymodule import (
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
+from flext_infra import c, m, p
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
+from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
+from flext_infra._utilities._rope.rope_module_patch import (
+    FlextInfraUtilitiesRopeModulePatch,
 )
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -35,35 +32,8 @@ class FlextInfraUtilitiesSemanticTestHelpers(
     def _test_helper_edits(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
-
-        class _MovedExports(cst.CSTTransformer):
-            """Retire only the original declaration's former module export."""
-
-            def __init__(self, name: str) -> None:
-                self.names = frozenset({name})
-
-            @override
-            def leave_Assign[N: (t.Infra.Cst.Assign, t.Infra.Cst.AnnAssign)](
-                self,
-                original_node: N,
-                updated_node: N,
-            ) -> N:
-                del original_node
-                return FlextInfraUtilitiesQualifiedNames.filter_exports(
-                    updated_node,
-                    self.names,
-                )
-
-            @override
-            def leave_AnnAssign(
-                self,
-                original_node: t.Infra.Cst.AnnAssign,
-                updated_node: t.Infra.Cst.AnnAssign,
-            ) -> t.Infra.Cst.AnnAssign:
-                return self.leave_Assign(original_node, updated_node)
-
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         editable = {
             path.resolve(): source
             for path, source in sources.items()
@@ -112,12 +82,22 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                     for edit in planned:
                         working[edit.file_path] = edit.updated_source
                         changes.setdefault(edit.file_path, []).extend(edit.changes)
-                    working[path] = (
-                        cst
-                        .parse_module(working[path])
-                        .visit(_MovedExports(move.class_name))
-                        .code
-                    )
+                    with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+                        workspace.repository_root,
+                        planned_sources=working,
+                        source_project=project,
+                    ) as (native, _captured):
+                        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                            native,
+                            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                                native, path
+                            ),
+                        )
+                        working[path] = (
+                            FlextInfraUtilitiesRopeModulePatch.remove_runtime_alias_export(
+                                module, alias=move.class_name
+                            )
+                        )
                 finally:
                     project.close()
         return tuple(
@@ -137,38 +117,71 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         workspace: p.Infra.RopeWorkspaceDsl,
         project: p.Infra.RopeProject,
         path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         editable: frozenset[Path],
     ) -> m.Infra.ClassMoveRequest | None:
+        """Elect the shared helper declaration one file moves under.
 
+        Returns:
+            The elected class-move request, or none when nothing moves.
+
+        """
         root = Path(project.root.real_path)
         resource = project.get_resource(path.relative_to(root).as_posix())
         resources = tuple(
             project.get_resource(item.relative_to(root).as_posix())
             for item in sorted(editable)
         )
-        declarations = tuple(
-            node
-            for node in ast.parse(sources[path]).body
-            if isinstance(node, ast.ClassDef)
+        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(project, resource)
+        fixture = cls._fixture_move(project, path, module, sources)
+        if fixture is not None:
+            return fixture
+        return cls._shared_declaration_move(
+            project, path, sources, resources, (workspace, sources, module)
         )
-        for declaration in declarations:
-            name = declaration.name
-            if not any(
-                isinstance(member, c.Infra.AST_FUNCTION_TYPES)
-                for member in ast.walk(declaration)
-            ) or any(
-                member.name.startswith(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX)
-                for member in ast.walk(declaration)
-                if isinstance(member, c.Infra.AST_FUNCTION_TYPES)
+
+    @classmethod
+    def _shared_declaration_move(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        sources: Mapping[Path, str],
+        resources: tuple[object, ...],
+        owner_context: tuple[
+            p.Infra.RopeWorkspaceDsl, Mapping[Path, str], p.Infra.RopePyModule
+        ],
+    ) -> m.Infra.ClassMoveRequest | None:
+        """Elect one shared class or function declaration for the utilities move.
+
+        Returns:
+            The elected class-move request, or none when nothing is shared.
+
+        Raises:
+            ValueError: If a shared declaration lost its identifier or target.
+
+        """
+        module = owner_context[2]
+        for declaration in (
+            scope
+            for scope in module.get_scope().get_scopes()
+            if scope.get_kind() in {"Class", "Function"}
+        ):
+            name = declaration.pyobject.get_name()
+            members = (declaration, *cls._helper_callable_scopes(declaration))
+            behavior = any(member.get_kind() == "Function" for member in members)
+            if any(
+                member.pyobject.get_name().startswith(
+                    c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX
+                )
+                for member in members
+                if member.get_kind() == "Function"
             ):
                 continue
-            find_offset = (
-                FlextInfraUtilitiesRopeCorePyModuleMixin.find_identifier_offset_in_lines
-            )
-            offset = find_offset(
+            offset = (
+                FlextInfraUtilitiesRopeCorePyModule.find_identifier_offset_in_lines
+            )(
                 sources[path].splitlines(keepends=True),
-                line=declaration.lineno,
+                line=declaration.get_start(),
                 symbol=name,
             )
             if offset is None:
@@ -176,7 +189,9 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 raise ValueError(msg)
             references = FlextInfraUtilitiesRopeRuntimeModules.runtime_find_occurrences(
                 project,
-                resource,
+                project.get_resource(
+                    path.relative_to(Path(project.root.real_path)).as_posix()
+                ),
                 offset,
                 resources=resources,
                 in_hierarchy=False,
@@ -187,30 +202,156 @@ class FlextInfraUtilitiesSemanticTestHelpers(
                 for reference in references
             ):
                 continue
-            target = cls._test_utilities_owner(workspace, path, sources)
-            target_resource = project.get_resource(target.relative_to(root).as_posix())
-            target_module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            return cls._destination_class_move(
+                owner_context, project, path, declaration, "u" if behavior else "m"
+            )
+        return None
+
+    @classmethod
+    def _destination_class_move(
+        cls,
+        owner_context: tuple[
+            p.Infra.RopeWorkspaceDsl, Mapping[Path, str], p.Infra.RopePyModule
+        ],
+        project: p.Infra.RopeProject,
+        path: Path,
+        declaration: p.Infra.RopeScope,
+        letter: str,
+    ) -> m.Infra.ClassMoveRequest:
+        """Bind one shared declaration's move into the tests utilities owner.
+
+        Returns:
+            The class-move request into the elected owner surface.
+
+        Raises:
+            ValueError: If the destination already binds the name without moving.
+
+        """
+        workspace, sources, _module = owner_context
+        root = Path(project.root.real_path)
+        name = declaration.pyobject.get_name()
+        resource = project.get_resource(path.relative_to(root).as_posix())
+        target = cls._test_utilities_owner(workspace, path, sources, letter=letter)
+        target_resource = project.get_resource(target.relative_to(root).as_posix())
+        target_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+            project, target_resource
+        )
+        if name in target_module.get_attributes() and not (
+            cls._destination_imports_moving_declaration(
+                project, resource, name, target_module.get_attribute(name)
+            )
+        ):
+            msg = f"shared helper destination already binds {name}: {target}"
+            raise ValueError(msg)
+        return m.Infra.ClassMoveRequest(
+            rope_project=project,
+            source_file=path,
+            target_file=target,
+            class_name=name,
+            line=declaration.get_start(),
+            apply=False,
+        )
+
+    @classmethod
+    def _fixture_move(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        module: p.Infra.RopePyModule,
+        sources: Mapping[Path, str],
+    ) -> m.Infra.ClassMoveRequest | None:
+        """Elect pytest fixture declarations by native decorator binding identity.
+
+        Returns:
+            The elected class-move request, or none when no fixture declares.
+
+        Raises:
+            ValueError: If a fixture decorator has no declaration owner.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        declarations = tuple(module.get_scope().get_scopes())
+        functions = tuple(
+            scope for scope in declarations if scope.get_kind() == "Function"
+        )
+        if not functions:
+            return None
+        fixture_binding = project.get_module("pytest").get_attribute("fixture")
+        fragments = module.get_source_binding_index().fragments
+        for fragment in fragments:
+            if (
+                fragment.context.role != "decorator"
+                or fragment.context.structural_scope is not module.get_scope()
+            ):
+                continue
+            binding = runtime.expression_name(
+                fragment.context.environment,
+                module.source_code[fragment.start : fragment.end],
+            )
+            if binding is None or not runtime.same_name(binding, fixture_binding):
+                continue
+            line = module.lines.get_line_number(fragment.start)
+            owners = tuple(
+                scope
+                for scope in declarations
+                if scope.get_start() > line
+                and scope.parent is fragment.context.structural_scope
+            )
+            if not owners:
+                msg = (
+                    f"fixture decorator has no native declaration owner: {path}:{line}"
+                )
+                raise ValueError(msg)
+            owner = min(owners, key=lambda scope: scope.get_start())
+            if owner.get_kind() != "Function":
+                msg = f"fixture decorator owner is not a function: {path}:{line}"
+                raise ValueError(msg)
+            target = next(
+                (
+                    parent / "conftest.py"
+                    for parent in path.parents
+                    if parent / "conftest.py" in sources
+                ),
+                None,
+            )
+            if target is None:
+                msg = f"fixture declaration has no existing conftest owner: {path}"
+                raise ValueError(msg)
+            name = owner.pyobject.get_name()
+            target_resource = project.get_resource(
+                target.relative_to(Path(project.root.real_path)).as_posix()
+            )
+            destination = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 project, target_resource
             )
-            if name in target_module.get_attributes() and not (
-                cls._destination_imports_moving_declaration(
-                    project,
-                    resource,
-                    name,
-                    target_module.get_attribute(name),
-                )
-            ):
-                msg = f"shared helper destination already binds {name}: {target}"
+            if name in destination.get_attributes():
+                msg = f"fixture destination already binds {name}: {target}"
                 raise ValueError(msg)
             return m.Infra.ClassMoveRequest(
                 rope_project=project,
                 source_file=path,
                 target_file=target,
                 class_name=name,
-                line=declaration.lineno,
+                line=owner.get_start(),
                 apply=False,
             )
         return None
+
+    @classmethod
+    def _helper_callable_scopes(
+        cls, scope: p.Infra.RopeScope
+    ) -> tuple[p.Infra.RopeScope, ...]:
+        """Traverse source-owned scopes without exposing syntax nodes.
+
+        Returns:
+            Every descendant scope, depth-first, including each child itself.
+
+        """
+        return tuple(
+            descendant
+            for child in scope.get_scopes()
+            for descendant in (child, *cls._helper_callable_scopes(child))
+        )
 
     @staticmethod
     def _destination_imports_moving_declaration(
@@ -231,7 +372,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         ):
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        expected = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, source
         ).get_attribute(name)
         return runtime.same_name(expected, bound) and (
@@ -243,9 +384,11 @@ class FlextInfraUtilitiesSemanticTestHelpers(
     def _test_utilities_owner(
         workspace: p.Infra.RopeWorkspaceDsl,
         path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
+        *,
+        letter: str = "u",
     ) -> Path:
-        """Elect the unique declared utilities facade in this helper's tier.
+        """Elect the unique declared behavior or payload facade in this tier.
 
         Returns:
             The resulting ``Path``.
@@ -261,13 +404,13 @@ class FlextInfraUtilitiesSemanticTestHelpers(
             if candidate.parent in path.parents
             and not source.startswith(c.Infra.AUTOGEN_HEADER)
             and (policy := workspace.convention(candidate).module_policy).expected_alias
-            == "u"
+            == letter
             and policy.project_prefix == prefix
             and policy.is_internal_namespace
         )
         if len(owners) != 1:
             msg = (
-                f"shared test helper requires one utilities facade: {path}; "
+                f"shared test helper requires one {letter} facade: {path}; "
                 f"owners={owners}"
             )
             raise ValueError(msg)

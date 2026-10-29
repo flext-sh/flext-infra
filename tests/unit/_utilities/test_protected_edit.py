@@ -7,21 +7,22 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra import infra, settings
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 def _provision_edited_sample(
     tmp_path: Path,
-) -> t.Quad[str, Path, str, str]:
+) -> tuple[str, Path, str, str]:
     """Provision one lint-gated sample package and its edited source pair.
 
     Returns:
-        The resulting ``t.Quad[str, Path, str, str]``.
+        The resulting ``tuple[str, Path, str, str]``.
 
     """
     project_config = (
@@ -165,7 +166,9 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
     @staticmethod
     @pytest.fixture
-    def provisioned_workspace(tmp_path: Path) -> None:
+    def provisioned_workspace(
+        tmp_path: Path,
+    ) -> None:
         """The edited workspace is a checkout whose environment owns the tools."""
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname = 'sample'\nversion = '1.0.0'\n",
@@ -374,7 +377,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
     @staticmethod
     @pytest.mark.parametrize("gate", [c.Infra.RUFF, c.Infra.MYPY])
     def test_preview_source_writes_preserves_live_sources(
-        source_preview_workspace: t.Pair[Path, Path],
+        source_preview_workspace: tuple[Path, Path],
         gate: str,
     ) -> None:
         tmp_path, package = source_preview_workspace
@@ -398,7 +401,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
     @staticmethod
     def test_staged_source_consumer_reads_candidate_without_live_writes(
-        source_preview_workspace: t.Pair[Path, Path],
+        source_preview_workspace: tuple[Path, Path],
     ) -> None:
         """Expose candidate bytes to the real consumer through public staging."""
         tmp_path, package = source_preview_workspace
@@ -411,8 +414,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
         def consume_candidate(
             view_root: Path,
-            candidates: t.MappingKV[Path, Path],
-        ) -> t.Triple[str, str, int]:
+            candidates: Mapping[Path, Path],
+        ) -> tuple[str, str, int]:
             candidate = candidates[py_file.resolve()]
             tm.ok(candidate.is_relative_to(view_root))
             return (
@@ -435,7 +438,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
     @staticmethod
     def test_source_preview_preserves_parser_exception_and_cleans_staging(
-        source_preview_workspace: t.Pair[Path, Path],
+        source_preview_workspace: tuple[Path, Path],
     ) -> None:
         """A real parser failure leaves live bytes untouched for a fresh view."""
         tmp_path, package = source_preview_workspace
@@ -448,7 +451,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
         def parse_candidate(
             view_root: Path,
-            candidates: t.MappingKV[Path, Path],
+            candidates: Mapping[Path, Path],
         ) -> str:
             candidate = candidates[py_file.resolve()]
             tm.ok(candidate.is_relative_to(view_root))

@@ -7,39 +7,37 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
 )
-from flext_infra._utilities._docs._docs_scope_policy import (
-    FlextInfraUtilitiesDocsScopePolicyMixin,
-)
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopePolicy
 
 
-class FlextInfraUtilitiesDocsScopeProjectsMixin(
-    FlextInfraUtilitiesDocsScopePolicyMixin,
+class FlextInfraUtilitiesDocsScopeProjects(
+    FlextInfraUtilitiesDocsScopePolicy,
 ):
     """Discover governed projects from the authenticated workspace topology."""
 
     @staticmethod
     def resolve_projects(
         repository_root: Path,
-        names: t.StrSequence,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+        names: Sequence[str],
+    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
         """Resolve project names through repository-local topology only.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.ProjectInfo]]``.
+            The resulting ``p.Result[Sequence[m.Infra.ProjectInfo]]``.
 
         """
-        owner = FlextInfraUtilitiesDocsScopeProjectsMixin
+        owner = FlextInfraUtilitiesDocsScopeProjects
         discovered = owner.discover_projects(repository_root)
         if discovered.failure:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].from_failure(discovered)
+            return r[Sequence[m.Infra.ProjectInfo]].from_failure(discovered)
         projects = list(discovered.value)
         root = owner.absolute_lexical(repository_root)
         if all(project.path != root for project in projects):
@@ -52,7 +50,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             if root_project is not None:
                 projects.append(root_project)
         if not names:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(
+            return r[Sequence[m.Infra.ProjectInfo]].ok(
                 sorted(projects, key=operator.attrgetter("name")),
             )
         by_name: MutableMapping[str, m.Infra.ProjectInfo] = {}
@@ -65,16 +63,18 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
                 by_name.setdefault(project.path.relative_to(root).as_posix(), project)
         missing = [name for name in names if name not in by_name]
         if missing:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
+            return r[Sequence[m.Infra.ProjectInfo]].fail(
                 f"unknown projects: {', '.join(sorted(missing))}",
             )
-        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(
+        return r[Sequence[m.Infra.ProjectInfo]].ok(
             sorted((by_name[name] for name in names), key=operator.attrgetter("name")),
         )
 
     @staticmethod
     def workspace_declared_repository_path_set(
         repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> frozenset[Path]:
         """Return lexical subprojects freshly read from this root's manifest.
 
@@ -85,10 +85,12 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             ValueError: If ``declared.failure``.
 
         """
-        root = FlextInfraUtilitiesDocsScopeProjectsMixin.absolute_lexical(
+        root = FlextInfraUtilitiesDocsScopeProjects.absolute_lexical(
             repository_root,
         )
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(root)
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
+            root, source_project=source_project
+        )
         if declared.failure:
             raise ValueError(declared.error or f"invalid workspace: {root}")
         return frozenset(root / item.path for item in declared.value)
@@ -98,6 +100,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         entry: Path,
         *,
         workspace_declared_repositories: frozenset[Path],
+        source_project: p.Infra.RopeProject | None = None,
     ) -> m.Infra.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root.
 
@@ -105,8 +108,10 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             The resulting ``m.Infra.ProjectInfo | None``.
 
         """
-        entry = FlextInfraUtilitiesDocsScopeProjectsMixin.absolute_lexical(entry)
-        project_state = FlextInfraUtilitiesDocsScopeProjectsMixin.project_state(entry)
+        entry = FlextInfraUtilitiesDocsScopeProjects.absolute_lexical(entry)
+        project_state = FlextInfraUtilitiesDocsScopeProjects.project_state(
+            entry, source_project=source_project
+        )
         project_section = project_state.payload.get("project")
         project_name = (
             project_section.get("name") if isinstance(project_section, dict) else None
@@ -118,15 +123,23 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         ):
             return None
         is_workspace_declared_repository = entry in workspace_declared_repositories
-        if not FlextInfraUtilitiesDocsScopeProjectsMixin.docs_scope_enabled(
+        if not FlextInfraUtilitiesDocsScopeProjects.docs_scope_enabled(
             project_state.docs_meta,
         ):
             return None
-        has_src = FlextInfraUtilitiesDocsScopeProjectsMixin.physical_directory_exists(
-            entry / c.Infra.DEFAULT_SRC_DIR,
+        has_src = (
+            FlextInfraUtilitiesDocsScopeProjects.physical_directory_exists(
+                entry / c.Infra.DEFAULT_SRC_DIR,
+            )
+            if source_project is None
+            else source_project.source_query(entry / c.Infra.DEFAULT_SRC_DIR, "isdir")
         )
-        has_tests = FlextInfraUtilitiesDocsScopeProjectsMixin.physical_directory_exists(
-            entry / c.Infra.DIR_TESTS,
+        has_tests = (
+            FlextInfraUtilitiesDocsScopeProjects.physical_directory_exists(
+                entry / c.Infra.DIR_TESTS,
+            )
+            if source_project is None
+            else source_project.source_query(entry / c.Infra.DIR_TESTS, "isdir")
         )
         has_deps = bool(project_section.get("dependencies"))
         if (
@@ -136,11 +149,18 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             and not has_deps
         ):
             return None
-        make_profile = (
-            c.Infra.MakeProfile.WORKSPACE
-            if FlextInfraUtilitiesDocsScopeProjectsMixin._physical_file_exists(
+        if source_project is None:
+            has_manifest = FlextInfraUtilitiesDocsScopeProjects._physical_file_exists(
                 entry / c.Infra.GITMODULES,
             )
+        else:
+            source_project.source_state(entry / c.Infra.GITMODULES, required=False)
+            has_manifest = source_project.source_query(
+                entry / c.Infra.GITMODULES, "isfile"
+            )
+        make_profile = (
+            c.Infra.MakeProfile.WORKSPACE
+            if has_manifest
             else c.Infra.MakeProfile.STANDALONE
         )
         return m.Infra.ProjectInfo(
@@ -150,7 +170,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             has_tests=has_tests,
             has_src=has_src,
             project_class=(
-                FlextInfraUtilitiesDocsScopeProjectsMixin.classify_project_from_meta(
+                FlextInfraUtilitiesDocsScopeProjects.classify_project_from_meta(
                     project_state.project_name,
                     project_state.docs_meta,
                 )
@@ -163,37 +183,55 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
     @staticmethod
     def discover_projects(
         repository_root: Path,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
         """Discover the root or projects declared by its own ``.gitmodules``.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.ProjectInfo]]``.
+            The resulting ``p.Result[Sequence[m.Infra.ProjectInfo]]``.
 
         """
-        owner = FlextInfraUtilitiesDocsScopeProjectsMixin
-        roots = owner.docs_repository_roots(repository_root)
-        if roots.failure:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].from_failure(roots)
-        repository_root = roots.value[0]
-        excluded = owner.excluded_roots(repository_root)
+        owner = FlextInfraUtilitiesDocsScopeProjects
+        if source_project is None:
+            roots = owner.docs_repository_roots(repository_root)
+            if roots.failure:
+                return r[Sequence[m.Infra.ProjectInfo]].from_failure(roots)
+            repository_root = roots.value[0]
+        else:
+            repository_root = owner.absolute_lexical(repository_root)
+            if not source_project.source_query(repository_root, "isdir"):
+                return r[Sequence[m.Infra.ProjectInfo]].fail(
+                    f"docs repository root is missing from source view: "
+                    f"{repository_root}"
+                )
+        excluded = owner.excluded_roots(repository_root, source_project=source_project)
         workspace_declared_repositories = owner.workspace_declared_repository_path_set(
             repository_root,
+            source_project=source_project,
         )
         project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
             repository_root,
+            source_project=source_project,
         )
         root_project: m.Infra.ProjectInfo | None = None
         projects: list[m.Infra.ProjectInfo] = []
         for project_root in project_roots:
             if project_root.name == "cmd" or project_root.name in excluded:
                 continue
-            if project_root == repository_root and not owner.physical_directory_exists(
-                project_root / c.Infra.DEFAULT_SRC_DIR,
-            ):
+            has_root_src = (
+                owner.physical_directory_exists(project_root / c.Infra.DEFAULT_SRC_DIR)
+                if source_project is None
+                else source_project.source_query(
+                    project_root / c.Infra.DEFAULT_SRC_DIR, "isdir"
+                )
+            )
+            if project_root == repository_root and not has_root_src:
                 continue
             project_info = owner.project_info_for_entry(
                 project_root,
                 workspace_declared_repositories=workspace_declared_repositories,
+                source_project=source_project,
             )
             if project_info is None:
                 continue
@@ -202,8 +240,8 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
                 continue
             projects.append(project_info)
         if not projects and root_project is not None:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([root_project])
-        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(projects)
+            return r[Sequence[m.Infra.ProjectInfo]].ok([root_project])
+        return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesDocsScopeProjectsMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesDocsScopeProjects"]

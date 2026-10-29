@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import secrets
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -23,7 +24,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def _protected_write_test_failure(
         path: Path,
         request: m.Infra.ProtectedSourceWritesRequest,
-        new_errors: t.Infra.LintSnapshot[t.StrSequence],
+        new_errors: t.Infra.LintSnapshot[Sequence[str]],
     ) -> str | None:
         """Protected write test failure.
 
@@ -44,9 +45,9 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
     @staticmethod
     def _protected_write_reports(
-        updates: t.MappingKV[Path, str],
-        before_sources: t.MappingKV[Path, str | None],
-        before_lints: t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+        updates: Mapping[Path, str],
+        before_sources: Mapping[Path, str | None],
+        before_lints: Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
         request: m.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Protected write reports.
@@ -298,7 +299,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
     @staticmethod
     def protected_source_writes(
-        updates: t.MappingKV[Path, str],
+        updates: Mapping[Path, str],
         *,
         request: m.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:

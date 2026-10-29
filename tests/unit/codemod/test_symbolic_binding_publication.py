@@ -26,14 +26,16 @@ class TestsFlextInfraSymbolicBindingPublication:
 
     @staticmethod
     @pytest.fixture
-    def symbolic_workspace(mod_workspace: Path) -> Path:
+    def symbolic_workspace(
+        tmp_path: Path,
+    ) -> Path:
         """Provide real Python modules consumed by the native engine and interpreter.
 
         Returns:
             The resulting ``Path``.
 
         """
-        tests = mod_workspace / "tests"
+        tests = tmp_path / "tests"
         (tests / "unit" / "codegen").mkdir(parents=True)
         (tests / "__init__.py").write_text(
             "from tests.utilities import TestsFlextInfraUtilities as u\n",
@@ -46,7 +48,7 @@ class TestsFlextInfraSymbolicBindingPublication:
             "            value = 'owned'\n",
             encoding="utf-8",
         )
-        return mod_workspace
+        return tmp_path
 
     @staticmethod
     @pytest.mark.slow

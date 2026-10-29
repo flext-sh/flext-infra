@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
 
@@ -23,14 +24,14 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         root: Path,
         inputs: m.Infra.CodegenInputs,
         kind: c.Infra.ProjectKind,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Publish an explicit kind only into the requested target's own source.
 
         Returns:
             The declaration plan, none when already declared, or the conflict.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         effective = inputs.spec.repository
         if "kind" in effective.model_fields_set and effective.kind != kind:
             return result_type.fail(
@@ -71,7 +72,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         own_path: Path,
         inputs: m.Infra.CodegenInputs,
         kind: c.Infra.ProjectKind,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]] | None:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]] | None:
         """Guard the target's own ``kind`` declaration.
 
         Returns:
@@ -84,7 +85,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             return None
         document = u.Infra.read_codegen_config_document(own.content)
         if document.failure:
-            return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(document)
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(document)
         declared = u.Cli.json_walk_path(
             document.value,
             ("Infra", "codegen", "repository", "kind"),
@@ -92,10 +93,10 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         if declared is None:
             return None
         if declared != kind.value:
-            return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].fail(
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
                 f"bootstrap kind conflicts with the target's declaration: {own_path}",
             )
-        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(())
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
 
     @classmethod
     def _codegen_declaration_plan(
@@ -145,7 +146,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         cls,
         root: Path,
         inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Project self-owned declarations before retiring their input.
 
         This is an explicit migration operation, not a configuration source.
@@ -156,7 +157,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The own declaration and its retirement, or the first failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         legacy_path = u.Infra.workspace_manifest_path(root)
         project = inputs.spec.repository.project
         resource_owned = project is not None and any(
@@ -215,7 +216,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         legacy_path: Path,
     ) -> (
         p.Result[
-            t.Triple[
+            tuple[
                 m.Cli.AtomicFileState,
                 m.Infra.RepositoryDeltaSpec,
                 m.Infra.WorkspaceManifestSpec,
@@ -231,7 +232,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
 
         """
         result_type = r[
-            t.Triple[
+            tuple[
                 m.Cli.AtomicFileState,
                 m.Infra.RepositoryDeltaSpec,
                 m.Infra.WorkspaceManifestSpec,
@@ -316,7 +317,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         captured: m.Cli.AtomicFileState,
         delta: m.Infra.RepositoryDeltaSpec,
         legacy: m.Infra.WorkspaceManifestSpec,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Validate the projected declaration before planning input retirement.
 
         The input is retired unless its bytes are a declared resource.
@@ -325,7 +326,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The source declaration and its dependent retirement.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -461,7 +462,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         # --all-packages`); no extra dependency group and no editable overlay
         # plan exist any more.
         del workspace
-        groups: t.VariadicTuple[str] = ("dev", "codegen")
+        groups: tuple[str, ...] = ("dev", "codegen")
         return m.Infra.UvEnvironmentPlan(
             project_root=root,
             environment_root=target.root,
@@ -494,17 +495,16 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     @staticmethod
     def _retired_destinations(
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[t.Pair[t.SequenceOf[str], t.MappingKV[str, str]]]:
+    ) -> p.Result[tuple[Sequence[str], dict[str, str]]]:
         """Collect declared retired projections with their removal evidence.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.SequenceOf[str],
-                t.MappingKV[str, str]]]``.
+            The resulting ``p.Result[tuple[Sequence[str], dict[str, str]]]``.
 
         """
-        result_type = r[t.Pair[t.SequenceOf[str], t.MappingKV[str, str]]]
+        result_type = r[tuple[Sequence[str], dict[str, str]]]
         extra: list[str] = []
-        evidence_by_path: t.StrDict = {}
+        evidence_by_path: dict[str, str] = {}
         for retired in codegen.retired_projections:
             declared = retired if isinstance(retired, str) else retired.path
             relative = Path(declared)
@@ -527,7 +527,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         profile: c.Infra.MakeProfile,
         *,
         inputs: m.Infra.CodegenInputs | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Plan removal of generated projections this profile no longer renders.
 
         A projection retires either because its template entry excludes this
@@ -536,13 +536,13 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         a file carrying the generated marker is removed.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]``.
+            The resulting ``p.Result[Sequence[m.Infra.CodegenFilePlan]]``.
 
         """
         if inputs is None:
             loaded = u.Infra.load_codegen_inputs(root)
             if loaded.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(loaded)
+                return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(loaded)
             inputs = loaded.value
         destinations: list[str] = [
             entry.destination
@@ -551,7 +551,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         ]
         collected = cls._retired_destinations(inputs.spec)
         if collected.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(collected)
+            return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(collected)
         extra_destinations, evidence_by_path = collected.value
         destinations.extend(extra_destinations)
         retired = cls._retired_destination_plans(
@@ -560,23 +560,23 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             evidence_by_path,
         )
         if retired.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(retired)
-        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(retired.value)
+            return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(retired)
+        return r[Sequence[m.Infra.CodegenFilePlan]].ok(retired.value)
 
     @classmethod
     def _retired_destination_plans(
         cls,
         root: Path,
-        destinations: t.SequenceOf[str],
-        evidence_by_path: t.MappingKV[str, str],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        destinations: Sequence[str],
+        evidence_by_path: dict[str, str],
+    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Plan removal of every still-present retired destination file.
 
         Returns:
             The absence plans.
 
         """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
         planned: list[m.Infra.CodegenFilePlan] = []
         # A retired directory retires each file under it; the generated
         # marker (or declared evidence) below still guards every removal.

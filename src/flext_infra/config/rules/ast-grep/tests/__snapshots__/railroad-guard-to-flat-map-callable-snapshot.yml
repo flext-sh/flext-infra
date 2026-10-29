@@ -1,0 +1,68 @@
+id: railroad-guard-to-flat-map-callable
+snapshots:
+  "def run(self) -> p.Result[str]:\n    result = self._load()\n    if result.failure:\n        return r[str].from_failure(result)\n    return self._next_step(result.value)\n":
+    fixed: |
+      def run(self) -> p.Result[str]:
+          result = self._load()
+          return result.flat_map(self._next_step)
+    labels:
+    - source: |-
+        result = self._load()
+            if result.failure:
+                return r[str].from_failure(result)
+            return self._next_step(result.value)
+      style: primary
+      start: 36
+      end: 164
+    - source: p.Result[str]
+      style: secondary
+      start: 17
+      end: 30
+    - source: p.Result[str]
+      style: secondary
+      start: 17
+      end: 30
+    - source: |-
+        def run(self) -> p.Result[str]:
+            result = self._load()
+            if result.failure:
+                return r[str].from_failure(result)
+            return self._next_step(result.value)
+      style: secondary
+      start: 0
+      end: 164
+  "def run_direct(self) -> r[int]:\n    result = self._load()\n    if result.failure:\n        return result\n    return parse_int(result.value)\n":
+    fixed: |
+      def run_direct(self) -> r[int]:
+          result = self._load()
+          return result.flat_map(parse_int)
+    labels:
+    - source: |-
+        result = self._load()
+            if result.failure:
+                return result
+            return parse_int(result.value)
+      style: primary
+      start: 36
+      end: 137
+    - source: r
+      style: secondary
+      start: 24
+      end: 25
+    - source: r[int]
+      style: secondary
+      start: 24
+      end: 30
+    - source: r[int]
+      style: secondary
+      start: 24
+      end: 30
+    - source: |-
+        def run_direct(self) -> r[int]:
+            result = self._load()
+            if result.failure:
+                return result
+            return parse_int(result.value)
+      style: secondary
+      start: 0
+      end: 137

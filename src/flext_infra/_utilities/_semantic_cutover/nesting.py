@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import ast
 import traceback
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
+from contextlib import ExitStack
 from difflib import SequenceMatcher
 from fnmatch import fnmatch
 from pathlib import Path
-
-import libcst as cst
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -31,7 +30,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -57,7 +56,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
     @staticmethod
     def _inheritance_bound_to_owner(
-        classes: t.MappingKV[str, ast.ClassDef],
+        classes: Mapping[str, ast.ClassDef],
         owner_name: str,
     ) -> frozenset[str]:
         """Return top-level classes an owner cannot contain.
@@ -100,7 +99,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _suite_reference_pins(
         cls,
         tree: ast.Module,
-        classes: t.MappingKV[str, ast.ClassDef],
+        classes: Mapping[str, ast.ClassDef],
         movable: frozenset[str],
         owner: str,
     ) -> frozenset[str]:
@@ -151,7 +150,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
 
     @staticmethod
     def _pins_from_outside_bases(
-        classes: t.MappingKV[str, ast.ClassDef],
+        classes: Mapping[str, ast.ClassDef],
         movable: frozenset[str],
         pinned: set[str],
     ) -> frozenset[str]:
@@ -199,7 +198,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ValueError: When a native alias lacks captured source evidence.
 
         """
-        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
             project.get_resource(
                 file_path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
@@ -209,7 +208,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         attributes = module.get_attributes()
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            module.source_code,
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module),
         )
         aliases: set[str] = set()
         for node in tree.body:
@@ -240,7 +239,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             if (
                 name is None
                 or binding is None
-                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+                or not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(
                     name.get_object()
                 )
                 or target.id not in exports
@@ -282,7 +281,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         project: p.Infra.RopeProject,
         file_path: Path,
         tree: ast.Module,
-        patterns: t.Triple[t.StrTuple, t.StrTuple, t.StrTuple],
+        patterns: tuple[t.StrTuple, t.StrTuple, t.StrTuple],
     ) -> bool:
         """Use native collection configuration or real pytest decorator identity.
 
@@ -319,7 +318,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 }:
                     continue
                 pytest_module = (
-                    FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                    FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
                         project.get_module("pytest"),
                     )
                 )
@@ -395,7 +394,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         if isinstance(body, ast.Raise):
             actual = runtime.expression_name(module.get_scope(), ast.unparse(call.func))
-            builtin = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            builtin = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
                 project.get_module("builtins")
             )
             if (
@@ -411,7 +410,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         if target is None:
             return False
         holder, _line = target.get_definition_location()
-        return holder is module and FlextInfraUtilitiesRopeRuntimeTypes.py_function(
+        return holder is module and FlextInfraUtilitiesTypesRopeRuntime.py_function(
             target.get_object()
         )
 
@@ -419,7 +418,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _module_declaration_entities(
         project: p.Infra.RopeProject,
         file_path: Path,
-        classes: t.MappingKV[str, ast.ClassDef],
+        classes: Mapping[str, ast.ClassDef],
     ) -> frozenset[str]:
         """Use declaration-relocation's native payload/protocol role identities.
 
@@ -498,7 +497,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ast.unparse(target.value),
         )
         return binding is not None and (
-            FlextInfraUtilitiesRopeRuntimeTypes.py_class(binding.get_object())
+            FlextInfraUtilitiesTypesRopeRuntime.py_class(binding.get_object())
             and binding.get_object().get_module() is module
         )
 
@@ -509,16 +508,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         source: str,
         *,
         project: p.Infra.RopeProject,
-        pytest_patterns: t.Triple[t.StrTuple, t.StrTuple, t.StrTuple],
+        pytest_patterns: tuple[t.StrTuple, t.StrTuple, t.StrTuple],
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[t.StrMapping]:
+    ) -> p.Result[Mapping[str, str]]:
         """Map each loose top-level class to the owner Rope's module policy elects.
 
         Returns:
-            The resulting ``p.Result[t.StrMapping]``.
+            The resulting ``p.Result[Mapping[str, str]]``.
 
         """
-        planned = r[t.StrMapping]
+        planned = r[Mapping[str, str]]
         file_path = convention.file_path
         if file_path.name == c.Infra.INIT_PY:
             return planned.ok({})
@@ -544,7 +543,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             )
         )
         if len(classes) <= 1 and not loose and not composition:
-            return planned.ok({})
+            return planned.ok(
+                cls._singleton_model_namespace(project, file_path, classes)
+            )
         declaration_error = cls._nesting_declaration_error(
             project, file_path, classes, (tree, loose), convention
         )
@@ -576,16 +577,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _nesting_owned_definitions(
         cls,
         convention: m.Infra.RopeModuleConvention,
-        members: t.Triple[ast.Module, t.MappingKV[str, ast.ClassDef], t.StrTuple],
+        members: tuple[ast.Module, Mapping[str, ast.ClassDef], t.StrTuple],
         owner: str,
         *,
-        collection: t.Pair[bool, t.StrSequence],
-    ) -> p.Result[t.StrMapping]:
+        collection: tuple[bool, Sequence[str]],
+    ) -> p.Result[Mapping[str, str]]:
         tree, classes, loose = members
         if collection[0] and cls._suite_lifecycle_risk(
             tree, classes.get(owner), collection[1]
         ):
-            planned = r[t.StrMapping]
+            planned = r[Mapping[str, str]]
             return planned.fail(
                 f"class-nesting cannot add free tests to "
                 f"{convention.module_name}.{owner}: existing suite "
@@ -670,8 +671,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         cls,
         project: p.Infra.RopeProject,
         file_path: Path,
-        classes: t.MappingKV[str, ast.ClassDef],
-        members: t.Pair[ast.Module, t.StrTuple],
+        classes: Mapping[str, ast.ClassDef],
+        members: tuple[ast.Module, t.StrTuple],
         convention: m.Infra.RopeModuleConvention,
     ) -> str | None:
         tree, loose = members
@@ -710,7 +711,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         cls,
         tree: ast.Module,
         suite: ast.ClassDef | None,
-        function_patterns: t.StrSequence,
+        function_patterns: Sequence[str],
     ) -> bool:
         if suite is None or not any(
             isinstance(node, c.Infra.AST_FUNCTION_TYPES)
@@ -765,12 +766,12 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _nesting_members_under_owner(
         cls,
         tree: ast.Module,
-        classes: t.MappingKV[str, ast.ClassDef],
+        classes: Mapping[str, ast.ClassDef],
         loose: t.StrTuple,
         owner: str,
         convention: m.Infra.RopeModuleConvention,
-    ) -> p.Result[t.StrMapping]:
-        planned = r[t.StrMapping]
+    ) -> p.Result[Mapping[str, str]]:
+        planned = r[Mapping[str, str]]
         if owner not in classes and any(
             owner in cls._scope_bindings(node) for node in tree.body
         ):
@@ -881,8 +882,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _test_prefix_edits(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Rename every local test class through native Rope, including local scopes.
 
         Returns:
@@ -995,7 +996,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     @staticmethod
     def _test_content_rewrites(
         changes: p.Infra.RopeChangeSet,
-        working: t.MappingKV[Path, str],
+        working: Mapping[Path, str],
     ) -> MutableMapping[Path, list[m.Infra.SourceRewrite]]:
         rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]] = {}
         for change in changes.changes:
@@ -1021,9 +1022,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _rename_test_class(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        working: t.MutableMappingKV[Path, str],
+        working: MutableMapping[Path, str],
         path: Path,
-        rename: t.Pair[ast.ClassDef, str],
+        rename: tuple[ast.ClassDef, str],
     ) -> None:
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             workspace.rope_project, working
@@ -1073,8 +1074,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _test_prefix_quote_edits(
         cls,
         project: p.Infra.RopeProject,
-        working: t.MappingKV[Path, str],
-        rename: t.Triple[str, p.Infra.RopePyName, str],
+        working: Mapping[Path, str],
+        rename: tuple[str, p.Infra.RopePyName, str],
         rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]],
     ) -> None:
         original, expected, replacement = rename
@@ -1105,8 +1106,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     @staticmethod
     def _apply_test_prefix_rewrites(
         project: p.Infra.RopeProject,
-        working: t.MutableMappingKV[Path, str],
-        rewrites: t.MappingKV[Path, t.SequenceOf[m.Infra.SourceRewrite]],
+        working: MutableMapping[Path, str],
+        rewrites: Mapping[Path, Sequence[m.Infra.SourceRewrite]],
     ) -> None:
         root = Path(project.root.real_path)
         for consumer, edits in rewrites.items():
@@ -1120,7 +1121,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         cls,
         tree: ast.Module,
         declaration: ast.ClassDef,
-        function_patterns: t.StrSequence,
+        function_patterns: Sequence[str],
     ) -> bool:
         """Do not turn helper constructors, protocols or inherited tests into suites.
 
@@ -1165,8 +1166,8 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         resource: p.Infra.RopeResource,
         offset: int,
         replacement: str,
-        sources: t.MappingKV[Path, str],
-    ) -> t.MappingKV[Path, t.VariadicTuple[m.Infra.SourceRewrite]]:
+        sources: Mapping[Path, str],
+    ) -> Mapping[Path, tuple[m.Infra.SourceRewrite, ...]]:
         """Retain native string renames only inside declared export literals.
 
         Returns:
@@ -1192,7 +1193,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 docs=True,
             ),
         )
-        planned: t.MutableMappingKV[Path, t.VariadicTuple[m.Infra.SourceRewrite]] = {}
+        planned: MutableMapping[Path, tuple[m.Infra.SourceRewrite, ...]] = {}
         for change in changes.changes:
             if not isinstance(change, p.Infra.RopeChangeContents):
                 msg = "native export rename produced a non-content effect"
@@ -1241,16 +1242,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _plan_class_nesting(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Compose helper promotion, family flattening, and orphan nesting.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
 
         """
-        planned = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        planned = r[tuple[m.Infra.SemanticMigrationEdit, ...]]
         # The planner contract keeps every failure in the Result (see
         # plan_semantic_cutover); helper promotion raises per rejected move.
         # A promotion ValueError IS the rejected move's loud contract (one
@@ -1312,9 +1313,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _test_registration_edits(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Publish already class-owned plugins as well as newly nested declarations.
 
         Returns:
@@ -1433,15 +1434,15 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _facade_namespace_edits(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Move duplicate facade namespaces to their declared inherited owners.
 
         The canonical namespace's base identities elect destinations. No symbol
         catalog participates; an occupied declaration owner is never overwritten.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.SemanticMigrationEdit]``.
+            The resulting ``tuple[m.Infra.SemanticMigrationEdit, ...]``.
 
         """
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
@@ -1553,10 +1554,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         target = owner.get_attribute(site.namespace.name).get_object()
         destinations = [
             base
-            for base in FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+            for base in FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
                 target, site.namespace.name
             ).get_superclasses()
-            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base)
+            if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(base)
             and base.get_name() == child.name
         ]
         if len(destinations) != 1:
@@ -1575,11 +1576,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             site.namespace.name,
         ):
             rewrites.setdefault(consumer, []).append(rewrite)
-        child_cst = cls._facade_namespace_child_cst(site, child)
+        child_source = cls._facade_namespace_child_source(site, child)
         cutover.working[destination_path] = cls._facade_namespace_child_module(
             site.tree,
             child,
-            child_cst,
+            child_source,
         )
         rewrites.setdefault(site.path, []).append(
             cls._facade_namespace_removal(site.source, child)
@@ -1603,7 +1604,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 outside the editable inventory, or is already occupied.
 
         """
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(destination):
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(destination):
             msg = "namespace declaration owner has no source scope"
             raise ValueError(msg)
         module = destination.get_module()
@@ -1633,40 +1634,39 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         return destination_path
 
     @staticmethod
-    def _facade_namespace_child_cst(
+    def _facade_namespace_child_source(
         site: m.Infra.FacadeNamespaceSite,
         child: ast.ClassDef,
-    ) -> t.Infra.Cst.ClassDef:
-        """Extract one facade child's concrete-syntax node.
+    ) -> str:
+        """Extract one facade child's original declaration text, dedented.
+
+        The child spans are read from the site's parsed tree; the facade body
+        is an indented declaration, so the child text is dedented by its own
+        column offset to relocate it at module level.
 
         Returns:
-            The child's CST class definition.
+            The child's class definition source text.
 
         Raises:
-            TypeError: If the facade body is not an indented declaration.
+            TypeError: If namespace child declaration has no complete source span.
 
         """
-        parsed = cst.parse_module(site.source)
-        facade_cst = next(
-            node
-            for node in parsed.body
-            if isinstance(node, c.Infra.Cst.ClassDef)
-            and node.name.value == site.facade.name
-        )
-        if not isinstance(facade_cst.body, c.Infra.Cst.IndentedBlock):
-            msg = "namespace facade requires an indented declaration"
+        if child.end_lineno is None:
+            msg = "namespace child declaration has no complete source span"
             raise TypeError(msg)
-        return next(
-            node
-            for node in facade_cst.body.body
-            if isinstance(node, c.Infra.Cst.ClassDef) and node.name.value == child.name
+        segment = "".join(
+            site.source.splitlines(keepends=True)[child.lineno - 1 : child.end_lineno],
+        )
+        indent = " " * child.col_offset
+        return "".join(
+            line.removeprefix(indent) for line in segment.splitlines(keepends=True)
         )
 
     @staticmethod
     def _facade_namespace_child_module(
         tree: ast.Module,
         child: ast.ClassDef,
-        child_cst: t.Infra.Cst.ClassDef,
+        child_source: str,
     ) -> str:
         """Render one relocated child module with the imports it still uses.
 
@@ -1688,7 +1688,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             "from __future__ import annotations\n\n"
             + "\n".join(ast.unparse(node) for node in imports)
             + "\n\n"
-            + cst.Module(body=(child_cst,)).code
+            + child_source
             + f"\n__all__ = [{child.name!r}]\n"
         )
 
@@ -1721,7 +1721,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         binding: t.Infra.RopePyName,
         child_name: str,
         namespace_name: str,
-    ) -> t.VariadicTuple[t.Pair[Path, m.Infra.SourceRewrite]]:
+    ) -> tuple[tuple[Path, m.Infra.SourceRewrite], ...]:
         """Collect consumer rewrites for one duplicate namespace declaration.
 
         Every non-defining occurrence of the duplicate child name across the
@@ -1738,7 +1738,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             imports=True,
             in_hierarchy=False,
         )
-        collected: list[t.Pair[Path, m.Infra.SourceRewrite]] = []
+        collected: list[tuple[Path, m.Infra.SourceRewrite]] = []
         for consumer, _consumer_source in cls._editable_sources(cutover.sources):
             consumer_resource = cutover.project.get_resource(
                 consumer.relative_to(cutover.root).as_posix()
@@ -1761,7 +1761,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _facade_namespace_result(
         cls,
         cutover: m.Infra.FacadeNamespaceCutover,
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Assemble the edits for every path whose prospective bytes changed.
 
         Returns:
@@ -1785,61 +1785,333 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         )
 
     @classmethod
-    def _plan_orphan_nesting(
+    def plan_singleton_model_nesting(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
-        """Plan all structural nesting and consumer rewrites without effects.
+        *,
+        model_root: Path | None = None,
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+        """Plan only singleton model moves using the bound candidate project.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            Structural and identity consumer edits, without publication.
 
         """
-        planned_edits = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
-        modules = {
-            entry.file_path.resolve(): entry for entry in rope_workspace.modules()
-        }
-        editable = cls._editable_sources(sources)
-        owned = tuple(
-            item
-            for item in editable
-            if item[0] in modules
-            and item[0].is_relative_to(Path(rope_workspace.repository_root).resolve())
-        )
-        # Parse native collection policy without importing consumer conftests or
-        # installed plugins. Planning must not execute their registration hooks.
-        pytest_patterns = cls._pytest_collection_patterns(
-            Path(rope_workspace.rope_project.root.real_path),
-        )
-        project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            rope_workspace.rope_project,
+        return cls._plan_orphan_nesting(
+            rope_workspace,
             sources,
+            codegen,
+            singleton_models=model_root or rope_workspace.repository_root,
         )
 
-        def definitions_for(item: t.Pair[Path, str]) -> p.Result[t.StrMapping]:
-            try:
-                return cls._class_nesting_definitions(
-                    rope_workspace.convention(item[0]),
-                    item[1],
-                    project=project,
-                    pytest_patterns=pytest_patterns,
-                    codegen=codegen,
-                )
-            except Exception:
-                traceback.print_exc()
-                raise
+    @classmethod
+    def _singleton_model_definitions(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        model_root: Path,
+    ) -> Mapping[str, str]:
+        """Select native singleton declarations without unrelated nesting policy.
 
-        planned = r[t.StrMapping].traverse(owned, definitions_for, fail_fast=False)
-        if planned.failure:
-            project.close()
-            return planned_edits.from_failure(planned)
+        Returns:
+            The existing model detector's selected nesting mapping.
+
+        Raises:
+            TypeError: If the selected module has no native module AST.
+
+        """
+        if (
+            not path.is_relative_to(model_root)
+            or FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                path.parent.name
+            )
+            != c.Infra.FacadeFamily.M
+        ):
+            return {}
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            project.get_resource(
+                path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
+        )
+        tree = module.get_ast()
+        if not isinstance(tree, ast.Module):
+            message = f"singleton model requires a native module: {path}"
+            raise TypeError(message)
+        return cls._singleton_model_namespace(
+            project,
+            path,
+            {node.name: node for node in tree.body if isinstance(node, ast.ClassDef)},
+        )
+
+    @classmethod
+    def _orphan_nesting_context(
+        cls,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        sources: Mapping[Path, str],
+        singleton_models: Path | None,
+    ) -> tuple[
+        p.Infra.RopeProject, tuple[t.StrTuple, t.StrTuple, t.StrTuple], ExitStack
+    ]:
+        """Prepare the existing project lifetime and native collection policy.
+
+        Returns:
+            The candidate project, collection patterns and owned cleanup scope.
+
+        """
+        pytest_patterns = (
+            ((), (), ())
+            if singleton_models is not None
+            else cls._pytest_collection_patterns(
+                Path(rope_workspace.rope_project.root.real_path),
+            )
+        )
+        project = (
+            rope_workspace.rope_project
+            if singleton_models is not None
+            else FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
+                rope_workspace.rope_project,
+                sources,
+            )
+        )
+        lifetime = ExitStack()
+        if singleton_models is None:
+            lifetime.callback(project.close)
+        return project, pytest_patterns, lifetime
+
+    @classmethod
+    def _model_namespace_edits(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: Mapping[Path, str],
+        model_root: Path,
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+        """Normalize one native pure model namespace before entity nesting.
+
+        Returns:
+            One complete structural/consumer cohort, or no admitted namespace.
+
+        """
+        for path, _source in cls._editable_sources(sources):
+            if not path.is_relative_to(model_root) or (
+                FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                    path.parent.name
+                )
+                != c.Infra.FacadeFamily.M
+            ):
+                continue
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project,
+                project.get_resource(
+                    path.relative_to(Path(project.root.real_path)).as_posix()
+                ),
+            )
+            if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+                continue
+            rewrites = cls._model_namespace_declaration_plan(project, module, sources)
+            if rewrites is None:
+                continue
+            return tuple(
+                m.Infra.SemanticMigrationEdit(
+                    file_path=consumer,
+                    original_source=sources[consumer],
+                    updated_source=(
+                        FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+                            project.get_resource(
+                                consumer.relative_to(
+                                    Path(project.root.real_path)
+                                ).as_posix()
+                            ),
+                            sources[consumer],
+                            changes,
+                        ).new_contents
+                    ),
+                    changes=("normalized native fieldless model namespace",),
+                )
+                for consumer, changes in rewrites.items()
+            )
+        return ()
+
+    @classmethod
+    def _model_namespace_declaration_plan(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+        sources: Mapping[Path, str],
+    ) -> MutableMapping[Path, list[m.Infra.SourceRewrite]] | None:
+        """Bind namespace structure and its complete native consumer cohort.
+
+        Returns:
+            Authenticated source-region edits, or refusal to change an entity.
+
+        Raises:
+            ValueError: The source declaration has no native parent scope/resource.
+
+        """
+        candidate = cls._model_namespace_candidate(project, module)
+        if candidate is None:
+            return None
+        owner, names = candidate
+        parent = owner.get_scope().parent
+        resource = module.get_resource()
+        if parent is None or resource is None:
+            message = "model namespace has no native parent scope/resource"
+            raise ValueError(message)
+        wrapped = parent.get_kind() == "Class"
+        flatten = m.Infra.FamilyWrapperFlatten(
+            project=project,
+            owner_name=parent.pyobject.get_name() if wrapped else owner.get_name(),
+            wrapper_name=owner.get_name(),
+            wrapper=parent.get_defined_names()[owner.get_name()],
+            names={name: name for name in names},
+        )
+        rewrites = cls._model_namespace_consumers(
+            project, sources, flatten, wrapped=wrapped
+        )
+        if rewrites is not None:
+            path = Path(resource.real_path)
+            rewrites.setdefault(path, []).extend(
+                cls._model_namespace_structure(sources[path], owner, wrapped=wrapped)
+            )
+        return rewrites
+
+    @classmethod
+    def _model_namespace_inherited_entity_use(
+        cls,
+        sources: Mapping[Path, str],
+        flatten: m.Infra.FamilyWrapperFlatten,
+    ) -> bool:
+        """Census inherited facade receivers as well as the declaring holder.
+
+        Returns:
+            Whether any native subclass is consumed as an entity or type.
+
+        Raises:
+            ValueError: A native subclass has no declaring parent scope.
+
+        """
+        project = flatten.project
+        target = flatten.wrapper.get_object()
+        for path in sources:
+            module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                project,
+                project.get_resource(
+                    path.relative_to(Path(project.root.real_path)).as_posix()
+                ),
+            )
+            pending = list(module.get_scope().get_scopes())
+            while pending:
+                scope = pending.pop()
+                pending.extend(scope.get_scopes())
+                owner = scope.pyobject
+                if not FlextInfraUtilitiesTypesRopeRuntime.py_class(owner) or (
+                    owner is target
+                    or target
+                    not in FlextInfraUtilitiesDeclarationPayload.class_ancestry(owner)
+                ):
+                    continue
+                parent = scope.parent
+                if parent is None:
+                    message = "model namespace subclass has no native parent scope"
+                    raise ValueError(message)
+                inherited = m.Infra.FamilyWrapperFlatten(
+                    project=project,
+                    owner_name=owner.get_name(),
+                    wrapper_name=owner.get_name(),
+                    wrapper=parent.get_defined_names()[owner.get_name()],
+                    names=flatten.names,
+                )
+                blocked, _ = cls._aggregate_consumer_rewrites(
+                    project, sources, inherited
+                )
+                if blocked:
+                    return True
+        return False
+
+    @classmethod
+    def _model_namespace_consumers(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: Mapping[Path, str],
+        flatten: m.Infra.FamilyWrapperFlatten,
+        *,
+        wrapped: bool,
+    ) -> MutableMapping[Path, list[m.Infra.SourceRewrite]] | None:
+        """Reuse the native wrapper entity-use and quoted-type census.
+
+        Returns:
+            Complete promoted-member rewrites, or refusal on entity consumption.
+
+        """
+        blocked, rewrites = cls._aggregate_consumer_rewrites(project, sources, flatten)
+        if (
+            blocked
+            or cls._model_namespace_inherited_entity_use(sources, flatten)
+            or (
+                wrapped
+                and cls._has_uncovered_wrapper_member(
+                    project, sources, flatten, rewrites
+                )
+            )
+        ):
+            return None
+        return rewrites if wrapped else {}
+
+    @classmethod
+    def _orphan_nesting_definitions(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        item: tuple[Path, str],
+        native: tuple[p.Infra.RopeProject, Path | None],
+        policy: tuple[
+            tuple[t.StrTuple, t.StrTuple, t.StrTuple], m.Infra.CodegenConfigSpec
+        ],
+    ) -> p.Result[Mapping[str, str]]:
+        """Select namespace-normalized native declarations under the same policy.
+
+        Returns:
+            Singleton or ordinary nesting destinations, with original failures.
+
+        """
+        try:
+            return (
+                r[Mapping[str, str]].ok(
+                    cls._singleton_model_definitions(native[0], item[0], native[1])
+                )
+                if native[1] is not None
+                else cls._class_nesting_definitions(
+                    workspace.convention(item[0]),
+                    item[1],
+                    project=native[0],
+                    pytest_patterns=policy[0],
+                    codegen=policy[1],
+                )
+            )
+        except Exception:
+            traceback.print_exc()
+            raise
+
+    @classmethod
+    def _orphan_nesting_destinations(
+        cls,
+        project: p.Infra.RopeProject,
+        modules: Mapping[Path, m.Infra.RopeModuleIndexEntry],
+        owned: Sequence[tuple[Path, str]],
+        planned: p.Result[Sequence[Mapping[str, str]]],
+    ) -> tuple[Mapping[Path, Mapping[str, str]], Mapping[Path, str]]:
+        """Resolve nested-owner declarations and module names for owned sources.
+
+        Returns:
+            Destinations per file and the native module name per owned path.
+
+        """
         definitions_by_file = {
             path: cls._nesting_declaration_destinations(
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                         project.get_resource(
                             path.relative_to(Path(project.root.real_path)).as_posix()
                         ),
@@ -1859,22 +2131,109 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ).get_name()
             for path, _source in owned
         }
+        return definitions_by_file, module_names
+
+    @classmethod
+    def _orphan_nesting_bindings(
+        cls,
+        definitions_by_file: Mapping[Path, Mapping[str, str]],
+        module_names: Mapping[Path, str],
+    ) -> p.Result[Mapping[str, Mapping[str, str]]]:
+        """Group nested-owner declarations per native module name.
+
+        Returns:
+            Owner bindings per module, or a failure naming the ambiguity.
+
+        """
+        result = r[Mapping[str, Mapping[str, str]]]
         bindings_by_module: MutableMapping[str, MutableMapping[str, str]] = {}
         for path, definitions in definitions_by_file.items():
             module_name = module_names[path]
             bindings = bindings_by_module.setdefault(module_name, {})
             for name, owner in definitions.items():
                 if bindings.setdefault(name, owner) != owner:
-                    project.close()
-                    return planned_edits.fail(
+                    return result.fail(
                         f"ambiguous class-nesting owner for {module_name}.{name}: "
                         f"{bindings[name]}, {owner}",
                     )
+        return result.ok(bindings_by_module)
+
+    @classmethod
+    def _plan_orphan_nesting(
+        cls,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        sources: Mapping[Path, str],
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        singleton_models: Path | None = None,
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+        """Plan all structural nesting and consumer rewrites without effects.
+
+        Returns:
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
+
+        """
+        planned_edits = r[tuple[m.Infra.SemanticMigrationEdit, ...]]
+        modules = {
+            entry.file_path.resolve(): entry for entry in rope_workspace.modules()
+        }
+        editable = cls._editable_sources(sources)
+        owned = tuple(
+            item
+            for item in editable
+            if item[0] in modules
+            and item[0].is_relative_to(Path(rope_workspace.repository_root).resolve())
+        )
+        project, pytest_patterns, lifetime = cls._orphan_nesting_context(
+            rope_workspace, sources, singleton_models
+        )
+        try:
+            namespaces = cls._model_namespace_edits(
+                project,
+                sources,
+                singleton_models or rope_workspace.repository_root,
+            )
+        except Exception:
+            lifetime.close()
+            raise
+        if namespaces:
+            lifetime.close()
+            return planned_edits.ok(namespaces)
+
+        def orphan_definitions(
+            item: tuple[Path, str],
+        ) -> p.Result[Mapping[str, str]]:
+            return cls._orphan_nesting_definitions(
+                rope_workspace,
+                item,
+                (project, singleton_models),
+                (pytest_patterns, codegen),
+            )
+
+        planned = r[Mapping[str, str]].traverse(
+            owned,
+            orphan_definitions,
+            fail_fast=False,
+        )
+        cls._singleton_model_detection_summary()
+        if planned.failure:
+            lifetime.close()
+            return planned_edits.from_failure(planned)
+        definitions_by_file, module_names = cls._orphan_nesting_destinations(
+            project, modules, owned, planned
+        )
+        bindings = cls._orphan_nesting_bindings(definitions_by_file, module_names)
+        if bindings.failure:
+            lifetime.close()
+            return planned_edits.from_failure(bindings)
+        bindings_by_module = bindings.value
         nested_names = frozenset(
-            name for bindings in bindings_by_module.values() for name in bindings
+            name
+            for module_bindings in bindings_by_module.values()
+            for name in module_bindings
         )
         if not nested_names:
-            project.close()
+            lifetime.close()
             return planned_edits.ok(())
         providers_by_module = {
             module_names[path]: project.get_resource(
@@ -1899,6 +2258,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     selection=(
                         definitions,
                         bool(definitions)
+                        and singleton_models is None
                         and cls._is_pytest_module(
                             project,
                             path,
@@ -1920,7 +2280,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 rewrite,
             )
         finally:
-            project.close()
+            lifetime.close()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverNesting"]

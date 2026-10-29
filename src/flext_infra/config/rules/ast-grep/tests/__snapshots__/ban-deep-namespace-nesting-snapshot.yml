@@ -1,6 +1,6 @@
 id: ban-deep-namespace-nesting
 snapshots:
-  "class FlextDemoModels:\n    class Demo:\n        class Order:\n            class Line:\n                total: int\n":
+  "class FlextModelsDemo:\n    class Demo:\n        class Order:\n            class Line:\n                total: int\n":
     labels:
     - source: |-
         class Line:
@@ -9,7 +9,7 @@ snapshots:
       start: 72
       end: 110
     - source: |-
-        class FlextDemoModels:
+        class FlextModelsDemo:
             class Demo:
                 class Order:
                     class Line:

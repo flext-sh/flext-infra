@@ -23,6 +23,6 @@ fix: |
   @pytest.fixture(autouse=True)
   def $FIXTURE($DIRECTORY: Path) -> Generator[None]:
       $$$BODY
-      with u.Tests.Matchers.scope(cwd=$DIRECTORY):
+      with u.scope(cwd=$DIRECTORY):
           yield
 message: Use the public restoring flext-tests scope instead of monkeypatch.chdir.

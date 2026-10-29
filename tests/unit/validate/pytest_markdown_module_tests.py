@@ -106,7 +106,7 @@ class TestsFlextInfraMarkdownModule:
                     "-p",
                     config.Infra.tooling.tools.pytest.enforcement_plugin,
                     "-p",
-                    "flext_infra._pytest_collection",
+                    "flext_infra._pytest.collection",
                 ),
                 cwd=tmp_path,
                 timeout=config.Infra.tooling.tools.pytest.slow_timeout_seconds,

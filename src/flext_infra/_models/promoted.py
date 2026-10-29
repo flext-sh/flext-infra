@@ -17,7 +17,6 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import t
 from flext_infra._models import FlextInfraModelsBase
 
 
@@ -40,7 +39,7 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
             str, m.Field(description="Default value applied when omitted")
         ] = ""
         choices: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Accepted values; empty accepts any value"),
         ] = ()
 
@@ -60,14 +59,14 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
             bool, m.Field(description="Whether the command mutates files")
         ]
         aliases: Annotated[
-            t.VariadicTuple[str], m.Field(description="Alternate command names")
+            tuple[str, ...], m.Field(description="Alternate command names")
         ]
         params: Annotated[
-            t.VariadicTuple[FlextInfraModelsPromoted.PromotedParam],
+            tuple[FlextInfraModelsPromoted.PromotedParam, ...],
             m.Field(description="Declared command parameters"),
         ]
         rules: Annotated[
-            t.VariadicTuple[str], m.Field(description="Rules the command applies")
+            tuple[str, ...], m.Field(description="Rules the command applies")
         ]
 
     class PromotedAliasTarget(m.BaseModel):
@@ -89,7 +88,7 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
             Path, m.Field(description="Interpreter of the repository environment")
         ]
         submodule_script_roots: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Scripts roots of the composed submodules"),
         ] = ()
         consumer_scripts_root: Annotated[

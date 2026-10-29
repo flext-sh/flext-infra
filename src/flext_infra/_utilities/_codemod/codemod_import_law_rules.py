@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -22,21 +23,15 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._codemod.codemod_native_package_utilities import (
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-)
-from flext_infra._utilities._codemod.codemod_native_utilities import (
-    FlextInfraUtilitiesCodemodNativeUtilities,
-)
-from flext_infra._utilities._codemod.codemod_project import (
+from flext_infra._utilities._codemod import (
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodNativePackage,
     FlextInfraUtilitiesCodemodProject,
-)
-from flext_infra._utilities._codemod.codemod_rules import (
     FlextInfraUtilitiesCodemodRules,
 )
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
@@ -50,7 +45,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
     """Render the import-layer direction law and report runtime import cycles."""
 
     @classmethod
-    def codemod_import_cycle_issues(cls, root: Path) -> t.VariadicTuple[m.Infra.Issue]:
+    def codemod_import_cycle_issues(cls, root: Path) -> tuple[m.Infra.Issue, ...]:
         """Report every module the runtime import graph places in a cycle.
 
         The cycle is a whole-graph verdict over each governed project's
@@ -92,7 +87,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
     @classmethod
     def codemod_reverse_import_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the import-layer direction law, one document per layer.
 
         Each module's layer is the import law's path role, with the native
@@ -112,10 +107,10 @@ class FlextInfraUtilitiesCodemodImportLawRules:
 
         """
         root = project.absolute()
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         layer_zero = frozenset(
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_layer_zero_files(
+            FlextInfraUtilitiesCodemodNativePackage.codemod_layer_zero_files(
                 snapshot, root
             )
         )
@@ -123,7 +118,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         facts = (
             cls._runtime_letter_ranks(order),
             cls._reverse_import_targets(ranks),
-            FlextInfraUtilitiesCodemodNativeUtilities.codemod_own_package_names(root),
+            FlextInfraUtilitiesCodemodNative.codemod_own_package_names(root),
         )
         guard = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
             FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH,
@@ -151,9 +146,9 @@ class FlextInfraUtilitiesCodemodImportLawRules:
 
     @staticmethod
     def _layer_reverse_document(
-        layer: t.Triple[str, str, t.StrSequence],
+        layer: tuple[str, str, Sequence[str]],
         document: t.JsonMapping | None,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Bind one importing layer's body to the layer's own files.
 
         Returns:
@@ -185,8 +180,8 @@ class FlextInfraUtilitiesCodemodImportLawRules:
 
     @staticmethod
     def _reverse_import_targets(
-        ranks: t.MappingKV[str, t.Pair[str, int]],
-    ) -> t.MappingKV[str, int]:
+        ranks: Mapping[str, tuple[str, int]],
+    ) -> Mapping[str, int]:
         """Rank every dotted own module a runtime import may target.
 
         A package root is no layer of its own: its letters are judged by the
@@ -206,10 +201,10 @@ class FlextInfraUtilitiesCodemodImportLawRules:
     def _settings_reverse_documents(
         cls,
         package: str,
-        zero: t.StrSequence,
-        facts: t.Triple[t.MappingKV[str, int], t.MappingKV[str, int], t.StrSequence],
+        zero: Sequence[str],
+        facts: tuple[Mapping[str, int], Mapping[str, int], Sequence[str]],
         guard: t.JsonMapping,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the layer-zero windows: up to ``u``, and protocols in settings.
 
         Returns:
@@ -258,8 +253,8 @@ class FlextInfraUtilitiesCodemodImportLawRules:
 
     @staticmethod
     def _reverse_import_document(
-        facts: t.Triple[t.MappingKV[str, int], t.MappingKV[str, int], t.StrSequence],
-        window: t.Pair[int, int],
+        facts: tuple[Mapping[str, int], Mapping[str, int], Sequence[str]],
+        window: tuple[int, int],
         guard: t.JsonMapping,
     ) -> t.JsonMapping | None:
         """Build the native body banning runtime imports above ``window[0]``.
@@ -278,9 +273,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         later_modules = sorted(
             module for module, rank in targets.items() if owner < rank < ceiling
         )
-        exact = (
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_exact_names_rule
-        )
+        exact = FlextInfraUtilitiesCodemodNativePackage.codemod_exact_names_rule
         branches: list[t.JsonValue] = []
         if later_letters:
             branches.append({
@@ -326,7 +319,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         root: Path,
-    ) -> t.MappingKV[str, t.Pair[str, int]]:
+    ) -> Mapping[str, tuple[str, int]]:
         """Rank every module of the project in the import-layer order.
 
         A module whose path names no layer holds ``services`` when one of its
@@ -376,7 +369,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
 
     @staticmethod
     def _service_candidates(
-        others: t.MappingKV[Path, ast.Module], sources: t.MappingKV[Path, ast.Module]
+        others: Mapping[Path, ast.Module], sources: Mapping[Path, ast.Module]
     ) -> frozenset[Path]:
         """Pre-elect the modules a class of which may derive from the service root.
 
@@ -389,7 +382,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
             The ``other`` modules whose classes may descend from ``s``.
 
         """
-        declared: dict[Path, list[t.Pair[str, frozenset[str]]]] = {}
+        declared: dict[Path, list[tuple[str, frozenset[str]]]] = {}
         names = {"s"}
         for path, tree in sources.items():
             names.update(
@@ -425,9 +418,9 @@ class FlextInfraUtilitiesCodemodImportLawRules:
     def _service_modules(
         cls,
         root: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         candidates: frozenset[Path],
-        trees: t.MappingKV[Path, ast.Module],
+        trees: Mapping[Path, ast.Module],
     ) -> frozenset[Path]:
         """Elect the candidate modules declaring a class of the service root.
 
@@ -530,7 +523,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         )
 
     @staticmethod
-    def _runtime_letter_ranks(order: t.StrSequence) -> t.MappingKV[str, int]:
+    def _runtime_letter_ranks(order: Sequence[str]) -> Mapping[str, int]:
         """Rank every runtime facade letter in the import-layer order.
 
         A letter naming a layer is that layer; a declared layer alias ranks

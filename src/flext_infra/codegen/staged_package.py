@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import ast
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping
 from os.path import commonpath
 from pathlib import Path
 from tempfile import TemporaryDirectory, gettempdir
 from types import MappingProxyType
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -39,8 +39,8 @@ class FlextInfraStagedPackage:
     def preview_sources[T](
         self,
         workspace: Path,
-        updates: t.MappingKV[Path, str | None],
-        validator: Callable[[Path, t.MappingKV[Path, Path]], T],
+        updates: Mapping[Path, str | None],
+        validator: Callable[[Path, Mapping[Path, Path]], T],
         *,
         options: m.Infra.CodegenSourcePreviewOptions | None = None,
     ) -> p.Result[T]:
@@ -95,7 +95,7 @@ class FlextInfraStagedPackage:
     def source_writes(
         plan: m.Infra.StageSourcePlan,
         view_root: Path,
-    ) -> t.VariadicTuple[tuple[Path, bytes, int]]:
+    ) -> tuple[tuple[Path, bytes, int], ...]:
         """Materialize the same composition for preparation and admission.
 
         Returns:
@@ -129,8 +129,8 @@ class FlextInfraStagedPackage:
     def prepare_sources(
         cls,
         plan: m.Infra.StageSourcePlan,
-        preparer: Callable[[Path, t.MappingKV[Path, Path]], p.Result[bool]],
-    ) -> p.Result[t.MappingKV[Path, str | None]]:
+        preparer: Callable[[Path, Mapping[Path, Path]], p.Result[bool]],
+    ) -> p.Result[Mapping[Path, str | None]]:
         """Prepare producer bytes in a temporary candidate tree.
 
         The preparation tree owns no runtime environment. Only desired source
@@ -140,7 +140,7 @@ class FlextInfraStagedPackage:
             Prepared updates, or the original staging or repair failure.
 
         """
-        result_type = r[t.MappingKV[Path, str | None]]
+        result_type = r[Mapping[Path, str | None]]
         cls.source_preparation_bootstrap()
         with TemporaryDirectory(prefix="flext-source-prepare-") as directory:
             root = Path(directory)
@@ -164,7 +164,7 @@ class FlextInfraStagedPackage:
 
     @staticmethod
     def _verify_unselected_writes(
-        writes: t.VariadicTuple[tuple[Path, bytes, int]],
+        writes: tuple[tuple[Path, bytes, int], ...],
         selected: frozenset[Path],
     ) -> p.Result[bool]:
         """Prove the preparer left every unselected staged input unchanged.
@@ -192,8 +192,8 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _prepared_candidate_updates(
         plan: m.Infra.StageSourcePlan,
-        candidates: t.MappingKV[Path, Path],
-    ) -> p.Result[t.MutableMappingKV[Path, str | None]]:
+        candidates: Mapping[Path, Path],
+    ) -> p.Result[MutableMapping[Path, str | None]]:
         """Read the prepared candidate bytes back as updated live sources.
 
         Args:
@@ -247,7 +247,7 @@ class FlextInfraStagedPackage:
     def plan_sources(
         cls,
         workspace: Path,
-        updates: t.MappingKV[Path, str | None],
+        updates: Mapping[Path, str | None],
         *,
         options: m.Infra.StageSourceOptions | None = None,
     ) -> p.Result[m.Infra.StageSourcePlan]:
@@ -300,9 +300,9 @@ class FlextInfraStagedPackage:
     def _source_plan_project(
         cls,
         workspace: Path,
-        updates: t.MappingKV[Path, str | None],
+        updates: Mapping[Path, str | None],
         options: m.Infra.StageSourceOptions,
-        modes: t.MappingKV[Path, int],
+        modes: Mapping[Path, int],
         source_project: p.Infra.RopeProject,
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Build the candidate plan from one Rope view of the workspace.
@@ -367,10 +367,10 @@ class FlextInfraStagedPackage:
 
     @staticmethod
     def _validated_effect_modes(
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        updates: t.MappingKV[Path, str | None],
-        modes: t.MappingKV[Path, int] | None,
-    ) -> p.Result[t.MutableMappingKV[Path, int]]:
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        updates: Mapping[Path, str | None],
+        modes: Mapping[Path, int] | None,
+    ) -> p.Result[MutableMapping[Path, int]]:
         """Validate declared file effects and merge their modes.
 
         Args:
@@ -384,7 +384,10 @@ class FlextInfraStagedPackage:
         """
         result_type = r[dict[Path, int]]
         if len({plan.path for plan in declared_files}) != len(declared_files):
-            return result_type.fail("candidate has competing declared file effects")
+            return result_type.fail(
+                "candidate has competing declared file effects; "
+                + u.Infra.codegen_duplicate_effect_diagnostic(declared_files)
+            )
         if any(plan.path not in updates for plan in declared_files):
             return result_type.fail("declared file has no desired source effect")
         effect_modes = {
@@ -402,9 +405,9 @@ class FlextInfraStagedPackage:
     @classmethod
     def _composed_scope_plan(
         cls,
-        updates: t.MappingKV[Path, str | None],
+        updates: Mapping[Path, str | None],
         options: m.Infra.StageSourceOptions,
-        modes: t.MappingKV[Path, int],
+        modes: Mapping[Path, int],
     ) -> p.Result[m.Infra.StageSourcePlan]:
         """Compose one joint plan from explicit non-overlapping scope roots.
 
@@ -457,7 +460,7 @@ class FlextInfraStagedPackage:
             if planned.failure:
                 return result_type.from_failure(planned)
             plans.append(planned.value)
-        packages: t.MutableMappingKV[str, Path] = {}
+        packages: MutableMapping[str, Path] = {}
         for plan in plans:
             for layout in plan.candidate_layouts:
                 if (
@@ -511,14 +514,14 @@ class FlextInfraStagedPackage:
     def _source_closure(
         cls,
         workspace: Path,
-        normalized: t.MappingKV[Path, str | None],
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
-        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
-        view: t.Pair[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
+        normalized: Mapping[Path, str | None],
+        inputs: tuple[m.Cli.AtomicFileState, ...],
+        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        view: tuple[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
     ) -> p.Result[
-        t.Pair[
+        tuple[
             list[m.Infra.RopeProjectLayout],
-            t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+            MutableMapping[Path, m.Cli.AtomicFileState],
         ]
     ]:
         """Elect the layouts and file states of the candidate tree.
@@ -537,25 +540,25 @@ class FlextInfraStagedPackage:
         """
         source_project, snapshot = view
         result_type = r[
-            t.Pair[
+            tuple[
                 list[m.Infra.RopeProjectLayout],
                 dict[Path, m.Cli.AtomicFileState],
             ]
         ]
         selected: list[m.Infra.RopeProjectLayout] = []
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {
+        states: MutableMapping[Path, m.Cli.AtomicFileState] = {
             state.path: state for state in inputs
         }
 
         def read_layout(
             provider: m.Infra.RopeProjectLayout,
-            owned: t.MappingKV[Path, str | None] | None,
+            owned: Mapping[Path, str | None] | None,
         ) -> p.Result[tuple[str, ...]]:
             return cls._layout_states(
                 provider, states, (source_project, snapshot), updates=owned
             )
 
-        roots: list[t.Pair[m.Infra.RopeProjectLayout, bool]] = []
+        roots: list[tuple[m.Infra.RopeProjectLayout, bool]] = []
         for path in normalized:
             resolved = cls._source_layout(path, layouts)
             if resolved.success:
@@ -595,9 +598,9 @@ class FlextInfraStagedPackage:
     def _input_layouts(
         cls,
         workspace: Path,
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
-        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
-    ) -> t.VariadicTuple[t.Pair[m.Infra.RopeProjectLayout, bool]]:
+        inputs: tuple[m.Cli.AtomicFileState, ...],
+        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+    ) -> tuple[tuple[m.Infra.RopeProjectLayout, bool], ...]:
         """Elect the read-only closure roots of the original Python observations.
 
         Installed packages (the site-packages segment of a standalone
@@ -607,7 +610,7 @@ class FlextInfraStagedPackage:
             One non-rewritten root per owned workspace Python observation.
 
         """
-        roots: list[t.Pair[m.Infra.RopeProjectLayout, bool]] = []
+        roots: list[tuple[m.Infra.RopeProjectLayout, bool]] = []
         for state in inputs:
             if (
                 state.path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES
@@ -623,11 +626,11 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _declared_source_effects(
         workspace: Path,
-        normalized: t.MappingKV[Path, str | None],
-        states: t.MappingKV[Path, m.Cli.AtomicFileState],
-        modes: t.MappingKV[Path, int],
-        declared_files: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        normalized: Mapping[Path, str | None],
+        states: Mapping[Path, m.Cli.AtomicFileState],
+        modes: Mapping[Path, int],
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Build one file effect per normalized desired source.
 
         A declared effect already carries the desired bytes and mode, so it is
@@ -674,8 +677,8 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _normalized_updates(
         workspace: Path,
-        updates: t.MappingKV[Path, str | None],
-    ) -> p.Result[t.MutableMappingKV[Path, str | None]]:
+        updates: Mapping[Path, str | None],
+    ) -> p.Result[MutableMapping[Path, str | None]]:
         """Elect one contained physical destination per desired source.
 
         Every desired destination must be a contained, physical, unambiguous
@@ -686,7 +689,7 @@ class FlextInfraStagedPackage:
 
         """
         result_type = r[dict[Path, str | None]]
-        normalized: t.MutableMappingKV[Path, str | None] = {}
+        normalized: MutableMapping[Path, str | None] = {}
         for path, content in updates.items():
             if any(item.is_symlink() for item in (path, *path.parents)):
                 return result_type.fail(f"candidate source is a symlink: {path}")
@@ -701,7 +704,7 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _source_layout(
         path: Path,
-        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
+        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
     ) -> p.Result[m.Infra.RopeProjectLayout]:
         """Resolve a source owner without replacing another package's identity.
 
@@ -750,7 +753,7 @@ class FlextInfraStagedPackage:
         workspace: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]:
+    ) -> p.Result[MutableMapping[str, m.Infra.RopeProjectLayout]]:
         """Retain Python providers independently of their generation participation.
 
         Returns:
@@ -758,14 +761,14 @@ class FlextInfraStagedPackage:
             retained provider, or the first applicability failure.
 
         """
-        result_type = r[t.MutableMappingKV[str, m.Infra.RopeProjectLayout]]
+        result_type = r[MutableMapping[str, m.Infra.RopeProjectLayout]]
         targets = u.Infra.repository_operation_targets(
             workspace,
             c.Infra.CodegenConformScope.ALL,
         )
         if targets.failure:
             return result_type.from_failure(targets)
-        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout] = {}
+        layouts: MutableMapping[str, m.Infra.RopeProjectLayout] = {}
         for target in targets.value:
             repository = target.root
             applicability = u.Infra.repository_operation_applicability(
@@ -830,7 +833,7 @@ class FlextInfraStagedPackage:
 
     @staticmethod
     def _physical_directory_paths(
-        directories: t.VariadicTuple[Path],
+        directories: tuple[Path, ...],
         source_project: p.Infra.RopeProject,
         *,
         governed: bool,
@@ -935,10 +938,10 @@ class FlextInfraStagedPackage:
     def _layout_states(
         cls,
         layout: m.Infra.RopeProjectLayout,
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-        view: t.Pair[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        view: tuple[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
         *,
-        updates: t.MappingKV[Path, str | None] | None = None,
+        updates: Mapping[Path, str | None] | None = None,
     ) -> p.Result[tuple[str, ...]]:
         """Read one layout's sources and collect their package dependencies.
 
@@ -1001,7 +1004,7 @@ class FlextInfraStagedPackage:
         source_project: p.Infra.RopeProject,
         snapshot: p.Infra.WorkspaceSnapshot | None,
         *,
-        updates: t.MappingKV[Path, str | None] | None,
+        updates: Mapping[Path, str | None] | None,
     ) -> m.Cli.AtomicFileState:
         """Read one candidate source once: the run's read, or the project's.
 
@@ -1034,14 +1037,14 @@ class FlextInfraStagedPackage:
     def _closure(
         cls,
         local: m.Infra.RopeProjectLayout,
-        layouts: t.MutableMappingKV[str, m.Infra.RopeProjectLayout],
+        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
         read: Callable[
-            [m.Infra.RopeProjectLayout, t.MappingKV[Path, str | None] | None],
+            [m.Infra.RopeProjectLayout, Mapping[Path, str | None] | None],
             p.Result[tuple[str, ...]],
         ],
         *,
-        updates: t.MappingKV[Path, str | None] | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.RopeProjectLayout]]:
+        updates: Mapping[Path, str | None] | None = None,
+    ) -> p.Result[tuple[m.Infra.RopeProjectLayout, ...]]:
         """Traverse one layout's import closure across the retained providers.
 
         Args:
@@ -1060,20 +1063,20 @@ class FlextInfraStagedPackage:
             name = queue.pop(0)
             layout = layouts[name]
             selected.append(layout)
-            owned: t.MutableMappingKV[Path, str | None] | None = None
+            owned: MutableMapping[Path, str | None] | None = None
             if updates is not None:
                 owned = {}
                 for path, content in updates.items():
                     owner = cls._source_layout(path, layouts)
                     if owner.failure:
-                        return r[
-                            t.VariadicTuple[m.Infra.RopeProjectLayout]
-                        ].from_failure(owner)
+                        return r[tuple[m.Infra.RopeProjectLayout, ...]].from_failure(
+                            owner
+                        )
                     if owner.value.project_root == layout.project_root:
                         owned[path] = content
             imported = read(layout, owned)
             if imported.failure:
-                return r[t.VariadicTuple[m.Infra.RopeProjectLayout]].from_failure(
+                return r[tuple[m.Infra.RopeProjectLayout, ...]].from_failure(
                     imported,
                 )
             for module in imported.value:
@@ -1084,12 +1087,12 @@ class FlextInfraStagedPackage:
                     and not any(item.package_name == dependency for item in selected)
                 ):
                     queue.append(dependency)
-        return r[t.VariadicTuple[m.Infra.RopeProjectLayout]].ok(tuple(selected))
+        return r[tuple[m.Infra.RopeProjectLayout, ...]].ok(tuple(selected))
 
     @staticmethod
     def _workspace_metadata_paths(
         workspace: Path,
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[tuple[Path, ...]]:
         """Name the source and selected resolver metadata from physical ownership.
 
         Workspace metadata exists only inside a Git work tree: the resolver,
@@ -1105,16 +1108,16 @@ class FlextInfraStagedPackage:
             m.Infra.GitRepoRequest(repo_root=workspace),
         )
         if inside.failure:
-            return r[t.VariadicTuple[Path]].from_failure(inside)
+            return r[tuple[Path, ...]].from_failure(inside)
         if not inside.value.value:
-            return r[t.VariadicTuple[Path]].ok(())
+            return r[tuple[Path, ...]].ok(())
         context = FlextInfraWorkspaceDetector.resolution_context(workspace)
         if context.failure:
-            return r[t.VariadicTuple[Path]].from_failure(context)
+            return r[tuple[Path, ...]].from_failure(context)
         inputs = u.Infra.load_codegen_inputs(context.value.runtime_root)
         if inputs.failure:
-            return r[t.VariadicTuple[Path]].from_failure(inputs)
-        return r[t.VariadicTuple[Path]].ok(
+            return r[tuple[Path, ...]].from_failure(inputs)
+        return r[tuple[Path, ...]].ok(
             tuple(
                 dict.fromkeys(
                     (

@@ -16,8 +16,6 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import t
-
 
 @pytest.mark.slow
 class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
@@ -29,7 +27,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         path.write_text(content, encoding="utf-8")
 
     @staticmethod
-    def _non_module_files(package_root: Path) -> t.VariadicTuple[str]:
+    def _non_module_files(package_root: Path) -> tuple[str, ...]:
         """Return files the rewrite left beside the package modules.
 
         Returns:
@@ -45,7 +43,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         )
 
     @classmethod
-    def _build_project(cls, tmp_path: Path) -> t.Pair[Path, Path]:
+    def _build_project(cls, tmp_path: Path) -> tuple[Path, Path]:
         project_root = tmp_path / "flext-demo"
         package_root = project_root / "src" / "demo_pkg"
         cls._write_file(
@@ -131,7 +129,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
                 "from __future__ import annotations\n\n"
                 "from collections.abc import Mapping\n"
                 "from typing import TypeAlias\n\n"
-                "PayloadMap: TypeAlias = t.StrMapping\n"
+                "PayloadMap: TypeAlias = Mapping[str, str]\n"
                 "value = 1\n"
             ),
         )
@@ -143,8 +141,8 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
 
         source_text = source_file.read_text(encoding="utf-8")
         typings_text = typings_file.read_text(encoding="utf-8")
-        tm.that(source_text, lacks="PayloadMap: TypeAlias = t.StrMapping")
-        tm.that(typings_text, has="type PayloadMap = t.StrMapping")
+        tm.that(source_text, lacks="PayloadMap: TypeAlias = Mapping[str, str]")
+        tm.that(typings_text, has="type PayloadMap = Mapping[str, str]")
         tm.that(typings_text, lacks="from typing import TypeAlias")
         tm.that(typings_text, has="from flext_core import t")
         tm.that(self._non_module_files(package_root), eq=())

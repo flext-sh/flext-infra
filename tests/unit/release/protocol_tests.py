@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -58,8 +59,8 @@ class TestsFlextInfraReleaseProtocol:
         @staticmethod
         def test_explicit_patch_finalization_preserves_opaque_history(
             tmp_path: Path,
-            scenario: t.Triple[str, str, str],
-            outcome: t.Pair[str, bool],
+            scenario: tuple[str, str, str],
+            outcome: tuple[str, bool],
         ) -> None:
             """A selected closure releases its line without compatibility inference."""
             current, tag, subject = scenario
@@ -172,7 +173,7 @@ class TestsFlextInfraReleaseProtocol:
     @staticmethod
     def _release_lane_workspace(
         tmp_path: Path,
-        runtime_environment: t.StrMapping | None = None,
+        runtime_environment: Mapping[str, str] | None = None,
     ) -> Path:
         """Return a pre-release workspace that can push to a local bare origin.
 
@@ -294,8 +295,8 @@ class TestsFlextInfraReleaseProtocol:
     def _lane_with_shim(
         cls,
         tmp_path: Path,
-        runtime_environment: t.StrMapping | None = None,
-    ) -> Generator[t.Triple[Path, Path, m.Infra.GitLaneOwnershipReceipt]]:
+        runtime_environment: Mapping[str, str] | None = None,
+    ) -> Generator[tuple[Path, Path, m.Infra.GitLaneOwnershipReceipt]]:
         """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
         Why: PATH is restored by the public ``env_vars_context`` facade rather
@@ -402,7 +403,7 @@ class TestsFlextInfraReleaseProtocol:
         current: str,
         tag: str,
         subject: str,
-        outcome: t.Pair[str, bool],
+        outcome: tuple[str, bool],
     ) -> None:
         """Explicit scenario policy permits patches and declared releases."""
         workspace = u.Tests.create_release_workspace(tmp_path, version=current)
@@ -437,7 +438,7 @@ class TestsFlextInfraReleaseProtocol:
         self,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
-        scenario: t.Triple[str, str, str],
+        scenario: tuple[str, str, str],
         diagnostic_fragment: str,
     ) -> None:
         """No semantic bump or newer declaration is silently clamped or downgraded."""
@@ -811,7 +812,7 @@ class TestsFlextInfraReleaseProtocol:
     def test_apply_opens_the_release_pull_request(
         self,
         tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
     ) -> None:
         """Stamp, commit on the release lane, push it, and open the pull request."""
         with self._lane_with_shim(tmp_path, hermetic_git_environment) as (
@@ -902,7 +903,7 @@ class TestsFlextInfraReleaseProtocol:
     def test_rerun_continues_the_lane_without_a_second_commit(
         self,
         tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
     ) -> None:
         """A retry from the integration branch is idempotent on the open lane."""
         with self._lane_with_shim(tmp_path, hermetic_git_environment) as (
@@ -1061,7 +1062,7 @@ class TestsFlextInfraReleaseProtocol:
         @staticmethod
         def test_merged_release_commit_is_tagged_and_pushed(
             tmp_path: Path,
-            hermetic_git_environment: t.StrMapping,
+            hermetic_git_environment: Mapping[str, str],
         ) -> None:
             """After the release pull request merges, HEAD earns its tag once."""
             with TestsFlextInfraReleaseProtocol._lane_with_shim(

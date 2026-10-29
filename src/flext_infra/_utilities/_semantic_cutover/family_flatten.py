@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
@@ -21,7 +21,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -38,8 +38,8 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
     def _family_flatten_edits(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
 
         candidates = tuple(
             path
@@ -106,7 +106,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         workspace: p.Infra.RopeWorkspaceDsl,
         project: p.Infra.RopeProject,
         path: Path,
-    ) -> t.Pair[p.Infra.RopeScopeDsl, p.Infra.RopeScopeDsl] | None:
+    ) -> tuple[p.Infra.RopeScopeDsl, p.Infra.RopeScopeDsl] | None:
         """Resolve the family owner scope and its single wrapper child.
 
         Returns:
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         root = Path(project.root.real_path)
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 project.get_resource(path.relative_to(root).as_posix()), path
             ),
         )
@@ -150,10 +150,10 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         source: str,
         path: Path,
     ) -> (
-        t.Triple[
+        tuple[
             m.Infra.LogicalStatement,
-            t.VariadicTuple[m.Infra.LogicalStatement],
-            t.Pair[int, int] | None,
+            tuple[m.Infra.LogicalStatement, ...],
+            tuple[int, int] | None,
         ]
         | None
     ):
@@ -223,7 +223,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             item for item in facts if item.line == owner_scope.get_start()
         )
         if len(
-            FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+            FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
                 owner_scope.pyobject, "family facade owner"
             ).get_superclasses()
         ) != len(
@@ -254,9 +254,9 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
     def _aggregate_consumer_rewrites(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> t.Pair[bool, MutableMapping[Path, list[m.Infra.SourceRewrite]]]:
+    ) -> tuple[bool, MutableMapping[Path, list[m.Infra.SourceRewrite]]]:
         """Collect candidate consumer rewrites for non-generated sources.
 
         Returns:
@@ -286,7 +286,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         workspace: p.Infra.RopeWorkspaceDsl,
         project: p.Infra.RopeProject,
         path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]],
     ) -> int:
 
@@ -343,9 +343,9 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
     def _has_uncovered_wrapper_member(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         flatten: m.Infra.FamilyWrapperFlatten,
-        rewrites: t.MappingKV[Path, Sequence[m.Infra.SourceRewrite]],
+        rewrites: Mapping[Path, Sequence[m.Infra.SourceRewrite]],
     ) -> bool:
         """Return whether a resolved wrapper member has no planned rewrite.
 

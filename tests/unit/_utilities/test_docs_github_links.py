@@ -18,7 +18,9 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
 
     @staticmethod
     @pytest.fixture
-    def docs_repository(tmp_path: Path) -> Path:
+    def docs_repository(
+        tmp_path: Path,
+    ) -> Path:
         """Create a real peripheral Git owner with an explicit integration contract.
 
         Returns:

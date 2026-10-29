@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Literal
 
@@ -300,7 +301,7 @@ class FlextInfraConstantsDocs:
     DOCS_AUDIT_REPORT_FILENAME: ClassVar[str] = "audit-report.md"
     DOCS_VALIDATE_SUMMARY_FILENAME: ClassVar[str] = "validate-summary.json"
     DOCS_VALIDATE_REPORT_FILENAME: ClassVar[str] = "validate-report.md"
-    DOCS_STRUCTURED_REPORT_FILENAMES: ClassVar[t.VariadicTuple[str]] = (
+    DOCS_STRUCTURED_REPORT_FILENAMES: ClassVar[tuple[str, ...]] = (
         DOCS_AUDIT_SUMMARY_FILENAME,
         DOCS_AUDIT_REPORT_FILENAME,
         DOCS_VALIDATE_SUMMARY_FILENAME,
@@ -318,7 +319,7 @@ class FlextInfraConstantsDocs:
         "tel",
     })
     DOCS_FRAGMENT_PREFIX: ClassVar[str] = "#"
-    PYTHON_FENCE_RUFF_EXTEND_IGNORE: ClassVar[t.StrSequence] = (
+    PYTHON_FENCE_RUFF_EXTEND_IGNORE: ClassVar[Sequence[str]] = (
         "undocumented-public-module",
         "undocumented-public-function",
         "undocumented-public-class",

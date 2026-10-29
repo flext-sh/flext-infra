@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenLayout
 from flext_infra.gates import FlextInfraGate
 
@@ -37,9 +37,9 @@ class FlextInfraLayoutGate(FlextInfraGate):
 
         """
         started = time.monotonic()
-        engine = FlextInfraCodegenLayout(repository_root=ctx.repository_root)
+        engine = FlextInfraCodegenLayout()
         report = engine.check_project(project_dir)
-        report_findings: t.VariadicTuple[m.Infra.LayoutFinding] = report.findings
+        report_findings: tuple[m.Infra.LayoutFinding, ...] = report.findings
         issues = tuple(
             m.Infra.Issue(
                 file=str(project_dir / finding.path),

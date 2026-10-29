@@ -12,9 +12,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
-from urllib.parse import urlparse
 
 from flext_cli import u
 from packaging.requirements import Requirement
@@ -25,15 +24,19 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyproject,
 )
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitSemanticPublishMixin,
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitWorktreeDiscovery,
+)
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
 )
 
 
-class FlextInfraUtilitiesRepository:
+class FlextInfraUtilitiesRepository(
+    FlextInfraUtilitiesGit,
+):
     """Resolve detected identity and branch policy for one governed repository."""
 
     @classmethod
@@ -104,9 +107,9 @@ class FlextInfraUtilitiesRepository:
     @classmethod
     def _rewritten_requirement_arrays(
         cls,
-        requirements: t.SequenceOf[t.JsonValue],
+        requirements: Sequence[t.JsonValue],
         migration: m.Infra.GitSourceReferenceMigration,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Rewrite every selected Git reference inside the dependency arrays.
 
         Args:
@@ -127,14 +130,14 @@ class FlextInfraUtilitiesRepository:
                     continue
                 rewritten = cls.rewrite_git_requirement_reference(original, migration)
                 if rewritten.failure:
-                    return r[t.StrSequence].from_failure(rewritten)
+                    return r[Sequence[str]].from_failure(rewritten)
                 if rewritten.value != original:
                     entries[index] = rewritten.value
                     changes.append(
                         f"Git reference {migration.source_ref} -> "
                         f"{migration.target_ref}: {Requirement(original).name}"
                     )
-        return r[t.StrSequence].ok(tuple(changes))
+        return r[Sequence[str]].ok(tuple(changes))
 
     @staticmethod
     def _git_source_tables(
@@ -172,9 +175,9 @@ class FlextInfraUtilitiesRepository:
     @classmethod
     def _rewritten_git_source_tables(
         cls,
-        tables: t.SequenceOf[t.MutableJsonMapping],
+        tables: Sequence[t.MutableJsonMapping],
         migration: m.Infra.GitSourceReferenceMigration,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Rewrite every selected Git reference inside the native source tables.
 
         Args:
@@ -194,20 +197,20 @@ class FlextInfraUtilitiesRepository:
                         continue
                     rewritten = cls._rewrite_git_source_table(name, entry, migration)
                     if rewritten.failure:
-                        return r[t.StrSequence].from_failure(rewritten)
+                        return r[Sequence[str]].from_failure(rewritten)
                     changes.extend(rewritten.value)
-        return r[t.StrSequence].ok(tuple(changes))
+        return r[Sequence[str]].ok(tuple(changes))
 
     @classmethod
     def rewrite_git_source_references(
         cls,
         payload: t.MutableJsonMapping,
         migration: m.Infra.GitSourceReferenceMigration,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Migrate only dependency arrays and native UV/Poetry Git source tables.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         rewritten_requirements = cls._rewritten_requirement_arrays(
@@ -215,14 +218,14 @@ class FlextInfraUtilitiesRepository:
             migration,
         )
         if rewritten_requirements.failure:
-            return r[t.StrSequence].from_failure(rewritten_requirements)
+            return r[Sequence[str]].from_failure(rewritten_requirements)
         rewritten_tables = cls._rewritten_git_source_tables(
             cls._git_source_tables(payload),
             migration,
         )
         if rewritten_tables.failure:
-            return r[t.StrSequence].from_failure(rewritten_tables)
-        return r[t.StrSequence].ok(
+            return r[Sequence[str]].from_failure(rewritten_tables)
+        return r[Sequence[str]].ok(
             (*rewritten_requirements.value, *rewritten_tables.value),
         )
 
@@ -232,98 +235,37 @@ class FlextInfraUtilitiesRepository:
         name: str,
         source: t.MutableJsonMapping,
         migration: m.Infra.GitSourceReferenceMigration,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Retain a native source table's selector type and all other fields.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         remote = source.get("git")
         if not isinstance(remote, str):
-            return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(())
         references = [key for key in ("branch", "rev", "tag") if key in source]
         if not any(source[key] == migration.source_ref for key in references):
-            return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(())
         if len(references) != 1:
-            return r[t.StrSequence].fail(f"ambiguous explicit Git reference for {name}")
+            return r[Sequence[str]].fail(f"ambiguous explicit Git reference for {name}")
         reference_key = references[0]
         declared = cls.declared_git_source(
             f"{name} @ {c.Infra.GIT_URL_SCHEME_PREFIX}{remote}@{migration.source_ref}",
         )
         if declared.failure:
-            return r[t.StrSequence].from_failure(declared)
+            return r[Sequence[str]].from_failure(declared)
         if not declared.value[0].startswith(migration.url_prefix):
-            return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(())
         source[reference_key] = migration.target_ref
-        return r[t.StrSequence].ok((
+        return r[Sequence[str]].ok((
             (
                 f"Git {reference_key} {migration.source_ref} -> "
                 f"{migration.target_ref}: "
                 f"{name}"
             ),
         ))
-
-    @staticmethod
-    def ref_is_commit(ref: str) -> bool:
-        """Whether one Git ref names a commit rather than an integration line.
-
-        uv.lock, written only by ``make upg``, owns every resolved commit. In a
-        generated pyproject a commit ref is projection residue that generation
-        re-renders on the family line; in a hand-authored source it is a pin
-        beside the lock and fails loudly.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        return c.Infra.GIT_COMMIT_OID_RE.fullmatch(ref) is not None
-
-    @staticmethod
-    def declared_git_source(requirement: str) -> p.Result[t.Pair[str, str]]:
-        """Parse one requirement's declared direct Git source.
-
-        Returns ``(canonical_url, ref)`` for a requirement that declares
-        ``name @ git+URL@REF``, or the empty pair when the requirement declares
-        no direct source at all. The declared line is the only authority for the
-        dependency's canonical URL and branch: canonicalization normalizes the
-        transport scheme (``ssh://``, SCP-style, ``http``) to ``https`` and
-        never invents an organization, host, or ref. A declared source that is
-        not a Git URL, or a Git URL without a ref, fails loudly. Whether a
-        commit ref is projection residue or a hand-authored pin is the
-        caller's decision (``ref_is_commit``).
-
-        Returns:
-            The resulting ``p.Result[t.Pair[str, str]]``.
-
-        """
-        requirement_part, _, _ = requirement.partition(";")
-        head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
-        if head_match is None:
-            return r[t.Pair[str, str]].fail(f"invalid requirement head: {requirement}")
-        _, at_separator, source = requirement_part.partition("@")
-        if not at_separator:
-            # Plain workspace requirement: no direct git source is declared.
-            # Success payloads are never None (flext-core result law), so the
-            # caller reads the empty pair as "no declared source".
-            return r[t.Pair[str, str]].ok(("", ""))
-        source = source.strip()
-        if not source.startswith(c.Infra.GIT_URL_SCHEME_PREFIX):
-            return r[t.Pair[str, str]].fail(
-                f"internal dependency direct source must be a git URL: {requirement}",
-            )
-        url, ref_separator, ref = source.rpartition("@")
-        url = url.removeprefix(c.Infra.GIT_URL_SCHEME_PREFIX).strip()
-        ref = ref.strip()
-        if not ref_separator or not ref:
-            return r[t.Pair[str, str]].fail(
-                f"internal dependency git source must declare a branch or ref: "
-                f"{requirement}",
-            )
-        canonical = FlextInfraUtilitiesRepository._canonical_https_url(url)
-        if canonical.failure:
-            return r[t.Pair[str, str]].from_failure(canonical)
-        return r[t.Pair[str, str]].ok((canonical.value, ref))
 
     @classmethod
     def configured_repository_ref(
@@ -411,7 +353,7 @@ class FlextInfraUtilitiesRepository:
             canonical = cls._canonical_https_url(bootstrap_source.url)
             if canonical.failure:
                 return r[m.Infra.WorkspaceIntegrationSpec].from_failure(canonical)
-            detected = r[t.Pair[str, str]].ok((canonical.value, bootstrap_source.ref))
+            detected = r[tuple[str, str]].ok((canonical.value, bootstrap_source.ref))
         else:
             detected = cls._detected_infra_source(
                 repository_root=repository_root,
@@ -431,7 +373,7 @@ class FlextInfraUtilitiesRepository:
                 f"infrastructure source must be the {distribution} repository: {url}",
             )
         organization, separator, _ = (
-            FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_remote_identity(
+            FlextInfraUtilitiesGitWorktreeDiscovery.git_remote_identity(
                 url,
             ).partition("/")
         )
@@ -485,14 +427,14 @@ class FlextInfraUtilitiesRepository:
         repository_root: Path,
         distribution: str,
         policy_branch: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Detect the infrastructure distribution's canonical URL and ref.
 
         Returns:
-            The resulting ``p.Result[t.Pair[str, str]]``.
+            The resulting ``p.Result[tuple[str, str]]``.
 
         """
-        metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+        metadata = FlextInfraUtilitiesPyprojectConform.read_project_metadata_result(
             repository_root,
         )
         if metadata.success and metadata.value.project.name == distribution:
@@ -512,7 +454,7 @@ class FlextInfraUtilitiesRepository:
             distribution=distribution,
         )
         if manifest.failure:
-            return r[t.Pair[str, str]].from_failure(manifest)
+            return r[tuple[str, str]].from_failure(manifest)
         if manifest.value:
             return cls.resolve_integration_branch(
                 repository_root,
@@ -523,7 +465,7 @@ class FlextInfraUtilitiesRepository:
         )
         if declared_line.failure or declared_line.value[0]:
             return declared_line
-        return r[t.Pair[str, str]].fail(
+        return r[tuple[str, str]].fail(
             f"infrastructure repository {distribution} is undeclared by this "
             f"checkout: no project identity, no direct git dependency line, "
             f"no workspace manifest entry, and no manifest flext_source: "
@@ -535,21 +477,21 @@ class FlextInfraUtilitiesRepository:
         cls,
         repository_root: Path,
         policy_branch: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Resolve an infrastructure checkout's published origin and branch.
 
         Returns:
             The validated origin URL and integration branch.
 
         """
-        origin = FlextInfraUtilitiesGitSemanticPublishMixin.git_remote_url(
+        origin = FlextInfraUtilitiesGitSemanticPublish.git_remote_url(
             m.Infra.GitRemoteUrlRequest(
                 repo_root=repository_root,
                 remote=c.Infra.GIT_DEFAULT_REMOTE,
             ),
         )
         if origin.failure or not origin.value.text.strip():
-            return r[t.Pair[str, str]].fail(
+            return r[tuple[str, str]].fail(
                 "the infrastructure checkout must publish a Git origin: "
                 f"{repository_root}",
             )
@@ -558,7 +500,7 @@ class FlextInfraUtilitiesRepository:
             policy_branch=policy_branch,
         )
         if branch.failure:
-            return r[t.Pair[str, str]].from_failure(branch)
+            return r[tuple[str, str]].from_failure(branch)
         return cls._canonical_https_url(origin.value.text.strip()).map(
             lambda url: (url, branch.value),
         )
@@ -570,7 +512,7 @@ class FlextInfraUtilitiesRepository:
         *,
         distribution: str,
         policy_branch: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Return the own declaration's explicit dependency integration source.
 
         A scaffold source declares the line directly. An immutable candidate
@@ -585,7 +527,7 @@ class FlextInfraUtilitiesRepository:
             repository_root,
         )
         if loaded.failure:
-            return r[t.Pair[str, str]].from_failure(loaded)
+            return r[tuple[str, str]].from_failure(loaded)
         repository = loaded.value.spec.repository
         project = repository.project
         if project is None or project.flext_source is None:
@@ -596,14 +538,14 @@ class FlextInfraUtilitiesRepository:
                 == canonicalize_name(distribution)
             )
             if not candidates:
-                return r[t.Pair[str, str]].ok(("", ""))
+                return r[tuple[str, str]].ok(("", ""))
             return cls._canonical_https_url(candidates[0].url).map(
                 lambda url: (url, policy_branch),
             )
         parsed = cls.declared_git_source(project.flext_source)
         if parsed.failure or not cls.ref_is_commit(parsed.value[1]):
             return parsed
-        return r[t.Pair[str, str]].fail(
+        return r[tuple[str, str]].fail(
             "project.flext_source declares an integration line, never a commit "
             f"(uv.lock records it and only `make upg` moves it): "
             f"{project.flext_source}",
@@ -623,35 +565,6 @@ class FlextInfraUtilitiesRepository:
         """
         return cls._canonical_https_url(url.strip())
 
-    @staticmethod
-    def _canonical_https_url(url: str) -> p.Result[str]:
-        """Canonicalize one Git remote URL to its HTTPS form, fail loud.
-
-        Returns:
-            The resulting ``p.Result[str]``.
-
-        """
-        if url.startswith("https://"):
-            candidate = url
-        elif url.startswith("http://"):
-            candidate = f"https://{url.removeprefix('http://')}"
-        elif url.startswith("ssh://"):
-            candidate = f"https://{url.removeprefix('ssh://').removeprefix('git@')}"
-        elif url.startswith("git@") and ":" in url:
-            host, _, path = url.removeprefix("git@").partition(":")
-            candidate = f"https://{host}/{path}"
-        else:
-            return r[str].fail(f"git remote url is not canonicalizable to HTTPS: {url}")
-        # A URL without a host (``https:///repo``) or without a repository
-        # path (``https://host``) carries no origin identity: reject it as a
-        # declared remote rather than letting a generated source point at it.
-        parsed = urlparse(candidate)
-        if not parsed.netloc or not parsed.path.strip("/"):
-            return r[str].fail(
-                f"git remote url must name a host and repository path: {url}",
-            )
-        return r[str].ok(candidate)
-
     @classmethod
     def _declared_dependency_lines(
         cls,
@@ -659,21 +572,21 @@ class FlextInfraUtilitiesRepository:
         *,
         pyproject_path: Path,
         prefix: str,
-    ) -> p.Result[t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]]]:
+    ) -> p.Result[MutableMapping[tuple[str, str], tuple[str, str]]]:
         """Collect the declared ``<prefix>*`` line sources of one pyproject.
 
         Returns:
             Sources keyed by normalized distribution and marker.
 
         """
-        lines: t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]] = {}
+        lines: MutableMapping[tuple[str, str], tuple[str, str]] = {}
         providers: set[str] = set()
         for requirement in cls._dependency_requirements(payload):
             parsed = cls._declared_requirement_line(requirement, prefix)
             if parsed.failure:
-                return r[
-                    t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]]
-                ].from_failure(parsed)
+                return r[MutableMapping[tuple[str, str], tuple[str, str]]].from_failure(
+                    parsed
+                )
             if parsed.value[0]:
                 declaration = Requirement(requirement)
                 key = (
@@ -684,16 +597,14 @@ class FlextInfraUtilitiesRepository:
                     parsed.value[0].removesuffix(c.GIT_DIR_NAME).rsplit("/", 1)[0]
                 )
                 if len(providers) > 1 or (key in lines and lines[key] != parsed.value):
-                    return r[
-                        t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]]
-                    ].fail(
+                    return r[MutableMapping[tuple[str, str], tuple[str, str]]].fail(
                         f"{pyproject_path.name} declares conflicting "
                         f"{prefix}* line sources (one provider per family, "
                         f"one source per distribution and marker): "
                         f"{requirement}",
                     )
                 lines[key] = parsed.value
-        return r[t.MutableMappingKV[t.Pair[str, str], t.Pair[str, str]]].ok(
+        return r[MutableMapping[tuple[str, str], tuple[str, str]]].ok(
             lines,
         )
 
@@ -705,7 +616,7 @@ class FlextInfraUtilitiesRepository:
         pyproject_path: Path,
         distribution: str,
         policy_branch: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Resolve the workspace-membership source, or an empty payload.
 
         uv workspace membership IS a declaration: a bare-name requirement of
@@ -739,7 +650,7 @@ class FlextInfraUtilitiesRepository:
                         ),
                     )
         # No declared source: absence is an EMPTY payload, never None.
-        return r[t.Pair[str, str]].ok(("", ""))
+        return r[tuple[str, str]].ok(("", ""))
 
     @classmethod
     def _declared_dependency_source(
@@ -749,7 +660,7 @@ class FlextInfraUtilitiesRepository:
         distribution: str,
         prefix: str,
         policy_branch: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Return the exact distribution source declared by the pyproject.
 
         Internal dependencies share a provider, not necessarily a ref.
@@ -762,18 +673,18 @@ class FlextInfraUtilitiesRepository:
             The exact distribution's source, or its declared workspace source.
 
         """
-        payload = FlextInfraUtilitiesPyproject.declared_dependency_payload(
+        payload = FlextInfraUtilitiesPyprojectConform.declared_dependency_payload(
             pyproject_path,
         )
         if payload.failure:
-            return r[t.Pair[str, str]].from_failure(payload)
+            return r[tuple[str, str]].from_failure(payload)
         lines = cls._declared_dependency_lines(
             payload.value,
             pyproject_path=pyproject_path,
             prefix=prefix,
         )
         if lines.failure:
-            return r[t.Pair[str, str]].from_failure(lines)
+            return r[tuple[str, str]].from_failure(lines)
         sources = {
             source
             for (name, _), source in lines.value.items()
@@ -781,12 +692,12 @@ class FlextInfraUtilitiesRepository:
             and not cls.ref_is_commit(source[1])
         }
         if len(sources) > 1:
-            return r[t.Pair[str, str]].fail(
+            return r[tuple[str, str]].fail(
                 f"{pyproject_path.name} declares ambiguous {distribution} authority",
             )
         if sources:
             (source,) = sources
-            return r[t.Pair[str, str]].ok(source)
+            return r[tuple[str, str]].ok(source)
         return cls._declared_workspace_source(
             payload.value,
             pyproject_path=pyproject_path,
@@ -823,7 +734,7 @@ class FlextInfraUtilitiesRepository:
         cls,
         requirement: str,
         prefix: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Validate one family member's provenance before collecting its line.
 
         Returns:
@@ -834,7 +745,7 @@ class FlextInfraUtilitiesRepository:
         if name is not None:
             name = canonicalize_name(name)
         if name is None or not name.startswith(prefix):
-            return r[t.Pair[str, str]].ok(("", ""))
+            return r[tuple[str, str]].ok(("", ""))
         parsed = cls.declared_git_source(requirement)
         if parsed.failure:
             return parsed
@@ -842,16 +753,16 @@ class FlextInfraUtilitiesRepository:
         if not url:
             return parsed
         if not url.startswith("https://"):
-            return r[t.Pair[str, str]].fail(
+            return r[tuple[str, str]].fail(
                 f"declared internal dependency provenance must be HTTPS: {requirement}",
             )
         repo_slug = url.removesuffix(c.GIT_DIR_NAME).rsplit("/", 1)[-1]
         if repo_slug.replace("_", "-") != name:
-            return r[t.Pair[str, str]].fail(
+            return r[tuple[str, str]].fail(
                 f"internal dependency source must be the {name} repository: "
                 f"{requirement}",
             )
-        return r[t.Pair[str, str]].ok(parsed.value)
+        return r[tuple[str, str]].ok(parsed.value)
 
     @classmethod
     def _git_declared_distribution_url(
@@ -868,7 +779,7 @@ class FlextInfraUtilitiesRepository:
         """
         result_type = r[str]
         declarations = (
-            FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_submodule_declarations(
+            FlextInfraUtilitiesGitWorktreeDiscovery.git_submodule_declarations(
                 repository_root,
             )
         )
@@ -891,7 +802,7 @@ class FlextInfraUtilitiesRepository:
                 return result_type.fail(str(error), exception=error)
             if not (member_root / c.PYPROJECT_FILENAME).is_file():
                 continue
-            metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+            metadata = FlextInfraUtilitiesPyprojectConform.read_project_metadata_result(
                 member_root,
             )
             if metadata.failure:
@@ -917,7 +828,7 @@ class FlextInfraUtilitiesRepository:
         """
         url = repository.url.strip()
         organization, separator, _ = (
-            FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_remote_identity(
+            FlextInfraUtilitiesGitWorktreeDiscovery.git_remote_identity(
                 url,
             ).partition("/")
         )
@@ -953,7 +864,7 @@ class FlextInfraUtilitiesRepository:
         if provider.failure:
             return r[str].from_failure(provider)
         owner, separator, name = (
-            FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_remote_identity(
+            FlextInfraUtilitiesGitWorktreeDiscovery.git_remote_identity(
                 repository.url,
             ).partition("/")
         )
@@ -1068,7 +979,7 @@ class FlextInfraUtilitiesRepository:
         if baseline.success:
             return r[str].ok(baseline.value)
         return r[str].fail(
-            "integration branch must be published by Git: "
+            "integration line must be published by Git: "
             f"{repository_root}: {baseline.error}",
         )
 
@@ -1149,25 +1060,47 @@ class FlextInfraUtilitiesRepository:
 
         One declared line, one Git fact: the workspace declares its versioned
         integration line (``codegen.branch_policy.integration_branch``), and
-        this check reads the live remote-tracking ref for exactly that line.
-        A repository that does not publish it has no integration baseline and
+        this check reads the live ref for exactly that name — either the
+        published remote-tracking branch or the recorded release tag of the
+        same name (a consumer may pin a recorded ``v0.12.x`` tag). A name
+        published as both branch and tag is ambiguous and fails loud, and a
+        repository that publishes neither has no integration baseline and
         fails loud — there is no name list to guess from and no default to
         invent.
 
         Returns:
-            The declared integration branch the repository publishes.
+            The declared integration line the repository publishes.
 
         """
-        reference = f"refs/remotes/origin/{declared_branch}"
-        resolved = FlextInfraUtilitiesGitSemanticPublishMixin.git_ref_exists(
-            m.Infra.GitRefRequest(repo_root=repository_root, reference=reference),
+        branch_probe = FlextInfraUtilitiesGitSemanticPublish.git_ref_exists(
+            m.Infra.GitRefRequest(
+                repo_root=repository_root,
+                reference=f"refs/remotes/origin/{declared_branch}",
+            ),
         )
-        if resolved.success and resolved.value.value:
+        if branch_probe.failure:
+            return r[str].from_failure(branch_probe)
+        tag_probe = FlextInfraUtilitiesGitSemanticPublish.git_ref_exists(
+            m.Infra.GitRefRequest(
+                repo_root=repository_root,
+                reference=f"refs/tags/{declared_branch}",
+            ),
+        )
+        if tag_probe.failure:
+            return r[str].from_failure(tag_probe)
+        branch_exists = branch_probe.value.value
+        tag_exists = tag_probe.value.value
+        if branch_exists and tag_exists:
+            return r[str].fail(
+                "declared integration line is ambiguous: published as both "
+                f"branch and tag ({declared_branch}): {repository_root}",
+            )
+        if branch_exists or tag_exists:
             return r[str].ok(declared_branch)
         return r[str].fail(
-            "repository publishes no integration branch "
+            "repository publishes no integration branch or release tag "
             f"(declared {declared_branch}): {repository_root}",
         )
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesRepository",)
+__all__: tuple[str, ...] = ("FlextInfraUtilitiesRepository",)

@@ -7,16 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import threading
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
-    FlextInfraUtilitiesGitSemanticIndexMixin,
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitSemanticIndex,
 )
 
 
-class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin):
+class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitSemanticIndex):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     class ScopeFacts:
@@ -31,14 +32,14 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         def __init__(self) -> None:
             """Start with no fact read; each one is read on first request."""
             self._lock = threading.Lock()
-            self._repo_roots: t.MutableMappingKV[str, str | None] = {}
-            self._repo_paths: t.MutableMappingKV[str, t.StrSequence] = {}
-            self._scopes: t.MutableMappingKV[str, t.StrSequence | None] = {}
+            self._repo_roots: MutableMapping[str, str | None] = {}
+            self._repo_paths: MutableMapping[str, Sequence[str]] = {}
+            self._scopes: MutableMapping[str, Sequence[str] | None] = {}
 
         def tracked_scope_relative_paths(
             self,
             scope_root: Path,
-        ) -> t.StrSequence | None:
+        ) -> Sequence[str] | None:
             """Return tracked scope-relative paths, read once per scope.
 
             Returns:
@@ -46,14 +47,14 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
 
             """
             scope = str(scope_root.resolve())
-            mixin = FlextInfraUtilitiesGitScopeMixin
+            mixin = FlextInfraUtilitiesGitScope
             with self._lock:
                 if scope in self._scopes:
                     return self._scopes[scope]
                 if scope not in self._repo_roots:
                     self._repo_roots[scope] = mixin.git_repo_root(scope)
                 repo_root = self._repo_roots[scope]
-                scoped: t.StrSequence | None = None
+                scoped: Sequence[str] | None = None
                 if repo_root is not None:
                     if repo_root not in self._repo_paths:
                         self._repo_paths[repo_root] = (
@@ -85,7 +86,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
 
         """
         resolved_scope = Path(scope_root).resolve()
-        probe = FlextInfraUtilitiesGitSemanticIdentityMixin.git_is_inside_work_tree
+        probe = FlextInfraUtilitiesGitSemanticIdentity.git_is_inside_work_tree
         probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))
         if probed.failure:
             raise OSError(probed.error or "failed to probe Git work tree")
@@ -101,7 +102,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         return str(Path(working_tree_dir).resolve())
 
     @classmethod
-    def git_tracked_repo_relative_paths(cls, repo_root: str) -> t.StrSequence:
+    def git_tracked_repo_relative_paths(cls, repo_root: str) -> Sequence[str]:
         """Return literal index and dirty paths, preserving every filename byte.
 
         Porcelain v1 with NUL termination disables filename quoting. Disabling
@@ -139,8 +140,8 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
     def scope_relative_paths(
         scope_root: str,
         repo_root: str,
-        repo_relative_paths: t.StrSequence,
-    ) -> t.StrSequence:
+        repo_relative_paths: Sequence[str],
+    ) -> Sequence[str]:
         """Project repository-relative tracked paths onto one scope.
 
         The Git index and porcelain status identify paths relative to the
@@ -167,7 +168,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         return tuple(sorted(scope_paths))
 
     @classmethod
-    def _git_tracked_scope_relative_paths(cls, scope_root: str) -> t.StrSequence | None:
+    def _git_tracked_scope_relative_paths(cls, scope_root: str) -> Sequence[str] | None:
         """Return tracked paths relative to ``scope_root``; ``None`` outside Git.
 
         The index and status union is the sole tracked authority: a git-ignored
@@ -188,7 +189,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         )
 
     @classmethod
-    def git_source_scope_paths(cls, scope_root: Path) -> t.VariadicTuple[Path] | None:
+    def git_source_scope_paths(cls, scope_root: Path) -> tuple[Path, ...] | None:
         """Inventory tracked and unpublished source paths without following links.
 
         Args:
@@ -227,7 +228,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         return tuple(sorted(selected))
 
     @classmethod
-    def git_tracked_scope_paths(cls, scope_root: Path) -> t.SequenceOf[Path] | None:
+    def git_tracked_scope_paths(cls, scope_root: Path) -> Sequence[Path] | None:
         """Return tracked files under one scope as absolute paths when Git is active.
 
         Returns:
@@ -294,4 +295,4 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         return f"{relative_prefix}{c.PYPROJECT_FILENAME}" in tracked_paths
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitScopeMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitScope"]

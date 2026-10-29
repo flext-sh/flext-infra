@@ -7,23 +7,23 @@
 # src/flext_infra/_constants/codegen_lazy.py, value "flext_core.lazy").
 id: ban-consumer-submodule-import
 valid:
-  - from flext_cli import FlextCli
-  - from flext_cli._models import Model
-  - import flext_cli
-  - import flext_cli._models
-  - from flext_core.lazy import build_lazy_import_map, install_lazy_exports
-  - import flext_core.lazy
-  # The canonical public compose leaves are the sanctioned static surface.
-  - from flext_cli.models import FlextCliModels
-  - import flext_cli.models
-  # A runtime alias belongs to ENFORCE-002, not to this rule.
-  - from flext_cli.services import u
-  # A library module path is no facade package's layout.
-  - from rich.console import Console
-  # The own package's modules are its own layout.
-  - from ai_hub.services import AiHubService
+- from flext_cli import FlextCli
+- from flext_cli._models import Model
+- import flext_cli
+- import flext_cli._models
+- from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+- import flext_core.lazy
+# The canonical public compose leaves are the sanctioned static surface.
+- from flext_cli.models import FlextCliModels
+- import flext_cli.models
+# A runtime alias belongs to ENFORCE-002, not to this rule.
+- from flext_cli.services import u
+# A library module path is no facade package's layout.
+- from rich.console import Console
+# The own package's modules are its own layout.
+- from ai_hub.services import AiHubService
 invalid:
-  - from flext_cli.services.app import FlextCliApp
-  - from flext_cli.services.app import FlextCliApp as App
-  - import flext_cli.services.app
-  - import flext_cli.services.app as app
+- from flext_cli.services.app import FlextCliApp
+- from flext_cli.services.app import FlextCliApp as App
+- import flext_cli.services.app
+- import flext_cli.services.app as app

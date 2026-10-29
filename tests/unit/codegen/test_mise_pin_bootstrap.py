@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlsplit
@@ -19,7 +20,7 @@ import pytest
 from packaging.version import Version
 
 from flext_infra import config, m
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraMisePinBootstrap:
@@ -40,11 +41,11 @@ class TestsFlextInfraMisePinBootstrap:
         ]
 
     @staticmethod
-    def environment(root: Path) -> t.StrMapping:
+    def environment(root: Path) -> Mapping[str, str]:
         """Confine native Mise configuration, installs, state and caches.
 
         Returns:
-            The resulting ``t.StrMapping``.
+            The resulting ``Mapping[str, str]``.
 
         """
         return {

@@ -11,22 +11,22 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsScaffold:
+class FlextInfraModelsConfigScaffold:
     """Project scaffold specification models."""
 
-    class ScaffoldBuildSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ScaffoldBuildSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Configured Python build backend for newly scaffolded projects."""
 
         backend: Annotated[t.NonEmptyStr, m.Field(description="PEP 517 backend")]
         requirements: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Build-system requirements"),
         ]
 
-    class ScaffoldConfigBaseSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ScaffoldConfigBaseSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One upstream config base a generated ``_config.py`` may compose."""
 
         distribution: Annotated[
@@ -42,20 +42,20 @@ class FlextInfraConfigModelsScaffold:
             m.Field(description="Config base class name"),
         ]
 
-    class ScaffoldProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ScaffoldProjectSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Project metadata policy for newly scaffolded distributions."""
 
         readme: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 readme path")]
         supported_licenses: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Licenses with complete templates"),
         ]
         classifiers: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Default PyPI classifiers"),
         ]
         keywords: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Default project keywords"),
         ] = ()
         copyright_year: Annotated[
@@ -70,20 +70,20 @@ class FlextInfraConfigModelsScaffold:
             ),
         ]
         dev: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Canonical development and validation requirements",
             ),
         ]
         retired_dev: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description="Development distributions retired from managed groups"
             ),
         ] = ()
         required_flext_dev: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -92,7 +92,7 @@ class FlextInfraConfigModelsScaffold:
             ),
         ]
         config_bases: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldConfigBaseSpec],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -105,8 +105,8 @@ class FlextInfraConfigModelsScaffold:
         @m.field_validator("dev", "required_flext_dev")
         @classmethod
         def validate_requirements(
-            cls, requirements: t.VariadicTuple[str]
-        ) -> t.VariadicTuple[str]:
+            cls, requirements: tuple[str, ...]
+        ) -> tuple[str, ...]:
             """Validate declared development policy before any dependency writer runs.
 
             Returns:
@@ -117,7 +117,7 @@ class FlextInfraConfigModelsScaffold:
                 t.Infra.REQUIREMENT_NAME_ADAPTER.validate_python(requirement)
             return requirements
 
-    class ScaffoldPingExampleSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ScaffoldPingExampleSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Values for the functional ping example created only by codegen new."""
 
         command_name: Annotated[
@@ -142,16 +142,16 @@ class FlextInfraConfigModelsScaffold:
             m.Field(description="Disabled ping response"),
         ]
 
-    class ScaffoldGitignoreSectionSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ScaffoldGitignoreSectionSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One configured section of the generated Git ignore policy."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Section heading")]
         patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Ignored path patterns"),
         ]
         profiles: Annotated[
-            t.VariadicTuple[c.Infra.MakeProfile],
+            tuple[c.Infra.MakeProfile, ...],
             m.Field(
                 description=(
                     "Make profiles this section applies to; empty means every "
@@ -164,7 +164,7 @@ class FlextInfraConfigModelsScaffold:
             ),
         ] = ()
 
-    class ScaffoldDependencyProfileSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ScaffoldDependencyProfileSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Dependencies selected by the declared upstream FLEXT facade."""
 
         upstream: Annotated[
@@ -181,19 +181,19 @@ class FlextInfraConfigModelsScaffold:
             ),
         ] = None
         runtime: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Runtime requirements"),
         ]
         codegen: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Code-generation requirements"),
         ] = ()
 
         @m.field_validator("runtime", "codegen")
         @classmethod
         def validate_requirements(
-            cls, requirements: t.VariadicTuple[str]
-        ) -> t.VariadicTuple[str]:
+            cls, requirements: tuple[str, ...]
+        ) -> tuple[str, ...]:
             """Reject invalid PEP 508 policy before any dependency writer runs.
 
             Args:
@@ -207,27 +207,25 @@ class FlextInfraConfigModelsScaffold:
                 t.Infra.REQUIREMENT_NAME_ADAPTER.validate_python(requirement)
             return requirements
 
-    class ScaffoldSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ScaffoldSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
 
         build: Annotated[
-            FlextInfraConfigModelsScaffold.ScaffoldBuildSpec,
+            FlextInfraModelsConfigScaffold.ScaffoldBuildSpec,
             m.Field(description="Build-system policy"),
         ]
         project: Annotated[
-            FlextInfraConfigModelsScaffold.ScaffoldProjectSpec,
+            FlextInfraModelsConfigScaffold.ScaffoldProjectSpec,
             m.Field(description="Project metadata and dependency policy"),
         ]
         ping_example: Annotated[
-            FlextInfraConfigModelsScaffold.ScaffoldPingExampleSpec,
+            FlextInfraModelsConfigScaffold.ScaffoldPingExampleSpec,
             m.Field(description="Functional scaffold example"),
         ]
         gitignore_sections: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
-            ],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(min_length=1, description="Generated Git ignore sections"),
         ]
 
 
-__all__: list[str] = ["FlextInfraConfigModelsScaffold"]
+__all__: list[str] = ["FlextInfraModelsConfigScaffold"]

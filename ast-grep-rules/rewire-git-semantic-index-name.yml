@@ -2,8 +2,8 @@ id: rewire-git-semantic-index-name
 language: Python
 severity: error
 rule:
-  pattern: FlextInfraUtilitiesGitSemanticMixin
-fix: FlextInfraUtilitiesGitSemanticIndexMixin
+  pattern: FlextInfraUtilitiesGitSemantic
+fix: FlextInfraUtilitiesGitSemanticIndex
 message: Rewire consumers to the canonical Git semantic index class.
 ignores:
-  - "**/_utilities/_git/semantic.py"
+- "**/_utilities/_git/semantic.py"

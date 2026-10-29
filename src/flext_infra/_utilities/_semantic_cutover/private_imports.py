@@ -7,15 +7,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import m, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesPrivateImportAncestry as ImportAncestry,
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesPrivateImportValidation,
+    FlextInfraUtilitiesProjectDiscovery,
 )
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
@@ -38,22 +41,8 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     """
 
     @staticmethod
-    def _type_checking_ancestors(tree: ast.Module) -> t.MappingKV[ast.AST, ast.AST]:
-        """Map every node of one module tree to its parent.
-
-        Returns:
-            The resulting ``t.MappingKV[ast.AST, ast.AST]``.
-
-        """
-        return {
-            child: parent
-            for parent in ast.walk(tree)
-            for child in ast.iter_child_nodes(parent)
-        }
-
-    @staticmethod
     def _is_type_only(
-        parents: t.MappingKV[ast.AST, ast.AST],
+        parents: Mapping[int, t.Infra.RopeAstNode],
         node: ast.AST,
     ) -> bool:
         """Report whether one node sits inside a ``TYPE_CHECKING`` boundary.
@@ -62,7 +51,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             The resulting ``bool``.
 
         """
-        parent = parents.get(node)
+        parent = parents.get(id(node))
         while parent is not None:
             if (
                 isinstance(parent, ast.If)
@@ -70,7 +59,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
                 and parent.test.id == "TYPE_CHECKING"
             ):
                 return True
-            parent = parents.get(parent)
+            parent = parents.get(id(parent))
         return False
 
     @staticmethod
@@ -118,7 +107,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             Facades required outside a ``TYPE_CHECKING`` boundary.
 
         """
-        parents = cls._type_checking_ancestors(tree)
+        parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
         runtime_aliases: set[str] = set()
         for node in ast.walk(tree):
             if not isinstance(node, ast.ImportFrom) or node.module is None:
@@ -130,12 +119,12 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     @classmethod
     def _cross_owner_statements(
         cls,
-        live_findings: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> t.VariadicTuple[str]:
+        live_findings: Sequence[m.Infra.ModOccurrence],
+    ) -> tuple[str, ...]:
         """Return the cross-owner private import texts among live findings.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         cross_owner_statements: list[str] = []
@@ -155,14 +144,16 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     @classmethod
     def _resolved_facades(
         cls,
-        cross_owner_statements: t.VariadicTuple[str],
-        sources: t.MappingKV[Path, str],
-    ) -> t.Pair[
-        t.MappingKV[str, t.VariadicTuple[t.Quad[ast.Module, str, str, str]]],
-        t.Triple[
-            t.MappingKV[str, set[str]],
-            t.MappingKV[str, set[str]],
-            t.MappingKV[str, t.VariadicTuple[str]],
+        cross_owner_statements: tuple[str, ...],
+        sources: Mapping[Path, str],
+        *,
+        project: p.Infra.RopeProject,
+    ) -> tuple[
+        Mapping[str, tuple[tuple[ast.Module, str, str, str], ...]],
+        tuple[
+            Mapping[str, set[str]],
+            Mapping[str, set[str]],
+            Mapping[str, tuple[str, ...]],
         ],
     ]:
         """Resolve facade inventories for the cross-owner import statements.
@@ -172,27 +163,25 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             ``(export bindings, declared exports, class bases)``.
 
         """
-        facades: t.MappingKV[
+        facades: Mapping[
             str,
-            t.VariadicTuple[t.Quad[ast.Module, str, str, str]],
+            tuple[tuple[ast.Module, str, str, str], ...],
         ] = {}
-        bindings: t.Triple[
-            t.MappingKV[str, set[str]],
-            t.MappingKV[str, set[str]],
-            t.MappingKV[str, t.VariadicTuple[str]],
+        bindings: tuple[
+            Mapping[str, set[str]],
+            Mapping[str, set[str]],
+            Mapping[str, tuple[str, ...]],
         ] = ({}, {}, {})
         if not cross_owner_statements:
             return facades, bindings
         discovery_sources = FlextInfraUtilitiesPrivateImportFacades.reachable_sources(
-            FlextInfraUtilitiesPrivateImportFacades.source_modules(
-                sources,
-                cross_owner_statements,
-            ),
+            FlextInfraUtilitiesPrivateImportFacades.source_modules(sources),
             cross_owner_statements,
         )
         export_bindings, declared_exports = (
             FlextInfraUtilitiesPrivateImportFacades.declared_exports(
                 discovery_sources,
+                project=project,
             )
         )
         return (
@@ -200,7 +189,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             (
                 export_bindings,
                 declared_exports,
-                ImportAncestry.class_bases(discovery_sources),
+                FlextInfraUtilitiesPrivateImportAncestry.class_bases(discovery_sources),
             ),
         )
 
@@ -209,14 +198,14 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         package: str,
         qualified: str,
         imported: ast.alias,
-        facades: t.MappingKV[
+        facades: Mapping[
             str,
-            t.VariadicTuple[t.Quad[ast.Module, str, str, str]],
+            tuple[tuple[ast.Module, str, str, str], ...],
         ],
-        bindings: t.Triple[
-            t.MappingKV[str, set[str]],
-            t.MappingKV[str, set[str]],
-            t.MappingKV[str, t.VariadicTuple[str]],
+        bindings: tuple[
+            Mapping[str, set[str]],
+            Mapping[str, set[str]],
+            Mapping[str, tuple[str, ...]],
         ],
     ) -> str | None:
         """Resolve one imported private name to its public facade reference.
@@ -237,23 +226,68 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             class_bases=class_bases,
         )
 
+    @staticmethod
+    def _finding_is_own_family_facade(
+        root: Path,
+        file_path: Path,
+        private_module: str,
+    ) -> bool:
+        """Report whether the consumer declares the imported private family facade.
+
+        The import law binds the owning family facade (for example
+        ``typings.py`` over ``_typings``) to import through its family
+        package, so that own-family import is canonical and never a
+        cross-owner finding; rerouting it to the namespace root would create
+        a reverse runtime dependency cycle.
+
+        Returns:
+            Whether the consumer is the imported family's own facade module
+            inside the same namespace.
+
+        """
+        namespace = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+            file_path.parent,
+            project_root=root,
+        )
+        if not namespace or not private_module.startswith(f"{namespace}."):
+            return False
+        private_directory = next(
+            (
+                part
+                for part in private_module.split(".")
+                if part.startswith("_") and not part.startswith("__")
+            ),
+            "",
+        )
+        family = (
+            FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                private_directory,
+            )
+            if private_directory
+            else None
+        )
+        consumer = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
+            file_path.name,
+        )
+        return family is not None and family == consumer
+
     @classmethod
     def _finding_import_specs(
         cls,
         root: Path,
-        live_findings: t.SequenceOf[m.Infra.ModOccurrence],
-        facades: t.MappingKV[
+        live_findings: Sequence[m.Infra.ModOccurrence],
+        facades: Mapping[
             str,
-            t.VariadicTuple[t.Quad[ast.Module, str, str, str]],
+            tuple[tuple[ast.Module, str, str, str], ...],
         ],
-        bindings: t.Triple[
-            t.MappingKV[str, set[str]],
-            t.MappingKV[str, set[str]],
-            t.MappingKV[str, t.VariadicTuple[str]],
+        bindings: tuple[
+            Mapping[str, set[str]],
+            Mapping[str, set[str]],
+            Mapping[str, tuple[str, ...]],
         ],
-    ) -> t.Pair[
-        t.MappingKV[Path, list[t.Infra.PrivateImportSpec]],
-        t.MappingKV[Path, t.MappingKV[str, t.Pair[str, str]]],
+    ) -> tuple[
+        Mapping[Path, list[t.Infra.PrivateImportSpec]],
+        Mapping[Path, Mapping[str, tuple[str, str]]],
     ]:
         """Resolve every live finding into its per-file import specs.
 
@@ -266,7 +300,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
 
         """
         export_bindings, declared_exports, _class_bases = bindings
-        direct_specs: MutableMapping[Path, MutableMapping[str, t.Pair[str, str]]] = {}
+        direct_specs: MutableMapping[Path, MutableMapping[str, tuple[str, str]]] = {}
         specs: MutableMapping[Path, list[t.Infra.PrivateImportSpec]] = {}
         for finding in live_findings:
             statement = cls._finding_statement(finding)
@@ -279,6 +313,8 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
             if package is None:
                 continue
             file_path = (root / finding.file).resolve()
+            if cls._finding_is_own_family_facade(root, file_path, private_module):
+                continue
             file_specs = specs.setdefault(file_path, [])
             for imported in statement.names:
                 if imported.name == "*":
@@ -321,8 +357,10 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     def _private_import_references(
         cls,
         root: Path,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
+        sources: Mapping[Path, str],
+        findings: Sequence[m.Infra.ModOccurrence],
+        *,
+        project: p.Infra.RopeProject,
     ) -> t.Infra.PrivateImportReferences:
         """Resolve every reported cross-owner private import to its public owner.
 
@@ -339,6 +377,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         facades, bindings = cls._resolved_facades(
             cross_owner_statements,
             sources,
+            project=project,
         )
         specs, direct_specs = cls._finding_import_specs(
             root,
@@ -352,7 +391,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     def _finding_is_live(
         cls,
         root: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         finding: m.Infra.ModOccurrence,
     ) -> bool:
         """Reject a preflight import already moved by an earlier semantic phase.
@@ -385,20 +424,23 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     def _plan_private_imports(
         cls,
         root: Path,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+        findings: Sequence[m.Infra.ModOccurrence],
+        *,
+        project: p.Infra.RopeProject,
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan binding-aware public import rewrites.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit], ...],``.
 
         """
-        planned_edits = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        planned_edits = r[tuple[m.Infra.SemanticMigrationEdit, ...]]
         specs, direct_specs, facades = cls._private_import_references(
             root,
             sources,
             findings,
+            project=project,
         )
         missing = sorted(str(path) for path in specs if path not in sources)
         if missing:
@@ -426,9 +468,9 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         file_path: Path,
         source: str,
         *,
-        file_specs: t.SequenceOf[t.Infra.PrivateImportSpec],
-        direct_specs: t.MappingKV[str, t.Pair[str, str]],
-        facades: t.MappingKV[str, t.VariadicTuple[t.Quad[ast.Module, str, str, str]]],
+        file_specs: Sequence[t.Infra.PrivateImportSpec],
+        direct_specs: Mapping[str, tuple[str, str]],
+        facades: Mapping[str, tuple[tuple[ast.Module, str, str, str], ...]],
     ) -> t.Infra.TransformResult:
         """Rewrite one module's private imports and prove zero residue.
 

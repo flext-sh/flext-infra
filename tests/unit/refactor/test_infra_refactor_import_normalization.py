@@ -397,7 +397,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
         module.write_text(normalized, encoding="utf-8")
         tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=project,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(project,)),
@@ -679,7 +679,7 @@ class TestsFlextInfraRefactorImportNormalization(
             "from demo_pkg.typings import t\n"
             "\n"
             "\n"
-            "def run(value: t.StrSequence) -> object:\n"
+            "def run(value: Sequence[str]) -> object:\n"
             "    return r.ok(value)\n",
         )
 

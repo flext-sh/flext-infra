@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 import pytest
@@ -134,10 +135,19 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         tm.that(self._top_level(nested), eq=(owner, "__all__"))
         exports = tm.instance(ast.parse(nested).body[-1], ast.AnnAssign)
         tm.that(ast.unparse(exports.annotation), eq="list[str]")
-        tm.that(
-            u.Infra.module_assignment_strings_source(nested, c.Infra.DUNDER_ALL),
-            eq=(owner,),
-        )
+        with u.Infra.facade_source_project(root, planned_sources={module: nested}) as (
+            project,
+            _sources,
+        ):
+            native = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(module.relative_to(root).as_posix())
+                )
+            )
+            tm.that(
+                u.Infra.module_assignment_strings_source(native, c.Infra.DUNDER_ALL),
+                eq=(owner,),
+            )
         for fragment in expected:
             tm.that(
                 nested,
@@ -680,7 +690,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         """Cold imports preserve lexical shadows, wildcard identities and payloads."""
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         source_root = root / c.Infra.DEFAULT_SRC_DIR
-        sources: t.MutableMappingKV[Path, str] = {}
+        sources: MutableMapping[Path, str] = {}
         for package, owner, value in (("left", "Left", 11), ("right", "Right", 29)):
             directory = source_root / package
             tm.ok(u.Cli.ensure_dir(directory))

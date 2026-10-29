@@ -13,12 +13,12 @@ snapshots:
       style: primary
       start: 16
       end: 94
-  "class Spec:\n    items: Annotated[t.StrSequence, m.Field(default_factory=tuple)]\n":
+  "class Spec:\n    items: Annotated[Sequence[str], m.Field(default_factory=tuple)]\n":
     fixed: |
       class Spec:
-          items: t.StrSequence = m.Field(default_factory=tuple)
+          items: Sequence[str] = m.Field(default_factory=tuple)
     labels:
-    - source: "items: Annotated[t.StrSequence, m.Field(default_factory=tuple)]"
+    - source: "items: Annotated[Sequence[str], m.Field(default_factory=tuple)]"
       style: primary
       start: 16
       end: 79

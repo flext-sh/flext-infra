@@ -1,16 +1,16 @@
 id: target-ldap-test-public-sink-contract
 snapshots:
-  "def consume(sink: Sinks.FlextTargetLdapModels.OrganizationalUnitsSink) -> None: pass":
+  "def consume(sink: Sinks.FlextModelsTargetLdap.OrganizationalUnitsSink) -> None: pass":
     fixed: "def consume(sink: p.TargetLdap.Sink) -> None: pass"
     labels:
-    - source: Sinks.FlextTargetLdapModels.OrganizationalUnitsSink
+    - source: Sinks.FlextModelsTargetLdap.OrganizationalUnitsSink
       style: primary
       start: 18
       end: 69
-  "def consume(sink: Sinks.FlextTargetLdapModels.UsersSink) -> None: pass":
+  "def consume(sink: Sinks.FlextModelsTargetLdap.UsersSink) -> None: pass":
     fixed: "def consume(sink: p.TargetLdap.Sink) -> None: pass"
     labels:
-    - source: Sinks.FlextTargetLdapModels.UsersSink
+    - source: Sinks.FlextModelsTargetLdap.UsersSink
       style: primary
       start: 18
       end: 55

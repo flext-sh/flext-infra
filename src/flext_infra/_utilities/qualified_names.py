@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
@@ -37,9 +38,9 @@ class FlextInfraUtilitiesQualifiedNames:
         cls,
         source: str,
         owner: str,
-        paths: t.Pair[str, str],
+        paths: tuple[str, str],
         *,
-        member_target: Callable[[str], t.Pair[str, str] | None] | None = None,
+        member_target: Callable[[str], tuple[str, str] | None] | None = None,
     ) -> str:
         """Rewire proven imported names to an authenticated public member.
 
@@ -70,8 +71,8 @@ class FlextInfraUtilitiesQualifiedNames:
         def __init__(
             self,
             context: CodemodContext,
-            identity: t.Triple[str, str, str],
-            member_target: Callable[[str], t.Pair[str, str] | None] | None,
+            identity: tuple[str, str, str],
+            member_target: Callable[[str], tuple[str, str] | None] | None,
         ) -> None:
             super().__init__()
             self.context = context
@@ -200,7 +201,7 @@ class FlextInfraUtilitiesQualifiedNames:
             self,
             original_node: t.Infra.Cst.Name | t.Infra.Cst.Attribute,
             updated_node: t.Infra.Cst.BaseExpression,
-            target: t.Pair[str, str],
+            target: tuple[str, str],
         ) -> t.Infra.Cst.BaseExpression:
             names = tuple(self.get_metadata(QualifiedNameProvider, original_node, ()))
             if self.member_target is None and not any(
@@ -259,8 +260,8 @@ class FlextInfraUtilitiesQualifiedNames:
 
     @staticmethod
     def prove_import_root(
-        names: t.VariadicTuple[QualifiedName],
-        roots: t.VariadicTuple[QualifiedName],
+        names: tuple[QualifiedName, ...],
+        roots: tuple[QualifiedName, ...],
     ) -> frozenset[QualifiedName]:
         """Require imported attribute identities to agree with lexical root bindings.
 
@@ -360,14 +361,14 @@ class FlextInfraUtilitiesQualifiedNames:
 
     @staticmethod
     def normalized_import_aliases(
-        aliases: t.SequenceOf[t.Infra.Cst.ImportAlias],
+        aliases: Sequence[t.Infra.Cst.ImportAlias],
         *,
         parenthesized: bool,
-    ) -> t.VariadicTuple[t.Infra.Cst.ImportAlias]:
+    ) -> tuple[t.Infra.Cst.ImportAlias, ...]:
         """Repair separators after import aliases were dropped or rewritten.
 
         Returns:
-            The resulting ``t.VariadicTuple[cst.ImportAlias]``.
+            The resulting ``tuple[cst.ImportAlias, ...]``.
 
         """
         last_index = len(aliases) - 1

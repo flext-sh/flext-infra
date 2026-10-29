@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra
-from tests import t, tm, u
+from tests import tm, u
 
 
 class TestsFlextInfraDeclarationPayload:
@@ -19,7 +19,7 @@ class TestsFlextInfraDeclarationPayload:
 
     @staticmethod
     def test_same_named_declarations_use_captured_occurrence(
-        declaration_workspace: t.Pair[Path, Path],
+        declaration_workspace: tuple[Path, Path],
     ) -> None:
         """Resolve each nested declaration in its own native class scope."""
         root, package = declaration_workspace
@@ -346,7 +346,7 @@ class TestsFlextInfraDeclarationPayload:
         ],
     )
     def test_native_model_identity(
-        declaration_workspace: t.Pair[Path, Path],
+        declaration_workspace: tuple[Path, Path],
         definition: str,
         *,
         accepted: bool,
@@ -439,7 +439,7 @@ class TestsFlextInfraDeclarationPayload:
         ],
     )
     def test_native_protocol_identity(
-        declaration_workspace: t.Pair[Path, Path],
+        declaration_workspace: tuple[Path, Path],
         definition: str,
         *,
         accepted: bool,

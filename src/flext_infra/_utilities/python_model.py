@@ -13,14 +13,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator, MutableMapping
+from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 
 
 class FlextInfraUtilitiesPythonModel:
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesPythonModel:
     @staticmethod
     def python_model_run(
         source_project: p.Infra.RopeProject,
-        module_files: t.MappingKV[str, Path],
+        module_files: Mapping[str, Path],
         *,
         module_facts: MutableMapping[
             t.Infra.RopeNativeParsedModule, m.Infra.PythonModuleFacts
@@ -46,7 +46,6 @@ class FlextInfraUtilitiesPythonModel:
             source_project=source_project,
             module_files=module_files,
             modules=module_facts if module_facts is not None else {},
-            ancestors={},
             project_notices={},
         )
 
@@ -251,7 +250,7 @@ class FlextInfraUtilitiesPythonModel:
                 yield from cls._python_model_statements(child)
 
     @staticmethod
-    def _python_model_assigned(node: ast.Assign | ast.AnnAssign) -> t.StrSequence:
+    def _python_model_assigned(node: ast.Assign | ast.AnnAssign) -> Sequence[str]:
         """Return the plain names one assignment binds.
 
         An unpacking or subscript target binds no static name, so the whole
@@ -267,7 +266,7 @@ class FlextInfraUtilitiesPythonModel:
         return tuple(target.id for target in targets if isinstance(target, ast.Name))
 
     @classmethod
-    def _python_model_class_exports(cls, node: ast.ClassDef) -> t.StrSequence | None:
+    def _python_model_class_exports(cls, node: ast.ClassDef) -> Sequence[str] | None:
         """Return the class-level ``__all__`` a class body declares.
 
         Returns:
@@ -320,7 +319,7 @@ class FlextInfraUtilitiesPythonModel:
             return [None]
         if isinstance(value, ast.Starred):
             return cls._python_model_entries(value.value)
-        parts: t.SequenceOf[ast.expr]
+        parts: Sequence[ast.expr]
         if isinstance(value, ast.BinOp):
             parts = (value.left, value.right)
         elif isinstance(value, (ast.List, ast.Set, ast.Tuple)):
@@ -337,8 +336,8 @@ class FlextInfraUtilitiesPythonModel:
 
     @staticmethod
     def _python_model_literal(
-        entries: t.SequenceOf[str | None] | None,
-    ) -> t.StrSequence | None:
+        entries: Sequence[str | None] | None,
+    ) -> Sequence[str] | None:
         """Normalize declared entries: all literal, or empty when any is not.
 
         Returns:
@@ -381,55 +380,13 @@ class FlextInfraUtilitiesPythonModel:
             The module facts, or ``None`` for a name without a Python source.
 
         """
-        path = cls.python_model_locate(run, name)
+        path = run.module_files.get(name)
         return None if path is None else cls.python_model_module_at(run, path, name)
-
-    @classmethod
-    def python_model_locate(cls, run: m.Infra.PythonModelRun, name: str) -> Path | None:
-        """Resolve a dotted module name: indexed sources, then installed packages.
-
-        Returns:
-            The module's source file, or ``None`` when no source declares it.
-
-        """
-        indexed = run.module_files.get(name)
-        if indexed is not None:
-            return indexed
-        head, *rest = name.split(".")
-        folder = cls.python_model_package_dir(head)
-        if folder is None:
-            return None
-        folder = folder.joinpath(*rest)
-        return next(
-            (
-                candidate
-                for candidate in (
-                    folder / c.Infra.INIT_PY,
-                    folder.with_suffix(c.Infra.EXT_PYTHON),
-                )
-                if run.source_project.source_query(candidate, "isfile")
-            ),
-            None,
-        )
-
-    @staticmethod
-    def python_model_package_dir(name: str) -> Path | None:
-        """Return the installed package directory of a dotted package name.
-
-        Returns:
-            The package directory, or ``None`` for a plain module or unknown name.
-
-        """
-        return (
-            FlextInfraUtilitiesDiscovery.declared_package_dir(name)
-            if all(part.isidentifier() for part in name.split("."))
-            else None
-        )
 
     @staticmethod
     def python_model_exports(
         module: m.Infra.PythonModuleFacts,
-    ) -> t.StrSequence | None:
+    ) -> Sequence[str] | None:
         """Return the explicit ``__all__`` names, ``None`` if absent.
 
         A single root class owning ``__all__`` declares the module's exports
@@ -450,7 +407,7 @@ class FlextInfraUtilitiesPythonModel:
     @staticmethod
     def python_model_implicit_exports(
         module: m.Infra.PythonModuleFacts,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return the classes and assignments a module binds itself.
 
         Returns:
@@ -464,38 +421,6 @@ class FlextInfraUtilitiesPythonModel:
         )
 
     @staticmethod
-    def python_model_members(module: m.Infra.PythonModuleFacts) -> frozenset[str]:
-        """Return every name a module binds, defined or imported.
-
-        Returns:
-            The module's bound names.
-
-        """
-        return frozenset(module.members)
-
-    @staticmethod
-    def python_model_imports(module: m.Infra.PythonModuleFacts) -> t.StrMapping:
-        """Return every imported name with its dotted import target.
-
-        Returns:
-            The import targets keyed by local name.
-
-        """
-        return module.imports
-
-    @staticmethod
-    def python_model_import_target(module: m.Infra.PythonModuleFacts, name: str) -> str:
-        """Return the dotted target a name is imported from.
-
-        Returns:
-            The import target, or ``""`` when the module binds ``name`` itself.
-
-        """
-        return (
-            module.imports.get(name, "") if module.members.get(name) == "alias" else ""
-        )
-
-    @staticmethod
     def python_model_defines(module: m.Infra.PythonModuleFacts, name: str) -> bool:
         """Return whether a module binds ``name`` itself (not through an import).
 
@@ -504,18 +429,6 @@ class FlextInfraUtilitiesPythonModel:
 
         """
         return module.members.get(name) not in {None, "alias"}
-
-    @staticmethod
-    def python_model_class_bases(
-        module: m.Infra.PythonModuleFacts,
-    ) -> t.MappingKV[str, t.StrSequence]:
-        """Return each top-level class with its base expressions as written.
-
-        Returns:
-            The base expressions keyed by class name.
-
-        """
-        return module.classes
 
     @staticmethod
     def python_model_value_root(module: m.Infra.PythonModuleFacts, name: str) -> str:
@@ -559,7 +472,7 @@ class FlextInfraUtilitiesPythonModel:
     @classmethod
     def python_model_facade_owner(
         cls, module: m.Infra.PythonModuleFacts
-    ) -> t.StrPair | None:
+    ) -> tuple[str, str] | None:
         """Return the published ``(alias, class)`` facade pair of one module.
 
         Returns:
@@ -585,59 +498,71 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def python_model_resolve(cls, run: m.Infra.PythonModelRun, dotted: str) -> str:
-        """Follow import bindings from a dotted name to its defining module.
+        """Resolve the defining identity through the invocation's native model.
 
         Returns:
-            The canonical ``module.name`` path, or ``dotted`` when unresolvable.
+            The canonical module/name path, or the unelected source identity.
+
+        Raises:
+            TypeError: If the elected binding has no named native declaration.
 
         """
-        seen: set[str] = set()
-        while dotted not in seen:
-            seen.add(dotted)
-            module_name, _, name = dotted.rpartition(".")
-            module = cls.python_model_module(run, module_name) if module_name else None
-            target = (
-                "" if module is None else cls.python_model_import_target(module, name)
-            )
-            if not target:
-                return dotted
-            dotted = target
-        return dotted
+        module_name, _, name = dotted.rpartition(".")
+        path = run.module_files.get(module_name)
+        if path is None:
+            return dotted
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            run.source_project,
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                run.source_project, path
+            ),
+        )
+        value = module.get_attribute(name).get_object()
+        if not isinstance(value, p.Infra.RopeNamedObject):
+            msg = f"published binding has no native declaration: {dotted}"
+            raise TypeError(msg)
+        owner = value.get_module()
+        if owner is None:
+            msg = f"published declaration has no native module: {dotted}"
+            raise TypeError(msg)
+        return f"{owner.get_name()}.{value.get_name()}"
 
     @classmethod
     def python_model_ancestors(
         cls, run: m.Infra.PythonModelRun, dotted: str
     ) -> frozenset[str]:
-        """Return the canonical paths of every class a class inherits from.
-
-        Local bases resolve to their module; bases bound to no import or local
-        class stay unresolved and are omitted.
+        """Read transitive class ancestry from the invocation's native objects.
 
         Returns:
             The transitive base class paths of ``dotted``.
 
         """
-        cached = run.ancestors.get(dotted)
-        if cached is not None:
-            return cached
-        run.ancestors[dotted] = frozenset()
         module_name, _, name = dotted.rpartition(".")
-        module = cls.python_model_module(run, module_name) if module_name else None
-        if module is None:
+        path = run.module_files.get(module_name)
+        if path is None:
             return frozenset()
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            run.source_project,
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                run.source_project, path
+            ),
+        )
+        pending = [module.get_attribute(name).get_object()]
+        visited: set[int] = set()
         found: set[str] = set()
-        for base in module.classes.get(name, ()):
-            head, _, tail = base.partition(".")
-            target = module.imports.get(head) or (
-                f"{module_name}.{head}" if head in module.members else ""
-            )
-            if target:
-                resolved = cls.python_model_resolve(
-                    run, f"{target}.{tail}" if tail else target
-                )
-                found.update((resolved, *cls.python_model_ancestors(run, resolved)))
-        run.ancestors[dotted] = frozenset(found)
-        return run.ancestors[dotted]
+        while pending:
+            value = pending.pop()
+            if id(value) in visited:
+                continue
+            visited.add(id(value))
+            if isinstance(value, p.Infra.RopeClassObject):
+                for base in value.get_superclasses():
+                    if isinstance(base, p.Infra.RopeNamedObject):
+                        owner = base.get_module()
+                        if owner is not None:
+                            found.add(f"{owner.get_name()}.{base.get_name()}")
+                    pending.append(base)
+        return frozenset(found)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPythonModel"]

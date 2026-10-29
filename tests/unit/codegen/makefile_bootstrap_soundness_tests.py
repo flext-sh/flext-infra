@@ -9,13 +9,14 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from shlex import quote
 
 import pytest
 
 from flext_infra import config, workspace
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 from tests.unit.codegen import test_mise_pin_bootstrap
 
 
@@ -374,7 +375,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     @staticmethod
     def _runtime_context_probe(
         project: Path,
-        env: t.StrMapping,
+        env: Mapping[str, str],
         *,
         cwd: Path,
     ) -> m.Infra.WorkspaceRuntimeContext:

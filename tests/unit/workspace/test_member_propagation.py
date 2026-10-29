@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -21,7 +22,7 @@ import pytest
 
 from flext_infra import FlextInfraCli, infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -37,7 +38,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
     SETTLED = "fixture-beta"
     MEMBERS = (CHANGED, SETTLED)
 
-    def _template(self, tmp_path: Path, settled: t.StrSequence) -> Path:
+    def _template(self, tmp_path: Path, settled: Sequence[str]) -> Path:
         """Return the declared workspace with ``settled`` members conformed.
 
         Declaring members and settling some is this class's arrange phase, not
@@ -96,17 +97,17 @@ class TestsFlextInfraWorkspaceMemberPropagation:
         self,
         tmp_path: Path,
         *,
-        settled: t.StrSequence,
-        hermetic: t.StrMapping,
-        external: t.SequenceOf[t.Pair[str, Path]] = (),
-    ) -> Generator[t.Pair[Path, Path]]:
+        settled: Sequence[str],
+        hermetic: Mapping[str, str],
+        external: Sequence[tuple[str, Path]] = (),
+    ) -> Generator[tuple[Path, Path]]:
         """Yield a clone of the workspace whose ``settled`` members are propagated.
 
         ``external`` carries the declared identity and bare origin of each
         repository published outside the workspace, routed like the members.
 
         Yields:
-            Each ``t.Pair[Path, Path]``.
+            Each ``tuple[Path, Path]``.
 
         """
         # Dependency reads use the run's local mirrors without resolving locks.
@@ -134,7 +135,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
                 yield root, gh_log
 
     @staticmethod
-    def _publish_to_local_origin(member: Path, remote_root: Path) -> t.Pair[str, Path]:
+    def _publish_to_local_origin(member: Path, remote_root: Path) -> tuple[str, Path]:
         """Push to a local bare origin while fetching from the declared identity.
 
         Returns:
@@ -216,7 +217,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
     def test_changed_member_gets_one_lane_and_settled_member_nothing(
         self,
         tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
     ) -> None:
         """Only the member whose projections change is proposed, exactly once."""
         with self._workspace(
@@ -265,7 +266,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
     def test_rerun_commits_nothing_new(
         self,
         tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
     ) -> None:
         """A second run continues the open lane and changes no published tip."""
         with self._workspace(
@@ -288,7 +289,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
     def test_failing_member_stops_the_run(
         self,
         tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
     ) -> None:
         """The first member failure ends the run before any later member."""
         with self._workspace(
@@ -314,7 +315,7 @@ class TestsFlextInfraWorkspaceMemberPropagation:
     def test_external_consumer_lane_runs_its_own_verbs(
         self,
         tmp_path: Path,
-        hermetic_git_environment: t.StrMapping,
+        hermetic_git_environment: Mapping[str, str],
     ) -> None:
         """A declared external consumer advances its lane through its make verbs."""
         consumer_root = tmp_path / "consumer"

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, MutableSequence
 from typing import TYPE_CHECKING
 
 from flext_cli import u
@@ -25,16 +26,16 @@ class FlextInfraUtilitiesPromotedCommands(FlextInfraUtilitiesPromotedWorkspace):
     @staticmethod
     def promoted_command_headers(
         verb_dir: Path,
-    ) -> t.MappingKV[Path, t.JsonMapping | c.Infra.PromotedRegistryError]:
+    ) -> Mapping[Path, t.JsonMapping | c.Infra.PromotedRegistryError]:
         """Parse every candidate header of one verb directory.
 
         Returns:
-            The resulting ``t.MappingKV[Path, t.JsonMapping |
+            The resulting ``Mapping[Path, t.JsonMapping |
                 c.Infra.PromotedRegistryError]``.
 
         """
         header = c.Infra.PromotedHeader
-        headers: t.MutableMappingKV[
+        headers: MutableMapping[
             Path,
             t.JsonMapping | c.Infra.PromotedRegistryError,
         ] = {}
@@ -105,7 +106,7 @@ class FlextInfraUtilitiesPromotedCommands(FlextInfraUtilitiesPromotedWorkspace):
         params_raw = data.get(key.PARAMS, [])
         if not isinstance(params_raw, list):
             cls.promoted_fail(message.PARAMS_NOT_LIST, path=path)
-        params: t.MutableSequenceOf[m.Infra.PromotedParam] = []
+        params: MutableSequence[m.Infra.PromotedParam] = []
         for item in params_raw:
             if not isinstance(item, dict):
                 cls.promoted_fail(message.PARAMS_NOT_TABLE, path=path)
@@ -152,7 +153,7 @@ class FlextInfraUtilitiesPromotedCommands(FlextInfraUtilitiesPromotedWorkspace):
     @classmethod
     def _promoted_text(
         cls,
-        data: t.MappingKV[str, t.JsonValue],
+        data: Mapping[str, t.JsonValue],
         key: str,
         path: Path,
     ) -> str:
@@ -177,7 +178,7 @@ class FlextInfraUtilitiesPromotedCommands(FlextInfraUtilitiesPromotedWorkspace):
         values: t.JsonValue,
         key: str,
         path: Path,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Return one optional header list of non-blank stripped strings.
 
         Returns:

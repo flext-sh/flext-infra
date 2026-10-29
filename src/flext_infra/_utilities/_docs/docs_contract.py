@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence, Sequence
 from html import unescape
 from typing import TYPE_CHECKING
 
@@ -19,7 +19,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities._docs.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -66,11 +66,11 @@ class FlextInfraUtilitiesDocsContract:
         return after_toc
 
     @classmethod
-    def docs_contract_update_toc(cls, content: str) -> t.StrIntPair:
+    def docs_contract_update_toc(cls, content: str) -> tuple[str, int]:
         """Normalize the managed table of contents in Markdown content.
 
         Returns:
-            The resulting ``t.StrIntPair``.
+            The resulting ``tuple[str, int]``.
 
         """
         original = content
@@ -187,7 +187,7 @@ class FlextInfraUtilitiesDocsContract:
         rendered = FlextInfraUtilitiesDocsContract._docs_contract_headings(
             content, "2-3"
         )
-        items: t.MutableSequenceOf[str] = []
+        items: MutableSequence[str] = []
         FlextInfraUtilitiesDocsContract._docs_contract_toc_items(
             rendered.toc_tokens,
             items,
@@ -199,8 +199,8 @@ class FlextInfraUtilitiesDocsContract:
 
     @staticmethod
     def _docs_contract_toc_items(
-        tokens: t.SequenceOf[m.Infra.DocsTocToken],
-        items: t.MutableSequenceOf[str],
+        tokens: Sequence[m.Infra.DocsTocToken],
+        items: MutableSequence[str],
         depth: int = 0,
     ) -> None:
         """Serialize rendered TOC labels with the formatter's Markdown escapes."""

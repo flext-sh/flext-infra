@@ -6,10 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import u
-
-from flext_infra import c, codegen, deps, infra, m, p, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra import c, codegen, deps, infra, m, p, settings, u
+from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
 class FlextInfraCodegenRoutes:
@@ -23,10 +21,15 @@ class FlextInfraCodegenRoutes:
             The lock upgrade result, or its first native failure.
 
         """
-        return deps.FlextInfraLockIntegrityVerifier.upgrade_lock(request, u.Cli)
+        return deps.FlextInfraLockIntegrityVerifier.upgrade_lock(
+            request,
+            u.Cli,
+            file_publisher=u.Infra,
+            packages=settings.Infra.upgrade_packages,
+        )
 
     @staticmethod
-    def check_routes() -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+    def check_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Build the check group's native model and handler bindings.
 
         Returns:
@@ -60,7 +63,7 @@ class FlextInfraCodegenRoutes:
     @staticmethod
     def codegen_routes(
         *, command: str | None = None
-    ) -> t.VariadicTuple[p.Cli.ResultCommandRoute]:
+    ) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the codegen group's native model and handler bindings.
 
         Returns:
@@ -178,7 +181,7 @@ class FlextInfraCodegenRoutes:
         )
 
     @staticmethod
-    def deps_routes() -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
+    def deps_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Build the dependency group's native model and handler bindings.
 
         Returns:
@@ -191,7 +194,7 @@ class FlextInfraCodegenRoutes:
                 "Upgrade the elected native UV and Mise locks without installing",
                 m.Infra.WorkspaceRequest,
                 FlextInfraCodegenRoutes.execute_upgrade_lock,
-                "native UV and Mise locks upgraded and verified",
+                "native dependency resolution and lock verification completed",
             ),
             (
                 "detect",

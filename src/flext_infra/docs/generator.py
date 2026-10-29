@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, t, u
-from flext_infra.docs import FlextInfraDocGeneratorBundleMixin, FlextInfraDocServiceBase
+from flext_infra import c, m, r, u
+from flext_infra.docs import FlextInfraDocServiceBase, FlextInfraDocsGeneratorBundle
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 class FlextInfraDocGenerator(
     FlextInfraDocServiceBase[m.Infra.DocsPhaseReports],
-    FlextInfraDocGeneratorBundleMixin,
+    FlextInfraDocsGeneratorBundle,
 ):
     """Generate managed docs artifacts from package exports and docstrings."""
 
@@ -46,14 +47,14 @@ class FlextInfraDocGenerator(
     def generate(
         self,
         request: m.Infra.DocsGenerateRequest,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Render, plan and publish generated docs through the shared publisher.
 
         Returns:
             Published reports, or the original failure.
 
         """
-        report_type = r[t.SequenceOf[m.Infra.DocsPhaseReport]]
+        report_type = r[Sequence[m.Infra.DocsPhaseReport]]
         prepared = self._prepare_request(request)
         if prepared.failure:
             return report_type.from_failure(prepared)
@@ -70,11 +71,11 @@ class FlextInfraDocGenerator(
         self,
         bundle: m.Infra.DocsGenerationBundle,
         written: frozenset[Path],
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Report only destinations written by the shared publisher.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
 
         """
         reports: list[m.Infra.DocsPhaseReport] = []
@@ -125,28 +126,32 @@ class FlextInfraDocGenerator(
                 reason=report.reason,
             )
             reports.append(report)
-        return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok(tuple(reports))
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(tuple(reports))
 
     @staticmethod
     def plan_files(
         bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Bind one prepared render bundle to exact live destination states.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]``.
+            The resulting ``p.Result[tuple[m.Infra.CodegenFilePlan, ...]]``.
 
         """
         return u.Infra.docs_file_plans(bundle)
 
-    def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:
+    def prepare_bundle(
+        self,
+        *,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+    ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Render the configured docs inventory once.
 
         Returns:
             The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
 
         """
-        return self._prepare_request(self._configured_request())
+        return self._prepare_request(self._configured_request(), declared_files)
 
     @override
     def execute(

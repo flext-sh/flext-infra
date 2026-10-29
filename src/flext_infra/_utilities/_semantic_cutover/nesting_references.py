@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -26,19 +26,17 @@ from libcst.metadata import (
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-from flext_infra._utilities._codemod.codemod_binding_chain import (
-    FlextInfraUtilitiesCodemodBindingChain,
-)
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverNestingModuleAliases,
-    FlextInfraUtilitiesSemanticNestingTypes,
+    FlextInfraUtilitiesTypesSemanticNesting,
 )
 
 
@@ -59,17 +57,17 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         def __init__(
             self,
             *,
-            module_bindings: t.Pair[
-                t.MappingKV[str, t.StrMapping],
-                t.MappingKV[str, p.Infra.RopeResource],
+            module_bindings: tuple[
+                Mapping[str, Mapping[str, str]],
+                Mapping[str, p.Infra.RopeResource],
             ],
-            definitions: t.StrMapping,
-            native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
-            inventory: t.Pair[str, t.MappingKV[Path, str]],
-            resolvers: t.Triple[
+            definitions: Mapping[str, str],
+            native: tuple[p.Infra.RopeProject, p.Infra.RopeFile],
+            inventory: tuple[str, Mapping[Path, str]],
+            resolvers: tuple[
                 Callable[..., str],
                 Callable[[t.Infra.Cst.BaseStatement], str | None],
-                Callable[..., t.Pair[str, str]],
+                Callable[..., tuple[str, str]],
             ],
         ) -> None:
             source, sources = inventory
@@ -91,15 +89,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             self.line_offsets = [0]
             for line in source.splitlines(keepends=True):
                 self.line_offsets.append(self.line_offsets[-1] + len(line))
-            self.quoted: t.MutableMappingKV[
-                t.Pair[int, int], m.Infra.SourceRewrite
-            ] = {}
+            self.quoted: MutableMapping[tuple[int, int], m.Infra.SourceRewrite] = {}
             self.elected_source = source
             self.identities: list[
-                t.Triple[p.Infra.RopePyName, p.Infra.RopeSemanticModule, str]
+                tuple[p.Infra.RopePyName, p.Infra.RopeSemanticModule, str]
             ] = []
             for module, bindings in bindings_by_module.items():
-                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                provider = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
                     FlextInfraUtilitiesRopeCore.resolve_pymodule(
                         self.project,
                         providers_by_module[module],
@@ -151,7 +147,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             ):
                 msg = f"occupied native nesting destination: {selected}"
                 raise ValueError(msg)
-            return FlextInfraUtilitiesSemanticNestingTypes.checked_type_reference(
+            return FlextInfraUtilitiesTypesSemanticNesting.checked_type_reference(
                 scope,
                 selected,
             )
@@ -183,7 +179,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             self._reject_ambiguous_alias(expression, declarations)
             if not matches:
                 return None
-            FlextInfraUtilitiesSemanticNestingTypes.require_nesting_binding(
+            FlextInfraUtilitiesTypesSemanticNesting.require_nesting_binding(
                 (self.project, self.original, scope),
                 expression,
                 offset,
@@ -204,7 +200,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         def _reject_ambiguous_alias(
             self,
             expression: str,
-            declarations: t.SequenceOf[t.Pair[m.Infra.LogicalStatement, int]],
+            declarations: Sequence[tuple[m.Infra.LogicalStatement, int]],
         ) -> None:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             if len(declarations) > 1:
@@ -237,7 +233,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             scope: p.Infra.RopeScope,
             expression: str,
             actual: p.Infra.RopePyName | None,
-            match: t.Pair[p.Infra.RopeSemanticModule, str],
+            match: tuple[p.Infra.RopeSemanticModule, str],
         ) -> str:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             origin, bound = match
@@ -249,11 +245,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 if receiver_name is None:
                     msg = f"unresolved native nesting receiver: {expression}"
                     raise ValueError(msg)
-                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                provider = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
                     receiver_name.get_object(),
                 )
             elif isinstance(actual, p.Infra.RopeImportedName):
-                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                provider = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
                     actual.imported_module.get_object(),
                 )
             module, prefix = self.import_route(
@@ -397,7 +393,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             match actual:
                 case p.Infra.RopeImportedName():
                     provider = (
-                        FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+                        FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
                             actual.imported_module.get_object(),
                         )
                     )
@@ -651,7 +647,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             if isinstance(updated_node.names, c.Infra.Cst.ImportStar):
                 return updated_node
             aliases: list[t.Infra.Cst.ImportAlias] = []
-            seen: set[t.Pair[str, str]] = set()
+            seen: set[tuple[str, str]] = set()
             for imported in updated_node.names:
                 name = (
                     FlextInfraUtilitiesQualifiedNames.dotted_name(imported.name) or ""
@@ -708,14 +704,14 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
     @staticmethod
     def _assignment_targets(
         statement: t.Infra.Cst.BaseSmallStatement,
-    ) -> t.VariadicTuple[t.Infra.Cst.BaseAssignTargetExpression]:
+    ) -> tuple[t.Infra.Cst.BaseAssignTargetExpression, ...]:
         """Return the targets one assignment statement binds.
 
         Returns:
             The bound targets, or an empty tuple for other statements.
 
         """
-        targets: t.SequenceOf[t.Infra.Cst.BaseAssignTargetExpression] = ()
+        targets: Sequence[t.Infra.Cst.BaseAssignTargetExpression] = ()
         if isinstance(statement, c.Infra.Cst.AnnAssign):
             targets = [statement.target]
         elif isinstance(statement, c.Infra.Cst.Assign):
@@ -753,13 +749,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         cls,
         source: str,
         *,
-        native: t.Pair[p.Infra.RopeProject, p.Infra.RopeFile],
-        bindings: t.Pair[
-            t.MappingKV[str, t.StrMapping],
-            t.MappingKV[str, p.Infra.RopeResource],
+        native: tuple[p.Infra.RopeProject, p.Infra.RopeFile],
+        bindings: tuple[
+            Mapping[str, Mapping[str, str]],
+            Mapping[str, p.Infra.RopeResource],
         ],
-        definitions: t.StrMapping,
-        sources: t.MappingKV[Path, str],
+        definitions: Mapping[str, str],
+        sources: Mapping[Path, str],
     ) -> str:
         """Return binding-proven import and usage rewrites without effects.
 
@@ -781,7 +777,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 cls._nesting_import_route,
             ),
         )
-        edits = FlextInfraUtilitiesSemanticNestingTypes.quoted_type_edits(
+        edits = FlextInfraUtilitiesTypesSemanticNesting.quoted_type_edits(
             native[0],
             native[1],
             source,

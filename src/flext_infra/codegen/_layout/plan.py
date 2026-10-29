@@ -1,0 +1,390 @@
+"""Pure planning for the project-layout engine.
+
+Every classification derives from the layered repository codegen contract —
+this mixin reads the declarative SSOT (library defaults + repository layers,
+the same ordered strict source the generator loads) and produces typed
+findings; it never writes.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from fnmatch import fnmatchcase
+from pathlib import Path
+
+from flext_infra import c, m, t, u
+
+
+class FlextInfraCodegenLayoutPlan:
+    """Build the per-project layout plan from the declarative layout SSOT."""
+
+    @staticmethod
+    def _layout_spec(project_dir: Path) -> m.Infra.LayoutSpec:
+        """Layout SSOT: the selected project's layered codegen contract.
+
+        Gates and the generator read the SAME ordered strict source (packaged
+        defaults + repository layers). The split-brain where the generator
+        saw the repository layers while this gate read packaged defaults is
+        what dropped standalone repositories' canonical declarations.
+
+        Returns:
+            The selected project's validated layered layout policy.
+
+        """
+        layered = u.Infra.load_codegen_inputs(project_dir)
+        return layered.map(lambda inputs: inputs.spec.layout).unwrap()
+
+    @staticmethod
+    def layout_project_name(project_dir: Path) -> str:
+        """Return the project's declared identity, ``[project].name``.
+
+        Layout overrides and profile patterns are keyed by the name a project
+        declares, never by the directory it happens to be checked out in: a
+        linked worktree (``.claude/worktrees/<lane>``) or a renamed clone is
+        the same project and inherits the same keep-list.
+
+        Returns:
+            The project's declared identity, ``[project].name``.
+
+        Raises:
+            ValueError: If ``member.failure``; or if unsafe layout project identity.
+
+        """
+        pyproject_path = project_dir / c.PYPROJECT_FILENAME
+        project_name = u.Infra.project_name_from_payload(
+            pyproject_path,
+            u.Infra.pyproject_payload(pyproject_path),
+        )
+        member = u.Infra.archive_member_path(project_name)
+        if member.failure:
+            raise ValueError(member.error)
+        if (
+            len(member.value.parts) != 1
+            or member.value.as_posix() != project_name
+            or "\x00" in project_name
+        ):
+            msg = f"unsafe layout project identity: {project_name}"
+            raise ValueError(msg)
+        return project_name
+
+    def plan_project(self, project_dir: Path) -> m.Infra.LayoutProjectReport:
+        """Classify every root entry of one project without writing anything.
+
+        Returns:
+            The resulting ``m.Infra.LayoutProjectReport``.
+
+        """
+        spec = self._layout_spec(project_dir)
+        project_name = self.layout_project_name(project_dir)
+        override = self._resolve_override(spec, project_name)
+        allowed = self._allowed_root_names(spec, project_dir, project_name, override)
+        override_roots = self._override_root_names(override)
+        findings: list[m.Infra.LayoutFinding] = []
+        git_root_names = u.Infra.git_tracked_top_level_dir_names(project_dir)
+        for entry in sorted(project_dir.iterdir()):
+            name = entry.name
+            if git_root_names is not None and name not in git_root_names:
+                continue
+            if spec.allow_hidden and name.startswith("."):
+                continue
+            if self._is_ignored_root(spec, override, name):
+                continue
+            if override is not None and name in override.archive_names:
+                findings.append(
+                    self._finding(
+                        "archive",
+                        name,
+                        f"{spec.archive_root}/{project_name}/{name}",
+                    ),
+                )
+                continue
+            if name in allowed or name in override_roots:
+                continue
+            findings.append(
+                self._classify_root_entry(spec, override, project_name, entry),
+            )
+        if override is not None:
+            findings.extend(self._override_move_findings(override, project_dir))
+            findings.extend(
+                self._override_empty_dir_findings(
+                    spec,
+                    override,
+                    project_dir,
+                    project_name,
+                ),
+            )
+        findings.extend(self._gitignore_findings(spec, override, project_dir))
+        return m.Infra.LayoutProjectReport(
+            project=project_name,
+            findings=tuple(findings),
+        )
+
+    @staticmethod
+    def _resolve_override(
+        spec: m.Infra.LayoutSpec,
+        project_name: str,
+    ) -> m.Infra.LayoutProjectOverrideSpec | None:
+        """Resolve override by directory name or logical name without leading dot.
+
+        Returns:
+            The resulting ``m.Infra.LayoutProjectOverrideSpec | None``.
+
+        """
+        override = spec.project_overrides.get(project_name)
+        if override is not None:
+            return override
+        logical = project_name.lstrip(".")
+        if logical != project_name:
+            return spec.project_overrides.get(logical)
+        return None
+
+    @staticmethod
+    def _allowed_root_names(
+        spec: m.Infra.LayoutSpec,
+        project_dir: Path,
+        project_name: str,
+        override: m.Infra.LayoutProjectOverrideSpec | None,
+    ) -> frozenset[str]:
+        """Canonical root names for one project, profile extras included.
+
+        Returns:
+            The resulting ``frozenset[str]``.
+
+        Raises:
+            ValueError: If ``declared.failure``.
+
+        """
+        allowed = {
+            *spec.canonical_root_files,
+            *spec.canonical_root_dotfiles,
+            *spec.canonical_root_dirs,
+            *spec.special_root_dirs,
+            *spec.reference_root_dirs,
+        }
+        for profile, patterns in spec.profile_project_patterns.items():
+            if any(fnmatchcase(project_name, pattern) for pattern in patterns):
+                allowed.update(spec.profile_extra_root_files.get(profile, ()))
+        if override is not None:
+            allowed.update(override.keep_root_files)
+        declared = u.Infra.git_submodule_declarations(project_dir)
+        if declared.failure:
+            raise ValueError(declared.error or "invalid .gitmodules")
+        allowed.update(item.path.parts[0] for item in declared.value)
+        return frozenset(allowed)
+
+    @staticmethod
+    def _is_ignored_root(
+        spec: m.Infra.LayoutSpec,
+        override: m.Infra.LayoutProjectOverrideSpec | None,
+        name: str,
+    ) -> bool:
+        """Whether a root entry is skipped by specials or project ignore globs.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        if name in spec.special_root_dirs:
+            return True
+        if override is None:
+            return False
+        return any(fnmatchcase(name, glob) for glob in override.ignore_globs)
+
+    @staticmethod
+    def _override_root_names(
+        override: m.Infra.LayoutProjectOverrideSpec | None,
+    ) -> frozenset[str]:
+        """Root names owned by per-project override rules (never generic rules).
+
+        Declared ``keep_root_files`` are owned too: they are exempt from the
+        generic loose-root classification instead of being archived or moved.
+
+        Returns:
+            The resulting ``frozenset[str]``.
+
+        """
+        if override is None:
+            return frozenset()
+        return frozenset({
+            *(Path(move.source).parts[0] for move in override.moves),
+            *override.archive_empty_dirs,
+            *override.keep_root_files,
+        })
+
+    def _classify_root_entry(
+        self,
+        spec: m.Infra.LayoutSpec,
+        override: m.Infra.LayoutProjectOverrideSpec | None,
+        project_name: str,
+        entry: Path,
+    ) -> m.Infra.LayoutFinding:
+        """Classify one non-canonical root entry into move/archive/review.
+
+        Returns:
+            The resulting ``m.Infra.LayoutFinding``.
+
+        """
+        name = entry.name
+        docs_finding = self._classify_docs_entry(spec, project_name, entry)
+        if docs_finding is not None:
+            return docs_finding
+        if entry.is_file() and name in spec.move_example_files:
+            return self._finding("move", name, f"{spec.examples_target}/{name}")
+        if entry.is_file() and any(
+            fnmatchcase(name, glob) for glob in spec.move_diagram_globs
+        ):
+            return self._finding("move", name, f"{spec.diagrams_target}/{name}")
+        if (
+            name in spec.archive_names
+            or (override is not None and name in override.archive_names)
+            or any(fnmatchcase(name, glob) for glob in spec.archive_globs)
+        ):
+            return self._finding(
+                "archive",
+                name,
+                f"{spec.archive_root}/{project_name}/{name}",
+            )
+        return self._finding("review", name)
+
+    def _classify_docs_entry(
+        self,
+        spec: m.Infra.LayoutSpec,
+        project_name: str,
+        entry: Path,
+    ) -> m.Infra.LayoutFinding | None:
+        """Classify a docs move or an archived docs conflict, else None.
+
+        Returns:
+            The resulting ``m.Infra.LayoutFinding | None``.
+
+        """
+        name = entry.name
+        if entry.is_dir() and name in spec.move_docs_dirs:
+            return self._finding("move", name, f"{spec.docs_target}/{name}")
+        if entry.is_file() and name in spec.move_docs_files:
+            target = f"{spec.docs_target}/{name}"
+            if (entry.parent / target).exists():
+                return self._finding(
+                    "archive",
+                    name,
+                    f"{spec.archive_root}/{project_name}/{name}",
+                    message=(
+                        f"archive {name} -> {spec.archive_root}/{project_name}/{name} "
+                        f"(canonical docs/{name} kept)"
+                    ),
+                )
+            return self._finding("move", name, target)
+        return None
+
+    def _override_move_findings(
+        self,
+        override: m.Infra.LayoutProjectOverrideSpec,
+        project_dir: Path,
+    ) -> Sequence[m.Infra.LayoutFinding]:
+        """Explicit per-project moves whose nested source still exists.
+
+        Returns:
+            The resulting ``Sequence[m.Infra.LayoutFinding]``.
+
+        """
+        return tuple(
+            self._finding("move", move.source, move.target)
+            for move in override.moves
+            if (project_dir / move.source).exists()
+        )
+
+    def _override_empty_dir_findings(
+        self,
+        spec: m.Infra.LayoutSpec,
+        override: m.Infra.LayoutProjectOverrideSpec,
+        project_dir: Path,
+        project_name: str,
+    ) -> Sequence[m.Infra.LayoutFinding]:
+        """Override directories archived once override moves have emptied them.
+
+        Returns:
+            The resulting ``Sequence[m.Infra.LayoutFinding]``.
+
+        """
+        findings: list[m.Infra.LayoutFinding] = []
+        move_sources = {move.source for move in override.moves}
+        for name in override.archive_empty_dirs:
+            path = project_dir / name
+            if not path.is_dir():
+                continue
+            target = f"{spec.archive_root}/{project_name}/{name}"
+            if not any(path.iterdir()):
+                findings.append(self._finding("archive", name, target))
+                continue
+            remaining = {
+                entry.relative_to(project_dir).as_posix()
+                for entry in path.rglob("*")
+                if entry.is_file()
+            }
+            if remaining and remaining <= move_sources:
+                findings.append(self._finding("archive", name, target))
+                continue
+            findings.append(self._finding("review", name))
+        return tuple(findings)
+
+    def _gitignore_findings(
+        self,
+        spec: m.Infra.LayoutSpec,
+        override: m.Infra.LayoutProjectOverrideSpec | None,
+        project_dir: Path,
+    ) -> Sequence[m.Infra.LayoutFinding]:
+        """Missing ``.gitignore`` patterns required by the layout SSOT.
+
+        Returns:
+            The resulting ``Sequence[m.Infra.LayoutFinding]``.
+
+        """
+        required = [f"{spec.archive_root}/"]
+        if override is not None:
+            required.extend(override.gitignore_additions)
+        current = ""
+        gitignore_path = project_dir / c.Infra.GITIGNORE
+        if gitignore_path.is_file():
+            read = u.Cli.files_read_text(gitignore_path)
+            if read.success:
+                current = read.value
+        covered = {line.strip() for line in current.splitlines()}
+        findings: list[m.Infra.LayoutFinding] = []
+        for pattern in required:
+            if pattern in covered or pattern.rstrip("/") in covered:
+                continue
+            findings.append(self._finding("gitignore", c.Infra.GITIGNORE, pattern))
+        return tuple(findings)
+
+    @staticmethod
+    def _finding(
+        rule: t.Infra.LayoutRule,
+        path: str,
+        target: str = "",
+        *,
+        message: str | None = None,
+    ) -> m.Infra.LayoutFinding:
+        """Build one typed finding with a canonical message.
+
+        Returns:
+            The resulting ``m.Infra.LayoutFinding``.
+
+        """
+        messages: Mapping[t.Infra.LayoutRule, str] = {
+            "move": f"move {path} -> {target}",
+            "archive": f"archive {path} -> {target}",
+            "gitignore": f"add .gitignore entry: {target}",
+            "review": f"non-canonical root entry requires review: {path}",
+        }
+        return m.Infra.LayoutFinding(
+            rule=rule,
+            path=path,
+            target=target,
+            message=message if message is not None else messages[rule],
+        )
+
+
+__all__: list[str] = ["FlextInfraCodegenLayoutPlan"]

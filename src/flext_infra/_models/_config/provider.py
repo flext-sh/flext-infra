@@ -12,13 +12,13 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsProvider:
+class FlextInfraModelsConfigProvider:
     """Provider, repository source, and CI private-submodule models."""
 
-    class ProviderIdentitySpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ProviderIdentitySpec(FlextInfraModelsConfigContract.ConfigContract):
         """Git provider identity detected from one repository's own declarations.
 
         flext-infra ships no provider registry: the name is the key the
@@ -38,7 +38,7 @@ class FlextInfraConfigModelsProvider:
             m.Field(description="HTTPS base URL detected from the declared URL"),
         ]
 
-    class RepositorySourceSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class RepositorySourceSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Portable repository identity derived through one declared provider."""
 
         distribution: Annotated[
@@ -62,7 +62,7 @@ class FlextInfraConfigModelsProvider:
             namespace, _, _ = self.distribution.partition("-")
             return f"{namespace}-"
 
-    class BranchPolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+    class BranchPolicySpec(FlextInfraModelsConfigContract.ConfigContract):
         """Global branch policy shared by every provider."""
 
         lane_remote: Annotated[
@@ -85,7 +85,7 @@ class FlextInfraConfigModelsProvider:
             ),
         ] = None
         ci_trigger_branches: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -96,7 +96,7 @@ class FlextInfraConfigModelsProvider:
             ),
         ]
         preservation_ref_namespaces: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -114,12 +114,15 @@ class FlextInfraConfigModelsProvider:
                     "integrate on. Baseline resolution checks exactly this "
                     "line against published Git and fails loud otherwise: "
                     "no conventional-name list is probed, and no release "
-                    "name is hardcoded in the package."
+                    "name is hardcoded in the package. A consumer may "
+                    "declare a recorded release tag (for example a "
+                    "``v0.12.x`` ref) instead of a branch; a name published "
+                    "as both branch and tag fails loud as ambiguous."
                 ),
             ),
         ]
 
-    class GithubActionPinSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class GithubActionPinSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One GitHub Action reference from the codegen catalog."""
 
         repository: Annotated[
@@ -132,7 +135,7 @@ class FlextInfraConfigModelsProvider:
         ]
 
     class CiPrivateSubmoduleDeployKeySpec(
-        FlextInfraConfigModelsContract.ConfigContract,
+        FlextInfraModelsConfigContract.ConfigContract,
     ):
         """One read-only deploy key unlocking a private subproject in CI."""
 
@@ -162,7 +165,7 @@ class FlextInfraConfigModelsProvider:
             ),
         ]
 
-    class CiPrivateDependencyAuthSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CiPrivateDependencyAuthSpec(FlextInfraModelsConfigContract.ConfigContract):
         """GitHub App identity minting installation tokens for private deps."""
 
         app_id_secret: Annotated[
@@ -180,14 +183,14 @@ class FlextInfraConfigModelsProvider:
             ),
         ]
         repositories: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Selected repositories granted contents-read only",
             ),
         ]
 
-    class CiSuperprojectCheckoutSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CiSuperprojectCheckoutSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Containing workspace a member's CI checks out to install the root lock.
 
         A workspace member tracks no lock of its own: its CI checks out the
@@ -211,13 +214,13 @@ class FlextInfraConfigModelsProvider:
             m.Field(description="Member checkout path below the workspace root"),
         ]
 
-    class CiPrivateSubmodulesSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CiPrivateSubmodulesSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
 
         _KNOWN_HOSTS_FIELD_COUNT: ClassVar[int] = 3
 
         known_hosts: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -227,16 +230,14 @@ class FlextInfraConfigModelsProvider:
         ]
 
         paths: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Submodule paths to init before make setup",
             ),
         ]
         deploy_keys: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsProvider.CiPrivateSubmoduleDeployKeySpec
-            ],
+            tuple[FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec, ...],
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
 
@@ -280,4 +281,4 @@ class FlextInfraConfigModelsProvider:
             return self
 
 
-__all__: list[str] = ["FlextInfraConfigModelsProvider"]
+__all__: list[str] = ["FlextInfraModelsConfigProvider"]

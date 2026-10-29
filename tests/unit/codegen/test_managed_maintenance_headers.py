@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -20,8 +21,8 @@ class TestsFlextInfraManagedMaintenanceHeaders:
     """Validate machine-readable maintenance metadata on rendered artifacts."""
 
     @staticmethod
-    def _fields(text: str) -> t.MutableMappingKV[str, str]:
-        fields: t.MutableMappingKV[str, str] = {}
+    def _fields(text: str) -> MutableMapping[str, str]:
+        fields: MutableMapping[str, str] = {}
         for line in text.splitlines():
             marker = line.lstrip("# ")
             if not marker.startswith("@flext-") or ":" not in marker:

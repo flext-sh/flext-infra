@@ -626,7 +626,7 @@ class TestsFlextInfraPytestFullInventory:
 
         process = tm.ok(
             u.Cli.run_raw(
-                (sys.executable, "-m", "flext_infra._pytest_entry", "full"),
+                (sys.executable, "-m", "flext_infra._pytest.entry", "full"),
                 cwd=project,
                 options=m.Cli.ProcessOptions(
                     env={

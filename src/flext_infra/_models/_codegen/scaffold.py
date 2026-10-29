@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -16,7 +16,7 @@ from flext_infra import t
 from flext_infra._models import FlextInfraModelsMixins
 
 
-class FlextInfraModelsCodegenScaffoldModels:
+class FlextInfraModelsCodegenScaffold:
     """Census and scaffold models for the codegen pipeline."""
 
     class CensusViolation(
@@ -34,7 +34,7 @@ class FlextInfraModelsCodegenScaffoldModels:
         """Aggregated census report for a single project."""
 
         violations: Annotated[
-            Sequence[FlextInfraModelsCodegenScaffoldModels.CensusViolation],
+            Sequence[FlextInfraModelsCodegenScaffold.CensusViolation],
             m.Field(description="Detected violations"),
         ] = m.Field(default_factory=tuple)
         total: Annotated[t.NonNegativeInt, m.Field(description="Total violation count")]
@@ -53,11 +53,11 @@ class FlextInfraModelsCodegenScaffoldModels:
         mutable state.
         """
 
-        files_created: t.StrSequence = m.Field(
+        files_created: Sequence[str] = m.Field(
             default_factory=tuple,
             description="Newly created file paths",
         )
-        files_skipped: t.StrSequence = m.Field(
+        files_skipped: Sequence[str] = m.Field(
             default_factory=tuple,
             description="Skipped (already existing) file paths",
         )
@@ -73,7 +73,7 @@ class FlextInfraModelsCodegenScaffoldModels:
         target_dir: Annotated[Path, m.Field(description="Directory to scaffold")]
         prefix: Annotated[str, m.Field(description="Generated class name prefix")]
         modules: Annotated[
-            t.VariadicTuple[t.Quad[str, str, str, str]],
+            tuple[tuple[str, str, str, str], ...],
             m.Field(description="Module skeleton definitions"),
         ]
         test_prefix: Annotated[str, m.Field(description="Generated test class prefix")]
@@ -94,13 +94,13 @@ class FlextInfraModelsCodegenScaffoldModels:
             m.Field(description="Whether to report creations without writing"),
         ]
         files_created: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Created file accumulator"),
         ]
         files_skipped: Annotated[
-            t.MutableSequenceOf[str],
+            MutableSequence[str],
             m.Field(description="Skipped file accumulator"),
         ]
 
 
-__all__: list[str] = ["FlextInfraModelsCodegenScaffoldModels"]
+__all__: list[str] = ["FlextInfraModelsCodegenScaffold"]

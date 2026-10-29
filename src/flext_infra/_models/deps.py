@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -19,8 +20,8 @@ from flext_infra._models import (
     FlextInfraModelsWorkspace,
 )
 from flext_infra._models._config import (
-    FlextInfraConfigModelsArtifact,
-    FlextInfraConfigModelsRepository,
+    FlextInfraModelsConfigArtifact,
+    FlextInfraModelsConfigRepository,
 )
 
 GitSourceUrlPrefixField = Annotated[
@@ -49,13 +50,13 @@ class FlextInfraModelsDeps(
     class RequirementsProvenance(m.ImmutableValueModel):
         """Workspace provenance consulted while canonicalizing requirement lines."""
 
-        declared_sources: t.StrMapping = m.Field(
+        declared_sources: Mapping[str, str] = m.Field(
             description="Declared member Git origins"
         )
-        candidate_sources: t.StrMapping = m.Field(
+        candidate_sources: Mapping[str, str] = m.Field(
             description="Selected candidate Git origins"
         )
-        native_sources: t.StrSequence = m.Field(
+        native_sources: Sequence[str] = m.Field(
             default=(), description="Names with explicit native UV source declarations"
         )
 
@@ -113,7 +114,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         inputs: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 min_length=1, description="Authenticated distribution metadata states"
             ),
@@ -129,7 +130,7 @@ class FlextInfraModelsDeps(
             m.Field(description="Captured native UV lock of the selected runtime"),
         ]
         providers: Annotated[
-            t.VariadicTuple[FlextInfraModelsDeps.RuntimeDependencyProvider],
+            tuple[FlextInfraModelsDeps.RuntimeDependencyProvider, ...],
             m.Field(description="All matching suppliers; ambiguity is preserved"),
         ]
         development_only: Annotated[
@@ -156,7 +157,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         inputs: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 min_length=1,
                 description="Native lock and production-source input states",
@@ -167,7 +168,7 @@ class FlextInfraModelsDeps(
         """Calculated target requirements and unchanged diagnostic identities."""
 
         source: Annotated[
-            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
             m.Field(
                 min_length=1,
                 description="Production trees establishing applicability",
@@ -190,7 +191,7 @@ class FlextInfraModelsDeps(
             m.Field(description="Missing or ambiguous import suppliers remaining red"),
         ]
         inputs: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 description="Every metadata, lock and source state backing this plan"
             ),
@@ -359,11 +360,11 @@ class FlextInfraModelsDeps(
         """Measured per-project facts the canonical Ruff phase derives from."""
 
         first_party: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Detected first-party namespaces"),
         ]
         analysis_exclusions: Annotated[
-            t.StrSequence | None,
+            Sequence[str] | None,
             m.Field(
                 description=(
                     "Declared analysis exclusions; None derives workspace globs"
@@ -371,7 +372,7 @@ class FlextInfraModelsDeps(
             ),
         ] = None
         generated_python_roots: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Generated python roots to exclude"),
         ]
         repository_namespace_packages: Annotated[
@@ -461,7 +462,7 @@ class FlextInfraModelsDeps(
                 The validated project-relative hook path.
 
             """
-            return FlextInfraConfigModelsRepository.validated_hatch_build_hook_path(
+            return FlextInfraModelsConfigRepository.validated_hatch_build_hook_path(
                 value
             )
 
@@ -505,7 +506,7 @@ class FlextInfraModelsDeps(
             m.Field(default=True, description="Whether pip check passed"),
         ] = True
         lines: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Pip check output lines"),
         ] = ()
 
@@ -513,38 +514,38 @@ class FlextInfraModelsDeps(
         """Deptry issue grouping model by error code (DEP001-DEP004)."""
 
         dep001: Annotated[
-            t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
+            MutableSequence[Mapping[str, t.Primitives | None]],
             m.Field(description="DEP001 issues"),
-        ] = m.Field(default_factory=list[t.MappingKV[str, t.Primitives | None]])
+        ] = m.Field(default_factory=list[Mapping[str, t.Primitives | None]])
         dep002: Annotated[
-            t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
+            MutableSequence[Mapping[str, t.Primitives | None]],
             m.Field(description="DEP002 issues"),
-        ] = m.Field(default_factory=list[t.MappingKV[str, t.Primitives | None]])
+        ] = m.Field(default_factory=list[Mapping[str, t.Primitives | None]])
         dep003: Annotated[
-            t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
+            MutableSequence[Mapping[str, t.Primitives | None]],
             m.Field(description="DEP003 issues"),
-        ] = m.Field(default_factory=list[t.MappingKV[str, t.Primitives | None]])
+        ] = m.Field(default_factory=list[Mapping[str, t.Primitives | None]])
         dep004: Annotated[
-            t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
+            MutableSequence[Mapping[str, t.Primitives | None]],
             m.Field(description="DEP004 issues"),
-        ] = m.Field(default_factory=list[t.MappingKV[str, t.Primitives | None]])
+        ] = m.Field(default_factory=list[Mapping[str, t.Primitives | None]])
 
     class DeptryReport(m.ArbitraryTypesModel):
         """Deptry analysis report with categorized issue modules."""
 
         missing: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Missing dependencies"),
         ] = m.Field(default_factory=tuple)
-        unused: Annotated[t.StrSequence, m.Field(description="Unused dependencies")] = (
+        unused: Annotated[Sequence[str], m.Field(description="Unused dependencies")] = (
             m.Field(default_factory=tuple)
         )
         transitive: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Transitive dependencies"),
         ] = m.Field(default_factory=tuple)
         dev_in_runtime: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Dev dependencies in runtime"),
         ] = m.Field(default_factory=tuple)
         raw_count: Annotated[
@@ -568,9 +569,9 @@ class FlextInfraModelsDeps(
         """
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
-        projects: t.MutableMappingKV[
-            str, FlextInfraModelsDeps.ProjectDependencyReport
-        ] = m.Field(description="Per-project reports")
+        projects: MutableMapping[str, FlextInfraModelsDeps.ProjectDependencyReport] = (
+            m.Field(description="Per-project reports")
+        )
         pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
             None,
             description="Pip check report",
@@ -588,7 +589,7 @@ class FlextInfraModelsDeps(
         ]
 
         planned_sources: Annotated[
-            t.MappingKV[Path, str],
+            Mapping[Path, str],
             m.Field(
                 exclude=True,
                 description="Captured Python candidate bytes overriding disk",
@@ -612,15 +613,15 @@ class FlextInfraModelsDeps(
             m.Field(description="Declared repository topology"),
         ]
         codegen: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenConfigSpec,
+            FlextInfraModelsConfigArtifact.CodegenConfigSpec,
             m.Field(description="Elected effective target codegen policy"),
         ]
         runtime_dependency_overlay: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Runtime dependency overlay requirement lines"),
         ]
         declared_project_dependencies: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Declared project dependency requirement lines"),
         ]
 

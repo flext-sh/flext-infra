@@ -10,17 +10,17 @@ from pathlib import Path
 
 from git import GitCommandError, Repo
 
-from flext_infra import c, m, p, r, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticRefsMixin
+from flext_infra import c, m, p, r
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticRefs
 
 
-class FlextInfraUtilitiesGitWorktreeRemovalMixin(
-    FlextInfraUtilitiesGitSemanticRefsMixin,
+class FlextInfraUtilitiesGitWorktreeRemoval(
+    FlextInfraUtilitiesGitSemanticRefs,
 ):
     """Own worktree removal operations."""
 
     @staticmethod
-    def _nested_submodule_changes(repo: Repo) -> t.VariadicTuple[str]:
+    def _nested_submodule_changes(repo: Repo) -> tuple[str, ...]:
         nested = repo.git.submodule(
             "foreach",
             "--recursive",
@@ -134,4 +134,4 @@ class FlextInfraUtilitiesGitWorktreeRemovalMixin(
         return r[bool].ok(value=True)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeRemovalMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeRemoval"]

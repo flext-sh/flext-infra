@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
 
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -71,7 +72,7 @@ class TestsFlextInfraRopeAnalysis:
         declarations: str,
         base: str,
         body: str,
-        expected: t.StrSequence,
+        expected: Sequence[str],
     ) -> None:
         """Builtin bases have no source scopes; actual nested bindings survive."""
         project, package = u.Tests.demo_project(tmp_path)

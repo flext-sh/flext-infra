@@ -1,25 +1,25 @@
 id: ban-init-name-assignment
 valid:
-  - |
-    from typing import TYPE_CHECKING
-    if TYPE_CHECKING:
-        from flext_demo.constants import FlextDemoConstants, c
-    __all__: tuple[str, ...] = ("FlextDemoConstants", "c")
-  - |
-    __getattr__, __dir__ = install_lazy_exports(__name__, globals(), {})
-  - |
-    __version__ = "1.0.0"
-  - |
-    def build() -> None:
-        value = 1
+- |
+  from typing import TYPE_CHECKING
+  if TYPE_CHECKING:
+      from flext_demo.constants import FlextDemoConstants, c
+  __all__: tuple[str, ...] = ("FlextDemoConstants", "c")
+- |
+  __getattr__, __dir__ = install_lazy_exports(__name__, globals(), {})
+- |
+  __version__ = "1.0.0"
+- |
+  def build() -> None:
+      value = 1
 invalid:
-  - |
-    from typing import TYPE_CHECKING
-    if TYPE_CHECKING:
-        from flext_demo.constants import FlextDemoConstants
-        c = FlextDemoConstants
-  - |
-    m = FlextDemoModels
-  - |
-    from flext_demo import part as _owner_0
-    Part = _owner_0.Part
+- |
+  from typing import TYPE_CHECKING
+  if TYPE_CHECKING:
+      from flext_demo.constants import FlextDemoConstants
+      c = FlextDemoConstants
+- |
+  m = FlextModelsDemo
+- |
+  from flext_demo import part as _owner_0
+  Part = _owner_0.Part

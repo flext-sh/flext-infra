@@ -7,24 +7,23 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCompatibilityAliasValidation,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._codemod.codemod_project import (
-    FlextInfraUtilitiesCodemodProject,
-)
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -43,8 +42,8 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
     def _service_aliases(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> t.Pair[t.MappingKV[Path, t.StrMapping], t.MappingKV[str, frozenset[str]]]:
+        sources: Mapping[Path, str],
+    ) -> tuple[Mapping[Path, Mapping[str, str]], Mapping[str, frozenset[str]]]:
         """Elect local declarations by native identity and upstream service lineage.
 
         Returns:
@@ -55,16 +54,31 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
         """
         candidates: MutableMapping[Path, ast.ClassDef] = {}
-        for path, source in cls._editable_sources(sources):
-            if (
-                not path.is_relative_to(workspace.repository_root)
-                or path.parent.parent.name != c.Infra.DEFAULT_SRC_DIR
-                or path.parent / c.Infra.INIT_PY not in sources
-            ):
-                continue
-            declaration = cls._local_service_declaration(path, source)
-            if declaration is not None:
-                candidates[path] = declaration
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            Path(workspace.rope_project.root.real_path),
+            planned_sources=sources,
+            source_project=workspace.rope_project,
+        ) as (source_project, _captured):
+            for path, source in cls._editable_sources(sources):
+                if (
+                    not path.is_relative_to(workspace.repository_root)
+                    or path.parent.parent.name != c.Infra.DEFAULT_SRC_DIR
+                    or path.parent / c.Infra.INIT_PY not in sources
+                ):
+                    continue
+                module = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                    source_project.get_pymodule(
+                        FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                            source_project, path
+                        ),
+                        force_errors=True,
+                    )
+                )
+                declaration = cls._local_service_declaration(
+                    path, source, module=module
+                )
+                if declaration is not None:
+                    candidates[path] = declaration
         if not candidates:
             return {}, {}
         # Native ancestry sees the pre-rebind declaration, never a self-reference.
@@ -84,7 +98,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             workspace.rope_project,
             ancestry_sources,
         )
-        selected: MutableMapping[Path, t.StrMapping] = {}
+        selected: MutableMapping[Path, Mapping[str, str]] = {}
         try:
             resource = project.find_module("flext_core")
             if resource is None:
@@ -99,7 +113,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 .get_attribute("s")
                 .get_object()
             )
-            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(kernel):
+            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(kernel):
                 message = "upstream service alias has no native class declaration"
                 raise ValueError(message)
             for path, declaration in candidates.items():
@@ -114,7 +128,9 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         return selected, graph
 
     @staticmethod
-    def _local_service_declaration(path: Path, source: str) -> ast.ClassDef | None:
+    def _local_service_declaration(
+        path: Path, source: str, *, module: p.Infra.RopeSourceModule
+    ) -> ast.ClassDef | None:
         """Find an unambiguous exported local declaration replacing the kernel alias.
 
         Returns:
@@ -125,7 +141,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
         """
         tree = ast.parse(source)
-        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(source)
+        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(module)
         declarations = {
             node.name: node for node in tree.body if isinstance(node, ast.ClassDef)
         }
@@ -190,7 +206,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             ),
         )
         value = module.get_attribute(declaration.name).get_object()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
             return None
         provider, scope = value.get_module(), value.get_scope()
         origin = provider.get_resource()
@@ -238,9 +254,9 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
     @staticmethod
     def _upstream_alias_reads(
         tree: ast.Module,
-        aliases: t.StrMapping,
+        aliases: Mapping[str, str],
         source: str,
-    ) -> t.Pair[t.StrMapping, frozenset[t.Pair[int, int]]]:
+    ) -> tuple[Mapping[str, str], frozenset[tuple[int, int]]]:
         """Keep eager kernel reads, not delayed reads of the later local binding.
 
         Returns:
@@ -263,7 +279,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             and isinstance(node.value, ast.Name)
             and aliases.get(node.targets[0].id) == node.value.id
         }
-        reads: set[t.Pair[int, int]] = set()
+        reads: set[tuple[int, int]] = set()
         pending: list[ast.AST] = list(tree.body)
         while pending:
             node = pending.pop()
@@ -292,20 +308,20 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
     def _api_alias_specs(
         cls,
         root: Path,
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
-        service_aliases: t.MappingKV[Path, t.StrMapping],
+        findings: Sequence[m.Infra.ModOccurrence],
+        service_aliases: Mapping[Path, Mapping[str, str]],
     ) -> p.Result[
-        t.Pair[t.MappingKV[Path, t.StrMapping], t.MappingKV[str, t.StrMapping]]
+        tuple[Mapping[Path, Mapping[str, str]], Mapping[str, Mapping[str, str]]]
     ]:
         """Index local aliases by declaration owner and importable namespace.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.MappingKV[Path, t.StrMapping],
-                t.MappingKV[str, t.StrMapping]]]``.
+            The resulting ``p.Result[tuple[Mapping[Path, Mapping[str, str]],
+                Mapping[str, Mapping[str, str]]]]``.
 
         """
         planned = r[
-            t.Pair[t.MappingKV[Path, t.StrMapping], t.MappingKV[str, t.StrMapping]]
+            tuple[Mapping[Path, Mapping[str, str]], Mapping[str, Mapping[str, str]]]
         ]
         specs_by_file: MutableMapping[Path, MutableMapping[str, str]] = {
             path: dict(aliases) for path, aliases in service_aliases.items()
@@ -344,14 +360,14 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
     def _plan_api_aliases(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
+        sources: Mapping[Path, str],
+        findings: Sequence[m.Infra.ModOccurrence],
         import_normalizer: p.Infra.SourceImportNormalizer | None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan local alias removal and binding-proven consumer rewrites atomically.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
 
         """
         root = workspace.repository_root
@@ -364,7 +380,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             service_aliases,
         )
         if specs.failure:
-            return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].from_failure(specs)
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].from_failure(specs)
         specs_by_file, specs_by_module = specs.value
         service_projects = cls._service_alias_projects(service_aliases)
 
@@ -428,8 +444,8 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         path: Path,
         source: str,
         tree: ast.Module,
-        local_aliases: t.StrMapping,
-        active_modules: t.MappingKV[str, t.StrMapping],
+        local_aliases: Mapping[str, str],
+        active_modules: Mapping[str, Mapping[str, str]],
     ) -> m.Infra.CompatibilityAliasRewritePlan | None:
         """Bind one typed alias rewrite intent before executing its CST visitor.
 
@@ -438,7 +454,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
         """
         import_aliases: MutableMapping[str, MutableMapping[str, str]] = {}
-        attribute_aliases: MutableMapping[t.Pair[str, str], str] = {}
+        attribute_aliases: MutableMapping[tuple[str, str], str] = {}
         qualified_aliases = dict(local_aliases)
         qualified_aliases.update(
             (f"{module}.{alias}", target)
@@ -480,8 +496,8 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
     @staticmethod
     def _service_alias_projects(
-        service_aliases: t.MappingKV[Path, t.StrMapping],
-    ) -> t.MappingKV[str, Path]:
+        service_aliases: Mapping[Path, Mapping[str, str]],
+    ) -> Mapping[str, Path]:
         """Index both the declaring service module and its root namespace.
 
         Returns:
@@ -496,10 +512,10 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
     @staticmethod
     def _consumer_alias_modules(
-        modules: t.MappingKV[str, t.StrMapping],
-        service_projects: t.MappingKV[str, Path],
+        modules: Mapping[str, Mapping[str, str]],
+        service_projects: Mapping[str, Path],
         consumer_project: Path | None,
-    ) -> t.MappingKV[str, t.StrMapping]:
+    ) -> Mapping[str, Mapping[str, str]]:
         """Keep local service aliases scoped to consumers in the owning project.
 
         Returns:
@@ -519,8 +535,8 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
 
     @staticmethod
     def _import_from_aliases(
-        node: ast.ImportFrom, modules: t.MappingKV[str, t.StrMapping]
-    ) -> t.StrMapping:
+        node: ast.ImportFrom, modules: Mapping[str, Mapping[str, str]]
+    ) -> Mapping[str, str]:
         """Resolve explicit alias imports without accepting renamed bindings.
 
         Returns:

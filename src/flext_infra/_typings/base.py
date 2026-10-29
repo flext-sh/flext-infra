@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast as _ast
 import pathlib
-from collections.abc import Callable, MutableMapping, MutableSet
+from collections.abc import Callable, Mapping, MutableMapping, MutableSet, Sequence
 from datetime import date, datetime
 from dis import Instruction
 from types import (
@@ -41,6 +41,30 @@ class FlextInfraTypesBase:
     "How a module binds one top-level name: imported, assigned, or defined."
     type AstModule = _ast.Module
     "The one stdlib syntax tree of one exact module source in a generation run."
+    type AstStatement = _ast.stmt
+    "One statement node of a rope-parsed module tree."
+    type AstExpression = _ast.expr
+    "One expression node of a rope-parsed module tree."
+    type AstSubscript = _ast.Subscript
+    "One subscript expression node of a rope-parsed module tree."
+    type AstClassDefinition = _ast.ClassDef
+    "One class declaration node of a rope-parsed module tree."
+    type AstFunctionDefinition = _ast.FunctionDef | _ast.AsyncFunctionDef
+    "One function declaration node of a rope-parsed module tree."
+    type AstFunctionArgument = _ast.arg
+    "One function argument node of a rope-parsed module tree."
+    type AstTypeParameter = _ast.type_param
+    "One PEP 695 type parameter node of a rope-parsed module tree."
+    type AstAssignment = _ast.Assign | _ast.AnnAssign
+    "One plain or annotated assignment statement node of a rope-parsed tree."
+    type AstImportFrom = _ast.ImportFrom
+    "One ``from`` import statement node of a rope-parsed module tree."
+    type AstIfStatement = _ast.If
+    "One ``if`` statement node of a rope-parsed module tree."
+    type AstRaiseStatement = _ast.Raise
+    "One raise statement node of a rope-parsed module tree."
+    type AstExpressionStatement = _ast.Expr
+    "One expression statement node of a rope-parsed module tree."
 
     type Path = pathlib.Path
     "Unconstrained native filesystem path, independent of existence and kind."
@@ -124,7 +148,7 @@ class FlextInfraTypesBase:
 
     type PlanSourceTimestamp = str | date | datetime | None
     "Native YAML timestamp ingress; dates retain their original precision."
-    type DocsRenderedArtifactTuple = t.Triple[Path, Path, str | None]
+    type DocsRenderedArtifactTuple = tuple[Path, Path, str | None]
     "Rendered document destination, source, and optional project owner."
 
     type RegexPattern = t.RegexPattern
@@ -153,19 +177,13 @@ class FlextInfraTypesBase:
     "A passively observed value, including native class identities and nulls."
     type NativeType = type[p.AttributeProbe | UnionType]
     "Exact native type owners, including the interpreter's union type."
-    type NativeClassDeclarations = t.MappingKV[
-        str, t.VariadicTuple[t.Pair[int, frozenset[str]]]
-    ]
+    type NativeClassDeclarations = Mapping[str, tuple[tuple[int, frozenset[str]], ...]]
     "Immutable compiler facts: class qualified names, source lines and stores."
-    type NativeCompilationFacts = t.DictKV[
-        t.Triple[bytes, str, int], NativeClassDeclarations
-    ]
+    type NativeCompilationFacts = dict[tuple[bytes, str, int], NativeClassDeclarations]
     "Invocation-local class facts keyed by exact source bytes and compiler inputs."
-    type NativeInstructionFacts = t.DictKV[
-        int, t.Pair[NativeCode, t.VariadicTuple[Instruction]]
-    ]
+    type NativeInstructionFacts = dict[int, tuple[NativeCode, tuple[Instruction, ...]]]
     "Immutable instructions indexed by strong native code identity."
-    type NativeInvocationFacts = t.Pair[NativeCompilationFacts, NativeInstructionFacts]
+    type NativeInvocationFacts = tuple[NativeCompilationFacts, NativeInstructionFacts]
     "The two immutable fact caches scoped to one native observation invocation."
 
     type InfraValue = t.JsonValue
@@ -183,11 +201,11 @@ class FlextInfraTypesBase:
         p.Result[m.Cli.PipelineStageResult],
     ]
     "Stage handler contract for the flext-infra check/codegen DAG pipelines."
-    type PipelineHandlerMap = t.MappingKV[str, PipelineHandler]
+    type PipelineHandlerMap = Mapping[str, PipelineHandler]
     "Stage-id to handler mapping used to build DAG pipeline stage specs."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
-    type CanonicalValue = t.Scalar | t.StrSequence
+    type CanonicalValue = t.Scalar | Sequence[str]
     "Canonical governance value: scalar payload or string sequence."
     "Scalar types admitted by declarative tooling settings."
 
@@ -204,38 +222,38 @@ class FlextInfraTypesBase:
     "One matched rule kind paired with its validated declarative payload."
     type DomainResult = m.BaseModel | InfraValue
     "Typed service result payload: model or validated JSON value."
-    type DomainResultSequence = t.SequenceOf[DomainResult]
+    type DomainResultSequence = Sequence[DomainResult]
     "Read-only sequence of typed service result payloads."
     # ── Transformer / edit result types ──────────────────────────────
 
     type TransformResult = t.StrSequencePair
     "Canonical (new_source, change_descriptions) from any source transformer."
-    type PrivateImportSpec = t.Quint[str, str, str, str, str]
+    type PrivateImportSpec = tuple[str, str, str, str, str]
     "(private module, symbol, qualified name, owner package, target reference)."
     type PrivateImportReferences = tuple[
-        t.MappingKV[Path, t.SequenceOf[PrivateImportSpec]],
-        t.MappingKV[Path, t.MappingKV[str, t.StrPair]],
-        t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
+        Mapping[Path, Sequence[PrivateImportSpec]],
+        Mapping[Path, Mapping[str, tuple[str, str]]],
+        Mapping[str, tuple[tuple[_ast.Module, str, str, str], ...]],
     ]
     "Resolved private-import specs, declared re-export targets, and facade owners."
     type ConstantFacadeIndex = tuple[
-        t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
-        t.MappingKV[str, set[str]],
-        t.MappingKV[str, t.VariadicTuple[str]],
+        Mapping[str, tuple[tuple[_ast.Module, str, str, str], ...]],
+        Mapping[str, set[str]],
+        Mapping[str, tuple[str, ...]],
     ]
     "Live constants facades, export identities, and declared class ancestry."
-    type ConstantConsumerContext = t.Quad[
+    type ConstantConsumerContext = tuple[
         _ast.Module,
         str,
         ConstantFacadeIndex,
-        t.MutableMappingKV[t.Pair[str, str], str | None],
+        MutableMapping[tuple[str, str], str | None],
     ]
     "One module's constants facade selection and shared identity cache."
-    type EditResult = tuple[bool, t.StrSequence]
+    type EditResult = tuple[bool, Sequence[str]]
     "Validated edit outcome: (success, report_lines)."
-    type EditResultWithDescs = tuple[bool, t.StrSequence, t.StrSequence]
+    type EditResultWithDescs = tuple[bool, Sequence[str], Sequence[str]]
     "(success, descriptions, report_lines) — includes what was attempted."
-    type LintSnapshot[Receipt] = t.MappingKV[str, Receipt]
+    type LintSnapshot[Receipt] = Mapping[str, Receipt]
     "Native gate receipts or diagnostic deltas, keyed by canonical tool name."
 
     # ── Lint policy types ────────────────────────────────────────────
@@ -257,7 +275,7 @@ class FlextInfraTypesBase:
         t.StringConstraints(pattern=r"^ENFORCE-\d{3}$"),
     ]
     "Stable identity of one enforcement law (ENFORCE-NNN)."
-    type EnforcementIds = t.SequenceOf[EnforcementId]
+    type EnforcementIds = Sequence[EnforcementId]
     """Law ids one owner declaration claims, in declared order.
 
     Order and repetition are kept so the derived catalog can reject a claim

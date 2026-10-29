@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -160,11 +161,11 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Provider-owned ast-grep sgconfig path"),
         ]
         rule_ids: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Rule IDs elected from this provider"),
         ]
         fixable_rule_ids: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Elected rule IDs that declare an automated fix"),
         ]
 
@@ -172,19 +173,19 @@ class FlextInfraModelsRefactorGrep:
         """Topologically composed dependency rules followed by the local delta."""
 
         provider_order: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Dependency-first provider precedence"),
         ]
         rules: Annotated[
-            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodRule],
+            tuple[FlextInfraModelsRefactorGrep.CodemodRule, ...],
             m.Field(description="Unique semantic rules with their elected owner"),
         ]
         rulesets: Annotated[
-            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodRuleset],
+            tuple[FlextInfraModelsRefactorGrep.CodemodRuleset, ...],
             m.Field(description="Executable provider configs in precedence order"),
         ]
         project_rule_ids: Annotated[
-            t.MappingKV[Path, t.StrSequence],
+            Mapping[Path, Sequence[str]],
             m.Field(
                 description="Absolute governed roots and their applicable rule IDs"
             ),
@@ -194,7 +195,7 @@ class FlextInfraModelsRefactorGrep:
         """What each package of one project publishes, where it lives, what it holds."""
 
         exports: Annotated[
-            t.MappingKV[str, t.StrTuple],
+            Mapping[str, t.StrTuple],
             m.Field(
                 description=(
                     "Dotted package to the exact names its initializer __all__ "
@@ -203,7 +204,7 @@ class FlextInfraModelsRefactorGrep:
             ),
         ]
         directories: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 description=(
                     "Dotted package to its directory, relative to the project "
@@ -212,7 +213,7 @@ class FlextInfraModelsRefactorGrep:
             ),
         ]
         modules: Annotated[
-            t.MappingKV[str, t.StrTuple],
+            Mapping[str, t.StrTuple],
             m.Field(
                 description=(
                     "Dotted package to the leaf names of its direct child modules "
@@ -225,15 +226,15 @@ class FlextInfraModelsRefactorGrep:
         """One project's generated native documents, rendered in memory."""
 
         utilities: Annotated[
-            t.MappingKV[str, t.JsonMapping],
+            Mapping[str, t.JsonMapping],
             m.Field(description="Generated utility documents keyed by utility id"),
         ]
         rules: Annotated[
-            t.MappingKV[str, t.JsonMapping],
+            Mapping[str, t.JsonMapping],
             m.Field(description="Generated rule documents keyed by rule id"),
         ]
         scopes: Annotated[
-            t.MappingKV[str, t.StrTuple],
+            Mapping[str, t.StrTuple],
             m.Field(
                 description=(
                     "Project-relative file sets keyed by the scope selector a "
@@ -246,7 +247,7 @@ class FlextInfraModelsRefactorGrep:
         """One public primitive whose native implementation closure is asked."""
 
         arg: Annotated[
-            t.StrPair,
+            tuple[str, str],
             m.Field(description="The primitive's module and public expression"),
         ]
 
@@ -270,8 +271,8 @@ class FlextInfraModelsRefactorGrep:
             t.NonEmptyStr,
             m.Field(description="Regex template instantiated with each key"),
         ] = c.Infra.CODEMOD_PARTITION_DEFAULT_PATTERN
-        keys: t.StrMapping = m.Field(
-            default_factory=u.empty(TypeForm(t.StrMapping)),
+        keys: Mapping[str, str] = m.Field(
+            default_factory=u.empty(TypeForm(Mapping[str, str])),
             description="Explicit key regexes; derived from scopes when empty",
         )
         matching: Annotated[
@@ -299,7 +300,7 @@ class FlextInfraModelsRefactorGrep:
         """One project's file scopes, the facts of the scoped rule renderer."""
 
         scopes: Annotated[
-            t.MappingKV[str, t.StrTuple],
+            Mapping[str, t.StrTuple],
             m.Field(description="Project-relative file sets keyed by scope selector"),
         ]
 
@@ -390,21 +391,21 @@ class FlextInfraModelsRefactorGrep:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
-        lint_tools: t.VariadicTuple[str] = m.Field(
+        lint_tools: tuple[str, ...] = m.Field(
             default_factory=tuple,
             description="Selected lint tools used for preview rendering",
         )
-        automated_changes: t.VariadicTuple[
-            FlextInfraModelsRefactorGrep.AccessorMigrationChange
+        automated_changes: tuple[
+            FlextInfraModelsRefactorGrep.AccessorMigrationChange, ...
         ] = m.Field(
             default_factory=tuple,
             description="Automated rewrites captured for this file",
         )
-        warnings: t.VariadicTuple[
-            FlextInfraModelsRefactorGrep.AccessorMigrationChange
-        ] = m.Field(
-            default_factory=tuple,
-            description="Manual follow-up warnings for this file",
+        warnings: tuple[FlextInfraModelsRefactorGrep.AccessorMigrationChange, ...] = (
+            m.Field(
+                default_factory=tuple,
+                description="Manual follow-up warnings for this file",
+            )
         )
         diff: Annotated[
             str,
@@ -419,7 +420,7 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Lint output after the proposed rewrite"),
         ]
         new_lint_errors: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            Mapping[str, Sequence[str]],
             m.Field(description="Lint errors introduced by the proposed rewrite"),
         ]
 
@@ -450,7 +451,7 @@ class FlextInfraModelsRefactorGrep:
             t.NonNegativeInt,
             m.Field(description="Total manual follow-up warnings detected"),
         ]
-        lint_tools: t.VariadicTuple[str] = m.Field(
+        lint_tools: tuple[str, ...] = m.Field(
             default_factory=tuple,
             description="Canonical lint tool list used by this run",
         )
@@ -466,11 +467,9 @@ class FlextInfraModelsRefactorGrep:
             t.IntMapping,
             m.Field(description="Per-tool count of newly introduced lint lines"),
         ]
-        files: t.VariadicTuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile] = (
-            m.Field(
-                default_factory=tuple,
-                description="Preview entries included in this report",
-            )
+        files: tuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile, ...] = m.Field(
+            default_factory=tuple,
+            description="Preview entries included in this report",
         )
 
 

@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import difflib
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from itertools import islice
 from typing import TYPE_CHECKING
 
 from flext_cli import m as cli_m, u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +21,204 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
+
+    @staticmethod
+    def codegen_compose_file_plans(
+        plans: Sequence[m.Infra.CodegenFilePlan],
+        *,
+        ordered: bool = False,
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Compose authenticated effects, advancing bytes only for ordered phases.
+
+        Returns:
+            One effect per destination with its original witness and dependencies.
+
+        """
+        files: dict[Path, m.Infra.CodegenFilePlan] = {}
+        for file in plans:
+            previous = files.get(file.path)
+            if previous is None:
+                files[file.path] = file
+                continue
+            conflicts = tuple(
+                name
+                for name, equal in (
+                    ("project", previous.project == file.project),
+                    ("path", previous.path == file.path),
+                    ("before", previous.before == file.before),
+                    ("owner", previous.owner == file.owner),
+                    ("policy", previous.policy == file.policy),
+                    ("tracking", previous.tracking == file.tracking),
+                    ("index_before", previous.index_before == file.index_before),
+                    (
+                        "desired_content",
+                        ordered or previous.desired_content == file.desired_content,
+                    ),
+                    (
+                        "desired_mode",
+                        ordered or previous.desired_mode == file.desired_mode,
+                    ),
+                )
+                if not equal
+            )
+            if conflicts:
+                file_plan = FlextInfraUtilitiesCodegenFilePlan
+                diagnostic = file_plan.codegen_duplicate_effect_diagnostic((
+                    previous,
+                    file,
+                ))
+                message = (
+                    f"candidate has competing file authority: {file.path}; "
+                    f"ordered={ordered}; competing_fields={conflicts}; {diagnostic}"
+                )
+                failure = ValueError(message)
+                raise failure
+            dependencies = tuple(
+                dict.fromkeys((
+                    *previous.tracking_dependencies,
+                    *file.tracking_dependencies,
+                ))
+            )
+            selected = file if ordered else previous
+            files[file.path] = (
+                selected
+                if selected.before is previous.before
+                and dependencies == selected.tracking_dependencies
+                else m.Infra.CodegenFilePlan(
+                    project=selected.project,
+                    path=selected.path,
+                    before=previous.before,
+                    desired_content=selected.desired_content,
+                    desired_mode=selected.desired_mode,
+                    owner=selected.owner,
+                    policy=selected.policy,
+                    tracking=selected.tracking,
+                    index_before=selected.index_before,
+                    tracking_dependencies=dependencies,
+                )
+            )
+        return tuple(files.values())
+
+    @classmethod
+    def codegen_stage_file_plans(
+        cls,
+        index: MutableMapping[Path, m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
+        *,
+        ordered: bool = False,
+    ) -> None:
+        """Check peer declarations before advancing the caller's candidate index."""
+        peers = cls.codegen_compose_file_plans(plans)
+        composed = cls.codegen_compose_file_plans(
+            (*index.values(), *peers), ordered=ordered
+        )
+        index.update((plan.path, plan) for plan in composed)
+
+    @classmethod
+    def codegen_duplicate_effect_diagnostic(
+        cls,
+        plans: Sequence[m.Infra.CodegenFilePlan],
+    ) -> str:
+        """Describe bounded duplicate declarations without exposing source bytes.
+
+        Returns:
+            Duplicate paths, ownership and exact in-memory byte digests.
+
+        """
+        grouped: dict[Path, list[m.Infra.CodegenFilePlan]] = {}
+        for plan in plans:
+            grouped.setdefault(plan.path, []).append(plan)
+        duplicates = tuple(items for items in grouped.values() if len(items) > 1)
+        details = tuple(
+            f"path={plan.path} project={plan.project} owner={plan.owner!r} "
+            f"before_sha256={cls._diagnostic_content_digest(plan.before.content)} "
+            f"desired_sha256={cls._diagnostic_content_digest(plan.desired_content)} "
+            f"before_mode={plan.before.mode} desired_mode={plan.desired_mode} "
+            f"before_path={plan.before.path} "
+            f"before_parent_device={plan.before.parent_device} "
+            f"before_parent_inode={plan.before.parent_inode} "
+            f"before_device={plan.before.device} before_inode={plan.before.inode} "
+            f"before_link_count={plan.before.link_count} "
+            f"before_file_attributes={plan.before.file_attributes} "
+            f"before_reparse_tag={plan.before.reparse_tag} "
+            f"policy={plan.policy} tracking={plan.tracking} "
+            f"index_retirement={plan.index_before is not None} "
+            f"tracking_dependencies={plan.tracking_dependencies[:5]}"
+            for items in duplicates[:5]
+            for plan in items[:5]
+        )
+        return f"duplicate_paths={len(duplicates)}; " + "; ".join(details)
+
+    @staticmethod
+    def _diagnostic_content_digest(content: bytes | None) -> str:
+        """Keep absence distinct from an empty file in native effect diagnostics.
+
+        Returns:
+            The content digest, or the existing absence marker.
+
+        """
+        return u.Cli.sha256_bytes(content) if content is not None else "absent"
+
+    @staticmethod
+    def source_file_plan_from_edit(
+        root: Path,
+        edit: p.Infra.SemanticMigrationEdit,
+        *,
+        source_project: p.Infra.RopeProject,
+        declared_files: Mapping[Path, m.Infra.CodegenFilePlan],
+    ) -> m.Infra.CodegenFilePlan:
+        """Bind a semantic edit to its original candidate publication witness.
+
+        Returns:
+            The source plan retaining prior ownership and CAS state.
+
+        Raises:
+            ValueError: If the edit does not consume the authenticated candidate.
+
+        """
+        path = edit.file_path
+        if not path.is_relative_to(root):
+            message = f"semantic source edit escapes its repository: {path}"
+            raise ValueError(message)
+        if edit.original_source is None:
+            message = f"semantic source edit has no original candidate witness: {path}"
+            raise ValueError(message)
+        previous = declared_files.get(path)
+        original = edit.original_source.encode(c.DEFAULT_ENCODING)
+        if source_project.source_text(path) != edit.original_source or (
+            previous is not None and previous.desired_content != original
+        ):
+            message = f"semantic edit differs from its source candidate: {path}"
+            raise ValueError(message)
+        before = (
+            previous.before
+            if previous is not None
+            else source_project.source_state(path)
+        )
+        mode = previous.desired_mode if previous is not None else before.mode
+        if mode is None:
+            message = f"semantic source edit has no publication mode: {path}"
+            raise ValueError(message)
+        if previous is None:
+            return m.Infra.CodegenFilePlan(
+                project=root,
+                path=path,
+                before=before,
+                desired_content=edit.updated_source.encode(c.DEFAULT_ENCODING),
+                desired_mode=mode,
+            )
+        return m.Infra.CodegenFilePlan(
+            project=previous.project,
+            path=path,
+            before=before,
+            desired_content=edit.updated_source.encode(c.DEFAULT_ENCODING),
+            desired_mode=mode,
+            owner=previous.owner,
+            policy=previous.policy,
+            tracking=previous.tracking,
+            index_before=previous.index_before,
+            tracking_dependencies=previous.tracking_dependencies,
+        )
 
     @staticmethod
     def codegen_target_snapshot(path: Path) -> p.Result[cli_m.Cli.AtomicFileState]:
@@ -64,15 +263,15 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def required_file_states(
-        paths: t.IterableOf[Path],
-    ) -> p.Result[t.VariadicTuple[cli_m.Cli.AtomicFileState]]:
+        paths: Iterable[Path],
+    ) -> p.Result[tuple[cli_m.Cli.AtomicFileState, ...]]:
         """Snapshot descriptor-authenticated states for an inventoried path set.
 
         Every path must exist: an absent input is a planning defect, not an empty
         snapshot.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[cli_m.Cli.AtomicFileState]]``.
+            The resulting ``p.Result[tuple[cli_m.Cli.AtomicFileState, ...]]``.
 
         """
         states: list[cli_m.Cli.AtomicFileState] = []
@@ -120,7 +319,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def codegen_fixed_point(
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         *,
         subject: str,
     ) -> p.Result[bool]:
@@ -148,7 +347,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def codegen_file_drift_report(
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         *,
         limit: int = 40,
     ) -> str:

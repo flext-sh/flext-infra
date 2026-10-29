@@ -7,9 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
 
@@ -73,7 +74,7 @@ class FlextInfraUtilitiesCompatibilityAliasValidation:
         source: str,
         file_path: Path,
         *,
-        qualified_aliases: t.StrMapping,
+        qualified_aliases: Mapping[str, str],
         exported_aliases: frozenset[str],
     ) -> None:
         """Require removed identities and their literal exports to disappear.

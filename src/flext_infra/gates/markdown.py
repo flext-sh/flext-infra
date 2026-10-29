@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m
@@ -14,7 +15,7 @@ from flext_infra.gates import FlextInfraMarkdownGateBase
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraMarkdownGate(FlextInfraMarkdownGateBase):
@@ -33,8 +34,8 @@ class FlextInfraMarkdownGate(FlextInfraMarkdownGateBase):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """Lint the collected Markdown files read-only.
 
         Returns:
@@ -49,12 +50,12 @@ class FlextInfraMarkdownGate(FlextInfraMarkdownGateBase):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
-    ) -> t.StrSequence:
+        targets: Sequence[str],
+    ) -> Sequence[str]:
         """Repair fixable findings and return the linter's residual verdict.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         del ctx
@@ -66,15 +67,15 @@ class FlextInfraMarkdownGate(FlextInfraMarkdownGateBase):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
         """Parse rumdl output, discarding lines marking already-applied fixes.
 
         Returns:
-            The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
 
         """
         del ctx
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: MutableSequence[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
             if not match:

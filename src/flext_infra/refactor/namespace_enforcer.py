@@ -6,18 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
 
 from flext_infra import c, m, r, u
 from flext_infra.codemod import (
-    FlextInfraImportNormalizationPhase,
+    FlextInfraCodemodLoopPhaseImportNormalization,
     FlextInfraModGateEngine,
 )
 from flext_infra.refactor import (
-    FlextInfraNamespaceEnforcerProjectMixin,
     FlextInfraNamespaceRelocationCascade,
+    FlextInfraRefactorNamespace,
 )
 
 if TYPE_CHECKING:
@@ -26,7 +27,9 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
+class FlextInfraNamespaceEnforcer(
+    FlextInfraRefactorNamespace,
+):
     """Orchestrate namespace enforcement across a workspace."""
 
     def __init__(self, *, repository_root: Path) -> None:
@@ -41,9 +44,9 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         self,
         *,
         apply: bool = False,
-        project_names: t.StrSequence | None = None,
+        project_names: Sequence[str] | None = None,
         module: str | None = None,
-        gates: t.StrSequence | None = None,
+        gates: Sequence[str] | None = None,
     ) -> m.Infra.WorkspaceEnforcementReport:
         """Run namespace enforcement across projects in the workspace.
 
@@ -107,7 +110,7 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
         if apply:
             for project_root, py_files in files_by_project.items():
                 if module is not None:
-                    FlextInfraImportNormalizationPhase.apply_files(
+                    FlextInfraCodemodLoopPhaseImportNormalization.apply_files(
                         project_root, py_files
                     )
                 relocation_ids = tuple(cascade.relocation_by_rule(project_root))
@@ -185,15 +188,15 @@ class FlextInfraNamespaceEnforcer(FlextInfraNamespaceEnforcerProjectMixin):
     def _resolve_project_roots(
         self,
         *,
-        project_names: t.StrSequence | None = None,
-    ) -> t.SequenceOf[Path]:
+        project_names: Sequence[str] | None = None,
+    ) -> Sequence[Path]:
         """Resolve the selected namespace-enabled roots through the topology owner.
 
         ``.`` names this repository itself; an unknown name is a caller error
         and escapes loud instead of silently enforcing nothing.
 
         Returns:
-            The resulting ``t.SequenceOf[Path]``.
+            The resulting ``Sequence[Path]``.
 
         Raises:
             ValueError: If ``resolved.failure``.

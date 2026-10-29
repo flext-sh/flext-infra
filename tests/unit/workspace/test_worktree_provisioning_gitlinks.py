@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraWorktreeService
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraWorktreeProvisioningGitlinks:
@@ -32,7 +32,7 @@ class TestsFlextInfraWorktreeProvisioningGitlinks:
         tmp_path: Path,
         *,
         managed: bool = True,
-    ) -> t.Triple[Path, Path, str]:
+    ) -> tuple[Path, Path, str]:
         lane = tmp_path / "lane"
         lane.mkdir()
         (lane / c.PYPROJECT_FILENAME).write_text(

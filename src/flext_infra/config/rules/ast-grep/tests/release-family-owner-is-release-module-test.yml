@@ -1,7 +1,7 @@
 id: release-family-owner-is-release-module
 valid:
-  - "policy: FlextInfraConfigModelsRelease.ReleasePolicySpec"
-  - "pins: FlextInfraConfigModelsArtifact.CodegenPlan"
+- "policy: FlextInfraModelsConfigRelease.ReleasePolicySpec"
+- "pins: FlextInfraModelsConfigArtifact.CodegenPlan"
 invalid:
-  - "policy: FlextInfraConfigModelsArtifact.ReleasePolicySpec"
-  - "pins: t.VariadicTuple[FlextInfraConfigModelsArtifact.BuildConstraintSpec]"
+- "policy: FlextInfraModelsConfigArtifact.ReleasePolicySpec"
+- "pins: tuple[FlextInfraModelsConfigArtifact.BuildConstraintSpec, ...],"

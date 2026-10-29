@@ -69,7 +69,7 @@ class FlextInfraModelsDepsToolConfigProjectGitignore(
         """Repository-owned ignore patterns the fleet scaffold cannot know."""
 
         patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Ignore patterns appended, in declaration order, as one "
@@ -78,8 +78,9 @@ class FlextInfraModelsDepsToolConfigProjectGitignore(
             ),
         ] = ()
         preserved_blocks: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignorePreservedBlock
+            tuple[
+                FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignorePreservedBlock,
+                ...,
             ],
             m.Field(
                 description=(

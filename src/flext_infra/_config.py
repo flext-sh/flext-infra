@@ -12,7 +12,7 @@ from typing import override
 
 from flext_cli import FlextCliConfig
 
-from flext_infra._models._config import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraModelsConfig
 
 
 class FlextInfraConfig(FlextCliConfig):
@@ -20,7 +20,7 @@ class FlextInfraConfig(FlextCliConfig):
 
     # Direct config.Infra is the only codegen information surface; no accessor
     # method.
-    Infra: FlextInfraConfigModels.Infra
+    Infra: FlextInfraModelsConfig.Infra
 
     @classmethod
     def ssot_config_dir(cls) -> Path:

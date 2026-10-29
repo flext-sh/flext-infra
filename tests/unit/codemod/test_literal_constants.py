@@ -14,7 +14,7 @@ import pytest
 from tests import c, m, p, t, tm
 
 
-class TestsFlextInfraLiteralConstants:
+class TestsFlextInfraConstantsLiteral:
     """Exercise the constants phase through its public planning boundary."""
 
     @staticmethod
@@ -30,7 +30,7 @@ class TestsFlextInfraLiteralConstants:
         ],
     )
     def test_literal_return_reuses_owner_and_reaches_fixed_point(
-        constants_workspace: t.Pair[Path, Path],
+        constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
         infra_subprocess: p.Cli.CommandRunner,
         literal_source: str,
@@ -99,7 +99,7 @@ class TestsFlextInfraLiteralConstants:
     @staticmethod
     @pytest.mark.parametrize("case", ["shadowed", "ambiguous"])
     def test_unproven_literal_owner_fails_before_publication(
-        constants_workspace: t.Pair[Path, Path],
+        constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
         case: str,
     ) -> None:

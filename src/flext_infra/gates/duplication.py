@@ -6,21 +6,26 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import socket
 import time
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
+from urllib.parse import urlsplit
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
-from flext_infra.gates import FlextInfraGate
-from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
-from flext_infra.gates.duplication_report import FlextInfraDuplicationReportMixin
+from flext_infra import c, config, m, r, u
+from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
+from flext_infra.gates import (
+    FlextInfraDuplicationEvidence,
+    FlextInfraDuplicationReport,
+    FlextInfraGate,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate):
+class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
     """Report every clone owned by one project from a fresh scan of that project.
 
     R2 extension: consumer+family scope via [tool.flext.project] config keys;
@@ -33,6 +38,8 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
     can_fix: ClassVar[bool] = False
     scanner_binary: ClassVar[str] = c.Infra.JSCPD_BINARY
     check_timeout: ClassVar[int] = c.Infra.TIMEOUT_LONG
+    semantic_probe_timeout_seconds: ClassVar[int] = 2
+    "Bounded availability probe; never a data fetch."
 
     @override
     def check(
@@ -60,15 +67,14 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         ):
             return self._parsed_gate_execution(project_dir, ctx, scan, started)
         report, issues, tool_failed = self._report_issues(scan, project_dir)
-        not_executed = (
-            "jscpd semantic pass NOT EXECUTED: the CI context has no embeddings host"
-            if self.semantic_not_executed()
-            else ""
-        )
+        skipped_roots = self._absent_comparison_note(project_dir)
+        not_executed = self._semantic_not_executed_reason()
         evidence = self._publish_raw_receipt(
             ctx,
             "\n".join(
-                part for part in (scan.stdout, scan.stderr, not_executed) if part
+                part
+                for part in (scan.stdout, scan.stderr, not_executed, skipped_roots)
+                if part
             ),
         )
         if report is not None and overrides.success:
@@ -81,7 +87,8 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
                     (
                         f"return_code={scan.outcome.raw_return_code}; "
                         f"timed_out={scan.outcome.timed_out}; "
-                        f"signal={scan.outcome.forwarded_signal}; {not_executed}"
+                        f"signal={scan.outcome.forwarded_signal}; "
+                        f"{not_executed}; {skipped_roots}".rstrip("; ")
                     ),
                 ),
             )
@@ -117,7 +124,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         self,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
-    ) -> t.Triple[m.Infra.JscpdReport | None, t.VariadicTuple[m.Infra.Issue], bool]:
+    ) -> tuple[m.Infra.JscpdReport | None, tuple[m.Infra.Issue, ...], bool]:
         """Parse the native report into owned clones plus any tool failure.
 
         A non-findings exit, or a findings exit whose report holds no clone,
@@ -134,7 +141,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
             parsed = self._issues_from_report(project_dir, report)
         except ValueError as exc:
             parsed = r[tuple[m.Infra.Issue, ...]].fail(str(exc), exception=exc)
-        issues: t.VariadicTuple[m.Infra.Issue] = (
+        issues: tuple[m.Infra.Issue, ...] = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
         empty_failure = (
@@ -149,11 +156,11 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
 
     def _assessment_issues(
         self,
-        assessed: t.Pair[m.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
+        assessed: tuple[m.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
         project_dir: Path,
         evidence: m.Infra.GateOutputReceipt,
         execution: str,
-    ) -> t.VariadicTuple[m.Infra.Issue]:
+    ) -> tuple[m.Infra.Issue, ...]:
         """Publish the duplication assessment beside its receipt.
 
         Returns:
@@ -241,7 +248,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
                     forwarded_signal=None,
                 ),
             )
-        rendered_config = self._render_config(project_dir, scope.value)
+        rendered_config = self._render_config(project_dir)
         if rendered_config.failure:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -266,8 +273,11 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
             binary,
             "--config",
             str(config_path),
+            # The CLI reporters flag overrides the generated config, so the
+            # typed SSOT constant must drive it here too; leaving "json"
+            # hardcoded would silently drop the SARIF artifact.
             "--reporters",
-            "json",
+            ",".join(c.Infra.JSCPD_REPORTERS),
             "--output",
             str(report_dir),
             *scope.value,
@@ -279,7 +289,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         )
         return self._load_report(report_dir, result)
 
-    def _render_scope_dirs(self, project_dir: Path) -> p.Result[t.StrSequence]:
+    def _render_scope_dirs(self, project_dir: Path) -> p.Result[Sequence[str]]:
         """The invoking project's canonical scope plus its declared extra trees.
 
         Every repository evaluates only itself, locally exactly as in CI: the
@@ -295,17 +305,17 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         artifact (a false 50%-duplication report), never real duplication.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         project_config = self._read_project_config(project_dir)
         if project_config.failure:
-            return r[t.StrSequence].from_failure(project_config)
+            return r[Sequence[str]].from_failure(project_config)
         scope_dirnames = project_config.value.scope
         declared_trees = self._declared_duplication_trees()
         if declared_trees.failure:
-            return r[t.StrSequence].from_failure(declared_trees)
-        candidates: t.MutableSequenceOf[str] = []
+            return r[Sequence[str]].from_failure(declared_trees)
+        candidates: MutableSequence[str] = []
         seen: set[str] = set()
         for candidate in (
             *self._existing_check_dirs(project_dir),
@@ -320,11 +330,27 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
                 continue
             seen.add(candidate)
             candidates.append(candidate)
-        return r[t.StrSequence].ok(
+        # External comparison roots join the same single scan so a clone
+        # shared with a declared external checkout is a finding of this
+        # project, never a per-project blind spot. Resolution is absolute;
+        # a resolved alias of an internal entry would duplicate every file
+        # against itself (the double-scan artifact), so membership is judged
+        # on resolved identity, never on the raw strings.
+        present, _absent = self._comparison_roots(project_config.value)
+        internal: set[str] = {
+            str(Path(candidate).resolve()) for candidate in candidates
+        }
+        for root_path in present:
+            resolved = str(root_path.resolve())
+            if resolved in internal:
+                continue
+            internal.add(resolved)
+            candidates.append(resolved)
+        return r[Sequence[str]].ok(
             tuple(str(project_dir / candidate) for candidate in candidates),
         )
 
-    def _render_fleet_scope_dirs(self, project_dir: Path) -> p.Result[t.StrSequence]:
+    def _render_fleet_scope_dirs(self, project_dir: Path) -> p.Result[Sequence[str]]:
         """Union this project's scope with every declared member's scope.
 
         The cross-project view scans every member this workspace declares (the
@@ -335,26 +361,26 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         the governed workspace root.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         base = self._render_scope_dirs(project_dir)
         if base.failure:
-            return r[t.StrSequence].from_failure(base)
-        candidates: t.MutableSequenceOf[str] = list(base.value)
+            return r[Sequence[str]].from_failure(base)
+        candidates: MutableSequence[str] = list(base.value)
         seen: set[str] = set(candidates)
         for member in u.Infra.discover_project_roots(project_dir):
             if member == project_dir:
                 continue
             member_scope = self._render_scope_dirs(member)
             if member_scope.failure:
-                return r[t.StrSequence].from_failure(member_scope)
+                return r[Sequence[str]].from_failure(member_scope)
             for candidate in member_scope.value:
                 if candidate in seen:
                     continue
                 seen.add(candidate)
                 candidates.append(candidate)
-        return r[t.StrSequence].ok(tuple(candidates))
+        return r[Sequence[str]].ok(tuple(candidates))
 
     @staticmethod
     def _read_project_config(
@@ -397,20 +423,20 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
             )
         return r[m.Infra.ProjectDuplicationOverrides].ok(validated.value)
 
-    def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
+    def _declared_duplication_trees(self) -> p.Result[Sequence[str]]:
         """Read duplication scope from the target's selected repository delta.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         loaded = u.Infra.load_codegen_inputs(self._repository_root)
         if loaded.failure:
-            return r[t.StrSequence].from_failure(loaded)
+            return r[Sequence[str]].from_failure(loaded)
         repository = loaded.value.spec.repository
-        return r[t.StrSequence].ok(repository.duplication_trees)
+        return r[Sequence[str]].ok(repository.duplication_trees)
 
-    def _render_config(self, project_dir: Path, scope: t.StrSequence) -> p.Result[Path]:
+    def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
 
         R2: Reads thresholds from [tool.flext.project] config SSOT.
@@ -427,29 +453,31 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
             return r[Path].from_failure(project_config)
         overrides = project_config.value
         passes = config.Infra.tooling.tools.jscpd
+        # The embedding pass runs wherever its declared host answers; in CI
+        # it is typed NOT EXECUTED, and a locally unreachable host is typed
+        # the same way. It is never silently dropped and never faked.
+        semantic = passes.semantic
+        if semantic is not None and (
+            self.semantic_not_executed() or self.semantic_host_unreachable() is not None
+        ):
+            semantic = None
         jscpd_config = m.Infra.JscpdConfig(
             absolute=True,
             formatsExts={
                 name: tuple(extensions)
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
-            ignore=(
-                *self._derived_ignore_patterns(),
-                *u.Infra.generated_projection_patterns(
-                    self._repository_root,
-                    tuple(self._repository_root / directory for directory in scope),
-                ),
-            ),
+            ignore=self._derived_ignore_patterns(),
             ignorePattern=passes.ignore_patterns,
             minLines=overrides.min_lines,
             minTokens=overrides.min_tokens,
             mode=overrides.mode,
             noColors=True,
             noTips=True,
-            reporters=(c.Infra.OUTPUT_JSON,),
+            reporters=c.Infra.JSCPD_REPORTERS,
             threshold=overrides.threshold_percent,
             similarity=passes.similarity,
-            semantic=None if self.semantic_not_executed() else passes.semantic,
+            semantic=semantic,
         )
         config_path = (
             self._repository_root
@@ -476,19 +504,106 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
         ci = config.Infra.codegen.make.ci
         return (u.Infra.env_lookup(ci.variable) or "").strip() == ci.value
 
-    def _derived_ignore_patterns(self) -> t.StrSequence:
+    @classmethod
+    def semantic_host_unreachable(cls) -> str | None:
+        """Probe the declared embeddings host transport once; never a fetch.
+
+        An accepted TCP connection proves the configured host answers; only
+        a bounded transport failure names it unreachable. The result decides
+        whether ``--semantic`` runs locally, never a silent pass: an
+        unreachable host is recorded NOT EXECUTED beside the receipt.
+
+        Returns:
+            The transport failure reason, or None when the host answered.
+
+        """
+        semantic = config.Infra.tooling.tools.jscpd.semantic
+        if semantic is None:
+            return None
+        parsed = urlsplit(semantic.url)
+        if not parsed.hostname:
+            return f"invalid embeddings host URL: {semantic.url}"
+        try:
+            with socket.create_connection(
+                (parsed.hostname, parsed.port or 80),
+                timeout=cls.semantic_probe_timeout_seconds,
+            ):
+                return None
+        except OSError as exc:
+            return f"{type(exc).__name__}: {exc}"
+
+    def _semantic_not_executed_reason(self) -> str:
+        """Name the declared reason the semantic pass will not run.
+
+        Returns:
+            The typed NOT EXECUTED note, or an empty string when it runs.
+
+        """
+        if self.semantic_not_executed():
+            return (
+                "jscpd semantic pass NOT EXECUTED: the CI context has no "
+                "embeddings host"
+            )
+        unreachable = self.semantic_host_unreachable()
+        if unreachable is not None:
+            return (
+                "jscpd semantic pass NOT EXECUTED: the embeddings host is "
+                f"unreachable ({unreachable})"
+            )
+        return ""
+
+    @staticmethod
+    def _comparison_roots(
+        overrides: m.Infra.ProjectDuplicationOverrides,
+    ) -> tuple[Sequence[Path], Sequence[str]]:
+        """Resolve declared external comparison roots against the filesystem.
+
+        Returns:
+            The present directories and the declared-but-absent entries.
+
+        """
+        present: list[Path] = []
+        absent: list[str] = []
+        for entry in overrides.comparison_roots:
+            path = Path(entry)
+            if path.is_dir():
+                present.append(path)
+            else:
+                absent.append(entry)
+        return tuple(present), tuple(absent)
+
+    def _absent_comparison_note(self, project_dir: Path) -> str:
+        """Record declared-but-absent comparison roots in the gate output.
+
+        A missing root degrades the scan, exactly like a standalone fleet
+        checkout; degradation is recorded, never silent, so a path typo in
+        the declaring manifest stays visible beside the receipt.
+
+        Returns:
+            The degradation note, or an empty string when all roots exist.
+
+        """
+        project_config = self._read_project_config(project_dir)
+        if project_config.failure:
+            return ""
+        _present, absent = self._comparison_roots(project_config.value)
+        if not absent:
+            return ""
+        return "jscpd comparison roots skipped (absent): " + ", ".join(absent)
+
+    def _derived_ignore_patterns(self) -> Sequence[str]:
         """Derive the complete jscpd ignore list from declared owners.
 
         Every pattern names a declared semantic fact, never a hand-maintained
         exception: the ast-grep corpus topology read from the declared
         sgconfig fixtures (provider resource and the repository-local delta
         when declared), the declared ast-grep snapshot directory,
-        resolver-owned lockfile emission, and the declared exclusion
-        registry's structural fixture/container/helper names. Generator
-        projections come from the one generated-projection owner.
+        and resolver-owned lockfile emission. Case directories, part
+        directories and helper filenames do not establish ownership exemptions.
+        Owned generated sources remain subject to clone analysis.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         globs: list[str] = []
@@ -507,24 +622,17 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReportMixin, FlextInfraGate
             globs.extend(self._sgconfig_fixture_globs(corpus_root_rel, local_root))
         globs.append(f"**/{c.Infra.CODEMOD_SNAPSHOT_DIRNAME}/**")
         globs.extend(f"**/{name}" for name in config.Infra.codegen.resolver_owned_files)
-        exclusions = config.Infra.codegen.exclusions
-        structural = (
-            *exclusions.parameterized_case_dirs,
-            *exclusions.part_container_dirs,
-        )
-        globs.extend(f"**/{name}/**" for name in sorted(set(structural)))
-        globs.extend(f"**/{name}" for name in sorted(set(exclusions.helper_modules)))
         return tuple(dict.fromkeys(globs))
 
     @staticmethod
     def _sgconfig_fixture_globs(
         corpus_root_rel: str,
         config_root: Path,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Derive corpus globs from one declared sgconfig's fixture topology.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         fixtures = FlextInfraCodemodSnapshotReconciler.fixture_directories(config_root)

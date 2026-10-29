@@ -238,7 +238,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                 eq="PublishedContract",
             )
             tm.that(project.find_relative_module("missing", folder, 1), none=True)
-            with pytest.raises(u.Infra.rope_module_not_found_error_types()):
+            with pytest.raises(u.Infra.rope_unresolved_error_types()):
                 project.get_relative_module("missing", folder, 1)
 
     @staticmethod

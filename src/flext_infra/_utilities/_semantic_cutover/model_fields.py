@@ -7,15 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
-import libcst as cst
-from libcst.codemod import CodemodContext
-from libcst.codemod.visitors import AddImportsVisitor
-
 from flext_infra import c
-from flext_infra._utilities._codemod.codemod_project import (
-    FlextInfraUtilitiesCodemodProject,
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
+from flext_infra._utilities._rope.rope_module_patch import (
+    FlextInfraUtilitiesRopeModulePatch,
 )
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -24,7 +22,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -46,7 +44,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     @staticmethod
     def _contract_arguments(
         rule: p.Infra.RopeContractRule,
-    ) -> t.MappingKV[str, str | t.StrSequence]:
+    ) -> Mapping[str, str | Sequence[str]]:
         """Constrain ordinary captures before native call admission.
 
         Returns:
@@ -222,8 +220,8 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        resources: t.SequenceOf[p.Infra.RopeResource],
-    ) -> t.SequenceOf[t.Pair[str, str]]:
+        resources: Sequence[p.Infra.RopeResource],
+    ) -> Sequence[tuple[str, str]]:
         """Specialize explicit argument shapes, leaving matching/writing to Rope.
 
         Returns:
@@ -232,7 +230,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         """
         if not rule.defaulted_field:
             return ((rule.pattern, rule.goal),)
-        templates: t.MutableMappingKV[t.Pair[str, str], None] = {}
+        templates: MutableMapping[tuple[str, str], None] = {}
         field = f"${{{rule.call_target}}}"
         default = f"${{{rule.value_default}}}"
         for resource in resources:
@@ -273,7 +271,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
-    ) -> t.SequenceOf[t.Pair[int, int]]:
+    ) -> Sequence[tuple[int, int]]:
         """Retain every call lacking an exact native evaluation-safety proof.
 
         Returns:
@@ -283,7 +281,9 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         calls = refactors.word_call_regions(module.source_code, match.get_region())
         if rule.defaulted_field and rule.value_default is not None:
-            begin, end = refactors.semantic_capture_region(match, rule.value_default)
+            begin, end = refactors.semantic_capture_region(
+                module, match, rule.value_default
+            )
             calls = tuple(
                 region for region in calls if not begin <= region[0] < region[1] <= end
             )
@@ -303,7 +303,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
         match: p.Infra.RopeContractMatch,
-    ) -> t.SequenceOf[t.Pair[int, int]]:
+    ) -> Sequence[tuple[int, int]]:
         """Prove direct SDK metadata that only stores a deferred builtin factory.
 
         Returns:
@@ -316,7 +316,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         scope = runtime.scope_at(module, match.get_region()[0])
         annotated = runtime.qualified_name(project, "typing.Annotated")
-        regions: list[t.Pair[int, int]] = []
+        regions: list[tuple[int, int]] = []
         for node in ast.walk(contract):
             if not isinstance(node, ast.Subscript) or not isinstance(
                 node.slice, ast.Tuple
@@ -352,7 +352,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         module: p.Infra.RopePyModule,
-        candidate: t.Pair[p.Infra.RopeScope, ast.Call],
+        candidate: tuple[p.Infra.RopeScope, ast.Call],
     ) -> bool:
         """Keep builtin factories as values, never evaluate authored callbacks.
 
@@ -368,7 +368,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         builtin = (
-            FlextInfraUtilitiesRopeRuntimeTypes
+            FlextInfraUtilitiesTypesRopeRuntime
             .require_semantic_module(project.get_module("__builtin__"))
             .get_attributes()
             .get(keyword.value.id)
@@ -401,12 +401,12 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     @classmethod
     def _plan_model_fields(
         cls,
-        sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Inspect all sources, including direct access emitted by older rules.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]``.
+            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
 
         """
         return cls._semantic_edits(cls._editable_sources(sources), cls._rewrite_fields)
@@ -414,7 +414,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     @classmethod
     def _rewrite_fields(cls, path: Path, source: str) -> t.Infra.TransformResult:
         tree = ast.parse(source, filename=str(path))
-        replacements: list[t.Triple[int, int, str]] = []
+        replacements: list[tuple[int, int, str]] = []
         lines = source.splitlines(keepends=True)
         for function in ast.walk(tree):
             if not isinstance(function, c.Infra.AST_FUNCTION_TYPES):
@@ -427,12 +427,10 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         cls._require_unshadowed_guard(tree)
         for start, end, replacement in sorted(replacements, reverse=True):
             lines[start:end] = [replacement]
-        context = CodemodContext()
-        AddImportsVisitor.add_needed_import(context, "flext_core", "u")
-        updated = (
-            AddImportsVisitor(context)
-            .transform_module(cst.parse_module("".join(lines)))
-            .code
+        updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
+            "".join(lines),
+            module="flext_core",
+            name="u",
         )
         return updated, ("narrowed untrusted model-class boundaries",)
 
@@ -441,12 +439,12 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         cls,
         path: Path,
         function: ast.FunctionDef | ast.AsyncFunctionDef,
-        lines: t.SequenceOf[str],
-    ) -> t.SequenceOf[t.Triple[int, int, str]]:
+        lines: Sequence[str],
+    ) -> Sequence[tuple[int, int, str]]:
         """Plan the narrowed model-fields boundary of one function body.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Triple[int, int, str]]``.
+            The resulting ``Sequence[tuple[int, int, str]]``.
 
         Raises:
             ValueError: If a model field guard has no complete source span.
@@ -461,7 +459,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             )
             if isinstance(arg.annotation, ast.Name) and arg.annotation.id == "object"
         }
-        replacements: list[t.Triple[int, int, str]] = []
+        replacements: list[tuple[int, int, str]] = []
         for index, statement in enumerate(function.body):
             receiver = cls._field_receiver(statement)
             if receiver not in untrusted or not isinstance(statement, ast.Assign):

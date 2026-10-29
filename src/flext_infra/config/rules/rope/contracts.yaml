@@ -1,8 +1,14 @@
-# Universal contract rules only. A rule about one repository's own symbols
-# belongs in that repository's overlay at the same relative path
-# (config/rules/rope/contracts.yaml under its root), never here: a packaged
-# rule naming a project identity fails every consumer that cannot import it.
+# Universal rules include the flext-core foundation required by flext-infra.
+# Other project identities belong to their owning repository's overlay.
 rules:
+  - id: core-retire-generic-typing-wrappers
+    operation: retire-generic-typing-wrappers
+    source_revision: 35f2da92c92aa99be5beef560380ea79f659d901
+    phase: contract-normalization
+    pattern: '${provider}'
+    goal: '${provider}'
+    arguments:
+      provider: name=flext_core._typings.FlextTypingBase
   # Factory migration retains named/bound logger receivers. Direct u.* collapse
   # needs separate runtime equivalence proof and is deliberately not elected.
   # Rope types builtin values through its ``__builtins__`` namespace; the

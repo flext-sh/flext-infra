@@ -14,9 +14,10 @@ import operator
 import time
 import tokenize
 from bisect import bisect_left, bisect_right
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, u
 
 
 class FlextInfraDuplicationEvidence:
@@ -28,7 +29,7 @@ class FlextInfraDuplicationEvidence:
 
     def __init__(self) -> None:
         """Start an isolated source cache for one assessment."""
-        self._sources: t.MutableMappingKV[
+        self._sources: MutableMapping[
             str,
             tuple[
                 bytes,
@@ -92,9 +93,20 @@ class FlextInfraDuplicationEvidence:
 
         """
         started = time.monotonic()
+        # Measurement scope mirrors the scan scope: the invoking project plus
+        # every declared comparison root present on disk. Ownership is and
+        # stays path containment under the invoking project alone, so a
+        # cross-checkout clone remains a finding of the project that declares
+        # the external root, never of the external checkout's owner.
+        comparison = tuple(
+            path.resolve()
+            for path in map(Path, config.comparison_roots)
+            if path.is_dir()
+        )
+        allowed: Sequence[Path] = (root.resolve(), *comparison)
         candidates: list[m.Infra.DuplicationCandidateEvidence] = []
-        pairs: t.MutableMappingKV[tuple[str, str], int] = {}
-        counts: t.MutableMappingKV[str, int] = {
+        pairs: MutableMapping[tuple[str, str], int] = {}
+        counts: MutableMapping[str, int] = {
             "raw": len(report.duplicates),
             "owned": 0,
             "mirror": 0,
@@ -118,7 +130,7 @@ class FlextInfraDuplicationEvidence:
             )
             measures: tuple[m.Infra.DuplicationSpanMeasure, ...] = ()
             try:
-                measures = self._candidate_measures(candidate, root)
+                measures = self._candidate_measures(candidate, allowed)
                 classification = self._classify(
                     candidate.format_name,
                     measures,
@@ -185,7 +197,7 @@ class FlextInfraDuplicationEvidence:
             Candidates with causal errors for changed or newly unreadable sources.
 
         """
-        errors: t.MutableMappingKV[str, str] = {}
+        errors: MutableMapping[str, str] = {}
         for name, (data, _, _) in self._sources.items():
             try:
                 current = Path(name).read_bytes()
@@ -215,9 +227,12 @@ class FlextInfraDuplicationEvidence:
     def _candidate_measures(
         self,
         candidate: m.Infra.JscpdDuplicate,
-        root: Path,
+        allowed: Sequence[Path],
     ) -> tuple[m.Infra.DuplicationSpanMeasure, ...]:
-        """Bind both reported spans to physical sources within this project.
+        """Bind both reported spans to a scanned scope root.
+
+        A scanned scope root is the invoking project or one of its declared
+        comparison roots; anything else is outside this gate's evidence.
 
         Returns:
             Both source-bound measurements.
@@ -228,7 +243,9 @@ class FlextInfraDuplicationEvidence:
         """
         sides = (candidate.first_file, candidate.second_file)
         if any(
-            not Path(side.name).resolve().is_relative_to(root.resolve())
+            not any(
+                Path(side.name).resolve().is_relative_to(scope) for scope in allowed
+            )
             for side in sides
         ):
             msg = "candidate source outside selected project scope"
@@ -600,7 +617,7 @@ class FlextInfraDuplicationEvidence:
             Physical line runs and lexical token counts.
 
         """
-        per_line: t.MutableMappingKV[int, int] = {}
+        per_line: MutableMapping[int, int] = {}
         for token in retained:
             per_line[token.start[0]] = per_line.get(token.start[0], 0) + 1
         runs: list[tuple[int, int, int]] = []

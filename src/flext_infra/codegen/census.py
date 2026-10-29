@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, p, r, s, t, u
@@ -46,7 +47,7 @@ class FlextInfraCodegenCensus(s[str]):
                 "total_fixable": total_fixable,
             }
             return r[str].ok(t.Infra.INFRA_MAPPING_ADAPTER.dump_json(payload).decode())
-        lines: t.MutableSequenceOf[str] = [
+        lines: MutableSequence[str] = [
             (
                 f"  {report.project}: {report.total} violations"
                 f" ({report.fixable} fixable)"
@@ -65,8 +66,8 @@ class FlextInfraCodegenCensus(s[str]):
         repository_root: Path | None = None,
         *,
         output_format: str = c.Cli.OutputFormats.JSON,
-        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CensusReport]]:
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
+    ) -> p.Result[tuple[m.Infra.CensusReport, ...]]:
         """Run census on all projects in workspace.
 
         Args:
@@ -86,12 +87,12 @@ class FlextInfraCodegenCensus(s[str]):
     def _run_project_census(
         workspace: Path,
         *,
-        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CensusReport]]:
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
+    ) -> p.Result[tuple[m.Infra.CensusReport, ...]]:
         """Census all projects in workspace using the standard path.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CensusReport]]``.
+            The resulting ``p.Result[tuple[m.Infra.CensusReport, ...]]``.
 
         """
         if projects is not None:
@@ -99,11 +100,11 @@ class FlextInfraCodegenCensus(s[str]):
         else:
             projects_result = u.Infra.projects(workspace)
             if projects_result.failure:
-                return r[t.VariadicTuple[m.Infra.CensusReport]].from_failure(
+                return r[tuple[m.Infra.CensusReport, ...]].from_failure(
                     projects_result,
                 )
             selected_projects = tuple(projects_result.value)
-        reports: t.MutableSequenceOf[m.Infra.CensusReport] = []
+        reports: MutableSequence[m.Infra.CensusReport] = []
         for project in selected_projects:
             project_root = project.path.resolve()
             validation = FlextInfraNamespaceValidator(
@@ -111,7 +112,7 @@ class FlextInfraCodegenCensus(s[str]):
             ).build_report()
             parsed = u.Infra.parse_namespace_validation(validation, project_root)
             if parsed.failure:
-                return r[t.VariadicTuple[m.Infra.CensusReport]].from_failure(parsed)
+                return r[tuple[m.Infra.CensusReport, ...]].from_failure(parsed)
             violations = parsed.value
             reports.append(
                 m.Infra.CensusReport(
@@ -121,7 +122,7 @@ class FlextInfraCodegenCensus(s[str]):
                     fixable=u.count(violations, lambda violation: violation.fixable),
                 ),
             )
-        return r[t.VariadicTuple[m.Infra.CensusReport]].ok(tuple(reports))
+        return r[tuple[m.Infra.CensusReport, ...]].ok(tuple(reports))
 
 
 __all__: list[str] = ["FlextInfraCodegenCensus"]

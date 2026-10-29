@@ -21,7 +21,9 @@ class TestsFlextInfraCliRepositoryRootContract:
 
     @staticmethod
     @pytest.fixture
-    def rendered_makefile(tmp_path: Path) -> str:
+    def rendered_makefile(
+        tmp_path: Path,
+    ) -> str:
         """Use the conform owner and typed fixtures, not a copied Make recipe.
 
         Returns:

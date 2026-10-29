@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import tarfile
 import textwrap
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 
@@ -17,7 +17,7 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
 
 
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesRelease:
     @staticmethod
     def _validated_tar_members(
         archive: tarfile.TarFile,
-    ) -> p.Result[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]]:
+    ) -> p.Result[tuple[tuple[tarfile.TarInfo, Path], ...]]:
         """Validate every archive member name and kind for safe materialization.
 
         Returns:
@@ -104,27 +104,27 @@ class FlextInfraUtilitiesRelease:
         try:
             members = tuple(archive.getmembers())
         except tarfile.TarError as exc:
-            return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].fail_op(
+            return r[tuple[tuple[tarfile.TarInfo, Path], ...]].fail_op(
                 "read release archive members",
                 exc,
             )
-        validated_members: list[t.Pair[tarfile.TarInfo, Path]] = []
+        validated_members: list[tuple[tarfile.TarInfo, Path]] = []
         for member in members:
             path_result = FlextInfraUtilitiesRelease.archive_member_path(member.name)
             if path_result.failure:
-                return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].from_failure(
+                return r[tuple[tuple[tarfile.TarInfo, Path], ...]].from_failure(
                     path_result,
                 )
             if member.issym() or member.islnk():
-                return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].fail(
+                return r[tuple[tuple[tarfile.TarInfo, Path], ...]].fail(
                     f"release archive contains symbolic or hard link: {member.name}",
                 )
             if not member.isdir() and not member.isfile():
-                return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].fail(
+                return r[tuple[tuple[tarfile.TarInfo, Path], ...]].fail(
                     f"release archive contains unsupported member: {member.name}",
                 )
             validated_members.append((member, path_result.value))
-        return r[t.VariadicTuple[t.Pair[tarfile.TarInfo, Path]]].ok(
+        return r[tuple[tuple[tarfile.TarInfo, Path], ...]].ok(
             tuple(validated_members),
         )
 
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesRelease:
     def _write_validated_tar_tree(
         archive: tarfile.TarFile,
         staging: Path,
-        validated_members: Sequence[t.Pair[tarfile.TarInfo, Path]],
+        validated_members: Sequence[tuple[tarfile.TarInfo, Path]],
     ) -> p.Result[bool]:
         """Write prevalidated tar members into a staging directory.
 
@@ -176,7 +176,7 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def plan_bump(
-        subjects: t.StrSequence,
+        subjects: Sequence[str],
         bump_types: Mapping[str, c.Infra.VersionBump],
     ) -> p.Result[c.Infra.VersionBump]:
         """Derive the release bump from the merged pull-request subjects.
@@ -230,7 +230,7 @@ class FlextInfraUtilitiesRelease:
     def generate_notes(
         version: str,
         tag: str,
-        project_list: t.SequenceOf[m.Infra.ProjectInfo],
+        project_list: Sequence[m.Infra.ProjectInfo],
         changes: str,
         output_path: Path,
     ) -> p.Result[bool]:
@@ -240,7 +240,7 @@ class FlextInfraUtilitiesRelease:
             The resulting ``p.Result[bool]``.
 
         """
-        lines: t.MutableSequenceOf[str] = [
+        lines: MutableSequence[str] = [
             f"# Release {tag}",
             "",
             "## Scope",
@@ -291,7 +291,7 @@ class FlextInfraUtilitiesRelease:
             The resulting ``str``.
 
         """
-        rendered: t.MutableSequenceOf[str] = []
+        rendered: MutableSequence[str] = []
         for raw in changes.splitlines():
             line = raw.strip()
             if not line:
@@ -405,8 +405,8 @@ class FlextInfraUtilitiesRelease:
     @classmethod
     def release_publish_waves(
         cls,
-        targets: t.SequenceOf[t.Pair[str, Path]],
-    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
+        targets: Sequence[tuple[str, Path]],
+    ) -> p.Result[Sequence[Sequence[str]]]:
         """Group selected release projects into dependency-respecting waves.
 
         Publishing to an index is immutable: a dependent uploaded before its
@@ -417,15 +417,15 @@ class FlextInfraUtilitiesRelease:
         wave may upload in parallel while the sequence between waves is strict.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[t.StrSequence]]``.
+            The resulting ``p.Result[Sequence[Sequence[str]]]``.
 
         """
         selected = {name for name, _ in targets}
-        edges: MutableMapping[str, t.StrSequence] = {}
+        edges: MutableMapping[str, Sequence[str]] = {}
         for name, path in targets:
             declared = cls._release_runtime_dependencies(path)
             if declared.failure:
-                return r[t.SequenceOf[t.StrSequence]].from_failure(declared)
+                return r[Sequence[Sequence[str]]].from_failure(declared)
             # A dependency outside the selection is not an edge: it is already
             # on the index or out of scope, and treating it as an edge would
             # deadlock the graph on a package this release never publishes.
@@ -437,7 +437,7 @@ class FlextInfraUtilitiesRelease:
         return u.Cli.dag_waves(edges)
 
     @staticmethod
-    def _release_runtime_dependencies(path: Path) -> p.Result[t.StrSequence]:
+    def _release_runtime_dependencies(path: Path) -> p.Result[Sequence[str]]:
         """Return the runtime dependency names declared by one project.
 
         Only ``[project].dependencies`` counts. Dev groups are not part of the
@@ -451,20 +451,20 @@ class FlextInfraUtilitiesRelease:
         """
         pyproject = path / c.PYPROJECT_FILENAME
         if not pyproject.is_file():
-            return r[t.StrSequence].fail(
+            return r[Sequence[str]].fail(
                 f"release project has no {c.PYPROJECT_FILENAME}: {path}",
             )
         document = u.Cli.toml_read_document(pyproject)
         if document.failure:
-            return r[t.StrSequence].from_failure(document)
+            return r[Sequence[str]].from_failure(document)
         payload = u.Cli.toml_as_mapping(document.value)
         project = payload.get(c.Infra.PROJECT) if payload else None
         if not isinstance(project, Mapping):
-            return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(())
         requirements = project.get(c.Infra.DEPENDENCIES)
         if not isinstance(requirements, Sequence) or isinstance(requirements, str):
-            return r[t.StrSequence].ok(())
-        return r[t.StrSequence].ok(
+            return r[Sequence[str]].ok(())
+        return r[Sequence[str]].ok(
             tuple(
                 sorted({
                     name
@@ -498,7 +498,7 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def release_identity_verdict(
-        identity: t.Pair[str | None, str], expectation: m.Infra.ArtifactExpectation
+        identity: tuple[str | None, str], expectation: m.Infra.ArtifactExpectation
     ) -> p.Result[bool]:
         """Prove one artifact's core metadata ``(Name, Version)`` identity.
 
@@ -524,7 +524,7 @@ class FlextInfraUtilitiesRelease:
 
     @classmethod
     def release_requirement_pins_verdict(
-        cls, requirements: t.StrSequence, versions: t.StrMapping
+        cls, requirements: Sequence[str], versions: Mapping[str, str]
     ) -> p.Result[bool]:
         """Prove every internal ``Requires-Dist`` carries its declared fleet pin.
 
@@ -556,15 +556,15 @@ class FlextInfraUtilitiesRelease:
 
     @classmethod
     def release_pinned_requirement(
-        cls, requirement: str, versions: t.StrMapping
-    ) -> p.Result[t.Pair[str, bool]]:
+        cls, requirement: str, versions: Mapping[str, str]
+    ) -> p.Result[tuple[str, bool]]:
         """Pin one requirement's internal dependency to its declared version.
 
         Returns:
             The rendered text and whether it keeps a direct reference.
 
         """
-        result_type = r[t.Pair[str, bool]]
+        result_type = r[tuple[str, bool]]
         try:
             parsed = Requirement(requirement)
         except InvalidRequirement as exc:

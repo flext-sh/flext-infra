@@ -76,8 +76,8 @@ class TestsFlextInfraLazyInitProcessing:
         helpers.mkdir()
         old_source = helpers / "acl_formatting.py"
         declaration = (
-            "class FlextTestsAclFormattingUtilities: pass\n"
-            "__all__ = ('FlextTestsAclFormattingUtilities',)\n"
+            "class FlextTestsUtilitiesAclFormatting: pass\n"
+            "__all__ = ('FlextTestsUtilitiesAclFormatting',)\n"
         )
         old_source.write_text(declaration, encoding=c.DEFAULT_ENCODING)
         service = u.Tests.create_lazy_init_service(repository_root)
@@ -92,9 +92,9 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(
             u.Tests.run_lazy_init_probe(
                 f"from {package_root.name}._utilities._acl import "
-                "FlextTestsAclFormattingUtilities as exported\n"
+                "FlextTestsUtilitiesAclFormatting as exported\n"
                 f"from {package_root.name}._utilities._acl.formatting import "
-                "FlextTestsAclFormattingUtilities as declared\n"
+                "FlextTestsUtilitiesAclFormatting as declared\n"
                 "print(exported is declared)\n"
                 "print(exported.__module__)\n",
                 python_paths=(str(package_root.parent),),

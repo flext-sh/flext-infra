@@ -6,17 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
+from contextlib import ExitStack
 from keyword import iskeyword
 from pathlib import Path
 from types import TracebackType
 from typing import Annotated, Self, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.workspace import FlextInfraRopeQueryMixin
+from flext_infra.workspace import FlextInfraWorkspaceRopeQuery
 
 
-class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
+class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     """Open one shared Rope workspace with cached public DSL methods."""
 
     rope_repository_root_override: Annotated[
@@ -24,9 +25,12 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         m.Field(description="Optional Rope project root; defaults to repository_root"),
     ] = None
 
-    _codegen_projects: t.VariadicTuple[p.Infra.ProjectInfo] | None = m.PrivateAttr(
+    _codegen_projects: tuple[p.Infra.ProjectInfo, ...] | None = m.PrivateAttr(
         default_factory=lambda: None,
     )
+    _candidate_scope: ExitStack | None = m.PrivateAttr(default=None)
+    _candidate_files: tuple[m.Infra.CodegenFilePlan, ...] = m.PrivateAttr(default=())
+    _candidate_source_folders: t.StrTuple | None = m.PrivateAttr(default=None)
     _project_layout_cache: MutableMapping[str, m.Infra.RopeProjectLayout | None] = (
         m.PrivateAttr(default_factory=dict[str, m.Infra.RopeProjectLayout | None])
     )
@@ -34,23 +38,23 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         m.PrivateAttr(default_factory=dict[str, m.Infra.LazyInitPackageContext])
     )
     _module_policy_cache: MutableMapping[
-        t.Triple[str, str, str],
+        tuple[str, str, str],
         m.Infra.NamespaceModulePolicy,
     ] = m.PrivateAttr(
-        default_factory=dict[t.Triple[str, str, str], m.Infra.NamespaceModulePolicy]
+        default_factory=dict[tuple[str, str, str], m.Infra.NamespaceModulePolicy]
     )
     _module_convention_cache: MutableMapping[str, m.Infra.RopeModuleConvention] = (
         m.PrivateAttr(default_factory=dict[str, m.Infra.RopeModuleConvention])
     )
     _module_object_cache: MutableMapping[
-        t.Triple[str, bool, bool],
-        t.VariadicTuple[m.Infra.Object],
+        tuple[str, bool, bool],
+        tuple[m.Infra.Object, ...],
     ] = m.PrivateAttr(
-        default_factory=dict[t.Triple[str, bool, bool], t.VariadicTuple[m.Infra.Object]]
+        default_factory=dict[tuple[str, bool, bool], tuple[m.Infra.Object, ...]]
     )
 
     @override
-    def model_post_init(self, __context: t.ScalarMapping | None, /) -> None:
+    def model_post_init(self, __context: Mapping[str, t.Scalar] | None, /) -> None:
         """Resolve the canonical Rope root once for the full session."""
         super().model_post_init(__context)
         self._rope_repository_root = (
@@ -91,7 +95,9 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
             rope_repository_root_override=resolved_rope_root,
         )
         if source_project is not None:
-            if Path(source_project.root.real_path) != resolved_rope_root.resolve():
+            if Path(source_project.root.real_path) != Path(
+                source_project.fscommands.realpath(str(resolved_rope_root))
+            ):
                 msg = "Rope source project does not match the declared workspace root"
                 raise ValueError(msg)
             workspace._rope_project = source_project
@@ -131,6 +137,267 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
             workspace_index=self.workspace_index,
         )
 
+    def bind_candidate(
+        self,
+        *,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        additional_source_folders: t.StrTuple | None = None,
+    ) -> None:
+        """Advance this session to authenticated planned bytes without disk effects.
+
+        Native source views remain bound until the session closes, so the next
+        phase evolves the current candidate rather than reopening the original
+        project. The native project owns resource notifications and inference
+        invalidation; this method updates the DSL's derived query state. Callers
+        re-elect native objects after binding rather than retaining an earlier
+        view's inference objects as current declarations.
+
+        Args:
+            declared_files: Complete file declarations of the next candidate.
+            additional_source_folders: Explicit roots, or the currently elected roots.
+
+        Raises:
+            ValueError: More than one declaration targets the same resource.
+
+        """
+        project = self.rope_project
+        current_folders = tuple(folder.path for folder in project.get_source_folders())
+        folders = (
+            current_folders
+            if additional_source_folders is None
+            else additional_source_folders
+        )
+        if (
+            self._candidate_scope is not None
+            and declared_files == self._candidate_files
+            and folders == self._candidate_source_folders
+        ):
+            return
+        previous = {plan.path: plan for plan in self._candidate_files}
+        prospective = {plan.path: plan for plan in declared_files}
+        if len(prospective) != len(declared_files):
+            message = "candidate contains multiple declarations for one resource"
+            raise ValueError(message)
+        changed = tuple(
+            sorted(
+                path
+                for path in previous.keys() | prospective.keys()
+                if previous.get(path) != prospective.get(path)
+            )
+        )
+        index = self._workspace_index
+        if (
+            index is not None
+            and changed
+            and (self._module_object_cache or self._module_policy_cache)
+        ):
+            first = next(
+                (
+                    entry.module_name
+                    for entry in index.modules_by_path.values()
+                    if entry.module_name
+                ),
+                "",
+            )
+            if first:
+                self.import_dependents(first)
+        imports = dict(self._import_dependents_index or {})
+        affected = self._candidate_dependents(index, changed, imports)
+        scope = self._candidate_scope
+        if scope is None:
+            scope = ExitStack()
+        scope.enter_context(
+            project.source_view(
+                declared_files=declared_files,
+                additional_source_folders=folders,
+            )
+        )
+        self._candidate_scope = scope
+        self._candidate_files = declared_files
+        self._candidate_source_folders = folders
+        self._view_project = project
+        if current_folders != tuple(
+            folder.path for folder in project.get_source_folders()
+        ):
+            # A new native import-root election affects every namespace query.
+            # The source-view owner has already notified its observers.
+            self.refresh(validate_project=False)
+            return
+        if index is not None:
+            self._workspace_index = u.Infra.index_rope_workspace(
+                self.snapshot,
+                self.repository_root,
+                project=project,
+                refresh=(index, changed),
+            )
+        if self._import_dependents_index is not None:
+            self._refresh_candidate_imports(changed)
+            affected.update(
+                self._candidate_dependents(
+                    self._workspace_index,
+                    changed,
+                    self._import_dependents_index,
+                )
+            )
+        self._invalidate_candidate_queries(affected, changed, previous_index=index)
+
+    @staticmethod
+    def _candidate_dependents(
+        index: m.Infra.RopeWorkspaceIndex | None,
+        changed: Sequence[Path],
+        imports: Mapping[str, tuple[Path, ...]],
+    ) -> set[Path]:
+        """Close source changes through the existing native import query index.
+
+        Returns:
+            Changed resources and consumers of their elected namespaces.
+
+        """
+        affected = set(changed)
+        pending = list(changed)
+        while pending and index is not None:
+            path = pending.pop()
+            entry = index.modules_by_path.get(str(path))
+            if entry is None or not entry.module_name:
+                continue
+            namespace = entry.module_name.partition(".")[0]
+            for target, consumers in imports.items():
+                if target != namespace and not target.startswith(f"{namespace}."):
+                    continue
+                for consumer in consumers:
+                    if consumer not in affected:
+                        affected.add(consumer)
+                        pending.append(consumer)
+        return affected
+
+    def _refresh_candidate_imports(self, changed: Sequence[Path]) -> None:
+        """Replace only changed sources in the existing native import index."""
+        index = self._import_dependents_index
+        if index is None:
+            return
+        selected = frozenset(changed)
+        updated = {
+            target: {path for path in consumers if path not in selected}
+            for target, consumers in index.items()
+        }
+        for path in changed:
+            if self.module(path) is None or self.resource(path) is None:
+                continue
+            for target in self.semantic(path).semantic_imports.values():
+                if target:
+                    updated.setdefault(target, set()).add(path)
+        self._import_dependents_index = {
+            target: tuple(sorted(consumers))
+            for target, consumers in updated.items()
+            if consumers
+        }
+
+    def _invalidate_candidate_queries(
+        self,
+        affected: set[Path],
+        changed: Sequence[Path],
+        *,
+        previous_index: m.Infra.RopeWorkspaceIndex | None,
+    ) -> None:
+        """Discard per-view facts while retaining unchanged structural entries."""
+        affected_names = {str(path) for path in affected}
+        metadata_roots = {
+            path.parent for path in changed if path.name == c.PYPROJECT_FILENAME
+        }
+        affected_names.update(
+            str(entry.file_path)
+            for index in (previous_index, self._workspace_index)
+            if index is not None
+            for entry in index.modules_by_path.values()
+            if entry.project_root in metadata_roots
+        )
+        roots = self._invalidation_roots(affected_names, previous_index)
+        roots.update(metadata_roots)
+        for root in roots:
+            self._project_layout_cache.pop(str(root), None)
+        if affected and not roots:
+            self._project_layout_cache.clear()
+        self._invalidate_module_caches(affected_names)
+        self._invalidate_package_contexts(changed, metadata_roots)
+        for path in affected_names:
+            self._resource_cache.pop(path, None)
+        if changed:
+            # This legacy query is global. Its owner must rebuild its derived
+            # occurrence facts; it is not the native structural/module index.
+            self._name_index = None
+        if self._codegen_projects_stale(changed, previous_index):
+            self._codegen_projects = None
+
+    def _invalidation_roots(
+        self,
+        affected_names: set[str],
+        previous_index: m.Infra.RopeWorkspaceIndex | None,
+    ) -> set[Path]:
+        """Collect project roots owning any affected module.
+
+        Returns:
+            The project roots whose layout facts are stale.
+
+        """
+        roots: set[Path] = set()
+        for index in (previous_index, self._workspace_index):
+            if index is None:
+                continue
+            roots.update(
+                entry.project_root
+                for path in affected_names
+                if (entry := index.modules_by_path.get(path)) is not None
+                and entry.project_root is not None
+            )
+        return roots
+
+    def _invalidate_module_caches(self, affected_names: set[str]) -> None:
+        """Drop module-object, policy and convention facts of affected modules."""
+        for key in tuple(self._module_object_cache):
+            # Reference counts/sites are workspace-wide facts: a changed use
+            # affects a provider even when its own declaration is unchanged.
+            if key[0] in affected_names or key[2]:
+                del self._module_object_cache[key]
+        for key in tuple(self._module_policy_cache):
+            if key[0] in affected_names:
+                del self._module_policy_cache[key]
+        for key in tuple(self._module_convention_cache):
+            if any(key.startswith(f"{path}::") for path in affected_names):
+                del self._module_convention_cache[key]
+
+    def _invalidate_package_contexts(
+        self,
+        changed: Sequence[Path],
+        metadata_roots: set[Path],
+    ) -> None:
+        """Drop package-context facts under changed directories or metadata roots."""
+        directories = {path.parent for path in changed}
+        for key in tuple(self._package_context_cache):
+            package = Path(key)
+            if any(
+                directory.is_relative_to(package) for directory in directories
+            ) or any(package.is_relative_to(root) for root in metadata_roots):
+                del self._package_context_cache[key]
+
+    def _codegen_projects_stale(
+        self,
+        changed: Sequence[Path],
+        previous_index: m.Infra.RopeWorkspaceIndex | None,
+    ) -> bool:
+        """Decide whether derived codegen projects must be rebuilt.
+
+        Returns:
+            Whether the codegen project cache is stale.
+
+        """
+        return bool(changed) and (
+            previous_index is None
+            or self._workspace_index is not previous_index
+            or any(
+                path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES for path in changed
+            )
+        )
+
     def refresh(
         self,
         *,
@@ -141,8 +408,9 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
 
         ``preserve_indexes=True`` is reserved for flows that temporarily wrote
         files and already restored the original on-disk content before the
-        refresh runs. ``validate_project=False`` is reserved for those reverted
-        preview flows so cleanup does not rescan an already-restored project.
+        refresh runs. ``validate_project=False`` is used after those reverted
+        previews or an authenticated native source-view transition whose own
+        resource observers already ran; neither needs another physical rescan.
         Normal refresh also invalidates module inventory and project discovery;
         reverted previews retain those unchanged indexes. Layouts always
         invalidate.
@@ -177,7 +445,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         _ = self.rope_project
         return self.session_snapshot()
 
-    def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]:
+    def projects(self) -> Sequence[p.Infra.ProjectInfo]:
         """Return the canonical codegen project selection for this workspace.
 
         Returns:
@@ -185,7 +453,9 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
 
         """
         if self._codegen_projects is None:
-            projects_result = u.Infra.projects(self.repository_root)
+            projects_result = u.Infra.projects(
+                self.repository_root, source_project=self.rope_project
+            )
             self._codegen_projects = tuple(projects_result.unwrap())
         return self._codegen_projects
 
@@ -196,7 +466,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
             One centralized project layout contract for codegen pipelines.
 
         """
-        resolved_root = project_root.resolve()
+        resolved_root = self._source_path(project_root)
         cache_key = str(resolved_root)
         if cache_key not in self._project_layout_cache:
             self._project_layout_cache[cache_key] = u.Infra.layout(
@@ -211,7 +481,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
             One centralized lazy-init package context for a package dir.
 
         """
-        resolved_dir = package_dir.resolve()
+        resolved_dir = self._source_path(package_dir)
         cache_key = str(resolved_dir)
         if cache_key in self._package_context_cache:
             return self._package_context_cache[cache_key]
@@ -250,7 +520,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
             The centralized naming policy for one module path.
 
         """
-        resolved_file = file_path.resolve()
+        resolved_file = self._source_path(file_path)
         resolved_rel_path = (
             rel_path if rel_path is not None else Path(resolved_file.name)
         )
@@ -287,15 +557,15 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
             One unified project/package/module convention contract.
 
         """
-        resolved_file = file_path.resolve()
+        resolved_file = self._source_path(file_path)
         cache_key = f"{resolved_file}::{rel_path or ''}"
         if cache_key in self._module_convention_cache:
             return self._module_convention_cache[cache_key]
         module_entry = self.module(resolved_file)
         package_dir = (
-            module_entry.package_dir.resolve()
+            self._source_path(module_entry.package_dir)
             if module_entry is not None
-            else resolved_file.parent.resolve()
+            else resolved_file.parent
         )
         resolved_rel_path = (
             rel_path
@@ -336,7 +606,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         file_path: Path,
         *,
         export_options: m.Infra.ExportOptions | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return public export names for one module path from its parsed source.
 
         Returns:
@@ -344,12 +614,16 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
 
         """
         return u.Infra.module_export_names_source(
-            self.rope_project.source_text(file_path),
+            u.Infra.resolve_pymodule(
+                self.rope_project,
+                u.Infra.require_file_resource(self.resource(file_path), file_path),
+            ),
             export_options=export_options,
         )
 
     def close(self) -> None:
         """Close the shared Rope project and clear transient caches."""
+        self._close_candidate_views(None, None, None)
         if self._rope_project is not None:
             if self._owns_rope_project:
                 self._rope_project.close()
@@ -370,6 +644,20 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         self._name_index = None
         self._import_dependents_index = None
 
+    def _close_candidate_views(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        """Restore nested candidate bindings before their source owner closes."""
+        scope = self._candidate_scope
+        self._candidate_scope = None
+        self._candidate_files = ()
+        self._candidate_source_folders = None
+        if scope is not None:
+            scope.__exit__(exc_type, exc, traceback)
+
     def __enter__(self) -> Self:
         """Open the Rope project on context-manager entry.
 
@@ -387,7 +675,7 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         _tb: TracebackType | None,
     ) -> None:
         """Close the Rope project on context-manager exit."""
-        del _exc_type, _exc, _tb
+        self._close_candidate_views(_exc_type, _exc, _tb)
         self.close()
 
     def objects(
@@ -396,14 +684,14 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         *,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> t.SequenceOf[m.Infra.Object]:
+    ) -> Sequence[m.Infra.Object]:
         """Return Rope-only discovered objects for one module path.
 
         Returns:
             Rope-only discovered objects for one module path.
 
         """
-        resolved_file = file_path.resolve()
+        resolved_file = self._source_path(file_path)
         cache_key = (str(resolved_file), include_local_scopes, include_references)
         if cache_key in self._module_object_cache:
             return self._module_object_cache[cache_key]
@@ -417,4 +705,4 @@ class FlextInfraRopeWorkspace(FlextInfraRopeQueryMixin):
         return objects
 
 
-__all__: t.StrSequence = ("FlextInfraRopeWorkspace",)
+__all__: Sequence[str] = ("FlextInfraRopeWorkspace",)

@@ -6,33 +6,34 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, deps as dependency_services, m, p, r, t, u
+from flext_infra import c, deps as dependency_services, m, p, r, u
 from flext_infra.codegen._conform.artifact_render import (
     FlextInfraCodegenConformArtifactRender,
 )
-from flext_infra.services._codegen.vscode import FlextInfraCodegenVscodeMixin
+from flext_infra.services._codegen.vscode import FlextInfraCodegenVscode
 
 
 class FlextInfraCodegenConformEditor(
     FlextInfraCodegenConformArtifactRender,
-    FlextInfraCodegenVscodeMixin,
+    FlextInfraCodegenVscode,
 ):
     """Compose existing editor, analyzer and Git-ignore owners into one plan."""
 
     @staticmethod
     def _editor_snapshots(
         root: Path, destinations: frozenset[str]
-    ) -> p.Result[t.MappingKV[str, m.Cli.AtomicFileState]]:
+    ) -> p.Result[Mapping[str, m.Cli.AtomicFileState]]:
         """Read every destination before rendering its replacement.
 
         Returns:
             The destination file states.
 
         """
-        result_type = r[t.MappingKV[str, m.Cli.AtomicFileState]]
-        original: t.MutableMappingKV[str, m.Cli.AtomicFileState] = {}
+        result_type = r[Mapping[str, m.Cli.AtomicFileState]]
+        original: MutableMapping[str, m.Cli.AtomicFileState] = {}
         for relative in sorted(destinations):
             observed = u.Infra.codegen_target_snapshot(root / relative)
             if observed.failure:
@@ -85,14 +86,14 @@ class FlextInfraCodegenConformEditor(
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Bind all editor projections to the declarations read in this request.
 
         Returns:
             The atomic publisher's ordinary governed file plans.
 
         """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
         loaded = u.Infra.load_codegen_inputs(target.root)
         if loaded.failure:
             return result_type.from_failure(loaded)

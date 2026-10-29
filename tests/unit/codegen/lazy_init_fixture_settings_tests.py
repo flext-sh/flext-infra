@@ -10,9 +10,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 def _run_lazy_init_and_read_mapping(
     repository_root: Path,
     package_root: Path,
-) -> t.Pair[str, t.VariadicTuple[t.Pair[str, t.StrSequence]]]:
+) -> tuple[str, tuple[tuple[str, Sequence[str]], ...]]:
     """Generate lazy init and return its content with the elected mapping.
 
     Returns:

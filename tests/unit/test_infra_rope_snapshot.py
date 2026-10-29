@@ -196,6 +196,372 @@ class TestsFlextInfraRopeSnapshot:
             )
             tm.that(source.read_bytes(), eq=changed)
 
+
+class TestsFlextInfraRopeCandidateViews:
+    """Validate nested native candidate bindings and their retained witnesses."""
+
+    @staticmethod
+    def test_candidate_binding_reuses_native_project_and_unchanged_module(
+        tmp_path: Path,
+    ) -> None:
+        """A candidate changes its module while retaining independent parses."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        independent = package / "independent.py"
+        physical = b"class Original: pass\n"
+        proposed = b"class Projected: pass\n"
+        source.write_bytes(physical)
+        independent.write_text("class Independent: pass\n", encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, original_sources):
+            resource = project.get_resource(source.relative_to(root).as_posix())
+            other = project.get_resource(independent.relative_to(root).as_posix())
+            original_module = project.get_pymodule(resource, force_errors=True)
+            independent_module = project.get_pymodule(other, force_errors=True)
+            before = project.source_state(source)
+            plan = m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=before,
+                desired_content=proposed,
+                desired_mode=before.mode,
+            )
+            with u.Infra.facade_source_project(
+                root, declared_files=(plan,), source_project=project
+            ) as (candidate, candidate_sources):
+                tm.that(candidate is project, eq=True)
+                projected_module = candidate.get_pymodule(resource, force_errors=True)
+                tm.that(projected_module is not original_module, eq=True)
+                tm.that(
+                    candidate.get_pymodule(other, force_errors=True)
+                    is independent_module,
+                    eq=True,
+                )
+                tm.that(candidate_sources[source], eq=proposed.decode())
+                tm.that(original_sources[source], eq=physical.decode())
+                tm.that(candidate.source_state(source) is before, eq=True)
+                tm.that(source.read_bytes(), eq=physical)
+            tm.that(project.source_bytes(source), eq=physical)
+            tm.that(
+                project.get_pymodule(other, force_errors=True) is independent_module,
+                eq=True,
+            )
+
+    @staticmethod
+    def test_planned_override_preserves_bound_foreign_candidate(tmp_path: Path) -> None:
+        """An owned override retains its provider candidate and entry witnesses."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        owned = package / "owned.py"
+        provider = tmp_path / "external"
+        provider.mkdir()
+        foreign = provider / "provider.py"
+        owned_physical = b"class Original: pass\n"
+        foreign_physical = b"class Provider: pass\n"
+        foreign_proposed = b"class ProposedProvider: pass\n"
+        owned_proposed = "class ProposedOwned: pass\n"
+        owned.write_bytes(owned_physical)
+        foreign.write_bytes(foreign_physical)
+        foreign_before = tm.ok(
+            u.Cli.atomic_read_binary_file_state(foreign, required=True)
+        )
+        foreign_plan = m.Infra.CodegenFilePlan(
+            project=provider,
+            path=foreign,
+            before=foreign_before,
+            desired_content=foreign_proposed,
+            desired_mode=foreign_before.mode,
+        )
+        with u.Infra.facade_source_project(root, declared_files=(foreign_plan,)) as (
+            project,
+            _sources,
+        ):
+            owned_before = project.source_state(owned)
+            provider_before = project.source_state(foreign)
+            with u.Infra.facade_source_project(
+                root,
+                planned_sources={owned: owned_proposed},
+                source_project=project,
+            ) as (candidate, candidate_sources):
+                tm.that(candidate is project, eq=True)
+                tm.that(candidate_sources[owned], eq=owned_proposed)
+                tm.that(candidate.source_bytes(foreign), eq=foreign_proposed)
+                tm.that(candidate.source_state(owned) is owned_before, eq=True)
+                tm.that(candidate.source_state(foreign) is provider_before, eq=True)
+                tm.that(owned.read_bytes(), eq=owned_physical)
+                tm.that(foreign.read_bytes(), eq=foreign_physical)
+            tm.that(project.source_bytes(owned), eq=owned_physical)
+            tm.that(project.source_bytes(foreign), eq=foreign_proposed)
+            competing = m.Infra.CodegenFilePlan(
+                project=root,
+                path=owned,
+                before=owned_before,
+                desired_content=owned_physical,
+                desired_mode=owned_before.mode,
+            )
+            with (
+                pytest.raises(ValueError, match="competing declarations"),
+                u.Infra.facade_source_project(
+                    root,
+                    declared_files=(competing,),
+                    planned_sources={owned: owned_proposed},
+                    source_project=project,
+                ),
+            ):
+                pytest.fail("competing owned declarations were admitted")
+            tm.that(project.source_bytes(owned), eq=owned_physical)
+            tm.that(project.source_bytes(foreign), eq=foreign_proposed)
+            tm.that(project.source_state(owned) is owned_before, eq=True)
+            tm.that(project.source_state(foreign) is provider_before, eq=True)
+        tm.that(owned.read_bytes(), eq=owned_physical)
+        tm.that(foreign.read_bytes(), eq=foreign_physical)
+
+    @staticmethod
+    def test_nested_candidate_binding_restores_parent_after_consumer_failure(
+        tmp_path: Path,
+    ) -> None:
+        """A failing nested consumer restores its parent, then the physical view."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        physical = b"class Original: pass\n"
+        outer = b"class Outer: pass\n"
+        inner = b"class Inner: pass\n"
+        source.write_bytes(physical)
+        consumer_failure = ValueError("consumer rejected the candidate")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            before = project.source_state(source)
+            outer_plan = m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=before,
+                desired_content=outer,
+                desired_mode=before.mode,
+            )
+            inner_plan = m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=before,
+                desired_content=inner,
+                desired_mode=before.mode,
+            )
+            with u.Infra.facade_source_project(
+                root, declared_files=(outer_plan,), source_project=project
+            ) as (parent, parent_sources):
+                with u.Infra.facade_source_project(
+                    root, declared_files=(inner_plan,), source_project=project
+                ) as (nested, nested_sources):
+                    tm.that(nested is parent, eq=True)
+                    tm.that(nested_sources[source], eq=inner.decode())
+                    tm.that(parent_sources[source], eq=outer.decode())
+                with (
+                    pytest.raises(ValueError, match=str(consumer_failure)) as failure,
+                    u.Infra.facade_source_project(
+                        root, declared_files=(inner_plan,), source_project=project
+                    ),
+                ):
+                    raise consumer_failure
+                tm.that(failure.value is consumer_failure, eq=True)
+                tm.that(parent.source_bytes(source), eq=outer)
+                tm.that(parent_sources[source], eq=outer.decode())
+            tm.that(project.source_bytes(source), eq=physical)
+            tm.that(project.source_state(source) is before, eq=True)
+        tm.that(source.read_bytes(), eq=physical)
+
+    @staticmethod
+    def test_candidate_membership_refreshes_negative_lookup_and_virtual_directory(
+        tmp_path: Path,
+    ) -> None:
+        """A virtual package is resolvable only while its candidate is active."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        folder = package / "fresh"
+        initializer = folder / "__init__.py"
+        source = folder / "provider.py"
+        module_name = f"{package.name}.{folder.name}.{source.stem}"
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            tm.that(project.find_module(module_name), eq=None)
+            plans = tuple(
+                m.Infra.CodegenFilePlan(
+                    project=root,
+                    path=path,
+                    before=project.source_state(path, required=False),
+                    desired_content=content,
+                    desired_mode=config.Infra.codegen.modes.file_default,
+                )
+                for path, content in (
+                    (initializer, b""),
+                    (source, b"class Added: pass\n"),
+                )
+            )
+            with u.Infra.facade_source_project(
+                root, declared_files=plans, source_project=project
+            ) as (candidate, candidate_sources):
+                resource = tm.not_none(candidate.find_module(module_name))
+                tm.that(resource.real_path, eq=str(source))
+                tm.that(candidate.source_query(folder, "isdir"), eq=True)
+                tm.that(candidate_sources[source], eq="class Added: pass\n")
+                with candidate.source_view():
+                    tm.that(candidate.find_module(module_name), eq=None)
+                    tm.that(candidate.source_query(folder, "isdir"), eq=False)
+                tm.that(
+                    tm.not_none(candidate.find_module(module_name)).real_path,
+                    eq=str(source),
+                )
+            tm.that(project.find_module(module_name), eq=None)
+            tm.that(project.source_query(folder, "isdir"), eq=False)
+        tm.that(folder.exists(), eq=False)
+
+    @staticmethod
+    def test_candidate_source_roots_refresh_inferred_provider_and_restore_it(
+        tmp_path: Path,
+    ) -> None:
+        """Changing lookup roots refreshes an existing consumer's superclass."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = package / "provider.py"
+        consumer = package / "consumer.py"
+        preferred_root = root / "!preferred"
+        preferred_package = preferred_root / package.name
+        preferred_package.mkdir(parents=True)
+        preferred = preferred_package / provider.name
+        for path in (provider, preferred):
+            path.write_text("class Base: pass\n", encoding="utf-8")
+        (preferred_package / "__init__.py").write_text("", encoding="utf-8")
+        consumer.write_text(
+            f"from {package.name}.provider import Base\nclass Child(Base): pass\n",
+            encoding="utf-8",
+        )
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            resource = project.get_resource(consumer.relative_to(root).as_posix())
+            original_module = project.get_pymodule(resource, force_errors=True)
+            for roots, expected in (
+                ((), provider),
+                ((preferred_root.relative_to(root).as_posix(),), preferred),
+                ((), provider),
+            ):
+                with project.source_view(additional_source_folders=roots) as candidate:
+                    current_module = candidate.get_pymodule(resource, force_errors=True)
+                    tm.that(current_module is original_module, eq=True)
+                    child = u.Infra.require_class_object(
+                        current_module.get_attribute("Child").get_object(),
+                        "consumer child",
+                    )
+                    parent = u.Infra.require_source_object(
+                        child.get_superclasses()[0], "provider base"
+                    )
+                    supplied = tm.not_none(parent.get_module().get_resource())
+                    tm.that(supplied.real_path, eq=str(expected))
+
+    @staticmethod
+    def test_planned_reintroduction_preserves_retired_source_mode(
+        tmp_path: Path,
+    ) -> None:
+        """Reintroducing a retired source retains its captured physical mode."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        physical = b"class Original: pass\n"
+        proposed = "class Reintroduced: pass\n"
+        source.write_bytes(physical)
+        source.chmod(config.Infra.codegen.modes.file_default ^ 0o100)
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            before = project.source_state(source)
+            retirement = m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=before,
+                desired_content=None,
+                desired_mode=None,
+            )
+            with u.Infra.facade_source_project(
+                root, declared_files=(retirement,), source_project=project
+            ) as (retired, retired_sources):
+                tm.that(source in retired_sources, eq=False)
+                with u.Infra.facade_source_project(
+                    root,
+                    planned_sources={source: proposed},
+                    source_project=retired,
+                ) as (candidate, candidate_sources):
+                    tm.that(candidate is project, eq=True)
+                    tm.that(candidate_sources[source], eq=proposed)
+                    plan = next(
+                        plan for plan in candidate.source_plans if plan.path == source
+                    )
+                    tm.that(plan.desired_mode, eq=before.mode)
+                    tm.that(
+                        plan.desired_mode != config.Infra.codegen.modes.file_default,
+                        eq=True,
+                    )
+                    tm.that(plan.before is before, eq=True)
+                    tm.that(candidate.source_state(source) is before, eq=True)
+                    tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+                tm.that(retired.source_query(source, "exists"), eq=False)
+                with pytest.raises(FileNotFoundError):
+                    retired.source_bytes(source)
+                tm.that(retired.source_state(source) is before, eq=True)
+            tm.that(project.source_bytes(source), eq=physical)
+            tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+
+    @staticmethod
+    def test_candidate_retirement_hides_only_the_logical_source(tmp_path: Path) -> None:
+        """A retirement removes native lookup without deleting the physical file."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        content = b"class Original: pass\n"
+        source.write_bytes(content)
+        module_name = f"{package.name}.{source.stem}"
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            tm.not_none(project.find_module(module_name))
+            before = project.source_state(source)
+            retirement = m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=before,
+                desired_content=None,
+                desired_mode=before.mode,
+            )
+            with u.Infra.facade_source_project(
+                root, declared_files=(retirement,), source_project=project
+            ) as (candidate, candidate_sources):
+                tm.that(candidate.find_module(module_name), eq=None)
+                tm.that(source in candidate_sources, eq=False)
+                with pytest.raises(FileNotFoundError):
+                    candidate.source_bytes(source)
+                tm.that(source.read_bytes(), eq=content)
+            tm.that(
+                tm.not_none(project.find_module(module_name)).real_path,
+                eq=str(source),
+            )
+            tm.that(project.source_bytes(source), eq=content)
+
+    @staticmethod
+    def test_candidate_rejects_conflicting_witness_without_overwriting_live_edit(
+        tmp_path: Path,
+    ) -> None:
+        """A conflicting proposal leaves the captured view and foreign bytes intact."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "provider.py"
+        physical = b"class Original: pass\n"
+        foreign = b"class Foreign: pass\n"
+        source.write_bytes(physical)
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            before = project.source_state(source)
+            source.write_bytes(foreign)
+            conflicting = m.Infra.CodegenFilePlan(
+                project=root,
+                path=source,
+                before=tm.ok(
+                    u.Cli.atomic_read_binary_file_state(source, required=True)
+                ),
+                desired_content=b"class Projected: pass\n",
+                desired_mode=before.mode,
+            )
+            with (
+                pytest.raises(ValueError, match="conflicts with captured state"),
+                u.Infra.facade_source_project(
+                    root, declared_files=(conflicting,), source_project=project
+                ),
+            ):
+                pytest.fail("a conflicting physical witness was admitted")
+            tm.that(project.source_bytes(source), eq=physical)
+            tm.that(project.source_state(source) is before, eq=True)
+        tm.that(source.read_bytes(), eq=foreign)
+
     @staticmethod
     @pytest.mark.parametrize("declared", [False, True])
     def test_lazy_planning_reads_both_overlay_routes(

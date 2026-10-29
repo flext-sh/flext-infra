@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
@@ -43,10 +44,10 @@ class FlextInfraEnsurePyreflyConfigPhase:
         project_dir = context.project_dir
         declared_python_dirs = context.declared_python_dirs
         if project_dir is not None and paths_manager is not None:
-            expected_search: t.StrSequence = paths_manager.pyrefly_search_paths(
+            expected_search: Sequence[str] = paths_manager.pyrefly_search_paths(
                 project_dir=project_dir,
             )
-            expected_includes: t.StrSequence = paths_manager.pyrefly_project_includes(
+            expected_includes: Sequence[str] = paths_manager.pyrefly_project_includes(
                 project_dir=project_dir,
                 is_root=context.is_root,
             )
@@ -110,11 +111,11 @@ class FlextInfraEnsurePyreflyConfigPhase:
         *,
         context: m.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Apply canonical pyrefly settings to one normalized payload.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         return u.Infra.apply_toml_phases(

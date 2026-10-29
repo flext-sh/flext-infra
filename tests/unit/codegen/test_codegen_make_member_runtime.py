@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -28,11 +28,11 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
     )
 
     @classmethod
-    def _runtime_values(cls, project_root: Path) -> t.StrDict:
+    def _runtime_values(cls, project_root: Path) -> dict[str, str]:
         """Print the resolved runtime through the public help verb's post hook.
 
         Returns:
-            The resulting ``t.StrDict``.
+            The resulting ``dict[str, str]``.
 
         """
         (project_root / "custom.mk").write_text(

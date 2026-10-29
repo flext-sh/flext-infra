@@ -1,0 +1,21 @@
+# Engine-map D3 census fixtures: a re.sub/re.subn whose subject is a
+# Python-source variable (positional third argument or the string= keyword,
+# bare name or dotted attribute segment) is the deprecated route's anchor.
+# Non-source subjects, non-source names and scanning verbs stay legal; the
+# slice subject is the live engine site lint_recipes.py keeps for docstring
+# text, which is not Python source rewriting.
+id: ban-engine-regex-code-rewrite
+valid:
+  - |-
+    inner = re.sub(r"(?m)^[ \t]+$", "", raw[len(prefix) + 3 : -3])
+  - message = re.sub(r"\s+", " ", message)
+  - label = re.subn(r"[a-z]", "x", label)
+  - found = re.search(r"\bNAME\b", source)
+  - found = re.finditer(r"\bNAME\b", module.source_code)
+invalid:
+  - rewritten = re.sub(r"\bOld\b", "New", source)
+  - rewritten = re.sub(pattern, repl, code, count=1)
+  - rewritten = re.subn(r"\bOld\b", "New", module.source_code)
+  - rewritten = re.sub(pattern, repl, string=source_text)
+  - rewritten = re.sub(pattern, repl, string=module.source)
+  - rewritten = re.subn(r"\bOld\b", "New", py_source)

@@ -28,6 +28,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.class_scope import (
         FlextInfraUtilitiesSemanticCutoverClassScope,
     )
+    from flext_infra._utilities._semantic_cutover.composition import (
+        FlextInfraUtilitiesSemanticComposition,
+    )
     from flext_infra._utilities._semantic_cutover.constant_consumers import (
         FlextInfraUtilitiesSemanticConstantConsumers,
     )
@@ -104,7 +107,10 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesSemanticCutoverNestingReferences,
     )
     from flext_infra._utilities._semantic_cutover.nesting_types import (
-        FlextInfraUtilitiesSemanticNestingTypes,
+        FlextInfraUtilitiesTypesSemanticNesting,
+    )
+    from flext_infra._utilities._semantic_cutover.own_mro import (
+        FlextInfraUtilitiesSemanticCutoverOwnMro,
     )
     from flext_infra._utilities._semantic_cutover.private_import_cst import (
         FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
@@ -122,6 +128,7 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDeclarationPayload",
+    "FlextInfraUtilitiesSemanticComposition",
     "FlextInfraUtilitiesSemanticConstantConsumers",
     "FlextInfraUtilitiesSemanticConstantSources",
     "FlextInfraUtilitiesSemanticContracts",
@@ -143,6 +150,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverNestingModuleAliases",
     "FlextInfraUtilitiesSemanticCutoverNestingOwner",
     "FlextInfraUtilitiesSemanticCutoverNestingReferences",
+    "FlextInfraUtilitiesSemanticCutoverOwnMro",
     "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
     "FlextInfraUtilitiesSemanticCutoverSelfFacade",
@@ -154,8 +162,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticFamilyTypeReferences",
     "FlextInfraUtilitiesSemanticHelperReferences",
     "FlextInfraUtilitiesSemanticModelAliases",
-    "FlextInfraUtilitiesSemanticNestingTypes",
     "FlextInfraUtilitiesSemanticTestHelpers",
+    "FlextInfraUtilitiesTypesSemanticNesting",
 )
 
 install_lazy_exports(
@@ -163,6 +171,7 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraUtilitiesDeclarationPayload": ".declaration_payload",
+        "FlextInfraUtilitiesSemanticComposition": ".composition",
         "FlextInfraUtilitiesSemanticConstantConsumers": ".constant_consumers",
         "FlextInfraUtilitiesSemanticConstantSources": ".constant_sources",
         "FlextInfraUtilitiesSemanticContracts": ".contracts",
@@ -188,6 +197,7 @@ install_lazy_exports(
         ),
         "FlextInfraUtilitiesSemanticCutoverNestingOwner": ".nesting_owner",
         "FlextInfraUtilitiesSemanticCutoverNestingReferences": ".nesting_references",
+        "FlextInfraUtilitiesSemanticCutoverOwnMro": ".own_mro",
         "FlextInfraUtilitiesSemanticCutoverPrivateImportCst": ".private_import_cst",
         "FlextInfraUtilitiesSemanticCutoverPrivateImports": ".private_imports",
         "FlextInfraUtilitiesSemanticCutoverSelfFacade": ".self_facade",
@@ -199,7 +209,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticFamilyTypeReferences": ".family_type_references",
         "FlextInfraUtilitiesSemanticHelperReferences": ".helper_references",
         "FlextInfraUtilitiesSemanticModelAliases": ".model_aliases",
-        "FlextInfraUtilitiesSemanticNestingTypes": ".nesting_types",
+        "FlextInfraUtilitiesTypesSemanticNesting": ".nesting_types",
         "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
     }),
     public_exports=__all__,

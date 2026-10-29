@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping, MutableSequence
 from pathlib import Path
 
 import pytest
 
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodemodOwnPackageRoles:
@@ -35,9 +36,9 @@ class TestsFlextInfraCodemodOwnPackageRoles:
         )
         package.mkdir(parents=True, exist_ok=True)
         (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
-        sources: t.MutableSequenceOf[Path] = []
+        sources: MutableSequence[Path] = []
         expected: set[Path] = set()
-        original: t.MutableMappingKV[Path, str] = {}
+        original: MutableMapping[Path, str] = {}
         for relative, source, finding in (
             ("_config.py", "from pydantic import BaseModel\n", False),
             ("_settings/part.py", "from pydantic import BaseModel\n", False),
@@ -146,6 +147,12 @@ class TestsFlextInfraCodemodOwnPackageRoles:
         ordinary = f"{packaged[0].partition('.')[0]}.ordinary_pytest_consumer"
         tm.that(ordinary in plugins, eq=False)
         tm.that(u.Infra.import_module_role(ordinary), eq="consumer")
+
+    @staticmethod
+    def test_frozen_stdlib_module_has_no_source_bootstrap() -> None:
+        """Do not read a frozen module origin as a physical source file."""
+        tm.that(u.Infra.bootstrap_modules("zipimport"), eq=frozenset())
+        tm.that(u.Infra.import_module_role("zipimport"), eq="consumer")
 
 
 __all__: list[str] = ["TestsFlextInfraCodemodOwnPackageRoles"]

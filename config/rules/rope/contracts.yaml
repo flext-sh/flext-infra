@@ -1,4 +1,12 @@
 rules:
+- id: pydantic-exhaustive-strenum-annotation
+  operation: normalize-exhaustive-enum
+  pattern: '${literal}[${members}]'
+  goal: '${literal}'
+  arguments:
+    literal: name=typing.Literal
+  model_bases: [pydantic.BaseModel]
+  scope_kinds: [Class]
 - id: constant-source-native-ancestry
   phase: constant-consumers
   pattern: '${receiver}._constant_derives_from'

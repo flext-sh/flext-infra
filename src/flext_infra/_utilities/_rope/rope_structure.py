@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
@@ -14,7 +16,7 @@ class FlextInfraUtilitiesRopeStructure:
     """Expose one Rope-owned fact pass to every structural detector."""
 
     @staticmethod
-    def logical_statements(source: str) -> t.SequenceOf[m.Infra.LogicalStatement]:
+    def logical_statements(source: str) -> Sequence[m.Infra.LogicalStatement]:
         """Return Rope logical regions with scope and TYPE_CHECKING context.
 
         Returns:
@@ -40,9 +42,9 @@ class FlextInfraUtilitiesRopeStructure:
         if not isinstance(finder, p.Infra.RopeLogicalLineFinder):
             msg = "Rope logical line finder does not satisfy its region contract"
             raise TypeError(msg)
-        statements: t.MutableSequenceOf[m.Infra.LogicalStatement] = []
-        enclosers: t.MutableSequenceOf[t.Triple[int, c.Infra.RopeScopeKind, str]] = []
-        type_checking_guards: t.MutableSequenceOf[int] = []
+        statements: MutableSequence[m.Infra.LogicalStatement] = []
+        enclosers: MutableSequence[tuple[int, c.Infra.RopeScopeKind, str]] = []
+        type_checking_guards: MutableSequence[int] = []
         for start, end in finder.generate_regions():
             # Rope hands lines back without their newline; a multi-line logical
             # statement must keep its line breaks so a trailing comment on one
@@ -99,7 +101,7 @@ class FlextInfraUtilitiesRopeStructure:
 
     @staticmethod
     def _pop_exited_enclosers(
-        enclosers: t.MutableSequenceOf[t.Triple[int, c.Infra.RopeScopeKind, str]],
+        enclosers: MutableSequence[tuple[int, c.Infra.RopeScopeKind, str]],
         indent: int,
     ) -> None:
         """Drop enclosers whose body the current indentation has left."""
@@ -109,7 +111,7 @@ class FlextInfraUtilitiesRopeStructure:
     @staticmethod
     def _push_encloser(
         *,
-        enclosers: t.MutableSequenceOf[t.Triple[int, c.Infra.RopeScopeKind, str]],
+        enclosers: MutableSequence[tuple[int, c.Infra.RopeScopeKind, str]],
         category: c.Infra.StatementCategory,
         indent: int,
         text: str,

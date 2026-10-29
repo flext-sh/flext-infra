@@ -31,7 +31,7 @@ class FlextInfraUtilitiesCodemodScopes:
     @staticmethod
     def codemod_stage_scopes(
         generated: Path | None,
-    ) -> t.MappingKV[str, t.StrSequence]:
+    ) -> Mapping[str, Sequence[str]]:
         """Read the file scopes the stage's generated provider published.
 
         Returns:
@@ -47,7 +47,7 @@ class FlextInfraUtilitiesCodemodScopes:
         payload = u.Cli.json_read(
             generated.parent / c.Infra.CODEMOD_SCOPES_FILENAME
         ).unwrap()
-        scopes: dict[str, t.StrSequence] = {}
+        scopes: dict[str, Sequence[str]] = {}
         for selector, paths in payload.items():
             if not isinstance(paths, Sequence) or isinstance(paths, str):
                 msg = f"generated file scope is not a list: {selector}"
@@ -59,7 +59,7 @@ class FlextInfraUtilitiesCodemodScopes:
     def codemod_scoped_document(
         cls,
         document: t.JsonMapping,
-        scopes: t.MappingKV[str, t.StrSequence],
+        scopes: Mapping[str, Sequence[str]],
         rule_id: str,
     ) -> t.JsonMapping:
         """Resolve one staged rule's ``in``/``not-in`` scopes into files and ignores.
@@ -88,10 +88,10 @@ class FlextInfraUtilitiesCodemodScopes:
     def codemod_partitioned_documents(
         cls,
         document: t.JsonMapping,
-        scopes: t.MappingKV[str, t.StrSequence],
+        scopes: Mapping[str, Sequence[str]],
         rule_id: str,
         package: str,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render one partitioned catalog rule into the project's native documents.
 
         ``partition`` splits the rule per published file group (a facade
@@ -162,7 +162,7 @@ class FlextInfraUtilitiesCodemodScopes:
     def codemod_embedded_utilities(
         cls,
         document: t.JsonMapping,
-        catalog: t.MappingKV[str, t.JsonMapping],
+        catalog: Mapping[str, t.JsonMapping],
     ) -> t.JsonMapping:
         """Embed the catalog utilities a rendered document references as locals.
 
@@ -192,7 +192,7 @@ class FlextInfraUtilitiesCodemodScopes:
     def codemod_bound_document(
         cls,
         document: t.JsonMapping,
-        utilities: t.MappingKV[str, t.JsonMapping],
+        utilities: Mapping[str, t.JsonMapping],
         sensitive: frozenset[str],
     ) -> t.JsonMapping:
         """Embed every binding-sensitive utility a staged rule references.
@@ -224,7 +224,7 @@ class FlextInfraUtilitiesCodemodScopes:
 
     @classmethod
     def codemod_binding_sensitive(
-        cls, utilities: t.MappingKV[str, t.JsonMapping]
+        cls, utilities: Mapping[str, t.JsonMapping]
     ) -> frozenset[str]:
         """Name the utilities whose verdict depends on the caller's bindings.
 
@@ -251,7 +251,7 @@ class FlextInfraUtilitiesCodemodScopes:
         return frozenset(sensitive)
 
     @classmethod
-    def _matched(cls, value: t.JsonValue | t.JsonMapping) -> t.StrSequence:
+    def _matched(cls, value: t.JsonValue | t.JsonMapping) -> Sequence[str]:
         """Collect every utility identity a rule fragment references.
 
         Returns:
@@ -308,9 +308,9 @@ class FlextInfraUtilitiesCodemodScopes:
         cls,
         document: t.JsonMapping,
         scope: t.JsonMapping,
-        scopes: t.MappingKV[str, t.StrSequence],
+        scopes: Mapping[str, Sequence[str]],
         rule_id: str,
-    ) -> t.Triple[t.JsonMapping, t.StrSequence | None, t.StrSequence]:
+    ) -> tuple[t.JsonMapping, Sequence[str] | None, Sequence[str]]:
         """Apply the ``in`` and ``not-in`` scopes of one rule.
 
         ``files`` is ``None`` while nothing restricts the rule's files.
@@ -319,7 +319,7 @@ class FlextInfraUtilitiesCodemodScopes:
             The bounded document with its resulting ``files`` and ignores.
 
         """
-        files: t.StrSequence | None = (
+        files: Sequence[str] | None = (
             cls._globs(document, "files", rule_id) if "files" in document else None
         )
         ignores = cls._globs(document, "ignores", rule_id)
@@ -351,11 +351,11 @@ class FlextInfraUtilitiesCodemodScopes:
         cls,
         base: t.JsonMapping,
         partition: t.JsonValue,
-        context: t.Triple[
-            t.MappingKV[str, t.StrSequence], t.StrSequence | None, t.StrSequence
+        context: tuple[
+            Mapping[str, Sequence[str]], Sequence[str] | None, Sequence[str]
         ],
         rule_id: str,
-    ) -> t.SequenceOf[t.Pair[str | None, t.JsonMapping]]:
+    ) -> Sequence[tuple[str | None, t.JsonMapping]]:
         """Partition one document per published file group of a variable.
 
         Each key names one file group, published as ``<selectors><key>``; its
@@ -389,7 +389,7 @@ class FlextInfraUtilitiesCodemodScopes:
             for selector in sorted(scopes)
             if selector.startswith(prefix)
         }
-        documents: list[t.Pair[str | None, t.JsonMapping]] = []
+        documents: list[tuple[str | None, t.JsonMapping]] = []
         for key, pattern in keys.items():
             members = scopes.get(f"{prefix}{key}", ())
             narrowed = cls._constrained(
@@ -469,7 +469,7 @@ class FlextInfraUtilitiesCodemodScopes:
         return {**document, "constraints": current}
 
     @staticmethod
-    def _globs(document: t.JsonMapping, key: str, rule_id: str) -> t.StrSequence:
+    def _globs(document: t.JsonMapping, key: str, rule_id: str) -> Sequence[str]:
         """Read one native glob list of a rule document.
 
         Returns:
@@ -489,9 +489,9 @@ class FlextInfraUtilitiesCodemodScopes:
     def _selected(
         scope: t.JsonMapping,
         key: str,
-        scopes: t.MappingKV[str, t.StrSequence],
+        scopes: Mapping[str, Sequence[str]],
         rule_id: str,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Union the file sets one scope key names.
 
         Returns:
@@ -517,7 +517,7 @@ class FlextInfraUtilitiesCodemodScopes:
 
     @staticmethod
     def _admitted(
-        paths: t.StrSequence, files: t.StrSequence | None, ignores: t.StrSequence
+        paths: Sequence[str], files: Sequence[str] | None, ignores: Sequence[str]
     ) -> list[str]:
         """Keep the paths a document's own ``files`` and ``ignores`` admit.
 

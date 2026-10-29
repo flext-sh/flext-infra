@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests import c, m, p, r, t, tm, u
+from tests import c, m, p, r, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
@@ -32,11 +32,11 @@ class TestsFlextInfraReleasePublicationLane:
     def _lane(
         self,
         tmp_path: Path,
-    ) -> Generator[t.Triple[Path, m.Infra.GitLaneRequest, Path]]:
+    ) -> Generator[tuple[Path, m.Infra.GitLaneRequest, Path]]:
         """Yield a clean integration checkout, its lane request and the ``gh`` log.
 
         Yields:
-            Each ``t.Triple[Path, m.Infra.GitLaneRequest, Path]``.
+            Each ``tuple[Path, m.Infra.GitLaneRequest, Path]``.
 
         """
         repo = u.Tests.git_repository(tmp_path)

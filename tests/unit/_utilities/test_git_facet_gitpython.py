@@ -16,7 +16,6 @@ from flext_infra import (
     FlextInfraGitService,
     FlextInfraWorktreeService,
     m,
-    t,
 )
 from tests import c, tm, u
 
@@ -136,7 +135,7 @@ class TestsFlextInfraGitFacet:
         tm.that(self._lane_bytes(repository), eq=before)
 
     @staticmethod
-    def _lane_repository(tmp_path: Path) -> t.Triple[Path, Path, str]:
+    def _lane_repository(tmp_path: Path) -> tuple[Path, Path, str]:
         """Publish a real member whose superproject declares its integration line.
 
         The member keeps its own ``.git`` directory inside the superproject, so
@@ -165,7 +164,7 @@ class TestsFlextInfraGitFacet:
         return repository, remote, branch
 
     @staticmethod
-    def _lane_bytes(repository: Path) -> t.VariadicTuple[t.Pair[str, bytes]]:
+    def _lane_bytes(repository: Path) -> tuple[tuple[str, bytes], ...]:
         """Observe fixture bytes, including the Git index, refs, and reflogs.
 
         Returns:

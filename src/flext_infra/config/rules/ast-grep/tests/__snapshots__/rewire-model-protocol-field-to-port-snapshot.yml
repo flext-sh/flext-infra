@@ -143,15 +143,15 @@ snapshots:
       style: secondary
       start: 33
       end: 51
-  "class Runner(m.Value):\n    writers: t.SequenceOf[p.Writer] = m.Field(description=\"Writers.\")\n":
+  "class Runner(m.Value):\n    writers: Sequence[p.Writer] = m.Field(description=\"Writers.\")\n":
     fixed: |
       class Runner(m.Value):
-          writers: t.SequenceOf[t.Port[p.Writer]] = m.Field(description="Writers.")
+          writers: Sequence[t.Port[p.Writer]] = m.Field(description="Writers.")
     labels:
     - source: p.Writer
       style: primary
-      start: 49
-      end: 57
+      start: 45
+      end: 53
     - source: m.Value
       style: secondary
       start: 13
@@ -162,38 +162,38 @@ snapshots:
       end: 20
     - source: |-
         class Runner(m.Value):
-            writers: t.SequenceOf[p.Writer] = m.Field(description="Writers.")
+            writers: Sequence[p.Writer] = m.Field(description="Writers.")
       style: secondary
       start: 0
-      end: 92
-    - source: "writers: t.SequenceOf[p.Writer] = m.Field(description=\"Writers.\")"
+      end: 88
+    - source: "writers: Sequence[p.Writer] = m.Field(description=\"Writers.\")"
       style: secondary
       start: 27
-      end: 92
-    - source: "writers: t.SequenceOf[p.Writer] = m.Field(description=\"Writers.\")"
+      end: 88
+    - source: "writers: Sequence[p.Writer] = m.Field(description=\"Writers.\")"
       style: secondary
       start: 27
-      end: 92
-    - source: "writers: t.SequenceOf[p.Writer] = m.Field(description=\"Writers.\")"
+      end: 88
+    - source: "writers: Sequence[p.Writer] = m.Field(description=\"Writers.\")"
       style: secondary
       start: 27
-      end: 92
-    - source: t.SequenceOf[p.Writer]
+      end: 88
+    - source: Sequence[p.Writer]
       style: secondary
       start: 36
-      end: 58
-  "class Scope(m.Value):\n    settings: Annotated[\n        t.MappingKV[str, p.Tests.NativeMatchValue] | None,\n        m.Field(description=\"Initial configuration values.\"),\n    ] = None\n":
+      end: 54
+  "class Scope(m.Value):\n    settings: Annotated[\n        Mapping[str, p.Tests.NativeMatchValue] | None,\n        m.Field(description=\"Initial configuration values.\"),\n    ] = None\n":
     fixed: |
       class Scope(m.Value):
           settings: Annotated[
-              t.MappingKV[str, t.Port[p.Tests.NativeMatchValue]] | None,
+              Mapping[str, t.Port[p.Tests.NativeMatchValue]] | None,
               m.Field(description="Initial configuration values."),
           ] = None
     labels:
     - source: p.Tests.NativeMatchValue
       style: primary
-      start: 72
-      end: 96
+      start: 68
+      end: 92
     - source: m.Value
       style: secondary
       start: 12
@@ -205,41 +205,41 @@ snapshots:
     - source: |-
         class Scope(m.Value):
             settings: Annotated[
-                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                Mapping[str, p.Tests.NativeMatchValue] | None,
                 m.Field(description="Initial configuration values."),
             ] = None
       style: secondary
       start: 0
-      end: 180
+      end: 176
     - source: |-
         settings: Annotated[
-                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                Mapping[str, p.Tests.NativeMatchValue] | None,
                 m.Field(description="Initial configuration values."),
             ] = None
       style: secondary
       start: 26
-      end: 180
+      end: 176
     - source: |-
         settings: Annotated[
-                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                Mapping[str, p.Tests.NativeMatchValue] | None,
                 m.Field(description="Initial configuration values."),
             ] = None
       style: secondary
       start: 26
-      end: 180
+      end: 176
     - source: |-
         settings: Annotated[
-                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                Mapping[str, p.Tests.NativeMatchValue] | None,
                 m.Field(description="Initial configuration values."),
             ] = None
       style: secondary
       start: 26
-      end: 180
+      end: 176
     - source: |-
         Annotated[
-                t.MappingKV[str, p.Tests.NativeMatchValue] | None,
+                Mapping[str, p.Tests.NativeMatchValue] | None,
                 m.Field(description="Initial configuration values."),
             ]
       style: secondary
       start: 36
-      end: 173
+      end: 169

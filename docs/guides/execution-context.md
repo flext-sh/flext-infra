@@ -5,25 +5,56 @@
 - [Runtime is the authority](#runtime-is-the-authority)
   - [Post-install cold atomic resource ownership](#post-install-cold-atomic-resource-ownership)
   - [Native-bootstrap task route: flext-0029c](#native-bootstrap-task-route-flext-0029c)
+  - [Catalog, Templates, and Semantic Refactoring Boundaries](#catalog-templates-and-semantic-refactoring-boundaries)
 - [Canonical architecture checkpoints](#canonical-architecture-checkpoints)
+  - [Mod Service, Workspace Sessions, and Receipt Verification](#mod-service-workspace-sessions-and-receipt-verification)
+  - [Governance, Layer-0 Config, and Toolchain Repair](#governance-layer-0-config-and-toolchain-repair)
+  - [Facade Projection and Model-to-Protocol Generation](#facade-projection-and-model-to-protocol-generation)
+  - [Provider Election, Source Bindings, and Native Module Resolution](#provider-election-source-bindings-and-native-module-resolution)
+  - [Recursive Component Composition and Holder Election](#recursive-component-composition-and-holder-election)
 - [Namespace migration](#namespace-migration)
+  - [Incremental Testmon and Primary Check Admission (ADR-029)](#incremental-testmon-and-primary-check-admission-adr-029)
 - [New projects](#new-projects)
 - [Environment activation](#environment-activation)
+  - [Make Activation, Packaged Resources, and Hatch Wheel Packaging](#make-activation-packaged-resources-and-hatch-wheel-packaging)
+  - [Producer Authentication and Cold-Import Verification](#producer-authentication-and-cold-import-verification)
+  - [Editor Settings, Pyright Environments, and Tooling YAML Pairs](#editor-settings-pyright-environments-and-tooling-yaml-pairs)
+  - [Mise PATH Composition and Beads Server Environment](#mise-path-composition-and-beads-server-environment)
 - [Dependency locks](#dependency-locks)
+  - [Member Lock Composition and Upgrade Guard (ADR-030)](#member-lock-composition-and-upgrade-guard-adr-030)
+  - [Development Groups, Typing Policy, and Git Requirement Lines](#development-groups-typing-policy-and-git-requirement-lines)
+  - [Deptry Detection, Dependency Repair, and Cold Initialization](#deptry-detection-dependency-repair-and-cold-initialization)
 - [Runtime environment](#runtime-environment)
   - [Check engine contract](#check-engine-contract)
 - [Mise toolchain](#mise-toolchain)
+  - [Self-Managed Mise and Reality Proof (`mise-proof`)](#self-managed-mise-and-reality-proof-mise-proof)
+  - [Generation Staging, Transaction Journals, and Modernization](#generation-staging-transaction-journals-and-modernization)
 - [SonarCloud exclusions](#sonarcloud-exclusions)
 - [Bootstrap credentials](#bootstrap-credentials)
 - [Evidence and checkpoints](#evidence-and-checkpoints)
+  - [Publication Receipts, Pytest Profiles, and Testmon Leases](#publication-receipts-pytest-profiles-and-testmon-leases)
+  - [Architecture Checkpoints and AST Rule Catalogs](#architecture-checkpoints-and-ast-rule-catalogs)
+  - [Rope Superclass Resolution, Lazy-Init Planners, and Candidate Overlays](#rope-superclass-resolution-lazy-init-planners-and-candidate-overlays)
+  - [cProfile Thread Isolation and Performance Diagnosis](#cprofile-thread-isolation-and-performance-diagnosis)
+  - [Candidate File-Effect Composition and Constant/Model Normalization](#candidate-file-effect-composition-and-constantmodel-normalization)
+  - [Lazy Initializer Ownership and Transaction Failure Recovery](#lazy-initializer-ownership-and-transaction-failure-recovery)
 - [Check gate partitions](#check-gate-partitions)
+  - [File Gate, Pyright Diagnosis, and Stage Partitioning](#file-gate-pyright-diagnosis-and-stage-partitioning)
+  - [CI Setup, Early Bootstrap Receipts, and Git Reference Migration](#ci-setup-early-bootstrap-receipts-and-git-reference-migration)
+  - [Testmon/Toolchain Caching, SSH Gate Attestations, and Smells Enforcement](#testmontoolchain-caching-ssh-gate-attestations-and-smells-enforcement)
 - [Census consumer evidence](#census-consumer-evidence)
 - [Bounded Mypy failure status](#bounded-mypy-failure-status)
 - [Abstraction-boundary project identity](#abstraction-boundary-project-identity)
 - [Service foundation](#service-foundation)
+- [Import normalization](#import-normalization)
 - [Codemod scanner contract](#codemod-scanner-contract)
+  - [`ast-grep` Scanner, Binding Inference, and Source Previews](#ast-grep-scanner-binding-inference-and-source-previews)
+  - [Journal Footprint, Child Profiling, and CLI Route Selection](#journal-footprint-child-profiling-and-cli-route-selection)
+  - [SARIF Receipts, Pytest Deadlines, and Duplication Assessment](#sarif-receipts-pytest-deadlines-and-duplication-assessment)
 - [Workspace snapshot and analysis engine](#workspace-snapshot-and-analysis-engine)
+  - [Single-Project Repository Snapshot and Memoized Facts (ADR-028)](#single-project-repository-snapshot-and-memoized-facts-adr-028)
   - [Profiling a root verb](#profiling-a-root-verb)
+- [Related Documentation](#related-documentation)
 
 <!-- TOC END -->
 
@@ -34,6 +65,23 @@ facades that share ancestors must impose compatible C3 precedence; reordering a
 generated outer facade cannot repair contradictory component hierarchies. Repair
 the authored composition first, then regenerate through `make gen`. Unresolvable
 source ancestry remains an error, never a reason to drop a component silently.
+An explicit base already inherited by another component follows that component
+in the authored base list, preserving Python's subclass-before-parent precedence.
+Outer compositions omit redundant direct ancestors when their declared components
+already provide those capabilities.
+Documentation components consume shared URL, scope and report behavior from their
+base component, never from the outer facade that imports and composes them.
+Extracting a facade must preserve its authored methods as well as its bases.
+This includes the public Core operation-logging decorators used by generation;
+an extracted payload helper does not replace the decorator's executable body.
+The Git composition includes the declared-requirement source parser used by
+repository discovery. Repository identity validation and dependency parsing share
+that owner rather than duplicating URL normalization.
+
+Make applicability is a layer-zero contract, independent of the configuration
+singleton and its models. Configuration models and codegen consume the same
+`make_contract` owner; importing it must not initialize `config`. This preserves
+the acyclic configuration boundary required by ADR-005 during cold CLI startup.
 
 ### Post-install cold atomic resource ownership
 
@@ -150,10 +198,12 @@ generated package export that prevents the generator itself from importing. Keep
 the public facade and component behavior unchanged; regenerate package exports
 through their owner rather than hand-editing a generated initializer.
 
-The root has one native uv workspace and lock. Root CI checks out its declared
-submodules and installs that same workspace noneditable; `--no-editable` changes
-installation mode, not dependency origins. Independent checkouts retain their own
-native project contracts. Their locks pin the FLEXT distributions they consume.
+The root has one native uv workspace and composes member locks per
+[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md).
+Root CI checks out its declared submodules and installs that same composed workspace
+noneditable; `--no-editable` changes installation mode, not dependency origins.
+Independent checkouts and member CI retain their own native project contracts and
+committed member locks. Their locks pin the FLEXT distributions they consume.
 To develop against a FLEXT checkout, a standalone member or external consumer runs
 `make setup FLEXT=<path>` (operator ruling 2026-10-24, tracker memory
 `operator-ruling-2026-10-24-setup-flext-editable-param`). After the frozen sync,
@@ -295,11 +345,20 @@ each code change. Only after implementing the real runtime behavior are tests
 updated and run to validate it, without mocks, tautologies or policy hardcodes.
 
 Resolve the test entry from the selected repository's current native help. The
-current generated catalog declares `make tests`, without file or match inputs;
-it executes its applicable persistent-testmon selection once. Historical commands
+current catalog declares `make tests` and the explicitly requested `make tests-full`,
+without file or match inputs. The first executes persistent Testmon selection
+once; the second executes the complete applicable population once without
+Testmon, a preliminary incremental run or any cache read, lease or publication.
+The existing database remains untouched. The operator's latest 2026-10-28
+clarification is owned by
+[ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md).
+Both operations retain source admission, applicability, original failure and the
+same complete invocation deadline. Historical commands
 are receipts for their own source epochs, not aliases or executable instructions
 for this catalog. An undeclared old target is corrected at the documentation
 owner, never bypassed through raw pytest or another dispatcher.
+
+### Catalog, Templates, and Semantic Refactoring Boundaries
 
 The Make catalog owns public builtin names, descriptions, profile applicability and
 named inputs. General help and builtin `OPTIONS=Y`/`HELP=Y` views project those inputs
@@ -316,6 +375,13 @@ command surface rather than copying a verb list. Each verb performs only its
 declared operation; `make check` validates without applying repairs. Change this
 authored contract before its presentation text, then publish through the docs owner,
 never by editing a generated README.
+
+Documentation templates resolve from the installed package resource owner exposed
+by `FlextInfraConfig.ssot_config_dir().parent`, under `templates/docs/`, never
+relative to the renderer module's position. The codegen catalog's `project` root
+selects project scaffolding, not documentation templates. Rendering retains the
+CLI's authenticated native template loader and source witnesses; a missing source
+fails without creating directories or searching alternate roots.
 
 The public `FlextInfraDocGenerator.prepare_bundle()` and `plan_files(bundle)`
 surfaces expose the captured render and destination plans before publication.
@@ -358,10 +424,95 @@ Opaque binary exports are admitted from their installed stub declaration before
 source-only alias traversal; a binary resource is never treated as Python source.
 An annotation-only global in that stub declares a value, not a type alias. It
 retains the constant owner; duplicate class/value declarations remain ambiguous.
-Project dependency inspection uses Rope and LibCST source analysis only; generation
-does not import the analyzed project or require its Pulumi SDK to be installed in
-the Infra runtime. Native extensions remain subject to the supplied Rope project's
-declared native-module election, without an independent import-spec probe.
+Project dependency inspection and semantic Python transformations must use the
+existing native project and its capabilities under
+[ADR-028 Decision 17](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17).
+The owning `c/t/p/m/u` families provide configuration, vocabulary, aliases,
+protocols, DTOs and adapters; composition roots inject capability-named contracts
+into services instead of exposing library names. Preserve the same native model
+and refresh affected resources incrementally; do not add a parallel parser,
+semantic index or engine to compensate for repeated work.
+
+Retire custom Python analysis or source rewriting through LibCST, regex or
+independent parsing at the native owner, closing its consumers with public
+runtime proof. FLEXT code consumes native scopes, bindings, objects and planned
+refactoring changes; it does not interpret an AST itself, including one supplied
+by Rope. Prove and report a missing SDK capability at its owner instead of
+adding an AST walker, another parser or a fallback. These are target
+contracts, not evidence that the remaining migrations or SourceView acceptance
+have completed.
+
+This boundary does not remove template generation, non-Python format parsing,
+Ruff, ast-grep or other canonical check/fix/format tooling, and does not change
+frozen gate policy. Generation must not import the analyzed project or require
+its Pulumi SDK in the Infra runtime. Native extensions remain subject to the
+supplied project's declared native-module election, without an independent
+import-spec probe.
+
+The Rope DSL import organizer constructs the installed native
+`ImportOrganizer(project)` once per selected cohort and obtains each resource's
+change through `organize_imports(resource)`. File writes narrow native resources
+through the existing typed file-resource owner before publication.
+
+Incremental workspace indexing accepts its prior typed index and changed paths
+as one refresh request. Module evolution and package assembly remain in the
+existing workspace-index owner; equal package records retain their prior identity.
+
+Facade export readers receive the elected native source module. Unpublished
+rendered source enters the same invocation project's candidate binding before
+module lookup and export reading; that binding restores its entry candidate on
+exit. A detached string module or a second project cannot supply this identity.
+
+Semantic rules use the existing native contract catalog and its typed models,
+protocols and constants vocabulary. The unconnected second Rope DSL interpreter,
+its private declaration model and its unused operation enums are retired; they
+had no Make entry point or configured consumers. New rules extend the active
+owner instead of creating another execution pipeline.
+
+Private-import export discovery receives the active workspace project through
+its planner. Documentation contract extraction opens its existing native project
+once for export assignments and symbol validation, passing that project through
+recursive imported-assignment resolution.
+
+Assignment docstrings likewise consume the source module elected for the
+documentation check, preserving that project through recursive symbol and
+inherited-documentation checks instead of reparsing assignment source text.
+Their existing admission covers simple assignment names; the native reader
+does not expand that documentation surface while replacing its parser.
+Assignment lookup elects matching native name spans before resolving lexical
+ownership, so unrelated declarations cannot trigger superclass inference.
+Absolute import roots come directly from the elected module's native binding
+index. That query retains guarded, nested, star and overwritten imports while
+excluding relative imports; Infra no longer traverses syntax nodes for this fact.
+Semantic capture regions come from the native match's public region query.
+The runtime boundary retains its module-range check without fetching captured
+syntax nodes or introducing a second interpretation of the match.
+
+Documentation reads module, class and function docstrings from their elected
+native objects' `get_doc()` methods. Local declaration admission still excludes
+imported bindings; recursive public-symbol documentation owns import traversal.
+Inherited class documentation follows the elected class's native superclass
+identities, not a second parse of class headers and imported base spellings.
+The rendered summary keeps its existing whitespace normalization at the docs
+rendering owner. Source-only wrappers for those three SDK capabilities are retired.
+
+String-sequence declarations use the elected module's native binding-index query.
+Its nullable result distinguishes absent declarations from explicit empty or
+invalid declarations. Direct module declarations win; `__all__` alone may use a
+single direct class's metadata when the module declaration is absent. Export
+consumers preserve that presence boundary before considering implicit exports.
+The unused source-only class-base parsing wrapper is also retired; active
+declaration readers retain their own elected native source boundary.
+Unused source-only import-root and sequence-constructor parsing helpers are
+retired as their active consumers already use the elected native query owners.
+Inline-import hoisting is planned by its existing candidate owner and published
+through that transaction; the unused direct filesystem-writing wrapper is retired.
+
+A DSL consumer that updates one working source binds it through the existing
+source-view owner. That binding retains the entry candidate's foreign/provider
+plans and their original witnesses and modes; an owned-source mapping must not
+silently replace the complete cohort. Explicit declarations still reject
+competing bytes before the native view changes.
 
 Type-facade admission evaluates the class, exports and alias bindings from one
 parsed view of the planned source. Node identity from a different parse cannot
@@ -413,8 +564,12 @@ offset and produce authenticated create/retire file effects. Planning does not
 move or write source files. The artifact retains the original binding epoch,
 consumer scope and candidate updates. `refactor rename-preview` and `make mod`
 with the existing rename artifact input rederive that candidate and reject
-source drift before publishing through the shared semantic transaction. Each
-consumer retains its own native source-folder election, so independently owned
+source drift before publishing through the shared semantic transaction. A
+candidate mismatch reports the differing candidate fields and the first differing
+record's metadata field names, without logging source bytes or configuration
+values. Ordered closure differences remain authentication failures; diagnostics
+do not normalize, replace or exempt any persisted candidate field.
+Each consumer retains its own native source-folder election, so independently owned
 `tests` packages do not compete for one module identity. Provider, receivers and
 generated exports form one declared dependency group. Projection planning reads
 the original authenticated native overlay, including proposed module retirement;
@@ -442,6 +597,20 @@ modules, preserving functions, constants, aliases, class bodies and inheritance.
 Quoted type positions are selected by original native module identity and the
 existing quoted-type owner, with native import binding election. Ordinary
 string payloads are not filename replacements.
+Quoted relocation uses one native lexical-declaration map for before/after
+validation, rewriting and final identity verification. Keys retain native ancestry,
+AST declaration kind, name and same-name sibling occurrence, not breadth-first
+cache positions. Declaration order, missing or added declarations and name capture
+remain blocking. The installed Rope scope cache also contains synthetic
+comprehension objects: only native `ListComp`, `SetComp`, `DictComp` and
+`GeneratorExp` AST scopes are excluded from this declaration map, because their
+expression grammar cannot declare annotations. An absent scope kind alone never
+excludes a scope. The existing quoted-type selector still owns annotation positions,
+including nested quoted types and typing-only declarations; ordinary strings,
+lambda payloads, literal values and annotation metadata are not replacement targets.
+Native annotation-scope rejection reports both declaration counts and the first
+differing identity (bounded, without source payloads) in the primary exception
+message, so CLI transports that omit exception notes retain the causal evidence.
 
 No directory, module or Rope metadata is created while planning. Native rename
 intermediates are lookup-only and never published; an occupied intermediate is
@@ -505,6 +674,8 @@ integration tip of every repository involved.
 
 ## Canonical architecture checkpoints
 
+### Mod Service, Workspace Sessions, and Receipt Verification
+
 The public `mod` handler is inherited by the API from
 `services/mod.py`; `FlextInfraCodemodBatchApply` remains its sole execution
 engine. The CLI validates the request with `m.Infra.ModCommand`, while consumers
@@ -546,6 +717,8 @@ payload bytes, rather than comparing excluded per-effect runtime dependencies.
 Those dependencies are reconstructed from the authenticated aggregate inputs
 before publication; they are not duplicated into the serialized artifact.
 
+### Governance, Layer-0 Config, and Toolchain Repair
+
 For every bounded engine, generation or namespace repair, compose the
 branch-matched workspace law, router and skills from the
 [canonical governance sources](../index.md#governance-pointer). The canonical
@@ -569,6 +742,10 @@ their source and canonical regeneration.
 
 Shared TOML ingress owns Pydantic mapping validation. Pyproject, documentation and
 text-rule consumers reuse its validated output directly.
+
+Rope DSL closed operation and transform vocabularies belong to `c.Infra`;
+`m` validates the composed declarations, while `p` defines injected ports consumed
+through Pydantic `t.Port` fields.
 
 Family-base import enforcement covers both `from` imports and module imports,
 including aliases and imports inside `TYPE_CHECKING`. The semantic import owner
@@ -637,20 +814,64 @@ Native checker caches remain owned by their existing runtime/cache owners. Nativ
 execution and malformed-report failures stay separate from diagnostic occurrences;
 neither a repeated failure nor an unchanged finding count proves validation success.
 
+### Facade Projection and Model-to-Protocol Generation
+
 Facade projection composes constants, utilities and models from the exports and
-base order declared in their configured private family. Protocol facade projection
-composes authored consumer-owned `p` contracts through the same native declaration
-and MRO owners; it never copies model fields or public signatures into a second
-typing surface. A dependency port declares only capabilities its consumers use.
-Existing-project conformance and new-project scaffolding generate ordinary facades
-and lazy exports. The one exception is the model→protocol stage, which the operator
-ordered restored and run on every `make gen` (2026-10-24: "fazer os protocolos de
-forma automática por flext-infra (já existe e tem que estar ativo e sempre rodar no
-make)"). Its generated `p.*` protocols are projections of the declared models, not
-authored mirrors. Restoration is tracked by bead `flext-vjj1s.8`; until it lands, no
-such stage exists. The utility path delegates
+base order declared in their configured private family. Authored dependency ports
+retain their consumer-owned capability contracts and normal `p` facade composition.
+The accepted 2026-10-28 [model and service protocol projection](../../../docs/architecture/adr/018-generator-declarations.md#model-and-service-protocol-projection)
+contract owns the automatic first-party projection, extending the model-to-`p`
+restoration tracked by `flext-vjj1s.8`. Its complete native inventory and source
+module ownership determine coverage and destinations; a consumed-model filter is
+not the accepted scope. The ADR owns the structural data/callable distinction,
+runtime boundaries, grouping, collision failure, pilot matrix and expansion order.
+The operator explicitly authorized drift admission by coherent cohort on
+2026-10-28, with pilots published and integrated before fleet rollout. The existing
+transaction/admission owner implements this bounded change; it is not a new
+projector, loop or a reduction of Python checker scope. Complete workspace
+discovery/planning remains visible, and unadmitted cohorts remain explicitly
+incomplete. Recompose the admitted candidate through the same planners rather
+than filter a final global file list whose shared exports can reference pending
+outputs. Staged validation is not evidence of a published pilot. Another pattern
+waits for this entire pattern's fleet and consumer cutover, runtime/gates and
+integration closure under the ADR. Beads owns progress; publisher receipts supply
+evidence, not a second tracker.
+The accepted DSL integration is `RopeWorkspaceDsl.protocol_projection()` with a
+typed invocation-local projection plan, consumed by both generation and an
+existing `ModLoopPhase.plan` callback. Share the invocation's authenticated native
+session/snapshot across callbacks and refresh changed resources incrementally.
+No fake static restructure patterns or per-symbol catalogs represent this dynamic
+projection. The entry, callback, cohort policy and runtime receipts remain
+implementation/validation work, not proven capabilities of the current engine.
+Authored rewiring and obsolete-owner retirement run through `make mod`; its coherent
+candidate includes dependent projection through the existing generation owner.
+`make gen` continues to derive protocols and fails before effects if publication
+needs an unplanned authored cutover. The ADR's retirement safeguard preserves every
+consumer in that same candidate; prefix/header matching does not authorize deletion.
+Neither operation invokes the other public verb. Protocol sources and every affected
+workspace consumer converge with their facades and lazy exports through the same
+publisher and read-only drift comparison. No target-package import, separate
+scanner, per-model catalog or publication engine supplies the projection. This is
+an accepted target; source restoration alone is not generation, pilot coverage,
+gate or integration
+evidence. The original MRO/Pydantic analyzer/environment plan remains incomplete.
+The workspace snapshot and injected native candidate own source authentication;
+the projector consumes their existing source-access contract, not a separate
+project flag. Builtin annotation identities use the native semantic-module
+adapter before attribute lookup. Private renderer helpers preserve that same
+inventory, candidate and dependency closure without opening another project.
+The utility path delegates
 directly to the declaration planner. Static and runtime consumer checks retain
 their own import-failure verdicts.
+The native annotated-assignment query classifies explicitly annotated scalar values
+as well as generic annotations. A proven name or attribute annotation remains a
+value declaration even when its factory has no inferred return object; generation
+must not reject an ordinary model field or treat that field as a component alias.
+Unresolved or ambiguous annotation identities remain failures at the classifier.
+The query reuses the native module's syntax and lexical scope; no independent parser
+or source cache is introduced. AI Hub consumer qualification is tracked by
+`aihub-6sls5.1`, with producer evidence on `flext-6b3zg`.
+
 Generated protocol and model namespace assignments are derived output, not new
 contract declarations. When an assignment resolves to an exact inherited class,
 projection removes that binding and inherits the canonical private owners in C3
@@ -658,6 +879,11 @@ order, including their declared overrides. A stale renamed alias cannot publish
 itself or shadow a different inherited contract. The generated ownership marker
 and native class identity are both required; unrelated namespace members remain
 unchanged, and contradictory authored class bindings still fail before publication.
+An upstream owner containing the target class under another name does not prove
+that the receiving namespace inherits that publication. Redundancy is resolved
+against the effective same-named member of that namespace, not an arbitrary
+attribute anywhere in its ancestors. Composed utility providers retain their
+separate callable-cohort admission.
 This also applies to a generated, declaration-only subclass alias whose name is
 already supplied by a canonical inherited class. The inherited declaring owner
 wins even when the old alias names a retired top-level model; the generator
@@ -687,6 +913,8 @@ the TypeAlias import, reported location and native RHS class checks remain requi
 Generated Python imports use their absolute native package owner. The planner
 selects exports once; rendering groups those declarations without another
 name-based exclusion policy. Compact lazy-loader targets remain loader data.
+The final generated facade also prunes an unused typing guard import through the
+native import visitor, even when its export declaration was already canonical.
 Runtime-base discovery treats supplied planned bytes as authoritative, including
 unpublished packages. Original-file reads and package membership checks retain
 their native project-tree scope; planned initializer bytes own alias analysis.
@@ -700,11 +928,15 @@ planned project view. Local scope, value shadowing, module-as-base, cyclic route
 and unknown bindings retain their native failure; spelling alone never proves
 that a base can be dropped. No private import or live-disk replacement may bypass
 that public source provenance.
-The upstream import and the locally published facade letter must have distinct
-bindings. Reassigning an imported letter to the local class makes that export a
-variable rather than a type alias for static consumers. Treat the local publication
-as an occupied name and use the existing package-qualified upstream import alias;
-preserve the public letter, class identity and declaration-time base references.
+Upstream import bindings follow [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) Decision 10: preserve a used bare letter
+or a source-proven existing alias according to the declaration's header references.
+A later publication of the package's own letter does not alone require aliasing the
+upstream import. Diagnose a static/runtime binding disagreement against the same
+captured declarations and lazy exports before changing that election; an inferred
+duplicate base does not prove that distinct native components may be removed.
+
+### Provider Election, Source Bindings, and Native Module Resolution
+
 The runtime-base inventory retains its exact native declaring module by reference
 through binding lookup. A native module display name is not an import path:
 search-root election may shorten it or collide with another package. Captured
@@ -725,6 +957,42 @@ replace the declaration-line lexical view used to resolve that class's bases.
 Literal dunder metadata on a bound provider does not bind or replace a class.
 Recognize that metadata in both completed and conditional source inventories;
 ordinary attribute rebinding still requires its declared class-namespace owner.
+Instance attribute stores do not publish class bindings. Classify their receiver
+through the elected native source provider and the current source-binding state,
+not the assigned value or a library-specific metadata spelling. Native class
+objects and source-declared class receivers retain namespace-mutation admission;
+structural stores never become instance metadata exemptions.
+Exception branches are inventoried independently from the same incoming bindings.
+Equal references retain their binding. Differing ordinary function or value
+bindings require native object-kind proof for every present alternative, including
+unknown lexical values; absence is distinct from an unresolved value. A single
+proven function alias remains available to later consumers without claiming that
+its return value is a class. Differing class references and unproven potential
+class origins retain fail-closed admission. Finally statements apply to the merged
+binding state; neither import probing nor executing a branch establishes its kind.
+Native value evidence retains literal RHS provenance: looking up a Boolean literal
+as a module attribute may yield an opaque native builtin, not its expression type.
+For source-function calls, the existing annotation-origin owner resolves the return
+annotation in its defining native scope. A concrete builtin-backed data constraint
+is separate evidence, never a fabricated instance or class identity. Metaclass and
+universal-object constraints, unresolved aliases, and an actually inferred class
+cannot receive that data proof. Function aliases remain unchanged for later factory
+consumption. Native inference and source-declared return constraints are consumed
+together; the annotation does not override a proven class result.
+These native queries are public capabilities of the existing runtime MRO:
+`call_data_return_constraint` consumes the canonical annotation-origin owner,
+while `concrete_data_class` and `definition_location` belong to its lower native
+query owner. Consumers use those inherited methods directly, without private
+cross-class access, forwarding aliases or a second implementation.
+Foreign attribute receivers are checked by their exact native expression binding,
+including subscriptions, not by stripping the receiver to its root name. A store
+without a source-declared or native class receiver does not invalidate unrelated
+class identities; unknown inference does not manufacture a class receiver. Known
+class receivers and structural stores retain mutation rejection. Protobuf's
+standard builder publishes message descriptors and message classes under separate
+bindings: descriptor serialization offsets are value metadata, not class bindings.
+Generated protobuf sources remain in whole-code admission, unchanged by this rule;
+neither generated headers nor descriptor names grant an exemption.
 When a package has no explicit binding for a name, a native submodule of that
 name remains a valid import provider. Resolve its remaining class path through
 the same native source owner; an explicit value binding keeps precedence and
@@ -778,6 +1046,8 @@ Rendering a facade returns source only. Package-form imports require publishing
 the owning family's initializer through the existing lazy-init planner before a
 fresh consumer loads the generated facade.
 
+### Recursive Component Composition and Holder Election
+
 Recursive private domains use the same composition owner for every declared
 `c`, `t`, `p`, `m`, and `u` family. A domain directory publishes through its
 canonical sibling module: `_utilities/rope.py` composes `_utilities/_rope/`,
@@ -789,7 +1059,13 @@ remain errors.
 
 `plan_component_facades` stages domains deepest-first, their dependent
 initializers, all root family facades, and the final package exports in one
-candidate. Conformance and other callers inject the same
+candidate. Native ownership is elected from the observed-source snapshot before
+pending initializer projections can withhold a still-consumed export. Moves and
+consumer rewrites retain their original witnesses in the current candidate. An
+unresolved observed owner remains an error, never an accepted native class.
+Later rounds recognize a moved owner only through its recorded creation and
+retirement plans and the canonical candidate's native composition proof.
+Conformance and other callers inject the same
 `FlextInfraCodegenLazyInit.plan_candidate` initializer capability. Module moves
 authenticate any existing candidate against its declared `CodegenFilePlan`
 bytes and original physical witness; lazy installer targets participate in the
@@ -802,6 +1078,9 @@ Conform supplies its complete initial lazy plan through the existing
 Only the existing unchanged-input and foreign-provider predicate permits seed
 reuse; actual facade or consumer effects still require export replanning.
 Component composition consumes the caller's existing source-view capability.
+The workspace snapshot owns the source-view factory, planned-folder election and
+authenticated planned-source witnesses. Publication inherits that factory; native
+workspace queries consume it directly without importing the publication facade.
 The targeted `facades` surface authenticates its existing destination module and
 published family before selecting that package's recursive family cohort. The
 same component, initializer, import-normalization and candidate-admission owners
@@ -810,10 +1089,49 @@ all owned families. Unrelated family drift is not added to the selected cohort.
 Native declarations elect an authored methodless composition beside or inside
 its private child domain before any missing identity is derived. Suppliers must
 come from other native domain modules, not the holder's own nested declarations.
+An existing public namespace's native MRO authenticates its composition holder:
+that holder's declaration-time class publications may supply its component MRO
+without reclassifying ordinary type publications globally. Once the composed
+receiver binds identical native callables and their consumer cohort is closed,
+stateless method-provider publications retire rather than preserving compatibility
+paths. Native entity and stateful-helper publications retain their declarations.
+Native module moves retain the holder name, retire its old module and carry every
+observed consumer and export effect in that same candidate.
+Callable receiver rewrites admit only native load contexts. Assignment, deletion
+and augmented assignment retain their mutation owner and block provider-publication
+retirement when that owner would otherwise disappear from the candidate.
 An inherited component is not a competing owner when another candidate is its
 strict native descendant. Elect maximal owners by source ancestry; incomparable
 owners still fail. An existing family `base.py` that is already the domain's
 canonical sibling stays in place rather than being rejected as a relocation.
+An authenticated composition already published at the canonical sibling takes
+precedence over broader compositions that reuse its capabilities. Otherwise a
+consumer's larger MRO could displace the domain's actual owner. Canonical location
+does not waive the native declaration and supplier proofs above.
+An ambiguous election reports each candidate's native bases, declaration-member
+suppliers and callable receivers separately, with bounded identities and total
+counts. Only declaration-time bases and published members establish namespace
+composition. Callable receivers are diagnostic consumer evidence, never owner or
+containment evidence. If no authored composition exists, derive the canonical
+missing facade; do not elect an unrelated caller to avoid creating it. A holder
+whose declared suppliers span more than one private domain directory is a
+family-root composition and never a single-domain owner; a declaration inside the
+native child domain outranks an external composition, and the canonical sibling
+outranks both. Relocating one family's elected owner must not retire a file that
+another family's election also selected: multi-domain holders are excluded before
+any move is planned.
+An occupied destination without elected ownership still fails before seeding or
+moving source. Its diagnostic records the elected path, class and source owner,
+the candidate project's root, and bounded exported native class identities and
+base origins from that same authenticated source view. Candidate/native source
+agreement is reported as a boolean; source contents and native object reprs are
+never included. Physical source alone does not prove candidate ownership.
+Nested class composition supplies ownership evidence through its native ancestry
+too: a namespace that exposes a derived nested contract consumes the contract's
+base. Class-supplier discovery first classifies declared members through the
+existing facade-member policy. Positively declared constant values do not become
+class suppliers merely because their values originate in another domain module;
+their ordinary value inference is not a facade-ownership prerequisite.
 Its class name is retained when the native module move places that owner at its
 canonical sibling. The complete source inventory, consumer rewrites, dependent
 initializers and original file witnesses stay in one candidate. The root private
@@ -859,8 +1177,11 @@ Rule definitions and their generated baselines ship in the same producer artifac
 Refresh them with `make mod-snapshots`; a source-checkout receipt does not validate a
 wheel that still contains older baselines. After adopting a new plugin declaration,
 reconcile installed metadata through `make setup` before running its consumer tests.
+
+### Incremental Testmon and Primary Check Admission (ADR-029)
+
 `make tests` uses the persistent Testmon owner's native incremental selection over
-the complete applicable population. The 2026-10-26 operator order supersedes the
+the complete applicable population ([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)). The 2026-10-26 operator order supersedes the
 forced complete-run behavior: unchanged tests are not rerun merely because the
 verb was invoked again. Selection and execution share one persistent database and
 aggregate deadline, with no second execution pass. The common catalog has no manual
@@ -893,6 +1214,32 @@ receipt-based operations retain their own admission contracts. Full applicable
 checks remain required before completion and integration; a member-only receipt
 never claims fleet completion.
 
+Ruff's native findings exit is classified before policy can erase its explanation.
+When the existing per-identity exemption owner authenticates every original native
+diagnostic, the lint producer may report an effective clean execution while retaining
+the original process status and verbatim output receipt. An empty native report,
+unexplained findings exit, unauthenticated diagnostic, stderr failure, timeout or
+signal never qualifies. Operational errors always fail the displayed gate verdict;
+a green Markdown row cannot override an error in the original typed SARIF summary.
+Receipt admission continues to consume that same phase-specific report and its
+original byte bindings, never a fabricated receipt or an older green invocation.
+
+The existing N802 settings-namespace exemption requires the callable at the exact
+reported source position to be an own property of a class derived from the native
+`typing.Protocol` identity. Its direct decorator must resolve to the builtin
+`property` identity, and its name must be a genuine immediate settings/config
+branch field. A matching field name alone never authenticates another callable,
+an ordinary class method, an imported function alias, or a shadowed decorator.
+
+Within a read-only check invocation, prerequisite gates run first, but their
+failed verdicts do not suppress the remaining requested diagnostic gates unless
+explicit fail-fast is selected. All native findings and receipts remain in the
+same aggregate report; a fully measured red result is not an incomplete target
+inventory and never becomes green. Interrupted execution still stops, and
+mutating checks retain prerequisite admission. Missing project or gate executions
+remain incomplete and fail closed. This diagnostic collection does not admit
+tests, publication or any subsequent lifecycle phase on red prerequisite evidence.
+
 The phase-aware Make and CI consumers are generated projections. Until the
 updated template is published, use the native `workspace check --phase primary`
 composition above; setting `CHECK_PHASE` on an older Make projection does not
@@ -924,6 +1271,8 @@ paths require a physical environment and retain interpreter, directory-identity,
 and sealed-source authentication.
 
 ## Environment activation
+
+### Make Activation, Packaged Resources, and Hatch Wheel Packaging
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.
 Make verbs declare their activation requirement in `make.verbs`; activation is
@@ -1075,6 +1424,8 @@ unrelated generated functions do not participate in class-state writer capture.
 Declared staging-path mappings apply
 to wrapper storage and nested code units as well as direct function evidence; a
 filename change outside those mappings remains observable.
+
+### Producer Authentication and Cold-Import Verification
 
 Producer authentication starts with a passive observation of the original process.
 Source preflight elects providers and pins their physical source, resource, metadata
@@ -1242,19 +1593,24 @@ with the queries that request class information. Namespace packages contribute
 their physical portions to source authority without requiring an executable
 initializer.
 
+### Editor Settings, Pyright Environments, and Tooling YAML Pairs
+
 When the checkout owns the distributed configuration file, its project declaration
 uses the derived `<stem>.project.yaml` file beside that default. The local layer
 remains `<stem>.local.yaml`. This keeps project editor declarations separate from
 the library defaults while preserving the same ordered configuration layers.
 
 VS Code's `.vscode/settings.json` is a versioned projection of those declarations,
-regenerated by `make gen`. `make gen-editor` publishes the editor settings,
-`[tool.pyright]` configuration and Git ignores through the same guarded file
-publisher, without generating Python facades or resolving dependencies.
+regenerated by `make gen`. Editor settings, `[tool.pyright]` configuration and
+Git ignores use the same guarded file publisher. The root public Make interface
+owns generation; the retired `make gen-editor` spelling is not an execution route.
 Its `${workspaceFolder}` environment tokens remain
-unchanged in workspace members, independent checkouts and linked worktrees.
-Opening the workspace selects its environment; opening an independent project
-selects that project's environment. Setup does not rewrite or untrack editor files.
+portable in workspace members, independent checkouts and linked worktrees.
+The declared generation-time environment token resolves through the runtime
+topology owner to a relative path anchored at `${workspaceFolder}`. Opening an
+attached member alone still selects the workspace environment; opening an
+independent project selects that project's environment. A nearby `.venv` is
+never ownership evidence. Setup does not rewrite or untrack editor files.
 The workspace uses one analyzer program and its opened interpreter. Its generated
 `[tool.pyright]` includes every declared member's Python roots and assigns specific
 execution environments to each member's source, tests and other consumer trees.
@@ -1265,6 +1621,16 @@ own equivalent analyzer configuration. Nested virtual workspaces and separate
 per-project interpreters are disabled: creating an analyzer for every manifest
 duplicates dependency programs and exhausts memory in a large editable workspace.
 Diagnostic severity and strict checking remain owned by `[tool.pyright]`.
+
+Analyzer environment ownership follows
+[ADR-003, Decision 5](../../../docs/architecture/adr/003-workspace-tooling-hub-distribution.md#5-analyzers-use-the-environment-owned-by-the-checkout-topology).
+The 2026-10-28 approved correction is tracked by `flext-itpd1.13.11`: derive
+Pyright's relative environment binding from checkout attachment, and bind the
+mypy editor command to the opened interpreter with nearest-configuration
+discovery. The approved settings are declared once in that ADR and projected by
+the existing tooling/editor owners. A serialized path is not proof that imports
+resolved through it. Acceptance exercises root, attached-member and independent
+contexts and records the actual engine/configuration/import origin.
 
 Editor diagnostics use `Pylance + Pyright` with `pyrightVersion: fromEnvironment`.
 The selected environment's Pyright distribution elects the diagnostic engine
@@ -1319,6 +1685,8 @@ own loader available before child projections are repaired. Recovery uses the
 same guarded `make gen` transaction and its post-generation runtime provenance
 check; it does not disable the environment guard or replace the generator.
 
+### Mise PATH Composition and Beads Server Environment
+
 Activation loads the native `mise env --shell bash` output, which puts the
 installed tool directories ahead of the host's shared shims. This includes the
 self-managed Mise executable: a shim named `mise` otherwise invokes the host
@@ -1361,6 +1729,8 @@ template and regenerate; never initialize an embedded database or write host and
 by hand.
 
 ## Dependency locks
+
+### Member Lock Composition and Upgrade Guard (ADR-030)
 
 Installed interpreter and distribution fingerprints belong to workspace
 environment provenance. Gate receipts and testmon consume that same identity;
@@ -1474,6 +1844,8 @@ inside upgrade. The declared lock platforms and release cooldown remain owned by
 the typed toolchain. Consumer convergence and runtime acceptance are tracked
 separately in `algar-723.1`; this contract is not a publication receipt.
 
+### Development Groups, Typing Policy, and Git Requirement Lines
+
 `codegen.scaffold.project.retired_dev` declares development distributions that
 must no longer reach managed `dev` or `codegen` groups. Conformance filters them
 from existing groups and member contributions;
@@ -1565,6 +1937,8 @@ distribution. Dependency-floor updates rewrite only the selected target's PEP 62
 requirements and dependency groups, retaining markers, extras, direct sources and
 comments. They never write the installed generator's configuration or another
 checkout's declarations.
+
+### Deptry Detection, Dependency Repair, and Cold Initialization
 
 Deptry checking and dependency detection consume one capture owner. It records the
 exact settings, native process outcome, fresh report and one physical production
@@ -1685,16 +2059,31 @@ ambient or process-global state:
   through the wave it receives, so an interrupt reaches every owned process group.
   Repairs and explicit fail-fast runs stay serial.
 
+Repair invocations execute their complete requested fixable-gate inventory in
+declared order, with the same applicability and explicit fail-fast policy. The
+read-only prerequisite partition must not strand pending repairs after an ordinary
+failed verdict. Repair completion retains every actual finding and receipt; it
+does not imply an independent read-only verification pass or project acceptance.
+Interrupted or fail-fast executions retain unexecuted targets as incomplete.
+
 Every gate assembles its result through one builder: the native output receipt is
 published, every finding blocks acceptance, and an undeclared native outcome is
 derived from the findings and the tool verdict.
 
-The duplication and smells gates analyse authored sources only. Generator
-projections repeat their template by contract, so the generated projection surface
-has one owner, derived from each projection's own generator marker and the
-generated-artifact catalog, never from a hand-kept glob list. The jscpd
-configuration and the rendered `qlty.toml` both consume that owner; the template a
-projection comes from is measured at its source. No authored code is excluded.
+The duplication and smells gates analyse all owned executable sources, including
+generated Python in `src/`, `tests/`, `examples/` and `scripts/`. Generator markers
+and generated-artifact catalog membership establish generation ownership, not
+third-party provenance or an analysis exemption. Measuring a template does not
+replace measuring its executable output. The license header remains the only
+clone-content exception. Genuine third-party exclusions require canonical policy
+paths and proven provenance; a directory basename such as `protos` proves neither.
+The artifact's `generated_source` flag controls tracked generation ownership and
+package-initializer production only. It does not feed analyzer exclusions, native
+source-scan ignored resources, SonarCloud exclusions or module-cap exemptions.
+Native discovery and gate targets admit owned generated Python, including modules
+under `protos`, through the same configured source roots as authored Python.
+The generated-module rule fact remains available for the specific static import
+publication contract; it is not a blanket file-admission exemption.
 
 Tracked Pyright configurations contain analysis policy and import roots, without
 `venv` or `venvPath` bindings to the checkout that generated them. The native gate
@@ -1708,6 +2097,8 @@ finds first and is therefore invalid evidence; checker results count only from t
 gate's own invocation in the real tree under the project configuration.
 
 ## Mise toolchain
+
+### Self-Managed Mise and Reality Proof (`mise-proof`)
 
 Mise manages itself: the generated `.mise.toml` declares the `toolchain.mise_selector`
 release as a `[tools]` entry, and `mise.lock` pins it like every other tool. Setup
@@ -1787,21 +2178,49 @@ The platforms declared by `toolchain.mise_lockfile_platforms` compose the lock
 together with the platform of the machine running the upgrade, which Mise always
 includes.
 
+### Generation Staging, Transaction Journals, and Modernization
+
 The default `make gen` handler invokes the generation engine at `PROJECT_ROOT`,
 with `all` scope locally and `self` scope in its declared CI context. A local
 workspace invocation covers its root and declared members, while a standalone
 repository has only itself. The request model's default remains
 `SELF` for callers that do not select a scope, including file-only surfaces.
-Generation publishes ordinary projections, Mise artifacts, lazy exports and docs
-independently through the existing atomic file owner. Immediately before each write,
-the publisher reads that destination's current state; an external edit before the
-write is input rather than a campaign-wide failure. The atomic write still protects
-a race during that individual operation. Every target is attempted and failed targets
-are reported alongside successfully published paths.
-The journal authorizes temporary staging cleanup. It never restores destination
-preimages or deletes generated directories after a later phase fails. Accepted changes
-and unrelated external edits remain intact. Phase diagnostics accumulate into the
-publication report, and the final error verdict retains the original causal exception.
+**Accepted contract, implementation pending (2026-10-28):** ordinary
+projections, Mise artifacts, lazy exports and docs participate in bounded
+dependency-complete transactions under campaign `flext-pipol`; see ADR-018
+[single-read, single-batch publication](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#single-read-single-batch-publication-amended-2026-10-28-campaign-flext-pipol).
+
+Native filesystem consumers that need both original bytes and a publication witness
+use the CLI reader's joint `atomic_read_binary_file_capture` operation. Its
+`AtomicFileState` and payload-free `AtomicFileReceipt` come from the same
+authenticated descriptor observation, including parent identity and exact absence.
+The receipt keeps the native version key and digest; it never stores original bytes.
+This reader capability does not materialize directories or authorize publication,
+and it does not replace the existing state-only or streaming receipt APIs.
+Semantic class ancestry delegates to the installed SDK's native `get_mro` on
+abstract classes, including builtins. Its C3 order, unresolved-base witnesses and
+original hierarchy errors are preserved without a local walk or cache. The separate
+direct-base query retains authenticated specialization facts; generic inheritance
+must be qualified through consumers before this cutover is accepted.
+One native project retains unchanged observations and refreshes changed
+resources and dependent facts incrementally in the same engine. Candidate
+validation, publication, index/mode/directory effects and refresh share the
+existing publication owner. ADR-018 defines the barrier before live Make/Rope
+reads, protection of later lazy reads, durable interrupted-state admission
+and narrow CAS rollback of the failed transaction's own effects. This gives
+atomic visibility to cooperating readers, not operating-system atomicity
+across files or an invocation-wide rollback promise.
+
+An external edit invalidates the affected candidate; reading a new preimage
+immediately before writing is not permission to adopt it silently. Preserve
+foreign WIP, completed independent transactions and the original causal failure.
+Failure stops dependent execution; unreached work remains unexecuted. These
+obligations supersede the historical no-preimage-restore wording only for
+authorized owned-effect rollback. Existing journal mechanics below are
+implementation context, not proof of the accepted transaction target.
+Generated output must already satisfy STRICT at its template/renderer;
+post-render repair or formatting is not admission. The owner is
+[ADR-028 Decision 8](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-8).
 A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
@@ -1829,12 +2248,12 @@ window but is not a crash-recovery ownership receipt.
 
 An exception-only repository outcome is a failed plan even when it has no diagnostic
 message yet. Planning progress and persisted evidence must agree on that failure;
-an `OK` planning row never attests publication. The managed executor settles the
-independent bootstrap, lazy-init and documentation targets through their own input
-and dependency guards before returning the aggregate failure. A logical rejection
-does not replace a later first native exception, and secondary failures do not
-replace an earlier native cause. Incomplete operation receipts retain planning and
-publication issues alongside successful batches and cannot qualify as complete.
+an `OK` planning row never attests publication. The managed executor retains
+the first failure and confirmed effects; it does not continue publishing
+bootstrap, lazy-init or documentation targets after failure. Secondary
+diagnostics never replace the original cause. Incomplete receipts retain
+failed and unreached work alongside completed transactions and cannot
+qualify as complete.
 
 Input dependency evidence remains fail-closed. A module-selected lazy-init invocation
 plans that package and its descendants, not every package in its source/test surface
@@ -1848,8 +2267,10 @@ components keep their published gains. A fresh canonical invocation after repair
 the causal input renders from fresh inputs rather than retrying a stale candidate
 inside the failed invocation.
 
-Dependency modernization and conformance both consume the project's typed
-`config/workspace.yaml` declaration for distribution roots and packaged data.
+Dependency modernization and conformance derive distribution roots and packaged
+data through automatic detection of the project's own declarations — the typed
+`config/workspace.yaml` declaration was exterminated in `flext-a0cjp`, and no
+legacy list or inventory replaces it.
 Modernization must retain those declarations when rebuilding Hatch targets;
 an empty topology cannot replace a declared one. Wheel and source-distribution
 templates use the same bounded `only-include` selection as modernization, with
@@ -1906,6 +2327,8 @@ anonymous retry or source switch. CI jobs inject `GITHUB_TOKEN`; containers rece
 the variable or a BuildKit secret explicitly.
 
 ## Evidence and checkpoints
+
+### Publication Receipts, Pytest Profiles, and Testmon Leases
 
 Each piece of evidence identifies command, directory, observed revision, exit code, and
 decisive result. A run that is in progress, interrupted, or missing its exit code is not
@@ -1993,6 +2416,8 @@ runner requests a stop through its real `shouldstop` field and leaves shutdown
 to xdist. A present incompatible controller fails instead of taking the serial
 session path. Plugin autoload and enforcement remain active.
 
+### Architecture Checkpoints and AST Rule Catalogs
+
 For namespace automation, investigate catalog, classifier, transformation, publication,
 and consumers in that order. The namespace laws are codemod catalog rules, so the
 codemod gate is their one verdict. Preserve mutability, inheritance, imports, and
@@ -2048,6 +2473,8 @@ Catalog election and staging share the same YAML ingress. Validated streams are
 memoized by their exact text as immutable JSON; each caller receives fresh mappings.
 Current file reads and canonical rule digests still detect drift before publication.
 
+### Rope Superclass Resolution, Lazy-Init Planners, and Candidate Overlays
+
 Generated facades compose declarations published by their current private family.
 Explicit class-owner recognition and rendering resolve each declaration through
 the physical path in the authenticated source map and its native Rope resource.
@@ -2062,6 +2489,9 @@ A separately parsed AST has no native node-identity context and must not replace
 that lookup. Every declared base must resolve; an omitted native superclass is
 an error, not permission to drop a base. Same-name class publications inside the
 namespace remain authored bindings and do not change header lookup semantics.
+Ancestor traversal admits both source and builtin SDK classes through the existing
+native-class contract. A genuine builtin may have no ancestors; an unresolved
+object is rejected rather than treated as that builtin leaf.
 Upstream import collision checks use that same declaration-time binding for
 every nested class header. A preceding enclosing-class binding still reserves
 its name; an already imported alias for the same captured owner does not.
@@ -2078,6 +2508,14 @@ Uncaptured resources remain explicit `None`, without diagnostic module resolutio
 The physical facade and its declared AST base expressions supply source context.
 Diagnostics do not admit unknown objects, skip ancestors or widen the class
 contract without evidence from the real consumer.
+Component composition uses that same admission: a rejected base stops the whole
+query and retains its original exception, never a partial ancestry result.
+Native startup imports Core utilities before planning. A syntax error in an
+authored declaration means generation has not run. Repair its minimal bootstrap
+declaration without changing tuple arity or parameter separators, then repair the
+rewriter's candidate validation at its owner; do not substitute an older runtime
+or bypass the import. Annotation rewrites must preserve surrounding punctuation
+and validate the complete candidate before publication.
 Rope resolves existing bases before composition: upstream bases remain, while an
 own provider moved outside that family leaves its MRO and unused imports.
 Unresolved providers fail before publication. Class-move previews and immutable
@@ -2093,6 +2531,13 @@ native resource it returns without maintaining another election algorithm.
 Absolute and relative lookups share one native-folder validation boundary.
 Absent relative context remains `None`: resource lookup reports absence and
 module lookup raises Rope's native missing-module exception.
+An unavailable provider is never replaced by the first sibling declaring the
+same class name, whether that sibling is found in candidate strings or on disk.
+Class moves must publish their native consumer rewires in the same candidate
+before dependent base projections run. The external-reference owner reads the
+module elected by the injected project and retains its resource identity; a
+missing provider or failed binding escapes unchanged. Captured file contents and
+lazy-export aliases are not evidence of an old-to-new declaration relationship.
 Restructuring overrides use the SDK's native input types. The existing module
 admission exposes semantic capabilities to filters, and identity alternatives
 share one injected default matcher.
@@ -2181,6 +2626,18 @@ merge a parallel path/text map. Final candidate planning, source-publication
 verification and physical CAS remain required. This is the derivation acceptance
 contract for the OUD generation repair tracked in `algar-723.1`, not evidence that
 the current API or generation already satisfies it.
+
+### cProfile Thread Isolation and Performance Diagnosis
+
+The sole clock implementation is the stdlib-only
+`flext_infra._pytest.clock` owner. Public lazy exports retain
+`FlextInfraPytestClock`; they do not require a duplicate root-level implementation.
+The profiled-child transport resolves the top-level package spec without importing
+its runtime, then follows every relative component of the configured clock module
+to its Python source file. It loads that canonical file directly, retaining the
+same signal callbacks, owning-thread profiler and native publication behavior.
+Flattening a nested module to a root filename is not a valid bootstrap route;
+missing canonical source remains an error rather than selecting an older copy.
 
 The ordinary generation handler admits `settings.Infra.profile` around its actual
 typed `codegen_generate` call. The shared profiler preserves the returned Result
@@ -2324,11 +2781,16 @@ process waits are parent wall time, not child CPU or evidence of child hot funct
 Retain the existing immutable raw captures and termination checkpoints, rendering
 them only through the public `validate cprofile-report` owner. Bind evidence to the
 actual source, runtime, configuration, command and selected scope; an interrupted
-capture is incomplete failure, never successful modification. The universal command
-deadline includes startup and children: request termination by 118 seconds and
-finish by 120 seconds, using an enclosing deadline when the native operation has no
-such bound. Capture repair alone proves neither a timing improvement nor a green
+capture is incomplete failure, never successful modification. The active Make
+deadline includes startup, preflight, lock waits, children and termination within
+sixty seconds. Reserve termination time inside that bound and use an enclosing
+deadline when the native operation has none; do not allocate a fresh budget to
+each stage. Capture repair alone proves neither a timing improvement nor a green
 generation, modification or gate result.
+
+Rendering and filesystem preparation preserve their original exceptions and
+tracebacks. Publication returns the existing atomic writer's typed Result
+directly, without rebuilding its success payload or failure metadata.
 
 The transport delegates directly to the single native capture owner. Existing
 run receipts remain with their producer; there is no separate command-context
@@ -2365,6 +2827,36 @@ and canonical defaults; closed domains use `c.StrEnum`, while free-form text sta
 open. Type narrowing and redundant conversions are not transport mechanisms.
 Conflicting observations still fail.
 
+### Candidate File-Effect Composition and Constant/Model Normalization
+
+Candidate file-effect admission reports duplicate destination paths with bounded
+producer ownership, original and desired byte digests, modes and tracking metadata,
+never source payloads. This diagnostic consumes the declared plans already in memory;
+it does not reread physical files. A duplicate is not proof of a sequential producer
+chain: composition must authenticate that chain and retain its original physical CAS
+witness before admission. Independent competing desired contents remain failures.
+Managed generation and documentation can independently declare the same unchanged
+`pyproject.toml`. Before normalization, their shared file-plan composition owner
+coalesces only effects with equal project, complete original source state (including
+lexical source metadata), ownership, policy, tracking, index witness, desired bytes
+and desired mode. It retains the first original witness by reference and unions
+tracking dependencies in producer order. Hash equality alone never admits a plan.
+Only explicitly ordered, source-derived projection composition may advance desired
+contents; independent documentation effects cannot claim that lineage.
+Every mutable candidate index stages declarations through that same composition
+owner before replacing an entry. Ordered stages may advance desired bytes and mode,
+but never original witnesses or publication authority. Peer declarations, including
+same-depth domain moves, compose unordered before joining the ordered candidate;
+different peer effects conflict. Semantic seed edits retain preceding declared-plan
+metadata through the canonical semantic-edit conversion. Only genuinely absent
+sources use the creation path.
+When complete generation invokes documentation, it supplies the composed managed
+file plans to the presentation-metadata producer. That producer projects the locale
+leaf from the candidate's desired bytes, not the physical pre-generation manifest,
+and retains the original witness, publication metadata and dependencies. Only these
+explicitly derived metadata effects join the managed plans as an ordered phase;
+independent rendered documentation effects retain strict identical-effect admission.
+
 Repository rendering owns one assignment-validated `CodegenRenderInputs` state
 per planning operation. Its static target, workspace, codegen policy, artifact
 snapshot and branch references are read-only; only planned requirements and the
@@ -2380,7 +2872,7 @@ declaration removal, before collecting the resulting report. Deleted or added
 initializer projections must be reflected in the source inventory it reads.
 
 Constant source discovery is separate from consumer orchestration. Native import
-provenance, facade publications, assignment identities and inert literal discovery
+provenance,FlextInfraUtilitiess, assignment identities and inert literal discovery
 belong to `FlextInfraUtilitiesSemanticConstantSources`, exposed only through the
 consumer facade's `ConstantSources` class binding. Project-owned native
 `ownership_transfer` contracts in the constant-consumer phase authenticate
@@ -2392,6 +2884,42 @@ equivalent authored component declaration; its complete value and native type
 identity must agree. Declaration retirement and consumer rewrites share one
 authenticated candidate. Layer-zero modules retain their configured runtime roles,
 and generation still rejects genuinely mixed scalar/class facades.
+Before facade model-owner validation, generation may repair exported singleton
+model entities declared directly in model-family modules through the existing
+class-nesting engine. This bounded entry uses
+the authenticated candidate's repository workspace and native model ancestry;
+it does not run helper promotion, family flattening or unrelated nesting. The
+entity retains its name, bases, fields and methods inside a same-named namespace
+holder. Native identity consumer rewrites and structural edits join the shared
+source plan with their original CAS witnesses; generated consumers remain excluded
+and are regenerated after rebinding. No intermediate publication, parallel project
+model or recursive public operation participates. Runtime acceptance remains with
+the coordinator's serialized generation and gate cycle.
+Fieldless namespace declarations are not singleton entities merely because they
+inherit a model preset. Before wrapping, the same semantic owner proves that the
+declaration contains only nested payload models and inert documentation, has no
+decorators, class keywords, type parameters, fields, configuration or methods,
+and directly inherits the exact native canonical arbitrary-types model preset.
+The existing wrapper consumer census must prove no constructor, type, base,
+value or inherited-member use, including quoted annotations. Only then may its
+incorrect model ancestry be removed. Arbitrary custom bases are never discarded.
+A plain holder containing that same-named, otherwise pure model namespace is
+recovered by the existing identity-bound wrapper promotion and source-region
+unwrapping machinery, without prefixing or copying the nested payloads. All
+payload declarations, defaults and subtype relationships remain unchanged; the
+facade regains those members through canonical holder MRO. Real entity uses
+block promotion, and field-bearing singleton entities retain their nesting rule.
+The existing seed owner rebinds its authenticated source view between private
+repair epochs until no source edit remains, retaining original file witnesses
+through every epoch and rejecting repeated nonconvergent candidates. Namespace
+normalization and real entity nesting therefore complete before facade validation
+in one unpublished candidate, even when both shapes occur in one repository.
+Selected model-facade planning restricts declaration repair to its admitted package
+while retaining the repository's authored consumer population; selecting another
+family does not schedule model repair.
+Family discovery returns textual catalogue letters; singleton admission compares
+their values, not object identity with the facade-family enumeration. This
+selection precedes native model-ancestry proof and never replaces it.
 The rule catalogue belongs to the elected repository root, not the physical Rope
 workspace root that an attached member shares with its containing workspace.
 
@@ -2401,6 +2929,20 @@ and local bindings. Unsupported references, ambiguous bindings and uncertain
 star exports reject the entire move before publication, including creation of a
 previously absent destination. Quoted type expressions participate in semantic
 identity checks; ordinary strings, `Literal` values and `Annotated` metadata do not.
+
+Parent lookups share one canonical owner: the family-leaf `rope_ast`
+`ast_parent_map`, keyed by child node id with native AST-node values. The leaf
+imports nothing from the rope family, so runtime members load it at module top
+level and analysis members inherit it; per-module `ast.walk` parent-map
+constructors and deferred family imports are consolidation defects. Consumers adopt
+the native identity-keyed contract instead of retaining a private key shape. Module
+relocation compares quoted-annotation scopes through one lexical identity map
+(ancestry, native kind, AST kind, name and same-name sibling occurrence), not
+positional correspondence; Rope's cached synthetic comprehension scopes are
+excluded by their native AST identity, and every declaration, ordering, capture
+and module-identity change still fails the move.
+
+### Lazy Initializer Ownership and Transaction Failure Recovery
 
 Lazy initializer planning publishes only explicit exports of a package's direct
 declaring modules. A child's `__all__` never adds symbols to an ancestor
@@ -2458,6 +3000,8 @@ including its filename and source text. The complete batch remains unchanged.
 
 ## Check gate partitions
 
+### File Gate, Pyright Diagnosis, and Stage Partitioning
+
 `make file-gate FILE=<repository-relative path>` delegates to the existing
 `check run --file` owner, never bare analyzers or a second gate engine. The raw
 Make value travels through an exported environment value, not interpolated shell
@@ -2512,16 +3056,14 @@ Selected functional gates remain blocking. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
 
-`make check-pyright` runs the selected project's complete Pyright configuration
-through the native gate capture service and retains its raw report and exit status.
-From a workspace root, `make -f <member>/Makefile check-pyright` selects that
-member's declared configuration and the containing workspace's physical environment.
-It is a diagnosis verb; full `make check` remains the acceptance boundary.
-
-`make mod-types` applies the AST migrations declared by
-`make.type_contract_rules` to the complete selected project. The native AST engine
-verifies rule fixtures, resolves bindings, and repeats safe rewrites to its fixed
-point. Source models and protocols own the resulting contracts: consumers pass
+The retired `check-pyright` and `mod-types` Make subverbs, including their former
+member-Makefile dispatch examples, are historical interfaces. Use the active
+root's selector-free `make check` for declared Pyright validation and native
+reports, and `make mod` for the existing semantic transformation pipeline.
+Missing declared coverage is repaired at those owners, never by reviving a
+subverb or manually selecting a member Makefile. The native engine verifies rule
+fixtures, resolves bindings and repeats safe rewrites to its fixed point.
+Source models and protocols own the resulting contracts: consumers pass
 declared state models directly, and field defaults remain visible to both Pydantic
 and synthesized constructors. Required private attributes use their annotations;
 attributes with actual defaults or factories retain those declarations.
@@ -2550,10 +3092,14 @@ partition. Audit is read-only conformance and installed-lock provenance, not
 generation or a dirty-tree check; legitimate staged changes are not rejected simply
 for being staged.
 
+### CI Setup, Early Bootstrap Receipts, and Git Reference Migration
+
 CI setup reconciles the owned physical environment through locked, noneditable
 installation, including an existing venv. Root CI checks out declared members
-before installing the same native workspace/lock as local execution; standalone
-CI retains its own project contract. The CI token does not replace native source
+before installing the composed workspace lock per
+[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md);
+member and standalone CI retain their own committed member lock and project contract.
+The CI token does not replace native source
 declarations or select a synthetic resolver. Only explicit upgrade resolves or
 writes locks; setup preserves the first install error without another lock mode.
 
@@ -2611,8 +3157,15 @@ runtime-floor phases. A partial request fails before writing; `--check` audits
 the same transition without mutation. The consumer's own `make upg` then owns
 resolution and lock publication.
 
-Normal test verbs remain incremental testmon only and omit the configured slow
-markers. The filesystem cache lives at the typed XDG/HOME-derived project path.
+### Testmon/Toolchain Caching, SSH Gate Attestations, and Smells Enforcement
+
+The ordinary `tests` operation uses incremental Testmon selection
+([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)).
+The explicit `tests-full` operation executes the applicable suite once without
+Testmon, an incremental pre-run or database access. Marker applicability remains
+owned by the declared execution context; neither operation invents exclusions.
+The incremental filesystem cache lives at the typed XDG/HOME-derived project path
+and full execution leaves it untouched.
 The explicit single-file operation runs incremental selection followed by complete
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
@@ -2892,6 +3445,23 @@ Import aliases keep their lexical binding. Unknown origins, conflicting owners
 and incompatible member paths fail before publication; a matching letter or
 directory name never proves identity.
 
+Before boundary validation, normalization may repair an own-family facade import
+only when its published provider belongs to that namespace's family. A root
+publication that forwards an upstream facade retains the upstream identity;
+sharing the same facade letter does not make it an own-family dependency.
+Native member identity must also prove every consumed reference's declaring
+owner and its nearest published export. The semantic cutover owner preserves
+lexical bindings and the original import's typing-only placement. Same-module
+owners, unresolved identities, captured bindings and unsupported quoted annotations
+remain blocking and require the canonical structural `make mod` route; generation
+does not relax the own-family ban. The rewritten candidate is reparsed and subject
+to the unchanged boundary, placement and native runtime-cycle validation.
+Corrective imports are emitted as separate native statement lines, never as
+semicolon-separated small statements. This preserves each import's physical span
+for subsequent line-based placement, including when runtime reads promote only
+some imports out of a typing guard. Leading and trailing comments remain attached
+to the rewritten statement group; no empty guard is masked with a synthetic pass.
+
 Deferred class annotations stay typing-only when native source ancestry proves
 ordinary class construction through `object`: undecorated declarations, no class
 keywords and no class-construction hook. Inheritance alone does not make annotations
@@ -2904,6 +3474,8 @@ at its namespace root, not a similarly named test category such as
 
 ## Codemod scanner contract
 
+### `ast-grep` Scanner, Binding Inference, and Source Previews
+
 Source-file discovery uses one pruned traversal per selected project, without a
 preliminary walk to elect directories or repeated ancestor checks for every file.
 The same walker handles filesystem and authenticated Rope reads. Nested repositories,
@@ -2915,6 +3487,19 @@ it does not rediscover import-provider roots and recursively rescan each member.
 Every codemod policy finding blocks the gate, whatever its rule severity. Failed rule
 discovery, failed scanner execution, incomplete output, and invalid diagnostic payloads
 block as native failures with their own diagnostics.
+
+The strict `AstGrepDiagnostic` model owns severity as `NativeRuleSeverity`.
+Scanner JSON is parsed once with `AstGrepReport.model_validate_json`, which admits
+the native severity strings. Python construction requires enum instances: passing
+a raw Python severity string raises Pydantic's `is_instance_of` validation error.
+Owned-path findings therefore supply the enum directly, and the gate preserves
+their validated model instances. The latest preset target uses
+`use_enum_values=False`: validation and Python dumps preserve the enum member;
+native JSON serialization emits its string value. JSON-compatible dumps are
+output data, not strict Python constructor input. Consumers pass the validated
+diagnostic by reference instead of reconstructing it from a dump.
+Invalid strings and Python bytes remain errors. ADR-005 and ADR-028 Decision 14
+own this newer enum-preservation contract; native validation remains required.
 
 The gate consumes the complete native `ast-grep scan --json=compact` array. The
 [documented scan contract](https://ast-grep.github.io/reference/cli/scan.html) and
@@ -3001,6 +3586,8 @@ the guarded candidate consumer. Reusing a sealed receipt never removes that
 operation's selected preparation or admission policy. Both operations retain
 source, membership, inode, candidate-tree, lease and journal verification. The
 independent `make check` surface continues to own its complete configured gates.
+
+### Journal Footprint, Child Profiling, and CLI Route Selection
 
 Journal footprint inspection and authorization hold the same root journal lease
 as publication. Authorization observes the current journal under that lease;
@@ -3107,6 +3694,8 @@ The root facade export rule preserves literal tuple values and order while remov
 an unnecessary type-only annotation dependency. It does not change classes, aliases
 or inheritance, and it does not rewrite initializer projections.
 
+### SARIF Receipts, Pytest Deadlines, and Duplication Assessment
+
 `GateExecution.issues` retains each finding's original file, position, rule, message,
 and severity. SARIF reports each finding at its native level. Raw scanner output
 remains available on the live execution and is published verbatim once at
@@ -3196,6 +3785,17 @@ class members supplied by that domain. A facade that publishes input entities
 through aliases retains its authored identity and nested declarations.
 Supplier admission reads native declarations lazily; it does not infer every
 inherited attribute to establish a direct domain publication.
+Within one unchanged candidate, domain-owner election retains the exact member
+suppliers authenticated during admission for its subsequent composition comparison.
+This reuse ends with that election call; it neither skips the initial integrity
+checks nor adds superclass or callable suppliers to the comparison's evidence.
+Member classification receives an operation-owned lazy factory for the existing
+native member resolver. It captures the same declared source mapping and constructs
+that resolver only at the first model-contract query. Subsequent queries reuse its
+native resolution state, not cached declaration kinds. Exception, enum and protocol
+classification still precede that query; unresolved contracts, empty contracts and
+invalid ancestry retain their failures. The factory is discarded when its operation
+or captured source view ends, never retained across publication or source changes.
 The method admission predicate reads the class's cached native AST, including
 conditional definitions and excluding methods owned by nested classes. Native
 member bindings are evaluated only when superclass suppliers do not elect it.
@@ -3204,9 +3804,22 @@ pass; shallower domains then consume the completed child publications.
 An unchanged module owner retains its captured native view while seeding.
 Actual module moves rebind their candidate before the seed consumes it.
 Provider reexports retain Rope's imported-name provenance through resolution.
+
+One generation process runs several publishing surfaces. The workspace snapshot
+records each source's read state once; after a surface publishes effects, the
+executor rebases the recorded states of exactly the written paths, so a later
+surface verifies its plans against the bytes this run wrote. External mutations
+still fail the unchanged-file proof, because only the run's own publisher may
+rebase. CLI failure rendering emits native exception notes (owner, base index,
+inferred kind, scope identities) after the message: producers attach the causal
+annotations, and dropping them turns a precise diagnosis into a bare string.
 The existing captured-source override decides rebinding before the imported
 module is elected; a declared leaf import does not restart at an ancestor
-package and mistake namespace traversal for a provider cycle.
+package and mistake namespace traversal for a provider cycle. Campaign
+`flext-pipol` (2026-10-28) owns the accepted, implementation-pending
+single-read contract across lazy planning, model→protocol and docs: reuse
+unchanged observations in the same native engine, refresh changed resources
+incrementally and retire routes that reopen projects for later phases.
 
 Component-call correction follows the same native family composition through
 all ancestor components and nested namespaces. It rewrites a direct component
@@ -3230,8 +3843,40 @@ candidate before runtime acceptance.
 
 | Infra declaration | FLEXT architectural declaration |
 | --- | --- |
-| This subproject's Workspace snapshot and analysis engine section. | [ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17) |
-| ADR backlink to this exact Infra section. | [ADR-028 bidirectional traceability](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#bidirectional-traceability) |
+| This subproject's Workspace snapshot and analysis engine section. | [ADR-028 Decision 17](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) |
+| ADR backlink to this exact Infra section. | [ADR-028 bidirectional traceability](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) |
+
+### Single-Project Repository Snapshot and Memoized Facts (ADR-028)
+
+The complete same-engine incremental refresh contract below is accepted
+and pending implementation/runtime proof. Dated partial-implementation
+observations do not attest fulfillment of that contract.
+
+The operator-approved 2026-10-28 STRICT campaign starts with the documentation
+and Bead alignment described in
+[ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md#current-state-and-recovery-order).
+`flext-brr3y` tracks the campaign; `flext-ir794`, `flext-jskve`, `flext-s9r3a`
+and `flext-1engx.15` keep their existing bounded responsibilities. A command that
+cannot import its implementation has executed no downstream gate. Only the
+causally necessary bootstrap repair belongs to that initial documentation
+delivery; structural application waits for its native acceptance.
+
+In the subsequent discussion about moving the incremental repair before
+documentary publication/validation, the operator replied, "continue para
+executar o plano até o final". The adopted execution boundary advances only
+the causally demonstrated candidate-planning repair needed to publish and
+validate those documents, after the affected owners are aligned. S0 remains
+open through native documentary acceptance. This continuation does not waive
+the specification: post-publication rebase and atomic-publisher receipts remain
+separate S3 obligations and do not explain or prove repair of the present
+planning timeout. Pilot order, complete gates, budgets and the analyzer freeze
+remain unchanged.
+
+The approved rollout qualifies three peripheral pilots, one dbt, one tap and
+one target, before structural foundation rollout. Their identities and proof
+belong to the active plan and Beads, not a fixed project list in this guide.
+The completion and admission owner remains
+[ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md).
 
 Generation and modification run through one workspace organizer. It loops over the
 selected repositories in dependency order without worker pools; each repository
@@ -3254,6 +3899,14 @@ projects to the native multi-project refactoring capability rather than building
 parallel cross-repository model. Only the `u.Infra` snapshot and adapter owners name the
 underlying implementation; orchestrators, models, protocols and external consumers see
 the generic `p.Infra` capability.
+
+The native project's identity remains stable across candidate bindings; identity
+alone therefore does not authenticate a derived memo. Derived facade census and
+resolver observations belong to the active source binding, rather than a
+process-global `id(project)` key. Reuse the native parsed facts and their own
+invalidation; do not add another versioned cache or counter merely to preserve
+that stale memo. Physical before-images remain authenticated separately and are
+never rebaselined by a candidate transition.
 
 Every derived fact is a lazy memo on the snapshot, computed on first query and
 reused for the rest of the run:
@@ -3287,6 +3940,33 @@ snapshot's source inventory only. Configuration, local workspace metadata and
 the conformance target are resolved by the managed pass that consumes them;
 initializer planning does not repeat that resolution for every member. Both
 passes retain the same source authentication and publication boundaries.
+Declared facade parents outside that inventory resolve through the bound native
+project's elected package resources, including the consumer's admitted editable
+suppliers. They remain read-only inputs, never additional plan targets. Namespace
+spelling does not establish a sibling directory; do not construct substitute
+paths or run another ambient-import election beside the native source model.
+Local FLEXT setup binds only the selected distributions after frozen installation.
+That source-binding step uses native no-dependency installation and then native
+dependency compatibility checks before publishing its selection receipt; it never
+re-resolves third-party dependencies or replaces the consumer's locked SDK origin.
+The setup composition must load this declared source owner in the same physical
+consumer environment, including on a cold installation, without Python-path shadows
+or borrowing another workspace's interpreter.
+Native scalar match captures use the SDK's `get_capture_region(name)` boundary.
+Infra's `semantic_capture_region(module, match, name)` validates the returned
+half-open offsets against that same module's source. It does not obtain an AST
+node or reconstruct its region. An absent capture raises explicitly; the selected
+SDK must supply this capability without an Infra parser or fallback.
+
+The native-query cutover is not complete: snapshot import classification and
+remaining source transformation consumers still require migration and runtime
+proof. Reusing one project does not prove incremental refresh. Creation, movement,
+removal and export changes must invalidate the affected native and derived facts
+before readers resume. Source, built wheel, installed SDK and the original public
+Make invocation require separate receipts. A source-derived MRO failure belongs
+to the native SDK owner; its repair must preserve the installed capture and
+source-binding query capabilities rather than replacing them with an older SDK.
+
 The codemod generic-specialization fact is declaration-only, before migration:
 it passes the injected `snapshot.engine` to the facade-member owner, resolves
 the published `p` and `t` classes and their inherited members through native
@@ -3312,6 +3992,10 @@ compatibility branch or second classifier is retained.
 Repository planning emits an exception's original traceback when capturing its
 failed outcome. The final report retains that same cause; interruption before
 the cohort finishes cannot hide the first failure behind a timeout.
+Returned planning failures retain and emit the same original exception as raised
+failures. Publication-identity diagnostics attach the already-observed route,
+binding kind and expected/observed owner to that exception; they do not resolve
+another candidate, manufacture a cause or replace the failing publication check.
 Each repository keeps its own module index and name bindings, including internal
 packages whose names may also occur in another member. The source engine shares
 directory facts keyed by physical path and module facts keyed by native parsed-module
@@ -3336,6 +4020,17 @@ when their operations need them. Neither initializer planning nor source-view
 namespace discovery composes the generated root utility facade that it may need to
 repair. Publication remains with the same conformance publisher; these dependency
 boundaries introduce no alternate generator or initializer writer.
+
+The lazy-map freshness validator consumes that same planner in verification mode.
+Its unchanged-source comparison must be paired with independent fresh-process
+public consumption: resolve the declared export, its owning identity and the
+consumed MRO capability. Account for legitimate eager metadata separately from
+lazy bindings. A child package's exports never become an ancestor export cohort.
+The generated initializer's bootstrap must be usable before its target package
+is repaired; the Core specialization remains at
+[ADR-014](../../../docs/architecture/adr/014-family-part-shape-rope-codemod-rules.md#core-lazy-bootstrap).
+This acceptance contract is not evidence of an implemented or integrated repair.
+
 Conformance binds source-planning capabilities through the existing Codegen domain
 facade, never through the generated root utility aggregate or a mirrored `u` facade.
 That domain composes the existing capability owners by MRO; public orchestrators do
@@ -3363,6 +4058,10 @@ remains unmet until provider invalidation updates the one bound project safely.
 This status is not a performance or convergence receipt.
 
 ### Profiling a root verb
+
+The generation start message includes the resolved profiling flag and destination
+beside its native PID. These process settings are evidence of selection, not evidence
+of a completed capture; the raw capture and readable report must still be verified.
 
 Profiling is opt-in: export `FLEXT_INFRA_PROFILE=1`. The root `gen` and `mod`
 recipes set `FLEXT_INFRA_PROFILE_OUTPUT` themselves, from the typed Make spec
@@ -3425,6 +4124,10 @@ renderer before invocation and on exit, with its wall duration and a completion
 flag. A failed producer remains incomplete and its original exception escapes.
 A timeout therefore identifies the unfinished producer without
 mistaking an earlier completed log line for the current work.
+Routine negative annotation-deferral predicates do not emit per-class debug
+messages; phase summaries and original exceptions carry actionable feedback.
+Import-boundary failures identify the consumer path, imported binding and
+provider so a structural-repair request locates the actual source owner.
 The reverse-import producer receives the same snapshot inventory and native
 trees for syntactic service pre-election and layer ranking. It retains its
 member-scoped ancestry resolver; sharing syntax does not change import
@@ -3450,7 +4153,11 @@ Read-only member ancestry passes use the existing native project's frozen
 layout context, reusing folder and module elections for that pass without
 changing its consumer root. Facade component discovery obtains each holder's
 member inventory once before comparing component bindings; it does not repeat
-the same directory query for every member. Owned-member reference election also
+the same directory query for every member. The same facade-member owner builds
+its declaration inventory once per class and passes it by reference to package
+ownership checks, rather than rebuilding ancestry for each method. The inventory
+belongs to that source view and is never retained across candidate transitions.
+Owned-member reference election also
 captures each facade's member names once per census, rather than enumerating
 the facade again for every owner/member/receiver combination.
 Family-composition checks consume the same snapshot's native trees and shared
@@ -3464,7 +4171,13 @@ resource bytes and that module's source both equal the captured source. Proposed
 or changed text keeps its existing native string-module path. This does not
 combine member projects or change resolution of homonymous packages.
 Source-module reads require the native source-bearing capability before using its
-captured text. Callback admission uses Rope's native restructuring hook once;
+captured text. A single-file export query reuses its current native module when
+the captured text already matches; otherwise it binds only that candidate through
+the existing source-view owner. It does not discover or copy the repository's
+complete source inventory for each queried provider.
+Facade-owner derivation reads package exports through its existing captured-source
+reader; a native package object is not passed to the source-module guard.
+Callback admission uses Rope's native restructuring hook once;
 the adapter counts observed/admitted matches there and leaves change computation
 to the native implementation. It does not filter the same occurrence again in a
 second change-computer override. Snapshot consumers use the shared source ports,
@@ -3472,6 +4185,16 @@ including their mutable-map value contracts, rather than concrete model classes.
 Untyped SDK core and match results enter through strict native adapter admission;
 the project subclass does not override SDK methods merely to replace their inferred
 return annotations.
+Own-method MRO promotion authenticates builtin decorators by native identity,
+including imported aliases. The emitted classmethod decorator must retain the
+builtin identity in its actual lexical scope; a shadowed same-spelled name does
+not satisfy the publication contract.
+The existing native import owner elects a deterministic capability-derived alias
+only when the canonical member binding is shadowed in a participating lexical
+scope. It checks native bindings for each candidate spelling, publishes the
+elected alias through native import operations, and authenticates the rebound
+candidate before publication. This is source-local collision avoidance, not a
+registry, compatibility alias, or alternate import pipeline.
 Documentation collection and pytest collection publish distinct manifest methods;
 their different inputs must not collide in the composed utilities facade.
 
@@ -3486,3 +4209,15 @@ reuse or waive the existing post-publication scan and cycle checks.
 Current state (2026-10-25): the root `rename-plan` closure and the quadratic
 scan-target discovery of the semantic source closure are being reduced under epic
 `flext-1engx`.
+
+## Related Documentation
+
+- [Make Commands Guide](../../../docs/guides/make-commands.md)
+- [Codemod Rules Guide](../../../docs/guides/codemod-rules.md)
+- [CSV Rename Campaigns](csv-campaigns.md)
+- [Repository Configuration and Local Overrides](local-config-overrides.md)
+- [Model-Class Boundary Migration](model-fields-migration.md)
+- [Git State Capture](git-state-capture.md)
+- [Plan Collection](plan-collection.md)
+- [Recovery Runbook](recovery.md)
+- [ADR Index](../../../docs/architecture/adr/README.md)

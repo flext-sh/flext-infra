@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -18,8 +19,6 @@ from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-from tests import t
 
 
 class TestsFlextInfraGateErrorReporting:
@@ -322,7 +321,7 @@ class TestsFlextInfraGateErrorReporting:
         capsys: pytest.CaptureFixture[str],
         readme: str,
         config_text: str,
-        expected: t.StrSequence,
+        expected: Sequence[str],
     ) -> None:
         """Test workspace checker emits real markdown failure."""
         project_dir = u.Tests.mk_project(tmp_path, "p1", markdown_config=config_text)

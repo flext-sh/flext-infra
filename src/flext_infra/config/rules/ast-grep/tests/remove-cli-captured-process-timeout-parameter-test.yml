@@ -31,10 +31,10 @@ invalid:
   - |
     def _captured_process_result(
         cls,
-        cmd: t.StrSequence,
+        cmd: Sequence[str],
         return_code: int | None,
         received_signals: list[int],
-        diagnostics: t.VariadicTuple[str],
+        diagnostics: tuple[str, ...],
         stdout_output: bytearray,
         stderr_output: bytearray,
         duration: float,

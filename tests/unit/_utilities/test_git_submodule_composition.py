@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraGitSubmoduleComposition:
@@ -18,8 +19,8 @@ class TestsFlextInfraGitSubmoduleComposition:
     def _member(
         root: Path,
         name: str,
-        runtime: t.StrSequence,
-        groups: t.StrSequence,
+        runtime: Sequence[str],
+        groups: Sequence[str],
     ) -> Path:
         """Create one committed member repository declaring its own deps.
 
@@ -44,7 +45,7 @@ class TestsFlextInfraGitSubmoduleComposition:
     def _workspace(
         cls,
         tmp_path: Path,
-        graph: t.MappingKV[str, t.Pair[t.StrSequence, t.StrSequence]],
+        graph: Mapping[str, tuple[Sequence[str], Sequence[str]]],
     ) -> Path:
         """Compose a real superproject whose submodules declare ``graph``.
 

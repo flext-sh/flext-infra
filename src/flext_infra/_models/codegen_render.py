@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
@@ -15,18 +15,40 @@ from flext_cli import m
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMiseToolchain
 from flext_infra._models._config import (
-    FlextInfraConfigModelsContexts,
-    FlextInfraConfigModelsContract,
-    FlextInfraConfigModelsMake,
-    FlextInfraConfigModelsProvider,
-    FlextInfraConfigModelsRender,
+    FlextInfraModelsConfigContexts,
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigMake,
+    FlextInfraModelsConfigProvider,
+    FlextInfraModelsConfigRender,
 )
 
 
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
 
-    class GithubWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ModelProtocolRenderContext(m.ContractModel):
+        """Exact declaration text supplied to the protocol module template."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            str_strip_whitespace=False,
+        )
+
+        header: str = m.Field(description="Existing generated-source ownership header")
+        copyright_notice: str = m.Field(description="The owning project's legal notice")
+        imports: tuple[str, ...] = m.Field(description="Ordered declaration imports")
+        sibling_import_lines: tuple[str, ...] = m.Field(
+            description="Canonical import lines for referenced protocol owners"
+        )
+        owner: t.NonEmptyStr = m.Field(description="The declaring protocol namespace")
+        name: t.NonEmptyStr = m.Field(description="The nested structural contract")
+        type_parameters: tuple[str, ...] = m.Field(
+            description="Complete parameter declarations with bounds and defaults"
+        )
+        declarations: tuple[str, ...] = m.Field(
+            description="Field declarations retaining their annotation metadata"
+        )
+
+    class GithubWorkflowRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
         publishes_release: Annotated[
@@ -34,7 +56,7 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Repository explicitly owns the release protocol"),
         ] = False
         extra_verbs: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsMake.MakeVerbSpec],
+            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(description="Elected repository-owned public commands"),
         ] = ()
         publish_index: Annotated[
@@ -53,7 +75,7 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Canonical setup operation report artifact directory"),
         ]
         docs_report_filenames: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Structured docs reports CI dumps and uploads"),
         ] = c.Infra.DOCS_STRUCTURED_REPORT_FILENAMES
         make_profile: Annotated[
@@ -84,19 +106,19 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Python major.minor line"),
         ]
         toolchain: Annotated[
-            FlextInfraConfigModelsContract.ToolchainSpec,
+            FlextInfraModelsConfigContract.ToolchainSpec,
             m.Field(description="Canonical toolchain consumed by CI bootstrap"),
         ]
         github_actions: Annotated[
-            Mapping[str, FlextInfraConfigModelsProvider.GithubActionPinSpec],
+            Mapping[str, FlextInfraModelsConfigProvider.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
         ]
         make: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec,
+            FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Canonical workflow command contract"),
         ]
         workspace_repositories: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
+            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
             m.Field(
                 description=(
                     "Governed subproject repositories consumed by workspace-scoped "
@@ -105,7 +127,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = ()
         ci_trigger_branches: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description="Ordered, deduplicated blocking CI branches",
@@ -138,7 +160,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ]
         cooldown_excluded_dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Requirement names the project takes by direct git "
@@ -177,7 +199,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = ""
         private_submodules: Annotated[
-            FlextInfraConfigModelsProvider.CiPrivateSubmodulesSpec | None,
+            FlextInfraModelsConfigProvider.CiPrivateSubmodulesSpec | None,
             m.Field(
                 default=None,
                 description=(
@@ -187,7 +209,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = None
         private_dependency_auth: Annotated[
-            FlextInfraConfigModelsProvider.CiPrivateDependencyAuthSpec | None,
+            FlextInfraModelsConfigProvider.CiPrivateDependencyAuthSpec | None,
             m.Field(
                 default=None,
                 description=(
@@ -197,7 +219,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = None
         system_packages: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -218,7 +240,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = False
         superproject: Annotated[
-            FlextInfraConfigModelsProvider.CiSuperprojectCheckoutSpec | None,
+            FlextInfraModelsConfigProvider.CiSuperprojectCheckoutSpec | None,
             m.Field(
                 default=None,
                 description=(
@@ -250,24 +272,24 @@ class FlextInfraModelsCodegenRender:
                     raise ValueError(msg)
             return self
 
-    class MakeWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class MakeWorkflowRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input shared by generated local workflow surfaces."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         make: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec,
+            FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Canonical workflow command contract"),
         ]
 
-    class GitHookRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class GitHookRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed by the generated Git hook validator."""
 
         preservation_ref_namespaces: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Remote ref prefixes exempt from the pre-push matrix"),
         ]
 
-    class DistroDockerRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class DistroDockerRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed by generated distro Dockerfiles."""
 
         package_name: Annotated[
@@ -279,19 +301,19 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Python major.minor line"),
         ]
         make: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec,
+            FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Canonical Make CI token contract for ENV CI=Y"),
         ]
 
-    class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class EnvrcRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed only by the generated project ``.envrc``."""
 
         native_environment_unset: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Inherited selectors excluded by native activation"),
         ]
         toolchain: Annotated[
-            FlextInfraConfigModelsContract.ToolchainSpec,
+            FlextInfraModelsConfigContract.ToolchainSpec,
             m.Field(description="Governed native reader shared with Make"),
         ]
         repository_root_rel: Annotated[
@@ -299,7 +321,7 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Project-relative owner of the runtime environment"),
         ] = "."
         environment_path_prepends: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Project-relative executable paths"),
         ]
         environment_directory: Annotated[
@@ -307,11 +329,11 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Runtime-root-local development environment"),
         ] = c.Infra.ENVIRONMENT_DIRECTORY
 
-    class SonarcloudRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class SonarcloudRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed only by the generated ``.sonarcloud.properties``."""
 
         sonarcloud: Annotated[
-            FlextInfraConfigModelsRender.SonarcloudSpec,
+            FlextInfraModelsConfigRender.SonarcloudSpec,
             m.Field(description="Fleet SonarCloud scope policy"),
         ]
         tests_dir: Annotated[
@@ -325,7 +347,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ]
         workspace_subprojects: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Workspace-relative member checkout paths of a workspace "
@@ -335,17 +357,8 @@ class FlextInfraModelsCodegenRender:
                 ),
             ),
         ] = ()
-        generated_source_globs: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Tracked generated-source trees derived from the codegen "
-                    "artifact key; never governed source"
-                ),
-            ),
-        ] = ()
 
-    class UvResolutionSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class UvResolutionSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Resolver keys conform owns in one project's ``[tool.uv]`` table.
 
         Every key is declared: an empty sequence removes it from the table.
@@ -353,11 +366,11 @@ class FlextInfraModelsCodegenRender:
 
         link_mode: Annotated[str, m.Field(description="uv installation link mode")]
         constraint_dependencies: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Declared constraints, projected as declared"),
         ]
         override_dependencies: Annotated[
-            t.VariadicTuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride],
+            tuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride, ...],
             m.Field(
                 description=(
                     "SSOT-declared PEP 508 overrides resolving a transitive "
@@ -368,7 +381,7 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = ()
         environments: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Resolved environment markers uv resolves for"),
         ]
 
@@ -398,16 +411,6 @@ class FlextInfraModelsCodegenRender:
             frozen=True,
             strict=True,
         )
-
-        generated_projection_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Generated projection surface excluded from the smells "
-                    "scan, from the one generated-projection owner."
-                ),
-            ),
-        ] = ()
 
     # Keep the module-skeleton template boundary model-backed and immutable.
     class ModuleSkeletonRenderContext(m.ContractModel):
@@ -464,13 +467,13 @@ class FlextInfraModelsCodegenRender:
         site_url: t.NonEmptyStr = m.Field(description="Published site URL.")
         repo_url: t.NonEmptyStr = m.Field(description="Source repository URL.")
         repo_name: t.NonEmptyStr = m.Field(description="Source repository name.")
-        exclude_docs: t.StrSequence = m.Field(
+        exclude_docs: Sequence[str] = m.Field(
             description="Gitignore-style docs exclusions."
         )
-        exclude_plugin_patterns: t.StrSequence = m.Field(
+        exclude_plugin_patterns: Sequence[str] = m.Field(
             description="Translated physical-copy exclusion regular expressions.",
         )
-        mkdocstrings_paths: t.StrSequence = m.Field(
+        mkdocstrings_paths: Sequence[str] = m.Field(
             description="mkdocstrings source paths.",
         )
         documentation_language: t.Infra.DocumentationLanguage = m.Field(

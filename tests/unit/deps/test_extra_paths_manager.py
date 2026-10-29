@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import pytest
@@ -68,7 +69,7 @@ class TestsFlextInfraExtraPathsManager:
     )
     def test_sync_one_success_cases(
         tmp_path: Path,
-        tool_doc: t.MappingKV[str, t.JsonValue],
+        tool_doc: Mapping[str, t.JsonValue],
     ) -> None:
         """Verify sync one success cases."""
         pyproject = tmp_path / c.PYPROJECT_FILENAME

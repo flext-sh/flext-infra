@@ -9,11 +9,11 @@ from __future__ import annotations
 from git import GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticRefsMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticRefs
 
 
-class FlextInfraUtilitiesGitSemanticPublishMixin(
-    FlextInfraUtilitiesGitSemanticRefsMixin,
+class FlextInfraUtilitiesGitSemanticPublish(
+    FlextInfraUtilitiesGitSemanticRefs,
 ):
     """Own semantic publish operations."""
 
@@ -339,4 +339,4 @@ class FlextInfraUtilitiesGitSemanticPublishMixin(
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitSemanticPublishMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitSemanticPublish"]

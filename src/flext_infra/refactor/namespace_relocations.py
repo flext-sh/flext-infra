@@ -7,16 +7,12 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.transformers import FlextInfraSemanticPublication
-
-if TYPE_CHECKING:
-    from collections.abc import MutableMapping
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
 
 class FlextInfraNamespaceRelocationCascade:
@@ -31,11 +27,11 @@ class FlextInfraNamespaceRelocationCascade:
     """
 
     @staticmethod
-    def scoped_py_files(project_root: Path) -> t.SequenceOf[Path]:
+    def scoped_py_files(project_root: Path) -> Sequence[Path]:
         """Collect the project's namespace-scoped Python files.
 
         Returns:
-            The resulting ``t.SequenceOf[Path]``.
+            The resulting ``Sequence[Path]``.
 
         Raises:
             RuntimeError: If ``py_files_result.failure``.
@@ -62,11 +58,11 @@ class FlextInfraNamespaceRelocationCascade:
     @staticmethod
     def relocation_by_rule(
         project_root: Path,
-    ) -> t.MappingKV[str, c.Infra.CodemodRelocation]:
+    ) -> Mapping[str, c.Infra.CodemodRelocation]:
         """Map every relocation-declaring rule id to its relocation kind.
 
         Returns:
-            The resulting ``t.MappingKV[str, c.Infra.CodemodRelocation]``.
+            The resulting ``Mapping[str, c.Infra.CodemodRelocation]``.
 
         """
         with u.Infra.codemod_workspace_snapshot(project_root) as snapshot:
@@ -79,11 +75,11 @@ class FlextInfraNamespaceRelocationCascade:
     def findings_from_report(
         cls,
         project_root: Path,
-        py_files: t.SequenceOf[Path],
-        entries: t.SequenceOf[m.Infra.ModScanFinding],
+        py_files: Sequence[Path],
+        entries: Sequence[m.Infra.ModScanFinding],
         *,
         scan_root: Path,
-    ) -> t.VariadicTuple[t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]]:
+    ) -> tuple[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding], ...]:
         """Filter one scan report's entries down to in-scope relocation findings.
 
         The scope is the project's namespace file set (its declared scan
@@ -92,8 +88,8 @@ class FlextInfraNamespaceRelocationCascade:
         are project-relative even when captured by the workspace scan.
 
         Returns:
-            The resulting ``t.VariadicTuple[
-                t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]]``.
+            The resulting ``tuple[
+                tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding], ...]``.
 
         """
         relocation_by_rule = cls.relocation_by_rule(project_root)
@@ -119,11 +115,9 @@ class FlextInfraNamespaceRelocationCascade:
         *,
         project_root: Path,
         rope_project: t.Infra.RopeProject,
-        findings: t.SequenceOf[
-            t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
-        ],
-        py_files: t.SequenceOf[Path],
-        gates: t.StrSequence | None = None,
+        findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
+        py_files: Sequence[Path],
+        gates: Sequence[str] | None = None,
     ) -> None:
         """Publish the same complete relocation plan once through the shared owner."""
         if not findings:
@@ -153,9 +147,9 @@ class FlextInfraNamespaceRelocationCascade:
     @staticmethod
     def publish_plan(
         project_root: Path,
-        plans: t.SequenceOf[m.Infra.CodegenFilePlan],
+        plans: Sequence[m.Infra.CodegenFilePlan],
         *,
-        gates: t.StrSequence | None = None,
+        gates: Sequence[str] | None = None,
     ) -> p.Result[bool]:
         """Publish the complete relocation plan once with its projections.
 
@@ -175,21 +169,23 @@ class FlextInfraNamespaceRelocationCascade:
                 )
             )
 
-        return FlextInfraSemanticPublication.publish_semantic_artifact_plans(
-            plans,
-            repository_root=project_root,
-            options=m.Infra.SemanticPublicationOptions(
-                projection_roots=(project_root,),
-                validator=verify if gates is not None else None,
-            ),
-        ).map(bool)
+        return (
+            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+                plans,
+                repository_root=project_root,
+                options=m.Infra.SemanticPublicationOptions(
+                    projection_roots=(project_root,),
+                    validator=verify if gates is not None else None,
+                ),
+            ).map(bool)
+        )
 
     def plan(
         self,
         request: m.Infra.NamespaceRelocationRequest,
         *,
         rope_project: p.Infra.RopeProject,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Compose native relocation effects without performing any Rope changes.
 
         Returns:
@@ -253,7 +249,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _relocate_imports(
         state: m.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
-        imports: t.MappingKV[Path, t.MappingKV[t.StrPair, set[str]]],
+        imports: Mapping[Path, Mapping[tuple[str, str], set[str]]],
     ) -> p.Result[bool]:
         """Plan each import relocation against the current candidate.
 
@@ -289,8 +285,8 @@ class FlextInfraNamespaceRelocationCascade:
     def _declaration_targets(
         request: m.Infra.NamespaceRelocationRequest,
         state: m.Infra.NamespaceRelocationState,
-        names: t.MappingKV[c.Infra.CodemodRelocation, t.MappingKV[Path, set[str]]],
-        classes: t.SequenceOf[tuple[Path, str, str, int]],
+        names: Mapping[c.Infra.CodemodRelocation, Mapping[Path, set[str]]],
+        classes: Sequence[tuple[Path, str, str, int]],
     ) -> p.Result[list[tuple[Path, str, Path]]]:
         """Elect native class, protocol and type-alias destinations in phase order.
 
@@ -355,7 +351,7 @@ class FlextInfraNamespaceRelocationCascade:
     @staticmethod
     def _prepare_destinations(
         state: m.Infra.NamespaceRelocationState,
-        declarations: t.SequenceOf[tuple[Path, str, Path]],
+        declarations: Sequence[tuple[Path, str, Path]],
     ) -> p.Result[bool]:
         """Seed each absent destination; an existing unread file fails.
 
@@ -388,7 +384,7 @@ class FlextInfraNamespaceRelocationCascade:
         request: m.Infra.NamespaceRelocationRequest,
         state: m.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
-        declarations: t.SequenceOf[tuple[Path, str, Path]],
+        declarations: Sequence[tuple[Path, str, Path]],
     ) -> p.Result[bool]:
         """Apply native move effects to candidate bytes, never to the filesystem.
 
@@ -502,7 +498,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _relocation_plans(
         request: m.Infra.NamespaceRelocationRequest,
         state: m.Infra.NamespaceRelocationState,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Bind every changed candidate source to its destination state once.
 
         Returns:
@@ -536,10 +532,8 @@ class FlextInfraNamespaceRelocationCascade:
     def import_relocation_targets(
         cls,
         project_root: Path,
-        findings: t.SequenceOf[
-            t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
-        ],
-    ) -> t.MappingKV[Path, t.MappingKV[t.StrPair, set[str]]]:
+        findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
+    ) -> Mapping[Path, Mapping[tuple[str, str], set[str]]]:
         """Map each file's import moves: ``(source module, target module)`` to aliases.
 
         An own-package symbol always rebinds to the own package's root. A
@@ -554,7 +548,7 @@ class FlextInfraNamespaceRelocationCascade:
 
         """
         own_package = u.Infra.project_package_name(project_root)
-        targets: MutableMapping[Path, MutableMapping[t.StrPair, set[str]]] = (
+        targets: MutableMapping[Path, MutableMapping[tuple[str, str], set[str]]] = (
             defaultdict(lambda: defaultdict(set))
         )
         artifacts = tuple(
@@ -591,16 +585,14 @@ class FlextInfraNamespaceRelocationCascade:
     def _grouped_targets(
         self,
         project_root: Path,
-        findings: t.SequenceOf[
-            t.Pair[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]
-        ],
+        findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
     ) -> tuple[
         MutableMapping[
             c.Infra.CodemodRelocation,
             MutableMapping[Path, set[str]],
         ],
         MutableMapping[Path, list[t.IntPair]],
-        MutableMapping[Path, MutableMapping[t.StrPair, set[str]]],
+        MutableMapping[Path, MutableMapping[tuple[str, str], set[str]]],
         list[tuple[Path, str, str, int]],
     ]:
         """Group findings into the batched targets each relocation consumes.
@@ -614,7 +606,7 @@ class FlextInfraNamespaceRelocationCascade:
             MutableMapping[Path, set[str]],
         ] = defaultdict(lambda: defaultdict(set))
         spans: MutableMapping[Path, list[t.IntPair]] = defaultdict(list)
-        imports: MutableMapping[Path, MutableMapping[t.StrPair, set[str]]] = (
+        imports: MutableMapping[Path, MutableMapping[tuple[str, str], set[str]]] = (
             defaultdict(lambda: defaultdict(set))
         )
         classes: list[tuple[Path, str, str, int]] = []
@@ -700,7 +692,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _captured(
         finding: m.Infra.ModScanFinding,
         variable: str,
-        readers: t.MappingKV[Path, p.Cli.AtomicFileReader],
+        readers: Mapping[Path, p.Cli.AtomicFileReader],
     ) -> str:
         """Return one metavariable a relocation rule captured or derived.
 

@@ -15,13 +15,13 @@ id: facade-first-base-alias-or-peer
 language: python
 severity: error
 files:
-  - "**/*.py"
+- "**/*.py"
 ignores:
-  - "**/__init__.py"
+- "**/__init__.py"
 metadata:
-  enforce: [ENFORCE-047]
+  enforce: [ ENFORCE-047 ]
   scope:
-    in: [facade-module]
+    in: [ facade-module ]
     partition:
       variable: BASE
       holds: true
@@ -30,60 +30,55 @@ metadata:
       pattern: "{raw}"
 rule:
   all:
-    - kind: class_definition
-    - has:
-        field: name
-        pattern: $NAME
-    - matches: declared-in-module-all
-    - has:
-        field: superclasses
-        has:
-          kind: identifier
-          nthChild: 1
-          pattern: $BASE
+  - kind: class_definition
+  - has:
+      field: name
+      pattern: $NAME
+  - matches: declared-in-module-all
+  - has:
+      field: superclasses
+      has:
+        kind: identifier
+        nthChild: 1
+        pattern: $BASE
 constraints:
   BASE:
     regex: "^(?:Tests)?Flext[A-Z]"
 message: >-
-  Facade class `$NAME` extends the concrete class `$BASE`: a facade's first base
-  is its family letter or a peer facade class of the same family.
+  Facade class `$NAME` extends the concrete class `$BASE`: a facade's first base is its family letter or a peer facade class of the same family.
 note: >-
-  Where: this class. Why: a facade composes its family by MRO; an arbitrary
-  concrete base imports behavior outside the family chain. How: extend the
-  family letter, or the parent package's facade class of this family.
+  Where: this class. Why: a facade composes its family by MRO; an arbitrary concrete base imports behavior outside the family chain. How: extend the family letter, or the parent package's facade class of this family.
 ---
 id: facade-alias-first-base
 language: python
 severity: error
 files:
-  - "**/*.py"
+- "**/*.py"
 ignores:
-  - "**/__init__.py"
+- "**/__init__.py"
 metadata:
-  enforce: [ENFORCE-049]
+  enforce: [ ENFORCE-049 ]
   scope:
-    in: [facade-module]
+    in: [ facade-module ]
     partition:
       variable: LETTER
       holds: true
       selectors: facade-family-
 rule:
   all:
-    - kind: class_definition
-    - has:
-        field: name
-        pattern: $NAME
-    - matches: declared-in-module-all
-    - has:
-        field: superclasses
-        has:
-          kind: identifier
-          pattern: $LETTER
-          not:
-            nthChild: 1
+  - kind: class_definition
+  - has:
+      field: name
+      pattern: $NAME
+  - matches: declared-in-module-all
+  - has:
+      field: superclasses
+      has:
+        kind: identifier
+        pattern: $LETTER
+        not:
+          nthChild: 1
 message: >-
-  Facade class `$NAME` lists its family letter `$LETTER` after another base:
-  the family letter must be the first base.
+  Facade class `$NAME` lists its family letter `$LETTER` after another base: the family letter must be the first base.
 note: >-
-  Where: this class. Why: C3 linearization reaches the bases in order, so the
-  family must come first. How: move `$LETTER` to the first base position.
+  Where: this class. Why: C3 linearization reaches the bases in order, so the family must come first. How: move `$LETTER` to the first base position.

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,7 +16,7 @@ import pytest
 from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraCodemodDuplicateApply,
-    FlextInfraDuplicateApplyPhase,
+    FlextInfraCodemodLoopPhaseDuplicateApply,
     FlextInfraModGateEngine,
 )
 from tests import c, m, tm, u
@@ -114,13 +115,13 @@ class TestsFlextInfraCodemodDuplicateApply:
     @staticmethod
     def _objects(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
         name: str,
-    ) -> t.VariadicTuple[m.Infra.Object]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Collect one name's rope inventory objects across module paths.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.Object]``.
+            The resulting ``tuple[m.Infra.Object, ...],``.
 
         """
         found = tuple(
@@ -138,7 +139,7 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     @staticmethod
     def _group(
-        objects: t.SequenceOf[m.Infra.Object],
+        objects: Sequence[m.Infra.Object],
         *,
         value_identical: bool,
     ) -> m.Infra.DuplicateGroup:
@@ -260,12 +261,12 @@ class TestsFlextInfraCodemodDuplicateApply:
         )
         with infra.rope_workspace(root) as rope:
             first = tm.ok(
-                FlextInfraDuplicateApplyPhase.apply(
+                FlextInfraCodemodLoopPhaseDuplicateApply.apply(
                     root, tm.ok(FlextInfraModGateEngine.scan(root, fix=False)), rope
                 ),
             )
             second = tm.ok(
-                FlextInfraDuplicateApplyPhase.apply(
+                FlextInfraCodemodLoopPhaseDuplicateApply.apply(
                     root, tm.ok(FlextInfraModGateEngine.scan(root, fix=False)), rope
                 ),
             )

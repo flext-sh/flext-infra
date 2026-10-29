@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 from pathlib import Path
 
 from packaging.utils import canonicalize_name
 
 from flext_infra import config, u
-from tests import c, m, t, tm
+from tests import c, m, tm
 
 # Fixture scenario data, declared here and nowhere else: flext-infra ships no
 # provider registry, so a test that needs a provider declares the one it means
@@ -135,7 +136,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         repository: m.Infra.RepositoryRef,
         *,
         project: m.Infra.ProjectSpec | None = None,
-        subprojects: t.VariadicTuple[m.Infra.RepositoryRef] = (),
+        subprojects: tuple[m.Infra.RepositoryRef, ...] = (),
     ) -> m.Infra.WorkspaceSpec:
         """Build the workspace one fixture repository declares.
 
@@ -341,7 +342,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         return manifest
 
     @staticmethod
-    def declare_workspace_projects(repository: Path, projects: t.StrSequence) -> Path:
+    def declare_workspace_projects(repository: Path, projects: Sequence[str]) -> Path:
         """Declare the exact governed projects in this root's ``.gitmodules``.
 
         Returns:

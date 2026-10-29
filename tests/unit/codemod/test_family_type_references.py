@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -190,7 +191,7 @@ class TestsFlextInfraFamilyTypeReferences:
         tm.that(consumer.read_text(encoding="utf-8"), eq=references)
 
     @staticmethod
-    def _string_assignments(source: str) -> t.StrMapping:
+    def _string_assignments(source: str) -> Mapping[str, str]:
         """Read string payloads independently of assignment annotations or layout.
 
         Args:

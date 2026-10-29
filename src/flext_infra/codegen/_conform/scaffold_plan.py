@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, deps as dependency_services, m, p, r, t, u
+from flext_infra import c, deps as dependency_services, m, p, r, u
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codegen._conform.existing_plan import (
     FlextInfraCodegenConformExistingPlan,
 )
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 
 class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):
@@ -25,16 +26,16 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         contract: m.Infra.CodegenConformSurfaceContract,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Render the complete scaffold for ``codegen new`` only.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]``.
+            The resulting ``p.Result[Sequence[m.Infra.CodegenFilePlan]]``.
 
         """
         project = workspace.project
         if project is None:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+            return r[Sequence[m.Infra.CodegenFilePlan]].fail(
                 f"scaffold workspace has no project metadata: {workspace.name}",
             )
         root = target.root
@@ -100,7 +101,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         # root aggregates subproject trees it has not declared here.
         lazy_sources = self._existing_lazy_sources(root)
         if lazy_sources.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(lazy_sources)
+            return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(lazy_sources)
         tooling_request = m.Infra.ToolingContextRequest(
             # A future scaffold owns its declared runtime (standalone), so the
             # runtime root is pinned to the scaffold root itself.
@@ -150,9 +151,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 tooling_request, source_project=binding[0]
             )
             if tooling_result.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    tooling_result
-                )
+                return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(tooling_result)
             render_inputs = self.resolve_render_inputs(
                 target=target,
                 workspace=workspace,
@@ -167,7 +166,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 ),
             )
             if context.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context)
+                return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(context)
             targets = self._validated_scaffold_targets(codegen, root, scaffold_entries)
             planned = targets.flat_map(
                 lambda _validated: self._scaffold_planned_entries(
@@ -175,7 +174,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 )
             )
             if planned.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
+                return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(planned)
             return self._with_planned_facade_rebinds(
                 planned=tuple(planned.value),
                 scaffold_entries=scaffold_entries,
@@ -186,15 +185,15 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
         context: m.Infra.ProjectRenderContext,
-        scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        scaffold_entries: tuple[tuple[m.Infra.TemplateEntrySpec, str], ...],
+    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Plan scaffold entries in dependency order using the owned render state.
 
         Returns:
             The ordered plans, or the first entry failure.
 
         """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
         planned: list[m.Infra.CodegenFilePlan] = []
         # The pyproject plans first: renders that derive from its requirements
         # (the dependabot cooldown exclusion) read the planned bytes.
@@ -233,7 +232,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         self,
         codegen: m.Infra.CodegenConfigSpec,
         root: Path,
-        scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
+        scaffold_entries: tuple[tuple[m.Infra.TemplateEntrySpec, str], ...],
     ) -> p.Result[bool]:
         """Validate every scaffold template source and destination path.
 
@@ -326,10 +325,10 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
     def _with_planned_facade_rebinds(
         self,
         *,
-        planned: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        scaffold_entries: t.VariadicTuple[t.Pair[m.Infra.TemplateEntrySpec, str]],
+        planned: tuple[m.Infra.CodegenFilePlan, ...],
+        scaffold_entries: tuple[tuple[m.Infra.TemplateEntrySpec, str], ...],
         render_inputs: m.Infra.CodegenRenderInputs,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Render the final pyproject over the sources the scaffold plans.
 
         The pyproject renders before the sources, but its facade-rebind Mypy
@@ -341,10 +340,10 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         with it; nothing rendered earlier reads that scope.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]``.
+            The resulting ``p.Result[Sequence[m.Infra.CodegenFilePlan]]``.
 
         """
-        result_type = r[t.SequenceOf[m.Infra.CodegenFilePlan]]
+        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
         pyproject_entry = next(
             (
                 entry

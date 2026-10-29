@@ -20,7 +20,7 @@ from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
 from tests import c, tm, u
 
 if typing.TYPE_CHECKING:
-    from tests import p, t
+    from tests import p
 
 
 class TestsFlextInfraSymbolicTextCutover:
@@ -53,7 +53,7 @@ class TestsFlextInfraSymbolicTextCutover:
         source: str,
         *,
         expression: str,
-        proof: t.Pair[str | None, str],
+        proof: tuple[str | None, str],
         scope_name: str | None = None,
     ) -> None:
         """Compare real execution with the public closed native binding owner."""

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -18,7 +19,7 @@ from flext_infra import c, config, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_infra import m, p
 
 
 class FlextInfraMarkdownGateBase(FlextInfraGate):
@@ -51,11 +52,11 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
     @override
     def _union_targets(
         self,
-        project_dirs: t.SequenceOf[Path],
+        project_dirs: Sequence[Path],
         ctx: m.Infra.GateContext,
         *,
         repair: bool,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Collect each project's files through its effective typed scope.
 
         Returns:
@@ -96,7 +97,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
 
     @staticmethod
     @override
-    def _findings_exit_codes() -> t.VariadicTuple[int]:
+    def _findings_exit_codes() -> tuple[int, ...]:
         """Exit statuses with which rumdl reports its findings.
 
         Returns:
@@ -106,11 +107,11 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
         return config.Infra.tooling.tools.markdown.findings_exit_codes
 
     @staticmethod
-    def _resolve_config_args(project_dir: Path) -> t.StrSequence:
+    def _resolve_config_args(project_dir: Path) -> Sequence[str]:
         """Resolve only the repository-local markdown settings owner.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         config_path = project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME
@@ -122,9 +123,9 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
         self,
         project_dir: Path,
         subcommand: str,
-        targets: t.StrSequence,
+        targets: Sequence[str],
         *mode_args: str,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Keep every markdown gate on the same rumdl invocation contract.
 
         Returns:
@@ -160,7 +161,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return the governed Markdown paths relative to their repository.
 
         Returns:

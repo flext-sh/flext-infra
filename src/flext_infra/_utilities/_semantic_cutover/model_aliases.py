@@ -7,9 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
@@ -20,11 +21,11 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
-    FlextInfraUtilitiesSemanticNestingTypes,
+    FlextInfraUtilitiesTypesSemanticNesting,
 )
 
 
@@ -35,8 +36,8 @@ class FlextInfraUtilitiesSemanticModelAliases:
     def plan_model_aliases(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan native consumer/import changes; generated exports remain owner-written.
 
         Returns:
@@ -69,7 +70,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 cls._retire(project, path, name, working)
             finally:
                 project.close()
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -120,7 +121,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         project: p.Infra.RopeProject,
         path: Path,
         name: str,
-        working: t.MutableMappingKV[Path, str],
+        working: MutableMapping[Path, str],
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -170,7 +171,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         assignments: tuple[ast.Assign, ...],
     ) -> tuple[dict[str, p.Infra.RopePyName], dict[str, tuple[str, str]]] | None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        namespace = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        namespace = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
             wrapper.get_object(), str(path)
         )
         scope = namespace.get_scope()
@@ -194,7 +195,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             ):
                 msg = f"unresolved model alias target identity: {path}:{alias}"
                 raise ValueError(msg)
-            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
+            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
                 return None
             provider = value.get_module()
             provider_resource = provider.get_resource()
@@ -241,8 +242,8 @@ class FlextInfraUtilitiesSemanticModelAliases:
         project: p.Infra.RopeProject,
         path: Path,
         name: str,
-        aliases: t.MappingKV[str, p.Infra.RopePyName],
-        working: t.MutableMappingKV[Path, str],
+        aliases: Mapping[str, p.Infra.RopePyName],
+        working: MutableMapping[Path, str],
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -359,7 +360,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         resource: p.Infra.RopeResource,
         path: Path,
         name: str,
-        working: t.MutableMappingKV[Path, str],
+        working: MutableMapping[Path, str],
     ) -> None:
         # The wrapper's own declaration and export are the only authored
         # structural removal; consumer edits above belong entirely to Rope.
@@ -410,11 +411,11 @@ class FlextInfraUtilitiesSemanticModelAliases:
         cls,
         project: p.Infra.RopeProject,
         wrapper: p.Infra.RopePyName,
-        aliases: t.MappingKV[str, p.Infra.RopePyName],
-        targets: t.MappingKV[str, t.Pair[str, str]],
-        sources: t.MutableMappingKV[Path, str],
+        aliases: Mapping[str, p.Infra.RopePyName],
+        targets: Mapping[str, tuple[str, str]],
+        sources: MutableMapping[Path, str],
     ) -> frozenset[Path]:
-        name = FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+        name = FlextInfraUtilitiesTypesRopeRuntime.require_named_object(
             wrapper.get_object(), "model alias namespace"
         ).get_name()
         observed = dict(sources)
@@ -506,7 +507,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         entry: tuple[Path, str],
         context: tuple[
             p.Infra.RopePyName,
-            t.MappingKV[str, p.Infra.RopePyName],
+            Mapping[str, p.Infra.RopePyName],
             set[str],
             tuple[ast.Import | ast.ImportFrom, ...],
         ],
@@ -551,7 +552,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         resource: p.Infra.RopeResource,
         occurrence: p.Infra.RopeOccurrence,
         entry: tuple[Path, str],
-        aliases: t.MappingKV[str, p.Infra.RopePyName],
+        aliases: Mapping[str, p.Infra.RopePyName],
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         path, source = entry
@@ -613,12 +614,12 @@ class FlextInfraUtilitiesSemanticModelAliases:
         cls,
         project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,
-        sources: t.MutableMappingKV[Path, str],
+        sources: MutableMapping[Path, str],
         entry: tuple[Path, str],
         context: tuple[
             p.Infra.RopePyName,
-            t.MappingKV[str, p.Infra.RopePyName],
-            t.MappingKV[str, t.Pair[str, str]],
+            Mapping[str, p.Infra.RopePyName],
+            Mapping[str, tuple[str, str]],
         ],
     ) -> bool:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -635,7 +636,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 project, scope, expression, (path, required), context
             )
 
-        rewritten = FlextInfraUtilitiesSemanticNestingTypes.rewrite_quoted_types(
+        rewritten = FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
             project, resource, source, quoted
         )
         if rewritten == source:
@@ -658,8 +659,8 @@ class FlextInfraUtilitiesSemanticModelAliases:
         entry: tuple[Path, set[tuple[str, str]]],
         context: tuple[
             p.Infra.RopePyName,
-            t.MappingKV[str, p.Infra.RopePyName],
-            t.MappingKV[str, t.Pair[str, str]],
+            Mapping[str, p.Infra.RopePyName],
+            Mapping[str, tuple[str, str]],
         ],
     ) -> str | None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules

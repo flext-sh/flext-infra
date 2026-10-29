@@ -12,7 +12,7 @@ import re
 import shlex
 import sys
 from base64 import b64decode
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar
@@ -20,23 +20,23 @@ from typing import ClassVar
 from flext_cli import u
 from git import GitCommandError
 
-from flext_infra import c, m, p, r, settings, t
-from flext_infra._utilities import FlextInfraUtilitiesBase
+from flext_infra import c, m, p, r, settings
+from flext_infra._utilities import (
+    FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
+    FlextInfraUtilitiesGitSemanticIdentity,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 from flext_infra._utilities._git.attestation_evidence import (
-    FlextInfraUtilitiesGitAttestationEvidenceMixin,
-)
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesGitAttestationEvidence,
 )
 
 
-class FlextInfraUtilitiesGitAttestationMixin(
-    FlextInfraUtilitiesGitAttestationEvidenceMixin,
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
+class FlextInfraUtilitiesGitAttestation(
+    FlextInfraUtilitiesGitAttestationEvidence,
+    FlextInfraUtilitiesGitSemanticIdentity,
 ):
     """Create and verify immutable SSH-signed gate tags."""
 
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         *,
         inputs: m.Infra.CodegenInputs,
         load_inputs: Callable[[Path], p.Result[m.Infra.CodegenInputs]],
-        read_runtime_identity: Callable[[t.StrSequence], p.Result[str]],
+        read_runtime_identity: Callable[[Sequence[str]], p.Result[str]],
     ) -> p.Result[m.Infra.GateCaptureReport]:
         """Execute the original checker once and retain its native evidence.
 
@@ -198,9 +198,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
         """
         root = request.repository_root.resolve()
+        phase = request.phase
         gates = request.gates or ",".join(
             FlextInfraUtilitiesBase.selected_check_gates(
-                inputs.spec.make, c.Infra.CheckGateSet.CHECK, phase=request.phase
+                inputs.spec.make, c.Infra.CheckGateSet.CHECK, phase=phase
             )
         )
         if not gates:
@@ -227,7 +228,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             "--gates",
             gates,
             "--phase",
-            request.phase,
+            phase.value,
             "--scope",
             c.Infra.CodegenConformScope.ALL.value,
             "--reports-dir",
@@ -242,7 +243,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             {
                 "repository_root": root,
                 "gates": gates,
-                "phase": request.phase,
+                "phase": phase,
                 "scope": c.Infra.CodegenConformScope.ALL,
             },
         )
@@ -252,7 +253,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 gate=c.Infra.VERB_CHECK,
                 command=command,
                 intent=m.Infra.GateExecutionIntent(
-                    phase=request.phase,
+                    phase=phase,
                     requested_gates=tuple(native_request.gates),
                 ),
                 runtime_identity=read_runtime_identity(native_request.gates).unwrap(),
@@ -461,12 +462,12 @@ class FlextInfraUtilitiesGitAttestationMixin(
     @staticmethod
     def git_capture_report_bindings(
         root: Path,
-        paths: t.VariadicTuple[t.Pair[Path, c.Infra.GateEvidenceReportKind]],
-    ) -> p.Result[t.VariadicTuple[m.Infra.GateReportEvidence]]:
+        paths: tuple[tuple[Path, c.Infra.GateEvidenceReportKind], ...],
+    ) -> p.Result[tuple[m.Infra.GateReportEvidence, ...]]:
         """Capture producer-owned report bytes through the atomic read owner.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.GateReportEvidence]]``.
+            The resulting ``p.Result[tuple[m.Infra.GateReportEvidence, ...]]``.
 
         """
         reports: list[m.Infra.GateReportEvidence] = []
@@ -478,7 +479,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 .content
             )
             if content is None:
-                return r[t.VariadicTuple[m.Infra.GateReportEvidence]].fail(
+                return r[tuple[m.Infra.GateReportEvidence, ...]].fail(
                     f"required original checker report has no captured bytes: {path}",
                 )
             reports.append(
@@ -488,14 +489,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
                     kind=kind,
                 )
             )
-        return r[t.VariadicTuple[m.Infra.GateReportEvidence]].ok(tuple(reports))
+        return r[tuple[m.Infra.GateReportEvidence, ...]].ok(tuple(reports))
 
     @classmethod
     def _captured_gate_evidence(
         cls,
         started: m.Infra.GateCaptureStart,
         process: m.Cli.ProcessOutcome,
-        reports: t.VariadicTuple[m.Infra.GateReportEvidence],
+        reports: tuple[m.Infra.GateReportEvidence, ...],
         after: m.Infra.GitIdentityReport | None,
     ) -> p.Result[m.Infra.GateCommandEvidence]:
         """Bind the original producer reports to the observed candidate.
@@ -563,14 +564,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def _attestation_paths(
         request: m.Infra.GateAttestationCreateRequest
         | m.Infra.GateAttestationVerifyRequest,
-    ) -> p.Result[t.Pair[Path, Path]]:
+    ) -> p.Result[tuple[Path, Path]]:
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()
         if not allowed.is_file():
-            return r[t.Pair[Path, Path]].fail(
+            return r[tuple[Path, Path]].fail(
                 f"allowed_signers file not found: {allowed}",
             )
-        return r[t.Pair[Path, Path]].ok((repo_root, allowed))
+        return r[tuple[Path, Path]].ok((repo_root, allowed))
 
     @classmethod
     def _attestation_predicate(
@@ -1037,4 +1038,4 @@ class FlextInfraUtilitiesGitAttestationMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitAttestationMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitAttestation"]

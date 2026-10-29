@@ -18,11 +18,11 @@ from pathlib import Path
 from typing import Literal
 
 from flext_infra import c, m, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMeasureMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMeasure
 
 
-class FlextInfraUtilitiesGitWorktreeFactsMixin(
-    FlextInfraUtilitiesGitWorktreeMeasureMixin,
+class FlextInfraUtilitiesGitWorktreeFacts(
+    FlextInfraUtilitiesGitWorktreeMeasure,
 ):
     """Own FS-only worktree facts discovery and stale-deps planning."""
 
@@ -30,7 +30,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
     def git_registered_worktrees_fs(
         cls,
         repository_root: Path,
-    ) -> t.VariadicTuple[t.Pair[Path, str]]:
+    ) -> tuple[tuple[Path, str], ...]:
         """Resolve registered worktrees from ``.git/worktrees`` without Git.
 
         The ``gitdir`` pointer names the worktree's own ``.git`` file, so the
@@ -40,7 +40,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
         order.
 
         Returns:
-            The resulting ``t.VariadicTuple[t.Pair[Path, str]]``.
+            The resulting ``tuple[tuple[Path, str], ...]``.
 
         """
         registry = (
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
         )
         if not registry.is_dir():
             return ()
-        resolved: list[t.Pair[Path, str]] = []
+        resolved: list[tuple[Path, str]] = []
         for entry in sorted(registry.iterdir()):
             pointer = cls._worktree_gitdir_pointer(entry)
             if pointer is None:
@@ -65,10 +65,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
     def collect_worktree_facts(
         cls,
         query: m.Infra.WorktreeFactsQuery,
-    ) -> t.Pair[
-        t.VariadicTuple[m.Infra.WorktreeFact],
-        t.VariadicTuple[m.Infra.PruneAction],
-    ]:
+    ) -> tuple[tuple[m.Infra.WorktreeFact, ...], tuple[m.Infra.PruneAction, ...]]:
         """Measure every registered worktree and plan stale-deps pruning.
 
         Correlation is optional and degrades to empty. A stale worktree is
@@ -77,8 +74,8 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
         Nothing is executed here.
 
         Returns:
-            The resulting ``t.Pair[t.VariadicTuple[m.Infra.WorktreeFact],
-                t.VariadicTuple[m.Infra.PruneAction]]``.
+            The resulting ``tuple[tuple[m.Infra.WorktreeFact, ...],
+                tuple[m.Infra.PruneAction, ...]]``.
 
         """
         facts: list[m.Infra.WorktreeFact] = []
@@ -143,7 +140,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
         """
         worktree_root = candidate.path
         total_bytes, newest_mtime, exact = cls._worktree_measure(worktree_root)
-        deps: list[t.Pair[Path, int]] = []
+        deps: list[tuple[Path, int]] = []
         for deps_dir in query.policy.deps_dirs:
             deps_path = worktree_root / deps_dir
             if deps_path.is_dir() and not deps_path.is_symlink():
@@ -228,12 +225,12 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
     @classmethod
     def _worktree_bead_index(
         cls,
-        rows: t.VariadicTuple[t.JsonMapping],
-    ) -> t.MappingKV[str, t.MappingKV[str, t.JsonMapping]]:
+        rows: tuple[t.JsonMapping, ...],
+    ) -> Mapping[str, Mapping[str, t.JsonMapping]]:
         """Index optional bead rows by work dir and branch for correlation.
 
         Returns:
-            The resulting ``t.MappingKV[str, t.MappingKV[str, t.JsonMapping]]``.
+            The resulting ``Mapping[str, Mapping[str, t.JsonMapping]]``.
 
         """
         by_dir: MutableMapping[str, t.JsonMapping] = {}
@@ -288,4 +285,4 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeFactsMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeFacts"]

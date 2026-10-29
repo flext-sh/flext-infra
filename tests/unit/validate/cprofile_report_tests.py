@@ -343,7 +343,7 @@ class TestsFlextInfraCProfileReport:
                 [
                     sys.executable,
                     "-m",
-                    "flext_infra._cprofile_entry",
+                    "flext_infra._cprofile.entry",
                     str(selected_profile),
                 ],
                 cwd=workspace,

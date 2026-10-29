@@ -207,8 +207,8 @@ class TestsFlextInfraSelfFacadeCutover:
                 "from flext_core import t, u\n"
                 "from typing_extensions import TypeForm\n"
                 "class Consumer(m.ContractModel):\n"
-                "    values: t.MutableSequenceOf[str] = m.Field("
-                "default_factory=u.empty(TypeForm(t.MutableSequenceOf[str])), "
+                "    values: MutableSequence[str] = m.Field("
+                "default_factory=u.empty(TypeForm(MutableSequence[str])), "
                 "description='Consumer values')\n"
             ),
         }
@@ -275,7 +275,7 @@ class TestsFlextInfraSelfFacadeCutover:
         source = (
             "from __future__ import annotations\n"
             "from flext_core import m, t\n"
-            f"type Bag[T] = t.{'MutableSequenceOf' if mutable else 'SequenceOf'}[T]\n"
+            f"type Bag[T] = t.{'MutableSequence' if mutable else 'Sequence'}[T]\n"
             "class Consumer(m.ContractModel):\n"
             '    """Consumer-owned collection declaration."""\n'
             "    values: Bag[str] = m.Field(default_factory=list, "
@@ -487,7 +487,7 @@ class TestsFlextInfraSelfFacadeCutover:
             "    class Child(m.ContractModel):\n"
             "        value: str\n"
             "    class Consumer(m.ContractModel):\n"
-            "        children: t.SequenceOf[Outer.Child] = m.Field("
+            "        children: Sequence[Outer.Child] = m.Field("
             "default_factory=list, description='Owned child values')\n"
         )
         consumer.write_text(source, encoding="utf-8")
@@ -561,11 +561,11 @@ class TestsFlextInfraSelfFacadeCutover:
             "try:\n"
             "    class Strict(BaseModel):\n"
             "        model_config = ConfigDict(arbitrary_types_allowed=False)\n"
-            "        items: t.SequenceOf[Capability] = Field(default_factory=list)\n"
+            "        items: Sequence[Capability] = Field(default_factory=list)\n"
             "except PydanticSchemaGenerationError:\n"
             "    STRICT_REJECTED = True\n"
             "class Arbitrary(m.ArbitraryTypesModel):\n"
-            "    items: t.SequenceOf[Capability] = m.Field(default_factory=list)\n"
+            "    items: Sequence[Capability] = m.Field(default_factory=list)\n"
         )
         consumer.write_text(source, encoding="utf-8")
         with infra.rope_workspace(root) as rope:

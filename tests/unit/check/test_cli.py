@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
@@ -14,7 +15,7 @@ import pytest
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,7 +28,7 @@ class TestsFlextInfraWorkspaceCheckCli:
     def _create_workspace(
         tmp_path: Path,
         *,
-        project_names: t.StrSequence = ("flext-core",),
+        project_names: Sequence[str] = ("flext-core",),
     ) -> Path:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
@@ -128,7 +129,7 @@ class TestsFlextInfraWorkspaceCheckCli:
     )
     def test_process_entrypoints_preserve_rejected_gate_exit(
         tmp_path: Path,
-        entrypoint: t.StrSequence,
+        entrypoint: Sequence[str],
     ) -> None:
         """Both shipped entrypoints retain a failed Result's native exit status."""
         workspace = TestsFlextInfraWorkspaceCheckCli._create_workspace(tmp_path)

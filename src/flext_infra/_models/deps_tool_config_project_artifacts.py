@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated
 
@@ -43,7 +44,7 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
             m.Field(description="Composed managed-artifact configuration."),
         ]
         mise_tool_sources: Annotated[
-            t.MappingKV[t.NonEmptyStr, Path],
+            Mapping[t.NonEmptyStr, Path],
             m.Field(description="Source YAML path for every local Mise selector."),
         ]
 
@@ -51,7 +52,7 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
         """One immutable YAML snapshot and its single parsed resolution."""
 
         sources: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(description="Ordered exact project configuration sources."),
         ]
         resolution: Annotated[

@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
+
 from flext_infra import config, t
 from tests import tm, u
 from tests.unit.codegen.test_ci_integration_branch_triggers import (
@@ -24,7 +26,7 @@ class TestsFlextInfraCiToolCacheReuse:
                 repository_branch="0.12.0-dev",
             ),
         )
-        named: t.MutableMappingKV[str, t.JsonMapping] = {}
+        named: MutableMapping[str, t.JsonMapping] = {}
         for step in steps:
             name = step.get("name")
             if isinstance(name, str):

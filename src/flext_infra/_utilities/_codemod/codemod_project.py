@@ -15,44 +15,39 @@ from __future__ import annotations
 
 import ast
 import sys
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._codemod.codemod_binding_chain import (
+from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodBindingChain,
-)
-from flext_infra._utilities._codemod.codemod_native_cascade import (
+    FlextInfraUtilitiesCodemodNative,
     FlextInfraUtilitiesCodemodNativeCascade,
+    FlextInfraUtilitiesCodemodNativePackage,
 )
-from flext_infra._utilities._codemod.codemod_native_package_utilities import (
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
-)
-from flext_infra._utilities._codemod.codemod_native_utilities import (
-    FlextInfraUtilitiesCodemodNativeUtilities,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 
 
 class FlextInfraUtilitiesCodemodProject(
     FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain,
-    FlextInfraUtilitiesCodemodNativeUtilities,
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodNativePackage,
     FlextInfraUtilitiesCodemodNativeCascade,
     FlextInfraUtilitiesImportLaw,
 ):
@@ -62,7 +57,7 @@ class FlextInfraUtilitiesCodemodProject(
     def project_import_graph(
         cls,
         root: Path,
-    ) -> t.Pair[t.MappingKV[str, frozenset[str]], t.MappingKV[Path, str]]:
+    ) -> tuple[Mapping[str, frozenset[str]], Mapping[Path, str]]:
         """Return the runtime import graph and the module name of each file.
 
         Edges come from Rope's module-level import table, which leaves
@@ -85,7 +80,7 @@ class FlextInfraUtilitiesCodemodProject(
         ) as snapshot:
             project = snapshot.engine
             resources = tuple(
-                FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                     project.get_resource(path.relative_to(resolved).as_posix()),
                     path,
                 )
@@ -119,7 +114,7 @@ class FlextInfraUtilitiesCodemodProject(
         package = facade_file.parent / f"_{facade_file.stem}"
         if not package.is_dir():
             return True
-        bases_by_class: MutableMapping[str, t.StrSequence] = {}
+        bases_by_class: MutableMapping[str, Sequence[str]] = {}
         exported: set[str] = set()
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         for module in sorted(package.rglob(f"*{c.Infra.EXT_PYTHON}")):
@@ -155,7 +150,7 @@ class FlextInfraUtilitiesCodemodProject(
         tree: t.Infra.AstModule,
         namespace: str,
         facade_file: Path,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return the base names of class ``namespace`` nested in the facade.
 
         Returns:
@@ -202,9 +197,9 @@ class FlextInfraUtilitiesCodemodProject(
     def codemod_path_findings(
         cls,
         root: Path,
-        paths: t.SequenceOf[Path],
-        rules: t.SequenceOf[m.Infra.CodemodRule],
-    ) -> t.VariadicTuple[m.Infra.AstGrepOwnedPathDiagnostic]:
+        paths: Sequence[Path],
+        rules: Sequence[m.Infra.CodemodRule],
+    ) -> tuple[m.Infra.AstGrepOwnedPathDiagnostic, ...]:
         """Admit owned-path policy from the shared inventory, without parsing bytes.
 
         Returns:
@@ -215,7 +210,7 @@ class FlextInfraUtilitiesCodemodProject(
             m.Infra.AstGrepOwnedPathDiagnostic.model_validate({
                 "file": path.relative_to(root.resolve()).as_posix(),
                 "ruleId": rule.id,
-                "severity": "error",
+                "severity": c.Infra.NativeRuleSeverity.ERROR,
                 "message": rule.message,
                 "origin": "owned-path",
                 "text": "",
@@ -235,7 +230,7 @@ class FlextInfraUtilitiesCodemodProject(
     @classmethod
     def codemod_ambient_environ_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the rule failing real process-environment reads of the project.
 
         A read is an ``os.environ`` subscript or ``.get`` call, or an
@@ -250,7 +245,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         root = project.resolve()
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         sources = FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
             snapshot, root
         )
@@ -395,7 +390,7 @@ class FlextInfraUtilitiesCodemodProject(
 
     @classmethod
     def codemod_isolated_entrypoints(
-        cls, root: Path, sources: t.SequenceOf[Path]
+        cls, root: Path, sources: Sequence[Path]
     ) -> frozenset[Path]:
         """Elect the stdlib-only entrypoints of the project's native executions.
 
@@ -433,7 +428,7 @@ class FlextInfraUtilitiesCodemodProject(
         elected: set[Path] = set()
         with FlextInfraUtilitiesRopeCore.open_project(root) as project:
             for path, calls in candidates.items():
-                resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                     project.get_resource(path.relative_to(root).as_posix()), path
                 )
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
@@ -487,7 +482,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         fields = {keyword.arg: keyword.value for keyword in node.keywords}
         if set(fields) != set(m.Cli.PythonScriptExecution.model_fields):
             return None
@@ -534,7 +529,6 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         project: p.Infra.RopeProject,
         condition: p.Infra.PrimitiveOwnerCondition,
-        sources: t.MappingKV[t.Infra.RopeSourcePath, str],
     ) -> t.Infra.RopeImplementationPaths:
         """Derive a primitive's implementation from native definitions and MRO.
 
@@ -553,7 +547,7 @@ class FlextInfraUtilitiesCodemodProject(
             msg = "implementation-owner requires a module and public primitive"
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         module_name, expression = condition.arg
         primitive = runtime.qualified_name(
             project, expression, module_name=module_name
@@ -574,7 +568,7 @@ class FlextInfraUtilitiesCodemodProject(
             if id(target) in visited:
                 continue
             visited.add(id(target))
-            discovered = cls._implementation_target(target, namespace, sources)
+            discovered = cls._implementation_target(target, namespace)
             if discovered is None:
                 continue
             path, related = discovered
@@ -586,8 +580,7 @@ class FlextInfraUtilitiesCodemodProject(
     def _implementation_target(
         target: p.Infra.RopePyObject,
         namespace: str,
-        sources: t.MappingKV[Path, str],
-    ) -> t.Pair[Path, list[p.Infra.RopePyObject]] | None:
+    ) -> tuple[Path, list[p.Infra.RopePyObject]] | None:
         """Collect native implementation edges of one callable or class.
 
         Returns:
@@ -595,10 +588,9 @@ class FlextInfraUtilitiesCodemodProject(
 
         Raises:
             ValueError: If the declaration has no source resource.
-            TypeError: If the module has no supported AST.
 
         """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         pending: list[p.Infra.RopePyObject] = []
         if not (types.py_class(target) or types.py_function(target)):
             return None
@@ -625,48 +617,66 @@ class FlextInfraUtilitiesCodemodProject(
         parent = scope.parent
         if parent is not None and parent.get_kind() == c.Infra.RopeScopeKind.CLASS:
             pending.append(parent.pyobject)
-        tree = module.get_ast()
-        if not isinstance(tree, ast.AST):
-            msg = "native implementation module has no supported Python AST"
-            raise TypeError(msg)
         pending.extend(
             FlextInfraUtilitiesCodemodProject._implementation_calls(
                 module,
                 scope,
-                tree,
-                sources[path] if path in sources else resource.read(),
                 namespace,
             )
         )
         return path, pending
 
-    @staticmethod
+    @classmethod
     def _implementation_calls(
+        cls,
         module: p.Infra.RopePyModule,
         scope: p.Infra.RopeScope,
-        tree: ast.AST,
-        source: str,
         namespace: str,
     ) -> list[p.Infra.RopePyObject]:
-        """Resolve same-namespace calls within one exact lexical scope.
+        """Resolve calls only within the native callable's source region.
+
+        Rope's word finder identifies calls without walking the module again;
+        its source-position lookup preserves lexical aliases and shadowing.
+        The binding index excludes nested declarations from this callable.
 
         Returns:
             Native helper declarations reachable from calls in the scope.
 
+        Raises:
+            TypeError: If Rope lacks native call or source-position lookup.
+
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        runtime = FlextInfraUtilitiesRopeRuntime
+        types = FlextInfraUtilitiesTypesRopeRuntime
+        source = module.source_code
+        finder = runtime.runtime_callable("rope.base.worder", "Worder")(source)
+        if not isinstance(finder, p.Infra.RopeWorder):
+            msg = "Implementation calls require the native word finder contract"
+            raise TypeError(msg)
+        names = runtime.runtime_callable("rope.base.evaluate", "ScopeNameFinder")(
+            module
+        )
+        if not isinstance(names, p.Infra.RopeScopeNameFinder):
+            msg = "Implementation calls require native source-position lookup"
+            raise TypeError(msg)
+        index = module.get_source_binding_index()
+        region = (
+            module.lines.get_line_start(scope.get_body_start()),
+            module.lines.get_line_end(scope.get_end()),
+        )
         pending: list[p.Infra.RopePyObject] = []
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call) or not (
-                scope.get_body_start() <= node.lineno <= scope.get_end()
-            ):
+        for first, _last in runtime.word_call_regions(source, region):
+            context = index.context_at(first)
+            if context.structural_scope is not scope:
                 continue
-            offset = runtime.source_offset(source, node.func)
-            lexical = runtime.scope_at(module, offset)
-            if lexical is not scope:
+            if cls._binding_expression(finder.get_primary_at(first)) is None:
                 continue
-            binding = runtime.resolve_symbol(lexical, node.func)
+            try:
+                binding = names.get_pyname_at(first)
+            except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
+                # Rope raises for offsets on keywords / non-identifiers; such
+                # positions elect no binding.
+                continue
             if binding is None:
                 continue
             helper = binding.get_object()
@@ -684,25 +694,25 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         validation: p.Result[m.Infra.ValidationReport],
         root: Path,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CensusViolation]]:
+    ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
         """Convert the engine-backed namespace report into census violations.
 
         A violation is fixable when its rule declares a token fix or a rope
         relocation in the project's rule plan.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.CensusViolation]]``.
+            The resulting ``p.Result[tuple[m.Infra.CensusViolation, ...]]``.
 
         Raises:
             ValueError: If namespace violation does not follow the report format.
 
         """
         if validation.failure:
-            return r[t.VariadicTuple[m.Infra.CensusViolation]].from_failure(validation)
+            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(validation)
         with cls.codemod_workspace_snapshot(root) as snapshot:
             planned = cls.codemod_rule_plan(snapshot)
         if planned.failure:
-            return r[t.VariadicTuple[m.Infra.CensusViolation]].from_failure(planned)
+            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(planned)
         repairable = frozenset(
             rule.id
             for rule in planned.value.rules
@@ -733,7 +743,7 @@ class FlextInfraUtilitiesCodemodProject(
                     fixable=match.group("rule") in repairable,
                 ),
             )
-        return r[t.VariadicTuple[m.Infra.CensusViolation]].ok(tuple(parsed))
+        return r[tuple[m.Infra.CensusViolation, ...]].ok(tuple(parsed))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodemodProject"]

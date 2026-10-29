@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 from collections import defaultdict
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra._utilities import FlextInfraUtilitiesLintRecipes
@@ -17,7 +18,6 @@ from flext_infra._utilities._semantic_cutover import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import MutableMapping
     from pathlib import Path
 
     from flext_infra import m, p, t
@@ -32,9 +32,9 @@ class FlextInfraUtilitiesSemanticCutoverModuleLayout(
     def _plan_module_end(
         cls,
         root: Path,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+        findings: Sequence[m.Infra.ModOccurrence],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Move each reported top-level statement after the module's last one.
 
         A finding names its statement by the text the rule matched, so the
@@ -75,9 +75,9 @@ class FlextInfraUtilitiesSemanticCutoverModuleLayout(
     def _plan_notice_last(
         cls,
         root: Path,
-        sources: t.MappingKV[Path, str],
-        findings: t.SequenceOf[m.Infra.ModOccurrence],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+        findings: Sequence[m.Infra.ModOccurrence],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Move each reported docstring's notice paragraph after its other text.
 
         Returns:

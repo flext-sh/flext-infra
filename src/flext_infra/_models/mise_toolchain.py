@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
@@ -53,7 +54,7 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Package selector owning this override's scope"),
         ]
         dependencies: Annotated[
-            t.ListOf[t.StrictStr],
+            list[t.StrictStr],
             m.Field(
                 description=(
                     "Native scoped registry requirements; other dependencies "
@@ -63,7 +64,7 @@ class FlextInfraModelsMiseToolchain:
         ]
 
     class UvOverrideEntries(
-        m.RootModel[t.ListOf[t.NonEmptyStr | UvScopedOverride]], strict=True
+        m.RootModel[list[t.NonEmptyStr | UvScopedOverride]], strict=True
     ):
         """Native ordered global-string and scoped-table override grammar."""
 
@@ -71,7 +72,7 @@ class FlextInfraModelsMiseToolchain:
         """Beads ledger and Gas City projection contract."""
 
         ownership_command_prefix: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Public ownership command projected into each repository",
@@ -86,7 +87,7 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Canonical status for a managed-city inherited rig"),
         ]
         required_custom_types: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description="Immutable custom bead types required by Gas City",
@@ -164,7 +165,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = None
         resources: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Exact relative installed resources authenticated before an "
@@ -177,7 +178,7 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Executable name resolved through `mise which`"),
         ]
         arguments: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Arguments that make the binary print its version"),
         ]
         pattern: Annotated[
@@ -191,7 +192,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         environment: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 description=(
                     "Environment overrides the probe process receives; empty "
@@ -358,11 +359,11 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = None
         depends: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Declared tool keys installed before this tool"),
         ] = ()
         install_env: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 description="Native installation environment, part of the tool identity"
             ),
@@ -416,7 +417,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         declared: Annotated[
-            t.SequenceOf[FlextInfraModelsMiseToolchain.MiseToolEntry],
+            Sequence[FlextInfraModelsMiseToolchain.MiseToolEntry],
             m.Field(
                 description="All declared tool entries electable as probe owners.",
             ),
@@ -442,11 +443,11 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Lockfile the change would be written to."),
         ]
         old_versions: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Versions currently locked."),
         ]
         new_versions: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Versions the re-resolved selector would lock."),
         ]
 
@@ -487,7 +488,7 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Portable uv installation link mode"),
         ]
         uv_environments: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Marker expressions limiting the environments uv resolves "
@@ -496,7 +497,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         uv_constraint_dependencies: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "PEP 508 constraints rendered into every generated "
@@ -509,9 +510,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         uv_override_dependencies: Annotated[
-            t.VariadicTuple[
-                t.NonEmptyStr | FlextInfraModelsMiseToolchain.UvScopedOverride
-            ],
+            tuple[t.NonEmptyStr | FlextInfraModelsMiseToolchain.UvScopedOverride, ...],
             m.Field(
                 description=(
                     "Native global or scoped overrides rendered into every generated "
@@ -525,7 +524,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         environment_path_prepends: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 default=(),
                 description=(
@@ -578,7 +577,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = False
         mise_lockfile_platforms: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -601,7 +600,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         tools: Annotated[
-            t.VariadicTuple[FlextInfraModelsMiseToolchain.MiseToolEntry],
+            tuple[FlextInfraModelsMiseToolchain.MiseToolEntry, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -612,7 +611,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         tool_version_pins: Annotated[
-            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            Mapping[t.NonEmptyStr, t.NonEmptyStr],
             m.Field(
                 description=(
                     "Exact-version pins layered over the tools table by the "
@@ -674,11 +673,11 @@ class FlextInfraModelsMiseToolchain:
 
         @m.computed_field
         @property
-        def tool_versions(self) -> t.MappingKV[str, str]:
+        def tool_versions(self) -> Mapping[str, str]:
             """Effective release selector per tool: pins layered over entries.
 
             Returns:
-                The resulting ``t.MappingKV[str, str]``.
+                The resulting ``Mapping[str, str]``.
 
             """
             return {
@@ -688,11 +687,11 @@ class FlextInfraModelsMiseToolchain:
 
         @m.computed_field
         @property
-        def tool_selectors(self) -> t.MappingKV[str, str]:
+        def tool_selectors(self) -> Mapping[str, str]:
             """Declared Mise selector of every selector-bearing fleet tool.
 
             Returns:
-                The resulting ``t.MappingKV[str, str]``.
+                The resulting ``Mapping[str, str]``.
 
             """
             return {
@@ -703,20 +702,20 @@ class FlextInfraModelsMiseToolchain:
 
         @m.computed_field
         @property
-        def tool_keys(self) -> t.MappingKV[str, str]:
+        def tool_keys(self) -> Mapping[str, str]:
             """The [tools] key (selector, else name) of every fleet tool.
 
             The same key names the tool's ``mise.lock`` table.
 
             Returns:
-                The resulting ``t.MappingKV[str, str]``.
+                The resulting ``Mapping[str, str]``.
 
             """
             return {entry.name: entry.selector or entry.name for entry in self.tools}
 
         @m.computed_field
         @property
-        def mise_install_keys(self) -> t.VariadicTuple[str]:
+        def mise_install_keys(self) -> tuple[str, ...]:
             """Every [tools] key the project declares, in projection order.
 
             ``make setup``/``make upg`` pass this explicit list to
@@ -724,7 +723,7 @@ class FlextInfraModelsMiseToolchain:
             never a tool from the operator's global Mise registry.
 
             Returns:
-                The resulting ``t.VariadicTuple[str]``.
+                The resulting ``tuple[str, ...],``.
 
             """
             return (

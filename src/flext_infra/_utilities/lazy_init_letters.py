@@ -11,15 +11,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesPythonModel,
 )
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
@@ -49,7 +50,7 @@ class FlextInfraUtilitiesLazyInitLetters:
         """
         package = run.packages.get(project_root)
         if package is None:
-            package = FlextInfraUtilitiesPyproject.project_package_name(
+            package = FlextInfraUtilitiesPyprojectConform.project_package_name(
                 project_root, source_project=run.model.source_project
             )
             run.packages[project_root] = package
@@ -202,7 +203,7 @@ class FlextInfraUtilitiesLazyInitLetters:
         run: m.Infra.LazyInitRun,
         context: m.Infra.LazyInitPackageContext,
         upstream: str,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Identify consumer imports bound to the declared upstream facets.
 
         Returns:
@@ -222,9 +223,7 @@ class FlextInfraUtilitiesLazyInitLetters:
             module = FlextInfraUtilitiesPythonModel.python_model_module_at(
                 run.model, child, f"{context.current_pkg}.{child.stem}"
             )
-            for name, target in FlextInfraUtilitiesPythonModel.python_model_imports(
-                module
-            ).items():
+            for name, target in module.imports.items():
                 provider, _, attribute = target.rpartition(".")
                 if (
                     provider in {upstream, context.current_pkg}
@@ -236,7 +235,7 @@ class FlextInfraUtilitiesLazyInitLetters:
 
     @staticmethod
     def _lazy_init_facet_binding(
-        run: m.Infra.LazyInitRun, target: t.StrPair
+        run: m.Infra.LazyInitRun, target: tuple[str, str]
     ) -> p.Infra.RopePyName:
         """Resolve the effective publication route through the run's native engine.
 
@@ -247,7 +246,7 @@ class FlextInfraUtilitiesLazyInitLetters:
             ValueError: If the planned publication is absent, incomplete or cyclic.
 
         """
-        seen: set[t.StrPair] = set()
+        seen: set[tuple[str, str]] = set()
         while target not in seen:
             seen.add(target)
             module, attribute = target
@@ -292,8 +291,8 @@ class FlextInfraUtilitiesLazyInitLetters:
 
     @classmethod
     def _lazy_init_facade_chain(
-        cls, run: m.Infra.LazyInitRun, packages: t.StrSequence, *, within: Path | None
-    ) -> t.StrSequence:
+        cls, run: m.Infra.LazyInitRun, packages: Sequence[str], *, within: Path | None
+    ) -> Sequence[str]:
         """Expand facade parents breadth-first, nearest first.
 
         ``within`` limits expansion to that project's packages; parents of
@@ -321,7 +320,7 @@ class FlextInfraUtilitiesLazyInitLetters:
     @classmethod
     def lazy_init_parent_packages(
         cls, run: m.Infra.LazyInitRun, pkg_dir: Path
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return the facade parents declared by ``constants.py`` class bases.
 
         Returns:
@@ -348,7 +347,7 @@ class FlextInfraUtilitiesLazyInitLetters:
     @classmethod
     def _lazy_init_constants_parents(
         cls, run: m.Infra.LazyInitRun, path: Path, current: str, seen: set[Path]
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Follow ``*Constants`` class bases, recursing into same-package owners.
 
         Returns:
@@ -364,10 +363,10 @@ class FlextInfraUtilitiesLazyInitLetters:
         module = python.python_model_module_at(
             run.model, path, entry.module_name if entry else current
         )
-        imports = python.python_model_imports(module)
+        imports = module.imports
         targets = tuple(
             f"{target}.{tail}" if tail else target
-            for name, bases in python.python_model_class_bases(module).items()
+            for name, bases in module.classes.items()
             if c.Infra.LAZY_INIT_CONSTANTS_MARKER in name
             for base in bases
             for head, _, tail in (base.partition("."),)
@@ -378,6 +377,8 @@ class FlextInfraUtilitiesLazyInitLetters:
             if target.startswith(f"{current}."):
                 continue
             parts = target.split(".")
+            # External parents use the captured native project's resource election;
+            # only this run's indexed tree contributes publication plans.
             package = next(
                 (
                     ".".join(parts[:size])
@@ -387,13 +388,13 @@ class FlextInfraUtilitiesLazyInitLetters:
                 "",
             ) or (
                 parts[0]
-                if python.python_model_package_dir(parts[0]) is not None
+                if cls._lazy_init_package_dir(run, parts[0])[0] is not None
                 else ""
             )
             if not package:
                 msg = (
                     f"lazy-init: declared facade parent '{parts[0]}' "
-                    "resolves nowhere in the active environment"
+                    "resolves nowhere in this run's indexed or native source view"
                 )
                 raise ValueError(msg)
             found.append(package)
@@ -411,17 +412,26 @@ class FlextInfraUtilitiesLazyInitLetters:
     @staticmethod
     def _lazy_init_package_dir(
         run: m.Infra.LazyInitRun, package: str
-    ) -> t.Pair[Path | None, bool]:
+    ) -> tuple[Path | None, bool]:
         """Return a package's directory and whether this run indexes it.
 
+        Per-repository resolution law: only this run's one indexed tree is the
+        plan surface. The captured native project elects an unindexed parent's
+        resource for read-only inheritance; its sources never enter this run's plan.
+
         Returns:
-            The indexed or installed directory and the indexed flag.
+            The elected package directory and the indexed flag.
 
         """
         indexed = run.index.package_dir_by_name.get(package)
         if indexed is not None:
             return indexed, True
-        return FlextInfraUtilitiesPythonModel.python_model_package_dir(package), False
+        elected = run.model.source_project.find_module(package)
+        return (
+            (Path(elected.real_path), False)
+            if elected is not None and elected.is_folder()
+            else (None, False)
+        )
 
     @classmethod
     def _lazy_init_declared_letters(
@@ -430,7 +440,8 @@ class FlextInfraUtilitiesLazyInitLetters:
         """Return the facade letters a package's own modules declare.
 
         An indexed package's generated initializer is this run's output and
-        never a declaration owner; an installed package's initializer is.
+        never a declaration owner; other packages are read only through the
+        resources elected by this run's captured native project.
 
         Returns:
             The declared letters.
@@ -493,7 +504,7 @@ class FlextInfraUtilitiesLazyInitLetters:
             )
         init_path = package_dir / c.Infra.INIT_PY
         text = cls.lazy_init_text(run, init_path)
-        names: t.StrSequence = ()
+        names: Sequence[str] = ()
         generated = text is not None and text.startswith(c.Infra.AUTOGEN_HEADER)
         if text is not None and not (
             indexed

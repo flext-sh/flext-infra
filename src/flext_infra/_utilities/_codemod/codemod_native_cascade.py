@@ -17,20 +17,19 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, settings, t
-from flext_infra._utilities._codemod.codemod_rules import (
-    FlextInfraUtilitiesCodemodRules,
-)
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.protected_edit_linting import (
+from flext_infra import c, config, m, settings
+from flext_infra._utilities import (
+    FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesMiseBinary,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
 )
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
 
 
 class FlextInfraUtilitiesCodemodNativeCascade:
@@ -156,7 +155,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         )
 
     @staticmethod
-    def _preview_contents(preview: Path) -> t.MappingKV[Path, bytes]:
+    def _preview_contents(preview: Path) -> Mapping[Path, bytes]:
         """Read every Python source of the staged preview by relative path.
 
         Returns:
@@ -198,7 +197,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         project: Path,
         preview: Path,
         stage: m.Infra.ModStageConfig,
-        originals: t.MappingKV[Path, bytes],
+        originals: Mapping[Path, bytes],
     ) -> None:
         """Repair the selected Ruff codes on every source the cascade changed.
 
@@ -223,8 +222,8 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         cls,
         project: Path,
         plan: m.Infra.CodemodRulePlan,
-        sources: t.MappingKV[Path, bytes],
-    ) -> t.MappingKV[Path, bytes]:
+        sources: Mapping[Path, bytes],
+    ) -> Mapping[Path, bytes]:
         """Run every declared stage over a staged preview to its fixed point.
 
         ``sources`` are the project's authored Python sources (absolute path
@@ -245,7 +244,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         phases = config.Infra.tooling.mod.phases
         staged = [
             (stage, cls.codemod_native_stage(root, plan, stage))
-            if stage.kind is c.Infra.ModStageKind.NATIVE
+            if stage.kind == c.Infra.ModStageKind.NATIVE
             else (stage, None)
             for stage in phases.stages
         ]
@@ -261,7 +260,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         if not originals or all(
             ruleset is None
             for stage, ruleset in staged
-            if stage.kind is c.Infra.ModStageKind.NATIVE
+            if stage.kind == c.Infra.ModStageKind.NATIVE
         ):
             return {}
         binary = cls.codemod_tool_binary(c.Infra.SG)
@@ -278,7 +277,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
                 for stage, ruleset in staged:
                     if ruleset is not None:
                         cls._run_native_stage(preview, binary, ruleset)
-                    elif stage.kind is c.Infra.ModStageKind.RUFF:
+                    elif stage.kind == c.Infra.ModStageKind.RUFF:
                         cls._run_ruff_stage(root, preview, stage, originals)
                 after = cls._preview_contents(preview)
                 if after == before:

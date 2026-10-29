@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import MutableSequence
 
-from flext_infra import c, t
+from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesTransformerHeaderParser
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
 
 class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderParser):
@@ -282,10 +283,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             Ids of class-body annotations a model resolves at runtime.
 
         """
-        parents: MutableMapping[int, ast.AST] = {}
-        for parent in ast.walk(module):
-            for child in ast.iter_child_nodes(parent):
-                parents[id(child)] = parent
+        parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(module)
         runtime_ids: set[int] = set()
         for node in ast.walk(module):
             if not isinstance(node, ast.AnnAssign):
@@ -321,9 +319,9 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         runtime_ids = (
             FlextInfraUtilitiesTransformerHeader._runtime_model_annotation_ids(module)
         )
-        spans: list[t.Quad[int, int, int, int]] = []
+        spans: list[tuple[int, int, int, int]] = []
         for node in ast.walk(module):
-            annotations: t.MutableSequenceOf[ast.expr | None] = []
+            annotations: MutableSequence[ast.expr | None] = []
             if isinstance(node, ast.AnnAssign | ast.arg):
                 annotations.append(node.annotation)
             elif isinstance(node, c.Infra.AST_FUNCTION_TYPES):
@@ -384,4 +382,4 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         )
 
 
-__all__: t.MutableSequenceOf[str] = ["FlextInfraUtilitiesTransformerHeader"]
+__all__: MutableSequence[str] = ["FlextInfraUtilitiesTransformerHeader"]

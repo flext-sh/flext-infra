@@ -12,13 +12,13 @@ from typing import Annotated, Literal, Self
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsBeads:
+class FlextInfraModelsConfigBeads:
     """Beads projection models."""
 
-    class BeadsProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class BeadsProjectSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
 
         version: Annotated[
@@ -38,7 +38,7 @@ class FlextInfraConfigModelsBeads:
             m.Field(description="Repository-owned issue prefix"),
         ]
         ownership_command_prefix: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Declared public wrapper for ownership reads"),
         ] = ()
         ownership_command_cwd: Annotated[
@@ -46,7 +46,7 @@ class FlextInfraConfigModelsBeads:
             m.Field(description="Declared city/rig scope of ownership reads"),
         ] = None
         custom_issue_types: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Repository-owned custom types beyond the Gas City baseline"
@@ -70,7 +70,7 @@ class FlextInfraConfigModelsBeads:
                 raise ValueError(msg)
             return self
 
-    class BeadsConfigRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class BeadsConfigRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Field-only render input for the generated Beads ledger config."""
 
         issue_prefix: Annotated[
@@ -96,7 +96,7 @@ class FlextInfraConfigModelsBeads:
             ),
         ] = True
         custom_issue_types: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Union of project and required custom bead types"),
         ] = ()
         dolt_mode: Annotated[
@@ -116,7 +116,7 @@ class FlextInfraConfigModelsBeads:
             m.Field(description="From toolchain.beads.dolt_disable_event_flush"),
         ]
 
-    class BeadsMetadataRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class BeadsMetadataRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
 
         The marker carries portable storage and database identity plus the
@@ -149,4 +149,4 @@ class FlextInfraConfigModelsBeads:
         ] = None
 
 
-__all__: list[str] = ["FlextInfraConfigModelsBeads"]
+__all__: list[str] = ["FlextInfraModelsConfigBeads"]

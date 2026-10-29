@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import codegen, config
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraReleasePolicyProjection:
@@ -43,7 +43,7 @@ class TestsFlextInfraReleasePolicyProjection:
     @staticmethod
     def test_attached_policy_survives_a_detached_standalone_clone(
         tmp_path: Path,
-        line: t.Pair[int, int] | None,
+        line: tuple[int, int] | None,
     ) -> None:
         """The same staged member artifact works without its containing workspace."""
         if line is None:

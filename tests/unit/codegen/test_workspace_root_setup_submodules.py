@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -28,14 +28,14 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         tm.ok(u.Cli.process_succeeded(process.outcome))
         return process.stdout.strip()
 
-    def _git_state(self, repository: Path) -> t.Pair[str, str]:
+    def _git_state(self, repository: Path) -> tuple[str, str]:
         return (
             self._git_stdout(repository, "branch", "--show-current"),
             self._git_stdout(repository, "rev-parse", "HEAD"),
         )
 
     @staticmethod
-    def _run_setup(workspace: Path, env: t.StrDict) -> p.Cli.CommandOutput:
+    def _run_setup(workspace: Path, env: dict[str, str]) -> p.Cli.CommandOutput:
         return tm.ok(
             u.Cli.run_raw(
                 ["make", "_builtin_setup_submodules"],

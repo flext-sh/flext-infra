@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._pyproject.base import (
         FlextInfraUtilitiesPyprojectConformBase,
     )
+    from flext_infra._utilities._pyproject.conform import (
+        FlextInfraUtilitiesPyprojectConform,
+    )
     from flext_infra._utilities._pyproject.document import (
         FlextInfraUtilitiesPyprojectDocument,
     )
@@ -34,6 +37,7 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraUtilitiesPyprojectConform",
     "FlextInfraUtilitiesPyprojectConformBase",
     "FlextInfraUtilitiesPyprojectDocument",
     "FlextInfraUtilitiesPyprojectOverlay",
@@ -46,6 +50,7 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "FlextInfraUtilitiesPyprojectConform": ".conform",
         "FlextInfraUtilitiesPyprojectConformBase": ".base",
         "FlextInfraUtilitiesPyprojectDocument": ".document",
         "FlextInfraUtilitiesPyprojectOverlay": ".overlay",

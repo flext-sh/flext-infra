@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
 from flext_infra import m
 from flext_infra.deps import FlextInfraDependencyDetectionService
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraDepsDetectorInit:
@@ -45,7 +46,7 @@ class TestsFlextInfraDepsDetectorInit:
         [(), ("flext-a",), ("flext-a", "flext-b", "flext-c")],
     )
     def test_detect_command_discovers_its_complete_declared_scope(
-        tmp_path: Path, members: t.StrSequence
+        tmp_path: Path, members: Sequence[str]
     ) -> None:
         """Standalone and workspace detection discover every declared project."""
         workspace = u.Tests.create_docs_workspace(tmp_path, project_names=members)

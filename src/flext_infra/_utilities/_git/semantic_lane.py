@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticWorktreeMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticWorktree
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -20,8 +20,8 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraUtilitiesGitSemanticLaneMixin(
-    FlextInfraUtilitiesGitSemanticWorktreeMixin,
+class FlextInfraUtilitiesGitSemanticLane(
+    FlextInfraUtilitiesGitSemanticWorktree,
 ):
     """Own the lane every repository publication shares (release, propagation)."""
 
@@ -260,4 +260,4 @@ class FlextInfraUtilitiesGitSemanticLaneMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitSemanticLaneMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitSemanticLane"]

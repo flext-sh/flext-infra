@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.codegen import FlextInfraCodegenVersionFile
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,11 +37,11 @@ class TestsFlextInfraCodegenVersionFile:
     def _create_workspace(
         tmp_path: Path,
         project_name: str,
-    ) -> t.Triple[Path, Path, Path]:
+    ) -> tuple[Path, Path, Path]:
         """Create minimal workspace/project/package structure.
 
         Returns:
-            The resulting ``t.Triple[Path, Path, Path]``.
+            The resulting ``tuple[Path, Path, Path]``.
 
         """
         ws = tmp_path / "workspace"

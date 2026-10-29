@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra.services package.
+"""Services package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra.services._codegen.vscode import FlextInfraCodegenVscode
     from flext_infra.services.candidate_bootstrap import (
         FlextInfraCandidateBootstrapService,
     )
@@ -37,6 +38,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCliRouteService",
     "FlextInfraCodegenHandlers",
     "FlextInfraCodegenRoutes",
+    "FlextInfraCodegenVscode",
     "FlextInfraModHandlers",
     "FlextInfraRefactorRoutes",
     "FlextInfraValidationCommandRoutes",
@@ -54,6 +56,7 @@ install_lazy_exports(
         "FlextInfraCliRouteService": ".cli_routes",
         "FlextInfraCodegenHandlers": ".codegen",
         "FlextInfraCodegenRoutes": ".cli_routes_codegen",
+        "FlextInfraCodegenVscode": "._codegen.vscode",
         "FlextInfraModHandlers": ".mod",
         "FlextInfraRefactorRoutes": ".cli_routes_refactor",
         "FlextInfraValidationCommandRoutes": ".cli_routes_validate_commands",

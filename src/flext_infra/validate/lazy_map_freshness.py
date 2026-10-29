@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, m, r, u
@@ -24,7 +25,7 @@ from flext_infra.codegen import FlextInfraCodegenLazyInit
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraValidateLazyMapFreshness(FlextInfraProjectSelectionServiceBase[bool]):
@@ -51,7 +52,7 @@ class FlextInfraValidateLazyMapFreshness(FlextInfraProjectSelectionServiceBase[b
             for plan in planned.value
             if u.Infra.codegen_file_requires_effect(plan)
         )
-        violations: t.MutableSequenceOf[str] = [
+        violations: MutableSequence[str] = [
             f"stale lazy map: {path}" for path in modified
         ]
         passed = not violations
@@ -79,4 +80,4 @@ class FlextInfraValidateLazyMapFreshness(FlextInfraProjectSelectionServiceBase[b
         return self._report_execution(self.build_report(self.repository_root))
 
 
-__all__: t.StrSequence = ("FlextInfraValidateLazyMapFreshness",)
+__all__: Sequence[str] = ("FlextInfraValidateLazyMapFreshness",)

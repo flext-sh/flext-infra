@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests import m, t
+from tests import m
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,7 +29,7 @@ class TestsFlextInfraUtilitiesPromotedMixin:
         *,
         path: Path,
         mutates: bool = True,
-        params: t.VariadicTuple[m.Infra.PromotedParam] = (),
+        params: tuple[m.Infra.PromotedParam, ...] = (),
         verb: str = "probe",
         what: str = "all",
     ) -> m.Infra.PromotedCommand:

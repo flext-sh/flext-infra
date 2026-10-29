@@ -7,13 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import c, m, p, r, t, u, workspace as workspace_services
+from flext_infra import c, m, p, r, settings, t, u, workspace as workspace_services
+from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
-from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
 
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
@@ -125,7 +126,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         request: p.Infra.CodegenGenerateRequest,
         *,
         after_publication: tuple[
-            Callable[[t.VariadicTuple[Path]], p.Result[bool]], ...
+            Callable[[tuple[Path, ...]], p.Result[bool]], ...
         ] = (),
     ) -> p.Result[p.Infra.CodegenResult]:
         """Plan the request's projections and publish them once.
@@ -139,7 +140,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         """
         u.Cli.info(
             f"operation=generate root={request.root} scope={request.scope} "
-            f"surface={request.what} pid={os.getpid()}"
+            # Bind diagnostics to the selected process settings, never an old report.
+            f"surface={request.what} pid={os.getpid()} "
+            f"profile={settings.Infra.profile} "
+            f"profile_output={settings.Infra.profile_output}"
         )
         root = request.root.expanduser().resolve()
         return (
@@ -221,10 +225,22 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The plan, or its planning failure.
 
         """
+        started = time.monotonic()
+        u.Cli.info(f"stage=planning state=start root={request.root}")
         planned = (
             self._plan_single_surface(request)
             if request.what in c.Infra.FILE_ONLY_SURFACES
             else self.plan(request)
+        )
+        failed = planned.failure or (
+            planned.success
+            and (bool(planned.value.issues) or planned.value.exception is not None)
+        )
+        u.Cli.info(
+            f"stage=planning state=end root={request.root} "
+            f"elapsed={time.monotonic() - started:.3f}s "
+            f"files={len(planned.value.files) if planned.success else 0} "
+            f"failed={failed}"
         )
         if (
             planned.success
@@ -243,9 +259,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
         plan: m.Infra.CodegenPlan,
-        after_publication: tuple[
-            Callable[[t.VariadicTuple[Path]], p.Result[bool]], ...
-        ],
+        after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
     ) -> p.Result[p.Infra.CodegenResult]:
         """Publish the plan and its docs once, then run the follow-ups.
 
@@ -263,11 +277,31 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             return result_type.fail(
                 "conformance requires facade-wired file publication"
             )
-        published = self._admitted_plans(request, plan).flat_map(
-            lambda files: ports.file_publisher.publish_codegen_plans(root, files)
+        started = time.monotonic()
+        u.Cli.info(f"stage=admission state=start root={root} files={len(plan.files)}")
+        admitted = self._admitted_plans(request, plan)
+        u.Cli.info(
+            f"stage=admission state=end root={root} "
+            f"elapsed={time.monotonic() - started:.3f}s failed={admitted.failure}"
+        )
+        if admitted.failure:
+            return result_type.from_failure(admitted)
+        started = time.monotonic()
+        u.Cli.info(
+            f"stage=publication state=start root={root} files={len(admitted.value)}"
+        )
+        published = ports.file_publisher.publish_codegen_plans(root, admitted.value)
+        u.Cli.info(
+            f"stage=publication state=end root={root} "
+            f"elapsed={time.monotonic() - started:.3f}s "
+            f"written={len(published.value) if published.success else 0} "
+            f"failed={published.failure}"
         )
         if published.failure:
             return result_type.from_failure(published)
+        snapshot = self.state.snapshot
+        if snapshot is not None and snapshot.workspace_root == root:
+            u.Infra.workspace_snapshot_rebase(snapshot, published.value)
         for operation in after_publication:
             completed = operation(published.value)
             if completed.failure:
@@ -282,7 +316,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         self,
         request: p.Infra.CodegenGenerateRequest,
         plan: m.Infra.CodegenPlan,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Validate the normalized dependency cohort before accepting any effects.
 
         The native preview materializes original file declarations, including
@@ -293,7 +327,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The normalized plans, or the original planning or admission failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         if plan.issues or plan.exception is not None:
             return result_type.fail(
                 "\n".join(issue.formatted for issue in plan.issues)
@@ -308,17 +342,28 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         docs = self._docs_plans(request, plan)
         if docs.failure:
             return result_type.from_failure(docs)
-        files = (*plan.files, *docs.value)
+        composed = result_type.create_from_callable(
+            lambda: u.Infra.codegen_compose_file_plans(docs.value)
+        )
+        if composed.failure:
+            return result_type.from_failure(composed)
+        files = composed.value
         changes = ports.file_publisher.normalized_codegen_changes(files)
         if changes.failure:
             return result_type.from_failure(changes)
         normalized = {change.path: change for change in changes.value}
         files = tuple(
-            file.model_copy(
-                update={
-                    "desired_content": normalized[file.path].desired_content,
-                    "desired_mode": normalized[file.path].desired_mode,
-                }
+            m.Infra.CodegenFilePlan(
+                project=file.project,
+                path=file.path,
+                before=file.before,
+                desired_content=normalized[file.path].desired_content,
+                desired_mode=normalized[file.path].desired_mode,
+                owner=file.owner,
+                policy=file.policy,
+                tracking=file.tracking,
+                index_before=file.index_before,
+                tracking_dependencies=file.tracking_dependencies,
             )
             for file in files
         )
@@ -327,16 +372,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     @staticmethod
     def _validated_source_plans(
         request: p.Infra.CodegenGenerateRequest,
-        files: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        files: tuple[m.Infra.CodegenFilePlan, ...],
         ports: p.Infra.CodegenConformPorts,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Admit the normalized candidate through its injected runtime validator.
 
         Returns:
             The unchanged normalized plans, or the original validation failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CodegenFilePlan]]
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         if not any(file.path.suffix == c.Infra.EXT_PYTHON for file in files):
             return result_type.ok(files)
         root = request.root.expanduser().resolve()
@@ -374,11 +419,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         self,
         request: p.Infra.CodegenGenerateRequest,
         plan: m.Infra.CodegenPlan,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
-        """Plan the documentation the complete surface owns.
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Compose managed plans with their derived presentation and documentation.
 
         Returns:
-            The documentation file plans, empty outside the complete surface.
+            The complete candidate, retaining strict independent artifact admission.
 
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
@@ -388,7 +433,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if repository.path == Path()
         )
         if request.what is not c.Infra.CodegenConformSurface.ALL or not owned:
-            return result_type.ok(())
+            return result_type.ok(tuple(plan.files))
         ports = self.state.ports
         if ports is None:
             return result_type.fail(
@@ -400,7 +445,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             projects=owned,
             include_root=True,
         )
-        return planner.prepare_bundle().flat_map(planner.plan_files)
+        bundle = planner.prepare_bundle(declared_files=tuple(plan.files))
+        if bundle.failure:
+            return result_type.from_failure(bundle)
+        rendered = planner.plan_files(bundle.value)
+        if rendered.failure:
+            return result_type.from_failure(rendered)
+        return result_type.create_from_callable(
+            lambda: u.Infra.codegen_compose_file_plans((
+                *u.Infra.codegen_compose_file_plans(
+                    (*plan.files, *bundle.value.metadata_files), ordered=True
+                ),
+                *rendered.value,
+            ))
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenConformExecute"]

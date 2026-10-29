@@ -14,7 +14,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, tm, u
 
 
 class UtilityFacadeOwnerPublication:
@@ -205,7 +205,7 @@ class UtilityFacadeOwnerPublication:
         self,
         tmp_path: Path,
         family: Literal["c", "t", "p", "m", "u"],
-        publication: t.Pair[str, str | None],
+        publication: tuple[str, str | None],
         *,
         nested: bool,
     ) -> None:

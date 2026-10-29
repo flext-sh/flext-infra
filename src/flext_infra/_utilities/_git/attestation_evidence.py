@@ -6,20 +6,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesBase
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
+    FlextInfraUtilitiesGitSemanticIdentity,
 )
 
 
-class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo):
+class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     """Admit original receipts and producer reports before a gate is attested."""
 
     @classmethod
@@ -162,14 +163,14 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         evidence: m.Infra.GateCommandEvidence,
         *,
         plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
-    ) -> p.Result[t.VariadicTuple[m.Infra.CheckProjectTarget]]:
+    ) -> p.Result[tuple[m.Infra.CheckProjectTarget, ...]]:
         """Require complete unfiltered coverage of the current native gate plan.
 
         Returns:
             Accepted coverage or the first original report or topology failure.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.CheckProjectTarget]]
+        result_type = r[tuple[m.Infra.CheckProjectTarget, ...]]
         refuse = f"tests run only on a green check: {receipt.parent.name} "
         source = cls._report_contract_bytes(
             repo_root, evidence.reports, c.Infra.GateEvidenceReportKind.CHECK_SARIF
@@ -213,7 +214,7 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         repo_root: Path,
         receipt: Path,
         evidence: m.Infra.GateCommandEvidence,
-        targets: t.VariadicTuple[m.Infra.CheckProjectTarget],
+        targets: tuple[m.Infra.CheckProjectTarget, ...],
     ) -> p.Result[Path]:
         """Require original HEAD/status and freshness for every covered repository.
 
@@ -238,7 +239,7 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
                     f"{refuse}has no original source identity for {target.path}; "
                     "rerun make check",
                 )
-            observed = FlextInfraUtilitiesGitSemanticIdentityMixin.exact_worktree_root(
+            observed = FlextInfraUtilitiesGitSemanticIdentity.exact_worktree_root(
                 target.path
             )
             if observed.failure:
@@ -323,8 +324,8 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         repo_root: Path,
         request: m.Infra.GateAttestationCreateRequest
         | m.Infra.GateAttestationVerifyRequest,
-    ) -> p.Result[t.Pair[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]:
-        result_type = r[t.Pair[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]
+    ) -> p.Result[tuple[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]:
+        result_type = r[tuple[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]
         path = (
             request.receipt
             if request.receipt.is_absolute()
@@ -542,7 +543,7 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
     def _pytest_report_outcome(
         cls,
         repo_root: Path,
-        reports: t.SequenceOf[m.Infra.GateReportEvidence],
+        reports: Sequence[m.Infra.GateReportEvidence],
         expected_process: m.Cli.ProcessOutcome,
     ) -> p.Result[c.Infra.ToolOutcome]:
         result_type = r[c.Infra.ToolOutcome]
@@ -607,7 +608,7 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
     def _report_contract_bytes(
         cls,
         repo_root: Path,
-        reports: t.SequenceOf[m.Infra.GateReportEvidence],
+        reports: Sequence[m.Infra.GateReportEvidence],
         kind: c.Infra.GateEvidenceReportKind,
     ) -> p.Result[bytes]:
         selected = tuple(report for report in reports if report.kind == kind)
@@ -640,7 +641,7 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
     def _verified_report_evidence(
         cls,
         repo_root: Path,
-        reports: t.SequenceOf[m.Infra.GateReportEvidence],
+        reports: Sequence[m.Infra.GateReportEvidence],
     ) -> p.Result[bool]:
         for report in reports:
             original = cls._report_bytes(repo_root, report)
@@ -649,4 +650,4 @@ class FlextInfraUtilitiesGitAttestationEvidenceMixin(FlextInfraUtilitiesGitRepo)
         return r[bool].ok(value=True)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitAttestationEvidenceMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitAttestationEvidence"]

@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import hashlib
 import keyword
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from types import MappingProxyType
 from typing import Final
@@ -19,9 +21,7 @@ from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope.move_publication import (
     FlextInfraUtilitiesRopeMovePublication,
 )
-from flext_infra._utilities._rope.pymodule import (
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
-)
+from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities._rope.rope_module_patch import (
@@ -32,7 +32,7 @@ from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticNestingTypes,
+    FlextInfraUtilitiesTypesSemanticNesting,
 )
 
 
@@ -48,7 +48,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         def __init__(
             self,
-            sources: t.MappingKV[Path, str],
+            sources: Mapping[Path, str],
             states: tuple[m.Cli.AtomicFileState, ...],
             *,
             declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
@@ -61,9 +61,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 plan.path: plan for plan in declared_files
             })
 
-        def authenticate(
-            self, source: Path
-        ) -> t.MappingKV[Path, m.Cli.AtomicFileState]:
+        def authenticate(self, source: Path) -> Mapping[Path, m.Cli.AtomicFileState]:
             """Require candidate text and witnesses to describe the same source view.
 
             Returns:
@@ -75,8 +73,23 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             """
             before = self.states.get(source)
             if before is None or source not in self.sources:
+                resolved = source.resolve()
+                mismatched = sum(
+                    1 for path in self.sources if path.resolve() not in self.states
+                )
                 msg = f"module move source is not among its inputs: {source}"
-                raise ValueError(msg)
+                raise ValueError(
+                    msg,
+                    {
+                        "sources": len(self.sources),
+                        "states": len(self.states),
+                        "declared": len(self.declared),
+                        "resolved": str(resolved),
+                        "resolved_in_sources": resolved in self.sources,
+                        "resolved_in_states": resolved in self.states,
+                        "sources_outside_states": mismatched,
+                    },
+                ) from None
             if source not in self.declared and (
                 before.content is None or before.mode is None
             ):
@@ -108,10 +121,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             self,
             target_plan: m.Infra.CodegenFilePlan,
             source: Path,
-            changed: t.MappingKV[Path, str],
+            changed: Mapping[Path, str],
             *,
             resource_move: bool = False,
-        ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
+        ) -> tuple[m.Infra.CodegenFilePlan, ...]:
             """Build create/retire/consumer effects from the authenticated witnesses.
 
             Returns:
@@ -181,7 +194,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         destination_directory: Path | None = None,
         *,
         inputs: NativeSourceView
-        | t.Pair[t.MappingKV[Path, str], tuple[m.Cli.AtomicFileState, ...]],
+        | tuple[Mapping[Path, str], tuple[m.Cli.AtomicFileState, ...]],
         destination_file: Path | None = None,
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Plan a module relocation without creating its destination.
@@ -300,7 +313,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         project: p.Infra.RopeProject,
         root: Path,
-        paths: t.Pair[Path, Path],
+        paths: tuple[Path, Path],
         view: NativeSourceView,
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Compose native resource changes and publication plans.
@@ -357,8 +370,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_resource_relocation(
         cls,
         project: p.Infra.RopeProject,
-        paths: t.Pair[Path, Path],
-        candidate: t.MutableMappingKV[Path, str],
+        paths: tuple[Path, Path],
+        candidate: MutableMapping[Path, str],
         virtual: list[m.Infra.CodegenFilePlan],
         mode: int,
     ) -> Path:
@@ -435,7 +448,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_quoted_sources(
         cls,
         project: p.Infra.RopeProject,
-        candidate: t.MutableMappingKV[Path, str],
+        candidate: MutableMapping[Path, str],
         source: Path,
         target: Path,
         *,
@@ -448,14 +461,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         """
         root = Path(project.root.real_path).resolve()
-        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        expected = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, cls._resource(project, root, source)
         )
         resolved = project.find_module(expected.get_name())
         if resolved is None or Path(resolved.real_path).resolve() != source:
             msg = f"native module identity does not select its source file: {source}"
             raise ValueError(msg)
-        destination = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        destination = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, cls._resource(project, root, target)
         ).get_name()
         resolved = project.find_module(destination)
@@ -464,30 +477,35 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
 
-        checks: t.DictKV[Path, t.DictKV[tuple[int, str], int]] = {}
+        checks: dict[Path, dict[tuple[t.StrTuple, str], int]] = {}
         composed = runtime.snapshot_project(
             project, candidate, declared_files=declared_files
         )
         try:
-            destination_module = (
-                FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                    composed, cls._resource(composed, root, target)
-                )
+            destination_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                composed, cls._resource(composed, root, target)
             )
 
             for path, original_text in tuple(candidate.items()):
-                consumer_text = original_text
+                consumer_text = cls._divergence_diagnostic(project, path, original_text)
                 if path.name == c.Infra.INIT_PY and path != source:
-                    consumer = (
-                        FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-                            composed, cls._resource(composed, root, path)
-                        )
+                    consumer = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                        composed, cls._resource(composed, root, path)
                     )
                     package = consumer.get_name().removesuffix(".__init__")
                     consumer_text = cls.rewrite_module_move_publications(
                         original_text,
                         package=package,
                         moves={expected.get_name(): destination},
+                        exports={
+                            destination: frozenset(
+                                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                                    destination_module
+                                )
+                            )
+                        }
+                        if target in candidate
+                        else {},
                     )
                     candidate[path] = consumer_text
                 # A quoted prefix resolves to the moved module object only through
@@ -513,7 +531,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             project, candidate, declared_files=declared_files
         )
         try:
-            relocated = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            relocated = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 verified, cls._resource(verified, root, target)
             )
 
@@ -525,29 +543,70 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             verified.close()
 
     @staticmethod
-    def _module_scopes(module: p.Infra.RopeParsedModule) -> list[p.Infra.RopeScope]:
-        """Return native lexical scopes in stable breadth-first order.
+    def _module_scopes(
+        module: p.Infra.RopeParsedModule,
+    ) -> dict[t.StrTuple, p.Infra.RopeScope]:
+        """Map native lexical declarations independently of synthetic scope caches.
 
         Returns:
-            The module scope followed by its lexical children.
+            Native scopes keyed by declaration ancestry and sibling identity.
 
         """
-        ordered: list[p.Infra.RopeScope] = [module.get_scope()]
+        scopes: dict[t.StrTuple, p.Infra.RopeScope] = {(): module.get_scope()}
+        pending: list[t.StrTuple] = [()]
         index = 0
-        while index < len(ordered):
-            ordered.extend(ordered[index].get_scopes())
+        while index < len(pending):
+            parent = pending[index]
+            occurrences: dict[str, int] = {}
+            for scope in scopes[parent].get_scopes():
+                node = scope.pyobject.get_ast()
+                # Rope caches expression comprehensions alongside declarations.
+                if isinstance(
+                    node, ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp
+                ):
+                    continue
+                declaration = (
+                    f"{scope.get_kind()}:{type(node).__name__}:"
+                    f"{scope.pyobject.get_name()}"
+                )
+                occurrence = occurrences.get(declaration, 0)
+                occurrences[declaration] = occurrence + 1
+                identity = (*parent, f"{declaration}:{occurrence}")
+                scopes[identity] = scope
+                pending.append(identity)
             index += 1
-        return ordered
+        return scopes
+
+    @staticmethod
+    def _divergence_diagnostic(
+        project: p.Infra.RopeProject, path: Path, candidate_text: str
+    ) -> str:
+        """Report candidate-versus-physical drift before rewriting one consumer.
+
+        Returns:
+            The candidate text, unchanged; the diagnostic is observational only.
+
+        """
+        if project.source_text(path) == candidate_text:
+            return candidate_text
+        u.Cli.info(
+            "quoted-move candidate digest divergence "
+            f"path={path} "
+            f"candidate={hashlib.sha256(candidate_text.encode()).hexdigest()[:12]} "
+            f"physical="
+            f"{hashlib.sha256(project.source_text(path).encode()).hexdigest()[:12]}"
+        )
+        return candidate_text
 
     @classmethod
     def _module_quoted_consumer(
         cls,
-        projects: t.Pair[p.Infra.RopeProject, p.Infra.RopeProject],
-        paths: t.Triple[Path, Path, Path],
+        projects: tuple[p.Infra.RopeProject, p.Infra.RopeProject],
+        paths: tuple[Path, Path, Path],
         text: str,
-        identities: t.Pair[int, int],
+        identities: tuple[int, int],
         destination: str,
-    ) -> t.Pair[str, t.DictKV[tuple[int, str], int]]:
+    ) -> tuple[str, dict[tuple[t.StrTuple, str], int]]:
         """Rewrite one consumer with callback state owned by this invocation.
 
         Returns:
@@ -558,34 +617,28 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source, target, path = paths
         root = Path(project.root.real_path).resolve()
         resource = cls._resource(composed, root, path)
-        original = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        original = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, cls._resource(project, root, source if path == target else path)
         )
-        module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             composed, resource
-        )
-        cls._validate_module_quoted_scopes(
-            cls._module_scopes(original),
-            cls._module_scopes(module),
-            paths,
-            identities[0],
         )
         rewritten, required = cls._module_quoted_rewrite(
             composed, (original, module), text, paths, (identities, destination)
         )
         return cls._module_quoted_exports(
-            original, text, rewritten, paths, identities[0]
+            original, rewritten, paths, identities[0]
         ), required
 
     @classmethod
     def _module_quoted_rewrite(
         cls,
         composed: p.Infra.RopeProject,
-        modules: t.Pair[p.Infra.RopeParsedModule, p.Infra.RopeParsedModule],
+        modules: tuple[p.Infra.RopeParsedModule, p.Infra.RopeParsedModule],
         text: str,
-        paths: t.Triple[Path, Path, Path],
-        destination_info: t.Pair[t.Pair[int, int], str],
-    ) -> t.Pair[str, t.DictKV[tuple[int, str], int]]:
+        paths: tuple[Path, Path, Path],
+        destination_info: tuple[tuple[int, int], str],
+    ) -> tuple[str, dict[tuple[t.StrTuple, str], int]]:
         """Apply one consumer's quoted edits with invocation-local callback state.
 
         Returns:
@@ -600,25 +653,34 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         resource = cls._resource(
             composed, Path(composed.root.real_path).resolve(), paths[2]
         )
-        before_scopes = cls._module_scopes(modules[0])
-        positions = {
-            id(scope): index for index, scope in enumerate(cls._module_scopes(module))
-        }
-        required: t.DictKV[tuple[int, str], int] = {}
+        # The before state is the consumer's pre-move text parsed in the same
+        # composed basis as the after state: staged sibling plans (for example a
+        # sanctioned class rename from another pipeline stage) are present on
+        # both sides, so this comparison isolates only this move's own effects.
+        before_module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            composed, text, resource=resource
+        )
+        before_scopes = cls._module_scopes(before_module)
+        current_scopes = cls._module_scopes(module)
+        cls._validate_module_quoted_scopes(
+            before_scopes, current_scopes, paths, identities[0]
+        )
+        positions = {id(scope): key for key, scope in current_scopes.items()}
+        required: dict[tuple[t.StrTuple, str], int] = {}
         binding: str | None = None
 
         def replacement(scope: p.Infra.RopeScope, expression: str) -> str | None:
             nonlocal binding
-            index = positions[id(scope)]
+            identity = positions[id(scope)]
             selected, elected, count = cls._module_quoted_reference(
                 composed,
                 module,
-                (before_scopes[index], scope),
+                (before_scopes[identity], scope),
                 expression,
                 ((paths[0], paths[1]), identities, destination),
             )
             if count:
-                required[index, selected if selected is not None else expression] = (
+                required[identity, selected if selected is not None else expression] = (
                     count
                 )
             if elected is not None:
@@ -632,7 +694,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             return selected
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        rewritten = FlextInfraUtilitiesSemanticNestingTypes.rewrite_quoted_types(
+        rewritten = FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
             composed, resource, text, replacement
         )
         if binding is not None:
@@ -651,9 +713,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
     @staticmethod
     def _validate_module_quoted_scopes(
-        before: t.SequenceOf[p.Infra.RopeScope],
-        current: t.SequenceOf[p.Infra.RopeScope],
-        paths: t.Triple[Path, Path, Path],
+        before: Mapping[t.StrTuple, p.Infra.RopeScope],
+        current: Mapping[t.StrTuple, p.Infra.RopeScope],
+        paths: tuple[Path, Path, Path],
         expected: int,
     ) -> None:
         """Require unchanged lexical declarations and reject name capture.
@@ -663,20 +725,30 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         """
         source, target, path = paths
-        old_declarations = [
-            (scope.get_kind(), scope.pyobject.get_name() if index else "")
-            for index, scope in enumerate(before)
-        ]
-        declarations = [
-            (scope.get_kind(), scope.pyobject.get_name() if index else "")
-            for index, scope in enumerate(current)
-        ]
+        old_declarations = tuple(before)
+        declarations = tuple(current)
         if old_declarations != declarations:
-            msg = f"module relocation changed native annotation scopes: {path}"
+            msg = (
+                f"module relocation changed native annotation scopes: {path}; "
+                f"native scope counts: original={len(old_declarations)}, "
+                f"current={len(declarations)}; source={source}; target={target}"
+            )
+            for index in range(max(len(old_declarations), len(declarations))):
+                original = (
+                    old_declarations[index] if index < len(old_declarations) else None
+                )
+                relocated = declarations[index] if index < len(declarations) else None
+                if original != relocated:
+                    msg += (
+                        f"; first differing native scope: index={index}; "
+                        f"original={str(original)[:160]!r}; "
+                        f"current={str(relocated)[:160]!r}"
+                    )
+                    break
             raise ValueError(msg)
         if source.stem == target.stem:
             return
-        for scope in before:
+        for scope in before.values():
             previous, occupied = scope.lookup(source.stem), scope.lookup(target.stem)
             if (
                 previous is not None
@@ -695,14 +767,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopeParsedModule,
-        scopes: t.Pair[p.Infra.RopeScope, p.Infra.RopeScope],
+        scopes: tuple[p.Infra.RopeScope, p.Infra.RopeScope],
         expression: str,
-        destination_info: t.Triple[
-            t.Pair[Path, Path],
-            t.Pair[int, int],
+        destination_info: tuple[
+            tuple[Path, Path],
+            tuple[int, int],
             str,
         ],
-    ) -> t.Triple[str | None, str | None, int]:
+    ) -> tuple[str | None, str | None, int]:
         """Resolve a quoted prefix by original and destination native identity.
 
         Returns:
@@ -711,7 +783,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         """
         paths, identities, destination = destination_info
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesSemanticNestingTypes
+        types = FlextInfraUtilitiesTypesSemanticNesting
         parts = expression.split(".")
         for count in range(1, len(parts) + 1):
             prefix = ".".join(parts[:count])
@@ -786,9 +858,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @staticmethod
     def _module_quoted_exports(
         original: p.Infra.RopeParsedModule,
-        text: str,
         rewritten: str,
-        paths: t.Triple[Path, Path, Path],
+        paths: tuple[Path, Path, Path],
         expected: int,
     ) -> str:
         """Preserve explicit exports of the relocated native module.
@@ -796,9 +867,16 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         Returns:
             The text with an authenticated exported module name updated.
 
+        Raises:
+            TypeError: If Quoted module exports require their original native source
+                module.
+
         """
         source, target, _path = paths
-        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(text)
+        if not FlextInfraUtilitiesRopeRuntime.source_module(original):
+            msg = "Quoted module exports require their original native source module"
+            raise TypeError(msg)
+        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(original)
         published = original.get_scope().lookup(source.stem)
         if (
             source.stem != target.stem
@@ -820,7 +898,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         project: p.Infra.RopeProject,
         path: Path,
         text: str,
-        required: t.DictKV[tuple[int, str], int],
+        required: dict[tuple[t.StrTuple, str], int],
         relocated: int,
     ) -> None:
         """Verify every original quoted position in a single consumer invocation.
@@ -831,13 +909,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         """
         root = Path(project.root.real_path).resolve()
         resource = cls._resource(project, root, path)
-        module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
-            project, resource
-        )
+        module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(project, resource)
         positions = {
-            id(scope): index for index, scope in enumerate(cls._module_scopes(module))
+            id(scope): key for key, scope in cls._module_scopes(module).items()
         }
-        seen: set[tuple[int, str]] = set()
+        seen: set[tuple[t.StrTuple, str]] = set()
 
         def validate(scope: p.Infra.RopeScope, expression: str) -> None:
             key = positions[id(scope)], expression
@@ -855,7 +931,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 raise ValueError(msg)
             seen.add(key)
 
-        FlextInfraUtilitiesSemanticNestingTypes.quoted_type_edits(
+        FlextInfraUtilitiesTypesSemanticNesting.quoted_type_edits(
             project, resource, text, validate
         )
         if seen != set(required):
@@ -865,7 +941,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @staticmethod
     def _module_resource_changes(
         changes: p.Infra.RopeChangeSet,
-        candidate: t.MutableMappingKV[Path, str],
+        candidate: MutableMapping[Path, str],
         source: Path,
         target: Path,
     ) -> None:
@@ -909,13 +985,13 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         rope_project: p.Infra.RopeProject,
         source: Path,
         target: Path,
-        sources: t.MappingKV[Path, str],
-        states: t.MappingKV[Path, m.Cli.AtomicFileState],
+        sources: Mapping[Path, str],
+        states: Mapping[Path, m.Cli.AtomicFileState],
     ) -> tuple[
         m.Infra.ClassMoveRequest,
         m.Infra.CodegenFilePlan,
-        t.DictKV[Path, str],
-        t.VariadicTuple[m.Infra.CodegenFilePlan],
+        dict[Path, str],
+        tuple[m.Infra.CodegenFilePlan, ...],
         str,
     ]:
         canonical, source_module_name, reexports = cls._canonical_module_metadata(
@@ -968,10 +1044,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         request: m.Infra.ClassMoveRequest,
         source_module_name: str,
-        sources: t.MappingKV[Path, str],
-        proposed: t.MappingKV[Path, str],
-        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> t.DictKV[Path, str]:
+        sources: Mapping[Path, str],
+        proposed: Mapping[Path, str],
+        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> dict[Path, str]:
         changed = cls._module_reference_changes(request, sources, proposed, virtual)
         candidate = dict(proposed)
         candidate.update(changed)
@@ -995,15 +1071,15 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         rope_project: p.Infra.RopeProject,
         source: Path,
-        sources: t.MappingKV[Path, str],
-    ) -> t.Triple[str, str, t.VariadicTuple[str]]:
+        sources: Mapping[Path, str],
+    ) -> tuple[str, str, tuple[str, ...]]:
         root = Path(rope_project.root.real_path).resolve()
         original = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             rope_project, sources
         )
         try:
             source_resource = cls._resource(original, root, source)
-            source_module = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            source_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 original, source_resource
             )
             source_module_name = source_module.get_name()
@@ -1040,10 +1116,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_reexport_sources(
         cls,
         request: m.Infra.ClassMoveRequest,
-        proposed: t.MutableMappingKV[Path, str],
-        sources: t.MappingKV[Path, str],
-        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
-        reexports: t.VariadicTuple[str],
+        proposed: MutableMapping[Path, str],
+        sources: Mapping[Path, str],
+        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+        reexports: tuple[str, ...],
     ) -> None:
         root = Path(request.rope_project.root.real_path).resolve()
         virtual_paths = {plan.path for plan in virtual}
@@ -1054,7 +1130,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 declared_files=virtual,
             )
             try:
-                destination = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+                destination = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                     package_plan,
                     cls._resource(
                         package_plan, root, request.target_file.parent / c.Infra.INIT_PY
@@ -1083,10 +1159,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_reference_changes(
         cls,
         request: m.Infra.ClassMoveRequest,
-        sources: t.MappingKV[Path, str],
-        proposed: t.MappingKV[Path, str],
-        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
-    ) -> t.DictKV[Path, str]:
+        sources: Mapping[Path, str],
+        proposed: Mapping[Path, str],
+        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> dict[Path, str]:
         planned = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             request.rope_project,
             proposed,
@@ -1115,8 +1191,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         request: m.Infra.ClassMoveRequest,
         source_module_name: str,
-        candidate: t.MappingKV[Path, str],
-        virtual: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        candidate: Mapping[Path, str],
+        virtual: tuple[m.Infra.CodegenFilePlan, ...],
     ) -> str | None:
         root = Path(request.rope_project.root.real_path).resolve()
         metadata_project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
@@ -1139,7 +1215,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _module_reexport_packages(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         source: p.Infra.RopeFile,
         name: str,
     ) -> tuple[str, ...]:
@@ -1150,14 +1226,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         """
         root = Path(project.root.real_path).resolve()
-        expected = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+        expected = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
             project, source
         ).get_attribute(name)
         owners: list[str] = []
         for path in sorted(sources):
             if path.name != c.Infra.INIT_PY:
                 continue
-            module_name = FlextInfraUtilitiesRopeCorePyModuleMixin.resolve_pymodule(
+            module_name = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 project,
                 cls._resource(project, root, path),
             ).get_name()
@@ -1350,12 +1426,12 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         cls,
         request: m.Infra.ClassMoveRequest,
         *,
-        sources: t.MappingKV[Path, str],
-    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
+        sources: Mapping[Path, str],
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Preview one identity-preserving move inside a closed source inventory.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.SemanticMigrationEdit]``.
+            The resulting ``tuple[m.Infra.SemanticMigrationEdit, ...]``.
 
         Raises:
             TypeError: If class move planning produced a non-content effect.
@@ -1409,11 +1485,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     def _class_mover(
         cls,
         request: m.Infra.ClassMoveRequest,
-    ) -> t.Pair[Path, p.Infra.RopeMoveGlobal]:
+    ) -> tuple[Path, p.Infra.RopeMoveGlobal]:
         """Resolve both execution and planning from the exact original declaration.
 
         Returns:
-            The resulting ``t.Pair[Path, p.Infra.RopeMoveGlobal]``.
+            The resulting ``tuple[Path, p.Infra.RopeMoveGlobal]``.
 
         Raises:
             FileNotFoundError: If ``not source_file.is_file()``.
@@ -1430,12 +1506,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             raise FileNotFoundError(source_file)
         source_resource = cls._resource(request.rope_project, root, source_file)
         source = source_resource.read()
-        offset = (
-            FlextInfraUtilitiesRopeCorePyModuleMixin.find_identifier_offset_in_lines(
-                source.splitlines(keepends=True),
-                line=request.line,
-                symbol=request.class_name,
-            )
+        offset = FlextInfraUtilitiesRopeCorePyModule.find_identifier_offset_in_lines(
+            source.splitlines(keepends=True),
+            line=request.line,
+            symbol=request.class_name,
         )
         if offset is None:
             msg = f"class {request.class_name} was not found at line {request.line}"

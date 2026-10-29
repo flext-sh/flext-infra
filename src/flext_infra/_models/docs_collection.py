@@ -12,7 +12,7 @@ from typing import Annotated, Literal, Self
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
+from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
 
 
 class FlextInfraModelsDocsCollection:
@@ -87,7 +87,7 @@ class FlextInfraModelsDocsCollection:
         def _tuple_from_list(
             cls,
             value: t.JsonPayload,
-        ) -> t.JsonPayload | t.VariadicTuple[t.JsonValue]:
+        ) -> t.JsonPayload | tuple[t.JsonValue, ...]:
             """Convert lists from the canonical validation producer domain.
 
             Returns:
@@ -129,7 +129,7 @@ class FlextInfraModelsDocsCollection:
         def _tuple_from_list(
             cls,
             value: t.JsonPayload,
-        ) -> t.JsonPayload | t.VariadicTuple[t.JsonValue]:
+        ) -> t.JsonPayload | tuple[t.JsonValue, ...]:
             """Preserve native models and paths while converting source lists.
 
             Returns:
@@ -237,7 +237,7 @@ class FlextInfraModelsDocsCollection:
     class PlanCollectionBundle(m.ArbitraryTypesModel):
         """Read-only planning result consumed by the existing publisher."""
 
-        files: tuple[FlextInfraConfigModelsArtifact.CodegenFilePlan, ...] = m.Field(
+        files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = m.Field(
             description="Effects published through the shared publisher"
         )
         prunable_directories: tuple[Path, ...] = m.Field(

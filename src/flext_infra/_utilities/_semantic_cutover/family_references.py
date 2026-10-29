@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -28,7 +30,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
         source: str,
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
+    ) -> tuple[bool, tuple[m.Infra.SourceRewrite, ...]]:
 
         if cls._wrapper_blocked_usages(resource, source, flatten=flatten):
             return (True, ())
@@ -94,7 +96,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
     def _wrapper_qualified(
         primary: str,
         wrapper_name: str,
-    ) -> t.Triple[str, bool, bool]:
+    ) -> tuple[str, bool, bool]:
         """Split one primary expression into its qualifier parent and match.
 
         Returns:
@@ -109,7 +111,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
 
     @staticmethod
     def _occurrence_in_function(
-        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        statements: Sequence[m.Infra.LogicalStatement],
         occurrence: t.Infra.RopeOccurrence,
     ) -> bool:
         """Whether one occurrence sits inside a function scope.
@@ -128,10 +130,10 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
     def _occurrence_edit(
         cls,
         flatten: m.Infra.FamilyWrapperFlatten,
-        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        statements: Sequence[m.Infra.LogicalStatement],
         source: str,
         occurrence: t.Infra.RopeOccurrence,
-        name_replacement: t.Pair[str, str],
+        name_replacement: tuple[str, str],
     ) -> m.Infra.SourceRewrite | None:
         """Build one member occurrence rewrite, or ``None`` when unrelated.
 

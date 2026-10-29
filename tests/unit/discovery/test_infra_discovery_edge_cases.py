@@ -33,11 +33,19 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         ],
     )
     def test_module_exports_follow_declared_source(
-        source: str,
-        expected: tuple[str, ...],
+        tmp_path: Path, source: str, expected: tuple[str, ...]
     ) -> None:
         """Explicit ``__all__`` wins; otherwise only local classes are exported."""
-        tm.that(u.Infra.module_export_names_source(source), eq=expected)
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "provider.py"
+        path.write_text(source, encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            tm.that(u.Infra.module_export_names_source(module), eq=expected)
 
     @staticmethod
     def test_publication_policy_reuses_unchanged_syntax(

@@ -1,0 +1,254 @@
+id: railroad-ternary-unwrap-or
+language: python
+severity: error
+message: >-
+  Replace ternary success/failure value fallback with Result.unwrap_or(default).
+rule:
+  any:
+    - pattern: return $RES.value if $RES.success else $DEFAULT
+    - pattern: return $DEFAULT if $RES.failure else $RES.value
+constraints:
+  RES:
+    kind: identifier
+  DEFAULT:
+    not:
+      matches: sentinel-value
+fix: return $RES.unwrap_or($DEFAULT)
+---
+id: railroad-try-model-validate
+language: python
+severity: error
+message: >-
+  Replace manual try/except model_validate wrapping with r[Model].from_validation(data, Model).
+rule:
+  any:
+    - pattern: |
+        try:
+            return r[$MODEL].ok($MODEL.model_validate($DATA))
+        except $EXC as $ERR:
+            return r[$MODEL].fail(str($ERR), exception=$ERR)
+    - pattern: |
+        try:
+            return r[$MODEL].ok($MODEL.model_validate($DATA))
+        except $EXC as $ERR:
+            return r.fail(str($ERR), exception=$ERR)
+constraints:
+  ERR:
+    kind: identifier
+fix: return r[$MODEL].from_validation($DATA, $MODEL)
+---
+id: railroad-ifelse-identity-passthrough
+language: python
+severity: error
+message: >-
+  Replace redundant failure/ok if-else passthrough with direct return of the Result.
+rule:
+  any:
+    - pattern: |
+        if $RES.failure:
+            return $OUT.from_failure($RES)
+        else:
+            return $OUT_OK.ok($RES.value)
+    - pattern: |
+        if $RES.failure:
+            return $RES
+        else:
+            return $OUT_OK.ok($RES.value)
+    - pattern: |
+        if $RES.success:
+            return $OUT_OK.ok($RES.value)
+        else:
+            return $OUT.from_failure($RES)
+    - pattern: |
+        if $RES.success:
+            return $OUT_OK.ok($RES.value)
+        else:
+            return $RES
+constraints:
+  RES:
+    kind: identifier
+fix: return $RES
+---
+id: railroad-ifelse-map-callable
+language: python
+severity: error
+message: >-
+  Replace failure/ok if-else callable transformation with Result.map(fn).
+rule:
+  any:
+    - pattern: |
+        if $RES.failure:
+            return $OUT.from_failure($RES)
+        else:
+            return $OUT_OK.ok($FN($RES.value))
+    - pattern: |
+        if $RES.failure:
+            return $RES
+        else:
+            return $OUT_OK.ok($FN($RES.value))
+    - pattern: |
+        if $RES.success:
+            return $OUT_OK.ok($FN($RES.value))
+        else:
+            return $OUT.from_failure($RES)
+    - pattern: |
+        if $RES.success:
+            return $OUT_OK.ok($FN($RES.value))
+        else:
+            return $RES
+constraints:
+  RES:
+    kind: identifier
+  FN:
+    any:
+      - kind: identifier
+      - kind: attribute
+fix: return $RES.map($FN)
+---
+id: railroad-ifelse-flat-map-callable
+language: python
+severity: error
+message: >-
+  Replace failure/Result-callable if-else chain with Result.flat_map(fn).
+rule:
+  all:
+    - inside:
+        stopBy: end
+        matches: result-returning-function
+    - any:
+        - pattern: |
+            if $RES.failure:
+                return $OUT.from_failure($RES)
+            else:
+                return $FN($RES.value)
+        - pattern: |
+            if $RES.failure:
+                return $RES
+            else:
+                return $FN($RES.value)
+        - pattern: |
+            if $RES.success:
+                return $FN($RES.value)
+            else:
+                return $OUT.from_failure($RES)
+        - pattern: |
+            if $RES.success:
+                return $FN($RES.value)
+            else:
+                return $RES
+constraints:
+  RES:
+    kind: identifier
+  FN:
+    all:
+      - any:
+          - kind: identifier
+          - kind: attribute
+      - not:
+          regex: '(?:^|\.)(?:ok|fail|fail_op|from_failure|from_result)$'
+fix: return $RES.flat_map($FN)
+---
+id: railroad-guard-identity-passthrough
+language: python
+severity: error
+message: >-
+  Replace terminal failure guard followed by ok(res.value) with direct return of the Result.
+rule:
+  any:
+    - pattern:
+        context: |
+          if _block:
+              $$$BEFORE
+              if $RES.failure:
+                  return $OUT.from_failure($RES)
+              return $OUT_OK.ok($RES.value)
+        selector: block
+    - pattern:
+        context: |
+          if _block:
+              $$$BEFORE
+              if $RES.failure:
+                  return $RES
+              return $OUT_OK.ok($RES.value)
+        selector: block
+constraints:
+  RES:
+    kind: identifier
+fix: |-
+  $$$BEFORE
+  return $RES
+---
+id: railroad-guard-to-map-callable
+language: python
+severity: error
+message: >-
+  Replace terminal failure guard followed by ok(fn(res.value)) with Result.map(fn).
+rule:
+  any:
+    - pattern:
+        context: |
+          if _block:
+              $$$BEFORE
+              if $RES.failure:
+                  return $OUT.from_failure($RES)
+              return $OUT_OK.ok($FN($RES.value))
+        selector: block
+    - pattern:
+        context: |
+          if _block:
+              $$$BEFORE
+              if $RES.failure:
+                  return $RES
+              return $OUT_OK.ok($FN($RES.value))
+        selector: block
+constraints:
+  RES:
+    kind: identifier
+  FN:
+    any:
+      - kind: identifier
+      - kind: attribute
+fix: |-
+  $$$BEFORE
+  return $RES.map($FN)
+---
+id: railroad-guard-to-flat-map-callable
+language: python
+severity: error
+message: >-
+  Replace terminal failure guard followed by Result-returning callable with Result.flat_map(fn).
+rule:
+  all:
+    - inside:
+        stopBy: end
+        matches: result-returning-function
+    - any:
+        - pattern:
+            context: |
+              if _block:
+                  $$$BEFORE
+                  if $RES.failure:
+                      return $OUT.from_failure($RES)
+                  return $FN($RES.value)
+            selector: block
+        - pattern:
+            context: |
+              if _block:
+                  $$$BEFORE
+                  if $RES.failure:
+                      return $RES
+                  return $FN($RES.value)
+            selector: block
+constraints:
+  RES:
+    kind: identifier
+  FN:
+    all:
+      - any:
+          - kind: identifier
+          - kind: attribute
+      - not:
+          regex: '(?:^|\.)(?:ok|fail|fail_op|from_failure|from_result)$'
+fix: |-
+  $$$BEFORE
+  return $RES.flat_map($FN)

@@ -212,7 +212,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         cache = config.Infra.codegen.make.testmon_cache
         recipe = rendered.split("_builtin_test_all:", 1)[1].split("\n\n", 1)[0]
-        tm.that(recipe.count("-m flext_infra._pytest_entry"), eq=1)
+        tm.that(recipe.count("-m flext_infra._pytest.entry"), eq=1)
         tm.that(
             recipe,
             lacks=["_pytest_entry slow", "file-slow", "_pytest_entry full"],
@@ -225,7 +225,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         file_recipe = rendered.split("_builtin_test_file_all:", 1)[1].split("\n\n", 1)[
             0
         ]
-        tm.that(file_recipe.count("-m flext_infra._pytest_entry file"), eq=1)
+        tm.that(file_recipe.count("-m flext_infra._pytest.entry file"), eq=1)
         tm.that(file_recipe, lacks="$(PYTEST_BOUNDED)")
         tm.that(
             file_recipe.count(f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="$(FILE)";'),
@@ -238,7 +238,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         full_recipe = rendered.split("_builtin_test_full_all:", 1)[1].split("\n\n", 1)[
             0
         ]
-        tm.that(full_recipe.count("-m flext_infra._pytest_entry full"), eq=1)
+        tm.that(full_recipe.count("-m flext_infra._pytest.entry full"), eq=1)
         tm.that(full_recipe, lacks="$(PYTEST_BOUNDED)")
         tm.that(
             full_recipe.count(f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="$(FILE)";'),
@@ -264,7 +264,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             expanded.stdout,
             has=f'export {c.Infra.PYTEST_ENV_TARGET_FILE}="{selected}";',
         )
-        tm.that(expanded.stdout, has="-m flext_infra._pytest_entry profile")
+        tm.that(expanded.stdout, has="-m flext_infra._pytest.entry profile")
         tm.that(
             expanded.stdout,
             lacks=["_pytest_entry file;", "_pytest_entry file-slow;"],

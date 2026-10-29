@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from http import HTTPStatus
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from urllib.parse import urlencode, urlsplit
@@ -71,7 +72,7 @@ class FlextInfraUtilitiesNetwork:
         url: str,
         *,
         bearer_token: t.SecretStr,
-        form: t.SequenceOf[t.Pair[str, str]],
+        form: Sequence[tuple[str, str]],
         timeout_seconds: float,
     ) -> p.Result[str]:
         """Send one bearer-authenticated request and return its 2xx body text.

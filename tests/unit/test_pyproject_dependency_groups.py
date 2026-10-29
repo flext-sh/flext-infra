@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pytest
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
@@ -107,7 +109,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         source: str,
         role: c.Infra.MakeProfile,
         *,
-        required_dev_dependencies: t.StrSequence = (),
+        required_dev_dependencies: Sequence[str] = (),
     ) -> p.Result[str]:
         toolchain = config.Infra.codegen.toolchain
         return u.Infra.pyproject_conform(
@@ -295,7 +297,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
             eq=conformed,
         )
 
-    def _variant_authored_sources(self) -> t.Triple[str, str, str]:
+    def _variant_authored_sources(self) -> tuple[str, str, str]:
         """Compose the authored variant project text with its empty seed.
 
         Returns:

@@ -23,7 +23,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
         def __init__(
             self,
             *,
-            shape: t.Quad[str, str, str, str],
+            shape: tuple[str, str, str, str],
             owner: str,
             owner_bound: bool,
             local_rebound: bool,
@@ -189,7 +189,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
         cls,
         source: str,
         *,
-        shape: t.Quad[str, str, str, str],
+        shape: tuple[str, str, str, str],
         owner: str,
         owner_bound: bool,
         local_rebound: bool,

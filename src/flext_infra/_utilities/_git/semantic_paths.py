@@ -15,17 +15,15 @@ from gitdb.util import LockedFD
 
 from flext_infra import m, p, r
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitSemanticPublishMixin,
-    FlextInfraUtilitiesGitStateFilesMixin,
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitStateFiles,
 )
-from flext_infra._utilities._git.state_trees import (
-    FlextInfraUtilitiesGitStateTreesMixin,
-)
+from flext_infra._utilities._git.state_trees import FlextInfraUtilitiesGitStateTrees
 
 
-class FlextInfraUtilitiesGitSemanticPathsMixin(
-    FlextInfraUtilitiesGitSemanticPublishMixin,
-    FlextInfraUtilitiesGitStateFilesMixin,
+class FlextInfraUtilitiesGitSemanticPaths(
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitStateFiles,
 ):
     """Own semantic paths operations."""
 
@@ -61,7 +59,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             ValueError: If the index artifact has unresolved stages.
 
         """
-        entries = FlextInfraUtilitiesGitStateTreesMixin.state_snapshot_index(
+        entries = FlextInfraUtilitiesGitStateTrees.state_snapshot_index(
             request.repo_root,
             (Path(request.relative_path),),
         )
@@ -117,7 +115,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         result_type = r[m.Infra.GitBoolReport]
         relative = cls._retirable_relative_path(request)
         index_path = cls._git_index_path(request.repo_root)
-        entries = FlextInfraUtilitiesGitStateTreesMixin.state_snapshot_index(
+        entries = FlextInfraUtilitiesGitStateTrees.state_snapshot_index(
             request.repo_root,
             (relative,),
         )
@@ -140,7 +138,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             if type(descriptor) is not int:
                 msg = "the index lock did not return a raw file descriptor"
                 raise TypeError(msg)
-            FlextInfraUtilitiesGitSemanticPathsMixin._write_index_replacement(
+            FlextInfraUtilitiesGitSemanticPaths._write_index_replacement(
                 request,
                 index_path,
                 descriptor,
@@ -193,7 +191,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
             stream.flush()
             os.fsync(stream.fileno())
         lock_path = index_path.with_name(f"{index_path.name}.lock")
-        FlextInfraUtilitiesGitStateTreesMixin.state_index_update(
+        FlextInfraUtilitiesGitStateTrees.state_index_update(
             request.repo_root,
             (request.entry.path,),
             (),
@@ -439,4 +437,4 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=commit.hexsha))
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitSemanticPathsMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitSemanticPaths"]

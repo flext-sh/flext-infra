@@ -36,14 +36,14 @@ class TestsFlextInfraLazyInitFamilyAggregator:
         """Double-underscore implementation packages never displace their wrapper."""
         repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
         context = package / "_models" / "_context"
-        parts = context / "__scope"
+        parts = context / "_scope"
         parts.mkdir(parents=True)
         (parts / "flextscope_part_03.py").write_text(
             f"class {part_name}:\n    marker = True\n__all__ = ['{part_name}']\n",
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         (context / "_scope.py").write_text(
-            "from .__scope import flextscope_part_03\n"
+            "from ._scope import flextscope_part_03\n"
             f"class FlextScope(flextscope_part_03.{part_name}):\n    pass\n"
             "__all__ = ['FlextScope']\n",
             encoding=c.Infra.ENCODING_DEFAULT,

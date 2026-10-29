@@ -1,0 +1,66 @@
+id: railroad-ifelse-flat-map-callable
+snapshots:
+  "def process(self) -> p.Result[str]:\n    if result.failure:\n        return r[str].from_failure(result)\n    else:\n        return self._next_step(result.value)\n":
+    fixed: |
+      def process(self) -> p.Result[str]:
+          return result.flat_map(self._next_step)
+    labels:
+    - source: |-
+        if result.failure:
+                return r[str].from_failure(result)
+            else:
+                return self._next_step(result.value)
+      style: primary
+      start: 40
+      end: 156
+    - source: p.Result[str]
+      style: secondary
+      start: 21
+      end: 34
+    - source: p.Result[str]
+      style: secondary
+      start: 21
+      end: 34
+    - source: |-
+        def process(self) -> p.Result[str]:
+            if result.failure:
+                return r[str].from_failure(result)
+            else:
+                return self._next_step(result.value)
+      style: secondary
+      start: 0
+      end: 156
+  "def process_success(self) -> r[int]:\n    if result.success:\n        return parse_int(result.value)\n    else:\n        return r.from_failure(result)\n":
+    fixed: |
+      def process_success(self) -> r[int]:
+          return result.flat_map(parse_int)
+    labels:
+    - source: |-
+        if result.success:
+                return parse_int(result.value)
+            else:
+                return r.from_failure(result)
+      style: primary
+      start: 41
+      end: 146
+    - source: r
+      style: secondary
+      start: 29
+      end: 30
+    - source: r[int]
+      style: secondary
+      start: 29
+      end: 35
+    - source: r[int]
+      style: secondary
+      start: 29
+      end: 35
+    - source: |-
+        def process_success(self) -> r[int]:
+            if result.success:
+                return parse_int(result.value)
+            else:
+                return r.from_failure(result)
+      style: secondary
+      start: 0
+      end: 146

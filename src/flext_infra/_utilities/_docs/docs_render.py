@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from glob import translate
 from pathlib import Path, PurePosixPath
 from posixpath import normpath
@@ -17,10 +18,12 @@ from urllib.parse import urlsplit
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
+from flext_infra import FlextInfraConfig, c, config, m, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesRepository,
+)
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -29,9 +32,21 @@ class FlextInfraUtilitiesDocsRender:
     _MIN_REPO_PARTS: ClassVar[int] = 2
 
     @staticmethod
+    def docs_llms_index(context: m.Infra.DocsLlmsContext) -> str:
+        """Render official references without fetching upstream documentation.
+
+        Returns:
+            The generated llms.txt index.
+
+        """
+        return FlextInfraUtilitiesDocsRender._render_template(
+            c.Infra.TEMPLATE_DOCS_LLMS, context
+        )
+
+    @staticmethod
     def docs_rebase_patterns(
-        patterns: t.StrSequence, *, repository_root: Path, docs_root: Path
-    ) -> t.StrSequence:
+        patterns: Sequence[str], *, repository_root: Path, docs_root: Path
+    ) -> Sequence[str]:
         """Rebase repository globs to a docs root using native path matching.
 
         Returns:
@@ -64,7 +79,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def _mkdocs_exclusions(
         repository_root: Path,
-    ) -> t.Pair[t.StrSequence, t.StrSequence]:
+    ) -> tuple[Sequence[str], Sequence[str]]:
         """Project one repository's effective policy into both native consumers.
 
         Returns:
@@ -158,7 +173,7 @@ class FlextInfraUtilitiesDocsRender:
         return (
             u.Cli
             .template_render_authenticated(
-                Path(__file__).resolve().parent.parent / "templates" / template,
+                FlextInfraConfig.ssot_config_dir().parent / "templates" / template,
                 context,
             )
             .unwrap()
@@ -166,7 +181,7 @@ class FlextInfraUtilitiesDocsRender:
         )
 
     @staticmethod
-    def as_string_sequence(data: t.JsonMapping, key: str) -> t.SequenceOf[str]:
+    def as_string_sequence(data: t.JsonMapping, key: str) -> Sequence[str]:
         """Return one contract field as a normalized string sequence.
 
         Returns:
@@ -210,7 +225,7 @@ class FlextInfraUtilitiesDocsRender:
             ValueError: If documentation repository owner must resolve exactly once.
 
         """
-        if FlextInfraUtilitiesDocs.docs_is_secure_web_url(prefix):
+        if FlextInfraUtilitiesDocsBase.docs_is_secure_web_url(prefix):
             kind = "tree" if is_dir else "blob"
             if governance_source is None:
                 msg = "governance link has no captured source and ref"
@@ -351,9 +366,9 @@ class FlextInfraUtilitiesDocsRender:
     def docs_guides_index(
         scope: m.Infra.DocScope,
         *,
-        guide_paths: t.SequenceOf[Path],
+        guide_paths: Sequence[Path],
         width: int,
-        guide_titles: t.MappingKV[Path, str] | None = None,
+        guide_titles: Mapping[Path, str] | None = None,
     ) -> str:
         """Index the planned guide inventory, including retained custom guides.
 
@@ -361,7 +376,7 @@ class FlextInfraUtilitiesDocsRender:
             The resulting ``str``.
 
         """
-        titles: t.MappingKV[Path, str] = (
+        titles: Mapping[Path, str] = (
             guide_titles or {} if scope.documentation_language == "pt-BR" else {}
         )
         return FlextInfraUtilitiesDocsRender._render_template(
@@ -386,7 +401,7 @@ class FlextInfraUtilitiesDocsRender:
     def docs_api_readme(
         scope: m.Infra.DocScope,
         contract: t.JsonMapping,
-        modules: t.SequenceOf[str],
+        modules: Sequence[str],
         *,
         width: int,
     ) -> str:
@@ -461,7 +476,7 @@ class FlextInfraUtilitiesDocsRender:
     def docs_overview_page(
         scope: m.Infra.DocScope,
         contract: t.JsonMapping,
-        modules: t.SequenceOf[str],
+        modules: Sequence[str],
         *,
         width: int,
     ) -> str:
@@ -511,7 +526,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_modules_index(
-        scope: m.Infra.DocScope, modules: t.SequenceOf[str], *, width: int
+        scope: m.Infra.DocScope, modules: Sequence[str], *, width: int
     ) -> str:
         """Return the generated module index page for one project.
 
@@ -558,7 +573,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_root_mkdocs(
         contract: t.JsonMapping,
-        src_paths: t.SequenceOf[str] = (),
+        src_paths: Sequence[str] = (),
         *,
         repository_root: Path,
         documentation_language: t.Infra.DocumentationLanguage = "en",
@@ -605,7 +620,7 @@ class FlextInfraUtilitiesDocsRender:
         contract: t.JsonMapping,
         *,
         project_count: int,
-        class_counts: t.SequenceOf[m.Infra.DocsClassCount],
+        class_counts: Sequence[m.Infra.DocsClassCount],
         width: int,
     ) -> str:
         """Return the generated root API overview page.
@@ -633,7 +648,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_root_projects_index(
-        entries: t.SequenceOf[m.Infra.DocsProjectIndexEntry], *, width: int
+        entries: Sequence[m.Infra.DocsProjectIndexEntry], *, width: int
     ) -> str:
         """Return the generated root index of per-project module pages.
 
@@ -648,9 +663,9 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_catalog_page(
-        entries: t.SequenceOf[m.Infra.DocsCatalogEntry],
+        entries: Sequence[m.Infra.DocsCatalogEntry],
         *,
-        exclude_docs: t.SequenceOf[str] | None = None,
+        exclude_docs: Sequence[str] | None = None,
         width: int,
     ) -> str:
         """Return the generated workspace project catalog page.
@@ -659,7 +674,7 @@ class FlextInfraUtilitiesDocsRender:
             The generated workspace project catalog page.
 
         """
-        exclude_patterns: t.StrSequence = tuple(exclude_docs or ())
+        exclude_patterns: Sequence[str] = tuple(exclude_docs or ())
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_PROJECT_CATALOG_PAGE,
             m.Infra.DocsProjectCatalogContext(

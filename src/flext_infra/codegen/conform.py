@@ -132,8 +132,12 @@ class FlextInfraCodegenConform:
         ports = executor.state.ports
         if ports is None:
             return r[bool].fail("conformance requires facade-wired file publication")
+
+        def published(_paths: tuple[Path, ...]) -> bool:
+            return True
+
         return ports.file_publisher.publish_codegen_plans(request.root, files).map(
-            lambda _: True
+            published
         )
 
     @staticmethod
@@ -289,7 +293,7 @@ class FlextInfraCodegenConform:
 
     @staticmethod
     def _allow_direnv_after_apply(
-        written_files: t.VariadicTuple[Path],
+        written_files: tuple[Path, ...],
     ) -> p.Result[bool]:
         """Heal the direnv allow for every ``.envrc`` this apply published.
 

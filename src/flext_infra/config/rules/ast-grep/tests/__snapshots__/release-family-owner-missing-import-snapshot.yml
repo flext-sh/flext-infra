@@ -1,16 +1,16 @@
 id: release-family-owner-missing-import
 snapshots:
-  "policy: FlextInfraConfigModelsRelease.ReleasePolicySpec":
+  "policy: FlextInfraModelsConfigRelease.ReleasePolicySpec":
     labels:
-    - source: FlextInfraConfigModelsRelease.ReleasePolicySpec
+    - source: FlextInfraModelsConfigRelease.ReleasePolicySpec
       style: primary
       start: 8
       end: 55
-    - source: "policy: FlextInfraConfigModelsRelease.ReleasePolicySpec"
+    - source: "policy: FlextInfraModelsConfigRelease.ReleasePolicySpec"
       style: secondary
       start: 0
       end: 55
-    - source: "policy: FlextInfraConfigModelsRelease.ReleasePolicySpec"
+    - source: "policy: FlextInfraModelsConfigRelease.ReleasePolicySpec"
       style: secondary
       start: 0
       end: 55

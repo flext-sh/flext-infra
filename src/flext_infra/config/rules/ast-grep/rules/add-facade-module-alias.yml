@@ -132,7 +132,7 @@ rule:
             regex: "^m$"
 constraints:
   ITEM:
-    regex: "^[\"'][A-Z][A-Za-z0-9]*Models[\"']$"
+    regex: "^[\"'][A-Z][A-Za-z0-9]*Models[A-Za-z0-9]*[\"']$"
 transform:
   CLS:
     substring:

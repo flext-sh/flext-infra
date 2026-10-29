@@ -2,7 +2,15 @@
 
 <!-- TOC START -->
 
+- [Model-Field Access Migration (`model_fields`)](#model-field-access-migration-model_fields)
+- [Codemod Gate and Mechanical `refactor ast` Boundaries](#codemod-gate-and-mechanical-refactor-ast-boundaries)
+- [Declaration-Layer Import Law and Environment Reads](#declaration-layer-import-law-and-environment-reads)
+- [Compatibility-Alias Cutovers (`plan_semantic_cutover`)](#compatibility-alias-cutovers-plan_semantic_cutover)
+- [Upgrade Interruption, Rule Snapshots, and Proof Presets](#upgrade-interruption-rule-snapshots-and-proof-presets)
+
 <!-- TOC END -->
+
+## Model-Field Access Migration (`model_fields`)
 
 `make mod` owns model-field access migration. The ast-grep rule reports dynamic
 `model_fields` lookup; its semantic phase narrows an untrusted class argument using the
@@ -20,6 +28,8 @@ by earlier versions of the textual rule. Ambiguous error branches, additional us
 the temporary mapping, and conflicting guard bindings fail without publishing a partial
 rewrite. Other dynamic lookups remain findings until their receiver contract is proven;
 they are never blindly rewritten.
+
+## Codemod Gate and Mechanical `refactor ast` Boundaries
 
 The codemod check gate blocks on every reported policy finding, whatever its rule
 severity, and reports each finding with its native severity. Failed rule discovery,
@@ -43,6 +53,8 @@ consumes `--module` and `--namespace`. These requests compose the shared narrow
 selection mixins explicitly; general read/write scope does not add either
 option to other commands.
 
+## Declaration-Layer Import Law and Environment Reads
+
 Authored declaration layers cannot import their own namespace at any scope, including
 function bodies and annotation-only guards. The shared import-law owner identifies
 these declarations from the family catalog. Declaration relocation resolves imports
@@ -56,6 +68,14 @@ must declare both optional and required lookups. Optional reads retain `None` fo
 absence and preserve empty strings; required reads retain the native `KeyError`. Static
 keys, rebinding and competing settings owners remain errors. Consumers are rewritten
 only by `make mod`.
+
+## Compatibility-Alias Cutovers (`plan_semantic_cutover`)
+
+> Deprecated mechanism (ADR-028 Decision 17 amendment 2026-10-28): the LibCST
+> qualified-import analysis below is being exterminated — rope is the only
+> accepted Python interpreter in FLEXT's own code, and these cutovers migrate
+> to rope transforms over the single indexed project. The behavioral contract
+> (consumers, bindings, root-binding agreement) is preserved by the replacement.
 
 Compatibility-alias cutovers resolve module attribute reads through LibCST qualified
 import identities, not receiver spelling. Module aliases and dotted imports retain
@@ -88,6 +108,8 @@ acceptance is limited to qualified identities in the supplied source inventory.
 The public `u.Infra.plan_semantic_cutover` contract verifies these boundaries and a
 second unchanged plan produces no edits. This safety repair does not move declarations
 or remove fleet helpers.
+
+## Upgrade Interruption, Rule Snapshots, and Proof Presets
 
 The upgrade interruption regression owns its child session through the CLI process
 facade. Native procps selects that session's threads and proves the resolver is blocked

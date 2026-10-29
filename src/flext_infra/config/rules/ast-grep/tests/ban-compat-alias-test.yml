@@ -1,26 +1,26 @@
 id: ban-compat-alias
 valid:
-  - "c = FlextConstants"
-  - "t = FlextTypes"
-  - "p = FlextProtocols"
-  - "m = FlextModels"
-  - "u = FlextUtilities"
-  - "r = FlextResult"
-  - "s = FlextService"
-  - "config = FlextInfraConfig.fetch_global()"
-  # A name the module publishes in its own __all__ is its facade alias.
-  - |
-    tm = FlextTestsMatchers
-    __all__ = ["FlextTestsMatchers", "tm"]
-  - |
-    tm = FlextTestsMatchers
-    _PUBLIC_EXPORTS = ("FlextTestsMatchers", "tm")
-    __all__ = tuple(_PUBLIC_EXPORTS)
+- "c = FlextConstants"
+- "t = FlextTypes"
+- "p = FlextProtocols"
+- "m = FlextModels"
+- "u = FlextUtilities"
+- "r = FlextResult"
+- "s = FlextService"
+- "config = FlextInfraConfig.fetch_global()"
+# A name the module publishes in its own __all__ is its facade alias.
+- |
+  tm = FlextTestsMatchers
+  __all__ = ["FlextTestsMatchers", "tm"]
+- |
+  tm = FlextTestsMatchers
+  _PUBLIC_EXPORTS = ("FlextTestsMatchers", "tm")
+  __all__ = tuple(_PUBLIC_EXPORTS)
 invalid:
-  - "OldService = NewService"
-  - "LegacyClient = CanonicalClient"
-  # Absent from the module's __all__, the alias keeps an old name alive.
-  - "tm = FlextTestsMatchers"
-  - |
-    tm = FlextTestsMatchers
-    __all__ = ["FlextTestsMatchers"]
+- "OldService = NewService"
+- "LegacyClient = CanonicalClient"
+# Absent from the module's __all__, the alias keeps an old name alive.
+- "tm = FlextTestsMatchers"
+- |
+  tm = FlextTestsMatchers
+  __all__ = ["FlextTestsMatchers"]

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -23,8 +24,8 @@ class FlextInfraBanditGate(FlextInfraGate):
     gate_name: ClassVar[str] = "Bandit"
     can_fix: ClassVar[bool] = False
     requires_python_targets: ClassVar[bool] = True
-    check_module_command_prefix: ClassVar[t.StrSequence] = (c.Infra.BANDIT, "-r")
-    check_module_command_suffix: ClassVar[t.StrSequence] = (
+    check_module_command_prefix: ClassVar[Sequence[str]] = (c.Infra.BANDIT, "-r")
+    check_module_command_suffix: ClassVar[Sequence[str]] = (
         "-f",
         c.Infra.OUTPUT_JSON,
         "--quiet",
@@ -38,7 +39,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: t.DirectoryPath,
         ctx: p.Model,
-    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Read Bandit's JSON report; every reported result blocks the gate.
 
         Returns:

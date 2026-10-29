@@ -10,13 +10,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, m, r, t
-from flext_infra._utilities import FlextInfraUtilitiesPyproject
+from flext_infra import c, m, r
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -93,21 +96,21 @@ class FlextInfraUtilitiesWorkspaceManifest:
     def load_workspace_manifest(
         cls,
         repository_root: Path,
-    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceManifestSpec]]:
+    ) -> p.Result[Sequence[m.Infra.WorkspaceManifestSpec]]:
         """Load the checkout's own workspace manifest as a 0-or-1 sequence.
 
         Absence is an EMPTY sequence — success payloads are never ``None``.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.WorkspaceManifestSpec]]``.
+            The resulting ``p.Result[Sequence[m.Infra.WorkspaceManifestSpec]]``.
 
         """
         manifest_path = cls.workspace_manifest_path(repository_root)
         if not manifest_path.is_file():
-            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].ok(())
+            return r[Sequence[m.Infra.WorkspaceManifestSpec]].ok(())
         text = u.Cli.files_read_text(manifest_path)
         if text.failure:
-            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].fail(
+            return r[Sequence[m.Infra.WorkspaceManifestSpec]].fail(
                 f"invalid workspace manifest ({manifest_path}): {text.error}",
             )
         return cls._parsed_workspace_manifest(text.value, str(manifest_path))
@@ -117,19 +120,19 @@ class FlextInfraUtilitiesWorkspaceManifest:
     def _parsed_workspace_manifest(
         text: str,
         manifest_path: str,
-    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceManifestSpec]]:
+    ) -> p.Result[Sequence[m.Infra.WorkspaceManifestSpec]]:
         """Parse and validate one manifest text once per exact content.
 
         The key is the exact file text, so an edited manifest is a new key,
         never a stale spec.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.WorkspaceManifestSpec]]``.
+            The resulting ``p.Result[Sequence[m.Infra.WorkspaceManifestSpec]]``.
 
         """
         loaded = u.Cli.yaml_parse(text)
         if loaded.failure:
-            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].fail(
+            return r[Sequence[m.Infra.WorkspaceManifestSpec]].fail(
                 f"invalid workspace manifest ({manifest_path}): {loaded.error}",
             )
         validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
@@ -137,11 +140,11 @@ class FlextInfraUtilitiesWorkspaceManifest:
             loaded.value,
         )
         if validated.failure:
-            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].fail_op(
+            return r[Sequence[m.Infra.WorkspaceManifestSpec]].fail_op(
                 f"workspace manifest model validation ({manifest_path})",
                 validated.error,
             )
-        return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].ok((validated.value,))
+        return r[Sequence[m.Infra.WorkspaceManifestSpec]].ok((validated.value,))
 
     @classmethod
     def fleet_umbrella(cls, repository_root: Path) -> bool:
@@ -152,7 +155,9 @@ class FlextInfraUtilitiesWorkspaceManifest:
 
         """
         return bool(
-            FlextInfraUtilitiesPyproject.workspace_project_paths(repository_root),
+            FlextInfraUtilitiesPyprojectConform.workspace_project_paths(
+                repository_root
+            ),
         )
 
 

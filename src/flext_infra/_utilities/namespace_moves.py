@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -18,6 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProtectedEdit,
     FlextInfraUtilitiesProtectedEditLinting,
     FlextInfraUtilitiesRefactorNamespaceCommon,
+    FlextInfraUtilitiesTransformerHeader,
 )
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
@@ -27,9 +28,6 @@ from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
-from flext_infra._utilities.transformer_header import (
-    FlextInfraUtilitiesTransformerHeader,
-)
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:
@@ -39,9 +37,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def rewrite_manual_protocol_violations(
         *,
         project_root: Path,
-        py_files: t.SequenceOf[Path],
-        names_by_file: t.MappingKV[Path, t.Infra.StrSet],
-        gates: t.StrSequence | None = None,
+        py_files: Sequence[Path],
+        names_by_file: Mapping[Path, t.Infra.StrSet],
+        gates: Sequence[str] | None = None,
     ) -> None:
         """Relocate the named Protocol classes of each file to its protocols owner.
 
@@ -66,8 +64,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         cls,
         *,
         project_root: Path,
-        names_by_file: t.MappingKV[Path, t.Infra.StrSet],
-        gates: t.StrSequence | None = None,
+        names_by_file: Mapping[Path, t.Infra.StrSet],
+        gates: Sequence[str] | None = None,
     ) -> None:
         """Relocate the named typing declarations of each file to its typings owner."""
         for source_file, alias_names in names_by_file.items():
@@ -80,12 +78,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
     @staticmethod
     def _moved_block_facts(
-        lines: t.SequenceOf[str],
+        lines: Sequence[str],
         names: t.Infra.StrSet,
-    ) -> t.Triple[
-        t.MutableSequenceOf[str],
-        t.MutableSequenceOf[t.IntPair],
-        t.MutableSequenceOf[str],
+    ) -> tuple[
+        MutableSequence[str],
+        MutableSequence[t.IntPair],
+        MutableSequence[str],
     ]:
         """Collect the block texts, line ranges, and names that exist.
 
@@ -93,9 +91,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             The resulting ``(blocks, ranges, moved names)`` triple.
 
         """
-        blocks: t.MutableSequenceOf[str] = []
-        ranges: t.MutableSequenceOf[t.IntPair] = []
-        moved: t.MutableSequenceOf[str] = []
+        blocks: MutableSequence[str] = []
+        ranges: MutableSequence[t.IntPair] = []
+        moved: MutableSequence[str] = []
         for name in sorted(names):
             found = FlextInfraUtilitiesRefactorNamespaceCommon.find_top_level_block(
                 lines=lines,
@@ -113,8 +111,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def _prepared_target(
         target_file: Path,
         source: str,
-        blocks: t.SequenceOf[str],
-    ) -> t.Pair[str, str | None]:
+        blocks: Sequence[str],
+    ) -> tuple[str, str | None]:
         """Build the target module text with imports and moved blocks appended.
 
         Returns:
@@ -131,7 +129,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             if expected_target_source is not None
             else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         )
-        target_lines: t.StrSequence = target_source.splitlines()
+        target_lines: Sequence[str] = target_source.splitlines()
         target_lines = FlextInfraUtilitiesRefactorNamespaceCommon.insert_import_lines(
             lines=target_lines,
             imports=(
@@ -149,8 +147,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
     @staticmethod
     def _lines_without_ranges(
-        lines: t.SequenceOf[str],
-        ranges: t.SequenceOf[t.IntPair],
+        lines: Sequence[str],
+        ranges: Sequence[t.IntPair],
     ) -> list[str]:
         """Delete every collected line range from the source lines.
 
@@ -169,7 +167,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         project_root: Path,
         source_file: Path,
         names: t.Infra.StrSet,
-        gates: t.StrSequence | None,
+        gates: Sequence[str] | None,
     ) -> None:
         """Move named protocols and their consumers in one protected transaction."""
         source = source_file.read_text(encoding=c.DEFAULT_ENCODING)
@@ -200,11 +198,11 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             )
         )
 
-        candidate_writes: t.MutableMappingKV[Path, str] = {
+        candidate_writes: MutableMapping[Path, str] = {
             target_file: updated_target.rstrip() + "\n",
             source_file: "\n".join(filtered_lines).rstrip() + "\n",
         }
-        candidate_expected: t.MutableMappingKV[Path, str | None] = {
+        candidate_expected: MutableMapping[Path, str | None] = {
             target_file: expected_target_source,
             source_file: source,
         }
@@ -256,16 +254,16 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def _collect_required_import_lines(
         *,
         source: str,
-        blocks: t.StrSequence,
-    ) -> t.StrSequence:
+        blocks: Sequence[str],
+    ) -> Sequence[str]:
         """Collect required import lines using rope-parsed module bodies.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         import_map = FlextInfraUtilitiesRefactorNamespaceMoves._import_bindings(source)
-        required_imports: t.MutableSequenceOf[str] = []
+        required_imports: MutableSequence[str] = []
         seen_imports: t.Infra.StrSet = set()
         for block in blocks:
             block_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(block)
@@ -417,10 +415,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     @classmethod
     def _split_alias_lines(
         cls,
-        lines: t.SequenceOf[str],
+        lines: Sequence[str],
         public_alias_names: t.Infra.StrSet,
         class_alias_names: t.Infra.StrSet,
-    ) -> t.Triple[list[str], list[str], int]:
+    ) -> tuple[list[str], list[str], int]:
         """Partition source lines into moved alias statements and kept lines.
 
         Returns:
@@ -484,8 +482,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     @classmethod
     def _imports_unresolvable(
         cls,
-        required_imports: t.SequenceOf[str],
-        target_bindings: t.MappingKV[str, str],
+        required_imports: Sequence[str],
+        target_bindings: Mapping[str, str],
     ) -> bool:
         """Report imports the destination module cannot legally accept.
 
@@ -517,7 +515,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         return False
 
     @staticmethod
-    def _deduplicated_imports(import_lines: t.SequenceOf[str]) -> t.StrSequence:
+    def _deduplicated_imports(import_lines: Sequence[str]) -> Sequence[str]:
         """Deduplicate import lines by the names they bind, first emitter wins.
 
         Three collectors contribute imports and they can name the same alias
@@ -532,7 +530,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         """
         seen_bindings: t.Infra.StrSet = set()
-        candidate_imports: t.MutableSequenceOf[str] = []
+        candidate_imports: MutableSequence[str] = []
         for import_line in import_lines:
             bound_names = FlextInfraUtilitiesRefactorNamespaceMoves._import_bound_names(
                 import_line,
@@ -546,7 +544,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     @classmethod
     def _missing_target_imports(
         cls,
-        candidate_imports: t.SequenceOf[str],
+        candidate_imports: Sequence[str],
         target_source: str,
     ) -> list[str]:
         """Filter import lines the destination module does not already have.
@@ -570,9 +568,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
     @staticmethod
     def _prepared_target_text(
-        target_lines: t.StrSequence,
-        moved_lines: t.SequenceOf[str],
-        missing_imports: t.SequenceOf[str],
+        target_lines: Sequence[str],
+        moved_lines: Sequence[str],
+        missing_imports: Sequence[str],
     ) -> str:
         """Insert missing imports and append every moved alias statement.
 
@@ -594,9 +592,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def _write_declaration_move(
         *,
         project_root: Path,
-        gates: t.StrSequence | None,
-        writes: t.MappingKV[Path, str],
-        expected_sources: t.MappingKV[Path, str | None],
+        gates: Sequence[str] | None,
+        writes: Mapping[Path, str],
+        expected_sources: Mapping[Path, str | None],
     ) -> None:
         """Normalize candidates and pass original source expectations by reference.
 
@@ -631,8 +629,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     @staticmethod
     def _restore_rejected_writes(
         *,
-        written: t.MappingKV[Path, str],
-        expected_sources: t.MappingKV[Path, str | None],
+        written: Mapping[Path, str],
+        expected_sources: Mapping[Path, str | None],
     ) -> None:
         """Put every file a rejected declaration move rewrote back as it was.
 
@@ -663,7 +661,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         project_root: Path,
         source_file: Path,
         alias_names: t.Infra.StrSet,
-        gates: t.StrSequence | None,
+        gates: Sequence[str] | None,
     ) -> None:
         """Move public typing aliases and consumers in one protected transaction."""
         public_alias_names = {name for name in alias_names if not name.startswith("_")}
@@ -695,10 +693,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         project_root: Path,
         source_file: Path,
         alias_names: t.Infra.StrSet,
-    ) -> (
-        t.Pair[t.MutableMappingKV[Path, str], t.MutableMappingKV[Path, str | None]]
-        | None
-    ):
+    ) -> tuple[MutableMapping[Path, str], MutableMapping[Path, str | None]] | None:
         """Prepare and natively parse final sources before publication.
 
         Returns:
@@ -774,7 +769,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         alias_names: t.Infra.StrSet,
         *,
         target_exists: bool,
-    ) -> t.Pair[str, str]:
+    ) -> tuple[str, str]:
         """Resolve the declaration owners.
 
         Returns:
@@ -834,8 +829,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         project_root: Path,
         source_file: Path,
         alias_names: t.Infra.StrSet,
-        writes: t.MutableMappingKV[Path, str],
-        expected_sources: t.MutableMappingKV[Path, str | None],
+        writes: MutableMapping[Path, str],
+        expected_sources: MutableMapping[Path, str | None],
     ) -> None:
         """Plan consumers before declaration removal.
 
@@ -894,7 +889,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         target_module: str,
         kept_source: str,
         alias_names: t.Infra.StrSet,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Return imports re-binding moved aliases still referenced by the source."""
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             kept_source,
@@ -949,12 +944,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def collect_missing_runtime_alias_imports(
         *,
         target_source: str,
-        blocks: t.StrSequence,
-    ) -> t.StrSequence:
+        blocks: Sequence[str],
+    ) -> Sequence[str]:
         """Collect missing runtime alias imports.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         moved_source = "\n".join(blocks)

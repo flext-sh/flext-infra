@@ -12,13 +12,16 @@ files:
   - "**/*.py"
 rule:
   all:
-    - pattern: "model_config = m.ConfigDict($$$ARGS)"
+    - pattern: "model_config = m.$CONFIG($$$ARGS)"
     - inside:
         kind: block
         stopBy: end
         inside:
           kind: class_definition
-fix: "model_config: ClassVar[m.ConfigDict] = m.ConfigDict($$$ARGS)"
+constraints:
+  CONFIG:
+    regex: "^(Settings)?ConfigDict$"
+fix: "model_config: ClassVar[m.$CONFIG] = m.$CONFIG($$$ARGS)"
 message: >-
   model_config must be a ClassVar; a bare assignment declares a pydantic
   field instead of model metadata.

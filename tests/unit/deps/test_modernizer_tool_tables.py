@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -31,11 +32,11 @@ class TestsFlextInfraDepsModernizerToolTables:
         source: str = "",
         *,
         tool_config: m.Infra.ToolConfigDocument | None = None,
-    ) -> t.Pair[t.MutableJsonMapping, t.StrSequence]:
+    ) -> tuple[t.MutableJsonMapping, Sequence[str]]:
         """Apply the phase to one named project payload; return payload and changes.
 
         Returns:
-            The resulting ``t.Pair[t.MutableJsonMapping, t.StrSequence]``.
+            The resulting ``tuple[t.MutableJsonMapping, Sequence[str]]``.
 
         """
         project_dir = tmp_path / "flext-sample"
@@ -68,14 +69,16 @@ class TestsFlextInfraDepsModernizerToolTables:
             table = u.Tests.toml_mapping(table[segment])
         return table
 
-    def test_mypy_exclude_skips_complete_artifact_trees(self, tmp_path: Path) -> None:
-        """Mypy excludes root artifacts and every descendant."""
+    def test_mypy_admits_python_in_fixture_materialization_roots(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Fixture materialization does not exempt Python from type analysis."""
         payload, _ = self._applied(tmp_path)
         exclude = re.compile(str(self._table(payload, "mypy")["exclude"]))
         for root in config.Infra.codegen.exclusions.scenario_data_roots:
-            tm.that(exclude.match(f"{root}/scenario/module.py"), none=False)
-            tm.that(exclude.match(f"{root}/module.py"), none=False)
-            tm.that(exclude.match(f"{root}/"), none=False)
+            tm.that(exclude.match(f"{root}/scenario/module.py"), none=True)
+            tm.that(exclude.match(f"{root}/module.py"), none=True)
         tm.that(exclude.match("tests/unit/test_behavior.py"), none=True)
 
     def test_mypy_table_mirrors_policy(self, tmp_path: Path) -> None:
@@ -139,7 +142,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         [(), ("custom.plugin",), ("pydantic.mypy", "pydantic.v1.mypy")],
     )
     def test_mypy_rejects_missing_or_v1_pydantic_plugin(
-        plugins: t.StrSequence,
+        plugins: Sequence[str],
     ) -> None:
         """The typed policy cannot remove mandatory Pydantic 2 support."""
         tooling = config.Infra.tooling
@@ -380,7 +383,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             list(u.Tests.toml_strings(tomlsort["sort_first"])),
             eq=list(
                 u.Infra.native_tool_setting(
-                    tooling, "tomlsort", "sort_first", TypeForm(t.StrSequence)
+                    tooling, "tomlsort", "sort_first", TypeForm(Sequence[str])
                 )
             ),
         )
@@ -423,7 +426,7 @@ class TestsFlextInfraDepsModernizerToolTables:
                     config.Infra.tooling,
                     "coverage.run",
                     "omit",
-                    TypeForm(t.StrSequence),
+                    TypeForm(Sequence[str]),
                 )
             ),
         )

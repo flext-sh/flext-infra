@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import config, u
@@ -112,11 +112,11 @@ class TestsFlextInfraUtilitiesTomlMixin:
         return current
 
     @staticmethod
-    def toml_strings_at(content: str, *path: str) -> t.StrSequence:
+    def toml_strings_at(content: str, *path: str) -> Sequence[str]:
         """Provide ``toml_strings_at``.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         if not path:
@@ -125,11 +125,11 @@ class TestsFlextInfraUtilitiesTomlMixin:
         return TestsFlextInfraUtilitiesTomlMixin.toml_strings(table[path[-1]])
 
     @staticmethod
-    def toml_tables_at(content: str, *path: str) -> t.SequenceOf[t.JsonMapping]:
+    def toml_tables_at(content: str, *path: str) -> Sequence[t.JsonMapping]:
         """Provide ``toml_tables_at``.
 
         Returns:
-            The resulting ``t.SequenceOf[t.JsonMapping]``.
+            The resulting ``Sequence[t.JsonMapping]``.
 
         """
         if not path:
@@ -203,7 +203,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
         if not isinstance(normalized, Mapping):
             msg = "normalized TOML document is not a mapping"
             raise TypeError(msg)
-        result: t.MutableMappingKV[str, t.JsonValue] = dict(normalized)
+        result: MutableMapping[str, t.JsonValue] = dict(normalized)
         return result
 
     @staticmethod
@@ -222,7 +222,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
         if not isinstance(normalized, Mapping):
             msg = "normalized TOML value is not a mapping"
             raise TypeError(msg)
-        result: t.MutableMappingKV[str, t.JsonValue] = dict(normalized)
+        result: MutableMapping[str, t.JsonValue] = dict(normalized)
         return result
 
     @staticmethod
@@ -246,11 +246,11 @@ class TestsFlextInfraUtilitiesTomlMixin:
         return tuple(result)
 
     @staticmethod
-    def toml_strings(value: t.JsonPayload | None) -> t.StrSequence:
+    def toml_strings(value: t.JsonPayload | None) -> Sequence[str]:
         """Provide the typed test helper `toml_strings`.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             TypeError: If normalized TOML strings are not a list.
@@ -264,14 +264,14 @@ class TestsFlextInfraUtilitiesTomlMixin:
         return tuple(str(item) for item in normalized)
 
     @staticmethod
-    def strings(value: t.JsonPayload | None) -> t.StrSequence:
+    def strings(value: t.JsonPayload | None) -> Sequence[str]:
         """Validate and return one JSON payload as a string sequence.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
-        result: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
+        result: Sequence[str] = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
         return result
 
 

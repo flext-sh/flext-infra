@@ -6,18 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from flext_infra import FlextInfraProjectSelectionMixin, FlextInfraServiceBase, m, t
+from flext_infra import FlextInfraBaseProjects, FlextInfraServiceBase, m, t
 
 
 class FlextInfraProjectSelectionServiceBase[
     TDomainResult: t.JsonValue | t.BaseModelType | Path | datetime,
 ](
     FlextInfraServiceBase[TDomainResult],
-    FlextInfraProjectSelectionMixin,
+    FlextInfraBaseProjects,
 ):
     """Shared service foundation for commands that target workspace projects.
 
@@ -26,7 +27,7 @@ class FlextInfraProjectSelectionServiceBase[
     """
 
     selected_projects: Annotated[
-        t.StrSequence | None,
+        Sequence[str] | None,
         m.BeforeValidator(lambda value: (value,) if isinstance(value, str) else value),
         m.Field(
             default=None,

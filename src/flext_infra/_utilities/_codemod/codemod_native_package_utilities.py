@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Mapping, Sequence
 from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path, PurePosixPath
@@ -26,26 +27,25 @@ from flext_infra import FlextInfraConfig, c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesImportLaw,
-    FlextInfraUtilitiesPyproject,
     FlextInfraUtilitiesPythonModel,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._codemod.codemod_rules import (
-    FlextInfraUtilitiesCodemodRules,
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
 )
 from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
-from flext_infra._utilities._rope._analysis.sourcescan import (
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
-)
 
 
-class FlextInfraUtilitiesCodemodNativePackageUtilities:
+class FlextInfraUtilitiesCodemodNativePackage:
     """Derive package export and facade-family package utility rules."""
 
     @staticmethod
-    def codemod_exact_names_rule(names: t.StrSequence) -> t.JsonDict:
+    def codemod_exact_names_rule(names: Sequence[str]) -> t.JsonDict:
         """Match a captured identifier that is exactly one of ``names``.
 
         Returns:
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
     @classmethod
     def codemod_package_export_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """One ``exports--<dotted package>`` utility per package of the project.
 
         Returns:
@@ -143,7 +143,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
     def codemod_facade_family_package_utilities(
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Facade-family packages: ``<own root>._<family>`` of every family.
 
         The family directories come from the facade-family declarations, so a
@@ -155,7 +155,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         """
         del snapshot
         roots = sorted({
-            FlextInfraUtilitiesPyproject.project_package_name(project.absolute()),
+            FlextInfraUtilitiesPyprojectConform.project_package_name(
+                project.absolute()
+            ),
             *c.Infra.NON_PUBLIC_LAZY_ROOTS,
         })
         directories = sorted({
@@ -207,7 +209,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
     @staticmethod
     def _codemod_declaring_packages(
         facts: m.Infra.CodemodPackageExportsFacts,
-    ) -> t.MappingKV[str, t.StrTuple]:
+    ) -> Mapping[str, t.StrTuple]:
         """Every public non-dunder name to the packages whose ``__all__`` declares it.
 
         Returns:
@@ -227,7 +229,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
     @classmethod
     def codemod_header_resolvable_names(
         cls, facts: m.Infra.CodemodPackageExportsFacts
-    ) -> t.MappingKV[str, str]:
+    ) -> Mapping[str, str]:
         """Names whose canonical package import is unambiguous from any module.
 
         A name resolves when exactly one shallowest package declares it; a
@@ -260,7 +262,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         facts: m.Infra.CodemodPackageExportsFacts,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Insert the nearest declaring package's import for unbound names.
 
         One rule per package and scope inserts, after the module's first
@@ -339,7 +341,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         return documents
 
     @classmethod
-    def _codemod_header_rule(cls, names: t.StrSequence) -> t.JsonDict:
+    def _codemod_header_rule(cls, names: Sequence[str]) -> t.JsonDict:
         """Anchor on the first future or plain import of a module using ``names``.
 
         Returns:
@@ -409,7 +411,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         facts: m.Infra.CodemodPackageExportsFacts,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Reach a member through its package import, never a module object.
 
         For each package with child packages, one rule rewrites
@@ -480,7 +482,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
     @classmethod
     def _codemod_member_rule(
-        cls, package: str, branches: t.SequenceOf[t.JsonDict]
+        cls, package: str, branches: Sequence[t.JsonDict]
     ) -> t.JsonDict:
         """Match ``<child>.<Name>`` bound by a module-object import of ``package``.
 
@@ -566,7 +568,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
     @classmethod
     def codemod_package_deep_import_rules(
         cls, project: Path, facts: m.Infra.CodemodPackageExportsFacts
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Rebind a one-name import from a module to its nearest publishing package.
 
         For each package P, one rule matches ``from <module> import <Name>``
@@ -626,7 +628,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
     @classmethod
     def _codemod_deep_import_branch(
-        cls, module: str, names: t.StrSequence
+        cls, module: str, names: Sequence[str]
     ) -> t.JsonDict:
         """Match an import of one of ``names`` from exactly ``module``.
 
@@ -655,7 +657,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
 
     @staticmethod
     def codemod_role_files(
-        snapshot: p.Infra.WorkspaceSnapshot, project: Path, roles: t.StrSequence
+        snapshot: p.Infra.WorkspaceSnapshot, project: Path, roles: Sequence[str]
     ) -> t.StrTuple:
         """Project-relative paths of every module the import law gives a role.
 
@@ -669,6 +671,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         """
         root = project.resolve()
         law = FlextInfraUtilitiesImportLaw
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         return tuple(
             sorted(
                 path.relative_to(root).as_posix()
@@ -677,7 +680,8 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                 )
                 if (located := law.snapshot_import_namespace(snapshot, root, path))
                 is not None
-                and law.import_module_role(located[1]) in roles
+                and located[1].split(".")[0] == package
+                and law.import_module_role(located[1], namespace=package) in roles
             )
         )
 
@@ -709,11 +713,18 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         if root in snapshot.absolute_import_roots:
             return snapshot.absolute_import_roots[root]
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
-        roots = FlextInfraUtilitiesRopeAnalysisSourceScan.module_absolute_import_roots
         imported: set[str] = set()
         for path in snapshots.workspace_python_files(snapshot, root):
             snapshots.workspace_source(snapshot, path)
-            imported.update(roots(snapshots.workspace_module_tree(snapshot, path)))
+            module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    snapshot.engine,
+                    FlextInfraUtilitiesRopeRuntime.file_resource_at(
+                        snapshot.engine, path
+                    ),
+                )
+            )
+            imported.update(module.get_source_binding_index().absolute_import_roots())
         snapshot.absolute_import_roots[root] = tuple(sorted(imported))
         return snapshot.absolute_import_roots[root]
 
@@ -779,7 +790,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The sorted facade package names the project reaches.
 
         """
-        own = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
         return tuple(
             sorted({
                 own,
@@ -796,7 +809,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
     @classmethod
     def codemod_external_import_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Ban a library import outside the facade families (ADR-028).
 
         The module of a live import must be the standard library, the own
@@ -808,7 +821,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The external-import rule document keyed by id.
 
         """
-        package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
         catalog = (
             FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH
         )
@@ -859,7 +874,7 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
     @classmethod
     def codemod_library_type_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Ban a library type named inline outside the typings family (ADR-028).
 
         An attribute of a module the file binds by ``import`` and that is a
@@ -872,7 +887,9 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             The library-type rule document keyed by id.
 
         """
-        package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
         facade = c.Infra.CODEMOD_FACADE_PACKAGE_UTILITY
         stdlib = c.Infra.CODEMOD_STDLIB_MODULE_UTILITY
         own = c.Infra.CODEMOD_OWN_PACKAGE_UTILITY
@@ -1003,17 +1020,83 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         }
 
     @classmethod
+    def _layer_zero_helpers(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> set[str]:
+        """Collect own helpers admitted by the normalization owner's native proof.
+
+        Returns:
+            The admitted native module identities.
+
+        Raises:
+            ValueError: If a layer-zero source lacks an authenticated namespace.
+
+        """
+        sources = {
+            path: source.text
+            for path, source in (
+                FlextInfraUtilitiesWorkspaceSnapshot.workspace_sources(snapshot).items()
+            )
+        }
+        helpers: set[str] = set()
+        for relative in cls.codemod_layer_zero_files(snapshot, project):
+            path = project.resolve() / relative
+            located = FlextInfraUtilitiesImportLaw.snapshot_import_namespace(
+                snapshot, project.resolve(), path
+            )
+            if located is None:
+                message = f"Layer-zero module has no native namespace: {path}"
+                raise ValueError(message)
+            state = m.Infra.ImportLawPass(
+                scope=m.Infra.ImportLawScope(
+                    project_root=project.resolve(),
+                    file_path=path,
+                    namespace_dir=located[0],
+                    module=located[1],
+                    layer=FlextInfraUtilitiesImportLaw.module_import_layer(located[1]),
+                    own_exports=frozenset(),
+                ),
+                tree=FlextInfraUtilitiesWorkspaceSnapshot.workspace_module_tree(
+                    snapshot, path
+                ),
+                parents={},
+                bindings={},
+                root_exports={},
+                sources=sources,
+                source_project=snapshot.engine,
+            )
+            for node in ast.walk(state.tree):
+                if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                    continue
+                for alias in node.names:
+                    target = (
+                        node.module or ""
+                        if isinstance(node, ast.ImportFrom)
+                        else alias.name
+                    )
+                    if target.startswith(f"{state.scope.namespace}.") and (
+                        FlextInfraUtilitiesImportLaw.import_law_layer_zero_helper(
+                            state, target
+                        )
+                    ):
+                        helpers.add(target)
+        return helpers
+
+    @classmethod
     def codemod_layer_zero_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
-        """Ban own-namespace imports from the project's layer-zero modules.
+    ) -> Mapping[str, t.JsonMapping]:
+        """Ban own-root/family imports, admitting only native-proven helpers.
 
         A settings/config (or lazy-loader) module owns its declarations before
         any facade family exists, so it imports neither its own root facade
-        nor any module of its own namespace, TYPE_CHECKING included. The
+        nor an own facade family, TYPE_CHECKING included. Own helpers require
+        the normalization owner's complete native identity and acyclicity proof.
+        Exact admitted identities are projected, not inferred by regex. The
         layer-zero files are rendered as exact ``files`` globs and the own
         package is the native ``own-package`` utility, so the native scan and
-        ``make mod`` reach the same verdict without per-finding admission.
+        ``make mod`` consume the same source-derived admission decision.
+        Native namespace, helper completeness and cycle errors propagate unchanged.
 
         Returns:
             The two layer-zero rule documents keyed by id, or nothing when the
@@ -1026,7 +1109,10 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
         ]
         if not files:
             return {}
-        package = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
+        helpers = cls._layer_zero_helpers(snapshot, project)
         separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
         root_name = c.Infra.CODEMOD_ROOT_IMPORTED_NAME_UTILITY
         root_rule = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
@@ -1034,6 +1120,14 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
             root_name,
         )
         own: t.JsonDict = {"MODULE": {"matches": c.Infra.CODEMOD_OWN_PACKAGE_UTILITY}}
+        own_module: t.JsonDict = {
+            "MODULE": {
+                "all": [
+                    {"matches": c.Infra.CODEMOD_OWN_PACKAGE_UTILITY},
+                    {"not": cls.codemod_exact_names_rule(tuple(helpers))},
+                ]
+            }
+        }
         facade_shape = c.Infra.CODEMOD_LAYER_ZERO_FACADE_IMPORT_SHAPE
         module_shape = c.Infra.CODEMOD_LAYER_ZERO_MODULE_IMPORT_SHAPE
         facade_id = f"{facade_shape}{separator}{package}"
@@ -1092,14 +1186,15 @@ class FlextInfraUtilitiesCodemodNativePackageUtilities:
                         },
                     ]
                 },
-                "constraints": own,
+                "constraints": own_module,
                 "message": (
                     "Layer-zero settings/config imports its own namespace "
-                    "`$MODULE`, including TYPE_CHECKING: use native or valid "
-                    "upstream contracts."
+                    "`$MODULE`, including TYPE_CHECKING: use native, valid "
+                    "upstream contracts or an identity-proven acyclic layer-zero "
+                    "helper."
                 ),
             },
         }
 
 
-__all__: list[str] = ["FlextInfraUtilitiesCodemodNativePackageUtilities"]
+__all__: list[str] = ["FlextInfraUtilitiesCodemodNativePackage"]

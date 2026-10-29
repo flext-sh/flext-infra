@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from types import MappingProxyType
 
@@ -13,10 +14,10 @@ from flext_cli import m
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsRope
-from flext_infra._models._config import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraModelsConfig
 
 
-class FlextInfraModelsCodegenTransactionModels:
+class FlextInfraModelsCodegenTransaction:
     """Source candidate models for the codegen pipeline."""
 
     class CodegenSourcePreviewOptions(FlextInfraModelsBase.FrozenArbitrary):
@@ -29,7 +30,7 @@ class FlextInfraModelsCodegenTransactionModels:
         workspaces: tuple[Path, ...] = m.Field(
             default=(), description="Explicit composition scopes of the staged view"
         )
-        modes: t.MappingKV[Path, int] | None = m.Field(
+        modes: Mapping[Path, int] | None = m.Field(
             default=None,
             description="Declared file modes for the staged source updates",
         )
@@ -37,7 +38,7 @@ class FlextInfraModelsCodegenTransactionModels:
             default=(),
             description="Original source observations materialized in the view",
         )
-        declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+        declared_files: tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] = m.Field(
             default=(), description="Original declarations of the candidate effects"
         )
 
@@ -47,10 +48,10 @@ class FlextInfraModelsCodegenTransactionModels:
         workspaces: tuple[Path, ...] = m.Field(
             default=(), description="Explicit composition scopes of the staged view"
         )
-        modes: t.MappingKV[Path, int] | None = m.Field(
+        modes: Mapping[Path, int] | None = m.Field(
             default=None, description="Declared source modes preserved during staging"
         )
-        declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+        declared_files: tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] = m.Field(
             default=(), description="Authenticated candidate file declarations"
         )
         inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
@@ -79,16 +80,16 @@ class FlextInfraModelsCodegenTransactionModels:
         inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             description="Exact source and configuration observations"
         )
-        updates: t.MappingKV[Path, str | None] = m.Field(
+        updates: Mapping[Path, str | None] = m.Field(
             description=(
                 "Desired sources keyed by live destination; None retires an artifact"
             ),
         )
-        modes: t.MappingKV[Path, int] = m.Field(
+        modes: Mapping[Path, int] = m.Field(
             default_factory=lambda: MappingProxyType[Path, int]({}),
             description="Desired file-effect modes derived from original move sources",
         )
-        declared_files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+        declared_files: tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] = m.Field(
             default=(),
             description=(
                 "Original file/absence witnesses with the current desired effects"
@@ -110,13 +111,13 @@ class FlextInfraModelsCodegenTransactionModels:
     class SemanticSourcePlan(m.ImmutableValueModel):
         """Authenticated source campaign independent of explicit rename intent."""
 
-        candidate: FlextInfraModelsCodegenTransactionModels.StageSourcePlan = m.Field(
+        candidate: FlextInfraModelsCodegenTransaction.StageSourcePlan = m.Field(
             description="Authenticated complete source and runtime candidate closure",
         )
-        consumer_roots: t.VariadicTuple[Path] = m.Field(
+        consumer_roots: tuple[Path, ...] = m.Field(
             default=(),
             description="External scopes elected before producer publication",
         )
 
 
-__all__: list[str] = ["FlextInfraModelsCodegenTransactionModels"]
+__all__: list[str] = ["FlextInfraModelsCodegenTransaction"]

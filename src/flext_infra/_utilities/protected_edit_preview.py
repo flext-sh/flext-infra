@@ -7,14 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import operator
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t
-from flext_infra._utilities.protected_edit_linting import (
-    FlextInfraUtilitiesProtectedEditLinting,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProtectedEditLinting
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -25,7 +23,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
     @staticmethod
     def _normalized_source_updates(
-        updates: t.MappingKV[Path, str],
+        updates: Mapping[Path, str],
     ) -> MutableMapping[Path, str]:
         """Return one update map keyed by resolved path in deterministic order.
 
@@ -40,17 +38,17 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
     @staticmethod
     def _preview_write_baselines(
-        updates: t.MappingKV[Path, str],
+        updates: Mapping[Path, str],
         workspace: Path,
-        gates: t.StrSequence | None = None,
-    ) -> t.Pair[
+        gates: Sequence[str] | None = None,
+    ) -> tuple[
         MutableMapping[Path, str | None],
         MutableMapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
     ]:
         """Preview write baselines.
 
         Returns:
-            The resulting ``t.Pair[MutableMapping[Path, str | None],
+            The resulting ``tuple[MutableMapping[Path, str | None],
                 MutableMapping[Path, t.Infra.LintSnapshot]]``.
 
         """
@@ -84,9 +82,9 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         path: Path,
         workspace: Path,
         before_source: str,
-        new_errors: t.Infra.LintSnapshot[t.StrSequence],
+        new_errors: t.Infra.LintSnapshot[Sequence[str]],
         *,
-        execution_errors: t.StrSequence = (),
+        execution_errors: Sequence[str] = (),
     ) -> list[str]:
         """Describe the actual source delta and its validation failures.
 
@@ -117,11 +115,11 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
     @staticmethod
     def _preview_write_reports(
-        candidates: t.MappingKV[Path, Path],
-        before_sources: t.MappingKV[Path, str | None],
-        before_lints: t.MappingKV[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+        candidates: Mapping[Path, Path],
+        before_sources: Mapping[Path, str | None],
+        before_lints: Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
         workspace: Path,
-        gates: t.StrSequence | None = None,
+        gates: Sequence[str] | None = None,
     ) -> t.Infra.EditResult:
         """Preview write reports.
 
@@ -166,11 +164,11 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
     @staticmethod
     def preview_source_writes(
-        updates: t.MappingKV[Path, str],
+        updates: Mapping[Path, str],
         *,
         workspace: Path,
         source_preview: p.Infra.SourcePreview,
-        gates: t.StrSequence | None = None,
+        gates: Sequence[str] | None = None,
     ) -> t.Infra.EditResult:
         """Validate a journal-owned source view without writing live destinations.
 
@@ -196,7 +194,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
         def validate(
             _view_root: Path,
-            candidates: t.MappingKV[Path, Path],
+            candidates: Mapping[Path, Path],
         ) -> t.Infra.EditResult:
             """Run the real configured validators against the staged candidate.
 
@@ -232,8 +230,8 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         *,
         updated_source: str,
         source_preview: p.Infra.SourcePreview,
-        gates: t.StrSequence | None = None,
-    ) -> t.Pair[
+        gates: Sequence[str] | None = None,
+    ) -> tuple[
         t.Infra.LintSnapshot[m.Infra.LintGateResult],
         t.Infra.LintSnapshot[m.Infra.LintGateResult],
     ]:
@@ -262,7 +260,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
         def validate(
             _view_root: Path,
-            candidates: t.MappingKV[Path, Path],
+            candidates: Mapping[Path, Path],
         ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
             del _view_root
             return FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(

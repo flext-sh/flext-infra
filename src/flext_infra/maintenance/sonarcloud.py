@@ -94,11 +94,11 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
     def current_field_values(
         plan: m.Infra.SonarcloudSettingsPlan,
         current: m.Infra.SonarcloudSettingsValues,
-    ) -> t.VariadicTuple[m.Infra.SonarcloudIssueFieldValue]:
+    ) -> tuple[m.Infra.SonarcloudIssueFieldValue, ...]:
         """Read effective entries without excluding values inherited from a parent.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.SonarcloudIssueFieldValue]``.
+            The resulting ``tuple[m.Infra.SonarcloudIssueFieldValue, ...],``.
 
         """
         return tuple(
@@ -244,7 +244,7 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
             return r[bool].fail("SonarCloud rejected SONAR_TOKEN as invalid")
         return r[bool].ok(value=True)
 
-    def _resolve_token_and_project_key(self) -> p.Result[t.Pair[t.SecretStr, str]]:
+    def _resolve_token_and_project_key(self) -> p.Result[tuple[t.SecretStr, str]]:
         """Resolve the optional token and this checkout's project key.
 
         The empty secret is the typed absence (operator ruling
@@ -253,12 +253,12 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
         and green; a present but malformed token still fails.
 
         Returns:
-            The resulting ``p.Result[t.Pair[t.SecretStr, str]]``.
+            The resulting ``p.Result[tuple[t.SecretStr, str]]``.
 
         """
         token_result = self.optional_token()
         if token_result.failure:
-            return r[t.Pair[t.SecretStr, str]].from_failure(token_result)
+            return r[tuple[t.SecretStr, str]].from_failure(token_result)
         token = token_result.value
         if not token.get_secret_value():
             u.Cli.info(
@@ -266,11 +266,11 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
                 "(ai-hub credential ingress); operator ruling 2026-10-08 "
                 "run-if-available-else-skip",
             )
-            return r[t.Pair[t.SecretStr, str]].ok((token, ""))
+            return r[tuple[t.SecretStr, str]].ok((token, ""))
         key_result = self.project_key(self.repository_root)
         if key_result.failure:
-            return r[t.Pair[t.SecretStr, str]].from_failure(key_result)
-        return r[t.Pair[t.SecretStr, str]].ok((token, key_result.value))
+            return r[tuple[t.SecretStr, str]].from_failure(key_result)
+        return r[tuple[t.SecretStr, str]].ok((token, key_result.value))
 
     def _converge(
         self,

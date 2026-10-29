@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -13,7 +14,7 @@ from flext_cli import m
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsRefactorGrep
-from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInitModels
+from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInit
 
 
 class FlextInfraModelsWorkspaceSnapshot:
@@ -60,7 +61,7 @@ class FlextInfraModelsWorkspaceSnapshot:
             Path, m.Field(description="Resolved root of the workspace")
         ]
         members: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Resolved member roots"),
         ]
         engine: Annotated[
@@ -73,11 +74,11 @@ class FlextInfraModelsWorkspaceSnapshot:
             ),
         ]
         python_files: Annotated[
-            t.Port[dict[Path, t.VariadicTuple[Path]]],
+            t.Port[dict[Path, tuple[Path, ...]]],
             m.Field(exclude=True, description="Python sources of each member"),
         ]
         directory_facts: Annotated[
-            t.Port[dict[Path, t.Pair[Path | None, str]]],
+            t.Port[dict[Path, tuple[Path | None, str]]],
             m.Field(
                 exclude=True,
                 description="Physical directory owner and package name",
@@ -87,7 +88,7 @@ class FlextInfraModelsWorkspaceSnapshot:
             t.Port[
                 dict[
                     t.Infra.RopeNativeParsedModule,
-                    FlextInfraModelsCodegenLazyInitModels.PythonModuleFacts,
+                    FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
                 ]
             ],
             m.Field(
@@ -104,7 +105,7 @@ class FlextInfraModelsWorkspaceSnapshot:
             m.Field(exclude=True, description="Dotted package of each directory"),
         ]
         import_edges: Annotated[
-            t.Port[dict[Path, t.Pair[frozenset[str], frozenset[str]]]],
+            t.Port[dict[Path, tuple[frozenset[str], frozenset[str]]]],
             m.Field(
                 exclude=True,
                 description="Runtime and typing-only imported modules per source",
@@ -118,7 +119,7 @@ class FlextInfraModelsWorkspaceSnapshot:
             ),
         ]
         import_namespaces: Annotated[
-            t.Port[dict[t.Pair[Path, Path], t.Pair[Path, str] | None]],
+            t.Port[dict[tuple[Path, Path], tuple[Path, str] | None]],
             m.Field(
                 exclude=True,
                 description="Import-law namespace election per consumer and source",
@@ -132,7 +133,7 @@ class FlextInfraModelsWorkspaceSnapshot:
             ),
         ]
         exports: Annotated[
-            t.Port[dict[Path, t.StrSequence]],
+            t.Port[dict[Path, Sequence[str]]],
             m.Field(exclude=True, description="Declared public names per module"),
         ]
         bindings: Annotated[

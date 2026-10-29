@@ -11,10 +11,13 @@ from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
-from flext_infra.release import FlextInfraReleasePlanMixin
+from flext_infra.release import FlextInfraReleaseRelease
 
 
-class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseOptions):
+class FlextInfraReleaseOrchestrator(
+    FlextInfraReleaseRelease,
+    m.Infra.ReleaseOptions,
+):
     """Run one phase of the release protocol against the repository root.
 
     The version lives only in ``pyproject.toml``; the protocol derives every
@@ -69,7 +72,11 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseO
         )
         match ctx.phase:
             case c.Infra.ReleasePhase.PLAN:
-                return self.phase_plan(ctx).map(lambda _plan: True)
+
+                def planned(_plan: m.Infra.ReleasePlan) -> bool:
+                    return True
+
+                return self.phase_plan(ctx).map(planned)
             case c.Infra.ReleasePhase.VERSION:
                 return self.phase_version(ctx)
             case c.Infra.ReleasePhase.TAG:
@@ -221,7 +228,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseO
         version: str,
         subject: str,
         head_oid: str,
-    ) -> p.Result[t.Pair[str, str]]:
+    ) -> p.Result[tuple[str, str]]:
         """Locate the merged release commit, or fail loud when it is absent.
 
         A hot integration lane keeps landing after the release commit: the
@@ -233,7 +240,7 @@ class FlextInfraReleaseOrchestrator(FlextInfraReleasePlanMixin, m.Infra.ReleaseO
             The resulting ``(subject, oid)`` pair of the release commit.
 
         """
-        result_type = r[t.Pair[str, str]]
+        result_type = r[tuple[str, str]]
         if u.Infra.release_subject(subject, version):
             return result_type.ok((subject, head_oid))
         expected = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)

@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, override
 from flext_infra import c, r, s, u
 
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_infra import m, p
 
 
 class FlextInfraCleanService(s[int]):
@@ -63,9 +63,9 @@ class FlextInfraCleanService(s[int]):
         cls,
         root: Path,
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> t.Pair[
-        t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
-        t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> tuple[
+        tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
+        tuple[m.Cli.AtomicFileState, ...],
     ]:
         """Elect physical targets while retaining every foreign/runtime boundary.
 
@@ -148,7 +148,7 @@ class FlextInfraCleanService(s[int]):
         root: Path,
         path: Path,
         kind: str,
-        members: t.VariadicTuple[Path],
+        members: tuple[Path, ...],
         codegen: m.Infra.CodegenConfigSpec,
     ) -> m.Cli.AtomicPhysicalTreeManifest:
         """Authenticate one disposable directory and inventory its physical tree.

@@ -51,7 +51,7 @@ class TestsFlextInfraInfraRopeService:
     @staticmethod
     @pytest.mark.parametrize("same_root", [False, True])
     def test_sibling_scopes_keep_their_root_and_independent_lifetime(
-        rope_sibling_scopes: t.Pair[t.Pair[Path, Path], t.Pair[Path, Path]],
+        rope_sibling_scopes: tuple[tuple[Path, Path], tuple[Path, Path]],
         *,
         same_root: bool,
     ) -> None:
@@ -164,7 +164,7 @@ class TestsFlextInfraInfraRopeService:
         sibling_module_path = sibling_package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             sibling_module_path,
-            class_name="FlextDemoModels",
+            class_name="FlextModelsDemo",
             alias="m",
             docstring="Models.",
         )
@@ -181,11 +181,11 @@ class TestsFlextInfraInfraRopeService:
         repository_root: Path,
         module_path: Path,
         options: t.JsonMapping,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Read one module's public export contract through the Rope workspace.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         with flext_infra.infra.rope_workspace(repository_root) as rope:
@@ -206,13 +206,28 @@ class TestsFlextInfraInfraRopeService:
         ],
     )
     def test_source_docstrings_only_resolve_local_definitions(
+        tmp_path: Path,
         source: str,
         symbol: str,
         *,
         documented: bool,
     ) -> None:
-        """Relative reexports require repository context, not source-only lookup."""
-        tm.that(u.Infra.symbol_has_docstring_source(source, symbol), eq=documented)
+        """Documented local definitions satisfy the real public docs consumer."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "provider.py"
+        path.write_text(source, encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            issues = u.Infra.docstring_issues(
+                root,
+                {
+                    "package_name": package.name,
+                    "modules": [],
+                    "target_map": {symbol: f"{package.name}.{path.stem}"},
+                },
+                rope_project=project,
+            )
+        missing = f"exported symbol `{symbol}` is missing a docstring"
+        tm.that(not any(issue.message == missing for issue in issues), eq=documented)
 
     @staticmethod
     def test_public_workspace_materializes_index(tmp_path: Path) -> None:
@@ -450,7 +465,7 @@ class TestsFlextInfraInfraRopeService:
                         rope.rope_project,
                         tm.not_none(rope.resource(sibling_module_path)),
                     )
-                    tm.not_none(dependency.get_attribute("FlextDemoModels"))
+                    tm.not_none(dependency.get_attribute("FlextModelsDemo"))
 
     def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
         """Without a workspace context, sibling projects remain outside Rope."""

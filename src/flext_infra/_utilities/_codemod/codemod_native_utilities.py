@@ -20,7 +20,7 @@ import shutil
 import sys
 import tempfile
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from functools import cache
 from importlib.metadata import packages_distributions
@@ -33,17 +33,15 @@ from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._codemod.codemod_rules import (
-    FlextInfraUtilitiesCodemodRules,
-)
-from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 
-class FlextInfraUtilitiesCodemodNativeUtilities:
+class FlextInfraUtilitiesCodemodNative:
     """Derive native ast-grep utility rules from project sources of truth."""
 
     @staticmethod
@@ -86,7 +84,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         }
 
     @staticmethod
-    def codemod_module_names_rule(names: t.StrSequence) -> t.JsonMapping:
+    def codemod_module_names_rule(names: Sequence[str]) -> t.JsonMapping:
         """Match a captured dotted module whose top-level package is listed.
 
         The top-level package is the captured text up to its first dot or
@@ -102,7 +100,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     @classmethod
     def codemod_own_package_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Own package: the public package, internal tiers, declared namespaces.
 
         An absolute import between the project's package and its internal
@@ -120,7 +118,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         }
 
     @staticmethod
-    def codemod_own_package_names(project: Path) -> t.StrSequence:
+    def codemod_own_package_names(project: Path) -> Sequence[str]:
         """Top-level packages the project owns: its package, tiers, namespaces.
 
         Returns:
@@ -128,7 +126,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
 
         """
         return (
-            FlextInfraUtilitiesPyproject.project_package_name(project),
+            FlextInfraUtilitiesPyprojectConform.project_package_name(project),
             *c.Infra.NON_PUBLIC_LAZY_ROOTS,
             *FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(project),
         )
@@ -136,7 +134,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     @classmethod
     def codemod_stdlib_module_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Standard library: ``sys.stdlib_module_names`` plus declared backports.
 
         Returns:
@@ -157,12 +155,12 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     def codemod_generated_module_utilities(
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Generated module: a module whose first line is the generator header.
 
         The same header ``generated_source`` reads proves a file is a
-        generator projection, so rules skip generated files through this one
-        derived fact instead of listing file names.
+        generator projection. Rules use this ownership fact for specific
+        publication contracts, never as a blanket source-admission exclusion.
 
         Returns:
             The ``generated-module`` utility rule.
@@ -183,7 +181,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     @classmethod
     def codemod_runtime_package_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Runtime package: an import package of the runtime dependency closure.
 
         Returns:
@@ -218,7 +216,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     @staticmethod
     @cache
     def _runtime_modules_of(
-        requirements: t.VariadicTuple[str], import_path: t.VariadicTuple[str]
+        requirements: tuple[str, ...], import_path: tuple[str, ...]
     ) -> frozenset[str]:
         """Resolve the import packages of one requirement set, once per process.
 
@@ -242,7 +240,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         )
         progress(f"runtime dependency closure finish distributions={len(closure)}")
         progress("runtime import package metadata start")
-        owner = FlextInfraUtilitiesCodemodNativeUtilities
+        owner = FlextInfraUtilitiesCodemodNative
         packages = owner.codemod_installed_import_packages()
         progress(f"runtime import package metadata finish packages={len(packages)}")
         selected: set[str] = set()
@@ -260,7 +258,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
 
     @staticmethod
     @cache
-    def codemod_installed_import_packages() -> t.MappingKV[str, frozenset[str]]:
+    def codemod_installed_import_packages() -> Mapping[str, frozenset[str]]:
         """Map each installed import package to its canonical distributions.
 
         Installed metadata is a fact of the interpreter environment, fixed for
@@ -371,8 +369,8 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        producers: t.StrSequence,
-    ) -> t.MappingKV[str, t.StrTuple]:
+        producers: Sequence[str],
+    ) -> Mapping[str, t.StrTuple]:
         """Run every registered file-scope producer and merge its selectors.
 
         Returns:
@@ -384,7 +382,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
 
         """
         scopes: dict[str, t.StrTuple] = {}
-        adapter = u.type_adapter(TypeForm(t.MappingKV[str, t.StrTuple]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.StrTuple]))
         for name in producers:
             producer = getattr(cls, name, None)
             if not callable(producer):
@@ -428,7 +426,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         *,
-        rule_ids: t.StrSequence | None = None,
+        rule_ids: Sequence[str] | None = None,
     ) -> p.Result[m.Infra.CodemodRulePlan]:
         """Build the sole executable rule plan for check and mutation.
 
@@ -455,7 +453,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     def codemod_facade_alias_base_rules(
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render the rule dropping a bare runtime facade alias used as a base.
 
         Facade members are reached through the alias, never by inheriting it;
@@ -469,7 +467,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
 
         """
         del snapshot
-        package = FlextInfraUtilitiesPyproject.project_package_name(project)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         aliases = sorted(u.runtime_alias_names(c.Infra.PKG_CORE_UNDERSCORE))
         families = FlextInfraUtilitiesCodegenNamespace.facade_families().values()
         rule_id = (
@@ -514,7 +512,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
     @staticmethod
     def codemod_fixture_resources(
         plan: m.Infra.CodemodRulePlan,
-    ) -> t.VariadicTuple[Path]:
+    ) -> tuple[Path, ...]:
         """Return the authored rule files whose catalogs own rule fixtures.
 
         A generated provider renders its rules from project sources of truth
@@ -538,7 +536,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         spec: m.Infra.CodegenAstGrepSpec,
-    ) -> t.Pair[str, Path] | None:
+    ) -> tuple[str, Path] | None:
         """Materialize the project's rendered rules as one native provider root.
 
         The root is content-addressed under the project's native stage
@@ -628,10 +626,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         )
 
     @staticmethod
-    def _verify_generated_provider(
-        root: Path,
-        texts: t.MappingKV[Path, str],
-    ) -> None:
+    def _verify_generated_provider(root: Path, texts: Mapping[Path, str]) -> None:
         """Authenticate an immutable provider's complete inventory and contents.
 
         Raises:
@@ -675,7 +670,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         project: Path,
         entry: m.Infra.CodegenAstGrepRendererSpec,
         facts: dict[str, p.Model],
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Run one renderer, passing its facts model computed once per generation.
 
         Every renderer and facts producer receives the injected snapshot and
@@ -693,7 +688,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         if not callable(renderer):
             msg = f"ast-grep rule renderer is not declared: {entry.name}"
             raise TypeError(msg)
-        adapter = u.type_adapter(TypeForm(t.MappingKV[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         if entry.facts is None:
             return adapter.validate_python(renderer(snapshot, project), strict=True)
         if entry.facts not in facts:
@@ -730,7 +725,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
             msg = f"ast-grep shape producer is not declared: {entry.shapes_from}"
             raise TypeError(msg)
         return frozenset(
-            u.type_adapter(TypeForm(t.StrSequence)).validate_python(
+            u.type_adapter(TypeForm(Sequence[str])).validate_python(
                 producer(), strict=True
             )
         )
@@ -742,8 +737,8 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         project: Path,
         spec: m.Infra.CodegenAstGrepSpec,
         *,
-        facts: t.MappingKV[str, p.Model] | None = None,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+        facts: Mapping[str, p.Model] | None = None,
+    ) -> Mapping[str, t.JsonMapping]:
         """Run every registered renderer and merge its rule documents by id.
 
         ``facts`` seeds facts models the generation already computed.
@@ -784,8 +779,8 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        producers: t.StrSequence,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+        producers: Sequence[str],
+    ) -> Mapping[str, t.JsonMapping]:
         """Run every registered producer and merge its utilities by id.
 
         Returns:
@@ -797,7 +792,7 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
 
         """
         documents: dict[str, t.JsonMapping] = {}
-        adapter = u.type_adapter(TypeForm(t.MappingKV[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         for name in producers:
             producer = getattr(cls, name, None)
             if not callable(producer):
@@ -817,4 +812,4 @@ class FlextInfraUtilitiesCodemodNativeUtilities:
         return MappingProxyType(dict(sorted(documents.items())))
 
 
-__all__: list[str] = ["FlextInfraUtilitiesCodemodNativeUtilities"]
+__all__: list[str] = ["FlextInfraUtilitiesCodemodNative"]

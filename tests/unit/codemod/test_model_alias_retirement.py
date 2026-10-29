@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import pytest
@@ -16,7 +17,6 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import t
 
 _MIN_EDITS = 2
 
@@ -25,9 +25,7 @@ class TestsFlextInfraModelAliasRetirement:
     """The public semantic planner preserves canonical class identity."""
 
     @staticmethod
-    def _workspace(
-        tmp_path: Path, consumer: str
-    ) -> t.Pair[Path, t.MappingKV[Path, str]]:
+    def _workspace(tmp_path: Path, consumer: str) -> tuple[Path, Mapping[Path, str]]:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         models = package / u.Infra.facade_families()[c.Infra.FacadeFamily.M].directory
         utilities = (

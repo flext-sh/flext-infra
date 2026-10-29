@@ -1,0 +1,81 @@
+# Engine-map D3 (flext-pipol / flext-u9h2i, W1 census): `re` over Python
+# source is a hand lexer beside rope, the only Python interpreter
+# FLEXT-authored engine code may use (engine-map section 0, law 2). A
+# `re.sub`/`re.subn` whose subject is a Python-source variable rewrites code
+# by text substitution; the call is the census anchor of the deprecated
+# route, so every consumer is a finding here until the W2 waves move the
+# rewrite to rope analysis and the route is deleted at census zero.
+#
+# Expressed limits, conservative by design (a false negative is preferred
+# over a false positive):
+# - Dataflow is invisible to a pattern rule, so the subject is recognized by
+#   the source-text vocabulary of its name (whole snake_case name, or the
+#   attribute segment of a dotted subject), not by provenance.
+# - Only the module-qualified `re.sub`/`re.subn` call is matched: the
+#   positional subject is the third child of the argument list, or the
+#   `string=` keyword. `from re import sub` bindings, `Pattern.sub` calls on
+#   compiled patterns, and non-source-subject calls stay unmatched.
+# - The D3 census sites that only SCAN source (`re.search`/`re.finditer`
+#   over code, codemod/_rename/sources.py) are deliberately out of scope:
+#   their law is the same, but a name-shaped match there is not reliable
+#   enough for an error-severity rule; they are rewired by the per-site W2
+#   pass.
+id: ban-engine-regex-code-rewrite
+language: Python
+severity: error
+files:
+  - "flext-infra/src/flext_infra/**/*.py"
+  - "src/flext_infra/**/*.py"
+utils:
+  # One owner of the subject vocabulary: a name whose tokens denote Python
+  # source text, as a bare name or the attribute segment of a dotted subject.
+  python-source-subject:
+    any:
+      - all:
+          - kind: identifier
+          - regex: &python-source-name >-
+              ^(?:src|source|sources|code|source_code|source_text|src_text|code_text|(?:module|file|package|project|member|facade|header|body|init|node|tree|py|python)_(?:src|source|code|source_code|source_text))$
+      - all:
+          - kind: attribute
+          - has:
+              field: attribute
+              kind: identifier
+              regex: *python-source-name
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        kind: attribute
+        all:
+          - has:
+              field: object
+              kind: identifier
+              regex: "^re$"
+          - has:
+              field: attribute
+              kind: identifier
+              regex: "^subn?$"
+    - has:
+        field: arguments
+        kind: argument_list
+        any:
+          # Positional subject: third child of the argument list.
+          - has:
+              nthChild: 3
+              matches: python-source-subject
+          # Keyword subject: the `string=` parameter.
+          - has:
+              kind: keyword_argument
+              all:
+                - has:
+                    field: name
+                    regex: "^string$"
+                - has:
+                    field: value
+                    matches: python-source-subject
+message: >-
+  Engine code rewrites Python source with `re.sub`: rope is the only Python
+  interpreter in FLEXT-authored engine code (engine-map D3); rewrite source
+  through rope refactoring APIs, never text substitution. compat:
+  re_rewrite_over_python_source -> rope_analysis; fix: rewire via make mod.

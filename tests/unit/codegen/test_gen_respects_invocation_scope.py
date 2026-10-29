@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
@@ -31,7 +32,9 @@ class TestsFlextInfraGenRespectsInvocationScope:
 
     @staticmethod
     @pytest.fixture
-    def rendered_makefile(tmp_path: Path) -> str:
+    def rendered_makefile(
+        tmp_path: Path,
+    ) -> str:
         """Render the workspace Makefile through the conform owner.
 
         Returns:
@@ -45,14 +48,14 @@ class TestsFlextInfraGenRespectsInvocationScope:
         )
 
     @staticmethod
-    def _recipe_bodies(text: str) -> t.MutableMappingKV[str, list[str]]:
+    def _recipe_bodies(text: str) -> MutableMapping[str, list[str]]:
         """Return each rendered ``_builtin_*`` target mapped to its recipe lines.
 
         Returns:
             Each rendered ``_builtin_*`` target mapped to its recipe lines.
 
         """
-        bodies: t.MutableMappingKV[str, list[str]] = {}
+        bodies: MutableMapping[str, list[str]] = {}
         current: str | None = None
         for line in text.splitlines():
             target = re.match(r"^(_builtin_[a-z_]+):", line)

@@ -68,9 +68,7 @@ class TestsFlextInfraRefactorViolationsSweep(
 
     @pytest.mark.parametrize("counts", [(2, 0), (2, 1), (1, 2), (0, 0)])
     def test_public_utility_deltas_preserve_native_scan_indexes_and_multiplicity(
-        self,
-        mod_workspace: Path,
-        counts: tuple[int, int],
+        self, mod_workspace: Path, counts: tuple[int, ...]
     ) -> None:
         """The single utility owner retains complete per-rule evidence fields."""
         self._prepare(mod_workspace, makefile=self._makefile(), local_rule=True)

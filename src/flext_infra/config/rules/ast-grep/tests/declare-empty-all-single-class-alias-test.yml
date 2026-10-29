@@ -1,34 +1,34 @@
 id: declare-empty-all-single-class-alias
 valid:
-  - |
-    class FlextDemoModels:
-        pass
-    m = FlextDemoModels
-    __all__: list[str] = ["FlextDemoModels", "m"]
-  - |
-    class FlextDemoModels:
-        pass
-    __all__ = ()
-  - |
-    class First:
-        pass
-    class Second:
-        pass
-    m = First
-    __all__ = ()
-  - |
-    class _Private:
-        pass
-    m = _Private
-    __all__ = []
+- |
+  class FlextModelsDemo:
+      pass
+  m = FlextModelsDemo
+  __all__: list[str] = ["FlextModelsDemo", "m"]
+- |
+  class FlextModelsDemo:
+      pass
+  __all__ = ()
+- |
+  class First:
+      pass
+  class Second:
+      pass
+  m = First
+  __all__ = ()
+- |
+  class _Private:
+      pass
+  m = _Private
+  __all__ = []
 invalid:
-  - |
-    class FlextDemoModels:
-        pass
-    m = FlextDemoModels
-    __all__ = ()
-  - |
-    class FlextDemoModels:
-        pass
-    m = FlextDemoModels
-    __all__: list[str] = []
+- |
+  class FlextModelsDemo:
+      pass
+  m = FlextModelsDemo
+  __all__ = ()
+- |
+  class FlextModelsDemo:
+      pass
+  m = FlextModelsDemo
+  __all__: list[str] = []

@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities._codemod.codemod_rules import (
-    FlextInfraUtilitiesCodemodRules,
-)
-from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
+from flext_infra._utilities import FlextInfraUtilitiesNativeTooling
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
 
 
 class FlextInfraUtilitiesEnforcementCatalog:
@@ -23,7 +22,7 @@ class FlextInfraUtilitiesEnforcementCatalog:
     @staticmethod
     def accessor_prefix_constraints(
         _project: Path,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Project the accessor-policy prefixes into a native ast-grep util.
 
         Tooling ``accessor-policy.forbidden-prefixes`` is the one owner of the
@@ -81,8 +80,8 @@ class FlextInfraUtilitiesEnforcementCatalog:
 
     @staticmethod
     def _claims(
-        rules: t.SequenceOf[m.Infra.CodemodRule],
-    ) -> t.VariadicTuple[m.Infra.EnforcementClaim]:
+        rules: Sequence[m.Infra.CodemodRule],
+    ) -> tuple[m.Infra.EnforcementClaim, ...]:
         """Collect every owner's claims in declaration order.
 
         Returns:
@@ -129,7 +128,7 @@ class FlextInfraUtilitiesEnforcementCatalog:
         )
 
     @staticmethod
-    def _defect(claims: t.SequenceOf[m.Infra.EnforcementClaim]) -> str | None:
+    def _defect(claims: Sequence[m.Infra.EnforcementClaim]) -> str | None:
         """Describe the first duplicate or orphan claim.
 
         Returns:

@@ -15,15 +15,15 @@ from typing import cast
 import pytest
 
 from flext_infra import infra
-from flext_infra.transformers import FlextInfraSemanticPublication
-from tests import c, m, t, tm, u
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraSharedHelperPromotion:
     """Keep real consumers working while the original declaration changes owner."""
 
     @staticmethod
-    def _workspace(tmp_path: Path, *, reexport: bool) -> t.Triple[Path, Path, str]:
+    def _workspace(tmp_path: Path, *, reexport: bool) -> tuple[Path, Path, str]:
         root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
         # Promotion publishes through the codegen transaction, which coordinates
         # only inside an exact Git worktree root, exactly as in production.
@@ -248,7 +248,7 @@ class TestsFlextInfraSharedHelperPromotion:
             for edit in edits
         )
         tm.ok(
-            FlextInfraSemanticPublication.publish_semantic_file_plans(
+            FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 plans,
                 repository_root=root,
             ),
@@ -358,7 +358,7 @@ class TestsFlextInfraSharedHelperPromotion:
             for edit in edits
         )
         tm.ok(
-            FlextInfraSemanticPublication.publish_semantic_file_plans(
+            FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 plans,
                 repository_root=root,
             ),

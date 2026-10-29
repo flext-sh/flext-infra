@@ -7,9 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -18,7 +19,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -28,7 +29,7 @@ from flext_infra._utilities._semantic_cutover import (
 
 class FlextInfraUtilitiesDeclarationPayload(
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 ):
     """Identify inherited declarations without parsing or spelling heuristics."""
 
@@ -48,21 +49,29 @@ class FlextInfraUtilitiesDeclarationPayload(
             project, name, module_name=module
         )
 
-    @classmethod
+    @staticmethod
     def class_ancestry(
-        cls,
         value: p.Infra.RopePyObject,
-    ) -> t.SequenceOf[p.Infra.RopePyObject]:
-        pending = [value]
-        found: list[p.Infra.RopePyObject] = []
-        while pending:
-            current = pending.pop()
-            if current in found:
-                continue
-            found.append(current)
-            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(current):
-                pending.extend(cls.direct_bases(current))
-        return found
+    ) -> Sequence[p.Infra.RopePyObject]:
+        """Retain native C3 order, unresolved witnesses and hierarchy failures.
+
+        Returns:
+            The SDK ancestry, or the unchanged non-class singleton.
+
+        """
+        # SDK ownership keeps classification and generation on one ancestry contract.
+        if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
+            try:
+                return value.get_mro()
+            except tuple(
+                FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()
+            ):
+                # A candidate-overlay base chain through lazy cross-package
+                # letters may not linearize in this view; the class itself
+                # remains the ancestry witness (the base project's own pass
+                # owns the true on-disk linearization).
+                return (value,)
+        return (value,)
 
     @classmethod
     def utility_behavior_provider(
@@ -157,7 +166,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
         module: p.Infra.RopePyModule,
-    ) -> t.Pair[str, t.Triple[p.Infra.RopeWorder, int, int]] | None:
+    ) -> tuple[str, tuple[p.Infra.RopeWorder, int, int]] | None:
         """Locate the class header base list through Rope's native reader.
 
         Args:
@@ -190,7 +199,7 @@ class FlextInfraUtilitiesDeclarationPayload(
     @classmethod
     def direct_bases(
         cls, value: p.Infra.RopePyObject
-    ) -> t.SequenceOf[p.Infra.RopePyObject]:
+    ) -> Sequence[p.Infra.RopePyObject]:
         """Return native bases and proven generic owners in their original scope.
 
         Returns:
@@ -201,11 +210,11 @@ class FlextInfraUtilitiesDeclarationPayload(
 
         """
         bases = list(
-            FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
+            FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
                 value, "declaration ancestry"
             ).get_superclasses()
         )
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
             return bases
         scope, module = value.get_scope(), value.get_module()
         if not isinstance(module, p.Infra.RopeSourceModule):
@@ -262,7 +271,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         return bases
 
     @staticmethod
-    def _specialized_arguments(source: str, first: int, last: int) -> t.StrSequence:
+    def _specialized_arguments(source: str, first: int, last: int) -> Sequence[str]:
         """Select the original subscribed class-header arguments.
 
         Returns:
@@ -312,7 +321,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             return None
         owner = binding.get_object()
         return (
-            owner if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner) else None
+            owner if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(owner) else None
         )
 
     @staticmethod
@@ -326,7 +335,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             TypeError: If the reader does not satisfy the declared Rope contract.
 
         """
-        words = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
+        words = FlextInfraUtilitiesTypesRopeRuntime.runtime_callable(
             "rope.base.worder",
             "Worder",
         )(source, handle_ignores=True)
@@ -342,7 +351,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         name: str,
         *,
         offset: int | None = None,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Discover module and nested class paths from the native scope graph.
 
         Function-local declarations have no durable family owner and are excluded.
@@ -351,7 +360,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             Every qualified class declaration matching the supplied short name.
 
         """
-        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
@@ -371,7 +380,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             if offset is not None
             else None
         )
-        pending: list[t.Pair[p.Infra.RopeScope, str]] = [(scope, "")]
+        pending: list[tuple[p.Infra.RopeScope, str]] = [(scope, "")]
         names: list[str] = []
         while pending:
             parent, prefix = pending.pop()
@@ -441,7 +450,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         if resolved is None:
             return None
         module, binding = resolved
-        value = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        value = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
             binding.get_object(), qualified_name
         )
         scope = value.get_scope()
@@ -466,7 +475,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         module: p.Infra.RopePyModule,
         value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
-    ) -> t.SequenceOf[m.Infra.LogicalStatement] | None:
+    ) -> Sequence[m.Infra.LogicalStatement] | None:
         """Return the logical statements of one admitted payload body.
 
         Args:
@@ -509,14 +518,14 @@ class FlextInfraUtilitiesDeclarationPayload(
         project: p.Infra.RopeProject,
         path: Path,
         qualified_name: str,
-    ) -> t.Pair[p.Infra.RopePyModule, p.Infra.RopePyName] | None:
+    ) -> tuple[p.Infra.RopePyModule, p.Infra.RopePyName] | None:
         """Resolve one lexical class identity through its native module.
 
         Returns:
             The native module and class binding, or ``None`` for a non-class.
 
         """
-        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
@@ -537,7 +546,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         if binding is None:
             return None
         value = binding.get_object()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
+        if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
             return None
         return module, binding
 
@@ -597,7 +606,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         if resolved is None:
             return None
         _module, binding = resolved
-        value = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        value = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
             binding.get_object(), qualified_name
         )
         base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()
@@ -608,7 +617,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         cls,
         value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
-        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        statements: Sequence[m.Infra.LogicalStatement],
     ) -> bool:
         """Reject class-body behavior using the existing Rope statement boundary.
 
@@ -669,7 +678,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         cls,
         project: p.Infra.RopeProject,
         method: p.Infra.RopeScopedObject,
-        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        statements: Sequence[m.Infra.LogicalStatement],
     ) -> bool:
         """Admit only native declaration decorators in Rope's header region.
 

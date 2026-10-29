@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import keyword
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, t, u
@@ -25,7 +26,7 @@ class FlextInfraEnsurePackagingPhase:
     """Ensure bounded Hatch wheel and source-distribution targets."""
 
     @staticmethod
-    def declaration_resource(*, package: bool) -> t.Pair[str, str] | None:
+    def declaration_resource(*, package: bool) -> tuple[str, str] | None:
         """Derive the producer declaration carried as wheel distribution metadata.
 
         Hatch writes ``extra-metadata`` under ``<dist>.dist-info/extra_metadata/``
@@ -40,7 +41,7 @@ class FlextInfraEnsurePackagingPhase:
         return (c.PYPROJECT_FILENAME, c.PYPROJECT_FILENAME) if package else None
 
     @staticmethod
-    def uv_cache_key_files(hatch_build_hook_path: Path | None) -> t.StrSequence:
+    def uv_cache_key_files(hatch_build_hook_path: Path | None) -> Sequence[str]:
         """Derive the uv editable-build cache keys from the declared build hook.
 
         Editable installs read package sources and config live, so only a
@@ -90,8 +91,8 @@ class FlextInfraEnsurePackagingPhase:
     def resolve_data_paths(
         project_dir: Path,
         package_name: str,
-        declarations: t.StrSequence,
-        planned_files: t.StrSequence = (),
+        declarations: Sequence[str],
+        planned_files: Sequence[str] = (),
     ) -> m.Infra.PackagedDataSelection:
         """Validate existing inputs or exact future scaffold destinations.
 
@@ -168,12 +169,12 @@ class FlextInfraEnsurePackagingPhase:
     def resolve_data_excludes(
         project_dir: Path,
         data: m.Infra.PackagedDataSelection,
-        declarations: t.StrSequence,
-    ) -> t.StrSequence:
+        declarations: Sequence[str],
+    ) -> Sequence[str]:
         """Validate exact files omitted within declared distribution directories.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             ValueError: If invalid packaged data exclusion.
@@ -215,9 +216,9 @@ class FlextInfraEnsurePackagingPhase:
         *,
         package_name: str,
         data: m.Infra.PackagedDataSelection,
-        data_excludes: t.StrSequence,
+        data_excludes: Sequence[str],
         topology: m.Infra.PyprojectDeclaredTopology,
-        project_declaration_resource: t.Pair[str, str] | None,
+        project_declaration_resource: tuple[str, str] | None,
     ) -> m.Infra.DepsToml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name.
 
@@ -430,7 +431,7 @@ class FlextInfraEnsurePackagingPhase:
         *,
         path: Path,
         topology: m.Infra.PyprojectDeclaredTopology,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Emit bounded build targets for a distributable project.
 
         Every package gets the same explicit targets so initial rendering and
@@ -439,7 +440,7 @@ class FlextInfraEnsurePackagingPhase:
         validation, keeping both distribution formats consistent.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             FileNotFoundError: If declared project root module source is missing; or if

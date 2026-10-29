@@ -11,17 +11,13 @@ import os
 import select
 import signal
 import sys
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import Final
 
 import pytest
 
-from tests import c
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-
-from tests import t
+from tests import c, t
 
 
 @dataclasses.dataclass(frozen=True)
@@ -103,7 +99,7 @@ raise SystemExit(
         cls,
         streams: Mapping[int, str],
         timeout: float = BARRIER_TIMEOUT,
-    ) -> t.Pair[str, str]:
+    ) -> tuple[str, str]:
         stdout = ""
         stderr = ""
         pending = dict(streams)
@@ -129,12 +125,12 @@ raise SystemExit(
         cls,
         command: Path,
         *,
-        env: t.StrMapping,
+        env: Mapping[str, str],
         stdout: int | None = None,
         stderr: int | None = None,
         process_group: bool = False,
     ) -> int:
-        file_actions: list[t.Triple[int, int, int]] = []
+        file_actions: list[tuple[int, int, int]] = []
         if stdout is not None:
             file_actions.append((os.POSIX_SPAWN_DUP2, stdout, 1))
         if stderr is not None:

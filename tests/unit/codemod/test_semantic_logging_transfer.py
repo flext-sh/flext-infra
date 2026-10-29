@@ -110,7 +110,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
     @staticmethod
     def _prepare_logging_transfer(
         tmp_path: t.Infra.RopeSourcePath, case: str
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         """Prepare real source owners and their generated publication baseline.
 
         Returns:
@@ -209,7 +209,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
             f"class {owner}({legacy_name}):\n"
             "    @staticmethod\n"
             "    def compose_logging(value: str, *, enabled: bool = True) "
-            "-> t.Pair[str, bool]:\n"
+            "-> tuple[str, bool]:\n"
             "        return value, enabled\n"
             "    def unrelated(self) -> str:\n"
             "        return 'other-domain'\n"
@@ -228,7 +228,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
             "            return event\n"
             "    @staticmethod\n"
             f"    def compose_logging(value: str, *, enabled: bool = {default}) "
-            "-> t.Pair[str, bool]:\n"
+            "-> tuple[str, bool]:\n"
             "        return value, enabled\n"
             f"__all__ = [{utility_name!r}]\n",
             encoding=c.DEFAULT_ENCODING,
@@ -269,7 +269,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
             "instance = API()\n"
             f"direct = u.{domain}.ContextStage(context=API())\n"
             "configure = API.compose_logging\n"
-            "evidence: t.Pair[str, t.Pair[str, bool]] = (\n"
+            "evidence: tuple[str, tuple[str, bool]] = (\n"
             "    instance.ContextStage()('event'), configure('configured')\n"
             ")\n"
             "shadow = Unrelated.compose_logging('unrelated')\n"

@@ -10,7 +10,7 @@ import dataclasses
 import os
 import runpy
 import shutil
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import config, infra, u
@@ -28,7 +28,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
 
     @staticmethod
     def prove_contract_migration(
-        consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         source: str,
         *,
         expect_change: bool = True,
@@ -73,12 +73,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         """Optional standalone-manifest declaration knobs in one contract."""
 
         upstream: str | None = None
-        inherited_facets: t.StrSequence = ()
-        root_modules: t.StrSequence = ()
-        root_packages: t.StrSequence = ()
-        repository_namespace_packages: t.StrSequence = ()
-        packaged_data_paths: t.StrSequence = ()
-        packaged_data_excludes: t.StrSequence = ()
+        inherited_facets: Sequence[str] = ()
+        root_modules: Sequence[str] = ()
+        root_packages: Sequence[str] = ()
+        repository_namespace_packages: Sequence[str] = ()
+        packaged_data_paths: Sequence[str] = ()
+        packaged_data_excludes: Sequence[str] = ()
         gascity_enabled: bool | None = None
         cli_module: bool | None = None
 
@@ -116,11 +116,11 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         return project_dir
 
     @staticmethod
-    def demo_project(root: Path, *, name: str = "demo-project") -> t.Pair[Path, Path]:
+    def demo_project(root: Path, *, name: str = "demo-project") -> tuple[Path, Path]:
         """Create one minimal buildable project; return its root and package dir.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         project = root / name
@@ -160,7 +160,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         package_name: str = "sample_pkg",
         pyproject: str = "[project]\nname='sample'\nversion='1.0.0'\n",
         declare: bool = True,
-    ) -> t.Triple[Path, Path, Path]:
+    ) -> tuple[Path, Path, Path]:
         """Materialize the workspace tree the namespace enforcer scans.
 
         Returns ``(workspace, project, package)``. ``declare`` writes the
@@ -171,7 +171,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         fixture resolved only a host-global binary (none on CI runners).
 
         Returns:
-            The resulting ``t.Triple[Path, Path, Path]``.
+            The resulting ``tuple[Path, Path, Path]``.
 
         """
         workspace = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.mk_project(
@@ -202,7 +202,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project_dir: Path,
         name: str,
         *,
-        extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = (),
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
         role: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
         declaration: StandaloneManifestDeclaration | None = None,
     ) -> Path:
@@ -300,7 +300,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         return manifest_path
 
     @staticmethod
-    def declared_requirements(distribution: str) -> t.StrSequence:
+    def declared_requirements(distribution: str) -> Sequence[str]:
         """Declare the governed tooling suppliers a fixture project depends on.
 
         The set derives from the scaffold dev group and the declared infra
@@ -308,7 +308,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project itself is never its own supplier.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
@@ -435,7 +435,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         tmp_path: Path,
         name: str,
         pkg_name: str,
-        files: t.StrMapping,
+        files: Mapping[str, str],
     ) -> Path:
         """Provide the typed test helper `create_codegen_project`.
 
@@ -948,7 +948,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             workspace: str,
             database: str,
             issue_prefix: str,
-            custom_issue_types: t.VariadicTuple[str] = (),
+            custom_issue_types: tuple[str, ...] = (),
         ) -> Path:
             """Write one repository-local Beads identity input.
 
@@ -1133,7 +1133,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             distribution: str,
             *,
             beads: TestsFlextInfraUtilitiesWorkspaceFixtureMixin.BeadsIdentity,
-            custom_issue_types: t.VariadicTuple[str] = (),
+            custom_issue_types: tuple[str, ...] = (),
             beads_owner: bool = True,
         ) -> Path:
             """Create one self-identifying governed project with a real Git origin.
@@ -1215,7 +1215,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             return root.name
 
         @classmethod
-        def write_gitmodules(cls, root: Path, projects: t.VariadicTuple[str]) -> Path:
+        def write_gitmodules(cls, root: Path, projects: tuple[str, ...]) -> Path:
             """Declare governed subprojects with the declared fixture contract.
 
             Returns:
@@ -1260,14 +1260,14 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         @staticmethod
         def repository_snapshot(
             root: Path,
-        ) -> t.Pair[t.VariadicTuple[t.Pair[str, bytes]], str]:
+        ) -> tuple[tuple[tuple[str, bytes], ...], str]:
             """Capture all repository bytes and porcelain status.
 
             Git metadata is excluded; every runtime-state owner lives outside the
             repository checkout by construction.
 
             Returns:
-                The resulting ``t.Pair[t.VariadicTuple[t.Pair[str, bytes]], str]``.
+                The resulting ``tuple[tuple[tuple[str, bytes], ...], str]``.
 
             """
             excluded_roots = frozenset({c.Infra.GIT_DIR})
@@ -1287,7 +1287,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             )
             return tree, status
 
-    __all__: t.VariadicTuple[str] = ("WorktreeFixture",)
+    __all__: tuple[str, ...] = ("WorktreeFixture",)
 
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceFixtureMixin"]

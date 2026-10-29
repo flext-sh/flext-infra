@@ -2,7 +2,7 @@ id: tests-governance-mixin-public-name
 snapshots:
   "from flext_tests.utilities import ModuleGovernanceMixin\nclass TestsGov(ModuleGovernanceMixin):\n    pass\n":
     fixed: |
-      from flext_tests import FlextTestsModuleGovernanceMixin
+      from flext_tests import FlextTestsModuleGovernance
       class TestsGov(ModuleGovernanceMixin):
           pass
     labels:

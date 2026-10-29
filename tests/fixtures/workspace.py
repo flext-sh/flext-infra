@@ -6,7 +6,34 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+from collections.abc import Iterator, Mapping
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from pathlib import Path
 
 import pytest
@@ -18,7 +45,7 @@ from tests import c, t, tm, u
 @pytest.fixture
 def rope_sibling_scopes(
     tmp_path: Path,
-) -> t.Pair[t.Pair[Path, Path], t.Pair[Path, Path]]:
+) -> tuple[tuple[Path, Path], tuple[Path, Path]]:
     """Declare sibling consumers sharing one structural Rope root.
 
     Returns:
@@ -42,7 +69,7 @@ def rope_sibling_scopes(
 @pytest.fixture
 def rope_contract_consumer(
     tmp_path: Path,
-) -> Iterator[t.Pair[p.Infra.RopeWorkspaceDsl, Path]]:
+) -> Iterator[tuple[p.Infra.RopeWorkspaceDsl, Path]]:
     """Compose the inherited workspace factory with a real public Rope session.
 
     Yields:
@@ -67,7 +94,7 @@ def rope_workspace(tmp_path: Path) -> Iterator[p.Infra.RopeWorkspaceDsl]:
 
 
 @pytest.fixture
-def constants_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+def constants_workspace(tmp_path: Path) -> tuple[Path, Path]:
     """Use the shared real project factory for constants phase consumers.
 
     Returns:
@@ -79,7 +106,7 @@ def constants_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
 
 @pytest.fixture
 def constant_candidate(
-    constants_workspace: t.Pair[Path, Path],
+    constants_workspace: tuple[Path, Path],
 ) -> t.Tests.SourceCandidate:
     """Publish a public constants plan only after its complete fixed-point check.
 
@@ -90,8 +117,8 @@ def constant_candidate(
     root, _package = constants_workspace
 
     def candidate(
-        sources: t.MappingKV[Path, str], expected_paths: t.VariadicTuple[Path]
-    ) -> t.MappingKV[Path, str]:
+        sources: Mapping[Path, str], expected_paths: tuple[Path, ...]
+    ) -> Mapping[Path, str]:
         """Validate the phase through its public entry point.
 
         Returns:

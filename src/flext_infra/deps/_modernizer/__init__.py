@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra.deps. Modernizer package.
+"""modernizer package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,14 +13,10 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.deps._modernizer.base import FlextInfraPyprojectModernizerBase
-    from flext_infra.deps._modernizer.document import (
-        FlextInfraPyprojectModernizerDocument,
-    )
-    from flext_infra.deps._modernizer.run import FlextInfraPyprojectModernizerRun
-    from flext_infra.deps._modernizer.tooling import (
-        FlextInfraPyprojectModernizerTooling,
-    )
+    from flext_infra._modernizer.base import FlextInfraPyprojectModernizerBase
+    from flext_infra._modernizer.document import FlextInfraPyprojectModernizerDocument
+    from flext_infra._modernizer.run import FlextInfraPyprojectModernizerRun
+    from flext_infra._modernizer.tooling import FlextInfraPyprojectModernizerTooling
 
 
 __all__: tuple[str, ...] = (

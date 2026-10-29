@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -17,7 +18,7 @@ from typing_extensions import TypeForm
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.services import FlextInfraCliRouteService
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraCodegenMain:
@@ -318,7 +319,7 @@ class TestsFlextInfraCodegenMain:
                         config.Infra.tooling,
                         "pytest.ini_options",
                         "addopts",
-                        TypeForm(t.StrSequence),
+                        TypeForm(Sequence[str]),
                     )
                 ),
             )

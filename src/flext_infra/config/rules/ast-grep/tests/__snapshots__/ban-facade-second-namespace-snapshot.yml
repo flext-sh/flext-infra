@@ -1,35 +1,35 @@
 id: ban-facade-second-namespace
 snapshots:
-  "class FlextFooModels(FlextCliModels):\n    class Foo(FlextFooModelsBase):\n        pass\n    class Bar(FlextFooModelsBase):\n        pass\n":
+  "class FlextModelsFoo(FlextCliModels):\n    class Foo(FlextModelsFooBase):\n        pass\n    class Bar(FlextModelsFooBase):\n        pass\n":
     labels:
     - source: |-
-        class Bar(FlextFooModelsBase):
+        class Bar(FlextModelsFooBase):
                 pass
       style: primary
       start: 90
       end: 133
     - source: |
-        class FlextFooModels(FlextCliModels):
-            class Foo(FlextFooModelsBase):
+        class FlextModelsFoo(FlextCliModels):
+            class Foo(FlextModelsFooBase):
                 pass
-            class Bar(FlextFooModelsBase):
+            class Bar(FlextModelsFooBase):
                 pass
       style: secondary
       start: 0
       end: 134
     - source: |-
-        class FlextFooModels(FlextCliModels):
-            class Foo(FlextFooModelsBase):
+        class FlextModelsFoo(FlextCliModels):
+            class Foo(FlextModelsFooBase):
                 pass
-            class Bar(FlextFooModelsBase):
+            class Bar(FlextModelsFooBase):
                 pass
       style: secondary
       start: 0
       end: 133
     - source: |-
-        class Foo(FlextFooModelsBase):
+        class Foo(FlextModelsFooBase):
                 pass
-            class Bar(FlextFooModelsBase):
+            class Bar(FlextModelsFooBase):
                 pass
       style: secondary
       start: 42
@@ -39,7 +39,7 @@ snapshots:
       start: 96
       end: 99
     - source: |-
-        class Foo(FlextFooModelsBase):
+        class Foo(FlextModelsFooBase):
                 pass
       style: secondary
       start: 42

@@ -6,31 +6,27 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra import c, config, t
-from flext_infra._utilities._rope.pymodule import (
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
-)
-from flext_infra._utilities._rope.rope_core_resources import (
-    FlextInfraUtilitiesRopeCoreResourcesMixin,
-)
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.project_managed_artifacts import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
-)
-from flext_infra._utilities.workspace_inventory import (
     FlextInfraUtilitiesWorkspaceInventory,
 )
+from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
+from flext_infra._utilities._rope.rope_core_resources import (
+    FlextInfraUtilitiesRopeCoreResources,
+)
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeCore(
-    FlextInfraUtilitiesRopeCoreResourcesMixin,
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
+    FlextInfraUtilitiesRopeCoreResources,
+    FlextInfraUtilitiesRopeCorePyModule,
 ):
     """Core Rope lifecycle helpers."""
 
@@ -75,7 +71,7 @@ class FlextInfraUtilitiesRopeCore(
     def _new_project(
         resolved_root: Path,
         *,
-        project_roots: t.SequenceOf[Path],
+        project_roots: Sequence[Path],
         consumer_root: Path | None = None,
     ) -> t.Infra.RopeProject:
         """Create one Rope project from validated source roots.
@@ -135,7 +131,7 @@ class FlextInfraUtilitiesRopeCore(
         source_root: Path,
         *,
         include_consumers: bool = False,
-    ) -> t.VariadicTuple[Path]:
+    ) -> tuple[Path, ...]:
         """Resolve the declared source graph containing one import consumer.
 
         Returns:
@@ -205,7 +201,7 @@ class FlextInfraUtilitiesRopeCore(
     def open_project(
         repository_root: Path,
         *,
-        project_roots: t.SequenceOf[Path] | None = None,
+        project_roots: Sequence[Path] | None = None,
         consumer_root: Path | None = None,
     ) -> Generator[t.Infra.RopeProject]:
         """Open one Rope project and always close it through the core boundary.

@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 
 import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, t, tm
+from tests import c, m, tm
 
 
 class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
@@ -21,7 +21,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     @staticmethod
     def test_every_declared_profile_has_a_custom_handler_policy() -> None:
         """Each Make profile declares the contract for its own custom surface."""
-        codegen_profiles: t.VariadicTuple[m.Infra.ProfileSpec] = (
+        codegen_profiles: tuple[m.Infra.ProfileSpec, ...] = (
             config.Infra.codegen.profiles
         )
         declared = frozenset(
@@ -96,7 +96,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         to the strict base policy -- exactly the failure that made conform
         reject the repository root's own custom surface.
         """
-        policies: t.MutableMappingKV[str, m.Infra.CustomHandlerPolicy] = dict(
+        policies: MutableMapping[str, m.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies,
         )
         profile: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from importlib.machinery import PathFinder
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -15,8 +15,8 @@ from flext_infra import c, config, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
 )
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
@@ -26,13 +26,13 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesDiscovery(
     FlextInfraUtilitiesNamespaceConfig,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesPyproject,
+    FlextInfraUtilitiesPyprojectConform,
     FlextInfraUtilitiesRopeAnalysis,
 ):
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
     _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[
-        MutableMapping[t.Pair[str, bool], t.StrSequence]
+        MutableMapping[tuple[str, bool], Sequence[str]]
     ] = {}
 
     @staticmethod
@@ -219,9 +219,13 @@ class FlextInfraUtilitiesDiscovery(
     def declared_package_dir(
         package_name: str,
         *,
-        search_paths: t.StrSequence | None = None,
+        search_paths: Sequence[str],
     ) -> Path | None:
-        """Elect the physical import path without trusting cached module origins.
+        """Elect the physical package directory inside the supplied paths only.
+
+        Per-repository resolution law: discovery never consults the ambient
+        interpreter environment, where divergent member libraries would leak
+        in; every caller supplies the repository's own explicit search paths.
 
         Returns:
             The unique package directory, or None for an absent name/plain module.
@@ -230,7 +234,7 @@ class FlextInfraUtilitiesDiscovery(
             ValueError: If the declared package has ambiguous physical origins.
 
         """
-        locations = search_paths
+        locations: Sequence[str] | None = search_paths
         components = package_name.split(".")
         for index in range(len(components)):
             spec = PathFinder.find_spec(".".join(components[: index + 1]), locations)
@@ -284,16 +288,16 @@ class FlextInfraUtilitiesDiscovery(
         repository_root: Path,
         *,
         skip_dirs: frozenset[str] | None = None,
-        project_paths: t.SequenceOf[Path] | None = None,
-    ) -> p.Result[t.SequenceOf[Path]]:
+        project_paths: Sequence[Path] | None = None,
+    ) -> p.Result[Sequence[Path]]:
         """Find all managed ``pyproject.toml`` files for one workspace root.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[Path]]``.
+            The resulting ``p.Result[Sequence[Path]]``.
 
         """
         if not repository_root.exists() or not repository_root.is_dir():
-            return r[t.SequenceOf[Path]].ok([])
+            return r[Sequence[Path]].ok([])
         effective_skip = (
             skip_dirs
             if skip_dirs is not None
@@ -310,14 +314,14 @@ class FlextInfraUtilitiesDiscovery(
         for scan_root in scan_roots:
             if scan_root.is_file():
                 if scan_root.name != c.PYPROJECT_FILENAME:
-                    return r[t.SequenceOf[Path]].fail(
+                    return r[Sequence[Path]].fail(
                         f"explicit project file must be "
                         f"{c.PYPROJECT_FILENAME}: {scan_root}",
                     )
                 all_files.append(scan_root)
                 continue
             if not scan_root.is_dir():
-                return r[t.SequenceOf[Path]].fail(
+                return r[Sequence[Path]].fail(
                     f"explicit project path is not accessible: {scan_root}",
                 )
             try:
@@ -332,7 +336,7 @@ class FlextInfraUtilitiesDiscovery(
                     ),
                 )
             except OSError as exc:
-                return r[t.SequenceOf[Path]].fail_op("pyproject file scan", exc)
+                return r[Sequence[Path]].fail_op("pyproject file scan", exc)
         if project_paths is not None:
             all_files = [
                 path
@@ -341,7 +345,7 @@ class FlextInfraUtilitiesDiscovery(
                     path.is_relative_to(project_path) for project_path in project_paths
                 )
             ]
-        return r[t.SequenceOf[Path]].ok(all_files)
+        return r[Sequence[Path]].ok(all_files)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDiscovery"]

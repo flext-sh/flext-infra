@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, t, u
@@ -23,22 +23,22 @@ class FlextInfraDocAuditorMixin:
     @staticmethod
     def write_audit_reports(
         scope: m.Infra.DocScope,
-        issues: t.SequenceOf[m.Infra.AuditIssue],
+        issues: Sequence[m.Infra.AuditIssue],
         checks: t.Infra.StrSet,
         *,
         docstring_coverage: m.Infra.DocstringCoverage | None = None,
         to_markdown_fn: Callable[
             [
                 m.Infra.DocScope,
-                t.SequenceOf[m.Infra.AuditIssue],
+                Sequence[m.Infra.AuditIssue],
                 m.Infra.DocstringCoverage | None,
             ],
-            t.StrSequence,
+            Sequence[str],
         ],
     ) -> None:
         """Persist JSON summary and markdown report to the scope report directory."""
         validated_checks = u.json_list_adapter().validate_python(sorted(checks))
-        sorted_checks: t.JsonValueList = list(validated_checks)
+        sorted_checks: list[t.JsonValue] = list(validated_checks)
         summary: t.JsonDict = {
             c.Infra.RK_SCOPE: scope.name,
             "issues": len(issues),

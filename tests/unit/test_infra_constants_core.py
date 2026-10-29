@@ -13,7 +13,7 @@ from flext_infra.check import FlextInfraGateRegistry
 from tests import c, tm
 
 
-class TestsFlextInfraInfraConstantsCore:
+class TestsFlextInfraConstantsInfraCore:
     """Tests for Paths namespace constants."""
 
     @staticmethod

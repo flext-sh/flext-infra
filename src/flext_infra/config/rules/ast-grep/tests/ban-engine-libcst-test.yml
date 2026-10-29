@@ -1,0 +1,16 @@
+# Engine-map D2 census fixtures: every binding of libcst in engine code is
+# the deprecated second-interpreter route's anchor; the stdlib ast module is
+# this rule's sibling document's census, not this one's.
+id: ban-engine-libcst
+valid:
+  - import ast
+  - import cst
+  - from libcsti import parse
+  - from flext_infra import u
+invalid:
+  - import libcst
+  - import libcst as cst
+  - import libcst.helpers
+  - import libcst.matchers as cstm
+  - from libcst import CSTTransformer
+  - from libcst.helpers import qualified_name

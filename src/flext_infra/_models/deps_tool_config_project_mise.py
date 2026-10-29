@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Annotated
 
 from flext_cli import m
@@ -28,7 +29,7 @@ class FlextInfraModelsDepsToolConfigProjectMise:
         """Exact project-owned Mise selectors and their tool declarations."""
 
         tools: Annotated[
-            t.MappingKV[
+            Mapping[
                 t.NonEmptyStr,
                 FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseTool,
             ],

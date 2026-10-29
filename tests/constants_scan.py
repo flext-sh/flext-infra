@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re as _re
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
@@ -16,21 +17,21 @@ if TYPE_CHECKING:
 class TestsFlextInfraConstantsScanMixin:
     """Log and scanner fixture patterns."""
 
-    LOG_NOISE_LINES: ClassVar[t.StrSequence] = (
+    LOG_NOISE_LINES: ClassVar[Sequence[str]] = (
         "make[1]: Nothing to be done",
         "INFO: running tests",
         "warning: ignoring duplicate",
         "Success: 5 passed",
         "make[2]: Entering directory",
     )
-    LOG_ERROR_LINES: ClassVar[t.StrSequence] = (
+    LOG_ERROR_LINES: ClassVar[Sequence[str]] = (
         "ERROR: something went wrong",
         "FAIL: test_foo failed",
         "error: compilation failed",
         "E  AssertionError: mismatch",
         "FAILED tests/test_foo.py::test_bar",
     )
-    LOG_PATTERN_CASES: ClassVar[t.VariadicTuple[t.Pair[str, int]]] = (
+    LOG_PATTERN_CASES: ClassVar[tuple[tuple[str, int], ...]] = (
         ("error: compilation failed", 1),
         ("E  AssertionError: mismatch", 1),
         ("FAILED tests/test_foo.py::test_bar", 1),
@@ -41,7 +42,7 @@ class TestsFlextInfraConstantsScanMixin:
     LOG_ERROR_PREFIX_RE: ClassVar[t.RegexPattern] = _re.compile(
         r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)",
     )
-    LOG_MIXED_SCENARIO_LINES: ClassVar[t.StrSequence] = (
+    LOG_MIXED_SCENARIO_LINES: ClassVar[Sequence[str]] = (
         "make[1]: running",
         "ERROR: build failed",
         "INFO: post-build",

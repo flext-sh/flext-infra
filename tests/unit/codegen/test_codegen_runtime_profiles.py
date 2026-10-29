@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -14,8 +15,8 @@ from packaging.requirements import Requirement
 
 from flext_infra import config, m
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from tests import c, t, tm, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodegenRuntimeProfiles:
@@ -91,7 +92,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
     def _declare_custom_dependencies(
         pyproject: Path,
         upstream: str,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Author marker variants and a direct source in the target declaration.
 
         Returns:
@@ -127,7 +128,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         member: Path,
         *,
         composed: bool,
-    ) -> tuple[m.Infra.WorkspaceSpec, t.MappingKV[Path, bytes]]:
+    ) -> tuple[m.Infra.WorkspaceSpec, Mapping[Path, bytes]]:
         """Snapshot the baseline workspace and the bytes conform must preserve.
 
         Returns:
@@ -148,7 +149,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
     @staticmethod
     def _assert_render_retains_requirements(
         rendered: str,
-        declared: t.VariadicTuple[str],
+        declared: tuple[str, ...],
     ) -> str:
         """Public generation retains requirement variants, injecting only dev policy.
 

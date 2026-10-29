@@ -6,15 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.gates.direnv import FlextInfraDirenvGate
-from flext_infra.workspace.environment_contracts import (
-    FlextInfraWorkspaceEnvironmentContracts,
-)
-from tests import c, m, t, tm, u
+from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,7 +58,7 @@ class TestsFlextInfraDirenvGate:
         return execution
 
     @staticmethod
-    def issue_codes(execution: m.Infra.GateExecution) -> t.StrSequence:
+    def issue_codes(execution: m.Infra.GateExecution) -> Sequence[str]:
         """Return the issue codes one gate execution reported, in order.
 
         Returns:
@@ -70,12 +69,12 @@ class TestsFlextInfraDirenvGate:
 
     @staticmethod
     def messages(
-        violations: t.VariadicTuple[m.Infra.EnvironmentContractViolation],
-    ) -> t.StrSequence:
+        violations: tuple[m.Infra.EnvironmentContractViolation, ...],
+    ) -> Sequence[str]:
         """Render typed violations exactly as the gate reports them.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         return [f"line {v.line}: {v.message}" for v in violations]

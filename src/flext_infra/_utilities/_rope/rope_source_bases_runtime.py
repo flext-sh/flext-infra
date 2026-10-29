@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+from collections.abc import Mapping, MutableMapping, Sequence
+from functools import cache, partial
 from pathlib import Path
 from types import MappingProxyType
 
@@ -34,7 +36,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         project: p.Infra.RopeProject,
         qualified: str | m.Infra.SourceClassReference,
         *,
-        sources: t.MappingKV[str, t.Pair[Path, str]] | None = None,
+        sources: Mapping[str, tuple[Path, str]] | None = None,
     ) -> p.Infra.RopePyName:
         """Resolve the first declared member along its authenticated native C3 order.
 
@@ -54,7 +56,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         cls,
         project: p.Infra.RopeProject,
         *,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
+        sources: Mapping[str, tuple[Path, str]],
     ) -> p.Infra.RopeSourceMemberResolver:
         """Bind reusable native member lookup to an immutable source mapping.
 
@@ -66,12 +68,33 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             project, MappingProxyType(dict(sources)), (), None
         )
 
+    @classmethod
+    def source_member_resolver_factory(
+        cls,
+        project: p.Infra.RopeProject,
+        *,
+        sources: Mapping[str, tuple[Path, str]],
+    ) -> t.Infra.RopeSourceMemberResolverFactory:
+        """Construct the existing resolver lazily once for this captured operation.
+
+        Returns:
+            The operation-local factory; construction failures escape unchanged.
+
+        """
+        return cache(
+            partial(
+                cls.source_member_resolver,
+                project,
+                sources=MappingProxyType(dict(sources)),
+            )
+        )
+
     @staticmethod
-    def merge_class_lineages[TIdentity: str | t.Pair[str, str]](
-        lineages: t.SequenceOf[t.SequenceOf[TIdentity]],
+    def merge_class_lineages[TIdentity: str | tuple[str, str]](
+        lineages: Sequence[Sequence[TIdentity]],
         *,
         message: str,
-    ) -> t.VariadicTuple[TIdentity]:
+    ) -> tuple[TIdentity, ...]:
         """Merge declared ancestor sequences using their C3 ordering.
 
         Returns:
@@ -117,8 +140,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def source_member_relocation(
         cls,
         project: p.Infra.RopeProject,
-        receiver: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
-        canonical: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+        receiver: tuple[p.Infra.RopePyName, p.Infra.RopePyName],
+        canonical: tuple[p.Infra.RopePyName, p.Infra.RopePyName],
         member: str,
     ) -> bool:
         """Prove canonical source ancestry and absence of a retired member.
@@ -157,8 +180,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def member_relocation_origin(
             self,
-            receiver: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
-            canonical: t.Pair[p.Infra.RopePyName, p.Infra.RopePyName],
+            receiver: tuple[p.Infra.RopePyName, p.Infra.RopePyName],
+            canonical: tuple[p.Infra.RopePyName, p.Infra.RopePyName],
             member: str,
         ) -> bool:
             """Prove both source lineages and refuse every existing old member.
@@ -273,9 +296,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def __init__(
             self,
             project: p.Infra.RopeProject,
-            sources: t.MappingKV[str, t.Pair[Path, str]],
-            roots: t.StrSequence,
-            extra_module_aliases: t.MappingKV[str, str] | None,
+            sources: Mapping[str, tuple[Path, str]],
+            roots: Sequence[str],
+            extra_module_aliases: Mapping[str, str] | None,
         ) -> None:
             """Bind the resolution inputs and initialize the derived state.
 
@@ -295,28 +318,28 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             names_by_path: dict[Path, list[str]] = {}
             for name, (path, _) in sources.items():
                 names_by_path.setdefault(path, []).append(name)
-            self._source_names_by_path: t.MappingKV[Path, t.StrTuple] = {
+            self._source_names_by_path: Mapping[Path, t.StrTuple] = {
                 path: tuple(names) for path, names in names_by_path.items()
             }
             self._roots = roots
             self._extra_module_aliases = extra_module_aliases
-            self._definitions: t.MutableMappingKV[
-                str, m.Infra.SourceClassDefinition
-            ] = {}
-            self._modules: t.MutableMappingKV[
+            self._definitions: MutableMapping[str, m.Infra.SourceClassDefinition] = {}
+            self._modules: MutableMapping[
                 str,
-                t.MappingKV[str, m.Infra.SourceClassReference | None],
+                Mapping[str, m.Infra.SourceClassReference | None],
             ] = {}
-            self._providers: t.MutableMappingKV[str, t.Infra.RopePyModule] = {}
+            self._lazy_declarations: MutableMapping[
+                str,
+                Mapping[str, m.Infra.SourceClassReference | None],
+            ] = {}
+            self._providers: MutableMapping[str, t.Infra.RopePyModule] = {}
             self._namespaces: set[str] = set()
-            self._module_aliases: t.MutableMappingKV[
-                str, m.Infra.SourceClassReference
-            ] = {}
-            self._external: t.MutableMappingKV[str, t.Infra.RopePyObject] = {}
-            self._class_bindings: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
-            self._linearizations: t.MutableMappingKV[str, t.StrTuple] = {}
+            self._module_aliases: MutableMapping[str, m.Infra.SourceClassReference] = {}
+            self._external: MutableMapping[str, t.Infra.RopePyObject] = {}
+            self._class_bindings: MutableMapping[str, p.Infra.RopePyName] = {}
+            self._linearizations: MutableMapping[str, t.StrTuple] = {}
             self._active: set[str] = set()
-            self._resolved_memo: t.MutableMappingKV[str, str] = {}
+            self._resolved_memo: MutableMapping[str, str] = {}
             self._ordering_ready = False
             self._native_module_type = FlextInfraUtilitiesRopeRuntime.runtime_type(
                 "rope.base.builtins",
@@ -339,7 +362,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def class_order(
             self,
-            declarations: t.SequenceOf[m.Infra.SourceClassReference],
+            declarations: Sequence[m.Infra.SourceClassReference],
         ) -> t.StrTuple:
             """Order declared owners from their authoritative source ancestry.
 
@@ -372,8 +395,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             lineages = tuple(self._linearize(identity) for identity in identities)
             try:
                 lineage = (
-                    FlextInfraUtilitiesRopeSourceBasesRuntime
-                    .merge_class_lineages(
+                    FlextInfraUtilitiesRopeSourceBasesRuntime.merge_class_lineages(
                         lineages,
                         message=(
                             "Inconsistent declared facade owner precedence: "
@@ -412,9 +434,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def class_reaches(
             self,
-            declarations: t.SequenceOf[m.Infra.SourceClassReference],
-            anchors: t.SequenceOf[m.Infra.SourceClassReference],
-        ) -> t.VariadicTuple[frozenset[str]]:
+            declarations: Sequence[m.Infra.SourceClassReference],
+            anchors: Sequence[m.Infra.SourceClassReference],
+        ) -> tuple[frozenset[str], ...]:
             """Report which anchors each declaration's source C3 ancestry holds.
 
             Returns:
@@ -443,16 +465,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 Whether the class defers annotations through its ancestry.
 
+            Raises:
+                TypeError: If a source provider has no module AST.
+
             """
-
-            def reject(identity: str, reason: str) -> bool:
-                u.Cli.info(
-                    f"annotation deferral class={qualified.target}."
-                    f"{'.'.join(qualified.attributes)} ancestor={identity} "
-                    f"reason={reason}"
-                )
-                return False
-
             self._prepare_ordering()
             typing_module = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
                 self._project.get_module("typing")
@@ -467,7 +483,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 if identity in {self._object_id, protocol}:
                     continue
                 if identity not in self._definitions:
-                    return reject(identity, "uncaptured-source")
+                    return False
                 module_name, _name, line = identity.rsplit(":", 2)
                 tree = self._providers[module_name].get_ast()
                 if not isinstance(tree, ast.Module):
@@ -485,17 +501,22 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     .get_inner_scope_for_line(int(line))
                 )
                 if scope.parent is None:
-                    return reject(identity, "missing-parent-scope")
-                for decorator in declaration.decorator_list:
-                    binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                        scope.parent, decorator
+                    return False
+                if any(
+                    (
+                        binding := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                            scope.parent, decorator
+                        )
                     )
-                    if binding is None or binding.get_object() is not runtime_checkable:
-                        return reject(identity, "evaluating-decorator")
+                    is None
+                    or binding.get_object() is not runtime_checkable
+                    for decorator in declaration.decorator_list
+                ):
+                    return False
                 if declaration.keywords:
-                    return reject(identity, "class-keywords")
+                    return False
                 if "__init_subclass__" in self._definitions[identity].members:
-                    return reject(identity, "subclass-hook")
+                    return False
             return True
 
         def _prepare_ordering(self) -> None:
@@ -640,12 +661,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _inventory(
             self,
             module: str,
-            captured: t.Pair[Path, str],
+            captured: tuple[Path, str],
             *,
             required_line: int | None = None,
             allow_conditional: bool = False,
             provider: t.Infra.RopePyModule | None = None,
-        ) -> t.MappingKV[str, m.Infra.SourceClassReference | None]:
+        ) -> Mapping[str, m.Infra.SourceClassReference | None]:
             """Index lexical bindings without installing a cross-module overlay.
 
             A provider class is indexed at its native declaration line.
@@ -944,9 +965,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             try:
                 return module.get_attribute(name)
-            except (
-                FlextInfraUtilitiesRopeRuntime.rope_attribute_not_found_error_types()
-            ) as exc:
+            except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types() as exc:
                 resource = module.get_resource()
                 exc.add_note(
                     f"Provider base reference: {target}; source="
@@ -989,7 +1008,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     raise TypeError(message)
                 return None
             bindings = self._provider_source_bindings(module_name, provider, resource)
-            reference = bindings.get(attributes[0])
+            # A lexical collector may shadow an initializer export with None;
+            # the installer literal remains the declaration SSOT for that name.
+            reference = bindings.get(attributes[0]) or self._lazy_declared_reference(
+                module_name, provider, resource, attributes[0]
+            )
             if reference is None:
                 if (
                     attributes[0] not in bindings
@@ -1000,6 +1023,20 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         target, attributes[1:], visiting | {target}, depth + 1
                     )
                 if attributes[0] in bindings or owned or module_name in self._sources:
+                    physical = self._physical_declared_reference(
+                        module_name, resource, attributes[0]
+                    )
+                    if physical is not None:
+                        # A proposed source swap can drop the name from the
+                        # candidate initializer while the physical initializer
+                        # still declares it; the physical literal is the same
+                        # declaration SSOT the runtime imports.
+                        return self._external_reference(
+                            physical.target,
+                            (*physical.attributes, *attributes[1:]),
+                            visiting | {physical.target},
+                            depth + 1,
+                        )
                     message = f"Unresolved declared provider base: {target}"
                     raise ValueError(message)
                 return None
@@ -1039,12 +1076,45 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     )
                 raise
 
+        def _physical_declared_reference(
+            self,
+            module_name: str,
+            resource: p.Infra.RopeResource,
+            name: str,
+        ) -> m.Infra.SourceClassReference | None:
+            """Read one declared export from the physical initializer text.
+
+            Candidate initializers proposed by a move can temporarily omit a
+            name the physical file still declares; the disk literal is the
+            same declaration SSOT the runtime imports.
+
+            Returns:
+                The declared reference, or none when undeclared or unreadable.
+
+            """
+            source_path = Path(resource.real_path)
+            if resource.is_folder():
+                source_path /= c.Infra.INIT_PY
+            try:
+                source = source_path.read_text()
+                declared = (
+                    FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                        module_name,
+                        source_path,
+                        source,
+                        project=self._project,
+                    )
+                )
+            except (OSError, ValueError, TypeError):
+                return None
+            return declared.get(name)
+
         def _provider_source_bindings(
             self,
             module_name: str,
             provider: p.Infra.RopeSourceModule,
             resource: p.Infra.RopeResource,
-        ) -> t.MappingKV[str, m.Infra.SourceClassReference | None]:
+        ) -> Mapping[str, m.Infra.SourceClassReference | None]:
             """Inventory a provider in its captured epoch using the native origin.
 
             Returns:
@@ -1072,6 +1142,47 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 self._modules[module_name] = bindings
             return bindings
+
+        def _lazy_declared_reference(
+            self,
+            module_name: str,
+            provider: p.Infra.RopeSourceModule,
+            resource: p.Infra.RopeResource,
+            name: str,
+        ) -> m.Infra.SourceClassReference | None:
+            """Read the core installer's declared route when inventory shadows it.
+
+            The literal ``install_lazy_exports`` mapping is the declaration
+            SSOT for initializers; a lexical collector that shadows an exported
+            name with ``None`` must not erase the publisher route.
+
+            Returns:
+                The declared reference, or None when nothing is declared.
+
+            """
+            if module_name in self._lazy_declarations:
+                return self._lazy_declarations[module_name].get(name)
+            if resource is None or not resource.exists():
+                return None
+            source_path = Path(resource.real_path)
+            if resource.is_folder():
+                source_path /= c.Infra.INIT_PY
+            source = self._sources.get(
+                module_name, (source_path, provider.source_code)
+            )[1]
+            request = m.Infra.SourceBindingInventoryRequest(
+                project=self._project,
+                module=module_name,
+                path=source_path,
+                source=source,
+                required_line=None,
+                allow_conditional=False,
+            )
+            inventory = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+                request, self._definitions, provider=None
+            )
+            self._lazy_declarations[module_name] = inventory
+            return inventory.get(name)
 
         def _provider_reference(
             self,
@@ -1317,7 +1428,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Captured providers retain their planned bytes; uncaptured providers
             retain their elected native source. Both completed inventories own
             assignments that replace earlier imports. Unchanged imports retain
-            their native imported-name provenance.
+            their native imported-name provenance. An import Rope cannot resolve
+            elects no native provider, so the completed source declaration is
+            authoritative for that name.
 
             Returns:
                 The completed source override, or no override of the native import.
@@ -1338,12 +1451,22 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             bindings = self._provider_source_bindings(module_name, declaring, resource)
             reference = bindings.get(name)
             if reference is None:
+                if name not in bindings and module_name not in self._sources:
+                    return None
                 message = f"Unresolved provider base: {module_name}.{name}"
                 raise ValueError(message)
+            native_target: str | None
+            try:
+                native_target = self._provider_name(
+                    self._provider_module(binding.imported_module)
+                )
+            except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
+                # An import Rope cannot resolve elects no native provider; the
+                # completed source declaration is the authority for that name.
+                native_target = None
             if (
                 reference.target in self._definitions
-                or reference.target
-                != self._provider_name(self._provider_module(binding.imported_module))
+                or reference.target != native_target
                 or reference.attributes != (binding.imported_name,)
             ):
                 return m.Infra.SourceClassReference(
@@ -1381,7 +1504,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _provider_lazy_bindings(
             self,
             module: t.Infra.RopeSemanticModule,
-        ) -> t.MappingKV[str, m.Infra.SourceClassReference]:
+        ) -> Mapping[str, m.Infra.SourceClassReference]:
             """Read a provider's declared lazy aliases from its native source module.
 
             Returns:
@@ -1418,7 +1541,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             Returns:
                 The first star-imported module that binds ``name``, or ``None``
-                when no star re-export of the provider binds it.
+                when no star re-export of the provider binds it. Star targets
+                Rope cannot resolve are skipped.
 
             Raises:
                 TypeError: A source provider has no native parsed module.
@@ -1451,9 +1575,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     "." * node.level + (node.module or ""),
                     package,
                 )
-                provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
-                    self._project.get_module(target)
-                )
+                try:
+                    provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                        self._project.get_module(target)
+                    )
+                except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
+                    # Rope dropped this star import because the module does not
+                    # resolve; that node cannot bind the requested name.
+                    continue
                 if name in provider.get_attributes():
                     return provider
             return None
@@ -1461,7 +1590,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _provider_imported_name_reference(
             self,
             binding: p.Infra.RopeImportedName,
-            remaining: t.StrSequence,
+            remaining: Sequence[str],
             target: str,
             visiting: frozenset[str],
             depth: int,
@@ -1503,7 +1632,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _provider_imported_module_reference(
             self,
             binding: p.Infra.RopeImportedModule,
-            remaining: t.StrSequence,
+            remaining: Sequence[str],
             target: str,
             visiting: frozenset[str],
             depth: int,
@@ -1553,8 +1682,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 ImportError: The native import owner cannot resolve the provider.
 
             """
-            resource = self._project.find_module(target)
             module = self._project.get_module(target)
+            resource = module.get_resource()
             if resource is not None and not isinstance(
                 module,
                 self._native_module_type,
@@ -1640,7 +1769,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _alias_rewritten_target(
             self,
             reference: m.Infra.SourceClassReference,
-        ) -> t.Pair[str, t.StrTuple]:
+        ) -> tuple[str, t.StrTuple]:
             """Rewrite facade-qualified targets through the lazy alias map.
 
             The alias map routes a published name to its provider module, so
@@ -1672,7 +1801,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             key: str,
             visiting: frozenset[str],
             depth: int,
-        ) -> t.Pair[str, list[str]]:
+        ) -> tuple[str, list[str]]:
             """Resolve a target that is not a direct definition key.
 
             Returns:
@@ -1700,12 +1829,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def _resolve_namespace_prefix(
             self,
-            parts: t.StrSequence,
+            parts: Sequence[str],
             attributes: list[str],
             key: str,
             visiting: frozenset[str],
             depth: int,
-        ) -> t.Pair[str, list[str]]:
+        ) -> tuple[str, list[str]]:
             """Resolve a namespace-qualified target through its planned module.
 
             A name the planned module does not bind continues into the captured
@@ -1751,7 +1880,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                             ), []
                         except (ValueError, ImportError) as failure:
                             resource = self._project.find_module(".".join(parts))
-                            origin = resource.real_path if resource is not None else None
+                            origin = (
+                                resource.real_path if resource is not None else None
+                            )
                             failure.add_note(
                                 f"Uncaptured namespace descent: module={module!r}; "
                                 f"selected={submodule!r}; remaining={remaining!r}; "
@@ -1761,12 +1892,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                             raise
                     break
                 module = submodule
-            if module not in self._modules:
-                message = f"Planned namespace has no module binding: {module}.{name}"
-                raise ValueError(message)
-            binding = self._modules[module].get(name)
+            bindings = self._modules.get(module)
+            binding = (
+                bindings.get(name) if bindings is not None else None
+            ) or self._planned_lazy_binding(module, name)
             if binding is None:
-                message = f"Unresolved planned base: {module}.{name}"
+                message = (
+                    f"Planned namespace has no module binding: {module}.{name}"
+                    if bindings is None
+                    else f"Unresolved planned base: {module}.{name}"
+                )
                 raise ValueError(message)
             try:
                 return self._resolve(
@@ -1785,6 +1920,41 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     f"remaining={remaining!r}; visiting={tuple(sorted(visiting))!r}"
                 )
                 raise
+
+        def _planned_lazy_binding(
+            self,
+            module: str,
+            name: str,
+        ) -> m.Infra.SourceClassReference | None:
+            """Resolve one planned base through the initializer's lazy SSOT.
+
+            Returns:
+                The declared reference, or None when nothing is declared.
+
+            """
+            resource = self._project.find_module(module)
+            if resource is None:
+                return None
+            source_path = Path(resource.real_path)
+            if resource.is_folder():
+                source_path /= c.Infra.INIT_PY
+            captured = self._sources.get(module, (source_path, ""))
+            request = m.Infra.SourceBindingInventoryRequest(
+                project=self._project,
+                module=module,
+                path=source_path,
+                source=captured[1],
+                required_line=None,
+                allow_conditional=False,
+            )
+            declared = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+                request, self._definitions, provider=None
+            ).get(name)
+            u.Cli.info(
+                "planned lazy probe "
+                f"module={module} name={name} declared={declared is not None}"
+            )
+            return declared
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.
@@ -1973,8 +2143,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def source_class_order(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
+        sources: Mapping[str, tuple[Path, str]],
+        declarations: Sequence[m.Infra.SourceClassReference],
     ) -> t.StrTuple:
         """Order declared owners by their strict source-backed C3.
 
@@ -1991,9 +2161,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def source_class_orders(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
-        groups: t.SequenceOf[t.SequenceOf[m.Infra.SourceClassReference]],
-    ) -> t.VariadicTuple[t.StrTuple]:
+        sources: Mapping[str, tuple[Path, str]],
+        groups: Sequence[Sequence[m.Infra.SourceClassReference]],
+    ) -> tuple[t.StrTuple, ...]:
         """Order several declaration groups through one source resolver.
 
         Every group shares the resolver's memoized resolutions and
@@ -2011,10 +2181,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def source_class_reaches(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
-        declarations: t.SequenceOf[m.Infra.SourceClassReference],
-        anchors: t.SequenceOf[m.Infra.SourceClassReference],
-    ) -> t.VariadicTuple[frozenset[str]]:
+        sources: Mapping[str, tuple[Path, str]],
+        declarations: Sequence[m.Infra.SourceClassReference],
+        anchors: Sequence[m.Infra.SourceClassReference],
+    ) -> tuple[frozenset[str], ...]:
         """Answer which anchors every declaration inherits, in one resolver.
 
         Each ancestor is resolved and linearized once from the captured
@@ -2032,9 +2202,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def runtime_bases(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[str, t.Pair[Path, str]],
-        roots: t.StrSequence,
-        extra_module_aliases: t.MappingKV[str, str] | None = None,
+        sources: Mapping[str, tuple[Path, str]],
+        roots: Sequence[str],
+        extra_module_aliases: Mapping[str, str] | None = None,
     ) -> t.StrTuple:
         """Resolve owned classes in C3 order and external classes through Rope.
 

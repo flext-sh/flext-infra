@@ -9,16 +9,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, u
-from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra.codegen import FlextInfraCodegenExecution
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
-class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
+class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
     """Generates missing base modules in src/ and tests/ directories."""
 
     @override
@@ -33,7 +34,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
         results = self.run(dry_run=dry_run)
         total_created = sum(len(result.files_created) for result in results)
         total_skipped = sum(len(result.files_skipped) for result in results)
-        lines: t.MutableSequenceOf[str] = []
+        lines: MutableSequence[str] = []
         if dry_run:
             lines.append("Dry-run mode: no files will be created")
         lines.extend(
@@ -51,8 +52,8 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
         self,
         *,
         dry_run: bool = False,
-        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
-    ) -> t.SequenceOf[m.Infra.ScaffoldResult]:
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
+    ) -> Sequence[m.Infra.ScaffoldResult]:
         """Scaffold missing base modules for all projects in workspace.
 
         Args:
@@ -102,8 +103,8 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
                 files_created=[],
                 files_skipped=[],
             )
-        files_created: t.MutableSequenceOf[str] = []
-        files_skipped: t.MutableSequenceOf[str] = []
+        files_created: MutableSequence[str] = []
+        files_skipped: MutableSequence[str] = []
         if project_layout.init_path.is_file():
             created, skipped = self._scaffold_dir(
                 m.Infra.ScaffoldDirRequest(
@@ -184,19 +185,19 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
     @staticmethod
     def _scaffold_dir(
         request: m.Infra.ScaffoldDirRequest,
-    ) -> t.Pair[t.MutableSequenceOf[str], t.MutableSequenceOf[str]]:
+    ) -> tuple[MutableSequence[str], MutableSequence[str]]:
         """Generate missing modules in a directory and return file lists.
 
         Returns:
-            The resulting ``t.Pair[t.MutableSequenceOf[str],
-                t.MutableSequenceOf[str]]``.
+            The resulting ``tuple[MutableSequence[str],
+                MutableSequence[str]]``.
 
         Raises:
             OSError: If writing scaffold.
 
         """
-        files_created: t.MutableSequenceOf[str] = []
-        files_skipped: t.MutableSequenceOf[str] = []
+        files_created: MutableSequence[str] = []
+        files_skipped: MutableSequence[str] = []
         for filename, suffix, base_class, doc_suffix in request.modules:
             filepath = request.target_dir / filename
             if filepath.exists():

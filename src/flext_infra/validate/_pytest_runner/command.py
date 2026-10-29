@@ -1,4 +1,4 @@
-"""Canonical pytest argv for persistent testmon execution.
+"""Canonical pytest argv for incremental and complete-suite execution.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import hashlib
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
 from flext_infra import c, config, m, t, u
-from flext_infra._pytest_collection import FlextInfraPytestCollection
+from flext_infra._pytest import FlextInfraPytestCollection
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 
@@ -21,15 +22,14 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """Build the single supported pytest command family.
 
     One suite builder owns every flag. Global incremental and explicit FULL
-    share the same inventory scope and persistent testmon environment; only
-    FULL bypasses dependency selection. Local/slow callers retain their marker
-    partitions. Coverage runs separately because testmon refuses branch coverage
-    through the cov plugin. Every operation shares its entrypoint deadline
-    across collection and execution.
+    share the same inventory scope; only incremental execution uses Testmon.
+    Local/slow callers retain their marker partitions. Coverage owns its
+    separate measurement plugin. Every operation shares its entrypoint
+    deadline across collection and execution.
     """
 
-    _NO_COVERAGE: ClassVar[t.VariadicTuple[str]] = ("--no-cov",)
-    _ITEM_LIMITS: ClassVar[t.VariadicTuple[str]] = (
+    _NO_COVERAGE: ClassVar[tuple[str, ...]] = ("--no-cov",)
+    _ITEM_LIMITS: ClassVar[tuple[str, ...]] = (
         f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}",
     )
 
@@ -82,8 +82,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 else pytest.slow_suite_stop_reserve_seconds
             )
         else:
-            reserve = pytest.termination_grace_seconds
-        return self.started_at_monotonic + pytest.run_timeout_seconds - reserve
+            reserve = self.termination_grace_seconds
+        return self.started_at_monotonic + self.run_timeout_seconds - reserve
 
     def ci_excluded_markers(
         self,
@@ -123,7 +123,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         toolchain, configuration = self.testmon_input_identity()
         return f"toolchain-{toolchain[:12]}-{configuration}-{scope}"
 
-    def testmon_input_identity(self) -> t.Pair[str, str]:
+    def testmon_input_identity(self) -> tuple[str, str]:
         """Read runtime and configuration identities independently of selection.
 
         Returns:
@@ -204,11 +204,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         self,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Apply the same configured plugin contract to collection and execution.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         pytest = config.Infra.tooling.tools.pytest
@@ -222,6 +222,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         return (
             "-p",
             pytest.enforcement_plugin,
+            *(
+                c.Infra.TEST_SELECTION_DISABLE_PLUGIN_ARGS
+                if execution_mode == c.Infra.PytestExecutionMode.FULL
+                else ()
+            ),
             "-p",
             "no:metadata",
             "-o",
@@ -256,23 +261,23 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.INCREMENTAL
         ),
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Build the read-only argv that resolves the testmon selection once.
 
         Every xdist worker otherwise resolves the selection itself, and two
         workers reading the database while a third writes it collect different
         sets, which xdist aborts with "Different tests were collected". This
         pass runs no test and records its collection and warning evidence.
-        The coverage inventory owns no testmon plugin, so it never reads or
-        writes the persistent database.
+        Unselected full and coverage inventories own no Testmon plugin, so
+        they never read or write the persistent database.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         testmon = (
             ()
-            if execution_mode == c.Infra.PytestExecutionMode.COVERAGE
+            if not execution_mode.is_incremental
             else (
                 "--testmon",
                 "--testmon-nocollect",
@@ -325,18 +330,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.INCREMENTAL
         ),
-    ) -> t.VariadicTuple[str]:
-        """Build the testmon suite argv (never the cov plugin).
+    ) -> tuple[str, ...]:
+        """Build incremental or complete-suite argv without the coverage plugin.
 
         A resolved plan carries the selected IDs and their manifest together.
         Workers record dependencies without selecting those IDs a second time.
         Their ``--testmon-noselect`` freezes only the accepted selection, never
         elects the global inventory for regular incremental execution.
-        Whole-project FULL execution instead publishes its inventory from this
-        suite's own collection, without an earlier selection process.
+        FULL execution uses no Testmon plugin and publishes its inventory from
+        this suite's own collection, without an earlier selection process.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         pytest = config.Infra.tooling.tools.pytest
@@ -368,10 +373,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                     f"{selection_plan.manifest_path}"
                 ),
             )
-        elif (
-            execution_mode == c.Infra.PytestExecutionMode.FULL
-            and self.target_file is None
-        ):
+        elif execution_mode == c.Infra.PytestExecutionMode.FULL:
             manifest_args = (
                 "-p",
                 FlextInfraPytestCollection.__module__,
@@ -396,15 +398,20 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             trailing=(
                 *self._plugin_policy_args(execution_mode=execution_mode),
                 *manifest_args,
-                "--testmon",
                 *(
-                    ("--testmon-noselect",)
-                    if execution_mode == c.Infra.PytestExecutionMode.FULL
-                    or (selection_plan is not None and bool(selection))
-                    else ("--testmon-forceselect",)
+                    (
+                        "--testmon",
+                        *(
+                            ("--testmon-noselect",)
+                            if selection_plan is not None and bool(selection)
+                            else ("--testmon-forceselect",)
+                        ),
+                        "--testmon-env",
+                        f"'{self.testmon_environment(execution_mode)}'",
+                    )
+                    if execution_mode.is_incremental
+                    else ()
                 ),
-                "--testmon-env",
-                f"'{self.testmon_environment(execution_mode)}'",
                 *self._NO_COVERAGE,
             ),
         )
@@ -414,7 +421,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         report_dir: Path,
         *,
         serialize: bool = False,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Build the whole-suite coverage argv (never the testmon plugin).
 
         The measurement source is the declared package source directory — the
@@ -422,7 +429,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         third-party/Cython modules can never emit parse warnings.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         pytest = config.Infra.tooling.tools.pytest
@@ -488,17 +495,17 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         self,
         report_dir: Path,
         *,
-        limits: t.StrSequence,
-        targets: t.StrSequence,
+        limits: Sequence[str],
+        targets: Sequence[str],
         workers: str,
-        trailing: t.StrSequence,
-    ) -> t.VariadicTuple[str]:
+        trailing: Sequence[str],
+    ) -> tuple[str, ...]:
         """Assemble one suite invocation; ``trailing`` owns the plugin split.
 
         ``limits`` carries the aggregate stop instant for this operation.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         pytest = config.Infra.tooling.tools.pytest

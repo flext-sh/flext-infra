@@ -19,7 +19,7 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
@@ -152,7 +152,9 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
     @staticmethod
     @pytest.fixture
-    def site_packages(tmp_path: Path) -> Path:
+    def site_packages(
+        tmp_path: Path,
+    ) -> Path:
         """Isolate metadata inside the locked workspace's owned environment.
 
         Returns:
@@ -244,11 +246,11 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             encoding="utf-8",
         )
 
-    def _stale_checkout(self, tmp_path: Path) -> t.Triple[Path, Path, Path]:
+    def _stale_checkout(self, tmp_path: Path) -> tuple[Path, Path, Path]:
         """Create the governed workspace, its member, and one stale checkout tree.
 
         Returns:
-            The resulting ``t.Triple[Path, Path, Path]``.
+            The resulting ``tuple[Path, Path, Path]``.
 
         """
         workspace = self._locked_workspace(tmp_path)

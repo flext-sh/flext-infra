@@ -15,7 +15,7 @@ from pathlib import Path
 from types import FrameType
 
 from flext_infra import c, config, m, p, r, u
-from flext_infra._pytest_clock import FlextInfraPytestClock
+from flext_infra._pytest import FlextInfraPytestClock
 from flext_infra.validate import FlextInfraPytestRunner
 
 
@@ -124,7 +124,7 @@ class FlextInfraPytestProfile:
         signal.signal(signal.SIGTERM, terminate)
         try:
             outcome = runner.execute_global().unwrap()
-            return outcome
+            return c.Cli.EXIT_CODE_FAILURE if outcome is None else outcome
         finally:
             failure = sys.exception()
             try:

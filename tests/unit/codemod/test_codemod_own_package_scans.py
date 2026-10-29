@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -440,7 +441,7 @@ class TestsFlextInfraCodemodOwnPackageScans:
     )
     def test_empty_declared_runtime_rejects_installed_external_packages(
         tmp_path: Path,
-        dependencies: t.StrSequence | None,
+        dependencies: Sequence[str] | None,
     ) -> None:
         """Omitted, empty and inapplicable requirements declare no providers."""
         project = u.Tests.mk_project(

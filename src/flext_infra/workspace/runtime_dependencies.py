@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from importlib.machinery import all_suffixes
 from importlib.metadata import Distribution
 from json import dumps
@@ -23,7 +24,7 @@ from flext_infra.workspace import (
 class FlextInfraRuntimeDependencyCollector:
     """Authenticate suppliers without resolving or inventing requirement policy."""
 
-    def __init__(self, *, python: Path, development_only: t.StrSequence) -> None:
+    def __init__(self, *, python: Path, development_only: Sequence[str]) -> None:
         """Receive the interpreter and runtime exclusions from composition."""
         self._python = python.absolute()
         self._development_only = tuple(development_only)
@@ -71,7 +72,7 @@ class FlextInfraRuntimeDependencyCollector:
             python=self._python,
         ).unwrap()
         declarations = u.Infra.document_requirement_lines(document).unwrap()
-        authored: t.MappingKV[str, str] = {
+        authored: Mapping[str, str] = {
             u.Infra.requirement_identity(item): item
             for item in declarations
             if u.Infra.active_requirement(item, environment=markers) is not None
@@ -138,7 +139,7 @@ class FlextInfraRuntimeDependencyCollector:
 
     @staticmethod
     def pytest_plugin_distributions(
-        distributions: t.MappingKV[str, Distribution],
+        distributions: Mapping[str, Distribution],
     ) -> t.StrTuple:
         """Elect distributions pytest autoloads through their plugin entry point.
 
@@ -166,7 +167,7 @@ class FlextInfraRuntimeDependencyCollector:
     @staticmethod
     def invoked_console_scripts(
         project_root: Path,
-        distributions: t.MappingKV[str, t.StrSequence],
+        distributions: Mapping[str, Sequence[str]],
     ) -> p.Result[t.StrTuple]:
         """Elect distributions whose console scripts the project's own files invoke.
 
@@ -218,16 +219,16 @@ class FlextInfraRuntimeDependencyCollector:
         context: m.Infra.WorkspaceRuntimeContext,
         scan: m.Infra.DeptryScan,
         locked: m.Infra.LockedEnvironment,
-        authored: t.MappingKV[str, str],
-        metadata_paths: t.SequenceOf[Path],
-    ) -> p.Result[t.VariadicTuple[m.Infra.RuntimeDependencyProvider]]:
+        authored: Mapping[str, str],
+        metadata_paths: Sequence[Path],
+    ) -> p.Result[tuple[m.Infra.RuntimeDependencyProvider, ...]]:
         """Elect suppliers in one native pass against this operation's inputs.
 
         Returns:
             All matching authored suppliers, preserving ambiguity for the planner.
 
         """
-        result = r[t.VariadicTuple[m.Infra.RuntimeDependencyProvider]]
+        result = r[tuple[m.Infra.RuntimeDependencyProvider, ...]]
         needed = {
             item.module
             for item in scan.report.root
@@ -236,21 +237,21 @@ class FlextInfraRuntimeDependencyCollector:
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             context.runtime_root,
         ).unwrap()
-        repositories: t.MappingKV[str, m.Infra.RepositoryRef] = {
+        repositories: Mapping[str, m.Infra.RepositoryRef] = {
             u.Infra.distribution_identity(repository.distribution): repository
             for repository in (workspace.repository, *workspace.subprojects)
         }
 
         def provider(
             distribution: Distribution,
-        ) -> p.Result[t.VariadicTuple[m.Infra.RuntimeDependencyProvider]]:
+        ) -> p.Result[tuple[m.Infra.RuntimeDependencyProvider, ...]]:
             """Elect and authenticate one native distribution without another scan.
 
             Returns:
                 The required supplier collection, or its original failure.
 
             """
-            selected = r[t.VariadicTuple[m.Infra.RuntimeDependencyProvider]]
+            selected = r[tuple[m.Infra.RuntimeDependencyProvider, ...]]
             states = self._metadata_states(distribution, context.environment_path)
             name = distribution.metadata.get("Name")
             if name is None:
@@ -374,14 +375,14 @@ class FlextInfraRuntimeDependencyCollector:
         package: m.Infra.LockedPackage,
         repository: m.Infra.RepositoryRef | None,
         receipt_state: m.Cli.AtomicFileState,
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
         """Authenticate the installed supplier's locked origin and editable inputs.
 
         Returns:
             Additional declaration inputs, or the original provenance failure.
 
         """
-        result = r[t.VariadicTuple[m.Cli.AtomicFileState]]
+        result = r[tuple[m.Cli.AtomicFileState, ...]]
         name = package.name
         local_source = (
             package.source.editable
@@ -444,7 +445,7 @@ class FlextInfraRuntimeDependencyCollector:
     def _metadata_states(
         distribution: Distribution,
         environment: Path,
-    ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
+    ) -> tuple[m.Cli.AtomicFileState, ...]:
         """Capture metadata, RECORD, origin absence/presence and editable path files.
 
         Returns:

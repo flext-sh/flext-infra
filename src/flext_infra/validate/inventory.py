@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, override
 
@@ -50,7 +51,7 @@ class FlextInfraInventoryService(s[bool]):
             return r[m.Infra.InventoryReport].fail_op("inventory generation", exc)
 
     @staticmethod
-    def _script_paths(root: Path) -> t.StrSequence:
+    def _script_paths(root: Path) -> Sequence[str]:
         """Return workspace script paths relative to root.
 
         Returns:
@@ -73,12 +74,12 @@ class FlextInfraInventoryService(s[bool]):
     @staticmethod
     def _report_payloads(
         root: Path,
-        scripts: t.StrSequence,
-    ) -> t.Triple[t.JsonMapping, t.JsonMapping, t.JsonMapping]:
+        scripts: Sequence[str],
+    ) -> tuple[t.JsonMapping, t.JsonMapping, t.JsonMapping]:
         """Build inventory, wiring, and external candidate payloads.
 
         Returns:
-            The resulting ``t.Triple[t.JsonMapping, t.JsonMapping, t.JsonMapping]``.
+            The resulting ``tuple[t.JsonMapping, t.JsonMapping, t.JsonMapping]``.
 
         """
         now = u.now().isoformat()
@@ -111,14 +112,11 @@ class FlextInfraInventoryService(s[bool]):
             The resulting ``p.Result[str]``.
 
         """
-        write_result = u.Cli.json_write(
+        return u.Cli.json_write(
             path,
             payload,
             m.Cli.JsonWriteOptions(sort_keys=True),
-        )
-        if write_result.failure:
-            return r[str].from_failure(write_result)
-        return r[str].ok(str(path))
+        ).map(lambda _written: str(path))
 
     def _write_inventory_reports(
         self,
@@ -133,12 +131,12 @@ class FlextInfraInventoryService(s[bool]):
             The resulting ``p.Result[list[str]]``.
 
         """
-        report_specs: t.VariadicTuple[t.Pair[str, t.JsonMapping]] = (
+        report_specs: tuple[tuple[str, t.JsonMapping], ...] = (
             ("scripts-infra--json--scripts-inventory.json", inventory),
             ("scripts-infra--json--scripts-wiring.json", wiring),
             ("scripts-infra--json--external-scripts-candidates.json", external),
         )
-        written: t.MutableSequenceOf[str] = []
+        written: MutableSequence[str] = []
         for filename, payload in report_specs:
             write_result = self._write_json_report(reports_dir / filename, payload)
             if write_result.failure:

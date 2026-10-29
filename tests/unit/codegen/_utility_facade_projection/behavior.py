@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra import infra
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 from tests.unit.codegen._utility_facade_projection.publication import (
     UtilityFacadePublication,
 )
@@ -115,7 +116,7 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
     def _behavior_package(
         package: Path,
         value_type: str,
-    ) -> t.MutableMappingKV[Path, str]:
+    ) -> MutableMapping[Path, str]:
         """Declare a real typed factory and its public facade in one fixture package.
 
         Returns:
@@ -151,10 +152,10 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
     @staticmethod
     def _converged_projection(
         root: Path,
-        sources: t.MutableMappingKV[Path, str],
+        sources: MutableMapping[Path, str],
         *,
         relocated: bool,
-    ) -> t.MutableMappingKV[Path, str]:
+    ) -> MutableMapping[Path, str]:
         """Plan the declaration relocation and prove the result needs no further edit.
 
         Returns:

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
@@ -22,9 +23,9 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     class PytestExecutionMode(StrEnum):
         """Keep test inventory scope distinct from dependency selection.
 
-        GLOBAL_INCREMENTAL shares FULL's marker scope and testmon environment,
-        but selects only impacted cases. INCREMENTAL retains the local/slow
-        partition contract; FULL explicitly executes the complete inventory.
+        GLOBAL_INCREMENTAL shares FULL's marker scope, but uses Testmon to
+        select impacted cases. INCREMENTAL retains the local/slow partition.
+        FULL executes the complete inventory once without Testmon.
         """
 
         INCREMENTAL = "incremental"
@@ -70,6 +71,13 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     """Native pytest option electing its owned temporary tree."""
     PYTEST_TEMP_ENVIRONMENT_VARIABLES: ClassVar[t.StrTuple] = ("TMPDIR", "TMP", "TEMP")
     """Native Python and platform temporary-directory environment names."""
+    TEST_SELECTION_DISABLE_PLUGIN_ARGS: ClassVar[t.StrTuple] = (
+        "-p",
+        "no:pytest-testmon",
+        "-p",
+        "no:testmon.pytest_testmon",
+    )
+    """Block the selection plugin's installed entrypoint and module forms."""
 
     CLI_GROUP_CHECK: ClassVar[str] = "check"
     CLI_GROUP_CODEGEN: ClassVar[str] = "codegen"
@@ -95,7 +103,7 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     TIMEOUT_COMMAND: ClassVar[str] = "timeout"
     TIMEOUT_KILL_AFTER_SECONDS: ClassVar[int] = 5
 
-    ORCHESTRATOR_REMOVE_ENV_KEYS: ClassVar[t.StrSequence] = (
+    ORCHESTRATOR_REMOVE_ENV_KEYS: ClassVar[Sequence[str]] = (
         "GNUMAKEFLAGS",
         "MAKEFLAGS",
         "MAKEFILES",
@@ -129,7 +137,7 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     PYTEST_ENV_CI: ClassVar[str] = "CI"
     PYTEST_ENV_TESTMON_DATAFILE: ClassVar[str] = "TESTMON_DATAFILE"
     PYTEST_WARNING_EVENTS_SUFFIX: ClassVar[str] = ".warnings.jsonl"
-    PYTEST_INHERITED_ENV_REMOVE_KEYS: ClassVar[t.StrSequence] = (
+    PYTEST_INHERITED_ENV_REMOVE_KEYS: ClassVar[Sequence[str]] = (
         "PYTEST_ADDOPTS",
         "PYTHONPATH",
     )

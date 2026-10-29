@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraCli
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraWorkspaceMain:
@@ -42,7 +43,7 @@ class TestsFlextInfraWorkspaceMain:
         u.Tests.WorktreeFixture.write_gitmodules(repository_root, ("demo-a",))
 
     @staticmethod
-    def _workspace_main(argv: t.SequenceOf[str] | None = None) -> int:
+    def _workspace_main(argv: Sequence[str] | None = None) -> int:
         args = ["workspace"]
         if argv is not None:
             args.extend(argv)

@@ -14,7 +14,7 @@ from git.repo.fun import is_git_dir
 from flext_infra import c, m, p, r
 
 
-class FlextInfraUtilitiesGitMutationScopeMixin:
+class FlextInfraUtilitiesGitMutationScope:
     """Classify absent Git ownership before opening any declared Git marker."""
 
     @staticmethod
@@ -89,4 +89,4 @@ class FlextInfraUtilitiesGitMutationScopeMixin:
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitMutationScopeMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitMutationScope"]

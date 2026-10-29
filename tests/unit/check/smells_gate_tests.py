@@ -21,7 +21,9 @@ class TestsFlextInfraSmellsGate:
 
     @staticmethod
     @pytest.fixture
-    def smells_project(tmp_path: Path) -> Path:
+    def smells_project(
+        tmp_path: Path,
+    ) -> Path:
         """One declared project inside ``tmp_path`` for qlty to scan.
 
         Returns:

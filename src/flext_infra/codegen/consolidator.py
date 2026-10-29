@@ -1,4 +1,4 @@
-"""Direct constants consolidation command service.
+"""Extracted facade class for consolidator.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,209 +6,329 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import Annotated, override
+from typing import ClassVar
 
 from flext_infra import c, m, p, r, s, t, u
-from flext_infra.codegen import FlextInfraCodegenConsolidatorStepsMixin
 from flext_infra.workspace import FlextInfraRopeWorkspace
 
 
-class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMixin):
+class FlextInfraCodegenConsolidator(s[str]):
     """Consolidate inline constants into canonical ``c.*`` references."""
 
-    project_name: Annotated[
-        str | None,
-        m.Field(alias="project", description="Single project to consolidate"),
-    ] = None
+    _ALL_LINT_GATES: ClassVar[Sequence[str]] = tuple(
+        entry[0] for entry in c.Infra.LINT_TOOLS
+    )
 
-    @override
+    project_name: str | None = None
+    """Single project to consolidate; ``None`` selects every discovered project."""
+
     def execute(self) -> p.Result[str]:
         """Execute constants consolidation with normalized command context.
 
         Returns:
-            The resulting ``p.Result[str]``.
+            The consolidated command report text.
 
         """
-        output_lines: t.MutableSequenceOf[str] = (
+        output_lines: MutableSequence[str] = (
             ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
         )
-        with FlextInfraRopeWorkspace.open_workspace(self.repository_root) as rope:
+        found = applied = failed = 0
+        file_results: MutableSequence[Mapping[str, object]] = []
+        with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             projects_result = self._selected_projects(rope)
             if projects_result.failure:
-                return r[str].fail("Failed to discover projects")
-            selected_projects = projects_result.unwrap()
-            scanned_run = self._scanned_project_run(rope, selected_projects)
-            if scanned_run.failure:
-                return r[str].from_failure(scanned_run)
-            found, applied, failed, file_results, scan_lines = scanned_run.value
-            output_lines.extend(scan_lines)
-
+                return r[str].fail(projects_result.error or "project discovery failed")
+            for project in projects_result.unwrap():
+                project_layout = u.Infra.layout(project.path)
+                if project_layout is None or not project_layout.init_path.is_file():
+                    continue
+                constants_file = project_layout.package_dir / c.Infra.CONSTANTS_PY
+                value_map = self._build_value_map_from_constants_file(constants_file)
+                if value_map.failure or not value_map.value:
+                    continue
+                for python_file in (
+                    path
+                    for path in u.Infra.iter_directory_python_files(
+                        project_layout.package_dir,
+                    )
+                    if "_constants" not in path.parts
+                ):
+                    outcome = self._consolidate_python_file(
+                        rope.rope_project,
+                        python_file,
+                        value_map.value,
+                        project_layout,
+                    )
+                    found += outcome.found
+                    output_lines.extend(outcome.lines)
+                    if outcome.record is not None:
+                        file_results.append(outcome.record)
+                        applied += outcome.applied
+                        failed += 0 if outcome.applied else 1
         summary = (
-            f"Found {found} canonical matches across {len(selected_projects)} projects"
+            f"Found {found} canonical matches across the selected projects"
             if self.dry_run
             else f"Applied {applied} replacements, {failed} files reverted"
         )
         output_lines.extend(("", summary))
         if self.output_format == c.Cli.OutputFormats.JSON:
-            report = m.Infra.ConsolidatorReport(
-                total_found=found,
-                total_applied=applied,
-                total_failed=failed,
-                files=tuple(file_results),
+            payload = {
+                "total_found": found,
+                "total_applied": applied,
+                "total_failed": failed,
+                "files": list(file_results),
+            }
+            normalized = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+            return r[str].ok(
+                t.Infra.INFRA_MAPPING_ADAPTER.dump_json(normalized).decode(),
             )
-            return r[str].ok(report.model_dump_json())
         return r[str].ok("\n".join(output_lines))
 
-    def _scanned_project_run(
+    def _consolidate_python_file(
         self,
-        rope: p.Infra.RopeWorkspaceDsl,
-        selected_projects: t.SequenceOf[p.Infra.ProjectInfo],
-    ) -> p.Result[
-        tuple[int, int, int, t.SequenceOf[m.Infra.ConsolidatorFileResult], list[str]]
-    ]:
-        """Scan every selected project, applying when not in dry-run.
+        rope_project: p.Infra.RopeProject,
+        python_file: Path,
+        value_map: Mapping[str, str],
+        project_layout: object,
+    ) -> m.Infra.ConsolidationOutcome:
+        """Scan and consolidate one Python file against the constants map.
 
         Returns:
-            The resulting ``p.Result[tuple[int, int, int,
-                t.SequenceOf[m.Infra.ConsolidatorFileResult], list[str]]]``
-            with the found/applied/failed counters, the per-file results, and
-            the rendered scan lines.
+            The scan outcome with dry-run lines or an applied record.
 
         """
-        found = applied = failed = 0
-        file_results: list[m.Infra.ConsolidatorFileResult] = []
-        output_lines: list[str] = []
-        for project in selected_projects:
-            project_layout = u.Infra.layout(project.path)
-            if project_layout is None or not project_layout.init_path.is_file():
-                continue
-            constants_file = project_layout.package_dir / c.Infra.CONSTANTS_PY
-            value_map_result = self._build_value_map_from_constants_file(constants_file)
-            if value_map_result.failure:
-                return r[
-                    tuple[
-                        int,
-                        int,
-                        int,
-                        t.SequenceOf[m.Infra.ConsolidatorFileResult],
-                        list[str],
-                    ]
-                ].from_failure(value_map_result)
-            value_map = value_map_result.value
-            if not value_map:
-                continue
-            project_files = self._project_python_files(rope, project.path)
-            if project_files.failure:
-                return r[
-                    tuple[
-                        int,
-                        int,
-                        int,
-                        t.SequenceOf[m.Infra.ConsolidatorFileResult],
-                        list[str],
-                    ]
-                ].from_failure(project_files)
-            for python_file in project_files.value:
-                scanned = self._scan_file(rope.rope_project, python_file, value_map)
-                if scanned is None:
-                    continue
-                found += len(scanned.matches)
-                rel_path = python_file.relative_to(self.repository_root)
-                if self.dry_run:
-                    output_lines.extend(
-                        (
-                            f"  {rel_path}:{symbol.line}  {symbol.name} = "
-                            f"{value} -> {ref}"
-                        )
-                        for symbol, ref, value in scanned.matches
-                    )
-                    continue
-                ok, changes, lines = self._apply_and_validate(
-                    rope.rope_project,
-                    scanned,
-                    python_file,
-                    self.repository_root,
-                    project_layout.package_name,
-                )
-                output_lines.extend(lines)
-                file_results.append(
-                    m.Infra.ConsolidatorFileResult(
-                        file=str(rel_path),
-                        status="applied" if ok else "reverted",
-                        changes=tuple(changes),
-                    ),
-                )
-                if ok:
-                    applied += len(changes)
-                else:
-                    failed += 1
-        return r[
-            tuple[
-                int,
-                int,
-                int,
-                t.SequenceOf[m.Infra.ConsolidatorFileResult],
-                list[str],
-            ]
-        ].ok((found, applied, failed, tuple(file_results), output_lines))
-
-    @staticmethod
-    def _project_python_files(
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
-        project_root: Path,
-    ) -> p.Result[t.SequenceOf[Path]]:
-        """Return indexed Python wrapper files for one consolidation pass.
-
-        Returns:
-            Indexed Python wrapper files for one consolidation pass.
-
-        """
-        resolved_root = project_root.resolve()
-        constants_directory = u.Infra.facade_family_declared_by(
-            c.Infra.CONSTANTS_PY,
-        ).directory
-        indexed_files: t.MutableSequenceOf[Path] = []
-        for module in rope_workspace.modules():
-            if (
-                module.project_root is None
-                or module.project_root.resolve() != resolved_root
-            ):
-                continue
-            file_path = module.file_path.resolve()
-            if not file_path.is_relative_to(resolved_root):
-                continue
-            relative_path = file_path.relative_to(resolved_root)
-            if (
-                file_path.suffix != c.Infra.EXT_PYTHON
-                or not relative_path.parent.parts
-                or not u.Infra.root_namespace(resolved_root, relative_path.parts[0])
-                or constants_directory in relative_path.parts
-            ):
-                continue
-            indexed_files.append(file_path)
-        return r[t.SequenceOf[Path]].ok(tuple(sorted(indexed_files)))
+        scanned = self._scan_file(rope_project, python_file, value_map)
+        rel_path = python_file.relative_to(self.workspace_root)
+        if scanned is None:
+            return m.Infra.ConsolidationOutcome(
+                found=0, lines=(), record=None, applied=0
+            )
+        if self.dry_run:
+            return m.Infra.ConsolidationOutcome(
+                found=len(scanned.matches),
+                lines=tuple(
+                    f"  {rel_path}:{symbol.line}  {symbol.name} = {value} -> {ref}"
+                    for symbol, ref, value in scanned.matches
+                ),
+                record=None,
+                applied=0,
+            )
+        ok, changes, lines = self._apply_and_validate(
+            rope_project,
+            scanned,
+            python_file,
+            self.workspace_root,
+            project_layout.package_name,
+        )
+        return m.Infra.ConsolidationOutcome(
+            found=len(scanned.matches),
+            lines=tuple(lines),
+            record={
+                "file": str(rel_path),
+                "status": "applied" if ok else "reverted",
+                "changes": list(changes),
+            },
+            applied=len(changes) if ok else 0,
+        )
 
     def _selected_projects(
         self,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
-        """Return the selected projects.
+    ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
+        """Select the consolidation targets under the workspace root.
 
         Returns:
-            The selected projects.
+            The discovered consolidation target projects.
 
         """
-        del rope_workspace
-        discovered = u.Infra.projects(self.repository_root)
+        _ = rope_workspace
+        discovered = u.Infra.projects(self.workspace_root)
         if discovered.failure:
-            return r[t.SequenceOf[p.Infra.ProjectInfo]].from_failure(discovered)
+            return r[Sequence[p.Infra.ProjectInfo]].fail(
+                discovered.error or "project discovery failed",
+            )
         selected = tuple(
             project
             for project in discovered.unwrap()
             if self.project_name is None or project.name == self.project_name
         )
-        return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(selected)
+        return r[Sequence[p.Infra.ProjectInfo]].ok(selected)
+
+    @classmethod
+    def _build_value_map_from_constants_file(
+        cls,
+        constants_file: Path,
+    ) -> p.Result[Mapping[str, str]]:
+        """Build value map from a constants file.
+
+        Missing file → empty map (nothing to consolidate); an existing-but-unreadable
+        file is surfaced as a failure (never silently treated as empty).
+
+        Returns:
+            The resulting ``p.Result[Mapping[str, str]]``.
+
+        """
+        if not constants_file.is_file():
+            return r[Mapping[str, str]].ok({})
+        read = u.Cli.files_read_text(constants_file)
+        if read.failure:
+            return r[Mapping[str, str]].from_failure(read)
+        value_map: t.MutableStrMapping = {}
+        for name, _, raw, class_path, _ in u.Infra.parse_final_constant_definitions(
+            read.value.splitlines(),
+        ):
+            if not raw:
+                continue
+            canonical = f"{class_path}.{name}" if class_path else name
+            value_map[raw] = canonical
+            if (
+                len(raw) >= c.Infra.DETECTION_MIN_QUOTED_LITERAL_LEN
+                and raw[0] in {'"', "'"}
+                and raw[-1] == raw[0]
+            ):
+                inner = raw[1:-1]
+                value_map[f"'{inner}'"] = canonical
+                value_map[f'"{inner}"'] = canonical
+        return r[Mapping[str, str]].ok(value_map)
+
+    def _scan_file(
+        self,
+        rope_project: t.Infra.RopeProject,
+        python_file: Path,
+        value_map: Mapping[str, str],
+    ) -> m.Infra.ConsolidatorScannedFile | None:
+        """Scan file.
+
+        Returns:
+            The resulting ``m.Infra.ConsolidatorScannedFile | None``.
+
+        """
+        resource = u.Infra.resolve_resource_from_path(rope_project, python_file)
+        if resource is None:
+            return None
+        symbols = u.Infra.resolve_module_symbols(rope_project, resource)
+        assignments = [symbol for symbol in symbols if symbol.kind == "assignment"]
+        if not assignments:
+            return None
+        source = resource.read()
+        matches = self._match_assignments(assignments, source.splitlines(), value_map)
+        if not matches:
+            return None
+        return m.Infra.ConsolidatorScannedFile(
+            resource=resource,
+            source=source,
+            matches=matches,
+        )
+
+    @staticmethod
+    def _match_assignments(
+        symbols: Sequence[m.Infra.SymbolInfo],
+        # Use the canonical scalar sequence alias directly.
+        source_lines: Sequence[str],
+        value_to_ref: Mapping[str, str],
+    ) -> Sequence[tuple[m.Infra.SymbolInfo, str, str]]:
+        """Match assignments.
+
+        Returns:
+            The resulting ``Sequence[tuple[m.Infra.SymbolInfo, str, str]]``.
+
+        """
+        matches: MutableSequence[tuple[m.Infra.SymbolInfo, str, str]] = []
+        for symbol in symbols:
+            # Widen the validated constrained int for indexing.
+            line_number: int = symbol.line
+            if line_number < 1 or line_number > len(source_lines):
+                continue
+            line: str = source_lines[line_number - 1]
+            eq = line.find("=")
+            if eq < 0:
+                continue
+            raw = line[eq + 1 :].strip()
+            if raw in c.Infra.DETECTION_TRIVIAL_VALUES:
+                continue
+            canonical = value_to_ref.get(raw)
+            if canonical is None or canonical == symbol.name:
+                continue
+            canonical_key = canonical.lower().replace("_", "")
+            symbol_key = symbol.name.lower().replace("_", "")
+            if canonical_key == symbol_key or symbol_key in canonical_key:
+                matches.append((symbol, f"c.{canonical}", raw))
+        return tuple(matches)
+
+    @classmethod
+    def _apply_and_validate(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        scanned: m.Infra.ConsolidatorScannedFile,
+        py_file: Path,
+        workspace: Path,
+        pkg_name: str,
+    ) -> t.Infra.EditResultWithDescs:
+        """Apply and validate.
+
+        Returns:
+            The resulting ``t.Infra.EditResultWithDescs``.
+
+        Raises:
+            TypeError: If the scanned resource is not a Rope file resource.
+
+        """
+        resource = scanned.resource
+        if not u.Infra.file_resource(resource):
+            msg = f"expected a Rope file resource: {py_file}"
+            raise TypeError(msg)
+        original_source = scanned.source
+        src_lines = original_source.splitlines(keepends=True)
+        rel = py_file.relative_to(workspace)
+        edits: MutableSequence[tuple[int, int, str]] = []
+        descs: MutableSequence[str] = []
+        for symbol, ref, value in scanned.matches:
+            line_number = symbol.line
+            if line_number < 1 or line_number > len(src_lines):
+                continue
+            line = src_lines[line_number - 1]
+            eq = line.find("=")
+            if eq < 0:
+                continue
+            base = sum(len(src_lines[i]) for i in range(line_number - 1))
+            edits.append((
+                base + eq + 1,
+                base + eq + 1 + len(line[eq + 1 :].rstrip()),
+                f" {ref}",
+            ))
+            descs.append(f"{symbol.name} = {value} -> {ref}")
+        if not edits:
+            return (True, [], [])
+
+        ok, report = u.Infra.protected_file_edit(
+            py_file,
+            request=m.Infra.ProtectedFileEditRequest(
+                workspace=workspace,
+                before_source=original_source,
+                edit_fn=lambda: (
+                    u.Infra.rewrite_source_at_offsets(
+                        rope_project,
+                        resource,
+                        edits,
+                        apply=True,
+                    ),
+                    u.Infra.add_import(
+                        rope_project,
+                        resource,
+                        pkg_name,
+                        ["c"],
+                        apply=True,
+                    ),
+                    None,
+                )[-1],
+                gates=cls._ALL_LINT_GATES,
+            ),
+        )
+        if ok:
+            return (True, list(descs), [f"  APPLIED {rel}: {item}" for item in descs])
+        return (False, list(descs), report)
 
 
 __all__: list[str] = ["FlextInfraCodegenConsolidator"]

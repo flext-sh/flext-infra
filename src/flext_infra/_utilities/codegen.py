@@ -6,94 +6,61 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
-from flext_infra._config_make_contract import FlextInfraMakeContract
-from flext_infra._utilities._git.gitignore import FlextInfraUtilitiesGitignore
-from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
-    FlextInfraUtilitiesRopeAnalysisWorkspace,
-)
-from flext_infra._utilities._rope.rope_class_move import (
-    FlextInfraUtilitiesRopeClassMove,
-)
-from flext_infra._utilities._rope.rope_module_patch import (
-    FlextInfraUtilitiesRopeModulePatch,
-)
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._semantic_cutover.facade_owners import (
-    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
-)
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
-from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
-from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
-from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
-from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
-from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-from flext_infra._utilities.workspace_inventory import (
-    FlextInfraUtilitiesWorkspaceInventory,
-)
-from flext_infra._utilities.workspace_manifest import (
-    FlextInfraUtilitiesWorkspaceManifest,
-)
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
-)
-
-
-class FlextInfraUtilitiesCodegen(
+from flext_infra import c, config, m, p
+from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
-    FlextInfraMakeContract,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesLintRecipes,
+    FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyprojectConform,
-    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesRefactor,
+    FlextInfraUtilitiesRepository,
+    FlextInfraUtilitiesVersioning,
+    FlextInfraUtilitiesWorkspaceInventory,
+    FlextInfraUtilitiesWorkspaceManifest,
+)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitignore
+from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
+)
+from flext_infra._utilities._rope.rope_module_patch import (
+    FlextInfraUtilitiesRopeModulePatch,
+)
+from flext_infra.make_contract import FlextInfraConfigMakeContract
+
+
+class FlextInfraUtilitiesCodegen(
+    FlextInfraUtilitiesBase,
+    FlextInfraConfigMakeContract,
+    FlextInfraUtilitiesCodegenFacades,
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesGitignore,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
     FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRepository,
     FlextInfraUtilitiesRopeAnalysisWorkspace,
-    FlextInfraUtilitiesRopeClassMove,
     FlextInfraUtilitiesRopeModulePatch,
-    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesWorkspaceInventory,
     FlextInfraUtilitiesWorkspaceManifest,
-    FlextInfraUtilitiesWorkspaceSnapshot,
-    FlextInfraUtilitiesSemanticCutoverFacadeOwners,
 ):
     """Compose the source helpers consumed by the generation operation."""
-
-    if TYPE_CHECKING:
-
-        @staticmethod
-        @override
-        def project_root(
-            file_path: Path,
-            *,
-            source_project: p.Infra.RopeProject | None = None,
-        ) -> Path | None:
-            del file_path, source_project
 
     @staticmethod
     def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:
@@ -181,16 +148,16 @@ class FlextInfraUtilitiesCodegen(
 
     @staticmethod
     def parse_final_constant_definitions(
-        source_lines: t.SequenceOf[str],
-    ) -> t.SequenceOf[tuple[str, str, str, str, int]]:
+        source_lines: Sequence[str],
+    ) -> Sequence[tuple[str, str, str, str, int]]:
         """Parse ``NAME: Final[...] = VALUE`` definitions with class-path context.
 
         Returns:
-            The resulting ``t.SequenceOf[tuple[str, str, str, str, int]]``.
+            The resulting ``Sequence[tuple[str, str, str, str, int]]``.
 
         """
-        class_stack: t.MutableSequenceOf[t.Pair[str, int]] = []
-        parsed: t.MutableSequenceOf[tuple[str, str, str, str, int]] = []
+        class_stack: MutableSequence[tuple[str, int]] = []
+        parsed: MutableSequence[tuple[str, str, str, str, int]] = []
         for line_number, line in enumerate(source_lines, 1):
             stripped = line.lstrip()
             indent = len(line) - len(stripped)
@@ -209,7 +176,7 @@ class FlextInfraUtilitiesCodegen(
 
     @staticmethod
     def update_class_stack(
-        class_stack: t.MutableSequenceOf[t.Pair[str, int]],
+        class_stack: MutableSequence[tuple[str, int]],
         stripped_line: str,
         indent: int,
     ) -> None:

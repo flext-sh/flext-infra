@@ -28,22 +28,22 @@ snapshots:
       style: secondary
       start: 20
       end: 32
-  "type TomlValue = Primitives | list[FlextTestsMakeTypesMixin.TomlValue] | dict[str, FlextTestsMakeTypesMixin.TomlValue]":
+  "type TomlValue = Primitives | list[FlextTestsTypesMake.TomlValue] | dict[str, FlextTestsTypesMake.TomlValue]":
     labels:
     - source: >-
-        type TomlValue = Primitives | list[FlextTestsMakeTypesMixin.TomlValue] |
-        dict[str, FlextTestsMakeTypesMixin.TomlValue]
+        type TomlValue = Primitives | list[FlextTestsTypesMake.TomlValue] | dict[str,
+        FlextTestsTypesMake.TomlValue]
       style: primary
       start: 0
-      end: 118
+      end: 108
     - source: TomlValue
       style: secondary
       start: 5
       end: 14
-    - source: list[FlextTestsMakeTypesMixin.TomlValue]
+    - source: list[FlextTestsTypesMake.TomlValue]
       style: secondary
       start: 30
-      end: 70
+      end: 65
   "type TomlValue = Primitives | list[TomlValue] | dict[str, TomlValue]":
     labels:
     - source: type TomlValue = Primitives | list[TomlValue] | dict[str, TomlValue]

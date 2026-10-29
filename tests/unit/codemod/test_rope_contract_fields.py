@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra
-from tests import c, p, t, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -57,7 +57,7 @@ class TestsFlextInfraRopeFieldContracts:
         ],
     )
     def test_real_defaults_preserve_runtime_and_converge(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         declaration: str,
         *,
         changes: bool,
@@ -112,7 +112,7 @@ class TestsFlextInfraRopeFieldContracts:
         "declaration",
         [
             "values: list[Domain.Item] = Field(default_factory=list)",
-            "values: t.MutableSequenceOf[Domain.Item] = Field(default_factory=list)",
+            "values: MutableSequence[Domain.Item] = Field(default_factory=list)",
             "values: dict[str, Domain.Item] = Field(default_factory=dict)",
             (
                 "values: Annotated[list[Domain.Item], 'metadata'] = "
@@ -130,7 +130,7 @@ class TestsFlextInfraRopeFieldContracts:
         ],
     )
     def test_own_outer_contract_stays_deferred_during_class_construction(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         declaration: str,
     ) -> None:
         """Native mutable factories never evaluate an unfinished outer owner."""
@@ -168,7 +168,7 @@ class TestsFlextInfraRopeFieldContracts:
 
     @staticmethod
     def test_own_class_contract_keeps_its_native_factory(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Pydantic self resolution does not bind the class name for field values."""
         source = (
@@ -196,7 +196,7 @@ class TestsFlextInfraRopeFieldContracts:
 
     @staticmethod
     def test_already_bound_mutable_outer_contract_stays_native(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Binding an outer owner does not change a mutable factory's identity."""
         source = (
@@ -222,7 +222,7 @@ class TestsFlextInfraRopeFieldContracts:
     @pytest.mark.parametrize("minimum", [0, 1])
     @pytest.mark.parametrize("alias", [False, True])
     def test_readonly_factory_preserves_full_field_validation_and_freshness(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         minimum: int,
         *,
         alias: bool,
@@ -300,7 +300,7 @@ class TestsFlextInfraRopeFieldContracts:
         ],
     )
     def test_canonical_empty_repairs_return_contract_with_default_validation_disabled(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         contract: str,
         factory: str,
         native: str,
@@ -356,7 +356,7 @@ class TestsFlextInfraRopeFieldContracts:
     @staticmethod
     @pytest.mark.parametrize("factory", ["tuple", "frozenset"])
     def test_strict_native_immutable_factory_is_not_a_raw_mutable_violation(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         factory: str,
     ) -> None:
         """A correct native immutable factory must retain its exact identity."""
@@ -386,7 +386,7 @@ class TestsFlextInfraRopeFieldContracts:
         ],
     )
     def test_alias_factory_admission_follows_native_origin_not_alias_spelling(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         origin: str,
         factory: str,
         *,
@@ -416,7 +416,7 @@ class TestsFlextInfraRopeFieldContracts:
     @staticmethod
     @pytest.mark.parametrize("declaration", ["Contract =", "type Contract ="])
     def test_rebound_type_alias_cannot_prove_a_deferred_factory_contract(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         declaration: str,
     ) -> None:
         """A later alias value must not replace the field's original resolved type."""
@@ -441,7 +441,7 @@ class TestsFlextInfraRopeFieldContracts:
     @staticmethod
     @pytest.mark.parametrize("factory", ["list[str]", "lambda: ['consumer']"])
     def test_typed_constructor_and_authored_callback_keep_distinct_behavior(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         factory: str,
     ) -> None:
         """Only the catalogue's builtin factories are empty-factory candidates."""
@@ -463,7 +463,7 @@ class TestsFlextInfraRopeFieldContracts:
 
     @staticmethod
     def test_readonly_deferred_outer_owner_keeps_native_field_resolution(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """The SDK callback never evaluates an unfinished enclosing annotation."""
         source = (
@@ -499,7 +499,7 @@ class TestsFlextInfraRopeFieldContracts:
     )
     @pytest.mark.parametrize("alias", [False, True])
     def test_effectful_metadata_alias_rejects_additional_native_validation(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         marker: str,
         *,
         alias: bool,
@@ -592,7 +592,7 @@ class TestsFlextInfraRopeFieldContracts:
     )
     @pytest.mark.parametrize("alias", [False, True])
     def test_native_declarative_metadata_preserves_constraints_and_literal_payloads(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         definition: str,
         metadata: str,
         *,
@@ -633,7 +633,7 @@ class TestsFlextInfraRopeFieldContracts:
 
     @staticmethod
     def test_strict_json_boundary_and_validator_modes_survive_factory_migration(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """A safe factory migration must preserve distinct validation contracts."""
         source = (
@@ -668,7 +668,7 @@ class TestsFlextInfraRopeFieldContracts:
 
     @staticmethod
     def test_dependent_factory_preserves_call_order_and_instance_isolation(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Moving sole Field metadata preserves data-dependent factory effects."""
         source = (
@@ -695,7 +695,7 @@ class TestsFlextInfraRopeFieldContracts:
     # library test never imports a downstream consumer it does not install.
     @pytest.mark.parametrize("namespace", ["flext_core", "flext_cli"])
     def test_outer_facades_preserve_nested_contracts(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         namespace: str,
     ) -> None:
         """Real outer model presets and utilities retain their inherited contracts."""
@@ -715,7 +715,7 @@ class TestsFlextInfraRopeFieldContracts:
 
     @staticmethod
     def test_factory_migration_cannot_repeat_annotation_effects(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """A repeated type expression must not run an authored callback twice."""
         source = (
@@ -807,7 +807,7 @@ class TestsFlextInfraRopeFieldContracts:
 
     @staticmethod
     def test_existing_cli_facade_and_unrelated_field_info_are_preserved(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Valid model fields migrate independently without capturing richer u."""
         source = (

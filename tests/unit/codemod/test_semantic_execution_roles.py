@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
-from flext_infra import m, t, u
+from flext_infra import m, u
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, tm
 
@@ -101,7 +102,7 @@ class TestsSemanticExecutionRoles:
         "flags", [("-I",), ("-S",), ("-I", "-S"), ("-I", "-S", "-P")]
     )
     def test_isolated_role_does_not_accept_caller_interpreter_policy(
-        flags: t.StrSequence,
+        flags: Sequence[str],
     ) -> None:
         """Flags are derived from the shared role, never independently promised."""
         with pytest.raises(ValueError, match="python_flags"):

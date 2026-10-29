@@ -15,7 +15,7 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceLockCompleteness,
 )
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -24,7 +24,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
     """Generation neither resolves existing locks nor creates missing locks."""
 
     @staticmethod
-    def _repository(tmp_path: Path, *, attached: bool) -> t.Pair[Path, Path]:
+    def _repository(tmp_path: Path, *, attached: bool) -> tuple[Path, Path]:
         """Create an actual governed Git checkout in the requested topology.
 
         Returns:

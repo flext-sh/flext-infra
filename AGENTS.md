@@ -44,7 +44,7 @@ src/flext_infra/
 | `FlextInfraUtilitiesPythonModel` | class | `_utilities/python_model.py`  | `u.Infra` static facts derived from the source engine's existing parse |
 | `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`           | managed pyproject enforcement                              |
 | `FlextInfraCodegenConform`      | class | `codegen/conform.py`           | explicit conform composition over the shared projection executor, without Service inheritance |
-| `FlextInfraConfigModels`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |
+| `FlextInfraModelsConfig`        | class | `_models/_config/base.py`      | config model facade over `_models/_config/*` families      |
 | `FlextInfraPromoted`            | class | `promoted.py`                  | promoted command framework facade                          |
 
 ## Promoted command framework
@@ -96,7 +96,7 @@ and track the complete owner census in Bead `flext-43iz8`.
   parse, discovery, import-graph, and refactoring layers are migration defects, not
   alternate owners. The active code cutover is tracked by `flext-1engx.15`; this
   instruction does not claim it is complete.
-- Config/settings canonical pattern: ADR-005 §§1–2 and `_settings.py`/`_config.py`
+- Config/settings canonical pattern: ADR-005 §§1–2 and the declaring settings/config
   docstrings (flext-z0zkq; fleet follow-up flext-la3z5).
 - <a id="adr-028-decision-18"></a>Codemod authoring and application follow [FLEXT ADR-028 Decisions 17–18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-18) and the root
   [Codemod Rules guide, One rule per law](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/guides/codemod-rules.md#one-rule-per-law). ADR-014 continues to own

@@ -8,11 +8,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraInfraSelection:
@@ -20,7 +21,9 @@ class TestsFlextInfraInfraSelection:
 
     @staticmethod
     @pytest.fixture
-    def workspace_with_projects(tmp_path: Path) -> Path:
+    def workspace_with_projects(
+        tmp_path: Path,
+    ) -> Path:
         """Create a temporary workspace with test projects.
 
         Returns:
@@ -61,7 +64,9 @@ class TestsFlextInfraInfraSelection:
 
     @staticmethod
     @pytest.fixture
-    def workspace_with_declared_names(tmp_path: Path) -> Path:
+    def workspace_with_declared_names(
+        tmp_path: Path,
+    ) -> Path:
         """Create projects whose declared names differ from directory names.
 
         Returns:
@@ -96,7 +101,9 @@ class TestsFlextInfraInfraSelection:
 
     @staticmethod
     @pytest.fixture
-    def workspace_with_nested_members(tmp_path: Path) -> Path:
+    def workspace_with_nested_members(
+        tmp_path: Path,
+    ) -> Path:
         """Provide ``workspace_with_nested_members``.
 
         Returns:
@@ -136,7 +143,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test resolving all projects when names list is empty."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=3)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
@@ -147,7 +154,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test resolving specific projects by name."""
         result = selector.resolve_projects(workspace_with_projects, ["beta", "alpha"])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=2)
         tm.that([p.name for p in projects], eq=["alpha", "beta"])
 
@@ -158,7 +165,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test resolving a single project."""
         result = selector.resolve_projects(workspace_with_projects, ["gamma"])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=1)
         tm.that(projects[0].name, eq="gamma")
 
@@ -199,7 +206,7 @@ class TestsFlextInfraInfraSelection:
             workspace_with_projects,
             ["gamma", "alpha", "beta"],
         )
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
     @staticmethod
@@ -210,7 +217,7 @@ class TestsFlextInfraInfraSelection:
         """Test that result contains properly typed ProjectInfo items."""
         result = selector.resolve_projects(workspace_with_projects, [])
         tm.ok(result)
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = result.value
+        projects: Sequence[m.Infra.ProjectInfo] = result.value
         tm.that(len(projects), eq=3)
         tm.that([p.name for p in projects], eq=["alpha", "beta", "gamma"])
 
@@ -224,7 +231,7 @@ class TestsFlextInfraInfraSelection:
             workspace_with_declared_names,
             ["core-alias", "cli-alias"],
         )
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([p.name for p in projects], eq=["flext-cli", "flext-core"])
 
     @staticmethod
@@ -237,7 +244,7 @@ class TestsFlextInfraInfraSelection:
             workspace_with_declared_names,
             ["flext-core", "flext-cli"],
         )
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([p.path.name for p in projects], eq=["cli-alias", "core-alias"])
 
     @staticmethod
@@ -247,7 +254,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test selector uses default discovery service implicitly."""
         result = selector.resolve_projects(workspace_with_projects, [])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, length=3)
 
     @staticmethod
@@ -257,7 +264,7 @@ class TestsFlextInfraInfraSelection:
     ) -> None:
         """Test resolve_projects returns empty list when no projects match."""
         result = selector.resolve_projects(tmp_path, [])
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, empty=True)
 
     @staticmethod
@@ -268,7 +275,7 @@ class TestsFlextInfraInfraSelection:
         """Test resolve projects includes root and nested members."""
         result = selector.resolve_projects(workspace_with_nested_members, ())
 
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(
             [project.name for project in projects],
             eq=["member-one", "member-two", "workspace"],
@@ -284,7 +291,7 @@ class TestsFlextInfraInfraSelection:
         """Test resolve projects accepts root aliases."""
         result = selector.resolve_projects(workspace_with_nested_members, (name,))
 
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([project.name for project in projects], eq=["workspace"])
 
     @staticmethod
@@ -298,5 +305,5 @@ class TestsFlextInfraInfraSelection:
             ("apps/member-one",),
         )
 
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        projects: Sequence[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that([project.name for project in projects], eq=["member-one"])

@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from doctest import DocTestParser
 from functools import cache
 from pathlib import Path
@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, u
 
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_infra import m, p
 
 
 class FlextInfraMarkdownCodeSources:
@@ -61,7 +61,7 @@ class FlextInfraMarkdownCodeSources:
     def formattable_fences(
         content: str,
         origin: Path,
-    ) -> t.VariadicTuple[t.Pair[int, m.Cli.MarkdownFence]]:
+    ) -> tuple[tuple[int, m.Cli.MarkdownFence], ...]:
         """Index governed ``python`` fences and keep those that compile.
 
         A pure function of the document text: extraction and write-back of
@@ -82,8 +82,8 @@ class FlextInfraMarkdownCodeSources:
     @staticmethod
     def fenced_block_sources(
         project_dir: Path,
-        markdown_files: t.SequenceOf[Path],
-    ) -> Iterator[t.Triple[str, str, t.Pair[str, int]]]:
+        markdown_files: Sequence[Path],
+    ) -> Iterator[tuple[str, str, tuple[str, int]]]:
         """Yield one named source per parseable fenced ``python`` block.
 
         Blocks carrying the ``notest`` fence marker and unparseable fragments
@@ -112,7 +112,7 @@ class FlextInfraMarkdownCodeSources:
     def docstring_sources(
         project_dir: Path,
         scope_facts: p.Infra.GitScopeFacts | None,
-    ) -> Iterator[t.Triple[str, str, t.Pair[str, int]]]:
+    ) -> Iterator[tuple[str, str, tuple[str, int]]]:
         """Yield one named source per doctest example in tracked docstrings.
 
         Docstring write-back stays outside the fix contract on purpose: a
@@ -144,7 +144,7 @@ class FlextInfraMarkdownCodeSources:
         py_path: Path,
         relative_posix: str,
         text: str,
-    ) -> Iterator[t.Triple[str, str, t.Pair[str, int]]]:
+    ) -> Iterator[tuple[str, str, tuple[str, int]]]:
         """Yield one named source per doctest example of one module.
 
         Yields:

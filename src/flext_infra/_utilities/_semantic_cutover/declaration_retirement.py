@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
@@ -31,12 +33,12 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
-    FlextInfraUtilitiesSemanticNestingTypes,
+    FlextInfraUtilitiesTypesSemanticNesting,
 )
 
 
@@ -48,8 +50,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     @staticmethod
     def contract_transfer_binding(
         project: p.Infra.RopeProject,
-        identity: t.Pair[str, str],
-        owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath],
+        identity: tuple[str, str],
+        owned_modules: Mapping[str, t.Infra.RopeSourcePath],
     ) -> p.Infra.RopePyName | None:
         """Resolve only an original owned resource, never an installed SDK fallback.
 
@@ -62,7 +64,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         path = owned_modules.get(provider)
         if path is None:
             return None
-        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix()
             ),
@@ -77,10 +79,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def retire_contract_owners(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
-        rules: t.SequenceOf[p.Infra.RopeContractRule],
-        owned_modules: t.MappingKV[str, t.Infra.RopeSourcePath],
-    ) -> t.Pair[t.Infra.RopeImplementationPaths, t.Infra.RopeImplementationPaths]:
+        proposed: MutableMapping[t.Infra.RopeSourcePath, str],
+        rules: Sequence[p.Infra.RopeContractRule],
+        owned_modules: Mapping[str, t.Infra.RopeSourcePath],
+    ) -> tuple[t.Infra.RopeImplementationPaths, t.Infra.RopeImplementationPaths]:
         """Retire elected declarations only after native receiver completeness.
 
         Returns:
@@ -130,11 +132,11 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
-        ownership: tuple[Path, t.MappingKV[str, t.Infra.RopeSourcePath]],
+        proposed: MutableMapping[t.Infra.RopeSourcePath, str],
+        ownership: tuple[Path, Mapping[str, t.Infra.RopeSourcePath]],
         *,
-        destinations: t.SequenceOf[p.Infra.RopePyName],
-    ) -> t.Pair[t.Infra.RopeSourcePath | None, t.Infra.RopeSourcePath | None]:
+        destinations: Sequence[p.Infra.RopePyName],
+    ) -> tuple[t.Infra.RopeSourcePath | None, t.Infra.RopeSourcePath | None]:
         """Retire one elected ownership transfer after receiver completeness.
 
         Returns:
@@ -190,8 +192,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _authenticated_retirement_owner(
         cls,
         binding: p.Infra.RopePyName,
-        proposed: t.MappingKV[t.Infra.RopeSourcePath, str],
-    ) -> t.Pair[p.Infra.RopePyModule, t.Pair[t.Infra.RopeSourcePath, str]]:
+        proposed: Mapping[t.Infra.RopeSourcePath, str],
+    ) -> tuple[p.Infra.RopePyModule, tuple[t.Infra.RopeSourcePath, str]]:
         """Authenticate the native class or function owner of the binding.
 
         Returns:
@@ -202,7 +204,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             ValueError: If the scope, module or governed source is missing.
 
         """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         value = binding.get_object()
         if not (types.py_function(value) or types.py_class(value)):
             message = "ownership transfer requires a native class or function"
@@ -224,7 +226,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         module: p.Infra.RopePyModule,
         definition: p.Infra.RopeSourceDefinition,
         path: t.Infra.RopeSourcePath,
-    ) -> t.Pair[p.Infra.RopePyName | None, p.Infra.RopeAstNode]:
+    ) -> tuple[p.Infra.RopePyName | None, p.Infra.RopeAstNode]:
         """Resolve the retiring declaration and its provably empty wrappers.
 
         Returns:
@@ -295,7 +297,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
+        types = FlextInfraUtilitiesTypesRopeRuntime
         value = binding.get_object()
         if types.py_function(value):
             if cls._native_contract_signature(
@@ -325,11 +327,11 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _drop_changed_orphaned_imports(
         cls,
         project: p.Infra.RopeProject,
-        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        proposed: MutableMapping[t.Infra.RopeSourcePath, str],
     ) -> None:
         """Remove newly orphaned imports from every changed governed module."""
         for changed, after in tuple(proposed.items()):
-            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 project.get_resource(
                     changed.relative_to(Path(project.root.real_path)).as_posix()
                 ),
@@ -399,10 +401,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         project: p.Infra.RopeProject,
         binding: p.Infra.RopePyName,
         destination: p.Infra.RopePyName,
-        proposed: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        proposed: MutableMapping[t.Infra.RopeSourcePath, str],
         *,
-        destinations: t.SequenceOf[p.Infra.RopePyName],
-    ) -> t.Pair[t.Infra.RopeSourcePath, bool]:
+        destinations: Sequence[p.Infra.RopePyName],
+    ) -> tuple[t.Infra.RopeSourcePath, bool]:
         """Remove only the native declaration and provably empty lexical owners.
 
         Returns:
@@ -463,17 +465,29 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 source, alias="__all__"
             )
         ):
-            source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
-                source,
-                names=[
-                    name
-                    for name in (
-                        FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                            source
+            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+                Path(project.root.real_path),
+                planned_sources={**proposed, path: source},
+                source_project=project,
+            ) as (bound_project, _captured):
+                export_module = (
+                    FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                        bound_project.get_pymodule(
+                            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                                bound_project, path
+                            ),
+                            force_errors=True,
                         )
                     )
-                    if name != target.name
-                ],
+                )
+                exports = (
+                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                        export_module
+                    )
+                )
+            source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
+                source,
+                names=[name for name in exports if name != target.name],
             )
         proposed[path] = source
         cls._drop_changed_orphaned_imports(project, proposed)
@@ -528,7 +542,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     @classmethod
     def _native_contract_signature(
         cls, binding: p.Infra.RopePyName
-    ) -> t.Pair[t.Infra.RopeCallableSignature, str]:
+    ) -> tuple[t.Infra.RopeCallableSignature, str]:
         """Include native binding kind without executing the authored callable.
 
         Returns:
@@ -540,7 +554,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         """
         value = binding.get_object()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(value):
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_function(value):
             message = (
                 "ownership transfer changes a callable into a different native kind"
             )
@@ -555,7 +569,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _require_governed_inventory(
         cls,
         project: p.Infra.RopeProject,
-        observed: t.MappingKV[t.Infra.RopeSourcePath, str],
+        observed: Mapping[t.Infra.RopeSourcePath, str],
     ) -> None:
         """Require every workspace Python file in the governed inventory.
 
@@ -580,10 +594,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _prove_contract_retirement(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MappingKV[t.Infra.RopeSourcePath, str],
+        sources: Mapping[t.Infra.RopeSourcePath, str],
         *,
         owners: tuple[p.Infra.RopePyName, p.Infra.RopePyName | None],
-        destinations: t.SequenceOf[p.Infra.RopePyName],
+        destinations: Sequence[p.Infra.RopePyName],
         span: tuple[Path, int, int],
     ) -> None:
         """Prove all governed uses without evaluating opaque receiver expressions."""
@@ -609,9 +623,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         project: p.Infra.RopeProject,
         entry: tuple[Path, str],
         owners: tuple[p.Infra.RopePyName, p.Infra.RopePyName | None],
-        callees: tuple[
-            t.SequenceOf[p.Infra.RopePyName], t.SequenceOf[p.Infra.RopePyName]
-        ],
+        callees: tuple[Sequence[p.Infra.RopePyName], Sequence[p.Infra.RopePyName]],
         span: tuple[Path, int, int],
     ) -> None:
         path, source = entry
@@ -619,7 +631,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             return
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding, container = owners
-        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix()
             ),
@@ -670,7 +682,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             cls._prove_retirement_annotation(scope, expression, covers, owners, path)
             return None
 
-        FlextInfraUtilitiesSemanticNestingTypes.rewrite_quoted_types(
+        FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
             project, resource, source, quoted
         )
 
@@ -688,7 +700,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             p.Infra.RopePyName,
             p.Infra.RopePyName | None,
             Path,
-            tuple[t.SequenceOf[p.Infra.RopePyName], t.SequenceOf[p.Infra.RopePyName]],
+            tuple[Sequence[p.Infra.RopePyName], Sequence[p.Infra.RopePyName]],
         ],
     ) -> None:
         binding, container, path, callees = context
@@ -711,7 +723,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                     carries,
                     (
                         *callees,
-                        FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+                        FlextInfraUtilitiesTypesRopeRuntime.require_named_object(
                             binding.get_object(), str(path)
                         ).get_name(),
                         path,
@@ -759,7 +771,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                     .get_object()
                     .get_attributes()
                     .get(
-                        FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+                        FlextInfraUtilitiesTypesRopeRuntime.require_named_object(
                             binding.get_object(), "retirement owner"
                         ).get_name()
                     ),
@@ -778,10 +790,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         owner_path: Path,
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        path, source = entry
+        path, _source = entry
         binding, container = owners
         for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            source
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module)
         ):
             exported = module.get_attributes().get(name)
             if path != owner_path and (
@@ -823,7 +835,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     @staticmethod
     def _prove_retirement_reference(
         node: ast.Name | ast.Attribute,
-        parents: t.MappingKV[int, p.Infra.RopeAstNode],
+        parents: Mapping[int, p.Infra.RopeAstNode],
         resolves: Callable[[p.Infra.RopeAstNode], p.Infra.RopePyName | None],
         probes: tuple[
             Callable[[p.Infra.RopePyName | None], bool],
@@ -873,8 +885,8 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         whole_owner: Callable[[p.Infra.RopePyName | None], bool],
         carries: Callable[[p.Infra.RopeAstNode], bool],
         context: tuple[
-            t.SequenceOf[p.Infra.RopePyName],
-            t.SequenceOf[p.Infra.RopePyName],
+            Sequence[p.Infra.RopePyName],
+            Sequence[p.Infra.RopePyName],
             str,
             Path,
         ],
@@ -910,7 +922,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     def _retire_contract_bases(
         cls,
         project: p.Infra.RopeProject,
-        sources: t.MutableMappingKV[t.Infra.RopeSourcePath, str],
+        sources: MutableMapping[t.Infra.RopeSourcePath, str],
         container: p.Infra.RopePyName,
     ) -> None:
         """Remove only class-header edges to the proven empty native container.
@@ -921,7 +933,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         for path, source in tuple(sources.items()):
-            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 project.get_resource(
                     path.relative_to(Path(project.root.real_path)).as_posix()
                 ),
@@ -997,13 +1009,13 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         scope: p.Infra.RopeScope,
         node: ast.ClassDef,
         path: Path,
-    ) -> t.Pair[str, t.Triple[p.Infra.RopeWorder, int, int]]:
+    ) -> tuple[str, tuple[p.Infra.RopeWorder, int, int]]:
         owner = FlextInfraUtilitiesRopeRuntimeModules.expression_name(scope, node.name)
         if owner is None:
             message = f"retiring base has no native declaring class: {path}:{node.name}"
             raise ValueError(message)
         value = owner.get_object()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
             message = f"retiring base has a non-class owner: {path}:{node.name}"
             raise TypeError(message)
         class_scope = value.get_scope()

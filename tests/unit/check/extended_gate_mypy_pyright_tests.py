@@ -78,7 +78,7 @@ class TestsFlextInfraTypeGates:
                     reports_dir=root / ".reports",
                 )
                 gate = gates.FlextInfraMypyGate(root)
-                cache = shared_root / project / u.Infra.environment_cache_identity()
+                cache = shared_root / project / u.Infra.environment_cache_identity(root)
                 for revision in (1, 2):
                     lock.write_text(
                         f"version = 1\nrevision = {revision}\n",
@@ -104,24 +104,26 @@ class TestsFlextInfraTypeGates:
 
     @staticmethod
     @pytest.fixture
-    def checker_context(real_python_package: Path) -> m.Infra.GateContext:
+    def checker_context(
+        tmp_path: Path,
+    ) -> m.Infra.GateContext:
         """Configure the existing real package for native checker execution.
 
         Returns:
             The resulting ``m.Infra.GateContext``.
 
         """
-        pyproject = real_python_package / c.PYPROJECT_FILENAME
+        pyproject = tmp_path / c.PYPROJECT_FILENAME
         pyproject.write_text(
             pyproject.read_text(encoding="utf-8")
             + '\n[tool.mypy]\n[tool.pyright]\ninclude = ["src"]\n'
             + '[tool.pyrefly]\nproject-includes = ["src"]\n',
             encoding="utf-8",
         )
-        reports = real_python_package / ".reports"
+        reports = tmp_path / ".reports"
         reports.mkdir()
         return m.Infra.GateContext(
-            repository_root=real_python_package,
+            repository_root=tmp_path,
             reports_dir=reports,
         )
 
@@ -219,7 +221,7 @@ class TestsFlextInfraTypeGates:
         [
             ("flext_infra", "FlextInfraServiceBase"),
             ("flext_infra", "FlextInfraProjectSelectionServiceBase"),
-            ("flext_infra.codegen", "FlextInfraCodegenExecutionBase"),
+            ("flext_infra.codegen", "FlextInfraCodegenExecution"),
         ],
     )
     def test_mypy_public_service_payload_bound(

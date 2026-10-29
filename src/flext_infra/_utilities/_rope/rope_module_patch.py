@@ -7,15 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
-from flext_infra import c, p, t
+from flext_infra import c, p
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -29,7 +31,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         source: str,
         *,
         alias: str,
-    ) -> t.VariadicTuple[ast.Assign | ast.AnnAssign]:
+    ) -> tuple[ast.Assign | ast.AnnAssign, ...]:
         """Return only direct module bindings for the declared alias.
 
         Returns:
@@ -49,6 +51,24 @@ class FlextInfraUtilitiesRopeModulePatch:
         )
 
     @staticmethod
+    def _unique_class_binding_root(
+        bindings: MutableSequence[ast.Assign | ast.AnnAssign],
+    ) -> ast.expr | None:
+        """Return the root expression of one unambiguous module binding.
+
+        Returns:
+            The root expression below attribute access, or ``None`` when the
+            name has no single binding carrying a value.
+
+        """
+        if len(bindings) != 1 or bindings[0].value is None:
+            return None
+        root: ast.expr = bindings[0].value
+        while isinstance(root, ast.Attribute):
+            root = root.value
+        return root
+
+    @staticmethod
     def facade_letter_names_at(
         project: p.Infra.RopeProject,
         path: Path,
@@ -57,7 +77,7 @@ class FlextInfraUtilitiesRopeModulePatch:
 
         A facade letter (ADR-015 R1a, ADR-018 p.1) is a published alias whose
         single module binding names a class the module declares or imports,
-        e.g. ``c = FlextCliConstants`` or ``tm = FlextTestsMatchersUtilities.X``.
+        e.g. ``c = FlextCliConstants`` or ``tm = FlextTestsUtilitiesMatchers.X``.
         Singleton instances (``cli = FlextCli.fetch_global()``), functions
         (``main``), and attributes of instances (``lazy.attribute``) stay in
         the namespace root that declares them and are never inherited.
@@ -73,6 +93,9 @@ class FlextInfraUtilitiesRopeModulePatch:
             FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
             force_errors=True,
         )
+        if not FlextInfraUtilitiesRopeRuntime.source_module(module):
+            message = f"Facade export metadata has no native source module: {path}"
+            raise TypeError(message)
         tree = module.get_ast()
         if not isinstance(tree, ast.Module):
             message = f"facade source carries no module syntax tree: {path}"
@@ -87,9 +110,9 @@ class FlextInfraUtilitiesRopeModulePatch:
         }
         # One parse serves every export: indexing the direct module bindings by
         # name once keeps this linear in the module size.
-        bindings_by_name: t.MutableMappingKV[
+        bindings_by_name: MutableMapping[
             str,
-            t.MutableSequenceOf[ast.Assign | ast.AnnAssign],
+            MutableSequence[ast.Assign | ast.AnnAssign],
         ] = {}
         for node in tree.body:
             if not isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
@@ -100,24 +123,23 @@ class FlextInfraUtilitiesRopeModulePatch:
             }:
                 bindings_by_name.setdefault(bound, []).append(node)
         letters: set[str] = set()
-        for name in FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings(
-            tree,
+        for (
+            name
+        ) in FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
+            module,
             c.Infra.DUNDER_ALL,
         ):
             if not name.islower() or name.startswith("_"):
                 continue
-            bindings = bindings_by_name.get(name, [])
-            if len(bindings) != 1 or bindings[0].value is None:
-                continue
-            root = bindings[0].value
-            while isinstance(root, ast.Attribute):
-                root = root.value
+            root = FlextInfraUtilitiesRopeModulePatch._unique_class_binding_root(
+                bindings_by_name.get(name, []),
+            )
             if isinstance(root, ast.Name) and root.id in class_names:
                 letters.add(name)
         return frozenset(letters)
 
     @staticmethod
-    def absolute_import_sources_source(source: str, *, name: str) -> t.StrSequence:
+    def absolute_import_sources_source(source: str, *, name: str) -> Sequence[str]:
         """Return the top-level packages an absolute ``from X import`` binds name from.
 
         Returns:
@@ -136,7 +158,9 @@ class FlextInfraUtilitiesRopeModulePatch:
         )
 
     @classmethod
-    def remove_runtime_alias_export(cls, source: str, *, alias: str) -> str:
+    def remove_runtime_alias_export(
+        cls, source_module: p.Infra.RopeSourceModule, *, alias: str
+    ) -> str:
         """Return source with one published alias letter removed from ``__all__``.
 
         The owner of a declared-but-unbound letter is the declaration itself:
@@ -147,8 +171,9 @@ class FlextInfraUtilitiesRopeModulePatch:
             Source with one published alias letter removed from ``__all__``.
 
         """
+        source = source_module.source_code
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            source,
+            source_module
         )
         if alias not in exports:
             return source
@@ -215,6 +240,42 @@ class FlextInfraUtilitiesRopeModulePatch:
             message = "__all__ declaration shares a source line with another statement"
             raise ValueError(message)
         lines[declaration.lineno - 1 : declaration.end_lineno] = [rendered]
+        return "".join(lines)
+
+    @staticmethod
+    def ensure_from_import(source: str, *, module: str, name: str) -> str:
+        """Insert one top-level from-import after the module header when absent.
+
+        The module header is the leading docstring and import block; the
+        from-import joins its end. A binding already present at module scope
+        leaves the source untouched.
+
+        Returns:
+            Source with ``from <module> import <name>`` present at module scope.
+
+        """
+        for statement in ast.parse(source).body:
+            if (
+                isinstance(statement, ast.ImportFrom)
+                and statement.level == 0
+                and statement.module == module
+                and any(alias.name == name for alias in statement.names)
+            ):
+                return source
+        lines = source.splitlines(keepends=True)
+        header_end = 0
+        for statement in ast.parse(source).body:
+            is_docstring = (
+                isinstance(statement, ast.Expr)
+                and isinstance(statement.value, ast.Constant)
+                and isinstance(statement.value.value, str)
+            )
+            if not is_docstring and not isinstance(
+                statement, ast.Import | ast.ImportFrom
+            ):
+                break
+            header_end = statement.end_lineno or statement.lineno
+        lines.insert(header_end, f"from {module} import {name}\n")
         return "".join(lines)
 
 

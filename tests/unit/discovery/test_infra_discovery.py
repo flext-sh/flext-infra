@@ -8,11 +8,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDiscoveryInfraDiscovery:
@@ -31,7 +32,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
 
     @staticmethod
     @pytest.fixture
-    def workspace_with_projects(tmp_path: Path) -> Path:
+    def workspace_with_projects(
+        tmp_path: Path,
+    ) -> Path:
         """Provide ``workspace_with_projects``.
 
         Returns:
@@ -179,7 +182,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         """Test discover projects result type."""
         result = service.discover_projects(workspace_with_projects)
         tm.ok(result)
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = result.value
+        projects: Sequence[m.Infra.ProjectInfo] = result.value
         for item in projects:
             tm.that(item, is_=m.Infra.ProjectInfo)
 

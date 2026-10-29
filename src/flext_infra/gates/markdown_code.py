@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import tempfile
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -28,7 +28,7 @@ from flext_infra.gates import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraMarkdownCodeGate(FlextInfraGate):
@@ -44,7 +44,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         sources_dir: Path,
         *,
         write: bool,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Build one ruff format invocation (verdict with ``--check``, write otherwise).
 
         The project's own ``pyproject.toml`` is the format contract owner: embedded
@@ -54,7 +54,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         documented block could never satisfy both surfaces at once.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         args = ["format", "--no-cache", "--output-format", "concise"]
@@ -71,8 +71,8 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
     def _origin_issue(
         self,
-        origin: Mapping[str, t.Pair[str, int]],
-        location: t.Pair[str, int],
+        origin: Mapping[str, tuple[str, int]],
+        location: tuple[str, int],
         message: str,
     ) -> m.Infra.Issue | None:
         """Map one extracted-source finding back to its documentation location.
@@ -96,10 +96,10 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         self,
         project_dir: Path,
         result: p.Cli.CommandOutput,
-        origin: Mapping[str, t.Pair[str, int]],
+        origin: Mapping[str, tuple[str, int]],
         *,
         default_message: str,
-    ) -> t.SequenceOf[m.Infra.Issue]:
+    ) -> Sequence[m.Infra.Issue]:
         """Translate one ruff result into origin-mapped findings coded with this gate.
 
         Every ruff line that names an extracted source (verdict, parse error or
@@ -108,10 +108,10 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         as a clean pass: the tool-level error becomes the finding.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.Issue]``.
+            The resulting ``Sequence[m.Infra.Issue]``.
 
         """
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: MutableSequence[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_CODE_SOURCE_RE.search(line)
             issue = (
@@ -135,11 +135,11 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
     def _embedded_sources(
         project_dir: Path,
         scope_facts: p.Infra.GitScopeFacts | None,
-    ) -> t.MappingKV[str, t.Pair[str, t.Pair[str, int]]]:
+    ) -> Mapping[str, tuple[str, tuple[str, int]]]:
         """Name every embedded source with its text and documentation origin.
 
         Returns:
-            The resulting ``t.MappingKV[str, t.Pair[str, t.Pair[str, int]]]``.
+            The resulting ``Mapping[str, tuple[str, tuple[str, int]]]``.
 
         """
         markdown_files = FlextInfraMarkdownGateBase.collect_markdown_files(
@@ -185,7 +185,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
         *,
         fix: bool,
-    ) -> t.Triple[bool, bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, bool, Sequence[m.Infra.Issue]]:
         """Run the single format operation over extracted sources.
 
         Returns ``(ran, passed, issues)``: ``ran`` is False when the project
@@ -195,16 +195,16 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         never enter the extracted tree and cannot turn into gate findings.
 
         Returns:
-            The resulting ``t.Triple[bool, bool, t.SequenceOf[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, bool, Sequence[m.Infra.Issue]]``.
 
         """
-        findings: t.MutableSequenceOf[m.Infra.Issue] = []
+        findings: MutableSequence[m.Infra.Issue] = []
         embedded = self._embedded_sources(project_dir, ctx.scope_facts)
         if not embedded:
             return False, False, ()
         with tempfile.TemporaryDirectory(prefix="flext-markdown-code-") as tmp:
             sources_dir = Path(tmp)
-            origin: t.MutableMappingKV[str, t.Pair[str, int]] = {}
+            origin: MutableMapping[str, tuple[str, int]] = {}
             for name, (text, located) in embedded.items():
                 (sources_dir / name).write_text(text, c.DEFAULT_ENCODING)
                 origin[name] = located
@@ -268,7 +268,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         project_dir: Path,
         sources_dir: Path,
         scope_facts: p.Infra.GitScopeFacts | None,
-    ) -> t.SequenceOf[Path]:
+    ) -> Sequence[Path]:
         """Write formatted blocks back into docs whose round-trip recompiles cleanly.
 
         Enumeration matches the extractor exactly: only parseable non-``notest``
@@ -276,10 +276,10 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         all-or-nothing splice; fragments stay byte-identical.
 
         Returns:
-            The resulting ``t.SequenceOf[Path]``.
+            The resulting ``Sequence[Path]``.
 
         """
-        rewritten: t.MutableSequenceOf[Path] = []
+        rewritten: MutableSequence[Path] = []
         for md_path in FlextInfraMarkdownGateBase.collect_markdown_files(
             project_dir, scope_facts
         ):
@@ -328,11 +328,11 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
 
     @staticmethod
     def _formatted_blocks(
-        staged: t.SequenceOf[int],
+        staged: Sequence[int],
         relative_posix: str,
         sources_dir: Path,
         md_path: Path,
-    ) -> t.Pair[list[str], bool]:
+    ) -> tuple[list[str], bool]:
         """Read the formatted sources of one document's parseable blocks.
 
         Returns:
@@ -340,7 +340,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             staged source ends the round trip.
 
         """
-        blocks: t.MutableSequenceOf[str] = []
+        blocks: MutableSequence[str] = []
         for index in staged:
             source = sources_dir / FlextInfraMarkdownCodeSources.source_name(
                 relative_posix,

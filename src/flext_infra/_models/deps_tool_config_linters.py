@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import Annotated, Self
 
 from flext_cli import m
@@ -21,7 +22,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         """Ruff flake8-type-checking settings loaded from YAML."""
 
         runtime_evaluated_roots: Annotated[
-            t.SequenceOf[t.NonEmptyStr],
+            Sequence[t.NonEmptyStr],
             m.Field(
                 alias="runtime-evaluated-roots",
                 min_length=1,
@@ -37,7 +38,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         """Ruff lint settings loaded from YAML."""
 
         rule_owners: Annotated[
-            t.MappingKV[t.Infra.RuffRule, t.NonEmptyStr],
+            Mapping[t.Infra.RuffRule, t.NonEmptyStr],
             m.Field(
                 alias="rule-owners",
                 description=(
@@ -51,8 +52,8 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         @classmethod
         def require_distinct_registered_rule_owners(
             cls,
-            owners: t.StrMapping,
-        ) -> t.StrMapping:
+            owners: Mapping[str, str],
+        ) -> Mapping[str, str]:
             """Reject unknown owners and delegation back to the lint gate.
 
             Returns:
@@ -88,7 +89,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ] = ()
         enforce: Annotated[
-            t.MappingKV[t.Infra.RuffRule, t.Infra.EnforcementIds],
+            Mapping[t.Infra.RuffRule, t.Infra.EnforcementIds],
             m.Field(
                 description=(
                     "Ruff rule name -> enforcement law ids the rule claims; a "
@@ -97,7 +98,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ]
         fix_recipes: Annotated[
-            t.MappingKV[t.Infra.RuffRule, c.Infra.LintFixRecipe],
+            Mapping[t.Infra.RuffRule, c.Infra.LintFixRecipe],
             m.Field(
                 alias="fix-recipes",
                 description=(
@@ -107,7 +108,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ]
         fix_recipe_phases: Annotated[
-            t.VariadicTuple[t.VariadicTuple[c.Infra.LintFixRecipe]],
+            tuple[tuple[c.Infra.LintFixRecipe, ...], ...],
             m.Field(
                 alias="fix-recipe-phases",
                 description=(
@@ -144,7 +145,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         """Single [[tool.mypy.overrides]] entry."""
 
         modules: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Module patterns for this override."),
         ]
         settings: Annotated[
@@ -208,7 +209,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ] = ()
         overrides: Annotated[
-            t.VariadicTuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig],
+            tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
             m.Field(description="Module scopes and justified native option pairs."),
         ] = ()
 

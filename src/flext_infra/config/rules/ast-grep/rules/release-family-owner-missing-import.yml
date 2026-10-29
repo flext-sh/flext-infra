@@ -17,28 +17,27 @@ id: release-family-owner-missing-import
 language: python
 severity: error
 files:
-  - "src/**/*.py"
-  - "tests/**/*.py"
+- "src/**/*.py"
+- "tests/**/*.py"
 rule:
   all:
-    - pattern: FlextInfraConfigModelsRelease.$ATTR
-    - inside:
-        kind: module
-        stopBy: end
-        not:
+  - pattern: FlextInfraModelsConfigRelease.$ATTR
+  - inside:
+      kind: module
+      stopBy: end
+      not:
+        has:
+          stopBy: end
+          matches: config-models-release-imported
+  - inside:
+      kind: module
+      stopBy: end
+      not:
+        has:
+          stopBy: end
+          kind: class_definition
           has:
-            stopBy: end
-            matches: config-models-release-imported
-    - inside:
-        kind: module
-        stopBy: end
-        not:
-          has:
-            stopBy: end
-            kind: class_definition
-            has:
-              field: name
-              regex: "^FlextInfraConfigModelsRelease$"
+            field: name
+            regex: "^FlextInfraModelsConfigRelease$"
 message: >-
-  This module names the release config namespace without binding it; the
-  declaration cannot resolve and the package fails to import.
+  This module names the release config namespace without binding it; the declaration cannot resolve and the package fails to import.

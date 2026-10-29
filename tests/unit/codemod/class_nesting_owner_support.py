@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra import infra
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,6 +24,33 @@ class TestsFlextInfraClassNestingSupport:
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 import os
 
 # Owner-only permission bits.
@@ -52,7 +80,7 @@ __all__: list[str] = ["LIMIT", "write"]
 '''
 
     @staticmethod
-    def _family_module(tmp_path: Path, stem: str, source: str) -> t.Pair[Path, Path]:
+    def _family_module(tmp_path: Path, stem: str, source: str) -> tuple[Path, Path]:
         """Write one module into the utilities family package of a workspace.
 
         Returns:
@@ -85,9 +113,8 @@ __all__: list[str] = ["LIMIT", "write"]
 
     @staticmethod
     def _plan(
-        root: Path,
-        sources: t.MappingKV[Path, str],
-    ) -> t.Pair[t.MappingKV[Path, str], t.MappingKV[Path, str] | str]:
+        root: Path, sources: Mapping[Path, str]
+    ) -> tuple[Mapping[Path, str], Mapping[Path, str] | str]:
         """Plan class nesting, then replan the planned sources.
 
         Returns:
@@ -118,7 +145,7 @@ __all__: list[str] = ["LIMIT", "write"]
         return updated, residue
 
     @staticmethod
-    def _top_level(source: str) -> t.VariadicTuple[str]:
+    def _top_level(source: str) -> tuple[str, ...]:
         """Return the names a module binds at top level, imports excluded.
 
         Returns:

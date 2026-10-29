@@ -1,9 +1,9 @@
 id: target-ldap-test-public-target-import
 snapshots:
-  from flext_target_ldap._models.sinks import FlextTargetLdapModelsSinks as Sinks:
+  from flext_target_ldap._models.sinks import FlextModelsTargetLdapSinks as Sinks:
     fixed: from flext_target_ldap import FlextTargetLdap
     labels:
-    - source: from flext_target_ldap._models.sinks import FlextTargetLdapModelsSinks as Sinks
+    - source: from flext_target_ldap._models.sinks import FlextModelsTargetLdapSinks as Sinks
       style: primary
       start: 0
       end: 79

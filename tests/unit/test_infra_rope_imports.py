@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import tm, u
 
 if TYPE_CHECKING:

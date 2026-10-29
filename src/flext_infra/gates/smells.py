@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -34,14 +35,14 @@ class FlextInfraSmellsGate(FlextInfraGate):
         self,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
-    ) -> t.SequenceOf[m.Infra.Issue]:
+    ) -> Sequence[m.Infra.Issue]:
         """Filter one scan to the blocking issues owned by ``project``.
 
         Empty or malformed SARIF is a blocking scan failure, regardless of the
         process status. A valid SARIF document with zero results is a pass.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.Issue]``.
+            The resulting ``Sequence[m.Infra.Issue]``.
 
         """
         prefix = (
@@ -50,7 +51,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             else f"{project_dir.relative_to(self._repository_root).as_posix()}/"
         )
         parsed = self._issues_from_sarif(scan.stdout, prefix)
-        issues: t.VariadicTuple[m.Infra.Issue]
+        issues: tuple[m.Infra.Issue, ...]
         if parsed.success:
             issues = parsed.value
         elif not scan.stdout.strip() and not u.Cli.process_succeeded(scan.outcome):
@@ -97,12 +98,12 @@ class FlextInfraSmellsGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """The project's scan command (check() names its check dirs itself).
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             FileNotFoundError: If ``binary is None``.
@@ -120,22 +121,22 @@ class FlextInfraSmellsGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
         """Parse SARIF stdout into per-project issues (check_files path).
 
         Returns:
-            The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
 
         """
         del ctx
         issues = self._scanned_issues(result, project_dir)
         return not issues, issues
 
-    def _scan_command(self, binary: str, project_dir: Path) -> t.StrSequence:
+    def _scan_command(self, binary: str, project_dir: Path) -> Sequence[str]:
         """Name the project's paths explicitly; qlty scans them in full.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             ValueError: If smells.
@@ -230,14 +231,14 @@ class FlextInfraSmellsGate(FlextInfraGate):
         cls,
         sarif_json: str,
         prefix: str,
-    ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
+    ) -> p.Result[tuple[m.Infra.Issue, ...]]:
         """Extract one Issue per smell finding inside ``project_name``.
 
         Pure function over a literal qlty SARIF payload (unit-testable, no
         subprocess) — same strategy as ``loc_cap._files_over_cap``.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Infra.Issue]]``.
+            The resulting ``p.Result[tuple[m.Infra.Issue, ...]]``.
 
         """
         if not sarif_json.strip():

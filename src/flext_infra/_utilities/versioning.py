@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli import u
@@ -29,14 +30,14 @@ class FlextInfraUtilitiesVersioning:
     @staticmethod
     def _project_document(
         content: str,
-    ) -> p.Result[t.Pair[t.Cli.TomlDocument, t.Cli.TomlTable]]:
+    ) -> p.Result[tuple[t.Cli.TomlDocument, t.Cli.TomlTable]]:
         """Parse one pyproject document with its live ``[project]`` table.
 
         Returns:
             The parsed document and its ``[project]`` table.
 
         """
-        result = r[t.Pair[t.Cli.TomlDocument, t.Cli.TomlTable]]
+        result = r[tuple[t.Cli.TomlDocument, t.Cli.TomlTable]]
         document = u.Cli.toml_parse_text(content)
         if document is None:
             return result.fail("invalid pyproject.toml")
@@ -131,7 +132,7 @@ class FlextInfraUtilitiesVersioning:
         return r[str].ok(version)
 
     @staticmethod
-    def parse_semver(version: str) -> p.Result[t.Triple[int, int, int]]:
+    def parse_semver(version: str) -> p.Result[tuple[int, int, int]]:
         """Parse one canonical FLEXT PEP 440 version into its release tuple.
 
         Args:
@@ -144,7 +145,7 @@ class FlextInfraUtilitiesVersioning:
         try:
             parsed = Version(version)
         except InvalidVersion:
-            return r[t.Triple[int, int, int]].fail(f"invalid semver: {version}")
+            return r[tuple[int, int, int]].fail(f"invalid semver: {version}")
         unsupported = (
             str(parsed) != version
             or len(parsed.release) != c.Infra.VERSION_RELEASE_SEGMENTS
@@ -156,9 +157,9 @@ class FlextInfraUtilitiesVersioning:
             or (parsed.dev is not None and parsed.dev != 0)
         )
         if unsupported:
-            return r[t.Triple[int, int, int]].fail(f"invalid semver: {version}")
+            return r[tuple[int, int, int]].fail(f"invalid semver: {version}")
         major, minor, patch = parsed.release
-        return r[t.Triple[int, int, int]].ok((major, minor, patch))
+        return r[tuple[int, int, int]].ok((major, minor, patch))
 
     @staticmethod
     def version_is_newer(candidate: str, reference: str) -> p.Result[bool]:
@@ -177,7 +178,7 @@ class FlextInfraUtilitiesVersioning:
             return r[bool].fail(f"invalid version: {exc}", exception=exc)
 
     @staticmethod
-    def latest_release_tag(tags: t.StrSequence) -> p.Result[str]:
+    def latest_release_tag(tags: Sequence[str]) -> p.Result[str]:
         """Return the highest release tag under PEP 440, or ``""`` when none exist.
 
         Git's ``--sort=version:refname`` is a refname collation, not a PEP 440

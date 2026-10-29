@@ -9,19 +9,20 @@ from __future__ import annotations
 import os
 import stat
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import m, t
+from flext_infra import m
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitStatePublicationMixin,
+    FlextInfraUtilitiesGitStatePublication,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitStateFilesMixin(
-    FlextInfraUtilitiesGitStatePublicationMixin,
+class FlextInfraUtilitiesGitStateFiles(
+    FlextInfraUtilitiesGitStatePublication,
 ):
     """Consume CLI physical-state primitives under the shared writer lease."""
 
@@ -55,7 +56,7 @@ class FlextInfraUtilitiesGitStateFilesMixin(
     def _state_require_directory_scope(
         root: Path,
         path: Path,
-        owned: t.SequenceOf[Path],
+        owned: Sequence[Path],
     ) -> None:
 
         manifest = u.Cli.atomic_inventory_physical_tree(root / path).unwrap()
@@ -89,7 +90,7 @@ class FlextInfraUtilitiesGitStateFilesMixin(
         root: Path,
         path: Path,
         observed: m.Infra.GitWorktreeObservedFile,
-        allowed: t.SequenceOf[m.Infra.GitWorktreeFileState | None],
+        allowed: Sequence[m.Infra.GitWorktreeFileState | None],
     ) -> None:
         """Hash the observed bytes and accept only an allowed captured state.
 
@@ -183,7 +184,7 @@ class FlextInfraUtilitiesGitStateFilesMixin(
         root: Path,
         path: Path,
         desired: m.Infra.GitWorktreeFileState | None,
-        allowed: t.SequenceOf[m.Infra.GitWorktreeFileState | None],
+        allowed: Sequence[m.Infra.GitWorktreeFileState | None],
     ) -> None:
 
         destination = root / path
@@ -259,4 +260,4 @@ class FlextInfraUtilitiesGitStateFilesMixin(
         u.Cli.atomic_cleanup_physical_tree_guarded(manifest).unwrap()
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStateFilesMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStateFiles"]

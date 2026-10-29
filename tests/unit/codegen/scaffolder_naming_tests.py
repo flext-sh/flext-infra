@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -21,10 +21,8 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import t
 
-
-def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
+def _validate_modules_parse(base_dir: Path, modules: Sequence[str]) -> None:
     """Compile every module in ``base_dir`` as valid Python."""
     for mod in modules:
         source = (base_dir / mod).read_text(encoding="utf-8")
@@ -33,7 +31,7 @@ def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
 
 def _validate_class_names(
     base_dir: Path,
-    filename_to_expected_class: t.StrMapping,
+    filename_to_expected_class: Mapping[str, str],
 ) -> None:
     """Validate expected class names exist in the generated modules."""
     for filename, expected_class in filename_to_expected_class.items():

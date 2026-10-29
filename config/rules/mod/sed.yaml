@@ -17,789 +17,786 @@
 #     expected: 3                  # optional exact finding count receipt
 
 rules:
-  - id: topology-retire-legacy-identity-comparison
-    description: Runtime identity is observed from Git and metadata, never compared with a duplicated catalog.
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?ms)^    @staticmethod\n    def _manifest_git_contradictions\(\n.*?(?=^    @staticmethod\n    def _configured_repository_ref\()'
-    replace: ''
-  - id: topology-integration-line-uses-repository-policy-owner
-    description: Elect the repository's declared integration policy before observing published Git refs.
-    include: [src/flext_infra/workspace/detector.py]
-    find: 'baseline = u\.Infra\.repository_baseline_branch\('
-    replace: 'baseline = u.Infra.resolve_integration_branch('
-  - id: topology-retire-member-catalog-reader
-    description: Git declarations exclusively own workspace composition.
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?ms)^    @classmethod\n    def _declared_members\(\n.*?(?=^    @classmethod\n    def _load_subproject\()'
-    replace: ''
-  - id: topology-retire-catalog-recovery-route
-    description: Unprovisioned Git links carry declarations without invented package identities.
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?ms)^    @classmethod\n    def _declared_subproject\(\n.*?(?=^    @classmethod\n    def _undeclared_subproject\()'
-    replace: ''
-  - id: topology-retire-member-catalog-loads
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?m)^        (members = cls\._declared_members\(repository_root\)\n        if members\.failure:\n            return result_type\.from_failure\(members\)\n|superproject_members = cls\._declared_members\(superproject_root\)\n        if superproject_members\.failure:\n            return result_type\.from_failure\(superproject_members\)\n)'
-    replace: ''
-  - id: topology-retire-member-catalog-parameter
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?m)^        declared_member: m\.Infra\.RepositoryRef \| None,\n|^ {12,16}declared_member=(members\.value\.get\(declaration\.path\)|superproject_members\.value\.get\(member_path\)),\n'
-    replace: ''
-  - id: topology-retire-member-catalog-dispatch
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?ms)^        if declared_member is not None:\n            return cls\._declared_subproject\(\n.*?(?=^        return cls\._undeclared_subproject\()'
-    replace: ''
-  - id: topology-retire-member-catalog-identity-parameter
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?m)^        declared_repository: m\.Infra\.RepositoryRef \| None = None,\n'
-    replace: ''
-  - id: topology-derive-package-identity-from-checkout
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?ms)^        if declared_repository is None:\n            metadata = u\.Infra\.read_project_metadata_result\(repository_root\)\n            if metadata\.failure:\n                return r\[m\.Infra\.RepositoryRef\]\.from_failure\(metadata\)\n            project_name = metadata\.value\.project\.name\n        else:\n            project_name = declared_repository\.distribution\n'
-    replace: '        metadata = u.Infra.read_project_metadata_result(repository_root)\n        if metadata.failure:\n            return r[m.Infra.RepositoryRef].from_failure(metadata)\n        project_name = metadata.value.project.name\n'
-  - id: topology-observe-package-participation-from-layout
-    include: [src/flext_infra/workspace/detector.py]
-    find: 'package=\(\n                    declared_repository\.package\n                    if declared_repository is not None\n                    else u\.Infra\.layout\(repository_root\) is not None\n                \),'
-    replace: 'package=u.Infra.layout(repository_root) is not None,'
-  - id: topology-checkout-identity-documentation
-    include: [src/flext_infra/workspace/detector.py]
-    find: 'Build identity from declared recovery topology or validated live metadata\.'
-    replace: 'Build identity from validated checkout metadata and native Git inputs.'
-  - id: topology-native-participation-documentation
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?ms)^(        )A submodule whose ``\.gitmodules`` section explicitly sets\n.*?(?=\n        Returns:\n)'
-    replace: |-
-      \g<1>A native Git false management declaration marks a read-only external
-              dependency. An absent flag inherits participation. Managed entries
-              resolve their package identity from a provisioned checkout; setup may
-              retain an unprovisioned entry as its parsed Git declaration only.
-  - id: topology-retain-unprovisioned-managed-declaration
-    description: Missing managed checkouts fail strict discovery and retain only their native Git input during setup.
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?ms)^(    )@classmethod\n    def _undeclared_subproject\(\n(?=(?:(?!^    @classmethod).)*"""Load an entry the manifest does not declare).*?(?=^    @classmethod\n    def _checkout_subproject\()'
-    replace: |+
-      \g<1>@classmethod
-          def _undeclared_subproject(
-              cls,
-              repository_root: Path,
-              subproject_root: Path,
-              path: Path,
-              *,
-              declared_url: str,
-              context: m.Infra.SubprojectLoadContext,
-          ) -> p.Result[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]:
-              """Resolve a provisioned checkout without a second identity catalog.
+- id: topology-retire-legacy-identity-comparison
+  description: Runtime identity is observed from Git and metadata, never compared with a duplicated catalog.
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?ms)^    @staticmethod\n    def _manifest_git_contradictions\(\n.*?(?=^    @staticmethod\n    def _configured_repository_ref\()'
+  replace: ''
+- id: topology-integration-line-uses-repository-policy-owner
+  description: Elect the repository's declared integration policy before observing published Git refs.
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 'baseline = u\.Infra\.repository_baseline_branch\('
+  replace: 'baseline = u.Infra.resolve_integration_branch('
+- id: topology-retire-member-catalog-reader
+  description: Git declarations exclusively own workspace composition.
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?ms)^    @classmethod\n    def _declared_members\(\n.*?(?=^    @classmethod\n    def _load_subproject\()'
+  replace: ''
+- id: topology-retire-catalog-recovery-route
+  description: Unprovisioned Git links carry declarations without invented package identities.
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?ms)^    @classmethod\n    def _declared_subproject\(\n.*?(?=^    @classmethod\n    def _undeclared_subproject\()'
+  replace: ''
+- id: topology-retire-member-catalog-loads
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?m)^        (members = cls\._declared_members\(repository_root\)\n        if members\.failure:\n            return result_type\.from_failure\(members\)\n|superproject_members = cls\._declared_members\(superproject_root\)\n        if superproject_members\.failure:\n            return result_type\.from_failure\(superproject_members\)\n)'
+  replace: ''
+- id: topology-retire-member-catalog-parameter
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?m)^        declared_member: m\.Infra\.RepositoryRef \| None,\n|^ {12,16}declared_member=(members\.value\.get\(declaration\.path\)|superproject_members\.value\.get\(member_path\)),\n'
+  replace: ''
+- id: topology-retire-member-catalog-dispatch
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?ms)^        if declared_member is not None:\n            return cls\._declared_subproject\(\n.*?(?=^        return cls\._undeclared_subproject\()'
+  replace: ''
+- id: topology-retire-member-catalog-identity-parameter
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?m)^        declared_repository: m\.Infra\.RepositoryRef \| None = None,\n'
+  replace: ''
+- id: topology-derive-package-identity-from-checkout
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?ms)^        if declared_repository is None:\n            metadata = u\.Infra\.read_project_metadata_result\(repository_root\)\n            if metadata\.failure:\n                return r\[m\.Infra\.RepositoryRef\]\.from_failure\(metadata\)\n            project_name = metadata\.value\.project\.name\n        else:\n            project_name = declared_repository\.distribution\n'
+  replace: '        metadata = u.Infra.read_project_metadata_result(repository_root)\n        if metadata.failure:\n            return r[m.Infra.RepositoryRef].from_failure(metadata)\n        project_name = metadata.value.project.name\n'
+- id: topology-observe-package-participation-from-layout
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 'package=\(\n                    declared_repository\.package\n                    if declared_repository is not None\n                    else u\.Infra\.layout\(repository_root\) is not None\n                \),'
+  replace: 'package=u.Infra.layout(repository_root) is not None,'
+- id: topology-checkout-identity-documentation
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 'Build identity from declared recovery topology or validated live metadata\.'
+  replace: 'Build identity from validated checkout metadata and native Git inputs.'
+- id: topology-native-participation-documentation
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?ms)^(        )A submodule whose ``\.gitmodules`` section explicitly sets\n.*?(?=\n        Returns:\n)'
+  replace: |-
+    \g<1>A native Git false management declaration marks a read-only external
+            dependency. An absent flag inherits participation. Managed entries
+            resolve their package identity from a provisioned checkout; setup may
+            retain an unprovisioned entry as its parsed Git declaration only.
+- id: topology-retain-unprovisioned-managed-declaration
+  description: Missing managed checkouts fail strict discovery and retain only their native Git input during setup.
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?ms)^(    )@classmethod\n    def _undeclared_subproject\(\n(?=(?:(?!^    @classmethod).)*"""Load an entry the manifest does not declare).*?(?=^    @classmethod\n    def _checkout_subproject\()'
+  replace: |+
+    \g<1>@classmethod
+        def _undeclared_subproject(
+            cls,
+            repository_root: Path,
+            subproject_root: Path,
+            path: Path,
+            *,
+            declared_url: str,
+            context: m.Infra.SubprojectLoadContext,
+        ) -> p.Result[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]:
+            """Resolve a provisioned checkout without a second identity catalog.
 
-              Returns:
-                  Its observed identity, or its pending Git declaration for setup.
-              """
-              result_type = r[
-                  m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration
-              ]
-              if not (subproject_root / c.Infra.GIT_DIR).exists():
-                  if not context.allow_unprovisioned_members:
-                      error = FileNotFoundError(
-                          f"governed subproject checkout is missing: {path.as_posix()}",
-                      )
-                      return result_type.fail(str(error), exception=error)
-                  return u.Infra.git_submodule_declaration(
-                      m.Infra.GitSubmoduleContractRequest(
-                          repo_root=repository_root,
-                          member_path=path.as_posix(),
-                      ),
-                  ).map(lambda declaration: declaration)
-              return cls._checkout_subproject(
-                  subproject_root,
-                  path,
-                  declared_url=declared_url,
-                  context=context,
-              )
+            Returns:
+                Its observed identity, or its pending Git declaration for setup.
+            """
+            result_type = r[
+                m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration
+            ]
+            if not (subproject_root / c.Infra.GIT_DIR).exists():
+                if not context.allow_unprovisioned_members:
+                    error = FileNotFoundError(
+                        f"governed subproject checkout is missing: {path.as_posix()}",
+                    )
+                    return result_type.fail(str(error), exception=error)
+                return u.Infra.git_submodule_declaration(
+                    m.Infra.GitSubmoduleContractRequest(
+                        repo_root=repository_root,
+                        member_path=path.as_posix(),
+                    ),
+                ).map(lambda declaration: declaration)
+            return cls._checkout_subproject(
+                subproject_root,
+                path,
+                declared_url=declared_url,
+                context=context,
+            )
 
-  - id: topology-pending-subproject-result-contract
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(p\.Result|r)\[m\.Infra\.RepositoryRef \| Path\]'
-    replace: '\g<1>[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]'
-  - id: topology-pending-workspace-tuple-contract
-    include: [src/flext_infra/workspace/detector.py]
-    find: 't\.Pair\[t\.SequenceOf\[m\.Infra\.RepositoryRef\], t\.SequenceOf\[Path\]\]'
-    replace: 't.Triple[t.SequenceOf[m.Infra.RepositoryRef], t.SequenceOf[Path], t.SequenceOf[m.Infra.GitSubmoduleDeclaration]]'
-  - id: topology-pending-workspace-local-contract
-    include: [src/flext_infra/workspace/detector.py]
-    find: 't\.Pair\[t\.VariadicTuple\[m\.Infra\.RepositoryRef\], t\.VariadicTuple\[Path\]\]|tuple\[tuple\[m\.Infra\.RepositoryRef, \.\.\.\], t\.VariadicTuple\[Path\]\]'
-    replace: 't.Triple[t.VariadicTuple[m.Infra.RepositoryRef], t.VariadicTuple[Path], t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]'
-  - id: topology-pending-workspace-accounting
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?m)^(        external: list\[Path\] = \[\]\n)(?!        pending:)'
-    replace: '\g<1>        pending: list[m.Infra.GitSubmoduleDeclaration] = []\n'
-  - id: topology-pending-workspace-classification
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?m)^(            if loaded\.failure:\n                return result_type\.from_failure\(loaded\)\n)(            if isinstance\(loaded\.value, Path\):\n)'
-    replace: '\g<1>            if isinstance(loaded.value, m.Infra.GitSubmoduleDeclaration):\n                pending.append(loaded.value)\n                continue\n\g<2>'
-  - id: topology-pending-workspace-return
-    include: [src/flext_infra/workspace/detector.py]
-    find: 'return result_type\.ok\(\(tuple\(subprojects\), tuple\(external\)\)\)'
-    replace: 'return result_type.ok((tuple(subprojects), tuple(external), tuple(pending)))'
-  - id: topology-pending-workspace-unpack
-    include: [src/flext_infra/workspace/detector.py]
-    find: 'subprojects, external = topology\.value'
-    replace: 'subprojects, external, pending = topology.value'
-  - id: topology-pending-workspace-spec-unpack
-    include: [src/flext_infra/workspace/detector.py]
-    find: '\(subprojects, external\) = \(\n            refs\.value'
-    replace: '(subprojects, external, pending) = (\n            refs.value'
-  - id: topology-pending-workspace-spec-projection
-    include: [src/flext_infra/workspace/detector.py]
-    find: '(?m)^(                subprojects=tuple\(subprojects\),\n)(?!                pending_subprojects=)'
-    replace: '\g<1>                pending_subprojects=tuple(pending),\n'
-  - id: topology-inherited-member-requires-observed-identity
-    include: [src/flext_infra/workspace/detector.py]
-    find: 'if isinstance\(member_ref, Path\):'
-    replace: 'if not isinstance(member_ref, m.Infra.RepositoryRef):'
-  - id: topology-locked-provenance-uses-observed-workspace
-    description: Validate lock provenance against the same detector and Git topology as setup.
-    include: [src/flext_infra/workspace/environment_provenance.py]
-    find: '(?ms)^        manifests = u\.Infra\.load_workspace_manifest\(repository_root\)\n.*?(?=^        members = \{\n)'
-    replace: '        observed = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)\n        if observed.failure:\n            return r[int].from_failure(observed)\n        workspace = observed.value\n'
-  - id: topology-pending-workspace-role
-    include: [src/flext_infra/workspace/detector.py]
-    find: 'if subprojects or external\n'
-    replace: 'if subprojects or external or pending\n'
-  - id: topology-pending-workspace-reference-result
-    include: [src/flext_infra/workspace/detector.py]
-    find: 'return result_type\.ok\(\(declared_repository\.value, \(subprojects, external\)\)\)'
-    replace: 'return result_type.ok((declared_repository.value, (subprojects, external, pending)))'
-  - id: topology-dependency-url-retire-member-catalog
-    description: Discover dependency URLs from Git declarations and actual distribution metadata.
-    include: [src/flext_infra/_utilities/repository.py]
-    find: '(?ms)^(    )@staticmethod\n    def _manifest_declared_url\(\n.*?(?=^    @staticmethod\n    def repository_provider\()'
-    replace: |+
-      \g<1>@classmethod
-          def _git_declared_distribution_url(
-              cls,
-              *,
-              repository_root: Path,
-              distribution: str,
-          ) -> p.Result[str]:
-              """Resolve a composed distribution from its actual checkout.
+- id: topology-pending-subproject-result-contract
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(p\.Result|r)\[m\.Infra\.RepositoryRef \| Path\]'
+  replace: '\g<1>[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]'
+- id: topology-pending-workspace-tuple-contract
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 't\.Pair\[t\.Sequence\[m\.Infra\.RepositoryRef\], t\.Sequence\[Path\]\]'
+  replace: 'tuple[Sequence[m.Infra.RepositoryRef], Sequence[Path], Sequence[m.Infra.GitSubmoduleDeclaration]]'
+- id: topology-pending-workspace-local-contract
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 't\.Pair\[t\.VariadicTuple\[m\.Infra\.RepositoryRef\], t\.VariadicTuple\[Path\]\]|tuple\[tuple\[m\.Infra\.RepositoryRef, \.\.\.\], t\.VariadicTuple\[Path\]\]'
+  replace: 'tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...], tuple[m.Infra.GitSubmoduleDeclaration, ...]]'
+- id: topology-pending-workspace-accounting
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?m)^(        external: list\[Path\] = \[\]\n)(?!        pending:)'
+  replace: '\g<1>        pending: list[m.Infra.GitSubmoduleDeclaration] = []\n'
+- id: topology-pending-workspace-classification
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?m)^(            if loaded\.failure:\n                return result_type\.from_failure\(loaded\)\n)(            if isinstance\(loaded\.value, Path\):\n)'
+  replace: '\g<1>            if isinstance(loaded.value, m.Infra.GitSubmoduleDeclaration):\n                pending.append(loaded.value)\n                continue\n\g<2>'
+- id: topology-pending-workspace-return
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 'return result_type\.ok\(\(tuple\(subprojects\), tuple\(external\)\)\)'
+  replace: 'return result_type.ok((tuple(subprojects), tuple(external), tuple(pending)))'
+- id: topology-pending-workspace-unpack
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 'subprojects, external = topology\.value'
+  replace: 'subprojects, external, pending = topology.value'
+- id: topology-pending-workspace-spec-unpack
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '\(subprojects, external\) = \(\n            refs\.value'
+  replace: '(subprojects, external, pending) = (\n            refs.value'
+- id: topology-pending-workspace-spec-projection
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: '(?m)^(                subprojects=tuple\(subprojects\),\n)(?!                pending_subprojects=)'
+  replace: '\g<1>                pending_subprojects=tuple(pending),\n'
+- id: topology-inherited-member-requires-observed-identity
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 'if isinstance\(member_ref, Path\):'
+  replace: 'if not isinstance(member_ref, m.Infra.RepositoryRef):'
+- id: topology-locked-provenance-uses-observed-workspace
+  description: Validate lock provenance against the same detector and Git topology as setup.
+  include: [ src/flext_infra/workspace/environment_provenance.py ]
+  find: '(?ms)^        manifests = u\.Infra\.load_workspace_manifest\(repository_root\)\n.*?(?=^        members = \{\n)'
+  replace: '        observed = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)\n        if observed.failure:\n            return r[int].from_failure(observed)\n        workspace = observed.value\n'
+- id: topology-pending-workspace-role
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 'if subprojects or external\n'
+  replace: 'if subprojects or external or pending\n'
+- id: topology-pending-workspace-reference-result
+  include: [ src/flext_infra/workspace/detector.py ]
+  find: 'return result_type\.ok\(\(declared_repository\.value, \(subprojects, external\)\)\)'
+  replace: 'return result_type.ok((declared_repository.value, (subprojects, external, pending)))'
+- id: topology-dependency-url-retire-member-catalog
+  description: Discover dependency URLs from Git declarations and actual distribution metadata.
+  include: [ src/flext_infra/_utilities/repository.py ]
+  find: '(?ms)^(    )@staticmethod\n    def _manifest_declared_url\(\n.*?(?=^    @staticmethod\n    def repository_provider\()'
+  replace: |+
+    \g<1>@classmethod
+        def _git_declared_distribution_url(
+            cls,
+            *,
+            repository_root: Path,
+            distribution: str,
+        ) -> p.Result[str]:
+            """Resolve a composed distribution from its actual checkout.
 
-              Returns:
-                  The matching native Git URL, or an empty absence payload.
-              """
-              result_type = r[str]
-              declarations = (
-                  FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_submodule_declarations(
-                      repository_root,
-                  )
-              )
-              if declarations.failure:
-                  return result_type.from_failure(declarations)
-              for declaration in declarations.value:
-                  if declaration.managed is False:
-                      continue
-                  member_root = (repository_root / declaration.path).resolve()
-                  if not member_root.is_relative_to(repository_root.resolve()):
-                      error = ValueError(
-                          f"subproject escapes workspace root: {declaration.path}",
-                      )
-                      return result_type.fail(str(error), exception=error)
-                  if not (member_root / c.Infra.GIT_DIR).exists():
-                      error = FileNotFoundError(
-                          "distribution discovery requires a provisioned checkout: "
-                          f"{declaration.path}",
-                      )
-                      return result_type.fail(str(error), exception=error)
-                  if not (member_root / c.PYPROJECT_FILENAME).is_file():
-                      continue
-                  metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
-                      member_root,
-                  )
-                  if metadata.failure:
-                      return result_type.from_failure(metadata)
-                  if metadata.value.project.name == distribution:
-                      return cls._canonical_https_url(declaration.url)
-              return result_type.ok("")
+            Returns:
+                The matching native Git URL, or an empty absence payload.
+            """
+            result_type = r[str]
+            declarations = (
+                FlextInfraUtilitiesGitWorktreeDiscovery.git_submodule_declarations(
+                    repository_root,
+                )
+            )
+            if declarations.failure:
+                return result_type.from_failure(declarations)
+            for declaration in declarations.value:
+                if declaration.managed is False:
+                    continue
+                member_root = (repository_root / declaration.path).resolve()
+                if not member_root.is_relative_to(repository_root.resolve()):
+                    error = ValueError(
+                        f"subproject escapes workspace root: {declaration.path}",
+                    )
+                    return result_type.fail(str(error), exception=error)
+                if not (member_root / c.Infra.GIT_DIR).exists():
+                    error = FileNotFoundError(
+                        "distribution discovery requires a provisioned checkout: "
+                        f"{declaration.path}",
+                    )
+                    return result_type.fail(str(error), exception=error)
+                if not (member_root / c.PYPROJECT_FILENAME).is_file():
+                    continue
+                metadata = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+                    member_root,
+                )
+                if metadata.failure:
+                    return result_type.from_failure(metadata)
+                if metadata.value.project.name == distribution:
+                    return cls._canonical_https_url(declaration.url)
+            return result_type.ok("")
 
-  - id: topology-dependency-url-elect-git-owner
-    include: [src/flext_infra/_utilities/repository.py]
-    find: 'cls\._manifest_declared_url\('
-    replace: 'cls._git_declared_distribution_url('
-  - id: gitmodule-input-declaration-retire-runtime-owner
-    description: Relocate the Git configuration input model to its layer-zero owner.
-    include: [src/flext_infra/_models/git.py]
-    find: '(?ms)^    class GitSubmoduleDeclaration\(m\.ContractModel\):\n.*?(?=^    class GitCommitishRequest\()'
-    replace: ''
-  - id: gitmodule-input-declaration-elect-config-owner
-    description: Let runtime topology consume the one parsed Git input declaration without a layer inversion.
-    include: [src/flext_infra/_models/_config/workspace.py]
-    find: '^(class FlextInfraConfigModelsWorkspace:\n    """Workspace manifest, integration, and policy models\."""\n)(?!\n    class GitSubmoduleDeclaration)'
-    flags: [MULTILINE]
-    replace: |-
-      \g<1>
-          class GitSubmoduleDeclaration(m.ContractModel):
-              """One Git configuration section parsed by its canonical owner."""
+- id: topology-dependency-url-elect-git-owner
+  include: [ src/flext_infra/_utilities/repository.py ]
+  find: 'cls\._manifest_declared_url\('
+  replace: 'cls._git_declared_distribution_url('
+- id: gitmodule-input-declaration-retire-runtime-owner
+  description: Relocate the Git configuration input model to its layer-zero owner.
+  include: [ src/flext_infra/_models/git.py ]
+  find: '(?ms)^    class GitSubmoduleDeclaration\(m\.ContractModel\):\n.*?(?=^    class GitCommitishRequest\()'
+  replace: ''
+- id: gitmodule-input-declaration-elect-config-owner
+  description: Let runtime topology consume the one parsed Git input declaration without a layer inversion.
+  include: [ src/flext_infra/_models/_config/workspace.py ]
+  find: '^(class FlextInfraModelsConfigWorkspace:\n    """Workspace manifest, integration, and policy models\."""\n)(?!\n    class GitSubmoduleDeclaration)'
+  flags: [ MULTILINE ]
+  replace: |-
+    \g<1>
+        class GitSubmoduleDeclaration(m.ContractModel):
+            """One Git configuration section parsed by its canonical owner."""
 
-              model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-                  extra="forbid",
-                  frozen=True,
-              )
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+                extra="forbid",
+                frozen=True,
+            )
 
-              path: Annotated[
-                  Path,
-                  m.Field(description="Submodule path relative to the superproject root"),
-              ]
-              url: Annotated[
-                  str,
-                  m.Field(description="Declared URL; empty when undeclared"),
-              ]
-              branch: Annotated[
-                  str,
-                  m.Field(description="Declared branch; empty when undeclared"),
-              ]
-              managed: Annotated[
-                  bool | None,
-                  m.Field(
-                      description=(
-                          "Native Git boolean: absent inherits participation; "
-                          "true participates and false does not"
-                      ),
-                  ),
-              ]
+            path: Annotated[
+                Path,
+                m.Field(description="Submodule path relative to the superproject root"),
+            ]
+            url: Annotated[
+                str,
+                m.Field(description="Declared URL; empty when undeclared"),
+            ]
+            branch: Annotated[
+                str,
+                m.Field(description="Declared branch; empty when undeclared"),
+            ]
+            managed: Annotated[
+                bool | None,
+                m.Field(
+                    description=(
+                        "Native Git boolean: absent inherits participation; "
+                        "true participates and false does not"
+                    ),
+                ),
+            ]
 
-  - id: duplicate-cure-model-owner-ast-import
-    description: Bind the native AST contract in the census declaration owner.
-    include: [src/flext_infra/_models/census.py]
-    # Fires only with the declarations rule below, whose payload uses ``ast``.
-    find: '(?ms)\A(?!.*^    class DuplicateDefinition\()(.*?)(?<!import ast\n)^(from collections\.abc import MutableSet)$'
-    replace: '\g<1>import ast\n\g<2>'
-  - id: duplicate-cure-model-owner-declarations
-    description: Declare frozen duplicate cure payloads beside the existing census contracts.
-    include: [src/flext_infra/_models/census.py]
-    find: '(?ms)\A(?!.*^    class DuplicateDefinition\()(.*?)(^    class DuplicateGroup\(m\.ArbitraryTypesModel\):)$'
-    replace: |-
-      \g<1>
-          class DuplicateDefinition(m.ArbitraryTypesModel):
-              """One verified duplicate definition and its native syntax node."""
+- id: duplicate-cure-model-owner-ast-import
+  description: Bind the native AST contract in the census declaration owner.
+  include: [ src/flext_infra/_models/census.py ]
+  # Fires only with the declarations rule below, whose payload uses ``ast``.
+  find: '(?ms)\A(?!.*^    class DuplicateDefinition\()(.*?)(?<!import ast\n)^(from collections\.abc import MutableSet)$'
+  replace: '\g<1>import ast\n\g<2>'
+- id: duplicate-cure-model-owner-declarations
+  description: Declare frozen duplicate cure payloads beside the existing census contracts.
+  include: [ src/flext_infra/_models/census.py ]
+  find: '(?ms)\A(?!.*^    class DuplicateDefinition\()(.*?)(^    class DuplicateGroup\(m\.ArbitraryTypesModel\):)$'
+  replace: |-
+    \g<1>
+        class DuplicateDefinition(m.ArbitraryTypesModel):
+            """One verified duplicate definition and its native syntax node."""
 
-              model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-              item: Annotated[
-                  FlextInfraModelsCensus.Object,
-                  m.Field(description="Canonical census object"),
-              ]
-              path: Annotated[Path, m.Field(description="Definition source path")]
-              source: Annotated[str, m.Field(description="Captured module source")]
-              statement: Annotated[
-                  ast.stmt | None,
-                  m.Field(description="Original parsed definition node"),
-              ]
-              body: Annotated[str, m.Field(description="Definition source span")]
-              consumers: Annotated[int, m.Field(description="Proven consumer count")]
-              layer: Annotated[int, m.Field(description="Discovered project layer")]
+            item: Annotated[
+                FlextInfraModelsCensus.Object,
+                m.Field(description="Canonical census object"),
+            ]
+            path: Annotated[Path, m.Field(description="Definition source path")]
+            source: Annotated[str, m.Field(description="Captured module source")]
+            statement: Annotated[
+                ast.stmt | None,
+                m.Field(description="Original parsed definition node"),
+            ]
+            body: Annotated[str, m.Field(description="Definition source span")]
+            consumers: Annotated[int, m.Field(description="Proven consumer count")]
+            layer: Annotated[int, m.Field(description="Discovered project layer")]
 
-          class DuplicateCopyCure(m.ArbitraryTypesModel):
-              """One duplicate removal and its proven consumer rebindings."""
+        class DuplicateCopyCure(m.ArbitraryTypesModel):
+            """One duplicate removal and its proven consumer rebindings."""
 
-              model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-              definition: Annotated[
-                  FlextInfraModelsCensus.DuplicateDefinition,
-                  m.Field(description="Verified duplicate definition"),
-              ]
-              consumer_files: Annotated[
-                  t.VariadicTuple[Path],
-                  m.Field(description="Consumers requiring import rebindings"),
-              ]
-              in_module_uses: Annotated[
-                  int,
-                  m.Field(description="References within the definition module"),
-              ]
+            definition: Annotated[
+                FlextInfraModelsCensus.DuplicateDefinition,
+                m.Field(description="Verified duplicate definition"),
+            ]
+            consumer_files: Annotated[
+                tuple[Path, ...],
+                m.Field(description="Consumers requiring import rebindings"),
+            ]
+            in_module_uses: Annotated[
+                int,
+                m.Field(description="References within the definition module"),
+            ]
 
-          class DuplicateGroupCure(m.ArbitraryTypesModel):
-              """One elected owner and the complete duplicate publication plan."""
+        class DuplicateGroupCure(m.ArbitraryTypesModel):
+            """One elected owner and the complete duplicate publication plan."""
 
-              model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-              owner: Annotated[
-                  FlextInfraModelsCensus.DuplicateCopyCure,
-                  m.Field(description="Elected definition and its bindings"),
-              ]
-              copies: Annotated[
-                  t.VariadicTuple[FlextInfraModelsCensus.DuplicateCopyCure],
-                  m.Field(description="Copies with proven removal contracts"),
-              ]
-              edits: Annotated[
-                  t.VariadicTuple[FlextInfraModelsTransformers.SemanticMigrationEdit],
-                  m.Field(description="Complete proposed source edits"),
-              ]
+            owner: Annotated[
+                FlextInfraModelsCensus.DuplicateCopyCure,
+                m.Field(description="Elected definition and its bindings"),
+            ]
+            copies: Annotated[
+                tuple[FlextInfraModelsCensus.DuplicateCopyCure, ...],
+                m.Field(description="Copies with proven removal contracts"),
+            ]
+            edits: Annotated[
+                tuple[FlextInfraModelsTransformers.SemanticMigrationEdit, ...],
+                m.Field(description="Complete proposed source edits"),
+            ]
 
-          class DuplicateDeletion(m.ContractModel):
-              """One duplicate definition scheduled for removal."""
+        class DuplicateDeletion(m.ContractModel):
+            """One duplicate definition scheduled for removal."""
 
-              model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-              path: Annotated[Path, m.Field(description="Copy source path")]
-              name: Annotated[str, m.Field(description="Duplicate object name")]
-              line: Annotated[int, m.Field(description="Copy definition line")]
-              project: Annotated[str, m.Field(description="Discovered project identity")]
+            path: Annotated[Path, m.Field(description="Copy source path")]
+            name: Annotated[str, m.Field(description="Duplicate object name")]
+            line: Annotated[int, m.Field(description="Copy definition line")]
+            project: Annotated[str, m.Field(description="Discovered project identity")]
 
-          class DuplicateGroup(m.ArbitraryTypesModel):
-  - id: duplicate-cure-runtime-retire-tuple-declarations
-    description: Remove superseded runtime DTOs after electing the census model owner.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '(?ms)^class _Definition\(NamedTuple\):\n.*?(?=^class FlextInfraCodemodDuplicateApply\()'
-    replace: ''
-  - id: duplicate-cure-runtime-definition-binding
-    description: Route verified definition payloads through the census model facade.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '\b_Definition\b'
-    replace: m.Infra.DuplicateDefinition
-  - id: duplicate-cure-runtime-copy-binding
-    description: Route copy cure payloads through the census model facade.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '\b_CopyCure\b'
-    replace: m.Infra.DuplicateCopyCure
-  - id: duplicate-cure-runtime-group-binding
-    description: Route group cure payloads through the census model facade.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '\b_GroupCure\b'
-    replace: m.Infra.DuplicateGroupCure
-  - id: duplicate-cure-runtime-deletion-binding
-    description: Route deletion payloads through the census model facade.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '\b_Deletion\b'
-    replace: m.Infra.DuplicateDeletion
-  - id: duplicate-cure-runtime-retire-declaration-imports
-    description: Retire NamedTuple and ClassVar imports from the behavior owner.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '(?m)^from typing import TYPE_CHECKING, ClassVar, NamedTuple$'
-    replace: from typing import TYPE_CHECKING
-  - id: duplicate-cure-constant-owner-builtins-import
-    description: Derive native builtin names in the canonical constants owner.
-    include: [src/flext_infra/_constants/census.py]
-    find: '(?m)(?<!import builtins\n)^(from enum import StrEnum, unique)$'
-    replace: 'import builtins\n\g<1>'
-  - id: duplicate-cure-constant-owner-declarations
-    description: Elect census as owner of immutable duplicate cure grammar.
-    include: [src/flext_infra/_constants/census.py]
-    find: '(?m)^(    """Census pipeline constants for object detection and classification\."""\n)(?!\n    DUPLICATE_BUILTIN_NAMES)'
-    replace: |-
-      \g<1>
-          DUPLICATE_BUILTIN_NAMES: ClassVar[frozenset[str]] = frozenset(dir(builtins))
-          "Native builtin bindings available to pure duplicate definitions."
-          DUPLICATE_PURE_CONSTRUCTORS: ClassVar[frozenset[str]] = frozenset({
-              "bool", "bytes", "complex", "dict", "float", "frozenset",
-              "int", "list", "range", "set", "str", "tuple",
-          })
-          "Builtin constructors admitted by the duplicate purity grammar."
-          DUPLICATE_TRIVIAL_KINDS: ClassVar[frozenset[str]] = frozenset({
-              "assignment", "class", "constant", "function",
-          })
-          "Census object kinds supporting identity-proven cure planning."
-          DUPLICATE_DELETE_ACTION: ClassVar[str] = "delete-copy"
-          "Removal action recorded by the public duplicate cure receipt."
-          DUPLICATE_REBIND_ACTION: ClassVar[str] = "rebind-import"
-          "Consumer import migration action."
-          DUPLICATE_BIND_ACTION: ClassVar[str] = "bind-owner"
-          "Binding of the elected duplicate owner."
-          DUPLICATE_KEEP_ACTION: ClassVar[str] = "keep-owner"
-          "Preservation of the elected duplicate owner."
-  - id: duplicate-cure-runtime-retire-policy-declarations
-    description: Remove immutable grammar duplicated in the behavior owner.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '(?ms)^    _BUILTIN_NAMES: ClassVar\[frozenset\[str\]\].*?^    _KEEP_ACTION: str = "keep-owner"\n'
-    replace: ''
-  - id: duplicate-cure-runtime-policy-bindings
-    description: Consume the canonical duplicate grammar through the constants facade.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '\bcls\._(BUILTIN_NAMES|PURE_CONSTRUCTORS|TRIVIAL_KINDS|DELETE_ACTION|REBIND_ACTION|BIND_ACTION|KEEP_ACTION)\b'
-    replace: 'c.Infra.DUPLICATE_\g<1>'
-  - id: duplicate-cure-runtime-retire-builtins-import
-    description: Native builtin inventory belongs to the constants declaration owner.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '(?m)^import builtins\n'
-    replace: ''
-  - id: duplicate-cure-structural-plan-automation-proof
-    description: Report the missing semantic proof for structural extraction without claiming a permanent automation prohibition.
-    include: [src/flext_infra/codemod/duplicate_apply.py]
-    find: '"structural clone: similar but not identical code is never auto-unified"'
-    replace: >-
-      "structural clone: automated extraction has no proven owner, "
-      "captured-binding, and consumer-rebinding contract"
+        class DuplicateGroup(m.ArbitraryTypesModel):
+- id: duplicate-cure-runtime-retire-tuple-declarations
+  description: Remove superseded runtime DTOs after electing the census model owner.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '(?ms)^class _Definition\(NamedTuple\):\n.*?(?=^class FlextInfraCodemodDuplicateApply\()'
+  replace: ''
+- id: duplicate-cure-runtime-definition-binding
+  description: Route verified definition payloads through the census model facade.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '\b_Definition\b'
+  replace: m.Infra.DuplicateDefinition
+- id: duplicate-cure-runtime-copy-binding
+  description: Route copy cure payloads through the census model facade.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '\b_CopyCure\b'
+  replace: m.Infra.DuplicateCopyCure
+- id: duplicate-cure-runtime-group-binding
+  description: Route group cure payloads through the census model facade.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '\b_GroupCure\b'
+  replace: m.Infra.DuplicateGroupCure
+- id: duplicate-cure-runtime-deletion-binding
+  description: Route deletion payloads through the census model facade.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '\b_Deletion\b'
+  replace: m.Infra.DuplicateDeletion
+- id: duplicate-cure-runtime-retire-declaration-imports
+  description: Retire NamedTuple and ClassVar imports from the behavior owner.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '(?m)^from typing import TYPE_CHECKING, ClassVar, NamedTuple$'
+  replace: from typing import TYPE_CHECKING
+- id: duplicate-cure-constant-owner-builtins-import
+  description: Derive native builtin names in the canonical constants owner.
+  include: [ src/flext_infra/_constants/census.py ]
+  find: '(?m)(?<!import builtins\n)^(from enum import StrEnum, unique)$'
+  replace: 'import builtins\n\g<1>'
+- id: duplicate-cure-constant-owner-declarations
+  description: Elect census as owner of immutable duplicate cure grammar.
+  include: [ src/flext_infra/_constants/census.py ]
+  find: '(?m)^(    """Census pipeline constants for object detection and classification\."""\n)(?!\n    DUPLICATE_BUILTIN_NAMES)'
+  replace: |-
+    \g<1>
+        DUPLICATE_BUILTIN_NAMES: ClassVar[frozenset[str]] = frozenset(dir(builtins))
+        "Native builtin bindings available to pure duplicate definitions."
+        DUPLICATE_PURE_CONSTRUCTORS: ClassVar[frozenset[str]] = frozenset({
+            "bool", "bytes", "complex", "dict", "float", "frozenset",
+            "int", "list", "range", "set", "str", "tuple",
+        })
+        "Builtin constructors admitted by the duplicate purity grammar."
+        DUPLICATE_TRIVIAL_KINDS: ClassVar[frozenset[str]] = frozenset({
+            "assignment", "class", "constant", "function",
+        })
+        "Census object kinds supporting identity-proven cure planning."
+        DUPLICATE_DELETE_ACTION: ClassVar[str] = "delete-copy"
+        "Removal action recorded by the public duplicate cure receipt."
+        DUPLICATE_REBIND_ACTION: ClassVar[str] = "rebind-import"
+        "Consumer import migration action."
+        DUPLICATE_BIND_ACTION: ClassVar[str] = "bind-owner"
+        "Binding of the elected duplicate owner."
+        DUPLICATE_KEEP_ACTION: ClassVar[str] = "keep-owner"
+        "Preservation of the elected duplicate owner."
+- id: duplicate-cure-runtime-retire-policy-declarations
+  description: Remove immutable grammar duplicated in the behavior owner.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '(?ms)^    _BUILTIN_NAMES: ClassVar\[frozenset\[str\]\].*?^    _KEEP_ACTION: str = "keep-owner"\n'
+  replace: ''
+- id: duplicate-cure-runtime-policy-bindings
+  description: Consume the canonical duplicate grammar through the constants facade.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '\bcls\._(BUILTIN_NAMES|PURE_CONSTRUCTORS|TRIVIAL_KINDS|DELETE_ACTION|REBIND_ACTION|BIND_ACTION|KEEP_ACTION)\b'
+  replace: 'c.Infra.DUPLICATE_\g<1>'
+- id: duplicate-cure-runtime-retire-builtins-import
+  description: Native builtin inventory belongs to the constants declaration owner.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '(?m)^import builtins\n'
+  replace: ''
+- id: duplicate-cure-structural-plan-automation-proof
+  description: Report the missing semantic proof for structural extraction without claiming a permanent automation prohibition.
+  include: [ src/flext_infra/codemod/duplicate_apply.py ]
+  find: '"structural clone: similar but not identical code is never auto-unified"'
+  replace: >-
+    "structural clone: automated extraction has no proven owner, " "captured-binding, and consumer-rebinding contract"
 
-  - id: make-retire-unused-gitlink-context-resolution
-    description: Stop resolving a rich member projection unused by every Make template.
-    include: [src/flext_infra/codegen/_conform/*.py]
-    find: '(?ms)^        gitlinks = self\._managed_gitlinks\(\n.*?^            return r\[[^\n]+\]\.from_failure\(gitlinks\)\n'
-    replace: ''
-  - id: make-retire-unused-gitlink-context-argument
-    description: Remove the retired template projection argument from its render producers.
-    include: [src/flext_infra/codegen/_conform/*.py]
-    find: '^                workspace_gitlinks=gitlinks\.value,\n'
-    replace: ''
-    flags: [MULTILINE]
-  - id: make-retire-unused-gitlink-context-resolver
-    description: Remove the superseded provider baseline resolver after retiring its consumers.
-    include: [src/flext_infra/codegen/_conform/context_render.py]
-    find: '(?ms)^    @staticmethod\n    def _managed_gitlinks\(\n.*?(?=^    @staticmethod\n    def _repository_root_rel\()'
-    replace: ''
-  - id: make-retire-unused-gitlink-context-fields
-    description: Keep the Make transport limited to actual template inputs.
-    include: [src/flext_infra/_models/_config/contexts.py]
-    find: '(?ms)^        workspace_gitlinks: Annotated\[\n.*?^        \] = \(\)\n'
-    replace: ''
-  - id: make-retire-unused-managed-gitlink-model
-    description: Eliminate the unused rich gitlink template model after its entire consumer cut.
-    include: [src/flext_infra/_models/_config/repository.py]
-    find: '(?ms)^    class ManagedGitlinkSpec\(FlextInfraConfigModelsContract\.ConfigContract\):\n.*?(?=^    class ScriptDispatchSpec\()'
-    replace: ''
-  - id: make-retire-obsolete-generated-membership-assertion
-    description: Real generated Make provisioning now proves membership discovery through Git.
-    include: [tests/unit/codegen/test_gen_respects_invocation_scope.py]
-    find: '(?ms)^    @staticmethod\n    def test_project_selector_resolves_members_from_repository_root\(\n.*?(?=^    (?:@|def )|\Z)'
-    replace: ''
-  - id: config-vocabulary-use-constants-owner
-    description: Configuration vocabulary belongs to the bootstrap-safe constants family.
-    distributions: [flext-infra]
-    exclude:
-      - src/flext_infra/_models/_config/vocabulary.py
-      - src/flext_infra/_models/__init__.py
-      - src/flext_infra/_models/_config/__init__.py
-    find: '\bflext_infra\._models\._config\.vocabulary\b'
-    replace: flext_infra._constants.config
-  - id: codemod-use-cli-yaml-stream-owner
-    description: YAML document parsing belongs to the shared CLI boundary.
-    distributions: [flext-infra]
-    find: '\bu\.Infra\.parse_yaml_documents\b'
-    replace: u.Cli.yaml_parse_documents
-  - id: codemod-use-cli-yaml-stream-owner-in-rules
-    description: Rule catalog parsing reuses the shared YAML stream parser.
-    distributions: [flext-infra]
-    include: [src/flext_infra/_utilities/codemod_rules.py]
-    find: '\b(?:cls|FlextInfraUtilitiesCodemodRules)\.parse_yaml_documents\b'
-    replace: u.Cli.yaml_parse_documents
-  - id: codemod-retire-yaml-stream-wrapper
-    description: Remove the superseded parser after consumer cutover.
-    distributions: [flext-infra]
-    include: [src/flext_infra/_utilities/codemod_rules.py]
-    find: '(?ms)^    @classmethod\n    def parse_yaml_documents\(\n.*?(?=^    @classmethod\n    def _parse_rules)'
-    replace: ''
-  - id: config-vocabulary-use-constants-class
-    description: Share one configuration vocabulary through the constants owner.
-    distributions: [flext-infra]
-    # Generated initializers re-export whatever the source declares; the
-    # generator, not this rule, removes the vocabulary export after cutover.
-    exclude:
-      - src/flext_infra/_models/_config/vocabulary.py
-      - src/flext_infra/_models/__init__.py
-      - src/flext_infra/_models/_config/__init__.py
-    find: '\bFlextInfraConfigVocabulary\b'
-    replace: FlextInfraConstantsConfig
-  - id: conform-consume-validated-request-enums
-    description: Model-validated enum fields retain their identity without reconstruction.
-    distributions: [flext-infra]
-    include: [src/flext_infra/codegen/_conform/*.py]
-    find: 'c\.Infra\.CodegenConform(?:Mode|Surface|Scope)\((request\.(?:mode|what|scope))\)'
-    replace: '\g<1>'
-  - id: conform-retire-unused-provider-wrapper
-    description: Repository provider resolution already belongs to the shared utility.
-    distributions: [flext-infra]
-    include: [src/flext_infra/codegen/_conform/plan.py]
-    find: '(?ms)^    @staticmethod\n    def _repository_provider\(\n.*?(?=^__all__)'
-    replace: ''
-  - id: conform-retire-unused-provider-protocol
-    description: Remove the unused service protocol requirement with its wrapper.
-    distributions: [flext-infra]
-    include: [src/flext_infra/_protocols/base.py]
-    find: '(?m)^        @staticmethod\n        def _repository_provider\(\n(?:[^\n]*\n)*?        \) -> p\.Result\[m\.Infra\.ProviderIdentitySpec\]: \.\.\.\n'
-    replace: ''
-  - id: codegen-unique-states-single-owner
-    description: Source-state unification has one owner; services consume it through u.Infra, never by inheriting a private utility.
-    distributions: [flext-infra]
-    find: '\bFlextInfraCodegenPreconditions\.unique_states\('
-    replace: 'u.Infra.unique_states('
-  - id: codegen-preconditions-consume-unique-states-owner
-    description: The preconditions service calls the source-state owner instead of an inherited copy.
-    distributions: [flext-infra]
-    include: [src/flext_infra/codegen/codegen_preconditions.py]
-    find: '\bcls\.unique_states\('
-    replace: 'u.Infra.unique_states('
-  - id: codegen-preconditions-retire-utility-base
-    description: A service never inherits a private utility tree (ENFORCE-068).
-    distributions: [flext-infra]
-    include: [src/flext_infra/codegen/codegen_preconditions.py]
-    find: '\bclass FlextInfraCodegenPreconditions\(FlextInfraUtilitiesCodegenFilePlan\):'
-    replace: 'class FlextInfraCodegenPreconditions:'
-  - id: conform-retire-gitignore-forwarder-consumers
-    description: Gitignore rendering has one owner, u.Infra.render_project_gitignore; the conform forwarder had test consumers only.
-    distributions: [flext-infra]
-    include: [tests/*.py, tests/**/*.py]
-    find: '\bFlextInfraCodegenConform\.render_project_gitignore\('
-    replace: 'u.Infra.render_project_gitignore('
-  - id: codegen-models-retire-unread-fields
-    description: Codegen plan fields no consumer reads are retired at their model; constructors stop passing them (LazyInitPlan inline_constants, wildcard_runtime_modules and excluded_lazy_names were always empty; CodegenPlan.make_spec only echoed config.Infra.codegen.make).
-    distributions: [flext-infra]
-    include: [src/flext_infra/codegen/*.py, src/flext_infra/codegen/**/*.py, tests/*.py, tests/**/*.py]
-    find: '(?m)^[ \t]+(?:inline_constants|wildcard_runtime_modules|excluded_lazy_names|make_spec)=[^\n]*,\n'
-    replace: ''
-  - id: consume-private-utilities-through-facade
-    description: Modules outside the private utility tree reach composed utilities through u.Infra (ENFORCE-068).
-    distributions: [flext-infra]
-    include:
-      - src/flext_infra/codegen/mise_toolchain_proof.py
-      - src/flext_infra/codemod/apply_renames.py
-      - src/flext_infra/codemod/semantic_apply.py
-    find: '\bFlextInfraUtilities(?:MiseBinary|RopeRuntime|CodegenFacades)\.([a-z][a-z_]*)\('
-    replace: 'u.Infra.\g<1>('
+- id: make-retire-unused-gitlink-context-resolution
+  description: Stop resolving a rich member projection unused by every Make template.
+  include: [ src/flext_infra/codegen/_conform/*.py ]
+  find: '(?ms)^        gitlinks = self\._managed_gitlinks\(\n.*?^            return r\[[^\n]+\]\.from_failure\(gitlinks\)\n'
+  replace: ''
+- id: make-retire-unused-gitlink-context-argument
+  description: Remove the retired template projection argument from its render producers.
+  include: [ src/flext_infra/codegen/_conform/*.py ]
+  find: '^                workspace_gitlinks=gitlinks\.value,\n'
+  replace: ''
+  flags: [ MULTILINE ]
+- id: make-retire-unused-gitlink-context-resolver
+  description: Remove the superseded provider baseline resolver after retiring its consumers.
+  include: [ src/flext_infra/codegen/_conform/context_render.py ]
+  find: '(?ms)^    @staticmethod\n    def _managed_gitlinks\(\n.*?(?=^    @staticmethod\n    def _repository_root_rel\()'
+  replace: ''
+- id: make-retire-unused-gitlink-context-fields
+  description: Keep the Make transport limited to actual template inputs.
+  include: [ src/flext_infra/_models/_config/contexts.py ]
+  find: '(?ms)^        workspace_gitlinks: Annotated\[\n.*?^        \] = \(\)\n'
+  replace: ''
+- id: make-retire-unused-managed-gitlink-model
+  description: Eliminate the unused rich gitlink template model after its entire consumer cut.
+  include: [ src/flext_infra/_models/_config/repository.py ]
+  find: '(?ms)^    class ManagedGitlinkSpec\(FlextInfraModelsConfigContract\.ConfigContract\):\n.*?(?=^    class ScriptDispatchSpec\()'
+  replace: ''
+- id: make-retire-obsolete-generated-membership-assertion
+  description: Real generated Make provisioning now proves membership discovery through Git.
+  include: [ tests/unit/codegen/test_gen_respects_invocation_scope.py ]
+  find: '(?ms)^    @staticmethod\n    def test_project_selector_resolves_members_from_repository_root\(\n.*?(?=^    (?:@|def )|\Z)'
+  replace: ''
+- id: config-vocabulary-use-constants-owner
+  description: Configuration vocabulary belongs to the bootstrap-safe constants family.
+  distributions: [ flext-infra ]
+  exclude:
+  - src/flext_infra/_models/_config/vocabulary.py
+  - src/flext_infra/_models/__init__.py
+  - src/flext_infra/_models/_config/__init__.py
+  find: '\bflext_infra\._models\._config\.vocabulary\b'
+  replace: flext_infra._constants.config
+- id: codemod-use-cli-yaml-stream-owner
+  description: YAML document parsing belongs to the shared CLI boundary.
+  distributions: [ flext-infra ]
+  find: '\bu\.Infra\.parse_yaml_documents\b'
+  replace: u.Cli.yaml_parse_documents
+- id: codemod-use-cli-yaml-stream-owner-in-rules
+  description: Rule catalog parsing reuses the shared YAML stream parser.
+  distributions: [ flext-infra ]
+  include: [ src/flext_infra/_utilities/codemod_rules.py ]
+  find: '\b(?:cls|FlextInfraUtilitiesCodemodRules)\.parse_yaml_documents\b'
+  replace: u.Cli.yaml_parse_documents
+- id: codemod-retire-yaml-stream-wrapper
+  description: Remove the superseded parser after consumer cutover.
+  distributions: [ flext-infra ]
+  include: [ src/flext_infra/_utilities/codemod_rules.py ]
+  find: '(?ms)^    @classmethod\n    def parse_yaml_documents\(\n.*?(?=^    @classmethod\n    def _parse_rules)'
+  replace: ''
+- id: config-vocabulary-use-constants-class
+  description: Share one configuration vocabulary through the constants owner.
+  distributions: [ flext-infra ]
+  # Generated initializers re-export whatever the source declares; the
+  # generator, not this rule, removes the vocabulary export after cutover.
+  exclude:
+  - src/flext_infra/_models/_config/vocabulary.py
+  - src/flext_infra/_models/__init__.py
+  - src/flext_infra/_models/_config/__init__.py
+  find: '\bFlextInfraConfigVocabulary\b'
+  replace: FlextInfraConstantsConfig
+- id: conform-consume-validated-request-enums
+  description: Model-validated enum fields retain their identity without reconstruction.
+  distributions: [ flext-infra ]
+  include: [ src/flext_infra/codegen/_conform/*.py ]
+  find: 'c\.Infra\.CodegenConform(?:Mode|Surface|Scope)\((request\.(?:mode|what|scope))\)'
+  replace: '\g<1>'
+- id: conform-retire-unused-provider-wrapper
+  description: Repository provider resolution already belongs to the shared utility.
+  distributions: [ flext-infra ]
+  include: [ src/flext_infra/codegen/_conform/plan.py ]
+  find: '(?ms)^    @staticmethod\n    def _repository_provider\(\n.*?(?=^__all__)'
+  replace: ''
+- id: conform-retire-unused-provider-protocol
+  description: Remove the unused service protocol requirement with its wrapper.
+  distributions: [ flext-infra ]
+  include: [ src/flext_infra/_protocols/base.py ]
+  find: '(?m)^        @staticmethod\n        def _repository_provider\(\n(?:[^\n]*\n)*?        \) -> p\.Result\[m\.Infra\.ProviderIdentitySpec\]: \.\.\.\n'
+  replace: ''
+- id: codegen-unique-states-single-owner
+  description: Source-state unification has one owner; services consume it through u.Infra, never by inheriting a private utility.
+  distributions: [ flext-infra ]
+  find: '\bFlextInfraCodegenPreconditions\.unique_states\('
+  replace: 'u.Infra.unique_states('
+- id: codegen-preconditions-consume-unique-states-owner
+  description: The preconditions service calls the source-state owner instead of an inherited copy.
+  distributions: [ flext-infra ]
+  include: [ src/flext_infra/codegen/codegen_preconditions.py ]
+  find: '\bcls\.unique_states\('
+  replace: 'u.Infra.unique_states('
+- id: codegen-preconditions-retire-utility-base
+  description: A service never inherits a private utility tree (ENFORCE-068).
+  distributions: [ flext-infra ]
+  include: [ src/flext_infra/codegen/codegen_preconditions.py ]
+  find: '\bclass FlextInfraCodegenPreconditions\(FlextInfraUtilitiesCodegenFilePlan\):'
+  replace: 'class FlextInfraCodegenPreconditions:'
+- id: conform-retire-gitignore-forwarder-consumers
+  description: Gitignore rendering has one owner, u.Infra.render_project_gitignore; the conform forwarder had test consumers only.
+  distributions: [ flext-infra ]
+  include: [ tests/*.py, tests/**/*.py ]
+  find: '\bFlextInfraCodegenConform\.render_project_gitignore\('
+  replace: 'u.Infra.render_project_gitignore('
+- id: codegen-models-retire-unread-fields
+  description: Codegen plan fields no consumer reads are retired at their model; constructors stop passing them (LazyInitPlan inline_constants, wildcard_runtime_modules and excluded_lazy_names were always empty; CodegenPlan.make_spec only echoed config.Infra.codegen.make).
+  distributions: [ flext-infra ]
+  include: [ src/flext_infra/codegen/*.py, src/flext_infra/codegen/**/*.py, tests/*.py, tests/**/*.py ]
+  find: '(?m)^[ \t]+(?:inline_constants|wildcard_runtime_modules|excluded_lazy_names|make_spec)=[^\n]*,\n'
+  replace: ''
+- id: consume-private-utilities-through-facade
+  description: Modules outside the private utility tree reach composed utilities through u.Infra (ENFORCE-068).
+  distributions: [ flext-infra ]
+  include:
+  - src/flext_infra/codegen/mise_toolchain_proof.py
+  - src/flext_infra/codemod/apply_renames.py
+  - src/flext_infra/codemod/semantic_apply.py
+  find: '\bFlextInfraUtilities(?:MiseBinary|RopeRuntime|CodegenFacades)\.([a-z][a-z_]*)\('
+  replace: 'u.Infra.\g<1>('
 
-  - id: repository-discovery-retire-manifest-exclusion-name
-    description: Name Git-derived participation at its canonical discovery owner and consumers.
-    find: '\bmanifest_nonparticipant_paths\b'
-    replace: repository_nonparticipant_paths
-  - id: codegen-main-fixture-declare-infra-provenance
-    distributions: [flext-infra]
-    description: Derive the synthetic consumer's Infra Git source from the repository and branch policy.
-    include: [tests/unit/codegen/main_tests.py]
-    find: '        repository = u\.Tests\.repository_ref\(repo\.name\)\n        \(repo / "pyproject\.toml"\)\.write_text\('
-    replace: |2-
-              repository = u.Tests.repository_ref(repo.name)
-              infra = u.Tests.repository_ref("flext-infra")
-              integration = config.Infra.codegen.branch_policy.integration_branch
-              (repo / "pyproject.toml").write_text(
-  - id: codegen-main-fixture-add-infra-requirement
-    distributions: [flext-infra]
-    description: Give the synthetic consumer the direct Git dependency required by strict source detection.
-    include: [tests/unit/codegen/main_tests.py]
-    find: '''dependencies = \["flext-core>=0\.1\.0"\]\\n\\n'''
-    replace: 'f''dependencies = ["flext-core>=0.1.0", ''\n            f''"flext-infra @ git+{infra.url}@{integration}"]\\n\\n'''
-  - id: testmon-lease-test-tune-start-clock
-    distributions: [flext-infra]
-    description: Parameterize the real runner fixture clock for a deadline-exhaustion case.
-    include: [tests/unit/validate/pytest_runner_zero_test_tests.py]
-    find: '        slow_phase: bool = False,\n    \) -> FlextInfraPytestRunner:'
-    replace: '        slow_phase: bool = False,\n        elapsed_seconds: float = 0.0,\n    ) -> FlextInfraPytestRunner:'
-  - id: testmon-lease-test-use-fixture-clock
-    distributions: [flext-infra]
-    description: Apply the fixture clock to the public runner constructor.
-    include: [tests/unit/validate/pytest_runner_zero_test_tests.py]
-    find: 'started_at_monotonic=time\.monotonic\(\),'
-    replace: 'started_at_monotonic=time.monotonic() - elapsed_seconds,'
-  - id: testmon-lease-test-deadline-exhaustion
-    distributions: [flext-infra]
-    description: Keep the held-lease failure test bounded by the declared suite deadline.
-    include: [tests/unit/validate/pytest_runner_zero_test_tests.py]
-    find: '(?s)(def test_held_testmon_database_lease_refuses_a_concurrent_run\(\n        self,\n        tmp_path: Path,\n    \) -> None:\n        """A second run on one shared database fails loud before any effect\."""\n        project = self\._zero_test_project\(tmp_path\)\n)        runner = self\._runner\(project, tmp_path\)'
-    replace: '\g<1>        runner = self._runner(\n            project,\n            tmp_path,\n            elapsed_seconds=config.Infra.tooling.tools.pytest.run_timeout_seconds,\n        )'
-  - id: testmon-lease-monotonic-import
-    distributions: [flext-infra]
-    description: Import the monotonic clock used by the shared testmon lease budget.
-    include: [src/flext_infra/validate/_pytest_runner/execution.py]
-    find: '^import shlex\nimport sys\n(?!import time\n)'
-    replace: 'import shlex\nimport sys\nimport time\n'
-    flags: [MULTILINE]
-  - id: lazy-init-fixture-declare-author-isort
-    distributions: [flext-infra]
-    description: Keep synthetic project metadata complete for strict lazy-init copyright rendering.
-    include: [tests/unit/codegen/lazy_init_generation_tests.py]
-    find: 'version = "1\.0\.0"\\n\{isort_table\}'
-    replace: 'version = "1.0.0"\\nauthors = [{{ name = "Fixture Author" }}]\\n{isort_table}'
-  - id: lazy-init-fixture-declare-author-empty-policy
-    distributions: [flext-infra]
-    description: Keep synthetic project metadata complete for strict lazy-init copyright rendering.
-    include: [tests/unit/codegen/lazy_init_generation_tests.py]
-    find: 'version = "1\.0\.0"\\n\{table\}'
-    replace: 'version = "1.0.0"\\nauthors = [{{ name = "Fixture Author" }}]\\n{table}'
-  - id: mise-lock-merge-test-signature-format
-    distributions: [flext-infra]
-    description: Render the merge-conflict regression test signature in the Qlty layout.
-    include: [tests/unit/codegen/test_mise_lock_transaction.py]
-    find: 'def test_publish_regenerates_an_unmerged_generated_lock\(\n        self, tmp_path: Path\n    \) -> None:'
-    replace: 'def test_publish_regenerates_an_unmerged_generated_lock(\n        self,\n        tmp_path: Path,\n    ) -> None:'
-  - id: config-retire-shadowed-sed-model-pair
-    distributions: [flext-infra]
-    description: Remove the earlier SedPatternSpec and SedPatternsSpec declarations shadowed by the strict canonical pair.
-    include: [src/flext_infra/_models/_config/artifact.py]
-    find: '(?s)^    class SedPatternSpec\(FlextInfraConfigModelsContract\.ConfigContract\):\n.*?(?=^    class RefactorCsvCampaignsSpec\()'
-    replace: ''
-    flags: [MULTILINE]
-  - id: codegen-test-ci-branches-from-config
-    distributions: [flext-infra]
-    description: Derive CI trigger branches from the same branch policy as the renderer.
-    include: [tests/utilities.py]
-    find: |-
-      (?s)            # Why: ci_trigger_branches is no longer config-owned.*?            @staticmethod
-                  def synthetic_private_submodules
-    replace: |2-
-                  @staticmethod
-                  def ci_trigger_branches(repository_branch: str) -> t.VariadicTuple[str]:
-                      """Derive the repository trigger set from the configured policy."""
-                      return tuple(dict.fromkeys((
-                          *config.Infra.codegen.branch_policy.ci_trigger_branches,
-                          repository_branch,
-                      )))
+- id: repository-discovery-retire-manifest-exclusion-name
+  description: Name Git-derived participation at its canonical discovery owner and consumers.
+  find: '\bmanifest_nonparticipant_paths\b'
+  replace: repository_nonparticipant_paths
+- id: codegen-main-fixture-declare-infra-provenance
+  distributions: [ flext-infra ]
+  description: Derive the synthetic consumer's Infra Git source from the repository and branch policy.
+  include: [ tests/unit/codegen/main_tests.py ]
+  find: '        repository = u\.Tests\.repository_ref\(repo\.name\)\n        \(repo / "pyproject\.toml"\)\.write_text\('
+  replace: |2-
+            repository = u.Tests.repository_ref(repo.name)
+            infra = u.Tests.repository_ref("flext-infra")
+            integration = config.Infra.codegen.branch_policy.integration_branch
+            (repo / "pyproject.toml").write_text(
+- id: codegen-main-fixture-add-infra-requirement
+  distributions: [ flext-infra ]
+  description: Give the synthetic consumer the direct Git dependency required by strict source detection.
+  include: [ tests/unit/codegen/main_tests.py ]
+  find: '''dependencies = \["flext-core>=0\.1\.0"\]\\n\\n'''
+  replace: 'f''dependencies = ["flext-core>=0.1.0", ''\n            f''"flext-infra @ git+{infra.url}@{integration}"]\\n\\n'''
+- id: testmon-lease-test-tune-start-clock
+  distributions: [ flext-infra ]
+  description: Parameterize the real runner fixture clock for a deadline-exhaustion case.
+  include: [ tests/unit/validate/pytest_runner_zero_test_tests.py ]
+  find: '        slow_phase: bool = False,\n    \) -> FlextInfraPytestRunner:'
+  replace: '        slow_phase: bool = False,\n        elapsed_seconds: float = 0.0,\n    ) -> FlextInfraPytestRunner:'
+- id: testmon-lease-test-use-fixture-clock
+  distributions: [ flext-infra ]
+  description: Apply the fixture clock to the public runner constructor.
+  include: [ tests/unit/validate/pytest_runner_zero_test_tests.py ]
+  find: 'started_at_monotonic=time\.monotonic\(\),'
+  replace: 'started_at_monotonic=time.monotonic() - elapsed_seconds,'
+- id: testmon-lease-test-deadline-exhaustion
+  distributions: [ flext-infra ]
+  description: Keep the held-lease failure test bounded by the declared suite deadline.
+  include: [ tests/unit/validate/pytest_runner_zero_test_tests.py ]
+  find: '(?s)(def test_held_testmon_database_lease_refuses_a_concurrent_run\(\n        self,\n        tmp_path: Path,\n    \) -> None:\n        """A second run on one shared database fails loud before any effect\."""\n        project = self\._zero_test_project\(tmp_path\)\n)        runner = self\._runner\(project, tmp_path\)'
+  replace: '\g<1>        runner = self._runner(\n            project,\n            tmp_path,\n            elapsed_seconds=config.Infra.tooling.tools.pytest.run_timeout_seconds,\n        )'
+- id: testmon-lease-monotonic-import
+  distributions: [ flext-infra ]
+  description: Import the monotonic clock used by the shared testmon lease budget.
+  include: [ src/flext_infra/validate/_pytest_runner/execution.py ]
+  find: '^import shlex\nimport sys\n(?!import time\n)'
+  replace: 'import shlex\nimport sys\nimport time\n'
+  flags: [ MULTILINE ]
+- id: lazy-init-fixture-declare-author-isort
+  distributions: [ flext-infra ]
+  description: Keep synthetic project metadata complete for strict lazy-init copyright rendering.
+  include: [ tests/unit/codegen/lazy_init_generation_tests.py ]
+  find: 'version = "1\.0\.0"\\n\{isort_table\}'
+  replace: 'version = "1.0.0"\\nauthors = [{{ name = "Fixture Author" }}]\\n{isort_table}'
+- id: lazy-init-fixture-declare-author-empty-policy
+  distributions: [ flext-infra ]
+  description: Keep synthetic project metadata complete for strict lazy-init copyright rendering.
+  include: [ tests/unit/codegen/lazy_init_generation_tests.py ]
+  find: 'version = "1\.0\.0"\\n\{table\}'
+  replace: 'version = "1.0.0"\\nauthors = [{{ name = "Fixture Author" }}]\\n{table}'
+- id: mise-lock-merge-test-signature-format
+  distributions: [ flext-infra ]
+  description: Render the merge-conflict regression test signature in the Qlty layout.
+  include: [ tests/unit/codegen/test_mise_lock_transaction.py ]
+  find: 'def test_publish_regenerates_an_unmerged_generated_lock\(\n        self, tmp_path: Path\n    \) -> None:'
+  replace: 'def test_publish_regenerates_an_unmerged_generated_lock(\n        self,\n        tmp_path: Path,\n    ) -> None:'
+- id: config-retire-shadowed-sed-model-pair
+  distributions: [ flext-infra ]
+  description: Remove the earlier SedPatternSpec and SedPatternsSpec declarations shadowed by the strict canonical pair.
+  include: [ src/flext_infra/_models/_config/artifact.py ]
+  find: '(?s)^    class SedPatternSpec\(FlextInfraModelsConfigContract\.ConfigContract\):\n.*?(?=^    class RefactorCsvCampaignsSpec\()'
+  replace: ''
+  flags: [ MULTILINE ]
+- id: codegen-test-ci-branches-from-config
+  distributions: [ flext-infra ]
+  description: Derive CI trigger branches from the same branch policy as the renderer.
+  include: [ tests/utilities.py ]
+  find: |-
+    (?s)            # Why: ci_trigger_branches is no longer config-owned.*?            @staticmethod
+                def synthetic_private_submodules
+  replace: |2-
+                @staticmethod
+                def ci_trigger_branches(repository_branch: str) -> tuple[str, ...]:
+                    """Derive the repository trigger set from the configured policy."""
+                    return tuple(dict.fromkeys((
+                        *config.Infra.codegen.branch_policy.ci_trigger_branches,
+                        repository_branch,
+                    )))
 
-                  @staticmethod
-                  def synthetic_private_submodules
-  - id: codegen-test-retire-unused-classvar-import
-    distributions: [flext-infra]
-    description: Remove the import made obsolete by the configured CI branch policy.
-    include: [tests/utilities.py]
-    find: '^from typing import ClassVar\n'
-    replace: ''
-    flags: [MULTILINE]
-  - id: codegen-test-ci-branch-consumers
-    distributions: [flext-infra]
-    description: Pass each fixture repository branch to the canonical configured derivation.
-    include:
-      - tests/unit/codegen/ci_custom_steps_tests.py
-      - tests/unit/codegen/test_template_formatter_fixed_point.py
-    find: '(?P<prefix>repository_branch="(?P<branch>[^"]+)",\n[ \t]+ci_trigger_branches=)(?P<owner>(?:tests\.)?utilities\.TestsFlextInfraUtilities\.CodegenTestSupport\.Ci)\.CI_TRIGGER_BASELINE_BRANCHES'
-    replace: '\g<prefix>\g<owner>.ci_trigger_branches("\g<branch>")'
-  - id: codegen-test-retire-shadowed-facade-imports
-    distributions: [flext-infra]
-    description: Keep the test c/m/t facades after Rope moves their shared helper.
-    include: [tests/utilities.py]
-    find: '^from flext_infra import FlextInfraUtilities, c, config, m, t$'
-    replace: 'from flext_infra import FlextInfraUtilities, config'
-    flags: [MULTILINE]
-  - id: codegen-test-retire-shadowed-utility-import
-    distributions: [flext-infra]
-    description: Let the test u facade supply inherited production utilities.
-    include:
-      - tests/unit/codegen/test_release_checkout_credentials.py
-      - tests/unit/codegen/test_ci_declared_secrets_contract.py
-      - tests/unit/codegen/test_ci_integration_branch_triggers.py
-      - tests/unit/codegen/test_ci_package_registry_read.py
-      - tests/unit/codegen/test_ci_system_packages.py
-    find: '^from flext_infra import ((?:\w+, )*\w+), u$'
-    replace: 'from flext_infra import \g<1>'
-    flags: [MULTILINE]
-  - id: docs-strict-python-fence-ruff-ignores
-    distributions: [flext-infra]
-    description: Retain only syntax-context docstring and package exceptions for isolated executable fences.
-    include: [src/flext_infra/_constants/docs.py]
-    find: '^        "(?:D101|D102|D103|D106|PLR2004|S101|T201|T203|ANN001|ANN002|ANN003|ANN201|ANN202|ANN204|ANN205|PLC0415|B018|F821|F811|SLF001|S106|PT004|E402|PLW0127|PLC0414)",\n'
-    replace: ''
-    flags: [MULTILINE]
-  - id: docs-strict-python-fence-rationale
-    distributions: [flext-infra]
-    description: Explain the bounded exceptions kept for standalone Markdown fence files.
-    include: [src/flext_infra/_constants/docs.py]
-    find: '(?s)    """Rules ignored for executable docs snippets.*?lazy-export pattern itself teaches\)\."""'
-    replace: |2-
-          """Only module-docstring and package rules are inapplicable to a
-          standalone Markdown fence. All names, behavior, types, and security
-          rules remain active and require correction in the authored source."""
-  - id: checked-command-output-receipts
-    distributions: [flext-infra]
-    description: Preserve checked execution while retaining command output in assigned test receipts.
-    include:
-      - tests/unit/codegen/test_upg_lock_atomic_publication.py
-      - tests/unit/codemod/test_apply_renames.py
-      - tests/unit/codemod/test_rename_campaign_mod.py
-      - tests/unit/codemod/test_rename_preflight.py
-    find: '(^[ \t]+(?:observed|output|namespace|consumer)[ \t]*=[ \t]*tm\.ok\(\s*u\.Cli\.)run_checked(?=\()'
-    replace: '\g<1>run'
-    flags: [MULTILINE]
-  - id: pytest-interrupt-never-normalized
-    distributions: [flext-infra]
-    description: Preserve pytest interruption as a red suite receipt even after the last selected test.
-    include: [src/flext_infra/validate/_pytest_runner/execution.py]
-    find: '(?s)        # The suite stop instant can land on the last selected test.*?        # A graceful stop at the suite stop instant publishes the executed'
-    replace: |2-
-              final_exit = (
-                  0 if (accepted_cache_hit or accepted_zero_tests) else raw_return_code or int(rejected)
-              )
-              # A graceful stop at the suite stop instant publishes the executed
-  - id: standalone-fixture-author-projection
-    distributions: [flext-infra]
-    description: Render conform-required author metadata from the typed fixture project specification.
-    include: [tests/utilities_fixture_workspace.py]
-    find: '(?m)^(?P<indent>            )f''name = "\{name\}"\\n''$(?!\n            f''authors = )'
-    replace: |-
-      \g<indent>f'name = "{name}"\\n'
-      \g<indent>f'authors = [{{name = "{TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name).author_name}", email = "{TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name).author_email}"}}]\\n'
-  - id: standalone-fixture-author-owner
-    distributions: [flext-infra]
-    description: Route the fixture author through the imported typed project fixture owner.
-    include: [tests/utilities_fixture_workspace.py]
-    find: 'fixture\.project_spec\(name\)'
-    replace: 'TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name)'
-  - id: standalone-fixture-upstream-dependency
-    distributions: [flext-infra]
-    description: Derive the fixture runtime dependency from the typed scaffold upstream declaration.
-    include: [tests/utilities_fixture_workspace.py]
-    find: '"dependencies = \[\]\\n"'
-    replace: |-
-      f'dependencies = ["{TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source(TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name).upstream)}"]\\n'
-  - id: root-artifact-fixture-project-owner
-    distributions: [flext-infra]
-    description: Resolve conform test metadata through the typed fixture project owner.
-    include: [tests/unit/codegen/test_root_artifact_ownership.py]
-    find: '(?m)^(        root = infra_git_repo)\n(        u\.Tests\.write_project_beads_config\(root, "flext-demo"\))$'
-    replace: '\g<1>\n        project = u.Tests.project_spec("flext-demo")\n\g<2>'
-  - id: root-artifact-fixture-author
-    distributions: [flext-infra]
-    description: Declare conform-required author metadata from the fixture project model.
-    include: [tests/unit/codegen/test_root_artifact_ownership.py]
-    find: '(?m)^(                    ''version = "0\.1\.0"\\n'')$(?!\n                    f''authors = )'
-    replace: |-
-      \g<1>
-                          f'authors = [{{name = "{project.author_name}", email = "{project.author_email}"}}]\\n'
-  - id: root-artifact-fixture-upstream
-    distributions: [flext-infra]
-    description: Preserve the fixture scaffold upstream as a direct Git runtime dependency.
-    include: [tests/unit/codegen/test_root_artifact_ownership.py]
-    find: '"dependencies = \[\]\\n"'
-    replace: |-
-      f'dependencies = ["{u.Tests.flext_source(project.upstream)}"]\\n'
-  - id: bootstrap-source-document-declared-surface
-    distributions: [flext-infra]
-    description: Describe the declared multi-file Make bootstrap instead of a retired single-file contract.
-    include: [src/flext_infra/codegen/make_bootstrap.py]
-    find: 'Makefile-only bootstrap|one Makefile projection|Makefile projection'
-    replace: 'declared Make bootstrap surface'
-  - id: candidate-bootstrap-destination-error
-    distributions: [flext-infra]
-    description: Report a missing declared bootstrap surface without asserting a single Makefile destination.
-    include: [src/flext_infra/services/candidate_bootstrap.py]
-    find: 'candidate bootstrap must plan exactly one Makefile:'
-    replace: 'candidate bootstrap has no declared destinations:'
-  - id: cli-process-options-model-owner
-    description: >-
-      flext-cli declares the process launch options as the model
-      m.Cli.ProcessOptions (and the protocol p.Cli.ProcessOptions); no
-      u.Cli.ProcessOptions exists, so every construction names the model.
-    find: '\bu\.Cli\.ProcessOptions\('
-    replace: 'm.Cli.ProcessOptions('
-  - id: process-options-tests-import-models-c-u
-    distributions: [flext-infra]
-    description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
-    include:
-      - tests/unit/codegen/test_codegen_make_verb_contract.py
-      - tests/unit/test_git_fixture_isolation.py
-    find: '(?m)^from tests import c, u$'
-    replace: 'from tests import c, m, u'
-  - id: process-options-tests-import-models-c-t-u
-    distributions: [flext-infra]
-    description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
-    include: [tests/unit/codegen/test_codegen_make_member_runtime.py]
-    find: '(?m)^from tests import c, t, u$'
-    replace: 'from tests import c, m, t, u'
-  - id: process-options-tests-import-models-c-p-t-u
-    distributions: [flext-infra]
-    description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
-    include: [tests/unit/codegen/test_workspace_root_setup_submodules.py]
-    find: '(?m)^from tests import c, p, t, u$'
-    replace: 'from tests import c, m, p, t, u'
-  - id: process-options-tests-import-models-u
-    distributions: [flext-infra]
-    description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
-    include: [tests/unit/workspace/test_binding_install.py]
-    find: '(?m)^from tests import u$'
-    replace: 'from tests import m, u'
-  - id: process-options-tests-import-models-t-u
-    distributions: [flext-infra]
-    description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
-    include: [tests/unit/workspace/test_flext_worktree_binding.py]
-    find: '(?m)^from tests import t, u$'
-    replace: 'from tests import m, t, u'
+                @staticmethod
+                def synthetic_private_submodules
+- id: codegen-test-retire-unused-classvar-import
+  distributions: [ flext-infra ]
+  description: Remove the import made obsolete by the configured CI branch policy.
+  include: [ tests/utilities.py ]
+  find: '^from typing import ClassVar\n'
+  replace: ''
+  flags: [ MULTILINE ]
+- id: codegen-test-ci-branch-consumers
+  distributions: [ flext-infra ]
+  description: Pass each fixture repository branch to the canonical configured derivation.
+  include:
+  - tests/unit/codegen/ci_custom_steps_tests.py
+  - tests/unit/codegen/test_template_formatter_fixed_point.py
+  find: '(?P<prefix>repository_branch="(?P<branch>[^"]+)",\n[ \t]+ci_trigger_branches=)(?P<owner>(?:tests\.)?utilities\.TestsFlextInfraUtilities\.CodegenTestSupport\.Ci)\.CI_TRIGGER_BASELINE_BRANCHES'
+  replace: '\g<prefix>\g<owner>.ci_trigger_branches("\g<branch>")'
+- id: codegen-test-retire-shadowed-facade-imports
+  distributions: [ flext-infra ]
+  description: Keep the test c/m/t facades after Rope moves their shared helper.
+  include: [ tests/utilities.py ]
+  find: '^from flext_infra import FlextInfraUtilities, c, config, m, t$'
+  replace: 'from flext_infra import FlextInfraUtilities, config'
+  flags: [ MULTILINE ]
+- id: codegen-test-retire-shadowed-utility-import
+  distributions: [ flext-infra ]
+  description: Let the test u facade supply inherited production utilities.
+  include:
+  - tests/unit/codegen/test_release_checkout_credentials.py
+  - tests/unit/codegen/test_ci_declared_secrets_contract.py
+  - tests/unit/codegen/test_ci_integration_branch_triggers.py
+  - tests/unit/codegen/test_ci_package_registry_read.py
+  - tests/unit/codegen/test_ci_system_packages.py
+  find: '^from flext_infra import ((?:\w+, )*\w+), u$'
+  replace: 'from flext_infra import \g<1>'
+  flags: [ MULTILINE ]
+- id: docs-strict-python-fence-ruff-ignores
+  distributions: [ flext-infra ]
+  description: Retain only syntax-context docstring and package exceptions for isolated executable fences.
+  include: [ src/flext_infra/_constants/docs.py ]
+  find: '^        "(?:D101|D102|D103|D106|PLR2004|S101|T201|T203|ANN001|ANN002|ANN003|ANN201|ANN202|ANN204|ANN205|PLC0415|B018|F821|F811|SLF001|S106|PT004|E402|PLW0127|PLC0414)",\n'
+  replace: ''
+  flags: [ MULTILINE ]
+- id: docs-strict-python-fence-rationale
+  distributions: [ flext-infra ]
+  description: Explain the bounded exceptions kept for standalone Markdown fence files.
+  include: [ src/flext_infra/_constants/docs.py ]
+  find: '(?s)    """Rules ignored for executable docs snippets.*?lazy-export pattern itself teaches\)\."""'
+  replace: |2-
+        """Only module-docstring and package rules are inapplicable to a
+        standalone Markdown fence. All names, behavior, types, and security
+        rules remain active and require correction in the authored source."""
+- id: checked-command-output-receipts
+  distributions: [ flext-infra ]
+  description: Preserve checked execution while retaining command output in assigned test receipts.
+  include:
+  - tests/unit/codegen/test_upg_lock_atomic_publication.py
+  - tests/unit/codemod/test_apply_renames.py
+  - tests/unit/codemod/test_rename_campaign_mod.py
+  - tests/unit/codemod/test_rename_preflight.py
+  find: '(^[ \t]+(?:observed|output|namespace|consumer)[ \t]*=[ \t]*tm\.ok\(\s*u\.Cli\.)run_checked(?=\()'
+  replace: '\g<1>run'
+  flags: [ MULTILINE ]
+- id: pytest-interrupt-never-normalized
+  distributions: [ flext-infra ]
+  description: Preserve pytest interruption as a red suite receipt even after the last selected test.
+  include: [ src/flext_infra/validate/_pytest_runner/execution.py ]
+  find: '(?s)        # The suite stop instant can land on the last selected test.*?        # A graceful stop at the suite stop instant publishes the executed'
+  replace: |2-
+            final_exit = (
+                0 if (accepted_cache_hit or accepted_zero_tests) else raw_return_code or int(rejected)
+            )
+            # A graceful stop at the suite stop instant publishes the executed
+- id: standalone-fixture-author-projection
+  distributions: [ flext-infra ]
+  description: Render conform-required author metadata from the typed fixture project specification.
+  include: [ tests/utilities_fixture_workspace.py ]
+  find: '(?m)^(?P<indent>            )f''name = "\{name\}"\\n''$(?!\n            f''authors = )'
+  replace: |-
+    \g<indent>f'name = "{name}"\\n'
+    \g<indent>f'authors = [{{name = "{TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name).author_name}", email = "{TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name).author_email}"}}]\\n'
+- id: standalone-fixture-author-owner
+  distributions: [ flext-infra ]
+  description: Route the fixture author through the imported typed project fixture owner.
+  include: [ tests/utilities_fixture_workspace.py ]
+  find: 'fixture\.project_spec\(name\)'
+  replace: 'TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name)'
+- id: standalone-fixture-upstream-dependency
+  distributions: [ flext-infra ]
+  description: Derive the fixture runtime dependency from the typed scaffold upstream declaration.
+  include: [ tests/utilities_fixture_workspace.py ]
+  find: '"dependencies = \[\]\\n"'
+  replace: |-
+    f'dependencies = ["{TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source(TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name).upstream)}"]\\n'
+- id: root-artifact-fixture-project-owner
+  distributions: [ flext-infra ]
+  description: Resolve conform test metadata through the typed fixture project owner.
+  include: [ tests/unit/codegen/test_root_artifact_ownership.py ]
+  find: '(?m)^(        root = infra_git_repo)\n(        u\.Tests\.write_project_beads_config\(root, "flext-demo"\))$'
+  replace: '\g<1>\n        project = u.Tests.project_spec("flext-demo")\n\g<2>'
+- id: root-artifact-fixture-author
+  distributions: [ flext-infra ]
+  description: Declare conform-required author metadata from the fixture project model.
+  include: [ tests/unit/codegen/test_root_artifact_ownership.py ]
+  find: '(?m)^(                    ''version = "0\.1\.0"\\n'')$(?!\n                    f''authors = )'
+  replace: |-
+    \g<1>
+                        f'authors = [{{name = "{project.author_name}", email = "{project.author_email}"}}]\\n'
+- id: root-artifact-fixture-upstream
+  distributions: [ flext-infra ]
+  description: Preserve the fixture scaffold upstream as a direct Git runtime dependency.
+  include: [ tests/unit/codegen/test_root_artifact_ownership.py ]
+  find: '"dependencies = \[\]\\n"'
+  replace: |-
+    f'dependencies = ["{u.Tests.flext_source(project.upstream)}"]\\n'
+- id: bootstrap-source-document-declared-surface
+  distributions: [ flext-infra ]
+  description: Describe the declared multi-file Make bootstrap instead of a retired single-file contract.
+  include: [ src/flext_infra/codegen/make_bootstrap.py ]
+  find: 'Makefile-only bootstrap|one Makefile projection|Makefile projection'
+  replace: 'declared Make bootstrap surface'
+- id: candidate-bootstrap-destination-error
+  distributions: [ flext-infra ]
+  description: Report a missing declared bootstrap surface without asserting a single Makefile destination.
+  include: [ src/flext_infra/services/candidate_bootstrap.py ]
+  find: 'candidate bootstrap must plan exactly one Makefile:'
+  replace: 'candidate bootstrap has no declared destinations:'
+- id: cli-process-options-model-owner
+  description: >-
+    flext-cli declares the process launch options as the model m.Cli.ProcessOptions (and the protocol p.Cli.ProcessOptions); no u.Cli.ProcessOptions exists, so every construction names the model.
+  find: '\bu\.Cli\.ProcessOptions\('
+  replace: 'm.Cli.ProcessOptions('
+- id: process-options-tests-import-models-c-u
+  distributions: [ flext-infra ]
+  description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
+  include:
+  - tests/unit/codegen/test_codegen_make_verb_contract.py
+  - tests/unit/test_git_fixture_isolation.py
+  find: '(?m)^from tests import c, u$'
+  replace: 'from tests import c, m, u'
+- id: process-options-tests-import-models-c-t-u
+  distributions: [ flext-infra ]
+  description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
+  include: [ tests/unit/codegen/test_codegen_make_member_runtime.py ]
+  find: '(?m)^from tests import c, t, u$'
+  replace: 'from tests import c, m, t, u'
+- id: process-options-tests-import-models-c-p-t-u
+  distributions: [ flext-infra ]
+  description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
+  include: [ tests/unit/codegen/test_workspace_root_setup_submodules.py ]
+  find: '(?m)^from tests import c, p, t, u$'
+  replace: 'from tests import c, m, p, t, u'
+- id: process-options-tests-import-models-u
+  distributions: [ flext-infra ]
+  description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
+  include: [ tests/unit/workspace/test_binding_install.py ]
+  find: '(?m)^from tests import u$'
+  replace: 'from tests import m, u'
+- id: process-options-tests-import-models-t-u
+  distributions: [ flext-infra ]
+  description: Tests that build m.Cli.ProcessOptions import the models facade from the tests namespace.
+  include: [ tests/unit/workspace/test_flext_worktree_binding.py ]
+  find: '(?m)^from tests import t, u$'
+  replace: 'from tests import m, t, u'

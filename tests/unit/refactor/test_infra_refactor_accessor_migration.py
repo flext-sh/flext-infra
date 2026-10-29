@@ -13,8 +13,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, infra, m
-from flext_infra.codemod import FlextInfraAccessorRenamePhase, FlextInfraModGateEngine
-from flext_infra.refactor import FlextInfraAccessorOriginResolver
+from flext_infra.codemod import (
+    FlextInfraCodemodLoopPhaseAccessorRename,
+    FlextInfraModGateEngine,
+)
+from flext_infra.refactor import FlextInfraRefactorAccessorOrigin
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -23,7 +26,6 @@ from tests import c, tm, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
 from tests import p
 
 _RENAMES = {
@@ -47,11 +49,11 @@ def _legacy_module_source() -> str:
     )
 
 
-def _materialize_fixture(tmp_path: Path) -> t.Triple[Path, Path, Path]:
+def _materialize_fixture(tmp_path: Path) -> tuple[Path, Path, Path]:
     """Build one workspace whose origin-named package owns the rename target.
 
     Returns:
-        The resulting ``t.Triple[Path, Path, Path]``.
+        The resulting ``tuple[Path, Path, Path]``.
 
     """
     workspace, project, pkg = u.Tests.namespace_workspace(
@@ -200,7 +202,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
-            resolver = FlextInfraAccessorOriginResolver(rope.rope_project)
+            resolver = FlextInfraRefactorAccessorOrigin(rope.rope_project)
             module = resolver.module(path)
             tree = module.get_ast()
             if not isinstance(tree, ast.AST):
@@ -321,7 +323,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraAccessorRenamePhase()
+            phase = FlextInfraCodemodLoopPhaseAccessorRename()
             states = tuple(
                 u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in u.Infra.iter_python_files(
@@ -399,7 +401,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-            phase = FlextInfraAccessorRenamePhase()
+            phase = FlextInfraCodemodLoopPhaseAccessorRename()
             with pytest.raises(ValueError, match="accessor receiver"):
                 phase.apply(project, preflight, rope)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
@@ -440,7 +442,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             u.Cli.run((sys.executable, "-c", program, str(package.parent))).unwrap()
             with u.Tests.authenticated_rope_workspace(project) as rope:
                 preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
-                phase = FlextInfraAccessorRenamePhase()
+                phase = FlextInfraCodemodLoopPhaseAccessorRename()
                 with pytest.raises(ValueError, match="accessor backing field"):
                     phase.apply(project, preflight, rope)
             tm.that(consumer.read_text(encoding="utf-8"), eq=source)
@@ -675,7 +677,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         source = f"class Owned:\n    def {name}(self):\n        return True\n"
         origin_file.write_text(source, encoding="utf-8")
         with u.Infra.open_project(workspace) as project:
-            resolver = FlextInfraAccessorOriginResolver(project)
+            resolver = FlextInfraRefactorAccessorOrigin(project)
             snapshot = u.Infra.snapshot_project(project, {origin_file: source})
             try:
                 if snapshot_case == "original":

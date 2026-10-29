@@ -1,15 +1,15 @@
 id: rewire-cli-run-to-file-return-type
 snapshots:
-  ? "def run_to_file(\n    cls,\n    cmd: t.StrSequence,\n    output_file: t.Cli.TextPath,\n    cwd: t.Cli.TextPath | None = None,\n    timeout: int | None = None,\n    env: t.StrMapping | None = None,\n    remove_env_keys: t.StrSequence = (),\n    input_data: str | bytes | None = None,\n    *,\n    live: bool = False,\n    heartbeat_seconds: float | None = None,\n    deadline: p.Cli.ProcessDeadline | None = None,\n) -> p.Result[int]:\n    \"\"\"Stream combined bytes live and durably under one absolute deadline.\n\n    Containment owns the inherited POSIX process group or Windows Job\n    Object. Trusted project tools remain inside that boundary; deliberate\n    POSIX ``setsid()`` escape is outside this contract. The deadline covers\n    child execution, termination, reaping, stream drain, and durable flush.\n    An outer caller wall remains responsible for an OS syscall that becomes\n    uninterruptible.\n    \"\"\"\n    return cls._execute_streamed_process(\n        cmd,\n        Path(output_file),\n        cwd,\n        cls._resolved_env(env, remove_env_keys),\n        input_data,\n        capture_output=False,\n        live=live,\n        heartbeat_seconds=(\n            settings.cli_process_heartbeat_seconds\n            if live and heartbeat_seconds is None\n            else heartbeat_seconds\n        ),\n        timeout=timeout,\n        deadline=deadline,\n    ).map(lambda output: output.outcome.raw_return_code)\n"
+  ? "def run_to_file(\n    cls,\n    cmd: Sequence[str],\n    output_file: t.Cli.TextPath,\n    cwd: t.Cli.TextPath | None = None,\n    timeout: int | None = None,\n    env: Mapping[str, str] | None = None,\n    remove_env_keys: Sequence[str] = (),\n    input_data: str | bytes | None = None,\n    *,\n    live: bool = False,\n    heartbeat_seconds: float | None = None,\n    deadline: p.Cli.ProcessDeadline | None = None,\n) -> p.Result[int]:\n    \"\"\"Stream combined bytes live and durably under one absolute deadline.\n\n    Containment owns the inherited POSIX process group or Windows Job\n    Object. Trusted project tools remain inside that boundary; deliberate\n    POSIX ``setsid()`` escape is outside this contract. The deadline covers\n    child execution, termination, reaping, stream drain, and durable flush.\n    An outer caller wall remains responsible for an OS syscall that becomes\n    uninterruptible.\n    \"\"\"\n    return cls._execute_streamed_process(\n        cmd,\n        Path(output_file),\n        cwd,\n        cls._resolved_env(env, remove_env_keys),\n        input_data,\n        capture_output=False,\n        live=live,\n        heartbeat_seconds=(\n            settings.cli_process_heartbeat_seconds\n            if live and heartbeat_seconds is None\n            else heartbeat_seconds\n        ),\n        timeout=timeout,\n        deadline=deadline,\n    ).map(lambda output: output.outcome.raw_return_code)\n"
   : fixed: |+
       def run_to_file(
           cls,
-          cmd: t.StrSequence,
+          cmd: Sequence[str],
           output_file: t.Cli.TextPath,
           cwd: t.Cli.TextPath | None = None,
           timeout: int | None = None,
-          env: t.StrMapping | None = None,
-          remove_env_keys: t.StrSequence = (),
+          env: Mapping[str, str] | None = None,
+          remove_env_keys: Sequence[str] = (),
           input_data: str | bytes | None = None,
           *,
           live: bool = False,
@@ -46,12 +46,12 @@ snapshots:
     - source: |-
         def run_to_file(
             cls,
-            cmd: t.StrSequence,
+            cmd: Sequence[str],
             output_file: t.Cli.TextPath,
             cwd: t.Cli.TextPath | None = None,
             timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
+            env: Mapping[str, str] | None = None,
+            remove_env_keys: Sequence[str] = (),
             input_data: str | bytes | None = None,
             *,
             live: bool = False,
@@ -85,4 +85,4 @@ snapshots:
             ).map(lambda output: output.outcome.raw_return_code)
       style: primary
       start: 0
-      end: 1394
+      end: 1399

@@ -166,13 +166,13 @@ class TestsFlextInfraAuditorStaleSymbols:
                 "build_lazy_import_map, install_lazy_exports\n\n"
                 "if TYPE_CHECKING:\n"
                 "    from demo_pkg.facade import LiveSymbol as LiveSymbol\n\n"
-                "_LAZY_MODULES: dict[str, t.VariadicTuple[str]] = {\n"
+                "_LAZY_MODULES: dict[str, tuple[str, ...]] = {\n"
                 '    ".facade": ("LiveSymbol",),\n'
                 "}\n\n"
                 "_LAZY_IMPORTS = "
                 "build_lazy_import_map(_LAZY_MODULES, sort_keys=False)\n\n"
-                '_PUBLIC_EXPORTS: t.VariadicTuple[str] = ("LiveSymbol",)\n'
-                "__all__: t.VariadicTuple[str] = tuple(_PUBLIC_EXPORTS)\n\n"
+                '_PUBLIC_EXPORTS: tuple[str, ...] = ("LiveSymbol",)\n'
+                "__all__: tuple[str, ...] = tuple(_PUBLIC_EXPORTS)\n\n"
                 "install_lazy_exports(\n"
                 "    __name__,\n"
                 "    globals(),\n"
@@ -232,7 +232,7 @@ class TestsFlextInfraAuditorStaleSymbols:
             package_root / "_exports_parts" / "all_names.py",
             (
                 '"""Demo public export names."""\n\n'
-                'DEMO_PUBLIC_EXPORTS: t.VariadicTuple[str] = ("LiveSymbol",)\n'
+                'DEMO_PUBLIC_EXPORTS: tuple[str, ...] = ("LiveSymbol",)\n'
             ),
         )
 
@@ -245,7 +245,10 @@ class TestsFlextInfraAuditorStaleSymbols:
         tm.that(exports, has="LiveSymbol")
         tm.that(public_symbols, has="LiveSymbol")
 
-        issues = u.Infra.docstring_issues(tmp_path, contract)
+        with u.Infra.open_project(tmp_path) as rope_project:
+            issues = u.Infra.docstring_issues(
+                tmp_path, contract, rope_project=rope_project
+            )
 
         tm.that(issues, eq=[])
 
@@ -276,7 +279,7 @@ class TestsFlextInfraAuditorStaleSymbols:
                 '"""Demo export registry."""\n\n'
                 "from demo_pkg._exports_part import DEMO_LAZY_IMPORTS_PART\n\n"
                 "DEMO_LAZY_IMPORTS = {**DEMO_LAZY_IMPORTS_PART}\n"
-                'DEMO_PUBLIC_EXPORTS: t.VariadicTuple[str] = ("LiveSymbol",)\n'
+                'DEMO_PUBLIC_EXPORTS: tuple[str, ...] = ("LiveSymbol",)\n'
             ),
         )
         self._write(
@@ -294,7 +297,11 @@ class TestsFlextInfraAuditorStaleSymbols:
         contract = u.Infra.public_contract(tmp_path, "demo_pkg")
 
         tm.that(contract["target_map"], eq={"LiveSymbol": "demo_pkg.facade"})
-        tm.that(u.Infra.docstring_issues(tmp_path, contract), eq=[])
+        with u.Infra.open_project(tmp_path) as rope_project:
+            tm.that(
+                u.Infra.docstring_issues(tmp_path, contract, rope_project=rope_project),
+                eq=[],
+            )
 
     def test_docstring_issues_accepts_direct_part_flext_docstring(
         self,
@@ -330,7 +337,10 @@ class TestsFlextInfraAuditorStaleSymbols:
         )
 
         contract = u.Infra.public_contract(tmp_path, "demo_pkg")
-        issues = u.Infra.docstring_issues(tmp_path, contract)
+        with u.Infra.open_project(tmp_path) as rope_project:
+            issues = u.Infra.docstring_issues(
+                tmp_path, contract, rope_project=rope_project
+            )
 
         tm.that(issues, eq=[])
 
@@ -359,7 +369,10 @@ class TestsFlextInfraAuditorStaleSymbols:
         )
 
         contract = u.Infra.public_contract(tmp_path, "demo_pkg")
-        issues = u.Infra.docstring_issues(tmp_path, contract)
+        with u.Infra.open_project(tmp_path) as rope_project:
+            issues = u.Infra.docstring_issues(
+                tmp_path, contract, rope_project=rope_project
+            )
 
         tm.that(contract["public_symbols"], has="UndocumentedSymbol")
         tm.that(len(issues), eq=1)

@@ -12,14 +12,14 @@ from git import BadName, GitCommandError
 
 from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitStatePublicationMixin,
-    FlextInfraUtilitiesGitWorktreePatchMixin,
+    FlextInfraUtilitiesGitStatePublication,
+    FlextInfraUtilitiesGitWorktreePatch,
 )
 
 
-class FlextInfraUtilitiesGitSemanticRefsMixin(
-    FlextInfraUtilitiesGitWorktreePatchMixin,
-    FlextInfraUtilitiesGitStatePublicationMixin,
+class FlextInfraUtilitiesGitSemanticRefs(
+    FlextInfraUtilitiesGitWorktreePatch,
+    FlextInfraUtilitiesGitStatePublication,
 ):
     """Own semantic refs operations."""
 
@@ -944,4 +944,4 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitSemanticRefsMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitSemanticRefs"]

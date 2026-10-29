@@ -7,9 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_infra import infra, m, p, t, u
+from flext_infra import infra, m, p, u
 from tests import c, tm
 
 
@@ -94,11 +95,11 @@ class TestsFlextInfraPrivateImportCutoverSupport:
         naming: TestsFlextInfraFacadeNaming,
         *,
         import_alias: str = "",
-    ) -> t.Triple[Path, str, t.MutableMappingKV[Path, str]]:
+    ) -> tuple[Path, str, MutableMapping[Path, str]]:
         """Derive the consumer path, private import, and facade source of one family.
 
         Returns:
-            The resulting ``t.Triple[Path, str, t.MutableMappingKV[Path, str]]``.
+            The resulting ``tuple[Path, str, MutableMapping[Path, str]]``.
 
         """
         binding = (
@@ -119,10 +120,10 @@ class TestsFlextInfraPrivateImportCutoverSupport:
     def _plan(
         cls,
         tmp_path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         consumer_path: Path,
         *private_imports: str,
-    ) -> p.ResultView[t.VariadicTuple[p.Infra.SemanticMigrationEdit]]:
+    ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan the cutover for every private import reported in the consumer.
 
         Returns:
@@ -144,10 +145,10 @@ class TestsFlextInfraPrivateImportCutoverSupport:
     def _edits(
         cls,
         tmp_path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         consumer_path: Path,
         *private_imports: str,
-    ) -> t.VariadicTuple[p.Infra.SemanticMigrationEdit]:
+    ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
         """Return the successful plan's edits.
 
         Returns:
@@ -162,7 +163,7 @@ class TestsFlextInfraPrivateImportCutoverSupport:
     def _updated_source(
         cls,
         tmp_path: Path,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
         consumer_path: Path,
         *private_imports: str,
     ) -> str:

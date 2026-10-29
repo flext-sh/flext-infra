@@ -14,7 +14,7 @@ from typing import ClassVar
 
 from flext_core import FlextSettings, m
 
-from flext_infra._models import FlextInfraSettingsModels
+from flext_infra._models import FlextInfraModelsSettings
 
 
 class FlextInfraSettings(FlextSettings):
@@ -28,8 +28,8 @@ class FlextInfraSettings(FlextSettings):
     )
 
     # Composition only; declaration and env validation stay private.
-    Infra: FlextInfraSettingsModels.InfraSettings = m.Field(
-        default_factory=FlextInfraSettingsModels.InfraSettings,
+    Infra: FlextInfraModelsSettings.InfraSettings = m.Field(
+        default_factory=FlextInfraModelsSettings.InfraSettings,
         description="Namespaced infra settings.",
     )
 

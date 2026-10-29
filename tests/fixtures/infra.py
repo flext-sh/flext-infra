@@ -8,6 +8,33 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 import shutil
 import sys
 from collections.abc import Iterator
@@ -67,7 +94,7 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
         "from flext_infra import m\n"
         "from flext_infra.codegen import FlextInfraCodegenPreconditions as "
         "preconditions\n"
-        "from flext_infra.workspace.native_reference import "
+        "from flext_infra.workspace import "
         "FlextInfraWorkspaceNativeReference as native\n"
         f"runtime_root = Path({str(runtime)!r})\n"
     )
@@ -84,11 +111,11 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
 
 
 @pytest.fixture
-def declaration_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+def declaration_workspace(tmp_path: Path) -> tuple[Path, Path]:
     """Provide the standard FLEXT workspace fabric for native declarations.
 
     Returns:
-        The resulting ``t.Pair[Path, Path]``.
+        The resulting ``tuple[Path, Path]``.
 
     """
     return u.Tests.create_lazy_init_workspace(tmp_path)
@@ -98,7 +125,7 @@ def declaration_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
 def source_preview_workspace(
     tmp_path: Path,
     session_runtime: p.Tests.SessionRuntime,
-) -> t.Pair[Path, Path]:
+) -> tuple[Path, Path]:
     """Provide source preview with its own physical runtime and real dependencies.
 
     Returns:
@@ -421,7 +448,7 @@ def policy_violation_project(tmp_path: Path) -> Path:
 @pytest.fixture(scope="session")
 def mod_workspace_artifact(
     session_runtime: p.Tests.SessionRuntime,
-) -> t.Pair[Path, Path]:
+) -> tuple[Path, Path]:
     """Build the worker's native refactor fixture distribution once.
 
     Returns:
@@ -528,7 +555,7 @@ def mod_workspace_artifact(
 @pytest.fixture
 def mod_workspace(
     installed_dependency_path: Path,
-    mod_workspace_artifact: t.Pair[Path, Path],
+    mod_workspace_artifact: tuple[Path, Path],
 ) -> Path:
     """Provide case-local sources and a genuinely installed fixture distribution.
 
@@ -678,11 +705,11 @@ def real_docs_project(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def semantic_rope_workspace(tmp_path: Path) -> t.Pair[t.Infra.RopeProject, Path]:
+def semantic_rope_workspace(tmp_path: Path) -> tuple[t.Infra.RopeProject, Path]:
     """Create a real rope workspace with semantic-analysis fixtures.
 
     Returns:
-        The resulting ``t.Pair[t.Infra.RopeProject, Path]``.
+        The resulting ``tuple[t.Infra.RopeProject, Path]``.
 
     """
     repository_root = tmp_path / "rope_workspace"
@@ -719,7 +746,7 @@ def semantic_rope_workspace(tmp_path: Path) -> t.Pair[t.Infra.RopeProject, Path]
 
 @pytest.fixture
 def models_resource(
-    semantic_rope_workspace: t.Pair[t.Infra.RopeProject, Path],
+    semantic_rope_workspace: tuple[t.Infra.RopeProject, Path],
 ) -> t.Infra.RopeFile:
     """Return the Rope resource for the semantic models fixture module.
 
@@ -737,7 +764,7 @@ def models_resource(
 
 @pytest.fixture
 def services_resource(
-    semantic_rope_workspace: t.Pair[t.Infra.RopeProject, Path],
+    semantic_rope_workspace: tuple[t.Infra.RopeProject, Path],
 ) -> t.Infra.RopeFile:
     """Return the Rope resource for the semantic services fixture module.
 

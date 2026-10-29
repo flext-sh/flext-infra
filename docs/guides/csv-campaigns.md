@@ -2,10 +2,19 @@
 
 <!-- TOC START -->
 
+- [Declarative Text Rules and Candidate Bootstrap (`make mod-text`)](#declarative-text-rules-and-candidate-bootstrap-make-mod-text)
+- [Semantic Identity Migrations (`ast-grep` and `Rope`)](#semantic-identity-migrations-ast-grep-and-rope)
+- [CSV Rename Campaign Circuit (`make mod`)](#csv-rename-campaign-circuit-make-mod)
+- [Nested Payload Relocation](#nested-payload-relocation)
+- [Binding Campaigns and Definition Renames (`apply-renames`)](#binding-campaigns-and-definition-renames-apply-renames)
+- [Workspace Snapshot, Globs, and Transaction Acceptance](#workspace-snapshot-globs-and-transaction-acceptance)
+
 <!-- TOC END -->
 
-For a recovery that only needs declarative Sed text rules, run `make mod-text`
-at the affected repository root. This public verb validates exact rule receipts,
+## Declarative Text Rules and Candidate Bootstrap
+
+For a recovery that only needs declarative Sed text rules, run the declarative text recovery
+operation at the affected repository root (`flext-infra refactor mod-text`). This public CLI route validates exact rule receipts,
 checks Python syntax before publication, applies the authenticated text batch,
 and verifies that no findings remain. It does not enter the Rope or ast-grep
 phases of `make mod`. Repair a malformed rule in its authored YAML catalogue,
@@ -19,7 +28,7 @@ mapping, null, non-string, and blank entries fail before any publication; no
 scope is expanded into characters or coerced into a glob. Omitted scopes retain
 the typed rule defaults, and empty lists remain valid unrestricted selectors.
 When a candidate's Python package cannot import, the healthy Infra provider
-can run `make mod-text-candidate` after its repository declaration supplies exactly
+can run candidate text recovery (`flext-infra refactor mod-text-candidate`) after its repository declaration supplies exactly
 one `candidate_bootstrap_targets` entry. Declare targets under
 `Infra.codegen.repository.candidate_bootstrap_targets` in `config/codegen.yaml`,
 with each `path` relative to the healthy provider and a canonical `what` surface.
@@ -51,6 +60,8 @@ The project identity is parsed from one authenticated `pyproject.toml` snapshot,
 using the same managed-conflict recovery and typed TOML validation as project
 metadata. That snapshot remains a transaction input through publication, so a
 concurrent identity change rejects the complete text batch.
+
+## Semantic Identity Migrations (`ast-grep` and `Rope`)
 
 Python identity migrations are not Sed rules. Native ast-grep captures carry
 authenticated UTF-8 byte ranges; `resolved-symbol` binds that exact expression
@@ -95,6 +106,8 @@ legacy module imports likewise retain a semantic-adjudication finding. JSON
 payloads are data, not code, even when a text replacement would leave Python
 syntax valid. These bounded AST rules run through `make mod`, not `mod-text`.
 
+## CSV Rename Campaign Circuit (`make mod`)
+
 The public `make mod` circuit reads `Infra.refactor_csv_campaigns` from the packaged
 configuration. Each campaign keeps one `old,new` CSV as its rename source. Consumer
 repositories, including repositories outside the FLEXT superproject, consume that same
@@ -118,6 +131,8 @@ those dependencies and the validated campaign inputs by constructor. `infra.appl
 offers the same real runner for an explicit `m.Infra.ApplyRenamesInput`. The CLI route
 renders progress and rename reports; the runner itself only returns typed results.
 
+## Nested Payload Relocation
+
 Before class nesting, `make mod` plans nested payload relocation against an immutable
 Rope snapshot. The nested-payload rule admits data-only declarations by resolved
 Pydantic ancestry, not the spelling of an imported base. The planner requires exactly
@@ -135,6 +150,8 @@ Resolved Pydantic validators and computed fields retain their declaration semant
 ordinary methods do not establish a DTO role. Quoted field types participate in import
 dependency discovery, and a local binding capturing the elected facade refuses the
 cutover instead of rewriting through that unrelated binding.
+
+## Binding Campaigns and Definition Renames (`apply-renames`)
 
 `bindings` maps CSV expression prefixes to current public Rope identities. An empty
 prefix describes member names relative to an owner; a nonempty prefix describes
@@ -161,8 +178,10 @@ Explicit documentation selections retain their originally requested scope. The
 default consumer-migration mode continues to require an already-declared destination;
 no compatibility method is needed during a declaration cutover.
 
+## Workspace Snapshot, Globs, and Transaction Acceptance
+
 Workspace model and acceptance (operator order 2026-10-25, tracker memory
-`operator-order-2026-10-25-rope-owns-model-refactors`; ADR-028 Decision 17):
+`operator-order-2026-10-25-rope-owns-model-refactors`; [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) Decision 17):
 
 - `apply-renames` runs on the run's workspace snapshot
   (`u.Infra.workspace_snapshot`), which binds exactly one analysis engine project;

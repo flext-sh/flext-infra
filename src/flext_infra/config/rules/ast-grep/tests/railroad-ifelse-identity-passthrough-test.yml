@@ -1,0 +1,18 @@
+id: railroad-ifelse-identity-passthrough
+valid:
+  - return result
+  - |
+    if result.failure:
+        return r.from_failure(result)
+    return r[int].ok(result.value + 1)
+invalid:
+  - |
+    if result.failure:
+        return r[str].from_failure(result)
+    else:
+        return r[str].ok(result.value)
+  - |
+    if result.success:
+        return r[str].ok(result.value)
+    else:
+        return r.from_failure(result)

@@ -3,40 +3,39 @@ language: Python
 severity: error
 utils:
   retired-name:
-    regex: ^(FlextInfraCodegenTransaction|FlextInfraCodegenTransactionGeneration|FlextInfraCodegenTransactionPhases|FlextInfraCodegenTransactionRecovery|FlextInfraCodegenStaging|FlextInfraCodegenFileLeases|FlextInfraCodegenMiseArtifacts|FlextInfraMiseArtifactsCandidates|FlextInfraMiseArtifactsComparison|FlextInfraMiseArtifactsJournal|FlextInfraMiseArtifactsJournalRelocation|FlextInfraMiseArtifactsProcess|FlextInfraMiseArtifactsState|FlextInfraMiseArtifactsVerification|FlextInfraMiseArtifactsVerificationManifest|FlextInfraMiseArtifactsVerificationTopology|FlextInfraMiseRecovery|FlextInfraMiseStaging|FlextInfraMisePublication|FlextInfraMiseArtifactsFiles|FlextInfraMiseWorkspacePlanner|FlextInfraModelsCodegenJournalModels)$
+    regex: ^(FlextInfraCodegenTransaction|FlextInfraCodegenTransactionGeneration|FlextInfraCodegenTransactionPhases|FlextInfraCodegenTransactionRecovery|FlextInfraCodegenStaging|FlextInfraCodegenFileLeases|FlextInfraCodegenMiseArtifacts|FlextInfraMiseArtifactsCandidates|FlextInfraMiseArtifactsComparison|FlextInfraMiseArtifactsJournal|FlextInfraMiseArtifactsJournalRelocation|FlextInfraMiseArtifactsProcess|FlextInfraMiseArtifactsState|FlextInfraMiseArtifactsVerification|FlextInfraMiseArtifactsVerificationManifest|FlextInfraMiseArtifactsVerificationTopology|FlextInfraMiseRecovery|FlextInfraMiseStaging|FlextInfraMisePublication|FlextInfraMiseArtifactsFiles|FlextInfraMiseWorkspacePlanner|FlextInfraModelsCodegenJournal)$
 rule:
   any:
-    # The whole statement when it binds only retired names.
-    - all:
-        - kind: import_from_statement
-        - not:
-            inside:
-              not:
-                any:
-                  - kind: module
-                  - kind: block
-        - has:
-            field: name
+  # The whole statement when it binds only retired names.
+  - all:
+    - kind: import_from_statement
+    - not:
+        inside:
+          not:
+            any:
+            - kind: module
+            - kind: block
+    - has:
+        field: name
+        matches: retired-name
+    - not:
+        has:
+          field: name
+          not:
             matches: retired-name
-        - not:
-            has:
-              field: name
-              not:
-                matches: retired-name
-    # One retired name inside a mixed import.
-    - all:
-        - kind: dotted_name
-        - matches: retired-name
-        - inside:
-            kind: import_from_statement
-            has:
-              field: name
-              not:
-                matches: retired-name
+  # One retired name inside a mixed import.
+  - all:
+    - kind: dotted_name
+    - matches: retired-name
+    - inside:
+        kind: import_from_statement
+        has:
+          field: name
+          not:
+            matches: retired-name
 fix:
   template: ""
   expandEnd:
     regex: ^,$
 message: >-
-  The transactional publication stack is retired; its classes have no
-  replacement binding. Publish through u.Cli.publish_file_changes.
+  The transactional publication stack is retired; its classes have no replacement binding. Publish through u.Cli.publish_file_changes.

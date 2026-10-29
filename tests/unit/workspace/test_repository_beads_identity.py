@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
@@ -37,7 +38,7 @@ class TestsFlextInfraRepositoryBeadsIdentity:
         )
 
     @staticmethod
-    def _beads_fixture_payload() -> t.MutableMappingKV[str, t.JsonValue]:
+    def _beads_fixture_payload() -> MutableMapping[str, t.JsonValue]:
         """Return the canonical Beads identity payload a fixture checkout declares.
 
         Returns:

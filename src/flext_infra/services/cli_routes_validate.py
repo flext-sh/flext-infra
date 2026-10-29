@@ -7,9 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, ClassVar
-
-from flext_core import FlextRuntime
+from typing import ClassVar
 
 from flext_infra import c, infra, m, u
 from flext_infra.docs import (
@@ -30,15 +28,12 @@ from flext_infra.maintenance import (
 )
 from flext_infra.services import FlextInfraValidationCommandRoutes
 
-if TYPE_CHECKING:
-    from flext_infra import t
-
 
 class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
     """Own documentation, GitHub workflow, maintenance, and validation routes."""
 
     validation_routes: ClassVar[
-        MutableMapping[str, t.VariadicTuple[m.Cli.ResultCommandRoute]]
+        MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
     ] = {
         c.Infra.CLI_GROUP_DOCS: (
             m.Cli.ResultCommandRoute(
@@ -57,9 +52,7 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
                 model_cls=m.Infra.DocsGenerateRequest,
                 handler=FlextInfraDocGenerator.execute_request,
                 success_formatter=lambda reports: (
-                    u.Cli.json_dumps(
-                        FlextRuntime.normalize_to_json_value(reports)
-                    ).value
+                    u.Cli.json_dumps(u.normalize_to_json_value(reports)).value
                 ),
                 success_message="Generated documentation committed and verified",
             ),

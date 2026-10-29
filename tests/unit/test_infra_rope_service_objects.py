@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 import pytest
 
 import flext_infra
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,11 +26,11 @@ class TestsFlextInfraInfraRopeServiceObjects:
         tmp_path: Path,
         module_name: str,
         source: str,
-    ) -> t.Pair[Path, Path]:
+    ) -> tuple[Path, Path]:
         """Create one flext-demo workspace and write ``source`` into its module.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -45,11 +46,11 @@ class TestsFlextInfraInfraRopeServiceObjects:
     def _module_objects_by_name(
         repository_root: Path,
         module_path: Path,
-    ) -> t.MutableMappingKV[str, m.Infra.Object]:
+    ) -> MutableMapping[str, m.Infra.Object]:
         """Index one module's non-local objects by their declared name.
 
         Returns:
-            The resulting ``t.MutableMappingKV[str, m.Infra.Object]``.
+            The resulting ``MutableMapping[str, m.Infra.Object]``.
 
         """
         with flext_infra.infra.rope_workspace(repository_root) as rope:
@@ -71,7 +72,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         module_path = package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             module_path,
-            class_name="FlextDemoModels",
+            class_name="FlextModelsDemo",
             alias="m",
             docstring="Models.",
         )
@@ -130,14 +131,14 @@ class TestsFlextInfraInfraRopeServiceObjects:
             (
                 "from __future__ import annotations\n\n"
                 "VALUE = 1\n\n"
-                "class FlextDemoModels:\n"
+                "class FlextModelsDemo:\n"
                 "    FLAG = VALUE\n\n"
                 "    def build(self, payload: int) -> int:\n"
                 "        local = payload + VALUE\n\n"
                 "        def nested(extra: int) -> int:\n"
                 "            return local + extra\n\n"
                 "        return nested(1)\n\n"
-                "m = FlextDemoModels\n"
+                "m = FlextModelsDemo\n"
             ),
             encoding="utf-8",
         )
@@ -146,20 +147,20 @@ class TestsFlextInfraInfraRopeServiceObjects:
                 any(entry.file_path == module_path for entry in rope.modules()),
                 eq=True,
             )
-            tm.that(rope.source(module_path), has="class FlextDemoModels")
+            tm.that(rope.source(module_path), has="class FlextModelsDemo")
             objects = {
                 (item.scope_path, item.kind): item for item in rope.objects(module_path)
             }
             tm.that(objects.get(("VALUE", "constant")), none=False)
-            tm.that(objects.get(("FlextDemoModels", "class")), none=False)
-            tm.that(objects.get(("FlextDemoModels.build", "method")), none=False)
+            tm.that(objects.get(("FlextModelsDemo", "class")), none=False)
+            tm.that(objects.get(("FlextModelsDemo.build", "method")), none=False)
             tm.that(
-                objects.get(("FlextDemoModels.build.payload", "parameter")),
+                objects.get(("FlextModelsDemo.build.payload", "parameter")),
                 none=False,
             )
-            tm.that(objects.get(("FlextDemoModels.build.local", "local")), none=False)
+            tm.that(objects.get(("FlextModelsDemo.build.local", "local")), none=False)
             tm.that(
-                objects.get(("FlextDemoModels.build.nested", "function")),
+                objects.get(("FlextModelsDemo.build.nested", "function")),
                 none=False,
             )
 
@@ -325,6 +326,215 @@ class TestsFlextInfraInfraRopeServiceObjects:
             tm.that(rope.import_dependents(import_target), eq=(consumer_path,))
 
     @staticmethod
+    def test_candidate_views_close_module_moves_and_restore_captured_queries(
+        tmp_path: Path,
+    ) -> None:
+        """One public session sees staged additions and moves without disk effects."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        provider = package / "provider.py"
+        consumer = package / "consumer.py"
+        helper = package / "helper.py"
+        moved = package / "moved_provider.py"
+        provider.write_text(
+            "class OriginalProvider:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        consumer.write_text(
+            "from flext_demo.provider import OriginalProvider\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        observed = {
+            path: tm.ok(u.Cli.atomic_read_binary_file_state(path))
+            for path in (provider, consumer, helper, moved)
+        }
+        source_mode = tm.not_none(observed[provider].mode)
+        planned_provider = "class PlannedProvider:\n    pass\n"
+        with flext_infra.infra.rope_workspace(root) as workspace:
+            project = workspace.rope_project
+            tm.that(
+                tuple(item.name for item in workspace.objects(provider)),
+                eq=("OriginalProvider",),
+            )
+            tm.that(
+                workspace.import_dependents("flext_demo.provider.OriginalProvider"),
+                eq=(consumer,),
+            )
+            tm.that(workspace.module(helper), none=True)
+            tm.that(workspace.name_index(), has="OriginalProvider")
+            workspace.bind_candidate(
+                declared_files=tuple(
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=path,
+                        before=observed[path],
+                        desired_content=source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=source_mode,
+                    )
+                    for path, source in {
+                        provider: planned_provider,
+                        helper: "class Helper:\n    pass\n",
+                        consumer: "from flext_demo.provider import PlannedProvider\n",
+                    }.items()
+                )
+            )
+            tm.ok(workspace.rope_project is project)
+            tm.that(
+                tuple(item.name for item in workspace.objects(provider)),
+                eq=("PlannedProvider",),
+            )
+            tm.that(
+                tuple(item.name for item in workspace.objects(helper)), eq=("Helper",)
+            )
+            tm.that(workspace.name_index(), lacks="OriginalProvider")
+            tm.that(
+                workspace.import_dependents("flext_demo.provider.PlannedProvider"),
+                eq=(consumer,),
+            )
+            workspace.bind_candidate(
+                declared_files=tuple(
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=path,
+                        before=observed[path],
+                        desired_content=None
+                        if source is None
+                        else source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=None if source is None else source_mode,
+                    )
+                    for path, source in {
+                        provider: None,
+                        helper: None,
+                        moved: planned_provider,
+                        consumer: (
+                            "from flext_demo.moved_provider import PlannedProvider\n"
+                        ),
+                    }.items()
+                )
+            )
+            tm.ok(workspace.rope_project is project)
+            tm.that(workspace.module(provider), none=True)
+            tm.that(workspace.module(helper), none=True)
+            tm.that(
+                tuple(item.name for item in workspace.objects(moved)),
+                eq=("PlannedProvider",),
+            )
+            tm.that(
+                workspace.import_dependents("flext_demo.provider.PlannedProvider"),
+                eq=(),
+            )
+            tm.that(
+                workspace.import_dependents(
+                    "flext_demo.moved_provider.PlannedProvider"
+                ),
+                eq=(consumer,),
+            )
+            with pytest.raises(FileNotFoundError):
+                workspace.source(provider)
+            workspace.bind_candidate(declared_files=())
+            tm.that(workspace.module(moved), none=True)
+            tm.that(workspace.module(helper), none=True)
+            tm.that(
+                tuple(item.name for item in workspace.objects(provider)),
+                eq=("OriginalProvider",),
+            )
+            tm.that(
+                workspace.import_dependents("flext_demo.provider.OriginalProvider"),
+                eq=(consumer,),
+            )
+        tm.ok(u.Cli.atomic_verify_binary_file_states(tuple(observed.values())))
+
+    @staticmethod
+    def test_candidate_rejects_replaced_physical_identity_without_rebinding(
+        tmp_path: Path,
+    ) -> None:
+        """A foreign same-byte replacement cannot replace a captured witness."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        provider = package / "provider.py"
+        provider.write_text(
+            "class OriginalProvider:\n    pass\n", encoding=c.DEFAULT_ENCODING
+        )
+        observed = tm.ok(u.Cli.atomic_read_binary_file_state(provider))
+        planned = "class PlannedProvider:\n    pass\n"
+        with flext_infra.infra.rope_workspace(root) as workspace:
+            workspace.bind_candidate(
+                declared_files=(
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=provider,
+                        before=observed,
+                        desired_content=planned.encode(c.DEFAULT_ENCODING),
+                        desired_mode=observed.mode,
+                    ),
+                )
+            )
+            foreign = provider.with_suffix(".replacement")
+            foreign.write_bytes(tm.not_none(observed.content))
+            foreign.chmod(tm.not_none(observed.mode))
+            foreign.replace(provider)
+            replacement = tm.ok(u.Cli.atomic_read_binary_file_state(provider))
+            tm.fail(u.Cli.atomic_verify_binary_file_states((observed,)))
+            with pytest.raises(ValueError, match="captured state"):
+                workspace.bind_candidate(
+                    declared_files=(
+                        m.Infra.CodegenFilePlan(
+                            project=root,
+                            path=provider,
+                            before=replacement,
+                            desired_content=planned.encode(c.DEFAULT_ENCODING),
+                            desired_mode=replacement.mode,
+                        ),
+                    )
+                )
+            tm.that(
+                tuple(item.name for item in workspace.objects(provider)),
+                eq=("PlannedProvider",),
+            )
+        tm.ok(u.Cli.atomic_verify_binary_file_states((replacement,)))
+
+    @staticmethod
+    def test_candidate_facade_declaration_refreshes_warmed_layout(
+        tmp_path: Path,
+    ) -> None:
+        """A newly declared facade participates in layout before publication."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        models_path = package / "models.py"
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(models_path))
+        mode = tm.not_none(
+            tm.ok(u.Cli.atomic_read_binary_file_state(package / c.Infra.INIT_PY)).mode
+        )
+        declaration = (
+            "from __future__ import annotations\n"
+            "class FlextModelsDemo:\n    pass\n"
+            "m = FlextModelsDemo\n"
+            "__all__ = ['FlextModelsDemo', 'm']\n"
+        )
+        with flext_infra.infra.rope_workspace(root) as workspace:
+            tm.that(tm.not_none(workspace.layout(root)).runtime_aliases, eq=())
+            workspace.bind_candidate(
+                declared_files=(
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=models_path,
+                        before=before,
+                        desired_content=declaration.encode(c.DEFAULT_ENCODING),
+                        desired_mode=mode,
+                    ),
+                )
+            )
+            tm.that(tm.not_none(workspace.layout(root)).runtime_aliases, eq=("m",))
+            tm.that(
+                workspace.convention(models_path).module_policy.expected_alias, eq="m"
+            )
+            workspace.bind_candidate(declared_files=())
+            tm.that(tm.not_none(workspace.layout(root)).runtime_aliases, eq=())
+        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+
+    @staticmethod
     def test_workspace_refresh_updates_project_metadata_and_layout(
         tmp_path: Path,
     ) -> None:
@@ -350,7 +560,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             )
             u.Tests.write_lazy_init_namespace_module(
                 package_root / "models.py",
-                class_name="FlextDemoModels",
+                class_name="FlextModelsDemo",
                 alias="m",
                 docstring="Models.",
             )
@@ -561,14 +771,14 @@ class TestsFlextInfraInfraRopeServiceObjects:
             tmp_path,
             "models.py",
             "from __future__ import annotations\n\n"
-            "class FlextDemoModels:\n"
+            "class FlextModelsDemo:\n"
             "    pass\n\n"
-            "m = FlextDemoModels\n",
+            "m = FlextModelsDemo\n",
         )
 
         objects = self._module_objects_by_name(repository_root, module_path)
 
-        tm.fail(objects["FlextDemoModels"].is_facade_member)
+        tm.fail(objects["FlextModelsDemo"].is_facade_member)
         tm.fail(objects["m"].is_facade_member)
 
     def test_workspace_dsl_skips_reference_scan_for_private_names(
@@ -590,6 +800,10 @@ class TestsFlextInfraInfraRopeServiceObjects:
         tm.that(objects, has="__all__")
         tm.that(objects["__all__"].references_count, eq=0)
         tm.that(objects, has="public")
+
+
+class TestsFlextInfraRopeReferenceClassification:
+    """Keep example references distinct from runtime contract consumers."""
 
     @staticmethod
     def test_workspace_dsl_ignores_example_importers_for_generic_names(

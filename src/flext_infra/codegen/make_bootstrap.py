@@ -10,14 +10,14 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, u
-from flext_infra._conform_wiring import FlextInfraConformWiring
-from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenExecutionBase
+from flext_infra._conform import FlextInfraConformWiring
+from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenExecution
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenMakeBootstrap(
     FlextInfraConformWiring,
-    FlextInfraCodegenExecutionBase[bool],
+    FlextInfraCodegenExecution[bool],
 ):
     """Compose the existing Make planner, publisher and receipt verifier."""
 

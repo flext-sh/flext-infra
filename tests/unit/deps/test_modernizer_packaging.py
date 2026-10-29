@@ -20,11 +20,11 @@ class TestsFlextInfraDepsModernizerPackaging:
     """Conformance contract for declared Python distribution roots."""
 
     @staticmethod
-    def _declared_roots() -> t.Pair[t.NonEmptyStr, t.NonEmptyStr]:
+    def _declared_roots() -> tuple[t.NonEmptyStr, t.NonEmptyStr]:
         """Derive arbitrary valid roots from the typed project fixture owner.
 
         Returns:
-            The resulting ``t.Pair[t.NonEmptyStr, t.NonEmptyStr]``.
+            The resulting ``tuple[t.NonEmptyStr, t.NonEmptyStr]``.
 
         """
         package_name = u.Tests.project_spec("flext-packaging-fixture").package_name
@@ -36,11 +36,11 @@ class TestsFlextInfraDepsModernizerPackaging:
         *,
         materialize_module: bool,
         materialize_package: bool,
-    ) -> t.Pair[t.NonEmptyStr, t.NonEmptyStr]:
+    ) -> tuple[t.NonEmptyStr, t.NonEmptyStr]:
         """Materialize one provider-governed project through shared typed fixtures.
 
         Returns:
-            The resulting ``t.Pair[t.NonEmptyStr, t.NonEmptyStr]``.
+            The resulting ``tuple[t.NonEmptyStr, t.NonEmptyStr]``.
 
         """
         _ = u.Tests.standalone_workspace(root, "flext-packaging-fixture")

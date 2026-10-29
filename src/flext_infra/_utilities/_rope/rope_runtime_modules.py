@@ -7,17 +7,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping, MutableSequence, Sequence
+from keyword import iskeyword
 from pathlib import Path
 
 from flext_infra import c, p, t
+from flext_infra._utilities._rope.rope_ast import FlextInfraUtilitiesRopeAst
+from flext_infra._utilities._rope.rope_bindings import (
+    FlextInfraUtilitiesRopeAstBindings,
+)
 from flext_infra._utilities._rope.rope_runtime_module_queries import (
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
-)
-from flext_infra._utilities._semantic_cutover import (
-    FlextInfraUtilitiesSemanticCutoverBindings,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 
 
@@ -25,62 +28,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 ):
     """Resolve lexical identities and construct Rope module/import objects."""
-
-    @staticmethod
-    def _source_import_binding(
-        binding: p.Infra.RopePyName,
-    ) -> p.Infra.RopePyName | None:
-        """Follow native imported names to their declaring source binding.
-
-        Returns:
-            The declared binding, or None for an unresolved or cyclic import.
-
-        """
-        imported: set[int] = set()
-        while isinstance(binding, p.Infra.RopeImportedName):
-            if id(binding) in imported:
-                return None
-            imported.add(id(binding))
-            supplier = (
-                binding.imported_module
-                .get_object()
-                .get_attributes()
-                .get(binding.imported_name)
-            )
-            if supplier is None:
-                return None
-            binding = supplier
-        return binding
-
-    @staticmethod
-    def definition_location(
-        binding: t.Infra.RopePyName,
-    ) -> t.Pair[t.Infra.RopeParsedModule | None, int | None]:
-        """Read native definition metadata, including annotation-only bindings.
-
-        Returns:
-            The original supplier and first assignment's logical declaration line.
-
-        Raises:
-            TypeError: The native annotation is not an expression node.
-
-        """
-        module, line = binding.get_definition_location()
-        if (
-            line is not None
-            or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
-            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
-            or not binding.assignments
-        ):
-            return module, line
-        assignment = binding.assignments[0]
-        annotation = assignment.type_hint
-        if assignment.ast_node is not None or annotation is None:
-            return module, line
-        if not isinstance(annotation, ast.expr):
-            message = "native Rope assignment annotation is not an expression"
-            raise TypeError(message)
-        return module, module.logical_lines.logical_line_in(annotation.lineno)[0]
 
     @classmethod
     def annotation_alias_definition(
@@ -96,15 +43,15 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             TypeError: If the native module does not expose a Python syntax tree.
 
         """
-        supplier = cls._source_import_binding(binding)
+        supplier = cls.source_import_binding(binding)
         if (
             supplier is None
-            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
+            or not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(supplier)
             or supplier.assignments
         ):
             return None
         module, _line = cls.definition_location(supplier)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
             return None
         tree = module.get_ast()
         if not isinstance(tree, ast.AST):
@@ -124,28 +71,34 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     @classmethod
     def annotation_assignment_outer_type(
         cls, project: p.Infra.RopeProject, binding: p.Infra.RopePyName
-    ) -> t.Pair[p.Infra.RopePyName, bool] | None:
-        """Resolve a generic's native identity and whether it is the value.
+    ) -> tuple[p.Infra.RopePyName, bool] | None:
+        """Resolve an annotation's native identity and whether it is the value.
 
         Returns:
             The lexical outer identity and RHS provenance, or None when the
-            assignment has no resolved generic expression.
+            assignment has no resolved annotation expression.
 
         """
-        supplier = cls._source_import_binding(binding)
-        if (
-            supplier is None
-            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
-            or len(supplier.assignments) != 1
+        supplier = cls.source_import_binding(binding)
+        if supplier is None or not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(
+            supplier
         ):
             return None
-        assignment = supplier.assignments[0]
+        # Method-body writes join the same binding without a type hint; only
+        # the declared AnnAssign carries the annotation this contract resolves.
+        assignments = [
+            assignment for assignment in supplier.assignments if assignment.type_hint
+        ]
+        if len(assignments) != 1:
+            return None
+        assignment = assignments[0]
         assigned = assignment.ast_node
         annotation = assignment.type_hint
         module, _line = cls.definition_location(supplier)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
             return None
-        if isinstance(annotation, ast.Subscript):
+        # Scalar model fields carry the same declaration proof as generic fields.
+        if isinstance(annotation, ast.Name | ast.Attribute | ast.Subscript):
             expression = annotation
             from_value = False
         elif isinstance(assigned, ast.Subscript):
@@ -154,7 +107,16 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         else:
             return None
         scope = cls.scope_at(module, cls.source_offset(module.source_code, expression))
-        origin = cls.annotation_origin(project, expression, scope)
+        origin = (
+            cls.annotation_origin(project, expression, scope)
+            if from_value
+            else cls.resolve_symbol(
+                scope,
+                expression.value
+                if isinstance(expression, ast.Subscript)
+                else expression,
+            )
+        )
         return (origin, from_value) if origin is not None else None
 
     @classmethod
@@ -204,6 +166,47 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         )
 
     @classmethod
+    def call_data_return_constraint(
+        cls,
+        project: p.Infra.RopeProject,
+        expression: ast.expr,
+        scope: p.Infra.RopeScope,
+        *,
+        inferred: p.Infra.RopePyObject | None,
+    ) -> bool:
+        """Prove a source call's concrete data return without inventing a value.
+
+        Returns:
+            Whether its native return annotation excludes class identities.
+
+        """
+        if not isinstance(expression, ast.Call) or (
+            inferred is not None
+            and FlextInfraUtilitiesTypesRopeRuntime.abstract_class(inferred)
+        ):
+            return False
+        binding = cls.resolve_symbol(scope, expression.func)
+        function = None if binding is None else binding.get_object()
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_function(function):
+            return False
+        declaration = function.get_ast()
+        module = function.get_module()
+        if (
+            not isinstance(declaration, ast.FunctionDef)
+            or declaration.returns is None
+            or not FlextInfraUtilitiesTypesRopeRuntime.source_module(module)
+        ):
+            return False
+        context = module.get_source_binding_index().context_at(
+            cls.source_offset(module.source_code, declaration.returns)
+        )
+        origin = cls.annotation_origin(
+            project, declaration.returns, context.environment
+        )
+        candidate = None if origin is None else origin.get_object()
+        return cls.concrete_data_class(candidate)
+
+    @classmethod
     def expression_name(
         cls, scope: p.Infra.RopeScope, expression: str
     ) -> p.Infra.RopePyName | None:
@@ -228,9 +231,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         Returns:
             The native declaring scope, including global interpreter builtins.
 
-        Raises:
-            TypeError: When a native parent violates the scope contract.
-
         """
         first = True
         current: p.Infra.RopeScope | None = scope
@@ -243,11 +243,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 )
                 if name in names:
                     return current
-            parent = getattr(current, "parent", None)
-            if parent is not None and not isinstance(parent, p.Infra.RopeScope):
-                message = "Rope lexical parent does not satisfy its scope contract"
-                raise TypeError(message)
-            current = parent
+            current = getattr(current, "parent", None)
             first = False
         return None
 
@@ -274,7 +270,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             message = f"Rope identity requires an attribute: {expression}"
             raise ValueError(message)
         try:
-            value = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+            value = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
                 project.get_module(module),
             )
         except TypeError as error:
@@ -364,32 +360,45 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     def resolve_symbol(
         cls,
         scope: p.Infra.RopeScope,
-        expression: p.Infra.RopeAstNode,
+        expression: p.Infra.RopeAstNode | str,
     ) -> p.Infra.RopePyName | None:
-        """Resolve an identifier chain without evaluating Python expressions.
+        """Resolve native identifier syntax or a declared identifier route.
 
         Returns:
             The resulting ``p.Infra.RopePyName | None``.
 
         Raises:
             TypeError: If Rope identifier resolution returned an invalid name.
+            ValueError: A declared route is not an identifier chain.
 
         """
-        primary = expression
-        attributes: list[str] = []
-        while isinstance(primary, ast.Attribute):
-            attributes.append(primary.attr)
-            primary = primary.value
-        if not isinstance(primary, ast.Name):
-            return None
-        result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
-            scope,
-            primary,
-        )
+        attributes: Sequence[str]
+        if isinstance(expression, str):
+            names = expression.split(".")
+            if any(not name.isidentifier() or iskeyword(name) for name in names):
+                message = f"Rope identifier route is invalid: {expression}"
+                raise ValueError(message)
+            attributes = names[1:]
+            result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
+                scope, names[0]
+            )
+        else:
+            primary = expression
+            reversed_attributes: list[str] = []
+            while isinstance(primary, ast.Attribute):
+                reversed_attributes.append(primary.attr)
+                primary = primary.value
+            if not isinstance(primary, ast.Name):
+                return None
+            attributes = tuple(reversed(reversed_attributes))
+            result = cls.runtime_callable("rope.base.evaluate", "eval_node")(
+                scope,
+                primary,
+            )
         if result is not None and not isinstance(result, p.Infra.RopePyName):
             msg = "Rope identifier resolution returned an invalid name"
             raise TypeError(msg)
-        for attribute in reversed(attributes):
+        for attribute in attributes:
             result = cls.class_assignment_binding(result)
             if result is None:
                 return None
@@ -401,7 +410,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         cls,
         binding: p.Infra.RopePyName | None,
         *,
-        visited: frozenset[t.Pair[str, int]] = frozenset(),
+        visited: frozenset[tuple[str, int]] = frozenset(),
         classes_only: bool = True,
     ) -> p.Infra.RopePyName | None:
         """Resolve a class alias through its native pre-assignment name view.
@@ -475,7 +484,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     ):
         if not binding.assignments or (rhs := binding.assignments[0].ast_node) is None:
             return None
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(holder):
             message = "native class assignment has no source module"
             raise TypeError(message)
         source = holder.source_code
@@ -483,23 +492,21 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         scope = cls.scope_at(holder, rhs_offset)
         if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
             return None
-        candidates = [
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
-            and node.value is not None
-            and cls.source_offset(source, node.value) == rhs_offset
-        ]
-        if not candidates:
+        # Single-read law (ADR-028 D17): one offset index per native tree,
+        # not one whole-module walk per binding. The index is keyed by tree
+        # identity; rope rebuilds the tree on change, so a rebuilt module
+        # naturally becomes a new index and never serves stale offsets.
+        tree_index = cls._tree_assignment_index(tree, source)
+        declaration = tree_index.get(rhs_offset)
+        if declaration is None:
+            if rhs_offset in tree_index:
+                msg = (
+                    "native class alias RHS has no unique statement: "
+                    f"{holder.get_name()}:{rhs_offset}"
+                )
+                raise ValueError(msg)
             # Native loop/context/pattern bindings are outside class alias policy.
             return None
-        if len(candidates) != 1:
-            msg = (
-                "native class alias RHS has no unique statement: "
-                f"{holder.get_name()}:{rhs_offset}"
-            )
-            raise ValueError(msg)
-        declaration = candidates[0]
         if not isinstance(declaration.value, c.Infra.AST_NAME_REFERENCE_TYPES):
             return None
         offset = cls.source_offset(source, declaration)
@@ -511,6 +518,52 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             primary = primary.value
         return holder, declaration, scope, offset, primary
 
+    # Pass-scoped memo (single-invocation lifecycle): tree identity keys
+    # keep entries fresh; the process boundary is the cache boundary.
+    _TREE_ASSIGNMENT_INDEXES: t.ClassVar[
+        dict[int, tuple[ast.AST, dict[int, ast.AST | None]]] | None
+    ] = None
+
+    @classmethod
+    def _tree_assignment_index(
+        cls,
+        tree: ast.AST,
+        source: str,
+    ) -> dict[int, ast.AST | None]:
+        """Return the tree's assignment-value offset index, walked once.
+
+        A None entry marks an offset shared by two statements (ambiguous).
+        The entry keeps a strong reference to its tree so an index cannot
+        outlive the tree its identity keys.
+
+        Returns:
+            The map of each assignment value's source offset to its node,
+            or None where the offset is ambiguous.
+
+        """
+        indexes = cls._TREE_ASSIGNMENT_INDEXES
+        if indexes is None:
+            indexes = {}
+            cls._TREE_ASSIGNMENT_INDEXES = indexes
+        entry = indexes.get(id(tree))
+        if entry is not None and entry[0] is tree:
+            return entry[1]
+        index: dict[int, ast.AST | None] = {}
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
+                and node.value is not None
+            ):
+                offset = cls.source_offset(source, node.value)
+                if offset in index and index[offset] is not node:
+                    # Two statements share one value offset: the offset is
+                    # ambiguous and lookups must stay loud about it.
+                    index[offset] = None
+                else:
+                    index[offset] = node
+        indexes[id(tree)] = (tree, index)
+        return index
+
     @classmethod
     def _class_alias_namespace(
         cls,
@@ -519,9 +572,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         scope: p.Infra.RopeScope,
         primary: ast.Name,
         offset: int,
-    ) -> t.Pair[p.Infra.RopeScope, t.DictKV[str, p.Infra.RopePyName]] | None:
+    ) -> tuple[p.Infra.RopeScope, dict[str, p.Infra.RopePyName]] | None:
         source = holder.source_code
-        selected: t.DictKV[str, p.Infra.RopePyName] = {}
+        selected: dict[str, p.Infra.RopePyName] = {}
         prior = scope.get_defined_names().get(primary.id)
         if prior is not None:
             declarations = cls._scope_binding_nodes(tree, scope, primary.id)
@@ -599,7 +652,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         declaration: ast.Assign | ast.AnnAssign,
         *,
         binding: p.Infra.RopePyName,
-        visited: frozenset[t.Pair[str, int]],
+        visited: frozenset[tuple[str, int]],
         classes_only: bool,
     ) -> p.Infra.RopePyName | None:
         attributes: list[str] = []
@@ -630,7 +683,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if (
             classes_only
             and result is not None
-            and not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+            and not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(
                 result.get_object()
             )
         ):
@@ -643,18 +696,14 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         tree: ast.AST,
         scope: p.Infra.RopeScope,
         name: str,
-    ) -> list[t.Pair[ast.AST, bool]]:
+    ) -> list[tuple[ast.AST, bool]]:
         """Elect structural lexical writes and their actual execution positions.
 
         Returns:
             Matching lexical writes with their unconditional execution status.
 
         """
-        parents = {
-            child: parent
-            for parent in ast.walk(tree)
-            for child in ast.iter_child_nodes(parent)
-        }
+        parents = FlextInfraUtilitiesRopeAst.ast_parent_map(tree)
         frames = (
             ast.Module,
             ast.ClassDef,
@@ -662,13 +711,11 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             ast.AsyncFunctionDef,
             ast.Lambda,
         )
-        selected: list[t.Pair[ast.AST, bool]] = []
+        selected: list[tuple[ast.AST, bool]] = []
         for node in ast.walk(tree):
-            if name not in FlextInfraUtilitiesSemanticCutoverBindings.bound_identifiers(
-                node
-            ):
+            if name not in FlextInfraUtilitiesRopeAstBindings.bound_identifiers(node):
                 continue
-            parent = parents.get(node)
+            parent = parents.get(id(node))
             unconditional = True
             while parent is not None and not isinstance(parent, frames):
                 if isinstance(
@@ -684,7 +731,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                     | ast.ExceptHandler,
                 ):
                     unconditional = False
-                parent = parents.get(parent)
+                parent = parents.get(id(parent))
             if (
                 parent is not None
                 and not isinstance(parent, ast.Module)
@@ -748,7 +795,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         project: p.Infra.RopeProject,
         binding: p.Infra.RopeImportedName,
         *,
-        resolved: t.MutableMappingKV[p.Infra.RopeImportedModule, Path] | None = None,
+        resolved: MutableMapping[p.Infra.RopeImportedModule, Path] | None = None,
     ) -> Path:
         """Resolve import provenance through Rope without evaluating its target.
 
@@ -783,7 +830,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         pymodule: t.Infra.RopeParsedModule,
     ) -> t.Infra.RopeModuleImports:
         source_module = pymodule.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(source_module):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(source_module):
             message = "Rope import operations require a source module"
             raise TypeError(message)
         loader = cls.runtime_callable(
@@ -836,13 +883,15 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         module: p.Infra.RopeParsedModule,
         module_name: str,
         name: str | None,
-    ) -> t.Pair[str, str]:
+        *,
+        binding_scopes: Sequence[p.Infra.RopeScope] = (),
+    ) -> tuple[str, str]:
         """Plan an import and use the expression elected by Rope's import owner.
 
         ``name=None`` elects the module binding rather than a member binding.
 
         Returns:
-            The resulting ``t.Pair[str, str]``.
+            The resulting ``tuple[str, str]``.
 
         Raises:
             TypeError: If Rope add_import returned an invalid source and binding pair;
@@ -850,9 +899,13 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         """
         source_module = module.get_module()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(source_module):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(source_module):
             message = "Rope import insertion requires a source module"
             raise TypeError(message)
+        if binding_scopes and name is not None:
+            return cls._scoped_import_binding(
+                project, source_module, (module_name, name), binding_scopes
+            )
         result = cls.runtime_callable(c.Infra.ROPE_IMPORTUTILS_MODULE, "add_import")(
             project,
             source_module,
@@ -875,6 +928,35 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         return (source, binding)
 
     @classmethod
+    def _scoped_import_binding(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+        imported: tuple[str, str],
+        scopes: Sequence[p.Infra.RopeScope],
+    ) -> tuple[str, str]:
+        """Elect a capture-free import binding through native lexical names.
+
+        Returns:
+            The native candidate and its elected member expression.
+
+        """
+        provider, name = imported
+        target = cls.qualified_name(project, f"{provider}.{name}").get_object()
+        if all(
+            (binding := scope.lookup(name)) is not None
+            and binding.get_object() is target
+            for scope in scopes
+        ):
+            return module.source_code, name
+        alias = name
+        while any(scope.lookup(alias) is not None for scope in scopes):
+            alias += "_"
+        imports = cls.module_imports_for_pymodule(project, module)
+        imports.add_import(cls.from_import(provider, 0, ((name, alias),)))
+        return imports.get_changed_source(), alias
+
+    @classmethod
     def file_resource_at(
         cls, rope_project: t.Infra.RopeProject, path: Path
     ) -> t.Infra.RopeFile:
@@ -888,7 +970,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
         """
         loader = cls.runtime_callable("rope.base.libutils", "path_to_resource")
-        return FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+        return FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
             loader(rope_project, str(path), type="file"), path
         )
 
@@ -907,7 +989,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             else cls.runtime_callable("rope.base.project", "get_no_project")()
         )
         pymodule = loader(project, source, resource=resource, force_errors=True)
-        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(pymodule):
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(pymodule):
             msg = "rope get_string_module returned non-PyModule"
             raise TypeError(msg)
         return pymodule
@@ -934,9 +1016,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         resource: t.Infra.RopeResource,
         offset: int,
         *,
-        resources: t.SequenceOf[t.Infra.RopeResource] | None,
+        resources: Sequence[t.Infra.RopeResource] | None,
         in_hierarchy: bool,
-    ) -> t.SequenceOf[t.Infra.RopeLocation]:
+    ) -> Sequence[t.Infra.RopeLocation]:
         finder = cls.runtime_callable("rope.contrib.findit", "find_occurrences")
         raw_locations = finder(
             rope_project,
@@ -948,7 +1030,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if not isinstance(raw_locations, p.Infra.RopeRuntimeSequence):
             msg = "rope find_occurrences returned non-sequence locations"
             raise TypeError(msg)
-        locations: t.MutableSequenceOf[t.Infra.RopeLocation] = []
+        locations: MutableSequence[t.Infra.RopeLocation] = []
         for location in raw_locations:
             if not isinstance(location, p.Infra.RopeLocation):
                 msg = "rope find_occurrences returned an invalid location"

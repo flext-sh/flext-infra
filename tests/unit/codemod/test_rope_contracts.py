@@ -36,15 +36,34 @@ class TestsFlextInfraRopeContractCatalog:
     )
     def test_export_retirement_refuses_shared_lines_and_chained_targets(
         source: str,
+        tmp_path: Path,
     ) -> None:
         """The owned writer cannot discard effects or another public binding."""
-        with pytest.raises(ValueError, match=r"__all__|exports"):
-            u.Infra.remove_runtime_alias_export(source, alias="u")
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "exports.py"
+        path.write_text(source, encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            with pytest.raises(ValueError, match=r"__all__|exports"):
+                u.Infra.remove_runtime_alias_export(module, alias="u")
 
     @staticmethod
-    def test_export_retirement_keeps_an_explicit_empty_literal() -> None:
+    def test_export_retirement_keeps_an_explicit_empty_literal(tmp_path: Path) -> None:
         """Empty literal exports stay explicit, so unrelated statements stay intact."""
-        updated = u.Infra.remove_runtime_alias_export("__all__ = ['u']\n", alias="u")
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "exports.py"
+        path.write_text("__all__ = ['u']\n", encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            updated = u.Infra.remove_runtime_alias_export(module, alias="u")
         declarations = u.Infra.runtime_alias_bindings(updated, alias="__all__")
         tm.that(len(declarations), eq=1)
         value = declarations[0].value
@@ -65,10 +84,37 @@ class TestsFlextInfraRopeContractCatalog:
             restored = m.Infra.RopeContractRule.model_validate_json(
                 rule.model_dump_json(round_trip=True)
             )
-            tm.that(restored.phase, eq=c.Infra.SemanticCutoverPhase(rule.phase))
+            tm.ok(restored.phase is rule.phase)
+            tm.that(type(rule.phase), eq=c.Infra.SemanticCutoverPhase)
+            tm.that(type(rule.operation), eq=c.Infra.RopeContractOperation)
+            tm.ok(
+                all(isinstance(kind, c.Infra.RopeScopeKind) for kind in rule.scope_kinds)
+            )
             payload["phase"] = "".join(c.Infra.SemanticCutoverPhase)
             with pytest.raises(ValueError, match="phase"):
                 m.Infra.RopeContractRule.model_validate(payload)
+
+    @staticmethod
+    @pytest.mark.parametrize("field", ["operation", "phase", "scope_kinds"])
+    def test_python_rules_reject_document_tokens_without_ingress_context(
+        field: str,
+    ) -> None:
+        """The source codec never relaxes an ordinary strict Python constructor."""
+        rule = m.Infra.RopeContractRule(
+            id="strict-python-contract",
+            pattern="${value}",
+            goal="${value}",
+            arguments={},
+            scope_kinds=(c.Infra.RopeScopeKind.CLASS,),
+        )
+        payload = rule.model_dump()
+        serialized = rule.model_dump(mode="json")
+        payload[field] = (
+            tuple(serialized[field]) if field == "scope_kinds" else serialized[field]
+        )
+
+        with pytest.raises(m.ValidationError):
+            m.Infra.RopeContractRule.model_validate(payload)
 
     @staticmethod
     def test_repository_overlay_composes_after_packaged_rules(
@@ -145,7 +191,7 @@ class TestsFlextInfraRopeContractCatalog:
         "rejected", ["", "callback", "prototype", "snapshot", "default", "decorator"]
     )
     def test_native_delegation_contract(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         *,
         asynchronous: bool,
         rejected: str,
@@ -314,7 +360,7 @@ class TestsFlextInfraRopeConstructorContracts:
     @pytest.mark.parametrize("readonly", [False, True])
     @pytest.mark.parametrize("chained", [False, True])
     def test_constructor_target_preserves_arguments_and_noncall_references(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         *,
         readonly: bool,
         chained: bool,
@@ -397,7 +443,7 @@ class TestsFlextInfraRopeConstructorContracts:
 
     @staticmethod
     def test_constructor_missing_port_proof_rejects_expanded_keywords(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Unproven expanded keywords never authorize a second composition graph."""
         workspace, path = rope_contract_consumer
@@ -423,7 +469,7 @@ class TestsFlextInfraRopeConstructorContracts:
 
     @staticmethod
     def test_aliased_adapter_preserves_validation_and_failure_modes(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """The public constructor preserves native coercion and rejection."""
         source = (
@@ -448,7 +494,7 @@ class TestsFlextInfraRopeTypePositionContracts:
     @staticmethod
     @pytest.mark.parametrize("alias", [False, True])
     def test_quoted_type_positions_require_explicit_declaring_source_repair(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         *,
         alias: bool,
     ) -> None:
@@ -477,7 +523,7 @@ class TestsFlextInfraRopeTypePositionContracts:
 
     @staticmethod
     def test_literal_and_annotated_payload_strings_remain_data(
-        rope_contract_consumer: t.Pair[p.Infra.RopeWorkspaceDsl, Path],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """The existing native payload classifier never unquotes literal metadata."""
         source = (
@@ -512,9 +558,7 @@ class TestsFlextInfraRopeLoggingContracts:
         ],
     )
     def test_logging_factory_identity_imports_and_real_printf(
-        rope_contract_consumer: t.Pair[
-            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
-        ],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         declaration: str,
         factory: str,
     ) -> None:
@@ -659,9 +703,7 @@ class TestsFlextInfraRopeLoggingContracts:
         ],
     )
     def test_logging_factory_preserves_unproven_native_interfaces(
-        rope_contract_consumer: t.Pair[
-            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
-        ],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         source: str,
     ) -> None:
         """Unrelated symbols and richer native interfaces are never guessed."""
@@ -692,9 +734,7 @@ class TestsFlextInfraRopeLoggingContracts:
         ],
     )
     def test_logging_factory_blocks_unproven_emission_signatures_before_effects(
-        rope_contract_consumer: t.Pair[
-            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
-        ],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         emission: str,
     ) -> None:
         """A method name alone never proves printf, context or level equivalence."""
@@ -718,9 +758,7 @@ class TestsFlextInfraRopeLoggingContracts:
     @staticmethod
     @pytest.mark.parametrize("factory_arguments", ["'contract.bound'", ""])
     def test_structlog_bound_context_and_stdout_are_not_collapsed(
-        rope_contract_consumer: t.Pair[
-            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
-        ],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         factory_arguments: str,
     ) -> None:
         """Only the native factory changes; bound context and output stay authored."""
@@ -778,9 +816,7 @@ class TestsFlextInfraRopeLoggingContracts:
     @staticmethod
     @pytest.mark.parametrize("implementation", ["_native_logging", "moved_logging"])
     def test_factory_contract_keeps_only_the_native_backend_unrewritten(
-        rope_contract_consumer: t.Pair[
-            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
-        ],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         implementation: str,
     ) -> None:
         """A constructor's native factory survives; an importing consumer does not."""
@@ -839,9 +875,7 @@ class TestsFlextInfraRopeLoggingContracts:
 
     @staticmethod
     def test_logging_factory_keeps_live_imports_and_a_richer_utilities_facade(
-        rope_contract_consumer: t.Pair[
-            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
-        ],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
     ) -> None:
         """Retire only the disappeared factory use, not a live alias or CLI facade."""
         workspace, path = rope_contract_consumer
@@ -872,9 +906,7 @@ class TestsFlextInfraRopeLoggingContracts:
 
     @staticmethod
     def test_logging_factory_refuses_a_shadowed_destination(
-        rope_contract_consumer: t.Pair[
-            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
-        ],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
     ) -> None:
         """A correct source identity cannot overwrite an authored u binding."""
         workspace, path = rope_contract_consumer
@@ -896,9 +928,7 @@ class TestsFlextInfraRopeLoggingContracts:
     @staticmethod
     @pytest.mark.parametrize("literal", [True, False])
     def test_cli_result_error_retires_only_literal_verbose_flags(
-        rope_contract_consumer: t.Pair[
-            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
-        ],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         *,
         literal: bool,
     ) -> None:
@@ -963,9 +993,7 @@ class TestsFlextInfraRopeLoggingContracts:
     @staticmethod
     @pytest.mark.parametrize("expression", ["detail()", "settings.verbose", "verbose"])
     def test_cli_result_error_never_discards_authored_argument_evaluation(
-        rope_contract_consumer: t.Pair[
-            p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath
-        ],
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         expression: str,
     ) -> None:
         """Keep call, property and name lookup effects or fail before publication."""

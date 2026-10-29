@@ -15,7 +15,7 @@ import pytest
 from flext_infra import infra, p
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codemod import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
-from flext_infra.transformers import FlextInfraSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 from tests import c, m, r, tm, u
 from tests.unit.codemod.declaration_relocation_support import (
     TestsFlextInfraDeclarationRelocationSupport,
@@ -222,7 +222,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
                 return r[bool].from_failure(result)
             return r[bool].ok(u.Cli.process_succeeded(result.value.outcome))
 
-        result = FlextInfraSemanticPublication.publish_semantic_file_plans(
+        result = FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
             plans,
             repository_root=root,
             options=m.Infra.SemanticPublicationOptions(

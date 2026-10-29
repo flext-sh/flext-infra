@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
@@ -27,6 +27,15 @@ if TYPE_CHECKING:
 
 class FlextInfraConstantsRefactor:
     """Shared constants for refactor modules."""
+
+    @unique
+    class NativeRuleSeverity(StrEnum):
+        """Severity values in the native scanner diagnostic wire protocol."""
+
+        ERROR = "error"
+        WARNING = "warning"
+        INFO = "info"
+        HINT = "hint"
 
     MOD_SCAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME)
@@ -147,6 +156,25 @@ class FlextInfraConstantsRefactor:
         "Ruff repairs the selected import codes on the changed sources."
 
     @unique
+    class ModFindingOrigin(StrEnum):
+        """Native producer provenance retained by scan findings."""
+
+        AST_GREP = "ast-grep"
+        OWNED_PATH = "owned-path"
+
+    @unique
+    class FamilyFlattenOperation(StrEnum):
+        """Closed semantic operations admitted by installed family rules."""
+
+        FLATTEN_SINGLE_WRAPPER = "flatten-single-wrapper"
+
+    @unique
+    class FamilyCollisionPolicy(StrEnum):
+        """Closed member-name collision policies for family transformations."""
+
+        PREFIX_WRAPPER = "prefix-wrapper"
+
+    @unique
     class ModScanFindingClass(StrEnum):
         """Mutability class derived from one ast-grep rule contract."""
 
@@ -243,7 +271,7 @@ class FlextInfraConstantsRefactor:
     FACADE_MEMBER_NAME_VAR: ClassVar[str] = "NAME"
     "Metavariable binding a declared member name in retirement rules."
 
-    FAMILY_COMPOSE_MODULES: ClassVar[t.StrSequence] = (
+    FAMILY_COMPOSE_MODULES: ClassVar[Sequence[str]] = (
         "constants",
         "models",
         "protocols",
@@ -262,6 +290,15 @@ class FlextInfraConstantsRefactor:
     "Canonical public family compose leaf names (the static compose surface)."
 
     @unique
+    class RopeContractOperation(StrEnum):
+        """Closed operations admitted by the native contract catalog."""
+
+        RESTRUCTURE = "restructure"
+        MATERIALIZE_DELEGATIONS = "materialize-delegations"
+        RETIRE_GENERIC_TYPING_WRAPPERS = "retire-generic-typing-wrappers"
+        NORMALIZE_EXHAUSTIVE_ENUM = "normalize-exhaustive-enum"
+
+    @unique
     class SemanticCutoverPhase(StrEnum):
         """Semantic ``make mod`` cutovers planned by ``u.Infra``."""
 
@@ -277,25 +314,23 @@ class FlextInfraConstantsRefactor:
         MODULE_END = "module-end"
         NOTICE_LAST = "notice-last"
 
-    SEMANTIC_CUTOVER_RULE_IDS: ClassVar[t.MappingKV[str, t.StrTuple]] = (
-        MappingProxyType({
-            SemanticCutoverPhase.DECLARATION_RELOCATION: (
-                "ban-nested-payload-outside-models",
-            ),
-            SemanticCutoverPhase.COMPAT_ALIAS: ("ban-compat-alias",),
-            SemanticCutoverPhase.PRIVATE_IMPORT: ("ban-private-import",),
-            SemanticCutoverPhase.FACADE_BASE: (
-                "facade-base-by-class-name",
-                "require-facade-mro-completeness",
-            ),
-            SemanticCutoverPhase.MODEL_FIELDS: (
-                "rewire-getattr-model-fields-to-direct-access",
-            ),
-            SemanticCutoverPhase.DYNAMIC_ENVIRONMENT: ("ban-ambient-environ-read",),
-            SemanticCutoverPhase.MODULE_END: ("require-all-last",),
-            SemanticCutoverPhase.NOTICE_LAST: ("require-notice-last",),
-        })
-    )
+    SEMANTIC_CUTOVER_RULE_IDS: ClassVar[Mapping[str, t.StrTuple]] = MappingProxyType({
+        SemanticCutoverPhase.DECLARATION_RELOCATION: (
+            "ban-nested-payload-outside-models",
+        ),
+        SemanticCutoverPhase.COMPAT_ALIAS: ("ban-compat-alias",),
+        SemanticCutoverPhase.PRIVATE_IMPORT: ("ban-private-import",),
+        SemanticCutoverPhase.FACADE_BASE: (
+            "facade-base-by-class-name",
+            "require-facade-mro-completeness",
+        ),
+        SemanticCutoverPhase.MODEL_FIELDS: (
+            "rewire-getattr-model-fields-to-direct-access",
+        ),
+        SemanticCutoverPhase.DYNAMIC_ENVIRONMENT: ("ban-ambient-environ-read",),
+        SemanticCutoverPhase.MODULE_END: ("require-all-last",),
+        SemanticCutoverPhase.NOTICE_LAST: ("require-notice-last",),
+    })
     "Distinct ast-grep laws whose findings share a semantic cutover stage."
 
     RK_FORBIDDEN_IMPORTS: ClassVar[str] = "forbidden_imports"
@@ -552,7 +587,7 @@ class FlextInfraConstantsRefactor:
     CODEMOD_RULE_NAME_METAVARIABLE: ClassVar[str] = "NAME"
     CODEMOD_RULE_MODULE_METAVARIABLE: ClassVar[str] = "MODULE"
     CODEMOD_RULE_FAMILY_METAVARIABLE: ClassVar[str] = "FAMILY"
-    CODEMOD_TEXT_FLAG_NAMES: ClassVar[t.MappingKV[str, int]] = MappingProxyType({
+    CODEMOD_TEXT_FLAG_NAMES: ClassVar[Mapping[str, int]] = MappingProxyType({
         "IGNORECASE": re.IGNORECASE,
         "MULTILINE": re.MULTILINE,
         "DOTALL": re.DOTALL,
@@ -580,7 +615,7 @@ class FlextInfraConstantsRefactor:
         "_protocols",
     })
     """Declaration layers where a runtime ``t`` dependency would invert layering."""
-    TYPING_INLINE_UNION_CANONICAL_MAP: ClassVar[t.MappingKV[frozenset[str], str]] = (
+    TYPING_INLINE_UNION_CANONICAL_MAP: ClassVar[Mapping[frozenset[str], str]] = (
         MappingProxyType({
             frozenset({"str", "int", "float", "bool"}): "t.Primitives",
             frozenset({"int", "float"}): "t.Numeric",
@@ -588,7 +623,7 @@ class FlextInfraConstantsRefactor:
         })
     )
 
-    RULE_TABLE_HEADERS: ClassVar[t.StrSequence] = (
+    RULE_TABLE_HEADERS: ClassVar[Sequence[str]] = (
         FlextInfraConstantsBase.RK_ID,
         FlextInfraConstantsBase.NAME,
         FlextInfraConstantsBase.RK_DESCRIPTION,
@@ -601,7 +636,7 @@ class FlextInfraConstantsRefactor:
     # = no members, same topology contract as the modernizer). The
     # violation-classification token/priority lists had zero consumers and
     # were exterminated.
-    INTEGRATION_CLASS_PREFIXES: ClassVar[t.VariadicTuple[str]] = (
+    INTEGRATION_CLASS_PREFIXES: ClassVar[tuple[str, ...]] = (
         "FlextTap",
         "FlextTarget",
         "FlextDbt",

@@ -1,0 +1,29 @@
+{{ header }}
+"""Source-derived structural model contract.
+
+{{ copyright_notice }}
+"""
+
+{{ imports | join('\n') }}
+{% if sibling_import_lines %}
+
+if TYPE_CHECKING:
+{{ sibling_import_lines | join('\n') }}
+{% endif %}
+
+
+class {{ owner }}:
+    """Own the structural model contract declared by this module."""
+
+    @runtime_checkable
+    class {{ name }}{% if type_parameters %}[{{ type_parameters | join(', ') }}]{% endif %}(Protocol):
+        """Structural data contract projected from the owning model."""
+{% if declarations %}
+
+{{ declarations | join('\n') | indent(8, true) }}
+{% endif %}
+
+
+__all__: list[str] = [
+    "{{ owner }}",
+]

@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config, m
-from tests import c, p, t, tm, u
+from tests import c, p, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -23,7 +24,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
     def _probe_credential(
         tmp_path: Path,
         expected: str,
-        env: t.StrMapping,
+        env: Mapping[str, str],
     ) -> p.Cli.CommandOutput:
         """Run a public verb whose tool child asserts every credential name.
 

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra.workspace package.
+"""Workspace package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,15 +13,15 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.workspace._environment_provenance_editable import (
-        FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
+    from flext_infra.workspace._environment.provenance_editable import (
+        FlextInfraWorkspaceEnvironmentProvenanceEditable,
     )
-    from flext_infra.workspace._environment_provenance_module_source import (
-        FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin,
+    from flext_infra.workspace._environment.provenance_module_source import (
+        FlextInfraWorkspaceEnvironmentProvenanceModuleSource,
     )
-    from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
-    from flext_infra.workspace._rope_query import FlextInfraRopeQueryMixin
+    from flext_infra.workspace._rope.query import FlextInfraWorkspaceRopeQuery
     from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+    from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
     from flext_infra.workspace.environment_contracts import (
         FlextInfraWorkspaceEnvironmentContracts,
     )
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from flext_infra.workspace.fleet_gaps import FlextInfraWorkspaceFleetGaps
     from flext_infra.workspace.flext_binding import FlextInfraBindingService
     from flext_infra.workspace.flext_editable import FlextInfraWorkspaceFlextEditable
+    from flext_infra.workspace.governance import FlextInfraWorkspaceGovernance
     from flext_infra.workspace.lock_completeness import (
         FlextInfraWorkspaceLockCompleteness,
     )
@@ -46,20 +47,21 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraBindingService",
-    "FlextInfraRopeQueryMixin",
     "FlextInfraRopeWorkspace",
     "FlextInfraRuntimeDependencyCollector",
     "FlextInfraWorkspaceDetector",
+    "FlextInfraWorkspaceEnvironment",
     "FlextInfraWorkspaceEnvironmentContracts",
     "FlextInfraWorkspaceEnvironmentProvenance",
-    "FlextInfraWorkspaceEnvironmentProvenanceEditableMixin",
-    "FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin",
+    "FlextInfraWorkspaceEnvironmentProvenanceEditable",
+    "FlextInfraWorkspaceEnvironmentProvenanceModuleSource",
     "FlextInfraWorkspaceFleetGaps",
     "FlextInfraWorkspaceFlextEditable",
-    "FlextInfraWorkspaceGovernanceMixin",
+    "FlextInfraWorkspaceGovernance",
     "FlextInfraWorkspaceLockCompleteness",
     "FlextInfraWorkspaceNativeReference",
     "FlextInfraWorkspacePropagation",
+    "FlextInfraWorkspaceRopeQuery",
 )
 
 install_lazy_exports(
@@ -67,24 +69,25 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraBindingService": ".flext_binding",
-        "FlextInfraRopeQueryMixin": "._rope_query",
         "FlextInfraRopeWorkspace": ".rope",
         "FlextInfraRuntimeDependencyCollector": ".runtime_dependencies",
         "FlextInfraWorkspaceDetector": ".detector",
+        "FlextInfraWorkspaceEnvironment": ".environment",
         "FlextInfraWorkspaceEnvironmentContracts": ".environment_contracts",
         "FlextInfraWorkspaceEnvironmentProvenance": ".environment_provenance",
-        "FlextInfraWorkspaceEnvironmentProvenanceEditableMixin": (
-            "._environment_provenance_editable"
+        "FlextInfraWorkspaceEnvironmentProvenanceEditable": (
+            "._environment.provenance_editable"
         ),
-        "FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin": (
-            "._environment_provenance_module_source"
+        "FlextInfraWorkspaceEnvironmentProvenanceModuleSource": (
+            "._environment.provenance_module_source"
         ),
         "FlextInfraWorkspaceFleetGaps": ".fleet_gaps",
         "FlextInfraWorkspaceFlextEditable": ".flext_editable",
-        "FlextInfraWorkspaceGovernanceMixin": "._governance",
+        "FlextInfraWorkspaceGovernance": ".governance",
         "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",
         "FlextInfraWorkspaceNativeReference": ".native_reference",
         "FlextInfraWorkspacePropagation": ".propagation",
+        "FlextInfraWorkspaceRopeQuery": "._rope.query",
     }),
     public_exports=__all__,
 )

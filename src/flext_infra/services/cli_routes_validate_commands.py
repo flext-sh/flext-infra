@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import infra, m, p, r, t
+from flext_infra import infra, m, p, r
 from flext_infra.validate import (
     FlextInfraCProfileReport,
     FlextInfraInventoryService,
@@ -43,7 +43,7 @@ class FlextInfraValidationCommandRoutes:
         details = "\n".join((report.summary, *report.violations))
         return r[m.Infra.ValidationReport].fail(details)
 
-    validate_command_routes: ClassVar[t.VariadicTuple[m.Cli.ResultCommandRoute]] = (
+    validate_command_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = (
         *tuple(
             m.Cli.ResultCommandRoute(
                 name=route_name,

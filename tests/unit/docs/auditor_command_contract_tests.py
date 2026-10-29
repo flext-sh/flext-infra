@@ -23,7 +23,9 @@ class TestsFlextInfraAuditorCommandContract:
 
     @staticmethod
     @pytest.fixture
-    def command_contract_scope(infra_test_workspace: Path) -> m.Infra.DocScope:
+    def command_contract_scope(
+        tmp_path: Path,
+    ) -> m.Infra.DocScope:
         """Declare the same repository identity in Git and the typed topology.
 
         Returns:
@@ -31,16 +33,16 @@ class TestsFlextInfraAuditorCommandContract:
 
         """
         name = "infra-pkg"
-        u.Tests.write_project_beads_config(infra_test_workspace, name)
-        u.Tests.write_standalone_workspace_manifest(infra_test_workspace, name)
+        u.Tests.write_project_beads_config(tmp_path, name)
+        u.Tests.write_standalone_workspace_manifest(tmp_path, name)
         u.Tests.initialize_git_repo(
-            infra_test_workspace,
+            tmp_path,
             origin_url=u.Tests.repository_ref(name).url,
         )
         return m.Infra.DocScope(
             name=name,
-            path=infra_test_workspace,
-            report_dir=infra_test_workspace / ".reports" / "docs",
+            path=tmp_path,
+            report_dir=tmp_path / ".reports" / "docs",
             package_name="infra_pkg",
         )
 

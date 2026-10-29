@@ -8,22 +8,23 @@ from __future__ import annotations
 
 import os
 import stat
+from collections.abc import Sequence
 from pathlib import Path
 
 from git import GitCommandError
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
+class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
     """Canonical scoped state discovery for capture, verification and cleanup."""
 
     @staticmethod
-    def _state_pathspecs(paths: t.SequenceOf[Path]) -> t.VariadicTuple[str]:
+    def _state_pathspecs(paths: Sequence[Path]) -> tuple[str, ...]:
         if not paths or any(
             path.is_absolute() or ".." in path.parts or c.GIT_DIR_NAME in path.parts
             for path in paths
@@ -45,8 +46,8 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
     def _state_files(
         cls,
         root: Path,
-        relatives: t.SequenceOf[Path],
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeFileState]:
+        relatives: Sequence[Path],
+    ) -> tuple[m.Infra.GitWorktreeFileState, ...]:
         """Measure raw working bytes, hashing every regular file in one process.
 
         Regular files go through one unfiltered ``hash-object --stdin-paths``
@@ -61,7 +62,7 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
                 or symlink, or Git returns a different number of object ids.
 
         """
-        modes: list[t.Pair[Path, int]] = []
+        modes: list[tuple[Path, int]] = []
         for relative in relatives:
             if any((root / parent).is_symlink() for parent in relative.parents):
                 msg = f"capture path traverses a symlink: {relative}"
@@ -113,10 +114,10 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
     def state_snapshot_index(
         cls,
         root: Path,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
         *,
         index_file: Path | None = None,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         """Read the exact stage-zero index entries for the requested paths.
 
         Returns:
@@ -163,8 +164,8 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
     def _state_head_entries(
         cls,
         root: Path,
-        paths: t.SequenceOf[Path],
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+        paths: Sequence[Path],
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         rows = (
             cls._repo(root).git.ls_tree("-r", "--full-tree", "-z", "HEAD")
             if paths
@@ -186,9 +187,9 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
     def _state_snapshot_files(
         cls,
         root: Path,
-        paths: t.SequenceOf[Path],
-        entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeFileState]:
+        paths: Sequence[Path],
+        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
+    ) -> tuple[m.Infra.GitWorktreeFileState, ...]:
         repo = cls._repo(root)
         pathspecs = cls._state_pathspecs(paths)
         raw_paths = repo.git.ls_files(
@@ -339,4 +340,4 @@ class FlextInfraUtilitiesGitStateSnapshotMixin(FlextInfraUtilitiesGitRepo):
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStateSnapshotMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStateSnapshot"]

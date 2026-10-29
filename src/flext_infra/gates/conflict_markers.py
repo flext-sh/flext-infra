@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, u
 from flext_infra.gates import FlextInfraGate
 
 
@@ -54,7 +55,7 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
     @override
     def check_files(
         self,
-        files: t.SequenceOf[Path],
+        files: Sequence[Path],
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
@@ -72,7 +73,7 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
 
     def _check_paths(
         self,
-        paths: t.SequenceOf[Path],
+        paths: Sequence[Path],
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:

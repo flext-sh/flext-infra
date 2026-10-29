@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraPromotedRegistry:
@@ -19,11 +20,11 @@ class FlextInfraPromotedRegistry:
 
     def __init__(self) -> None:
         """Initialize an empty command registry."""
-        self._commands: t.MutableMappingKV[
+        self._commands: MutableMapping[
             str,
-            t.MutableMappingKV[str, p.Infra.PromotedCommand],
+            MutableMapping[str, p.Infra.PromotedCommand],
         ] = {}
-        self._aliases: t.MutableMappingKV[str, p.Infra.PromotedAliasTarget] = {}
+        self._aliases: MutableMapping[str, p.Infra.PromotedAliasTarget] = {}
 
     def add(self, command: p.Infra.PromotedCommand) -> None:
         """Add one command and its ``alias`` or ``alias=WHAT`` specifications."""
@@ -119,7 +120,7 @@ class FlextInfraPromotedRegistry:
         """
         return self._aliases.get(verb)
 
-    def commands(self, verb: str) -> t.MappingKV[str, p.Infra.PromotedCommand]:
+    def commands(self, verb: str) -> Mapping[str, p.Infra.PromotedCommand]:
         """Return commands registered for a verb or alias.
 
         Returns:
@@ -145,7 +146,7 @@ class FlextInfraPromotedRegistry:
             )
         return commands[what]
 
-    def verbs(self) -> t.StrSequence:
+    def verbs(self) -> Sequence[str]:
         """Return registered verbs in display order.
 
         Returns:
@@ -154,7 +155,7 @@ class FlextInfraPromotedRegistry:
         """
         return sorted(self._commands)
 
-    def aliases_for(self, verb: str) -> t.StrSequence:
+    def aliases_for(self, verb: str) -> Sequence[str]:
         """Return aliases that point to one canonical verb.
 
         Returns:

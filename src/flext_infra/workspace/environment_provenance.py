@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import sys
 from base64 import urlsafe_b64encode
+from collections.abc import Mapping, MutableSequence, Sequence
 from functools import lru_cache
 from importlib.metadata import Distribution, PackagePath
 from json import dumps
@@ -17,23 +18,17 @@ from sys import modules
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import (
     FlextInfraBindingService,
     FlextInfraWorkspaceDetector,
+    FlextInfraWorkspaceEnvironment,
     FlextInfraWorkspaceFlextEditable,
-)
-from flext_infra.workspace._environment_provenance_editable import (
-    FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
-)
-from flext_infra.workspace._environment_provenance_module_source import (
-    FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin,
 )
 
 
 class FlextInfraWorkspaceEnvironmentProvenance(
-    FlextInfraWorkspaceEnvironmentProvenanceModuleSourceMixin,
-    FlextInfraWorkspaceEnvironmentProvenanceEditableMixin,
+    FlextInfraWorkspaceEnvironment,
 ):
     """Bind installed packages to live local or immutable CI workspace sources."""
 
@@ -137,7 +132,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         repository_root: Path,
         repository: m.Infra.RepositoryRef,
-        installation: t.Triple[Distribution, str, m.Infra.DirectUrlReceipt],
+        installation: tuple[Distribution, str, m.Infra.DirectUrlReceipt],
         *,
         lock_state: m.Cli.AtomicFileState | None,
         environment_root: Path,
@@ -190,14 +185,14 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         distribution: Distribution,
         *,
         environment_root: Path,
-    ) -> p.Result[t.Pair[PackagePath, m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[PackagePath, m.Cli.AtomicFileState]]:
         """Read the unique producer declaration inside the installed environment.
 
         Returns:
             The RECORD entry and its current authenticated physical file.
 
         """
-        result = r[t.Pair[PackagePath, m.Cli.AtomicFileState]]
+        result = r[tuple[PackagePath, m.Cli.AtomicFileState]]
         files = distribution.files
         if files is None:
             return result.fail(
@@ -295,7 +290,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             The installed environment's deterministic SHA-256 identity.
 
         """
-        provenance: t.MutableSequenceOf[str] = []
+        provenance: MutableSequence[str] = []
         for distribution in u.installed_distributions():
             receipt = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
             dir_info = (
@@ -317,8 +312,8 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         repository_root: Path,
         *,
-        metadata_paths: t.StrSequence | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]:
+        metadata_paths: Sequence[str] | None = None,
+    ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
         """Elect declared mutable members with authenticated installed editables.
 
         Frozen or registry-installed dependencies remain libraries even when
@@ -332,7 +327,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         root = repository_root.expanduser().resolve()
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root)
         if workspace.failure:
-            return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(workspace)
+            return r[tuple[m.Infra.RepositoryRef, ...]].from_failure(workspace)
         repositories = tuple(
             repository
             for repository in u.Infra.mutable_flext_members(workspace.value)
@@ -341,7 +336,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         if metadata_paths is None and repositories:
             native = cls._observe_environment(root, repositories)
             if native.failure:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(native)
+                return r[tuple[m.Infra.RepositoryRef, ...]].from_failure(native)
             metadata_paths = tuple(str(path) for path in native.value.metadata_paths)
         selected: list[m.Infra.RepositoryRef] = []
         for repository in repositories:
@@ -350,7 +345,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 path=metadata_paths,
             )
             if len(matches) != 1:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     "member provenance distribution count mismatch: "
                     f"distribution={repository.distribution} expected=1 "
                     f"actual={len(matches)}",
@@ -362,7 +357,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             if receipt.dir_info is None or not receipt.dir_info.editable:
                 continue
             if not repository.editable:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
+                return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     f"member is installed editable against declaration: "
                     f"{repository.distribution}",
                 )
@@ -373,11 +368,11 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 receipt,
             )
             if authenticated.failure:
-                return r[t.VariadicTuple[m.Infra.RepositoryRef]].from_failure(
+                return r[tuple[m.Infra.RepositoryRef, ...]].from_failure(
                     authenticated,
                 )
             selected.append(repository)
-        return r[t.VariadicTuple[m.Infra.RepositoryRef]].ok(tuple(selected))
+        return r[tuple[m.Infra.RepositoryRef, ...]].ok(tuple(selected))
 
     @classmethod
     def validate_editable_installation(
@@ -434,7 +429,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         repository_root: Path,
         *,
-        metadata_paths: t.StrSequence | None = None,
+        metadata_paths: Sequence[str] | None = None,
     ) -> p.Result[int]:
         """Validate installed sources against the elected native lock.
 
@@ -447,7 +442,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @staticmethod
     def _observe_environment(
         root: Path,
-        repositories: t.VariadicTuple[m.Infra.RepositoryRef],
+        repositories: tuple[m.Infra.RepositoryRef, ...],
     ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
         """Read package facts exclusively through the elected physical runtime.
 
@@ -569,7 +564,10 @@ class FlextInfraWorkspaceEnvironmentProvenance(
 
         """
         package_name = u.Infra.project_package_name(expected_root)
-        package = u.Infra.declared_package_dir(package_name)
+        package = u.Infra.declared_package_dir(
+            package_name,
+            search_paths=(str(expected_root / c.Infra.DEFAULT_SRC_DIR),),
+        )
         if (
             package is None
             or not package.is_dir()
@@ -612,7 +610,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         repository_root: Path,
         *,
-        metadata_paths: t.StrSequence | None = None,
+        metadata_paths: Sequence[str] | None = None,
     ) -> p.Result[int]:
         """Prove locked artifacts and declared local members match their origins.
 
@@ -690,11 +688,11 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @classmethod
     def _validate_required(
         cls,
-        members: t.MappingKV[str, m.Infra.RepositoryRef],
+        members: Mapping[str, m.Infra.RepositoryRef],
         locked: m.Infra.LockedEnvironment,
         context: m.Infra.WorkspaceRuntimeContext,
         *,
-        metadata_paths: t.StrSequence | None,
+        metadata_paths: Sequence[str] | None,
         observation: m.Infra.PythonEnvironmentObservation | None,
     ) -> p.Result[int]:
         """Prove every declared member and natively sourced lock entry.
@@ -738,15 +736,15 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         name: str,
         locked: m.Infra.LockedEnvironment,
         context: m.Infra.WorkspaceRuntimeContext,
-        metadata_paths: t.StrSequence | None,
-    ) -> p.Result[t.Pair[m.Infra.LockedPackage, Distribution]]:
+        metadata_paths: Sequence[str] | None,
+    ) -> p.Result[tuple[m.Infra.LockedPackage, Distribution]]:
         """Bind one installed distribution inside the owned environment to its lock.
 
         Returns:
             The unique locked package and its installed distribution.
 
         """
-        result_type = r[t.Pair[m.Infra.LockedPackage, Distribution]]
+        result_type = r[tuple[m.Infra.LockedPackage, Distribution]]
         distributions = u.installed_distributions(name=name, path=metadata_paths)
         if len(distributions) != 1:
             return result_type.fail(

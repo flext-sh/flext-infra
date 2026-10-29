@@ -11,21 +11,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from operator import itemgetter
 from pathlib import Path
 
 from flext_cli import u
 
 from flext_infra import FlextInfraConfig, c, config, m, t
-from flext_infra._utilities._docs._docs_scope_state import (
-    FlextInfraUtilitiesDocsScopeStateMixin,
-)
-from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
-from flext_infra._utilities.project_managed_artifacts import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesLintRecipes,
+    FlextInfraUtilitiesNativeTooling,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeState
 
 
 class FlextInfraUtilitiesLazyInitRender:
@@ -128,7 +127,7 @@ class FlextInfraUtilitiesLazyInitRender:
         if known is None:
             view = model.source_project
             artifacts = FlextInfraUtilitiesProjectManagedArtifacts
-            scope_state = FlextInfraUtilitiesDocsScopeStateMixin
+            scope_state = FlextInfraUtilitiesDocsScopeState
             declaration = artifacts.load_repository_declaration_inputs(
                 project_root, source_project=view
             ).unwrap()
@@ -156,7 +155,7 @@ class FlextInfraUtilitiesLazyInitRender:
         return f'"""{summary}\n\n{notice}\n"""'
 
     @staticmethod
-    def lazy_init_export_key(name: str) -> t.Pair[int, str]:
+    def lazy_init_export_key(name: str) -> tuple[int, str]:
         """Order one public name like Ruff ``RUF022``.
 
         Returns:
@@ -166,9 +165,7 @@ class FlextInfraUtilitiesLazyInitRender:
         return (0 if name.isupper() else 1 if name[:1].isupper() else 2, name)
 
     @staticmethod
-    def _lazy_init_section(
-        module: str, first_party: frozenset[str]
-    ) -> t.Pair[int, str]:
+    def _lazy_init_section(module: str, first_party: frozenset[str]) -> tuple[int, str]:
         """Rank an import by Ruff isort section, then by module.
 
         Returns:
@@ -180,7 +177,7 @@ class FlextInfraUtilitiesLazyInitRender:
         return (int(module.split(".", 1)[0] in first_party), module.lower())
 
     @staticmethod
-    def _lazy_init_item_key(item: t.StrPair) -> t.Pair[t.Pair[int, str], bool]:
+    def _lazy_init_item_key(item: tuple[str, str]) -> tuple[tuple[int, str], bool]:
         """Order an imported member like Ruff isort ``order-by-type``.
 
         Returns:
@@ -193,9 +190,9 @@ class FlextInfraUtilitiesLazyInitRender:
         ), export != imported
 
     @classmethod
-    def _lazy_init_import(
-        cls, indent: str, module: str, parts: t.StrSequence
-    ) -> t.StrSequence:
+    def source_import_lines(
+        cls, indent: str, module: str, parts: Sequence[str]
+    ) -> Sequence[str]:
         """Emit one Ruff-canonical ``from`` import.
 
         Line length is the formatter's concern: an import that does not fit is
@@ -216,7 +213,7 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @classmethod
-    def _lazy_init_runtime_imports(cls, helpers: t.StrSequence) -> str:
+    def _lazy_init_runtime_imports(cls, helpers: Sequence[str]) -> str:
         """Render the lazy-helper import, the only pre-installer runtime import.
 
         Returns:
@@ -224,7 +221,7 @@ class FlextInfraUtilitiesLazyInitRender:
 
         """
         return "\n".join(
-            cls._lazy_init_import(
+            cls.source_import_lines(
                 "",
                 c.Infra.LAZY_BOOTSTRAP_MODULE,
                 helpers or ("install_lazy_exports",),
@@ -251,7 +248,7 @@ class FlextInfraUtilitiesLazyInitRender:
             The guarded runtime block, empty without eager dunders.
 
         """
-        groups: defaultdict[str, list[t.StrPair]] = defaultdict(list)
+        groups: defaultdict[str, list[tuple[str, str]]] = defaultdict(list)
         for name in sorted(plan.eager_dunders):
             module, attr = plan.eager_dunders[name]
             groups[module].append((name, attr))
@@ -261,7 +258,7 @@ class FlextInfraUtilitiesLazyInitRender:
             (
                 (
                     cls._lazy_init_section(module, first_party),
-                    cls._lazy_init_import(
+                    cls.source_import_lines(
                         "    ",
                         module,
                         tuple(
@@ -287,7 +284,7 @@ class FlextInfraUtilitiesLazyInitRender:
     @staticmethod
     def _lazy_init_import_groups(
         public: t.LazyAliasMap,
-    ) -> t.MappingKV[str, t.SequenceOf[t.StrPair]]:
+    ) -> Mapping[str, Sequence[tuple[str, str]]]:
         """Group public targets by the module their static import names.
 
         Preserve the elected origin used by the runtime lazy mapping.
@@ -296,7 +293,7 @@ class FlextInfraUtilitiesLazyInitRender:
             The ``(export, imported)`` pairs per importing module.
 
         """
-        groups: defaultdict[str, list[t.StrPair]] = defaultdict(list)
+        groups: defaultdict[str, list[tuple[str, str]]] = defaultdict(list)
         for name in sorted(public):
             module, attr = public[name]
             groups[module].append((name, attr))
@@ -307,7 +304,7 @@ class FlextInfraUtilitiesLazyInitRender:
         cls,
         public: t.LazyAliasMap,
         first_party: frozenset[str],
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Render the static import contract of the public exports.
 
         Every name is imported from the module that declares it, never
@@ -334,8 +331,8 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @classmethod
     def _lazy_init_module_lines(
-        cls, module: str, items: t.SequenceOf[t.StrPair]
-    ) -> t.StrSequence:
+        cls, module: str, items: Sequence[tuple[str, str]]
+    ) -> Sequence[str]:
         """Render one importing module's static member import.
 
         Returns:
@@ -348,10 +345,10 @@ class FlextInfraUtilitiesLazyInitRender:
                 for name, attr in sorted(items, key=cls._lazy_init_item_key)
             )
         )
-        return cls._lazy_init_import("    ", module, parts) if parts else ()
+        return cls.source_import_lines("    ", module, parts) if parts else ()
 
     @classmethod
-    def _lazy_init_exports_tuple(cls, names: t.StrSequence) -> str:
+    def _lazy_init_exports_tuple(cls, names: Sequence[str]) -> str:
         """Render ``__all__`` exactly as Ruff formats it.
 
         Returns:
@@ -437,18 +434,6 @@ class FlextInfraUtilitiesLazyInitRender:
             return "." * (len(current_parts) - common + 1) + ".".join(
                 module_parts[common:]
             )
-        if module.startswith("_"):
-            return f".{module}"
-        internal = frozenset(current.split(".")[1:])
-        first = module.split(".", 1)[0]
-        if internal & c.Infra.LOCAL_INFERRED_SEGMENTS:
-            return module
-        if first in internal or (
-            current == root
-            and "." in module
-            and first in c.Infra.LOCAL_INFERRED_SEGMENTS
-        ):
-            return f".{module}"
         return module
 
 

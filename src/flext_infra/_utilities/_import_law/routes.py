@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t
@@ -46,19 +46,19 @@ class FlextInfraUtilitiesImportLawRoutes(
     def _import_law_relative_import_edits(
         cls,
         state: m.Infra.ImportLawPass,
-        lines: t.StrSequence,
-    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        lines: Sequence[str],
+    ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Rewrite relative imports into their absolute form.
 
         Returns:
-            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
 
         """
         parts = state.scope.module.split(".")
         package_parts = (
             parts if state.scope.file_path.name == c.Infra.INIT_PY else parts[:-1]
         )
-        edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
+        edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
         for node in cls._import_law_iter_imports(state.tree):
             if not isinstance(node, ast.ImportFrom) or not node.level:
                 continue
@@ -81,16 +81,16 @@ class FlextInfraUtilitiesImportLawRoutes(
     def _import_law_route_edits(
         cls,
         state: m.Infra.ImportLawPass,
-        lines: t.StrSequence,
+        lines: Sequence[str],
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
         rope_project: p.Infra.RopeProject | None = None,
         member_resolver: p.Infra.RopeSourceMemberResolver | None = None,
-    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+    ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Rewrite each ``from`` import onto its canonical lazy source.
 
         Returns:
-            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
 
         """
         return cls._import_law_native_route_edits(
@@ -104,13 +104,13 @@ class FlextInfraUtilitiesImportLawRoutes(
     def _import_law_native_route_edits(
         cls,
         state: m.Infra.ImportLawPass,
-        lines: t.StrSequence,
+        lines: Sequence[str],
         *,
-        sources: t.MappingKV[Path, str] | None,
-        native: t.Pair[
+        sources: Mapping[Path, str] | None,
+        native: tuple[
             p.Infra.RopeProject | None, p.Infra.RopeSourceMemberResolver | None
         ],
-    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+    ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Route aliases only when the declared native bindings are identical.
 
         Returns:
@@ -120,7 +120,7 @@ class FlextInfraUtilitiesImportLawRoutes(
             ValueError: If the caller did not supply its captured source project.
 
         """
-        edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
+        edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
         bindings: dict[tuple[int, str], tuple[str, str]] = {}
         rope_project, members = native
         if rope_project is None:
@@ -138,7 +138,7 @@ class FlextInfraUtilitiesImportLawRoutes(
             )
 
         def inherited(
-            imported: t.Pair[str, ast.alias],
+            imported: tuple[str, ast.alias],
             root: str,
             original: p.Infra.RopePyName,
             local: p.Infra.RopePyName,
@@ -181,7 +181,11 @@ class FlextInfraUtilitiesImportLawRoutes(
                 routed.setdefault(
                     root
                     or cls.lazy_source(
-                        state.scope, node.module, alias.name, sources=sources
+                        state.scope,
+                        node.module,
+                        alias.name,
+                        source_project=rope_project,
+                        sources=sources,
                     )
                     or node.module,
                     [],
@@ -217,12 +221,12 @@ class FlextInfraUtilitiesImportLawRoutes(
     def _import_law_inherited_facade(
         cls,
         state: m.Infra.ImportLawPass,
-        imported: t.Pair[str, ast.alias],
-        route: t.Triple[str, p.Infra.RopePyName, p.Infra.RopePyName],
-        native: t.Pair[
+        imported: tuple[str, ast.alias],
+        route: tuple[str, p.Infra.RopePyName, p.Infra.RopePyName],
+        native: tuple[
             p.Infra.RopeProject | None, p.Infra.RopeSourceMemberResolver | None
         ],
-        sources: t.MappingKV[Path, str] | None,
+        sources: Mapping[Path, str] | None,
     ) -> bool:
         """Prove the local facade inherits the consumed upstream declarations.
 
@@ -245,7 +249,7 @@ class FlextInfraUtilitiesImportLawRoutes(
             return False
         module, alias = imported
         if members is None:
-            captured: dict[str, t.Pair[Path, str]] = {}
+            captured: dict[str, tuple[Path, str]] = {}
             for path, text in (sources or {}).items():
                 resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
                     rope_project, path
@@ -280,8 +284,8 @@ class FlextInfraUtilitiesImportLawRoutes(
     def _import_law_matching_members(
         cls,
         state: m.Infra.ImportLawPass,
-        paths: t.SequenceOf[t.StrTuple],
-        references: t.Pair[m.Infra.SourceClassReference, m.Infra.SourceClassReference],
+        paths: Sequence[t.StrTuple],
+        references: tuple[m.Infra.SourceClassReference, m.Infra.SourceClassReference],
         members: p.Infra.RopeSourceMemberResolver,
     ) -> bool:
         """Prove that every consumed member retains its native declaration.
@@ -335,10 +339,10 @@ class FlextInfraUtilitiesImportLawRoutes(
     def _import_law_native_root_alias_source(
         cls,
         state: m.Infra.ImportLawPass,
-        imported: t.Pair[str, ast.alias],
+        imported: tuple[str, ast.alias],
         resolve: Callable[[str, str], p.Infra.RopePyName | None],
         inherited: Callable[
-            [t.Pair[str, ast.alias], str, p.Infra.RopePyName, p.Infra.RopePyName],
+            [tuple[str, ast.alias], str, p.Infra.RopePyName, p.Infra.RopePyName],
             bool,
         ],
     ) -> str | None:
@@ -366,7 +370,7 @@ class FlextInfraUtilitiesImportLawRoutes(
     @classmethod
     def _import_law_consumed_facade_paths(
         cls, state: m.Infra.ImportLawPass, bound: str
-    ) -> t.VariadicTuple[t.StrTuple] | None:
+    ) -> tuple[t.StrTuple, ...] | None:
         """Read complete attribute paths reached through the module import.
 
         Direct class-value reads retain their original identity. Lexically
@@ -414,8 +418,8 @@ class FlextInfraUtilitiesImportLawRoutes(
     def _import_law_duplicate_alias(
         cls,
         state: m.Infra.ImportLawPass,
-        imported: t.Pair[ast.ImportFrom, ast.alias],
-        bindings: t.MutableMappingKV[t.Pair[int, str], t.Pair[str, str]],
+        imported: tuple[ast.ImportFrom, ast.alias],
+        bindings: MutableMapping[tuple[int, str], tuple[str, str]],
         resolve: Callable[[str, str], p.Infra.RopePyName | None],
     ) -> bool:
         """Reject competing native identities before eliminating a duplicate.
@@ -452,8 +456,8 @@ class FlextInfraUtilitiesImportLawRoutes(
     def _import_law_root_alias_binding_edits(
         cls,
         state: m.Infra.ImportLawPass,
-        lines: t.StrSequence,
-    ) -> t.SequenceOf[tuple[int, int, t.StrSequence]]:
+        lines: Sequence[str],
+    ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Bind root aliases a module reads but never binds; drop self-imports.
 
         A facade letter or root singleton the module reads, binds nowhere and
@@ -462,7 +466,7 @@ class FlextInfraUtilitiesImportLawRoutes(
         is dropped, because the module owns it.
 
         Returns:
-            The resulting ``t.SequenceOf[tuple[int, int, t.StrSequence]]``.
+            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
 
         """
         scope = state.scope
@@ -478,7 +482,7 @@ class FlextInfraUtilitiesImportLawRoutes(
                 ),
             ),
         )
-        edits: t.MutableSequenceOf[tuple[int, int, t.StrSequence]] = []
+        edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
         for node in cls._import_law_iter_imports(state.tree):
             if (
                 not isinstance(node, ast.ImportFrom)
@@ -580,7 +584,7 @@ class FlextInfraUtilitiesImportLawRoutes(
     def _import_law_root_alias_lexical_bindings(
         cls,
         state: m.Infra.ImportLawPass,
-    ) -> t.Pair[t.MappingKV[int, set[str]], t.MappingKV[int, set[str]]]:
+    ) -> tuple[Mapping[int, set[str]], Mapping[int, set[str]]]:
         """Record native lexical bindings and explicit globals for each scope.
 
         Returns:
@@ -604,7 +608,7 @@ class FlextInfraUtilitiesImportLawRoutes(
         cls,
         node: ast.Name,
         state: m.Infra.ImportLawPass,
-        bindings: t.Pair[t.MappingKV[int, set[str]], t.MappingKV[int, set[str]]],
+        bindings: tuple[Mapping[int, set[str]], Mapping[int, set[str]]],
     ) -> bool:
         """Resolve a loaded name through lexical owners and explicit global edges.
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 import tempfile
 import time
 from collections import Counter
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -20,7 +21,7 @@ from flext_infra import c, config, m, settings, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCodemodGate(FlextInfraGate):
@@ -60,7 +61,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
     @override
     def check_files(
         self,
-        files: t.SequenceOf[Path],
+        files: Sequence[Path],
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
@@ -90,7 +91,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
+        targets: Sequence[str],
         started: float,
     ) -> m.Infra.GateExecution:
         """Keep whole-project and file-scoped scans on the same native contract.
@@ -131,14 +132,13 @@ class FlextInfraCodemodGate(FlextInfraGate):
             return self._failure_gate_execution(project_dir, ctx, failure, started)
         failures: list[m.Infra.Issue] = []
         raw_output: list[str] = []
-        found = [
-            m.Infra.AstGrepDiagnostic.model_validate(finding)
-            for finding in u.Infra.codemod_path_findings(
+        found: list[m.Infra.AstGrepDiagnostic] = list(
+            u.Infra.codemod_path_findings(
                 project_dir,
                 tuple((project_dir / target).absolute() for target in targets),
                 planned.value.rules,
             )
-        ]
+        )
         u.Cli.ensure_dir(settings.work_dir).unwrap()
         with tempfile.TemporaryDirectory(
             prefix="check-codemod-", dir=settings.work_dir
@@ -202,12 +202,10 @@ class FlextInfraCodemodGate(FlextInfraGate):
 
     def _scan_ruleset(
         self,
-        scope: t.Quad[Path, m.Infra.GateContext, Path, frozenset[str]],
+        scope: tuple[Path, m.Infra.GateContext, Path, frozenset[str]],
         ruleset: m.Infra.CodemodRuleset,
-        targets: t.StrSequence,
-        sinks: t.Triple[
-            list[m.Infra.AstGrepDiagnostic], list[m.Infra.Issue], list[str]
-        ],
+        targets: Sequence[str],
+        sinks: tuple[list[m.Infra.AstGrepDiagnostic], list[m.Infra.Issue], list[str]],
     ) -> bool:
         """Scan one project's staged ruleset and collect its native report.
 
@@ -289,11 +287,11 @@ class FlextInfraCodemodGate(FlextInfraGate):
     def _validated_scan_report(
         scan: p.Cli.CommandOutput,
         ruleset: m.Infra.CodemodRuleset,
-    ) -> t.Pair[m.Infra.AstGrepReport, str]:
+    ) -> tuple[m.Infra.AstGrepReport, str]:
         """Validate findings and derive their exact native terminal diagnostic.
 
         Returns:
-            The resulting ``t.Pair[m.Infra.AstGrepReport, str]``.
+            The resulting ``tuple[m.Infra.AstGrepReport, str]``.
 
         Raises:
             ValueError: If ``(scan.outcome.raw_return_code == 1) != bool(error_count)``;
@@ -325,20 +323,20 @@ class FlextInfraCodemodGate(FlextInfraGate):
     @staticmethod
     def _scan_command(
         ruleset: m.Infra.CodemodRuleset,
-        targets: t.StrSequence,
+        targets: Sequence[str],
         binary: Path,
         nonparticipants: frozenset[str] = frozenset(),
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Canonical ast-grep invocation for one composed provider ruleset.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         # The gate scans the same inventory `make mod` rewrites: trees the
-        # codegen artifact SSOT ignores for source scans (generated sources
-        # included) stay outside it even when Git tracks them.
-        globs: t.StrSequence = tuple(
+        # codegen artifact SSOT explicitly ignores for source scans stay outside
+        # it. Generation ownership alone does not exclude a source tree.
+        globs: Sequence[str] = tuple(
             f"!{dir_name}/"
             for dir_name in sorted({
                 *config.Infra.codegen.check_excluded_dirs,
@@ -369,8 +367,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
 
     @staticmethod
     def _policy_issues(
-        found: t.SequenceOf[m.Infra.AstGrepDiagnostic],
-    ) -> t.SequenceOf[m.Infra.Issue]:
+        found: Sequence[m.Infra.AstGrepDiagnostic],
+    ) -> Sequence[m.Infra.Issue]:
         """Report every native finding: ast-grep alone decides the match.
 
         Returns:

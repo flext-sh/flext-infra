@@ -122,7 +122,7 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         )
 
         # A portable declaration compares through the same public JSON boundary
-        # it traveled: ``t.StrSequence`` contracts read back as lists, so the
+        # it traveled: ``Sequence[str]`` contracts read back as lists, so the
         # expected values are canonicalized identically before equality.
         tm.that(
             portable.project,

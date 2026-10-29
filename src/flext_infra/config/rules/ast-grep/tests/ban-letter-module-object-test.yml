@@ -2,39 +2,39 @@
 # package (fixture-utils/facade-package.yml); $NAME a single-letter alias.
 id: ban-letter-module-object
 valid:
-  # The canonical bindings: the letter from its root, the sibling class from
-  # its family package (the GREEN form of the flext-cli _utilities repair).
-  - |
-    from flext_core import u
+# The canonical bindings: the letter from its root, the sibling class from
+# its family package (the GREEN form of the flext-cli _utilities repair).
+- |
+  from flext_core import u
 
-    u.config_merge(merged, loaded)
-  - |
-    from ai_hub._utilities import AiHubUtilitiesConversion
+  u.config_merge(merged, loaded)
+- |
+  from ai_hub._utilities import AiHubUtilitiesConversion
 
-    AiHubUtilitiesConversion.CLI_DEFAULT_SOURCE_ADAPTER.validate_python(value)
-  # A non-letter attribute of a package object.
-  - |
-    import flext_cli
+  AiHubUtilitiesConversion.CLI_DEFAULT_SOURCE_ADAPTER.validate_python(value)
+# A non-letter attribute of a package object.
+- |
+  import flext_cli
 
-    flext_cli.FlextCliCli
-  # A non-facade library module object.
-  - |
-    import rich
+  flext_cli.FlextCliCli
+# A non-facade library module object.
+- |
+  import rich
 
-    rich.c
+  rich.c
 invalid:
-  # flext-cli _utilities/_options/fields.py shape: the own letter.
-  - |
-    import ai_hub
+# flext-cli _utilities/_options/fields.py shape: the own letter.
+- |
+  import ai_hub
 
-    ai_hub.u.Cli.field_default(name, info, settings)
-  # flext-tests _utilities/payload.py shape: another own letter.
-  - |
-    import tests
+  ai_hub.u.Cli.field_default(name, info, settings)
+# flext-tests _utilities/payload.py shape: another own letter.
+- |
+  import tests
 
-    tests.m.Value
-  # flext-cli _utilities/_files/text_formats.py shape: an upstream letter.
-  - |
-    import flext_core
+  tests.m.Value
+# flext-cli _utilities/_files/text_formats.py shape: an upstream letter.
+- |
+  import flext_core
 
-    merged = flext_core.u.config_merge(merged, loaded.value)
+  merged = flext_core.u.config_merge(merged, loaded.value)

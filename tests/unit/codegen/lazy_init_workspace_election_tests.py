@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
-from tests import c, p, t, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraLazyInitWorkspaceElection:
@@ -19,7 +20,7 @@ class TestsFlextInfraLazyInitWorkspaceElection:
     @staticmethod
     def _provision_runtime(
         workspace: Path,
-        repositories: t.StrSequence,
+        repositories: Sequence[str],
         session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Install real tooling and editable providers in the fixture runtime."""

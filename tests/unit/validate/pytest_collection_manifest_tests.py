@@ -60,7 +60,7 @@ class TestsFlextInfraPytestCollectionManifest:
                     "-p",
                     config.Infra.tooling.tools.pytest.enforcement_plugin,
                     "-p",
-                    "flext_infra._pytest_collection",
+                    "flext_infra._pytest.collection",
                     *(
                         ("-p", "pytest_markdown_docs.plugin", "--markdown-docs")
                         if markdown is not None

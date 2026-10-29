@@ -18,14 +18,14 @@ import ast
 from pathlib import Path
 
 import flext_infra
-from tests import c, t, tm
+from tests import c, tm
 
 
 class TestsFlextInfraCustomMakeSurfaceIsDerived:
     """Tests for ``FlextInfraCustomMakeSurfaceIsDerived``."""
 
     @staticmethod
-    def _engine_modules() -> t.VariadicTuple[Path]:
+    def _engine_modules() -> tuple[Path, ...]:
         """Return every shipped engine module, excluding the template tree.
 
         Returns:
@@ -45,7 +45,7 @@ class TestsFlextInfraCustomMakeSurfaceIsDerived:
         module: Path,
         *,
         containing: str,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Return every string literal in *module*, excluding docstrings.
 
         Returns:

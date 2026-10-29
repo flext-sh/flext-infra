@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
     class _DeclaredExports(cst.CSTTransformer):
         """Relocate imports without renaming their consumer-side bindings."""
 
-        def __init__(self, exports: t.MappingKV[str, t.Pair[str, str]]) -> None:
+        def __init__(self, exports: Mapping[str, tuple[str, str]]) -> None:
             self.exports = exports
 
         @override
@@ -89,7 +89,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
     def relocate_declared_exports(
         cls,
         source: str,
-        exports: t.MappingKV[str, t.Pair[str, str]],
+        exports: Mapping[str, tuple[str, str]],
     ) -> str:
         """Keep lexical scopes and ``as`` aliases while selecting public owners.
 
@@ -211,7 +211,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
     class _TypeCheckingImports(cst.CSTTransformer):
         """Insert one canonical group for facades used only by annotations."""
 
-        def __init__(self, public_imports: t.StrMapping) -> None:
+        def __init__(self, public_imports: Mapping[str, str]) -> None:
             self.public_imports = public_imports
             self.inserted = False
 
@@ -275,10 +275,10 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
 
         def _prune(
             self,
-            statements: t.SequenceOf[t.Infra.Cst.BaseStatement],
-        ) -> t.Pair[
-            t.VariadicTuple[t.Infra.Cst.BaseStatement],
-            t.VariadicTuple[t.Infra.Cst.EmptyLine],
+            statements: Sequence[t.Infra.Cst.BaseStatement],
+        ) -> tuple[
+            tuple[t.Infra.Cst.BaseStatement, ...],
+            tuple[t.Infra.Cst.EmptyLine, ...],
         ]:
             """Return retained statements and any trailing preserved comments.
 

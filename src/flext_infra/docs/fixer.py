@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, r, u
 from flext_infra.docs import FlextInfraDocGenerator, FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
@@ -23,14 +24,14 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         self,
         repository_root: Path,
         *,
-        projects: t.StrSequence | None = None,
+        projects: Sequence[str] | None = None,
         output_dir: Path | None = None,
         apply: bool = False,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
         """Run documentation fixes across project scopes.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
 
         Raises:
             ValueError: When a managed merge-policy file owns a selected path or a
@@ -45,7 +46,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                 output_dir=output_dir,
             ).prepare_bundle()
             if prepared.failure:
-                return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(prepared)
+                return r[Sequence[m.Infra.DocsPhaseReport]].from_failure(prepared)
             bundle = prepared.value
             elected: list[
                 tuple[
@@ -99,7 +100,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                             permission_mode=file.desired_mode,
                         ).unwrap()
                 reports.append(self._scope_report(scope, items, apply=apply))
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok(tuple(reports))
+            return r[Sequence[m.Infra.DocsPhaseReport]].ok(tuple(reports))
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -123,8 +124,8 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
     @staticmethod
     def _plan_scope(
         scope: m.Infra.DocScope,
-        sources: t.SequenceOf[m.Cli.AtomicFileState],
-    ) -> t.Pair[
+        sources: Sequence[m.Cli.AtomicFileState],
+    ) -> tuple[
         tuple[m.Infra.SemanticFilePlan, ...],
         tuple[m.Infra.DocsPhaseItemModel, ...],
     ]:
@@ -179,7 +180,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
     def _scope_report(
         self,
         scope: m.Infra.DocScope,
-        items: t.SequenceOf[m.Infra.DocsPhaseItemModel],
+        items: Sequence[m.Infra.DocsPhaseItemModel],
         *,
         apply: bool,
     ) -> m.Infra.DocsPhaseReport:

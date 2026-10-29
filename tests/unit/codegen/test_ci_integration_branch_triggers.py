@@ -31,7 +31,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         dist: str,
         make_profile: c.Infra.MakeProfile,
         repository_branch: str,
-        ci_trigger_branches: t.VariadicTuple[t.NonEmptyStr],
+        ci_trigger_branches: tuple[t.NonEmptyStr, ...],
     ) -> tuple[m.Infra.GithubWorkflowRenderSpec, str]:
         """Render one CI workflow and return its typed spec and rendered text.
 

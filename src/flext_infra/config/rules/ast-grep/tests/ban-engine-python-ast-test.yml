@@ -1,0 +1,20 @@
+# Engine-map D1 census fixtures: every binding of the stdlib ast module in
+# engine code is the deprecated route's anchor; names that merely start with
+# the letters ast stay legal.
+id: ban-engine-python-ast
+valid:
+  - import astroid
+  - import aster
+  - from astroid import parse
+  - from flext_infra import c, t
+invalid:
+  - import ast
+  - import ast.walk
+  - import ast as pyast
+  - from ast import parse
+  - from ast.walk import NodeVisitor
+  - |
+    def resolve(annotation):
+        import ast
+
+        return ast.parse(annotation, mode="eval")

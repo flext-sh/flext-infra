@@ -49,7 +49,7 @@ class FlextInfraModelsEnforcementCatalog:
         """Every enforcement claim derived from its owners."""
 
         claims: Annotated[
-            t.VariadicTuple[FlextInfraModelsEnforcementCatalog.EnforcementClaim],
+            tuple[FlextInfraModelsEnforcementCatalog.EnforcementClaim, ...],
             m.Field(min_length=1, description="Claims in owner declaration order"),
         ]
 

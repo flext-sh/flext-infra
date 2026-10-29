@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import dataclasses
 import sys
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
 
-from flext_infra import t, u
+from flext_infra import u
 from tests import tm
 from tests.unit.codemod.private_import_cutover_support import (
     TestsFlextInfraFacadeNaming,
@@ -451,8 +452,8 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         declaration: str,
         evaluation: str,
         *,
-        mode: t.Pair[bool, bool],
-        scope: t.Pair[bool, bool],
+        mode: tuple[bool, bool],
+        scope: tuple[bool, bool],
     ) -> None:
         """Defaults and class keywords use the enclosing dictionary."""
         shadowed, future_annotations = mode
@@ -592,11 +593,11 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         package_path = tmp_path / "flext-sample/src/flext_sample"
         consumer_path = tmp_path / "flext-consumer/src/flext_consumer/service.py"
         layers = (
-            ("models", "m", "FlextSampleModelsBase", "Model"),
+            ("models", "m", "FlextModelsSampleBase", "Model"),
             ("protocols", "p", "FlextSampleProtocolsBase", "Protocol"),
             ("typings", "t", "FlextSampleTypesBase", "Type"),
         )
-        sources: t.MutableMappingKV[Path, str] = {}
+        sources: MutableMapping[Path, str] = {}
         private_imports: list[str] = []
         annotations: list[str] = []
         for layer, alias, private_class, nested_class in layers:
@@ -682,7 +683,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             f"{private_import}\n\n"
             "from typing import TYPE_CHECKING\n\n"
             "if TYPE_CHECKING:\n"
-            "    from flext_sample import FlextSampleModels as m\n\n"
+            "    from flext_sample import FlextModelsSample as m\n\n"
             "value: m.Metadata\n"
             "model: mp.BaseModel\n"
         )
@@ -690,7 +691,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
 
         tm.that(updated.count("from flext_sample import m"), eq=1)
-        tm.that(updated, lacks="FlextSampleModels as m")
+        tm.that(updated, lacks="FlextModelsSample as m")
         tm.that(updated, lacks=private_import)
         tm.that(updated, has="model: m.Pydantic.BaseModel")
 
@@ -698,7 +699,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         """Leave an already-relative same-owner import outside the finding set."""
         consumer_path = tmp_path / "flext-sample/src/flext_sample/service.py"
         relative_import = (
-            "from ._models.pydantic import FlextSampleModelsPydantic as mp"
+            "from ._models.pydantic import FlextModelsSamplePydantic as mp"
         )
 
         edits = self._edits(

@@ -6,14 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
+from collections.abc import MutableMapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, u
-
-if TYPE_CHECKING:
-    from flext_infra import p, t
+from flext_infra import c, p, u
+from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraReadonlyNamespace:
@@ -28,195 +25,249 @@ class FlextInfraReadonlyNamespace:
     def exempt_identities(
         cls,
         project_dir: Path,
-        findings: t.SequenceOf[p.Infra.Issue],
-    ) -> frozenset[t.Pair[t.Triple[Path, int, int], str]]:
+        findings: Sequence[p.Infra.Issue],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> frozenset[tuple[tuple[Path, int, int], str]]:
         """Authenticate the findings an operator-decided exemption names.
 
-        Two rules, one owner, both decided by the operator on 2026-10-25 and
-        both authenticated per identity from source, never by name or file:
+        The publication policy is authenticated per identity from source,
+        never by name or file:
 
         - ``non-pep695-type-alias`` ("Exceção UP040 por identidade"): a PEP 613
           facade class publication, authenticated by the facade owner;
-        - ``invalid-function-name`` ("property + exceção N802"): a read-only
-          settings-protocol namespace branch, i.e. a ``@property`` getter of a
-          ``typing.Protocol`` class taking only ``self``, with a declaration-only
-          body and a return annotation that resolves to a class by native Rope
-          identity.
 
         Returns:
             ``((path, row, column), rule)`` for each authenticated finding.
 
         """
         alias_rule = c.Infra.RUFF_NON_PEP695_TYPE_ALIAS
-        naming_rule = c.Infra.RUFF_INVALID_FUNCTION_NAME
-        rows: t.MutableMappingKV[str, t.MutableMappingKV[Path, set[int]]] = {
+        rows: MutableMapping[str, MutableMapping[Path, set[int]]] = {
             alias_rule: {},
-            naming_rule: {},
         }
+        naming_rule = "invalid-function-name"
+        if not any(finding.code in {alias_rule, naming_rule} for finding in findings):
+            return frozenset()
         for finding in findings:
             if finding.code in rows:
                 rows[finding.code].setdefault(Path(finding.file).resolve(), set()).add(
                     finding.line
                 )
-        exempt: set[t.Pair[t.Triple[Path, int, int], str]] = set()
-        if rows[alias_rule]:
-            exempt.update(
-                (identity, alias_rule)
-                for identity in u.Infra.facade_class_publications(
-                    project_dir,
-                    {
-                        path: frozenset(lines)
-                        for path, lines in rows[alias_rule].items()
-                    },
+        exempt: set[tuple[tuple[Path, int, int], str]] = set()
+        # N802 on a protocol property mirrors a published settings branch
+        # field (ADR-005: ``settings.<Namespace>.*`` carries the namespace's
+        # capitalized name); the structural contract must repeat that exact
+        # spelling, authenticated against the member's settings model.
+        with u.Infra.facade_source_project(
+            project_dir, source_project=source_project
+        ) as (project, sources):
+            if rows[alias_rule]:
+                exempt.update(
+                    (identity, alias_rule)
+                    for identity in u.Infra.facade_class_publications(
+                        project_dir,
+                        {
+                            path: frozenset(lines)
+                            for path, lines in rows[alias_rule].items()
+                        },
+                        source_project=project,
+                    )
                 )
-            )
-        if rows[naming_rule]:
             exempt.update(
                 (identity, naming_rule)
-                for identity in cls._settings_branch_getters(
-                    project_dir, rows[naming_rule]
+                for identity in cls._settings_branch_properties(
+                    project, tuple(sources), findings
                 )
             )
         return frozenset(exempt)
 
-    @classmethod
-    def _settings_branch_getters(
-        cls,
-        project_dir: Path,
-        rows: t.MappingKV[Path, set[int]],
-    ) -> frozenset[t.Triple[Path, int, int]]:
-        """Authenticate read-only settings-protocol branches at reported rows.
+    @staticmethod
+    def _settings_branch_properties(
+        source_project: p.Infra.RopeProject,
+        source_files: Sequence[Path],
+        findings: Sequence[p.Infra.Issue],
+    ) -> tuple[tuple[Path, int, int], ...]:
+        """Authenticate capitalized protocol properties against settings fields.
 
         Returns:
-            Path, row and one-based name column of each authenticated getter.
+            The findings whose flagged name is a field on the member's
+            settings model, proven from native source.
+
+        Raises:
+            TypeError: If Protocol property requires a native source module.
 
         """
-        getters: set[t.Triple[Path, int, int]] = set()
-        with u.Infra.open_project(project_dir) as rope_project:
-            for path, wanted in sorted(rows.items()):
-                resource = u.Infra.resolve_resource_from_path(rope_project, path)
-                if resource is None:
-                    continue
-                source = resource.read()
-                tree = ast.parse(source, filename=str(path))
-                if not cls._typing_symbol(tree, "Protocol"):
-                    continue
-                scope = u.Infra.build_string_module(
-                    rope_project, source, resource=resource
-                ).get_scope()
-                for owner in ast.walk(tree):
-                    if not (
-                        isinstance(owner, ast.ClassDef)
-                        and any(
-                            isinstance(base, ast.Name) and base.id == "Protocol"
-                            for base in owner.bases
-                        )
-                    ):
-                        continue
-                    for member in owner.body:
-                        if not (
-                            isinstance(member, ast.FunctionDef)
-                            and member.lineno in wanted
-                            and cls._readonly_getter_shape(tree, member)
-                            and isinstance(member.returns, ast.Name | ast.Attribute)
-                        ):
-                            continue
-                        returned = u.Infra.resolve_symbol(scope, member.returns)
-                        if returned is not None and u.Infra.abstract_class(
-                            returned.get_object()
-                        ):
-                            getters.add((
-                                path,
-                                member.lineno,
-                                member.col_offset + len("def ") + 1,
-                            ))
-        return frozenset(getters)
-
-    @classmethod
-    def _readonly_getter_shape(cls, tree: ast.Module, node: ast.FunctionDef) -> bool:
-        """Report whether a function is a declaration-only instance getter.
-
-        Returns:
-            Whether ``node`` is an unshadowed builtin ``@property`` taking only
-            ``self`` whose body declares nothing.
-
-        """
-        args = node.args
-        return (
-            [arg.arg for arg in (*args.posonlyargs, *args.args)] == ["self"]
-            and not (
-                args.defaults
-                or args.kw_defaults
-                or args.kwonlyargs
-                or args.vararg
-                or args.kwarg
-                or node.type_params
-            )
-            and len(node.decorator_list) == 1
-            and isinstance(node.decorator_list[0], ast.Name)
-            and node.decorator_list[0].id == "property"
-            and not cls._bindings(tree, "property")
-            and all(
-                isinstance(statement, ast.Pass)
-                or (
-                    isinstance(statement, ast.Expr)
-                    and isinstance(statement.value, ast.Constant)
-                    and (
-                        statement.value.value is Ellipsis
-                        or isinstance(statement.value.value, str)
-                    )
-                )
-                for statement in node.body
-            )
+        selected = tuple(
+            finding for finding in findings if finding.code == "invalid-function-name"
         )
+        if not selected:
+            return ()
+        runtime = FlextInfraUtilitiesRopeRuntime
+        typing_module = runtime.require_semantic_module(
+            source_project.get_module("typing")
+        )
+        protocol = typing_module.get_attribute("Protocol").get_object()
+        modules: dict[Path, p.Infra.RopeSourceModule] = {}
+        wanted: dict[str, list[tuple[Path, int, int]]] = {}
+        for finding in selected:
+            path = Path(finding.file).resolve()
+            if path not in modules:
+                module = source_project.get_pymodule(
+                    runtime.file_resource_at(source_project, path), force_errors=True
+                )
+                if not runtime.source_module(module):
+                    msg = f"Protocol property requires a native source module: {path}"
+                    raise TypeError(msg)
+                modules[path] = module
+            name = FlextInfraReadonlyNamespace._protocol_property(
+                modules[path], finding.line, finding.column, protocol
+            )
+            if name is None:
+                continue
+            wanted.setdefault(name, []).append((
+                path,
+                finding.line,
+                finding.column,
+            ))
+        if not wanted:
+            return ()
+        names = u.Infra.settings_branch_fields(
+            source_project, source_files, frozenset(wanted)
+        )
+        return tuple(identity for name in names for identity in wanted[name])
 
     @staticmethod
-    def _bindings(tree: ast.AST, name: str) -> list[ast.AST]:
-        """Include imports and stores, not just function declarations.
+    def _protocol_member_scope(
+        module: p.Infra.RopeSourceModule,
+        offset: int,
+        line: int,
+    ) -> tuple[p.Infra.RopeScope, p.Infra.RopeSourceFunction, p.Infra.RopeScope] | None:
+        """Elect a class-owned function scope at one source offset.
 
         Returns:
-            Every potentially competing binding of the spelling.
+            The function scope, its object and owning class scope, or none.
 
         """
-        return [
-            node
-            for node in ast.walk(tree)
-            if (isinstance(node, c.Infra.AST_DEFINITION_TYPES) and node.name == name)
-            or (
-                isinstance(node, ast.Name)
-                and isinstance(node.ctx, c.Infra.AST_UNBINDING_CONTEXT_TYPES)
-                and node.id == name
-            )
-            or (
-                isinstance(node, ast.Attribute)
-                and isinstance(node.ctx, c.Infra.AST_UNBINDING_CONTEXT_TYPES)
-                and node.attr == name
-            )
-            or (isinstance(node, ast.arg) and node.arg == name)
-            or (
-                isinstance(node, ast.alias)
-                and (
-                    node.name == "*" or (node.asname or node.name.split(".")[0]) == name
-                )
-            )
-            or (isinstance(node, ast.ExceptHandler) and node.name == name)
-            or (isinstance(node, ast.MatchAs) and node.name == name)
-            or (isinstance(node, ast.MatchStar) and node.name == name)
-            or (isinstance(node, ast.MatchMapping) and node.rest == name)
-        ]
+        scope = module.get_scope().get_inner_scope_for_offset(offset)
+        function = scope.pyobject
+        owner = scope.parent
+        if scope.get_kind() != "Function" or scope.get_start() != line:
+            return None
+        if (
+            not FlextInfraUtilitiesRopeRuntime.py_function(function)
+            or owner is None
+            or owner.get_kind() != "Class"
+        ):
+            return None
+        declaring_scope = function.get_scope().parent
+        if declaring_scope is None:
+            return None
+        if declaring_scope.pyobject is not owner.pyobject:
+            return None
+        return scope, function, owner
+
+    @staticmethod
+    def _protocol_owns_member(
+        owner: p.Infra.RopePyObject,
+        protocol: p.Infra.RopePyObject,
+    ) -> bool:
+        """Walk the owner's ancestry until the protocol is reached.
+
+        Returns:
+            Whether the owner's class ancestry contains the protocol.
+
+        """
+        pending = [owner]
+        visited: set[int] = set()
+        while pending:
+            ancestor = pending.pop()
+            if ancestor is protocol:
+                return True
+            if id(ancestor) in visited:
+                continue
+            visited.add(id(ancestor))
+            if FlextInfraUtilitiesRopeRuntime.abstract_class(ancestor):
+                pending.extend(ancestor.get_superclasses())
+        return False
 
     @classmethod
-    def _typing_symbol(cls, tree: ast.Module, name: str) -> bool:
-        imports = [
-            alias
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            and node.module in {"typing", "typing_extensions"}
-            and not node.level
-            for alias in node.names
-            if alias.name == name and alias.asname is None
-        ]
-        return bool(imports) and cls._bindings(tree, name) == imports
+    def _protocol_property(
+        cls,
+        module: p.Infra.RopeSourceModule,
+        line: int,
+        column: int,
+        protocol: p.Infra.RopePyObject,
+    ) -> str | None:
+        """Authenticate the reported own declaration and its native decorator.
+
+        Returns:
+            The resulting ``str | None``.
+
+        Raises:
+            TypeError: If Protocol property requires the native word finder contract.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        elected = cls._protocol_member_scope(
+            module, module.lines.get_line_start(line) + column - 1, line
+        )
+        offset = module.lines.get_line_start(line) + column - 1
+        if elected is None:
+            return None
+        scope, function, owner = elected
+        finder = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
+        )
+        if not isinstance(finder, p.Infra.RopeWorder):
+            msg = "Protocol property requires the native word finder contract"
+            raise TypeError(msg)
+        name = function.get_name()
+        if finder.get_word_at(offset) != name:
+            return None
+        binding = owner.get_defined_names().get(name)
+        if binding is None or binding.get_object() is not function:
+            return None
+        if not cls._protocol_owns_member(owner.pyobject, protocol):
+            return None
+        start = scope.get_region()[0]
+        end = module.lines.get_line_start(scope.get_start())
+        decorators = runtime.semantic_regions(
+            module,
+            "${own_property}",
+            arguments={"own_property": "name=__builtin__.property"},
+            start=start,
+            end=end,
+        )
+        if cls._protocol_has_property_decorator(module, decorators, start, end):
+            return name
+        return None
+
+    @staticmethod
+    def _protocol_has_property_decorator(
+        module: p.Infra.RopeSourceModule,
+        decorators: Sequence[tuple[int, int]],
+        start: int,
+        end: int,
+    ) -> bool:
+        """Match the function's shallowest decorator against ``property``.
+
+        Returns:
+            Whether a shallowest decorator region is a native ``property``.
+
+        """
+        index = module.get_source_binding_index()
+        fragments = tuple(
+            fragment
+            for fragment in index.fragments
+            if start <= fragment.start < fragment.end <= end
+            and fragment.context.role == "decorator"
+        )
+        shallowest = min((fragment.depth for fragment in fragments), default=None)
+        return any(
+            (fragment.start, fragment.end) in decorators
+            and fragment.depth == shallowest
+            for fragment in fragments
+        )
 
 
 __all__ = ["FlextInfraReadonlyNamespace"]

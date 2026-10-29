@@ -6,17 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from enum import StrEnum, unique
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_core import c
 
 from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraConstantsBase(
@@ -101,7 +99,7 @@ class FlextInfraConstantsBase(
     RUFF_NON_PEP695_TYPE_ALIAS: ClassVar[str] = "non-pep695-type-alias"
     "Ruff UP040; exempt only per authenticated facade class publication."
     RUFF_INVALID_FUNCTION_NAME: ClassVar[str] = "invalid-function-name"
-    "Ruff N802; exempt only per authenticated settings-protocol branch getter."
+    "Ruff N802; function names must be lowercase, including protocol getters."
     DEPTRY: ClassVar[str] = "deptry"
     "Deptry tool section key."
     ISORT: ClassVar[str] = "isort"
@@ -197,14 +195,14 @@ class FlextInfraConstantsBase(
     PYTHON: ClassVar[str] = "python"
     "Python executable and tool name."
 
-    CANONICAL_DEV_DEPENDENCY_GROUPS: ClassVar[t.VariadicTuple[DependencyGroup]] = (
+    CANONICAL_DEV_DEPENDENCY_GROUPS: ClassVar[tuple[DependencyGroup, ...]] = (
         DEV,
         DOCS,
         SECURITY,
         TEST,
         TYPINGS,
     )
-    LEGACY_DEV_DEPENDENCY_GROUPS: ClassVar[t.VariadicTuple[DependencyGroup]] = (
+    LEGACY_DEV_DEPENDENCY_GROUPS: ClassVar[tuple[DependencyGroup, ...]] = (
         DOCS,
         SECURITY,
         TEST,
@@ -226,7 +224,7 @@ class FlextInfraConstantsBase(
     "Gitleaks secret scanner binary."
     GITLEAKS_LEAK_EXIT_CODE: ClassVar[int] = 42
     "Gitleaks exit code reserved for detected secrets."
-    GITLEAKS_POLICY_ENV_KEYS: ClassVar[t.StrSequence] = (
+    GITLEAKS_POLICY_ENV_KEYS: ClassVar[Sequence[str]] = (
         "GITLEAKS_CONFIG",
         "GITLEAKS_CONFIG_TOML",
     )
@@ -243,7 +241,7 @@ class FlextInfraConstantsBase(
     "Workspace-relative generated Git hook validator."
     PYPI_SIMPLE_INDEX_URL: ClassVar[str] = "https://pypi.org/simple"
     "Canonical public package index used by isolated release builds."
-    RELEASE_UV_BUILD_ARGS: ClassVar[t.StrSequence] = (
+    RELEASE_UV_BUILD_ARGS: ClassVar[Sequence[str]] = (
         UV,
         "build",
         "--force-pep517",
@@ -271,7 +269,7 @@ class FlextInfraConstantsBase(
     "Release-build read timeout in seconds."
     UV_RELEASE_HTTP_RETRIES: ClassVar[str] = "3"
     "Release-build HTTP retry count."
-    UV_RELEASE_POLICY_ENV_KEYS: ClassVar[t.StrSequence] = (
+    UV_RELEASE_POLICY_ENV_KEYS: ClassVar[Sequence[str]] = (
         "UV_BUILD_CONSTRAINT",
         "UV_CONFIG_FILE",
         "UV_EXTRA_INDEX_URL",
@@ -393,7 +391,7 @@ class FlextInfraConstantsBase(
     RK_DESCRIPTION: ClassVar[str] = "description"
     RK_SEVERITY: ClassVar[str] = "severity"
 
-    CLI_APPLY_OPTION_DECLS: ClassVar[t.StrSequence] = ("--apply/--dry-run",)
+    CLI_APPLY_OPTION_DECLS: ClassVar[Sequence[str]] = ("--apply/--dry-run",)
     "Typer dual-flag declarations for --apply/--dry-run option."
 
     @unique

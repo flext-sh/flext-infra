@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 from flext_cli import m as cli_m
 
 from flext_infra.codegen import FlextInfraCodegenConsolidator
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -25,7 +26,7 @@ class TestsFlextInfraCodegenConsolidator:
 
         file: str = m.Field(description="Relative file path")
         status: str = m.Field(description="File processing status")
-        changes: t.StrSequence = m.Field(description="Changes applied to the file")
+        changes: Sequence[str] = m.Field(description="Changes applied to the file")
 
     class _ConsolidatorJsonPayload(cli_m.ContractModel):
         """Typed JSON payload emitted by the consolidator command."""
@@ -33,9 +34,9 @@ class TestsFlextInfraCodegenConsolidator:
         total_found: int = m.Field(description="Total replacements found")
         total_applied: int = m.Field(description="Total replacements applied")
         total_failed: int = m.Field(description="Total files that failed")
-        files: t.SequenceOf[
-            TestsFlextInfraCodegenConsolidator._ConsolidatorFilePayload
-        ] = m.Field(description="Per-file consolidator results")
+        files: Sequence[TestsFlextInfraCodegenConsolidator._ConsolidatorFilePayload] = (
+            m.Field(description="Per-file consolidator results")
+        )
 
     @staticmethod
     def _consolidator_payload(
@@ -55,11 +56,11 @@ class TestsFlextInfraCodegenConsolidator:
         return payload
 
     @staticmethod
-    def _consolidator_layout(tmp_path: Path) -> t.Triple[Path, Path, Path]:
+    def _consolidator_layout(tmp_path: Path) -> tuple[Path, Path, Path]:
         """Create the consolidator workspace, project root, and package directory.
 
         Returns:
-            The resulting ``t.Triple[Path, Path, Path]``.
+            The resulting ``tuple[Path, Path, Path]``.
 
         """
         repository_root = tmp_path / "workspace"

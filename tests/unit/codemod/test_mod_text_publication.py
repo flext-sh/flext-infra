@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m, t
+from flext_infra import config, m
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from tests import c, tm, u
 
@@ -75,11 +75,11 @@ class TestsFlextInfraModTextPublication:
         tm.that((first.read_bytes(), second.read_bytes()), eq=originals)
 
     @staticmethod
-    def _publication_inputs(root: Path) -> t.Pair[Path, Path]:
+    def _publication_inputs(root: Path) -> tuple[Path, Path]:
         """Declare two authored inputs and one exact text rewrite catalogue.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         u.Cli.atomic_write_text_file(

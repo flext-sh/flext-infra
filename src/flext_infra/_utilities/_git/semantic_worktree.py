@@ -9,11 +9,11 @@ from __future__ import annotations
 from git import GitCommandError, Repo
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIndexMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIndex
 
 
-class FlextInfraUtilitiesGitSemanticWorktreeMixin(
-    FlextInfraUtilitiesGitSemanticIndexMixin,
+class FlextInfraUtilitiesGitSemanticWorktree(
+    FlextInfraUtilitiesGitSemanticIndex,
 ):
     """Own semantic worktree operations."""
 
@@ -125,4 +125,4 @@ class FlextInfraUtilitiesGitSemanticWorktreeMixin(
             )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitSemanticWorktreeMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitSemanticWorktree"]

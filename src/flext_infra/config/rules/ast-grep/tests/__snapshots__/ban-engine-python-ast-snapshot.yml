@@ -1,0 +1,62 @@
+id: ban-engine-python-ast
+snapshots:
+  "def resolve(annotation):\n    import ast\n\n    return ast.parse(annotation, mode=\"eval\")\n":
+    labels:
+    - source: import ast
+      style: primary
+      start: 29
+      end: 39
+    - source: ast
+      style: secondary
+      start: 36
+      end: 39
+  from ast import parse:
+    labels:
+    - source: from ast import parse
+      style: primary
+      start: 0
+      end: 21
+    - source: ast
+      style: secondary
+      start: 5
+      end: 8
+  from ast.walk import NodeVisitor:
+    labels:
+    - source: from ast.walk import NodeVisitor
+      style: primary
+      start: 0
+      end: 32
+    - source: ast.walk
+      style: secondary
+      start: 5
+      end: 13
+  import ast:
+    labels:
+    - source: import ast
+      style: primary
+      start: 0
+      end: 10
+    - source: ast
+      style: secondary
+      start: 7
+      end: 10
+  import ast as pyast:
+    labels:
+    - source: import ast as pyast
+      style: primary
+      start: 0
+      end: 19
+    - source: ast
+      style: secondary
+      start: 7
+      end: 10
+  import ast.walk:
+    labels:
+    - source: import ast.walk
+      style: primary
+      start: 0
+      end: 15
+    - source: ast.walk
+      style: secondary
+      start: 7
+      end: 15

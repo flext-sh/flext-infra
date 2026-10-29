@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -21,8 +22,6 @@ from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-from tests import t
 
 
 class TestsFlextInfraCheckReportContract:
@@ -44,7 +43,7 @@ class TestsFlextInfraCheckReportContract:
         return project
 
     @staticmethod
-    def _sources(project: Path) -> t.StrMapping:
+    def _sources(project: Path) -> Mapping[str, str]:
         return {
             str(path.relative_to(project)): path.read_text(encoding="utf-8")
             for path in sorted((project / "src").rglob("*.py"))
@@ -437,7 +436,7 @@ class TestsFlextInfraCheckReportContract:
     )
     def test_file_selection_cannot_override_scope(
         tmp_path: Path,
-        mode: t.StrSequence,
+        mode: Sequence[str],
     ) -> None:
         """Literal-file checks refuse mutation and scope or verdict overrides."""
         project = TestsFlextInfraCheckReportContract._project(tmp_path)

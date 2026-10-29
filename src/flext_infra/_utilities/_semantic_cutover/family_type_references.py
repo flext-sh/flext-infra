@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import operator
 from bisect import bisect_left, bisect_right
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -19,7 +19,7 @@ from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.rope_structure import FlextInfraUtilitiesRopeStructure
 
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
 
         """
         protected = cls.expression_payload_ranges(source, project, scope)
-        edits: list[t.Triple[int, int, str]] = []
+        edits: list[tuple[int, int, str]] = []
         for begin, end in cls.reference_regions(source):
             if any(first <= begin and end <= last for first, last in protected):
                 continue
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     @staticmethod
     def _apply_type_rewrites(
         source: str,
-        edits: t.SequenceOf[t.Triple[int, int, str]],
+        edits: Sequence[tuple[int, int, str]],
     ) -> str:
         """Apply the outermost nonoverlapping type edits in reverse source order.
 
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             The source with the admitted edits applied once.
 
         """
-        selected: list[t.Triple[int, int, str]] = []
+        selected: list[tuple[int, int, str]] = []
         previous = -1
         for begin, end, changed in sorted(edits, key=lambda item: (item[0], -item[1])):
             if begin >= previous:
@@ -95,7 +95,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         cls,
         source: str,
         module: p.Infra.RopePyModule,
-    ) -> t.VariadicTuple[t.Triple[int, int, int | None]]:
+    ) -> tuple[tuple[int, int, int | None], ...]:
         """Return annotation coordinates from native match and declaration regions.
 
         The native Worder and declaration header contracts fail the scan when a
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     @staticmethod
     def _semantic_annotation_regions(
         module: p.Infra.RopePyModule,
-    ) -> set[t.Triple[int, int, int | None]]:
+    ) -> set[tuple[int, int, int | None]]:
         """Collect native semantic capture regions for declared annotations.
 
         Returns:
@@ -149,13 +149,15 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         finder = refactors.semantic_finder(module)
-        regions: set[t.Triple[int, int, int | None]] = set()
+        regions: set[tuple[int, int, int | None]] = set()
         for pattern in (
             "${declared}: ${annotation}",
             "${declared}: ${annotation} = ${value}",
         ):
             for match in finder.get_matches(pattern):
-                begin, end = refactors.semantic_capture_region(match, "annotation")
+                begin, end = refactors.semantic_capture_region(
+                    module, match, "annotation"
+                )
                 regions.add((begin, end, None))
         return regions
 
@@ -165,7 +167,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         words: p.Infra.RopeWorder,
         statement: m.Infra.LogicalStatement,
-    ) -> set[t.Triple[int, int, int | None]]:
+    ) -> set[tuple[int, int, int | None]]:
         """Resolve the annotation regions owned by one logical statement.
 
         Returns:
@@ -186,7 +188,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         cls,
         source: str,
         statement: m.Infra.LogicalStatement,
-    ) -> set[t.Triple[int, int, int | None]]:
+    ) -> set[tuple[int, int, int | None]]:
         """Return the annotation region of one native ``type`` alias statement."""
         start = statement.start_offset + statement.indent
         end = statement.end_offset
@@ -201,7 +203,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         words: p.Infra.RopeWorder,
         statement: m.Infra.LogicalStatement,
-    ) -> set[t.Triple[int, int, int | None]]:
+    ) -> set[tuple[int, int, int | None]]:
         """Return annotation regions of one native ``def``/``class`` declaration.
 
         Returns:
@@ -219,7 +221,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             msg = "native declaration header has no named region"
             raise ValueError(msg)
         after = prefix + len(name)
-        regions: set[t.Triple[int, int, int | None]] = set()
+        regions: set[tuple[int, int, int | None]] = set()
         if source[after : after + 1] == "[":
             generic_start, generic_end = words.code_finder.get_word_parens_range(
                 after - 1,
@@ -263,14 +265,14 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         statement: m.Infra.LogicalStatement,
         *,
         include_defaults: bool,
-    ) -> set[t.Triple[int, int, int | None]]:
+    ) -> set[tuple[int, int, int | None]]:
         """Read parameter annotations, including generic bounds and defaults.
 
         Returns:
             Source regions for the selected parameter type expressions.
 
         """
-        regions: set[t.Triple[int, int, int | None]] = set()
+        regions: set[tuple[int, int, int | None]] = set()
         for parameter_start, parameter_end in cls.expression_segments(
             source,
             begin,
@@ -301,10 +303,10 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         _project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-    ) -> t.VariadicTuple[tuple[int, int, str, p.Infra.RopeScope]]:
+    ) -> tuple[tuple[int, int, str, p.Infra.RopeScope], ...]:
         """Return only string constants occupying native annotation type positions."""
         del _project
-        protected: frozenset[t.Pair[int, int]] | None = None
+        protected: frozenset[tuple[int, int]] | None = None
         literals = FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
         starts = [start for start, _stop, _metadata in literals]
         selected: list[tuple[int, int, str, p.Infra.RopeScope]] = []
@@ -345,7 +347,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     def reference_regions(
         cls,
         source: str,
-    ) -> t.VariadicTuple[t.Pair[int, int]]:
+    ) -> tuple[tuple[int, int], ...]:
         """Return maximal identifier primaries through native Rope word boundaries.
 
         A foreign runtime Worder product fails the scan.
@@ -371,7 +373,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             if row.category
             in {c.Infra.StatementCategory.IMPORT, c.Infra.StatementCategory.FROM_IMPORT}
         )
-        regions: set[t.Pair[int, int]] = set()
+        regions: set[tuple[int, int]] = set()
         cursor = 0
         while cursor < len(source):
             # Each region kind is disjoint: only the last one starting at or
@@ -432,7 +434,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-    ) -> Iterator[t.Triple[str, p.Infra.RopeScope, int]]:
+    ) -> Iterator[tuple[str, p.Infra.RopeScope, int]]:
         """Yield native type primaries in quoted annotations, with original scope."""
         for begin, _end, literal, scope in cls.quoted_type_regions(
             source, project, module
@@ -457,35 +459,57 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         cls,
         source: str,
         module: p.Infra.RopePyModule,
-    ) -> frozenset[t.Pair[int, int]]:
+    ) -> frozenset[tuple[int, int]]:
         """Protect Literal values and Annotated metadata in every alias form.
 
-        Selection uses the same resolved typing identities as quoted rewrites;
-        an ordinary runtime assignment is not implicitly a type declaration.
+        The ranges come from the rope-parsed module tree in one walk: every
+        subscript whose head is ``Literal`` protects its whole payload, and
+        every ``Annotated`` protects its metadata arguments (all but the
+        first). Rope owns the parse, so multiline and nested forms carry
+        their exact native positions; no capture machinery is involved.
 
         Returns:
-            The resulting ``frozenset[t.Pair[int, int]]``.
+            The resulting ``frozenset[tuple[int, int]]``.
 
         """
-        protected: set[t.Pair[int, int]] = set()
-        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        finder = refactors.semantic_finder(module)
-        for owner in ("Literal", "Annotated"):
-            variable = f"payload_{owner}"
-            pattern = "${" + variable + "}[${payload_arguments}]"
-            for match in finder.get_matches(
-                pattern,
-                args={variable: f"name=typing.{owner}"},
-            ):
-                begin, end = refactors.semantic_capture_region(
-                    match,
-                    "payload_arguments",
-                )
-                if owner == "Literal":
-                    protected.add((begin, end))
-                    continue
-                arguments = cls.expression_segments(source, begin, end, ",")
-                protected.update(arguments[1:])
+        line_starts = [0]
+        for line in source.splitlines(keepends=True):
+            line_starts.append(line_starts[-1] + len(line))
+
+        def offset(line: int, column: int) -> int:
+            return line_starts[line - 1] + column
+
+        def span(node: object) -> tuple[int, int]:
+            return (
+                offset(getattr(node, "lineno", 1), getattr(node, "col_offset", 0)),
+                offset(
+                    getattr(node, "end_lineno", 1),
+                    getattr(node, "end_col_offset", 0),
+                ),
+            )
+
+        protected: set[tuple[int, int]] = set()
+        pending: list[object] = [module.get_ast()]
+        while pending:
+            node = pending.pop()
+            for field in getattr(node, "_fields", ()):
+                child = getattr(node, field, None)
+                if isinstance(child, (list, tuple)):
+                    pending.extend(item for item in child if hasattr(item, "_fields"))
+                elif hasattr(child, "_fields"):
+                    pending.append(child)
+            value = getattr(node, "value", None)
+            head = getattr(value, "id", None) or getattr(value, "attr", None)
+            if head not in {"Literal", "Annotated"}:
+                continue
+            elements = getattr(getattr(node, "slice", None), "elts", None)
+            if elements is None:
+                protected.add(span(node.slice))
+                continue
+            if head == "Literal":
+                protected.update(span(item) for item in elements)
+            else:
+                protected.update(span(item) for item in elements[1:])
         return frozenset(protected)
 
     @classmethod
@@ -495,7 +519,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         begin: int,
         end: int,
         separators: str,
-    ) -> t.VariadicTuple[t.Pair[int, int]]:
+    ) -> tuple[tuple[int, int], ...]:
         """Split a native region using Rope-owned literal and delimiter ranges.
 
         A foreign runtime Worder product fails the split.
@@ -514,7 +538,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         }
         pairs = {"(": ")", "[": "]", "{": "}"}
         closers = {closing: opening for opening, closing in pairs.items()}
-        regions: list[t.Pair[int, int]] = []
+        regions: list[tuple[int, int]] = []
         opens: list[int] = []
         cursor = part = begin
         while cursor < end:
@@ -527,7 +551,12 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 opens.append(cursor)
             elif character in closers:
                 if not opens or source[opens[-1]] != closers[character]:
-                    msg = "type reference delimiter differs from native region"
+                    msg = (
+                        "type reference delimiter differs from native region: "
+                        f"stray {character!r} at {cursor}; "
+                        f"region={begin}:{end}; "
+                        f"region_text={source[begin:end][:160]!r}"
+                    )
                     raise ValueError(msg)
                 opens.pop()
             elif character in separators and not opens:
@@ -535,7 +564,12 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
                 part = cursor + 1
             cursor += 1
         if opens:
-            msg = "type reference delimiter differs from native region"
+            msg = (
+                "type reference delimiter differs from native region: "
+                f"unbalanced {source[opens[-1]]!r} opened at {opens[-1]}; "
+                f"region={begin}:{end}; "
+                f"region_text={source[begin:end][:160]!r}"
+            )
             raise ValueError(msg)
         regions.append((part, end))
         return tuple(
@@ -553,13 +587,13 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         project: p.Infra.RopeProject,
         scope: p.Infra.RopeScope,
-    ) -> frozenset[t.Pair[int, int]]:
+    ) -> frozenset[tuple[int, int]]:
         """Protect typing payloads inside a quoted expression in its original scope.
 
         A foreign runtime Worder product fails the protection scan.
 
         Returns:
-            The protected ``frozenset[t.Pair[int, int]]`` payload regions.
+            The protected ``frozenset[tuple[int, int]]`` payload regions.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -567,10 +601,10 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             source,
             "quoted types require native Rope delimiters",
         )
-        typing = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
+        typing = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
             project.get_module("typing")
         )
-        protected: set[t.Pair[int, int]] = set()
+        protected: set[tuple[int, int]] = set()
         for begin, end in cls.reference_regions(source):
             cursor = end
             while cursor < len(source) and source[cursor].isspace():
@@ -598,10 +632,10 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
+    ) -> tuple[bool, tuple[m.Infra.SourceRewrite, ...]]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             flatten.project,
-            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -628,7 +662,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         scope: p.Infra.RopeScope,
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> t.Pair[bool, str]:
+    ) -> tuple[bool, str]:
         del _resource
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         unresolved = False

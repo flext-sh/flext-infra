@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 from flext_infra import c, config, m, r, s, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCProfileReport(s[bool]):
@@ -80,11 +80,11 @@ class FlextInfraCProfileReport(s[bool]):
                 raise ValueError(msg) from exc
         return self
 
-    def _run_profiles(self) -> t.VariadicTuple[Path]:
+    def _run_profiles(self) -> tuple[Path, ...]:
         """Validate run identity and artifact digests without consulting latest.
 
         Returns:
-            The resulting ``t.VariadicTuple[Path]``.
+            The resulting ``tuple[Path, ...],``.
 
         Raises:
             ValueError: If the lease was unacquired yet carries execution artifacts,
@@ -141,7 +141,7 @@ class FlextInfraCProfileReport(s[bool]):
 
     def _recorded_context(
         self, parent: m.Infra.PytestRunContext
-    ) -> t.Pair[Path, m.Infra.PytestRunContext]:
+    ) -> tuple[Path, m.Infra.PytestRunContext]:
         """Load the run context recorded beside the parent receipt.
 
         Returns:
@@ -238,7 +238,7 @@ class FlextInfraCProfileReport(s[bool]):
         suite: Path,
         suite_required: bool,
         full_suite: bool,
-    ) -> t.VariadicTuple[Path]:
+    ) -> tuple[Path, ...]:
         """Elect the profile artifacts of a run that recorded a selection plan.
 
         Returns:
@@ -270,7 +270,7 @@ class FlextInfraCProfileReport(s[bool]):
         )
 
     @staticmethod
-    def _process_profiles(directory: Path) -> t.VariadicTuple[Path]:
+    def _process_profiles(directory: Path) -> tuple[Path, ...]:
         """List the per-process profile artifacts of one run directory.
 
         Returns:
@@ -282,7 +282,7 @@ class FlextInfraCProfileReport(s[bool]):
             sorted((directory / policy.profile_process_directory).glob("*.pstats"))
         )
 
-    def _unplanned_profiles(self, directory: Path) -> t.VariadicTuple[Path]:
+    def _unplanned_profiles(self, directory: Path) -> tuple[Path, ...]:
         """Elect the profile artifacts of a run that failed before planning.
 
         Returns:
@@ -320,7 +320,7 @@ class FlextInfraCProfileReport(s[bool]):
 
     def _verify_profile_receipts(
         self,
-        profiles: t.VariadicTuple[Path],
+        profiles: tuple[Path, ...],
         parent: m.Infra.PytestRunContext,
         context: m.Infra.PytestRunContext,
     ) -> None:
@@ -356,16 +356,10 @@ class FlextInfraCProfileReport(s[bool]):
         """
         if not self.profile.is_file():
             return r[bool].fail(f"cProfile artifact does not exist: {self.profile}")
-        try:
-            stream = io.StringIO()
-            self._render_profiles(stream)
-            self.output.parent.mkdir(parents=True, exist_ok=True)
-        except (OSError, ValueError, TypeError) as exc:
-            return r[bool].fail(f"render cProfile report failed: {exc}", exception=exc)
-        written = u.Cli.atomic_write_text_file(self.output, stream.getvalue())
-        if written.failure:
-            return r[bool].from_failure(written)
-        return r[bool].ok(value=True)
+        stream = io.StringIO()
+        self._render_profiles(stream)
+        self.output.parent.mkdir(parents=True, exist_ok=True)
+        return u.Cli.atomic_write_text_file(self.output, stream.getvalue())
 
     def _render_profiles(self, stream: io.StringIO) -> None:
         """Render every cProfile artifact into the shared stream."""

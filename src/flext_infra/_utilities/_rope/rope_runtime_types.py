@@ -15,7 +15,7 @@ from flext_infra._utilities._rope.rope_runtime_base import (
 )
 
 
-class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
+class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
     """Expose typed predicates for Rope runtime objects."""
 
     @classmethod
@@ -79,6 +79,22 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
 
         """
         return isinstance(value, cls.runtime_type("rope.base.pyobjectsdef", "PyModule"))
+
+    @classmethod
+    def require_source_module(cls, value: p.AttributeProbe) -> p.Infra.RopeSourceModule:
+        """Admit the native source-bearing module at the shared runtime boundary.
+
+        Returns:
+            The original native source module.
+
+        Raises:
+            TypeError: If the native object is not a source-bearing module.
+
+        """
+        if not cls.source_module(value):
+            message = "expected a native Rope source module"
+            raise TypeError(message)
+        return value
 
     @classmethod
     def require_parsed_module(cls, value: p.AttributeProbe) -> p.Infra.RopeParsedModule:
@@ -242,7 +258,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_syntax_errors(cls) -> t.VariadicTuple[type[BaseException]]:
+    def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
         """Return exceptions that signal unparseable Python source.
 
         Returns:
@@ -255,7 +271,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_runtime_errors(cls) -> t.VariadicTuple[type[BaseException]]:
+    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
         """Return recoverable exceptions raised by Rope operations.
 
         Returns:
@@ -272,26 +288,37 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_module_not_found_error_types(cls) -> t.VariadicTuple[type[BaseException]]:
-        """Return Rope exceptions for unresolved importable modules.
+    def rope_unresolved_error_types(cls) -> tuple[type[BaseException], ...]:
+        """Return Rope exceptions for statically unresolved modules or attributes.
 
         Returns:
-            Rope exceptions for unresolved importable modules.
+            Rope exceptions raised when a native lookup resolves nothing.
 
         """
-        return (cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),)
+        return tuple(
+            cls._exception_type("rope.base.exceptions", name)
+            for name in (
+                "ModuleNotFoundError",
+                "BadIdentifierError",
+                "AttributeNotFoundError",
+            )
+        )
 
     @classmethod
-    def rope_attribute_not_found_error_types(
-        cls,
-    ) -> t.VariadicTuple[type[BaseException]]:
-        """Return Rope exceptions for statically unresolved attributes.
+    def rope_hierarchy_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return Rope exceptions for hierarchies that fail to linearize.
+
+        A candidate overlay may hold base chains whose MRO is not computable
+        in that view (lazy cross-package letters); optimization owners treat
+        these as "proof unavailable" and retain the prior state.
 
         Returns:
-            Rope exceptions for statically unresolved attributes.
+            The hierarchy-failure exception types.
 
         """
-        return (cls._exception_type("rope.base.exceptions", "AttributeNotFoundError"),)
+        return (
+            cls._exception_type("rope.base.exceptions", "InconsistentHierarchyError"),
+        )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeTypes"]
+__all__: list[str] = ["FlextInfraUtilitiesTypesRopeRuntime"]

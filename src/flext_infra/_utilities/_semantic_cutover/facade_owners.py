@@ -13,9 +13,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from functools import lru_cache
-from importlib.util import find_spec, resolve_name
+from importlib.util import resolve_name
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -24,6 +24,12 @@ from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesPrivateImportFacades
 from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesTypesRopeRuntime,
+)
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
@@ -32,9 +38,7 @@ from flext_infra._utilities._rope.source_bases_inventory_collector import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
@@ -45,47 +49,35 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         cls,
         package: str,
         *,
-        source_root: Path | None = None,
-    ) -> t.StrMapping:
+        source_root: Path,
+    ) -> Mapping[str, str]:
         """Map every letter ``package`` publishes to its declared facade class.
 
+        Per-repository resolution law: the declaring repository root is the
+        only source surface. Installed environments are never consulted, where
+        divergent member libraries would leak into the derivation.
+
         Returns:
-            The resulting ``t.StrMapping``.
+            The resulting ``Mapping[str, str]``.
 
         Raises:
-            ValueError: If facade package is not importable for derivation.
+            ValueError: If the package declares no facade letter owners in its
+                own indexed tree.
 
         """
-        sources = (
-            {
-                path: path.read_text(encoding=c.DEFAULT_ENCODING)
-                for root in FlextInfraUtilitiesRopeCore.import_project_roots(
-                    source_root
-                )
-                for path in (root / c.Infra.DEFAULT_SRC_DIR / package).rglob("*.py")
-            }
-            if source_root is not None
-            else {}
-        )
-        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(
-            sources,
-            (f"from {package} import *",),
-        )
+        sources = {
+            path: path.read_text(encoding=c.DEFAULT_ENCODING)
+            for root in FlextInfraUtilitiesRopeCore.import_project_roots(source_root)
+            for path in (root / c.Infra.DEFAULT_SRC_DIR / package).rglob("*.py")
+        }
+        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(sources)
         indexed = modules.get(package)
         if indexed is None:
-            msg = f"facade package is not importable for derivation: {package}"
+            msg = f"facade package is not indexed for derivation: {package}"
             raise ValueError(msg)
-        if source_root is None:
-            spec = find_spec(package)
-            if spec is None or spec.origin is None:
-                msg = f"facade package has no source origin: {package}"
-                raise ValueError(msg)
-            source_root = Path(spec.origin).parent.parent
         classes: MutableMapping[str, str] = {}
         with FlextInfraUtilitiesRopeCore.open_import_project(source_root) as project:
-            for name in FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                indexed[0],
-            ):
+            for name in cls._module_public_exports(modules, package, project=project):
                 owner = cls._facade_letter_class(
                     modules, package, name, project=project
                 )
@@ -93,10 +85,36 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
                     classes[name] = owner
         return classes
 
+    @staticmethod
+    def _module_public_exports(
+        modules: Mapping[str, tuple[str, bool]],
+        name: str,
+        *,
+        project: p.Infra.RopeProject,
+    ) -> Sequence[str]:
+        """Read one indexed module's public exports from its captured source.
+
+        Package objects are not source modules. Read the exact source the
+        cutover indexes through the native string-module owner.
+
+        Returns:
+            The module's exported public names.
+
+        """
+        entry = modules.get(name)
+        if entry is None:
+            return ()
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+            project, entry[0]
+        )
+        return FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module)
+        )
+
     @classmethod
     def _facade_declared_owner(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
+        modules: Mapping[str, tuple[str, bool]],
         module: str,
         letter: str,
         *,
@@ -116,11 +134,9 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         )
         if resolved is not None and resolved[1] == letter:
             owner_module, owner_name = resolved
-            exported_here = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                modules[module][0],
-            )
-            exported_owner = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                modules[owner_module][0],
+            exported_here = cls._module_public_exports(modules, module, project=project)
+            exported_owner = cls._module_public_exports(
+                modules, owner_module, project=project
             )
             owner = (
                 owner_name
@@ -140,7 +156,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     @classmethod
     def _facade_letter_class(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
+        modules: Mapping[str, tuple[str, bool]],
         module: str,
         letter: str,
         *,
@@ -164,9 +180,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         owner_module, owner = resolved
         if owner == letter:
             return None
-        exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-            modules[owner_module][0],
-        )
+        exports = cls._module_public_exports(modules, owner_module, project=project)
         if letter not in exports or owner not in exports:
             return None
         if (
@@ -201,11 +215,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     def _assigned_value_binding(
         node: ast.Assign | ast.AnnAssign,
         module: str,
-    ) -> t.Pair[str, str] | None:
+    ) -> tuple[str, str] | None:
         """Return the ``module.name`` target of a plain-name value, else ``None``.
 
         Returns:
-            The resulting ``t.Pair[str, str] | None``.
+            The resulting ``tuple[str, str] | None``.
 
         """
         return (module, node.value.id) if isinstance(node.value, ast.Name) else None
@@ -215,11 +229,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         node: ast.ImportFrom,
         name: str,
         package: str,
-    ) -> t.Pair[str, str] | None:
+    ) -> tuple[str, str] | None:
         """Resolve the import that binds ``name`` relative to ``package``.
 
         Returns:
-            The resulting ``t.Pair[str, str] | None``.
+            The resulting ``tuple[str, str] | None``.
 
         """
         for imported in node.names:
@@ -242,14 +256,14 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         module: str,
         name: str,
         package: str,
-    ) -> t.Pair[t.Pair[str, str] | None, bool]:
+    ) -> tuple[tuple[str, str] | None, bool]:
         """Follow module-scope execution order to the last binding of ``name``.
 
         Returns:
             The resulting ``(target, declared)`` binding state after the body.
 
         """
-        target: t.Pair[str, str] | None = None
+        target: tuple[str, str] | None = None
         declared = False
         statements = cls._facade_module_statements(source, module)
         for index, node in enumerate(statements):
@@ -283,17 +297,17 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     @classmethod
     def _facade_declared_class(
         cls,
-        modules: t.MappingKV[str, t.Pair[str, bool]],
+        modules: Mapping[str, tuple[str, bool]],
         module: str,
         name: str,
         visiting: frozenset[str],
         *,
         project: p.Infra.RopeProject,
-    ) -> t.Pair[str, str] | None:
+    ) -> tuple[str, str] | None:
         """Follow the last module-scope binding of ``name`` to its class.
 
         Returns:
-            The resulting ``t.Pair[str, str] | None``.
+            The resulting ``tuple[str, str] | None``.
 
         Raises:
             ValueError: If cyclic facade binding.
@@ -331,7 +345,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     def _facade_module_statements(
         source: str,
         module: str,
-    ) -> t.VariadicTuple[ast.stmt]:
+    ) -> tuple[ast.stmt, ...]:
         """Parse one module source once per content; resolution only reads it.
 
         Every facade letter re-resolves its bindings through the same modules,
@@ -341,7 +355,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         source inventory, not this runtime publication view.
 
         Returns:
-            The resulting ``t.VariadicTuple[ast.stmt]``.
+            The resulting ``tuple[ast.stmt, ...],``.
 
         """
         return tuple(
@@ -357,7 +371,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         *,
         is_package: bool,
         project: p.Infra.RopeProject,
-    ) -> t.StrMapping:
+    ) -> Mapping[str, str]:
         """Index generated lazy publication within its owning import project.
 
         The lazy publication IS a binding statement: every name the
@@ -386,7 +400,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
     @classmethod
     def _facade_ordered_statements(
         cls,
-        body: t.SequenceOf[ast.stmt],
+        body: Sequence[ast.stmt],
     ) -> Iterator[ast.stmt]:
         """Yield runtime bindings, excluding static-only TYPE_CHECKING bodies.
 

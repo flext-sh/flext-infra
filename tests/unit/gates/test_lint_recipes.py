@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraLintRecipes:
@@ -47,7 +47,7 @@ class TestsFlextInfraLintRecipes:
     @staticmethod
     def _apply(
         source: str,
-        *issues: t.Triple[str, int, str],
+        *issues: tuple[str, int, str],
         path: Path = Path("sample.py"),
     ) -> str:
         recipes = config.Infra.tooling.tools.ruff.lint.fix_recipes
@@ -388,7 +388,7 @@ class TestsFlextInfraLintRecipes:
     def test_summary_docstring_expands_declaration_suites(
         self,
         source: str,
-        findings: t.VariadicTuple[t.Triple[str, int, str]],
+        findings: tuple[tuple[str, int, str], ...],
         expected: str,
     ) -> None:
         """Summaries preserve inline suites, generic signatures and class structure."""

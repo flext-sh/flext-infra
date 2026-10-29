@@ -27,7 +27,7 @@ class TestsFlextInfraLiteralEnums:
         ],
     )
     def test_singleton_enum_fields_preserve_discriminator_json(
-        constants_workspace: t.Pair[Path, Path],
+        constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
         infra_subprocess: p.Cli.CommandRunner,
         imports: str,
@@ -113,7 +113,7 @@ class TestsFlextInfraLiteralEnums:
 
     @staticmethod
     def test_literal_homonym_does_not_acquire_enum_semantics(
-        constants_workspace: t.Pair[Path, Path],
+        constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
     ) -> None:
         """A user-owned Literal class retains its actual subscription behavior."""
@@ -142,7 +142,7 @@ class TestsFlextInfraLiteralEnums:
     @staticmethod
     @pytest.mark.parametrize("case", ["shadowed", "ambiguous"])
     def test_competing_enum_bindings_fail_before_publication(
-        constants_workspace: t.Pair[Path, Path],
+        constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
         case: str,
     ) -> None:

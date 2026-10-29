@@ -6,19 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from tempfile import TemporaryFile
 
 from flext_cli import u
 from git import Git, GitCommandError
 
-from flext_infra import c, m, p, r, t
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeFactsMixin
+from flext_infra import c, m, p, r
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeFacts
 
 
-class FlextInfraUtilitiesGitWorktreeRootsMixin(
-    FlextInfraUtilitiesGitWorktreeFactsMixin,
+class FlextInfraUtilitiesGitWorktreeRoots(
+    FlextInfraUtilitiesGitWorktreeFacts,
 ):
     """Own worktree roots and the superproject's ``.gitmodules`` declarations."""
 
@@ -89,7 +89,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         repository_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]:
+    ) -> p.Result[tuple[m.Infra.GitSubmoduleDeclaration, ...]]:
         """Parse the repository's ``.gitmodules`` through ``git config -f``.
 
         Git itself reads the file, so its syntax is Git's. A missing file is
@@ -101,7 +101,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
             Every declared submodule in declaration order.
 
         """
-        result = r[t.VariadicTuple[m.Infra.GitSubmoduleDeclaration]]
+        result = r[tuple[m.Infra.GitSubmoduleDeclaration, ...]]
         sections = cls._gitmodules_sections(
             repository_root, source_project=source_project
         )
@@ -174,14 +174,14 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         repository_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[t.MappingKV[str, t.StrMapping]]:
+    ) -> p.Result[Mapping[str, Mapping[str, str]]]:
         """Group every ``submodule.*`` key Git reads from ``.gitmodules``.
 
         Returns:
             Section name to its keys; empty when the file is absent.
 
         """
-        result = r[t.MappingKV[str, t.StrMapping]]
+        result = r[Mapping[str, Mapping[str, str]]]
         gitmodules = repository_root / c.Infra.GITMODULES
         if not (
             gitmodules.exists()
@@ -223,7 +223,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
     @staticmethod
     def _gitmodules_config(
         repository_root: Path,
-        arguments: t.StrSequence,
+        arguments: Sequence[str],
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> str:
@@ -306,4 +306,4 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         return result.ok(declaration)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeRootsMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeRoots"]

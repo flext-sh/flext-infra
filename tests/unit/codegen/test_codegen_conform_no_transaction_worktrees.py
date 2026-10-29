@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import infra
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 _TRANSACTION_MARKER = "-transaction-"
 
@@ -27,11 +27,11 @@ class TestsFlextInfraCodegenConformNoTransactionWorktrees:
     """
 
     @staticmethod
-    def _transaction_worktree_siblings(root: Path) -> t.VariadicTuple[str]:
+    def _transaction_worktree_siblings(root: Path) -> tuple[str, ...]:
         """Name sibling directories that look like detached transaction worktrees.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         return tuple(
@@ -41,14 +41,14 @@ class TestsFlextInfraCodegenConformNoTransactionWorktrees:
         )
 
     @staticmethod
-    def _seed_committed_drift(tmp_path: Path) -> t.Pair[Path, Path]:
+    def _seed_committed_drift(tmp_path: Path) -> tuple[Path, Path]:
         """Materialize the managed tree, then commit one drifted managed Makefile.
 
         Returns the conformed repository root and the drifted file: the shared
         builder owns where the repository lives below ``tmp_path``.
 
         Returns:
-            The resulting ``t.Pair[Path, Path]``.
+            The resulting ``tuple[Path, Path]``.
 
         """
         root = u.Tests.WorktreeFixture.conformed_root(tmp_path)

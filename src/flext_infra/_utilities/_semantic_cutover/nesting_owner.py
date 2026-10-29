@@ -9,21 +9,28 @@ from __future__ import annotations
 import ast
 import os
 import typing
+from collections.abc import Mapping, MutableMapping, Sequence
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar
 
 import pytest
 from flext_cli import u
 
 from flext_infra import c, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope._analysis.exports import (
+    FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesTypesRopeRuntime,
+)
+from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesDeclarationPayload,
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import m
 
 
@@ -36,11 +43,42 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     definition-time dependencies remain subject to the same safety checks.
     """
 
+    # Shared singleton-model detection totals for one pass. Per-module detail
+    # emits at debug level; the pass owner emits one aggregate summary row.
+    _detection_modules: ClassVar[t.Infra.MutableSetOf[str]] = set()
+    _detection_native = 0
+    _detection_ancestry_max = 0
+
+    @classmethod
+    def _singleton_model_detection_record(
+        cls, module: str, *, native: bool, ancestry_depth: int
+    ) -> None:
+        """Accumulate one detected singleton model for the pass summary."""
+        cls._detection_modules.add(module)
+        if native:
+            cls._detection_native += 1
+        cls._detection_ancestry_max = max(cls._detection_ancestry_max, ancestry_depth)
+
+    @classmethod
+    def _singleton_model_detection_summary(cls) -> None:
+        """Emit one aggregate singleton-model row and reset the pass counters."""
+        if not cls._detection_modules:
+            return
+        u.Cli.info(
+            f"stage=singleton-model-detection summary "
+            f"modules={len(cls._detection_modules)} "
+            f"native={cls._detection_native} "
+            f"deferred_ancestry_max={cls._detection_ancestry_max}"
+        )
+        cls._detection_modules.clear()
+        cls._detection_native = 0
+        cls._detection_ancestry_max = 0
+
     @staticmethod
     def _nesting_declaration_destinations(
         module: p.Infra.RopePyModule,
-        definitions: t.StrMapping,
-    ) -> t.StrMapping:
+        definitions: Mapping[str, str],
+    ) -> Mapping[str, str]:
         """Elect real declaration scopes when class locals shadow type parameters.
 
         Python annotation scopes consult their containing class dictionary.
@@ -65,7 +103,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         owner = next(iter(definitions.values()))
         binding = module.get_scope().get_defined_names().get(owner)
         scope = (
-            FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
                 binding.get_object(), owner
             ).get_scope()
             if binding is not None
@@ -74,7 +112,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         occupied = set(definitions)
         if scope is not None:
             occupied.update(scope.get_defined_names())
-        isolated: t.MutableMappingKV[str, str] = {}
+        isolated: MutableMapping[str, str] = {}
         for node in tree.body:
             if not isinstance(node, ast.TypeAlias) or node.name.id not in definitions:
                 continue
@@ -108,7 +146,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     @staticmethod
     def _pytest_collection_patterns(
         root: Path,
-    ) -> t.Triple[t.StrTuple, t.StrTuple, t.StrTuple]:
+    ) -> tuple[t.StrTuple, t.StrTuple, t.StrTuple]:
         """Read native configuration and defaults without running consumer plugins.
 
         Returns:
@@ -163,7 +201,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         )
 
     @staticmethod
-    def _pytest_name_matches(name: str, patterns: t.StrSequence) -> bool:
+    def _pytest_name_matches(name: str, patterns: Sequence[str]) -> bool:
         """Match pytest's native prefix-or-glob class/function selectors.
 
         Returns:
@@ -179,7 +217,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         cls,
         name: str,
         binding: p.Infra.RopePyName,
-        patterns: t.StrSequence,
+        patterns: Sequence[str],
     ) -> bool:
         """Prove native class selection, including source-owned inherited flags.
 
@@ -199,7 +237,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         if not cls._pytest_name_matches(name, patterns):
             return False
         definition = binding.get_object()
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(definition):
+        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(definition):
             return False
         scope = definition.get_scope()
         if scope.get_kind() != "Class":
@@ -265,10 +303,10 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         cls,
         convention: m.Infra.RopeModuleConvention,
         file_path: Path,
-        classes: t.MappingKV[str, ast.ClassDef],
-        patterns: t.Pair[t.StrSequence, t.StrSequence],
+        classes: Mapping[str, ast.ClassDef],
+        patterns: tuple[Sequence[str], Sequence[str]],
         *,
-        collection: t.Pair[bool, bool],
+        collection: tuple[bool, bool],
     ) -> p.Result[str]:
         """Elect an existing collected suite, otherwise derive Tests<Unit>.
 
@@ -342,7 +380,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         convention: m.Infra.RopeModuleConvention,
         stem: str,
         prefix: str,
-        patterns: t.StrSequence,
+        patterns: Sequence[str],
         *,
         require_collection: bool,
     ) -> p.Result[str]:
@@ -456,7 +494,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         *,
         values: bool,
         strict: bool = False,
-    ) -> t.VariadicTuple[str]:
+    ) -> tuple[str, ...]:
         """Return loose functions and value bindings in module order.
 
         Returns:
@@ -531,12 +569,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     def _movable_members(
         cls,
         tree: ast.Module,
-        members: t.VariadicTuple[str],
+        members: tuple[str, ...],
         *,
         owner: str,
         module_name: str,
         strict: bool = False,
-    ) -> p.Result[t.VariadicTuple[str]]:
+    ) -> p.Result[tuple[str, ...]]:
         """Return the loose members the owner body can hold, in module order.
 
         A member that reads the owner while it is being defined (an alias of
@@ -555,9 +593,9 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             The movable members, or a failure naming the module and member.
 
         """
-        checked = r[t.VariadicTuple[str]]
+        checked = r[tuple[str, ...]]
         selected = frozenset(members)
-        nodes_by_member: t.MutableMappingKV[str, ast.stmt] = {}
+        nodes_by_member: MutableMapping[str, ast.stmt] = {}
         for node in tree.body:
             name = (
                 node.name
@@ -589,7 +627,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     def _creation_bound(
         cls,
         tree: ast.Module,
-        nodes_by_member: t.MappingKV[str, ast.stmt],
+        nodes_by_member: Mapping[str, ast.stmt],
         selected: frozenset[str],
         owner: str,
     ) -> set[str]:
@@ -654,11 +692,187 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         )
 
     @classmethod
+    def _model_namespace_candidate(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+    ) -> tuple[p.Infra.RopeSourceClass, t.StrTuple] | None:
+        """Select an exported pure namespace, including its redundant wrapper.
+
+        Returns:
+            The native declaration and payload names eligible for use census.
+
+        """
+        tree = module.get_ast()
+        if not isinstance(tree, ast.Module):
+            return None
+        classes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
+        if len(classes) != 1:
+            return None
+        node = classes[0]
+        if node.name not in (
+            FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(module)
+        ):
+            return None
+        owner = module.get_attribute(node.name).get_object()
+        runtime = FlextInfraUtilitiesTypesRopeRuntime
+        if not runtime.py_class(owner):
+            return None
+        names = cls._model_namespace_payloads(project, owner)
+        if names:
+            return owner, names
+        return cls._model_namespace_wrapped_candidate(project, owner, node)
+
+    @classmethod
+    def _model_namespace_wrapped_candidate(
+        cls,
+        project: p.Infra.RopeProject,
+        owner: p.Infra.RopeSourceClass,
+        node: ast.ClassDef,
+    ) -> tuple[p.Infra.RopeSourceClass, t.StrTuple] | None:
+        """Admit only a transparent holder around the same pure namespace.
+
+        Returns:
+            The native nested namespace, or refusal for nontransparent holders.
+
+        """
+        if node.bases or node.keywords or node.decorator_list or node.type_params:
+            return None
+        children = owner.get_scope().get_scopes()
+        if len(children) != 1 or set(owner.get_scope().get_defined_names()) != {
+            node.name
+        }:
+            return None
+        child = children[0].pyobject
+        if (
+            not FlextInfraUtilitiesTypesRopeRuntime.py_class(child)
+            or child.get_name() != node.name
+        ):
+            return None
+        names = cls._model_namespace_payloads(project, child)
+        return (child, names) if names else None
+
+    @staticmethod
+    def _model_namespace_payloads(
+        project: p.Infra.RopeProject,
+        owner: p.Infra.RopePyObject,
+    ) -> t.StrTuple:
+        """Prove a fieldless payload namespace at its native preset boundary.
+
+        Returns:
+            Nested model names, or no admission for an entity or custom base.
+
+        """
+        runtime = FlextInfraUtilitiesTypesRopeRuntime
+        if not runtime.py_class(owner):
+            return ()
+        node = owner.get_ast()
+        if not isinstance(node, ast.ClassDef) or (
+            node.decorator_list or node.keywords or node.type_params
+        ):
+            return ()
+        children = tuple(
+            member for member in node.body if isinstance(member, ast.ClassDef)
+        )
+        if not children or any(
+            not isinstance(member, ast.ClassDef | ast.Pass)
+            and not (
+                isinstance(member, ast.Expr)
+                and isinstance(member.value, ast.Constant)
+                and isinstance(member.value.value, str)
+            )
+            for member in node.body
+        ):
+            return ()
+        payloads = FlextInfraUtilitiesDeclarationPayload
+        bases = tuple(payloads.direct_bases(owner))
+        if len(bases) != 1:
+            return ()
+        preset = payloads.qualified_name(
+            project, "flext_core.m.ArbitraryTypesModel"
+        ).get_object()
+        if bases != (preset,):
+            return ()
+        model = payloads.identity_name(
+            project, c.Infra.PYDANTIC_MODEL_IDENTITY
+        ).get_object()
+        return (
+            tuple(child.name for child in children)
+            if all(
+                model
+                in payloads.class_ancestry(owner.get_attribute(child.name).get_object())
+                for child in children
+            )
+            else ()
+        )
+
+    @classmethod
+    def _singleton_model_namespace(
+        cls,
+        project: p.Infra.RopeProject,
+        file_path: Path,
+        classes: Mapping[str, ast.ClassDef],
+    ) -> Mapping[str, str]:
+        """Wrap an exported singleton model without renaming its entity.
+
+        Returns:
+            The existing nesting mapping, or no move for a namespace holder.
+
+        Raises:
+            TypeError: If Singleton model owner requires a native source module.
+            ValueError: A pure model namespace still has actual entity consumers.
+
+        """
+        if (
+            len(classes) != 1
+            or FlextInfraUtilitiesCodegenNamespace.facade_family_of_directory(
+                file_path.parent.name
+            )
+            != c.Infra.FacadeFamily.M
+        ):
+            return {}
+        name = next(iter(classes))
+        module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            project,
+            project.get_resource(
+                file_path.relative_to(Path(project.root.real_path)).as_posix()
+            ),
+        )
+        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+            message = (
+                f"Singleton model owner requires a native source module: {file_path}"
+            )
+            raise TypeError(message)
+        if (
+            name
+            not in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+                module
+            )
+        ):
+            return {}
+        payloads = FlextInfraUtilitiesDeclarationPayload
+        model = payloads.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY)
+        owner = module.get_attribute(name).get_object()
+        if cls._model_namespace_payloads(project, owner):
+            message = (
+                "Fieldless model namespace has entity consumers; "
+                f"native namespace normalization was refused: {file_path}:{name}"
+            )
+            raise ValueError(message)
+        ancestry = payloads.class_ancestry(owner)
+        cls._singleton_model_detection_record(
+            module.get_name(),
+            native=model.get_object() in ancestry,
+            ancestry_depth=len(ancestry),
+        )
+        return {name: name} if model.get_object() in ancestry else {}
+
+    @classmethod
     def _module_owner(
         cls,
         convention: m.Infra.RopeModuleConvention,
         file_path: Path,
-        classes: t.MappingKV[str, ast.ClassDef],
+        classes: Mapping[str, ast.ClassDef],
         exports: frozenset[str],
     ) -> p.Result[str]:
         """Return the semantic owner, or derive one from the module convention.
@@ -729,7 +943,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     def _ordinary_module_owner(
         convention: m.Infra.RopeModuleConvention,
         file_path: Path,
-        classes: t.MappingKV[str, ast.ClassDef],
+        classes: Mapping[str, ast.ClassDef],
         exports: frozenset[str],
     ) -> p.Result[str]:
         derived = r[str]

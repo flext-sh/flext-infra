@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra. Models. Codegen package.
+"""codegen package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,29 +13,21 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._models._codegen.base import FlextInfraCodegen
-    from flext_infra._models._codegen.fix import FlextInfraModelsCodegenFixModels
-    from flext_infra._models._codegen.lazy_init import (
-        FlextInfraModelsCodegenLazyInitModels,
-    )
-    from flext_infra._models._codegen.pipeline import (
-        FlextInfraModelsCodegenPipelineModels,
-    )
-    from flext_infra._models._codegen.scaffold import (
-        FlextInfraModelsCodegenScaffoldModels,
-    )
-    from flext_infra._models._codegen.transaction import (
-        FlextInfraModelsCodegenTransactionModels,
-    )
+    from flext_infra._codegen.base import FlextInfraCodegen
+    from flext_infra._codegen.fix import FlextInfraModelsCodegenFix
+    from flext_infra._codegen.lazy_init import FlextInfraModelsCodegenLazyInit
+    from flext_infra._codegen.pipeline import FlextInfraModelsCodegenPipeline
+    from flext_infra._codegen.scaffold import FlextInfraModelsCodegenScaffold
+    from flext_infra._codegen.transaction import FlextInfraModelsCodegenTransaction
 
 
 __all__: tuple[str, ...] = (
     "FlextInfraCodegen",
-    "FlextInfraModelsCodegenFixModels",
-    "FlextInfraModelsCodegenLazyInitModels",
-    "FlextInfraModelsCodegenPipelineModels",
-    "FlextInfraModelsCodegenScaffoldModels",
-    "FlextInfraModelsCodegenTransactionModels",
+    "FlextInfraModelsCodegenFix",
+    "FlextInfraModelsCodegenLazyInit",
+    "FlextInfraModelsCodegenPipeline",
+    "FlextInfraModelsCodegenScaffold",
+    "FlextInfraModelsCodegenTransaction",
 )
 
 install_lazy_exports(
@@ -43,11 +35,11 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraCodegen": ".base",
-        "FlextInfraModelsCodegenFixModels": ".fix",
-        "FlextInfraModelsCodegenLazyInitModels": ".lazy_init",
-        "FlextInfraModelsCodegenPipelineModels": ".pipeline",
-        "FlextInfraModelsCodegenScaffoldModels": ".scaffold",
-        "FlextInfraModelsCodegenTransactionModels": ".transaction",
+        "FlextInfraModelsCodegenFix": ".fix",
+        "FlextInfraModelsCodegenLazyInit": ".lazy_init",
+        "FlextInfraModelsCodegenPipeline": ".pipeline",
+        "FlextInfraModelsCodegenScaffold": ".scaffold",
+        "FlextInfraModelsCodegenTransaction": ".transaction",
     }),
     public_exports=__all__,
 )

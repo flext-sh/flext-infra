@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
@@ -14,13 +15,50 @@ from flext_core import m
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._models._config import (
-    FlextInfraConfigModelsArtifact,
-    FlextInfraConfigModelsWorkspace,
+    FlextInfraModelsConfigArtifact,
+    FlextInfraModelsConfigWorkspace,
 )
 
 
 class FlextInfraModelsDocsGeneration:
     """Declaration-only documentation generation contracts."""
+
+    class DocsCatalogEntry(m.ContractModel):
+        """One project row in the generated workspace catalog."""
+
+        name: Annotated[str, m.Field(description="Project name")]
+        project_class: Annotated[str, m.Field(description="Project class")]
+        package_name: Annotated[str, m.Field(description="Import package name")]
+        description: Annotated[str, m.Field(description="Project description")]
+        api_page: Annotated[str, m.Field(description="Generated API page")]
+
+    class DocsDependencyReference(m.FrozenModel):
+        """Official dependency documentation with separate version provenance."""
+
+        name: t.NonEmptyStr = m.Field(description="Normalized distribution name")
+        documentation_url: t.NonEmptyStr = m.Field(
+            description="Official publisher-declared or verified documentation URL"
+        )
+        installed_version: str | None = m.Field(
+            default=None, description="Observed installed distribution version"
+        )
+        locked_versions: tuple[str, ...] = m.Field(
+            default=(), description="Distinct versions declared by governed locks"
+        )
+        source: t.NonEmptyStr = m.Field(
+            description="Metadata or configured source establishing URL ownership"
+        )
+
+    class DocsLlmsContext(m.FrozenModel):
+        """Source-derived inputs of the llms.txt documentation index."""
+
+        title: t.NonEmptyStr = m.Field(description="Owning workspace title")
+        projects: tuple[FlextInfraModelsDocsGeneration.DocsCatalogEntry, ...] = m.Field(
+            description="Generated first-party project references"
+        )
+        dependencies: tuple[
+            FlextInfraModelsDocsGeneration.DocsDependencyReference, ...
+        ] = m.Field(description="Official external documentation references")
 
     class DocsRootInputs(m.FrozenModel):
         """Workspace-level inputs shared by the aggregate root page rendering."""
@@ -32,7 +70,7 @@ class FlextInfraModelsDocsGeneration:
             gt=0,
             description="Prose width elected once for the destination repository",
         )
-        exclude_docs: t.StrSequence = m.Field(
+        exclude_docs: Sequence[str] = m.Field(
             default=(),
             description="Repository-relative publication exclusion globs from codegen",
         )
@@ -59,7 +97,7 @@ class FlextInfraModelsDocsGeneration:
         )
 
         governance_source: (
-            FlextInfraConfigModelsWorkspace.CodegenBootstrapSource | None
+            FlextInfraModelsConfigWorkspace.CodegenBootstrapSource | None
         ) = m.Field(
             default=None, description="Captured source and ref owning governance links"
         )
@@ -187,7 +225,7 @@ class FlextInfraModelsDocsGeneration:
             m.Field(description="Exact scope that owns every relative artifact"),
         ]
         artifacts: Annotated[
-            t.VariadicTuple[FlextInfraModelsDocsGeneration.DocsRenderedArtifact],
+            tuple[FlextInfraModelsDocsGeneration.DocsRenderedArtifact, ...],
             m.Field(description="Complete ordered desired artifact inventory"),
         ]
 
@@ -195,12 +233,12 @@ class FlextInfraModelsDocsGeneration:
         """Single render consumed through publication."""
 
         scopes: Annotated[
-            t.VariadicTuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts],
+            tuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts, ...],
             m.Field(min_length=1, description="Ordered selected scope inventories"),
         ]
-        metadata_files: t.VariadicTuple[
-            FlextInfraConfigModelsArtifact.CodegenFilePlan
-        ] = m.Field(default=(), description="Owned metadata published with this render")
+        metadata_files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = (
+            m.Field(default=(), description="Owned metadata published with this render")
+        )
         # The workspace root stays explicit: it may be excluded from `scopes`
         # (DECLARED conform scope), so it cannot be inferred from `scopes[0]`.
         repository_root: Annotated[

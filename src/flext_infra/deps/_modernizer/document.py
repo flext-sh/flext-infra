@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, Annotated
-
-from flext_core import FlextRuntime
 
 from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
 from flext_infra._models.deps import (
@@ -40,11 +39,11 @@ class FlextInfraPyprojectModernizerDocument(
     """Own the parsed document state and the ordered phase pipeline."""
 
     @staticmethod
-    def _config_sort_first() -> t.StrSequence:
+    def _config_sort_first() -> Sequence[str]:
         """Read the config-owned top-level TOML section order once.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         return u.Infra.native_tool_strings(
@@ -83,7 +82,7 @@ class FlextInfraPyprojectModernizerDocument(
     git_source_url_prefix: GitSourceUrlPrefixField = None
     git_source_ref_from: GitSourceRefFromField = None
     git_source_ref_to: GitSourceRefToField = None
-    tomlsort_sort_first: t.StrSequence = m.Field(
+    tomlsort_sort_first: Sequence[str] = m.Field(
         default_factory=_config_sort_first,
         exclude=True,
         description="Config-owned top-level TOML section order",
@@ -135,7 +134,7 @@ class FlextInfraPyprojectModernizerDocument(
         document = u.Cli.toml_parse_text(recovered.value)
         if document is None:
             return result_type.fail(f"invalid TOML: {path}")
-        payload_source = FlextRuntime.normalize_to_json_value(document.unwrap())
+        payload_source = u.normalize_to_json_value(document.unwrap())
         validated: p.Result[t.MutableJsonMapping] = u.validate_value(
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER,
             payload_source,
@@ -152,14 +151,14 @@ class FlextInfraPyprojectModernizerDocument(
         )
 
     @staticmethod
-    def _normalize_build_payload(payload: t.MutableJsonMapping) -> t.StrSequence:
+    def _normalize_build_payload(payload: t.MutableJsonMapping) -> Sequence[str]:
         """Pin the hatchling backend and drop empty Poetry dependency groups.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
-        changes: t.MutableSequenceOf[str] = []
+        changes: MutableSequence[str] = []
         if u.Cli.toml_mapping_child(payload, "build-system") is None:
             changes.append("created [build-system]")
         build_system = u.Cli.toml_mapping_ensure_table(payload, "build-system")
@@ -199,15 +198,15 @@ class FlextInfraPyprojectModernizerDocument(
         self,
         state: m.Infra.PyprojectDocumentState,
         *,
-        canonical_dev: t.StrSequence,
+        canonical_dev: Sequence[str],
         dry_run: bool,
         skip_comments: bool,
         source_migration: m.Infra.GitSourceReferenceMigration | None = None,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Run every phase over one discovered state; write unless ``dry_run``.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         if source_migration is not None:
@@ -215,10 +214,10 @@ class FlextInfraPyprojectModernizerDocument(
                 state.payload, source_migration
             )
             if migrated.failure:
-                return r[t.StrSequence].from_failure(migrated)
+                return r[Sequence[str]].from_failure(migrated)
             if not migrated.value:
                 state.rendered = state.original_rendered
-                return r[t.StrSequence].ok(())
+                return r[Sequence[str]].ok(())
             rendered = self._render_document_state(
                 state,
                 migrated.value,
@@ -235,22 +234,22 @@ class FlextInfraPyprojectModernizerDocument(
         if rendered.failure:
             return rendered
         if state.rendered == state.original_rendered:
-            return r[t.StrSequence].ok(())
+            return r[Sequence[str]].ok(())
         if not dry_run:
             u.write_file(
                 state.pyproject_path, state.rendered, encoding=c.DEFAULT_ENCODING
             )
         if not rendered.value:
-            return r[t.StrSequence].ok(("canonical pyproject rendering changed bytes",))
+            return r[Sequence[str]].ok(("canonical pyproject rendering changed bytes",))
         return rendered
 
     def _render_declared_state(
         self,
         state: m.Infra.PyprojectDocumentState,
         *,
-        canonical_dev: t.StrSequence,
+        canonical_dev: Sequence[str],
         skip_comments: bool,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Run every managed phase against the declared repository topology.
 
         Returns:
@@ -259,7 +258,7 @@ class FlextInfraPyprojectModernizerDocument(
         """
         inputs = u.Infra.load_codegen_inputs(state.pyproject_path.parent)
         if inputs.failure:
-            return r[t.StrSequence].from_failure(inputs)
+            return r[Sequence[str]].from_failure(inputs)
         repository = inputs.value.spec.repository
         project = repository.project
         build_changes = self._normalize_build_payload(state.payload)
@@ -288,15 +287,15 @@ class FlextInfraPyprojectModernizerDocument(
         self,
         state: m.Infra.PyprojectDocumentState,
         *,
-        canonical_dev: t.StrSequence,
+        canonical_dev: Sequence[str],
         topology: m.Infra.PyprojectDeclaredTopology,
         codegen: m.Infra.CodegenConfigSpec,
         tool_config: m.Infra.ToolConfigDocument | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Run every managed phase, in order, over one parsed payload.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         path, payload = state.pyproject_path, state.payload
@@ -352,7 +351,7 @@ class FlextInfraPyprojectModernizerDocument(
             managed_artifacts = u.Infra.load_project_managed_artifacts(
                 path.parent,
             ).unwrap()
-        changes: t.MutableSequenceOf[str] = [
+        changes: MutableSequence[str] = [
             *self._normalize_build_payload(payload),
             *FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
             *FlextInfraToolTablesPhase(tooling, codegen=codegen).apply_payload(
@@ -411,12 +410,12 @@ class FlextInfraPyprojectModernizerDocument(
     def _render_document_state(
         self,
         state: m.Infra.PyprojectDocumentState,
-        changes: t.StrSequence,
+        changes: Sequence[str],
         *,
         skip_comments: bool,
         format_source: bool = True,
         preserve_layout: bool = False,
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Order, annotate, and format one payload without writing to disk.
 
         A formatter failure is the result's failure, never a reported change.
@@ -429,13 +428,13 @@ class FlextInfraPyprojectModernizerDocument(
             preserve_layout: Synchronize values through the original TOML tree.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         path = state.pyproject_path
         if preserve_layout:
             if state.document is None:
-                return r[t.StrSequence].fail(
+                return r[Sequence[str]].fail(
                     f"original TOML document is unavailable: {path}"
                 )
             doc = state.document
@@ -451,7 +450,7 @@ class FlextInfraPyprojectModernizerDocument(
             }
             doc = u.Cli.toml_document_from_mapping({**preferred, **canonical})
         rendered = doc.as_string()
-        comment_changes: t.StrSequence = ()
+        comment_changes: Sequence[str] = ()
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
         if format_source:
@@ -465,10 +464,10 @@ class FlextInfraPyprojectModernizerDocument(
                 ),
             )
             if formatted.failure:
-                return r[t.StrSequence].from_failure(formatted)
+                return r[Sequence[str]].from_failure(formatted)
             rendered = formatted.value
         state.rendered = rendered.rstrip() + "\n"
-        return r[t.StrSequence].ok((*changes, *comment_changes))
+        return r[Sequence[str]].ok((*changes, *comment_changes))
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerDocument"]

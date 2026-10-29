@@ -10,12 +10,12 @@ from typing import override
 
 from flext_infra import c, m, p, r, settings, u
 from flext_infra.codegen import (
-    FlextInfraCodegenExecutionBase,
+    FlextInfraCodegenExecution,
     FlextInfraCodegenMiseToolchainProof,
 )
 
 
-class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecutionBase[bool]):
+class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecution[bool]):
     """Reinstall the selected locked tool, then use the existing reality proof."""
 
     def _prepare(self, requested: str) -> m.Infra.MiseToolchainRepairPlan:

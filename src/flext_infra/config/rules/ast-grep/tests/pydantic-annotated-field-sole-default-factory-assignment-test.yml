@@ -4,17 +4,17 @@ id: pydantic-annotated-field-sole-default-factory-assignment
 valid:
   - |
     class Spec:
-        items: t.StrSequence = m.Field(default_factory=tuple)
+        items: Sequence[str] = m.Field(default_factory=tuple)
   - |
     class Spec:
-        items: Annotated[t.StrSequence, m.Field(default_factory=tuple, description="d")]
+        items: Annotated[Sequence[str], m.Field(default_factory=tuple, description="d")]
   - |
     """A docstring mentioning x: Annotated[X, m.Field(default_factory=X)]."""
 # `invalid` MUST match: the factory is the whole Annotated metadata.
 invalid:
   - |
     class Spec:
-        items: Annotated[t.StrSequence, m.Field(default_factory=tuple)]
+        items: Annotated[Sequence[str], m.Field(default_factory=tuple)]
   - |
     class Spec:
         audit: Annotated[

@@ -24,7 +24,9 @@ class TestsFlextInfraDepsLockIntegrity:
 
     @staticmethod
     @pytest.fixture
-    def repository(tmp_path: Path) -> None:
+    def repository(
+        tmp_path: Path,
+    ) -> None:
         """Every lock scenario starts from an initialized Git repository."""
         u.Tests.initialize_git_repo(tmp_path)
 

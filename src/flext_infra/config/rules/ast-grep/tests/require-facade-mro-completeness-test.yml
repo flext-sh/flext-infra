@@ -1,12 +1,12 @@
 id: require-facade-mro-completeness
 valid:
   - |
-    class FlextFooModels(FlextCliModels):
+    class FlextModelsFoo(FlextCliModels):
         def run(self) -> None:
             class Local:
                 pass
 invalid:
   - |
-    class FlextFooModels(FlextCliModels):
-        class Foo(FlextFooModelsBase):
+    class FlextModelsFoo(FlextCliModels):
+        class Foo(FlextModelsFooBase):
             pass

@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -18,7 +18,7 @@ from flext_infra import c, config, m, u
 from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
@@ -33,28 +33,20 @@ class FlextInfraLocCapGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """Run scc over the project's Python directories, emitting per-file JSON.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         _ = project_dir, ctx
-        # Generated source trees are tracked, so Git ignore rules no longer
-        # hide them; scc drops them by exact directory name instead.
-        generated = tuple(
-            argument
-            for name in config.Infra.codegen.generated_sources
-            for argument in ("--not-match", f"^{re.escape(name)}$")
-        )
         return [
             c.Infra.SCC_BINARY,
             "--format",
             "json",
             "--by-file",
-            *generated,
             *check_dirs,
         ]
 
@@ -64,14 +56,14 @@ class FlextInfraLocCapGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
         """Parse scc JSON into one Issue per over-cap module.
 
         Returns:
-            The resulting ``t.Pair[bool, t.SequenceOf[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
 
         """
-        del ctx
+        del project_dir, ctx
         if not u.Cli.process_succeeded(result.outcome):
             return (
                 False,
@@ -89,7 +81,6 @@ class FlextInfraLocCapGate(FlextInfraGate):
         issues = self._files_over_cap(
             result.stdout,
             config.Infra.codegen.loc_cap.max_lines,
-            project_dir,
         )
         return len(issues) == 0, issues
 
@@ -115,17 +106,14 @@ class FlextInfraLocCapGate(FlextInfraGate):
         cls,
         scc_json: str,
         cap: int,
-        project_dir: Path,
-    ) -> t.VariadicTuple[m.Infra.Issue]:
+    ) -> tuple[m.Infra.Issue, ...]:
         """Extract over-cap modules from an `scc --format json --by-file` payload.
 
-        SCC paths are relative to its project working directory, not the caller.
-        Parsing and header-read failures propagate. Generated facades carry
-        AUTOGEN_HEADER and are exempt: their size is the generator's obligation,
-        enforced by its own contract — the SUPREME LAW caps authored modules.
+        Generated and authored modules share the same configured ceiling.
+        Parsing failures propagate.
 
         Returns:
-            The resulting ``t.VariadicTuple[m.Infra.Issue]``.
+            The resulting ``tuple[m.Infra.Issue, ...],``.
 
         """
         report = m.Infra.SccReport.model_validate_json(scc_json, strict=True)
@@ -135,7 +123,6 @@ class FlextInfraLocCapGate(FlextInfraGate):
             if language.name == c.Infra.SCC_PYTHON_LANG
             for file in language.files
             if file.code > cap
-            and not u.Infra.generated_source(project_dir / file.location)
         )
 
 

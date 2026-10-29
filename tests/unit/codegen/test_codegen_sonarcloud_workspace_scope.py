@@ -11,9 +11,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import config, t
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, tm, u
 
@@ -24,7 +25,7 @@ class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
     @staticmethod
     def _rendered_scope(
         root: Path,
-    ) -> tuple[t.StrSequence, t.StrSequence, t.StrSequence]:
+    ) -> tuple[Sequence[str], Sequence[str], Sequence[str]]:
         """Plan conform for one root and return its exclusion and CPD scopes.
 
         Returns:

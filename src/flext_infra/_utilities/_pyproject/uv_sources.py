@@ -6,20 +6,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping, Sequence
+from itertools import chain
 
 from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
+from tomlkit.items import Array
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesRepository,
-)
-from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectRequirements
-from flext_infra._utilities.dependency_requirements import (
     FlextInfraUtilitiesDependencyRequirements,
+)
+from flext_infra._utilities._git.requirement_source import (
+    FlextInfraUtilitiesGitRequirementSource,
+)
+from flext_infra._utilities._pyproject.requirements import (
+    FlextInfraUtilitiesPyprojectRequirements,
 )
 
 
@@ -27,12 +31,106 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
     """Conform generated native UV leaves and preserve authored native policy."""
 
     @classmethod
+    def sync_selected_uv_overrides(
+        cls,
+        document: t.Cli.TomlDocument,
+        declarations: Sequence[str | m.Infra.UvScopedOverride],
+        packages: Sequence[str],
+    ) -> bool:
+        """Project selected global resolver declarations into the native document.
+
+        Returns:
+            Whether the selected override publication changes the document.
+
+        Raises:
+            TypeError: If requirement field must be a native TOML array.
+            ValueError: If selected source URLs are ambiguous.
+
+        """
+        selected = frozenset(map(canonicalize_name, packages))
+        desired = tuple(
+            entry
+            for entry in declarations
+            if isinstance(entry, str)
+            and canonicalize_name(Requirement(entry).name) in selected
+        )
+        if not desired:
+            return False
+        table = cls._resolved_uv_table(document)
+        current = u.Cli.toml_value(table, "override-dependencies")
+        existing = m.Infra.UvOverrideEntries.model_validate(
+            [] if current is None else current
+        )
+        changed = u.Cli.toml_sync_value(
+            table,
+            "override-dependencies",
+            cls._uv_override_wire((*existing.root, *desired)),
+        )
+        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+        if project is None:
+            return changed
+        sources: dict[str, set[str]] = {}
+        for entry in desired:
+            parsed = Requirement(entry)
+            if parsed.url is not None:
+                sources.setdefault(canonicalize_name(parsed.name), set()).add(
+                    parsed.url
+                )
+        for section, key in chain(
+            ((project, str(c.Infra.DEPENDENCIES)),),
+            cls.requirement_group_fields(document, project),
+        ):
+            original = u.Cli.toml_item_child(section, key)
+            if original is None:
+                continue
+            if not isinstance(original, Array):
+                message = f"requirement field must be a native TOML array: {key}"
+                raise TypeError(message)
+            for index, entry in enumerate(
+                cls.dependency_group_entries(u.Cli.toml_unwrap_item(original))
+            ):
+                replacement = cls._selected_source_requirement(entry, sources)
+                if replacement is not None:
+                    original[index] = replacement
+                    changed = True
+        return changed
+
+    @staticmethod
+    def _selected_source_requirement(
+        entry: str | m.Infra.DependencyGroupInclude,
+        sources: Mapping[str, set[str]],
+    ) -> str | None:
+        """Rewrite only the selected URL, preserving the native requirement grammar.
+
+        Returns:
+            The replacement, or no change for unchanged or unselected entries.
+
+        Raises:
+            ValueError: When selected overrides declare conflicting source URLs.
+
+        """
+        if not isinstance(entry, str):
+            return None
+        parsed = Requirement(entry)
+        urls = sources.get(canonicalize_name(parsed.name))
+        if parsed.url is None or urls is None:
+            return None
+        if len(urls) != 1:
+            message = f"selected source URLs are ambiguous: {parsed.name}"
+            raise ValueError(message)
+        selected_url = next(iter(urls))
+        if parsed.url == selected_url:
+            return None
+        parsed.url = selected_url
+        return str(parsed)
+
+    @classmethod
     def document_requirement_lines(
         cls,
         document: t.Cli.TomlDocument,
         *,
         development: bool = True,
-        extras: t.StrSequence | None = None,
+        extras: Sequence[str] | None = None,
     ) -> p.Result[list[str]]:
         """Read declared requirements without resolving or flattening a graph.
 
@@ -74,7 +172,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
     @classmethod
     def direct_source_names(
         cls, document: t.Cli.TomlDocument
-    ) -> p.Result[t.VariadicTuple[str]]:
+    ) -> p.Result[tuple[str, ...]]:
         """Name every requirement declared by direct source reference.
 
         Returns:
@@ -83,8 +181,8 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         """
         lines = cls.document_requirement_lines(document)
         if lines.failure:
-            return r[t.VariadicTuple[str]].from_failure(lines)
-        return r[t.VariadicTuple[str]].ok(
+            return r[tuple[str, ...]].from_failure(lines)
+        return r[tuple[str, ...]].ok(
             tuple(
                 sorted({
                     name
@@ -108,8 +206,8 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
 
     @staticmethod
     def _uv_override_wire(
-        entries: t.SequenceOf[str | m.Infra.UvScopedOverride],
-    ) -> t.JsonValueList:
+        entries: Sequence[str | m.Infra.UvScopedOverride],
+    ) -> list[t.JsonValue]:
         """Elect declared global overrides while preserving native scoped policy.
 
         Returns:
@@ -118,7 +216,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         """
         parsed = m.Infra.UvOverrideEntries.model_validate(list(entries), strict=True)
         selected: list[str | m.Infra.UvScopedOverride] = []
-        seen: set[t.Pair[str, str | None]] = set()
+        seen: set[tuple[str, str | None]] = set()
         for entry in reversed(parsed.root):
             if isinstance(entry, str):
                 requirement = Requirement(entry)
@@ -155,7 +253,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
     @classmethod
     def _declared_internal_overrides(
         cls, document: t.Cli.TomlDocument
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[Sequence[str]]:
         """Derive internal overrides from this project's own Git URL requirements.
 
         Every declared internal requirement carrying a direct Git URL (runtime,
@@ -169,9 +267,9 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         """
         lines = cls.document_requirement_lines(document)
         if lines.failure:
-            return r[t.StrSequence].from_failure(lines)
+            return r[Sequence[str]].from_failure(lines)
         own = cls._own_distribution(document)
-        urls: t.MutableMappingKV[str, str] = {}
+        urls: MutableMapping[str, str] = {}
         for line in lines.value:
             name = cls._internal_dependency_name(
                 line, declared_sources={}, candidate_sources={}
@@ -182,11 +280,11 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             if url is None or not url.startswith(c.Infra.GIT_URL_SCHEME_PREFIX):
                 continue
             if urls.setdefault(name, url) != url:
-                return r[t.StrSequence].fail(
+                return r[Sequence[str]].fail(
                     f"internal requirement {name} declares conflicting Git URLs: "
                     f"{urls[name]} and {url}"
                 )
-        return r[t.StrSequence].ok(
+        return r[Sequence[str]].ok(
             tuple(f"{name} @ {url}" for name, url in sorted(urls.items()))
         )
 
@@ -196,7 +294,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         document: t.Cli.TomlDocument,
         *,
         target_ref: str,
-    ) -> p.Result[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]:
+    ) -> p.Result[tuple[m.Infra.GitSourceReferenceMigration, ...]]:
         """Elect one Git-ref migration per internal requirement off the line.
 
         Every declared internal requirement whose direct Git source names a
@@ -210,12 +308,12 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             invalid declared source.
 
         """
-        result_type = r[t.VariadicTuple[m.Infra.GitSourceReferenceMigration]]
+        result_type = r[tuple[m.Infra.GitSourceReferenceMigration, ...]]
         lines = cls.document_requirement_lines(document)
         if lines.failure:
             return result_type.from_failure(lines)
-        migrations: t.MutableMappingKV[
-            t.Pair[str, str], m.Infra.GitSourceReferenceMigration
+        migrations: MutableMapping[
+            tuple[str, str], m.Infra.GitSourceReferenceMigration
         ] = {}
         for line in lines.value:
             name = cls._internal_dependency_name(
@@ -223,7 +321,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             )
             if name is None or not cls._declares_direct_source(line):
                 continue
-            declared = FlextInfraUtilitiesRepository.declared_git_source(line)
+            declared = FlextInfraUtilitiesGitRequirementSource.declared_git_source(line)
             if declared.failure:
                 return result_type.from_failure(declared)
             url, reference = declared.value
@@ -246,8 +344,8 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         uv: t.Cli.TomlTable,
         document: t.Cli.TomlDocument,
         *,
-        candidate_sources: t.StrMapping,
-        requirements: t.StrSequence,
+        candidate_sources: Mapping[str, str],
+        requirements: Sequence[str],
         resolution: m.Infra.UvResolutionSpec,
     ) -> None:
         """Publish declared, derived internal and candidate overrides once.
@@ -284,7 +382,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             is not None
             and name != own
         })
-        exclusions: t.JsonValueList = [
+        exclusions: list[t.JsonValue] = [
             {"package": {"name": name}, "dependencies": [own]}
             for name in internal
             if own is not None
@@ -325,9 +423,9 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         document: t.Cli.TomlDocument,
         *,
         resolution: m.Infra.UvResolutionSpec,
-        candidate_sources: t.StrMapping,
+        candidate_sources: Mapping[str, str],
         workspace: m.Infra.WorkspaceSpec,
-        local_requirements: t.StrSequence,
+        local_requirements: Sequence[str],
     ) -> p.Result[bool]:
         """Publish native workspace membership without altering package requirements.
 
@@ -392,7 +490,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         # A workspace root lowers its members through native workspace sources;
         # only a project resolving its internal requirements by URL derives them.
         derived = (
-            r[t.StrSequence].ok(())
+            r[Sequence[str]].ok(())
             if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
             else cls._declared_internal_overrides(document)
         )

@@ -8,22 +8,22 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
 
-from flext_infra import c, config, m, p, r, t, u
-from flext_infra.check import FlextInfraWorkspaceCheckUnionMixin
+from flext_infra import c, config, m, p, r, u
+from flext_infra.check import FlextInfraWorkspaceCheckUnion
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
     from flext_infra.gates import FlextInfraGate
 
 
-class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
+class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
     """Gate execution, project loop, and individual gate runner methods."""
 
     _repository_root: Path
@@ -34,7 +34,7 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
     def _run_single_project(
         self,
         target: m.Infra.CheckProjectTarget,
-        resolved_gates: t.StrSequence,
+        resolved_gates: Sequence[str],
         ctx: m.Infra.GateContext,
         previous: m.Infra.ProjectResult | None = None,
     ) -> m.Infra.ProjectResult:
@@ -65,8 +65,8 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
 
     def _run_prerequisite_checks(
         self,
-        projects: t.SequenceOf[m.Infra.CheckProjectTarget],
-        gates: t.StrSequence,
+        projects: Sequence[m.Infra.CheckProjectTarget],
+        gates: Sequence[str],
         ctx: m.Infra.GateContext,
     ) -> m.Infra.LoopOutcome:
         """Use the native bounded signal wave for independent read-only checks.
@@ -128,8 +128,8 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
 
     def _run_project_phase(
         self,
-        projects: t.SequenceOf[m.Infra.CheckProjectTarget],
-        resolved_gates: t.StrSequence,
+        projects: Sequence[m.Infra.CheckProjectTarget],
+        resolved_gates: Sequence[str],
         ctx: m.Infra.GateContext,
         *,
         fail_fast: bool,
@@ -276,7 +276,7 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
     def _check_project_with_ctx(
         self,
         project_dir: Path,
-        gates: t.StrSequence,
+        gates: Sequence[str],
         ctx: m.Infra.GateContext,
         previous: m.Infra.ProjectResult | None = None,
     ) -> m.Infra.ProjectResult:
@@ -332,10 +332,10 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
 
     def _gate_instances(
         self,
-        gates: t.StrSequence,
+        gates: Sequence[str],
         *,
         mutating: bool,
-    ) -> t.SequenceOf[FlextInfraGate]:
+    ) -> Sequence[FlextInfraGate]:
         """Create every requested gate before any of them runs.
 
         Returns:
@@ -345,7 +345,7 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
             ValueError: If a gate is unregistered or a selected repair is unsupported.
 
         """
-        instances: t.MutableSequenceOf[FlextInfraGate] = []
+        instances: MutableSequence[FlextInfraGate] = []
         for gate_id in gates:
             gate_instance = self._registry.create(gate_id, self._repository_root)
             if gate_instance is None:
@@ -359,11 +359,11 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
 
     def _run_concurrent_stages(
         self,
-        instances: t.SequenceOf[FlextInfraGate],
+        instances: Sequence[FlextInfraGate],
         project_dir: Path,
         ctx: m.Infra.GateContext,
         executions: MutableMapping[str, m.Infra.GateExecution],
-    ) -> t.MappingKV[str, p.Result[m.Cli.PipelineResult]]:
+    ) -> Mapping[str, p.Result[m.Cli.PipelineResult]]:
         """Run read-only gate stages concurrently in one signal wave.
 
         The main thread owns operator-signal forwarding; each stage receives
@@ -400,8 +400,10 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
         if (
             execution.issues or not execution.result.passed
         ) and execution.raw_receipt is not None:
+            # ToolOutcome is a StrEnum (or a plain str at raw edges): the
+            # f-string renders the value without a .value attribute access.
             u.Cli.info(
-                f"{gate_id}: {execution.outcome.value}; "
+                f"{gate_id}: {execution.outcome}; "
                 f"Native output receipt: {execution.raw_receipt}",
             )
 
@@ -523,4 +525,4 @@ class FlextInfraWorkspaceCheckGatesMixin(FlextInfraWorkspaceCheckUnionMixin):
         return gate_instance.check(project_dir, ctx)
 
 
-__all__: list[str] = ["FlextInfraWorkspaceCheckGatesMixin"]
+__all__: list[str] = ["FlextInfraWorkspaceCheckGates"]

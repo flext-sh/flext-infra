@@ -23,7 +23,7 @@ valid:
     def f(x: Dict[str, int]) -> None: ...
   # docstring text is not a type node
   - |
-    """Rewrite ``Dict[K, V]`` to ``t.MappingKV[K, V]``."""
+    """Rewrite ``Dict[K, V]`` to ``Mapping[K, V]``."""
     from typing import Dict
 # `invalid` MUST match: legacy generic with no `t` binding to rewrite into.
 invalid:

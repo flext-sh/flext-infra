@@ -21,7 +21,7 @@ class TestsFlextInfraBatchReplacements:
     @staticmethod
     def _scanned_consumer(
         root: Path,
-    ) -> t.Pair[m.Infra.ModScanReport, Path]:
+    ) -> tuple[m.Infra.ModScanReport, Path]:
         """Scan a real public consumer against a locally declared rewrite.
 
         Returns:

@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import sys
 import threading
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
 from flext_infra import codemod, infra, transformers, workspace
-from tests import c, m, p, r, t, tm, u
+from tests import c, m, p, r, tm, u
 
 
 class TestsFlextInfraSemanticPublicationTransactions:
@@ -102,7 +103,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
             for state in states
         )
         tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=mod_workspace,
                 options=m.Infra.SemanticPublicationOptions(
@@ -138,7 +139,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
     @staticmethod
     def _scenario_absent_parents(mod_workspace: Path) -> None:
         """Publish a new nested module and import it through its real consumer."""
-        publication = transformers.FlextInfraSemanticPublication
+        publication = transformers.FlextInfraTransformersSemanticPublication
         package = mod_workspace / "src" / mod_workspace.name
         target = package / "relocated" / "nested" / "service.py"
         source = (
@@ -218,7 +219,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
             ),
         )
         published = tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
                 plans, repository_root=mod_workspace
             )
         )
@@ -316,7 +317,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
             return r[bool].ok(value=True)
 
         tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_artifact_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
                 plans,
                 repository_root=mod_workspace,
                 options=m.Infra.SemanticPublicationOptions(validator=validate),
@@ -330,7 +331,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
         mod_workspace: Path,
     ) -> None:
         """A successful false result rejects publication without filesystem effects."""
-        publication = transformers.FlextInfraSemanticPublication
+        publication = transformers.FlextInfraTransformersSemanticPublication
         before = tuple(
             (path, path.stat().st_mode, path.read_bytes() if path.is_file() else None)
             for path in sorted(mod_workspace.rglob("*"))
@@ -378,7 +379,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
         raises: bool,
     ) -> None:
         """An explicit consumer rejection cannot become a no-effect success."""
-        publication = transformers.FlextInfraSemanticPublication
+        publication = transformers.FlextInfraTransformersSemanticPublication
         path = mod_workspace / "consumer.py"
         source = 'raise RuntimeError("consumer rejected")\n'
         path.write_text(source, encoding="utf-8")
@@ -525,7 +526,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
                 encoding=c.DEFAULT_ENCODING,
             )
         tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=mod_workspace,
                 options=m.Infra.SemanticPublicationOptions(
@@ -550,8 +551,8 @@ class TestsFlextInfraSemanticPublicationTransactions:
         plans: list[m.Infra.SemanticFilePlan] = []
         for path in (previous, current):
             before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-            outgoing: t.StrSequence = ["DeclaredService"] if path == previous else []
-            incoming: t.StrSequence = [] if path == previous else ["DeclaredService"]
+            outgoing: Sequence[str] = ["DeclaredService"] if path == previous else []
+            incoming: Sequence[str] = [] if path == previous else ["DeclaredService"]
             plans.append(
                 m.Infra.SemanticFilePlan(
                     project=mod_workspace,
@@ -622,7 +623,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
             return r[bool].ok(value=True)
 
         tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 plans,
                 repository_root=mod_workspace,
                 options=m.Infra.SemanticPublicationOptions(
@@ -633,7 +634,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
         initializer = package / c.Infra.INIT_PY
         published = initializer.read_bytes()
         tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=mod_workspace,
                 options=m.Infra.SemanticPublicationOptions(
@@ -665,7 +666,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
         initializer.write_text("", encoding="utf-8")
         original = initializer.read_bytes()
         tm.ok(
-            transformers.FlextInfraSemanticPublication.publish_semantic_file_plans(
+            transformers.FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
                 (),
                 repository_root=mod_workspace,
                 options=m.Infra.SemanticPublicationOptions(

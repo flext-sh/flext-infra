@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, m, p, t, u
+from tests import c, m, p, u
 
 
 class TestsFlextInfraPyprojectConformSupport:
@@ -74,7 +75,7 @@ class TestsFlextInfraPyprojectConformSupport:
         )
 
     @staticmethod
-    def _detached_dev_floors() -> t.StrSequence:
+    def _detached_dev_floors() -> Sequence[str]:
         """SSOT dev floors seeded for a project outside the workspace overlay.
 
         A source-less internal dependency is legal only for the workspace
@@ -83,7 +84,7 @@ class TestsFlextInfraPyprojectConformSupport:
         set is rendered the way a real detached checkout declares it.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         branch = u.Tests.provider_branch()

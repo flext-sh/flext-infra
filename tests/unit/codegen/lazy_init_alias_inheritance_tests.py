@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
 
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 def _external_parent_child_sources(
@@ -19,7 +20,7 @@ def _external_parent_child_sources(
     child_root: Path,
     *,
     class_name: str,
-) -> t.MappingKV[str, t.StrSequence]:
+) -> Mapping[str, Sequence[str]]:
     """Publish an external-parent child and return its installed module mapping.
 
     The child ``constants`` module inherits ``c`` from the installed
@@ -28,7 +29,7 @@ def _external_parent_child_sources(
     package root installs.
 
     Returns:
-        The resulting ``t.MappingKV[str, t.StrSequence]``.
+        The resulting ``Mapping[str, Sequence[str]]``.
 
     """
     child_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
@@ -245,7 +246,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
         )
         u.Tests.write_lazy_init_namespace_module(
             parent_root / "models_ns.py",
-            class_name="FlextTestInheritParentModelsNs",
+            class_name="FlextModelsTestInheritParentNs",
             alias="m",
         )
         u.Tests.write_lazy_init_namespace_module(

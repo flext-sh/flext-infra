@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal
 
@@ -19,6 +20,128 @@ from tests import c, m, p, tm, u
 
 class TestsFlextInfraLazyInitRuntime:
     """Exercise generated roots through Python's real import machinery."""
+
+    @staticmethod
+    def _write_alias_generation_fixture(
+        tmp_path: Path,
+        *,
+        imported_alias: bool,
+        published_alias: bool,
+    ) -> tuple[Path, Path]:
+        """Write the alias-generation workspace and its tests tree.
+
+        Returns:
+            The repository root and the tests constants declaration path.
+
+        """
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-owned-tests",
+            package_name="flext_owned_tests",
+        )
+        layout = u.Infra.layout(repository)
+        if layout is None:
+            pytest.fail("The fixture must declare its native project layout")
+        u.Tests.write_lazy_init_namespace_module(
+            package / "constants.py",
+            class_name=f"{layout.class_stem}Constants",
+            alias="c",
+        )
+        package.joinpath("api.py").write_text(
+            f"class {layout.class_stem}Api: pass\n"
+            f"__all__ = ('{layout.class_stem}Api',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        testing = repository / c.Infra.DIR_TESTS
+        testing.mkdir()
+        declaration = testing / "constants.py"
+        declaration.write_text(
+            ("from flext_owned_tests.constants import c\n" if imported_alias else "")
+            + f"class Tests{layout.class_stem}Constants:\n"
+            + (
+                f"    __all__ = ('Tests{layout.class_stem}Constants', 'c')\n"
+                if published_alias
+                else f"    __all__ = ('Tests{layout.class_stem}Constants',)\n"
+            )
+            + "    value = 'local'\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        nested = testing / "unit"
+        nested.mkdir()
+        nested.joinpath("provider.py").write_text(
+            "from tests import c, r\n"
+            f"class Tests{layout.class_stem}Provider(c):\n"
+            f"    __all__ = ('Tests{layout.class_stem}Provider',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        return repository, declaration
+
+    @staticmethod
+    def _assert_initializer_shape(source: str) -> None:
+        """Validate one generated initializer's canonical statement shape."""
+        module = ast.parse(source)
+        roots = [node for node in module.body if isinstance(node, ast.ClassDef)]
+        tm.that(roots, empty=True)
+        for node in module.body:
+            if isinstance(node, ast.Expr):
+                tm.that(
+                    (
+                        node is module.body[0]
+                        and isinstance(node.value, ast.Constant)
+                        and isinstance(node.value.value, str)
+                    )
+                    or (
+                        isinstance(node.value, ast.Call)
+                        and isinstance(node.value.func, ast.Name)
+                        and node.value.func.id == "install_lazy_exports"
+                    ),
+                    eq=True,
+                )
+            elif isinstance(node, ast.If):
+                tm.ok(isinstance(node.test, ast.Name))
+                tm.that(ast.unparse(node.test), eq="TYPE_CHECKING")
+                tm.fail(bool(node.orelse))
+                tm.that(
+                    all(
+                        isinstance(item, (ast.Import, ast.ImportFrom))
+                        for item in node.body
+                    ),
+                    eq=True,
+                )
+            else:
+                tm.that(
+                    isinstance(
+                        node,
+                        (ast.Import, ast.ImportFrom, ast.Assign, ast.AnnAssign),
+                    ),
+                    eq=True,
+                )
+        tm.that(
+            sum(
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "install_lazy_exports"
+                for node in ast.walk(module)
+            ),
+            eq=1,
+        )
+
+    @staticmethod
+    def _assert_generated_exports(
+        repository: Path,
+        generated: Mapping[Path, bytes],
+    ) -> None:
+        """Prove every generated initializer resolves as a native source module."""
+        with infra.rope_workspace(repository) as workspace:
+            for generated_path in generated:
+                native = u.Infra.resolve_pymodule(
+                    workspace.rope_project,
+                    workspace.rope_project.get_file(
+                        generated_path.relative_to(repository).as_posix()
+                    ),
+                )
+                tm.ok(isinstance(native, p.Infra.RopeSourceModule))
+                tm.ok(bool(u.Infra.public_export_names_source(native)))
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -169,17 +292,32 @@ class TestsFlextInfraLazyInitRuntime:
         ],
     )
     def test_export_metadata_has_one_declaration_owner(
-        source: str, expected: tuple[str, ...]
+        tmp_path: Path, source: str, expected: tuple[str, ...]
     ) -> None:
         """Only explicit module metadata or a single root's metadata publishes."""
-        tm.that(u.Infra.public_export_names_source(source), eq=expected)
-        tm.that(
-            u.Infra.module_export_names_source(
-                source,
-                export_options=m.Infra.ExportOptions(require_explicit_all=True),
-            ),
-            eq=expected,
+        repository, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-export-metadata",
+            package_name="flext_export_metadata",
         )
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with infra.rope_workspace(repository) as workspace:
+            module = u.Infra.resolve_pymodule(
+                workspace.rope_project,
+                workspace.rope_project.get_file(
+                    initializer.relative_to(repository).as_posix()
+                ),
+            )
+            tm.ok(isinstance(module, p.Infra.RopeSourceModule))
+            tm.that(u.Infra.public_export_names_source(module), eq=expected)
+            tm.that(
+                u.Infra.module_export_names_source(
+                    module,
+                    export_options=m.Infra.ExportOptions(require_explicit_all=True),
+                ),
+                eq=expected,
+            )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -194,46 +332,14 @@ class TestsFlextInfraLazyInitRuntime:
         published_alias: bool,
     ) -> None:
         """Generated initializers propagate precise aliases at module scope."""
-        repository, package = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-owned-tests",
-            package_name="flext_owned_tests",
+        fixture = TestsFlextInfraLazyInitRuntime._write_alias_generation_fixture
+        repository, declaration = fixture(
+            tmp_path, imported_alias=imported_alias, published_alias=published_alias
         )
+        testing = repository / c.Infra.DIR_TESTS
         layout = u.Infra.layout(repository)
         if layout is None:
             pytest.fail("The fixture must declare its native project layout")
-        u.Tests.write_lazy_init_namespace_module(
-            package / "constants.py",
-            class_name=f"{layout.class_stem}Constants",
-            alias="c",
-        )
-        package.joinpath("api.py").write_text(
-            f"class {layout.class_stem}Api: pass\n"
-            f"__all__ = ('{layout.class_stem}Api',)\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        testing = repository / c.Infra.DIR_TESTS
-        testing.mkdir()
-        declaration = testing / "constants.py"
-        declaration.write_text(
-            ("from flext_owned_tests.constants import c\n" if imported_alias else "")
-            + f"class Tests{layout.class_stem}Constants:\n"
-            + (
-                f"    __all__ = ('Tests{layout.class_stem}Constants', 'c')\n"
-                if published_alias
-                else f"    __all__ = ('Tests{layout.class_stem}Constants',)\n"
-            )
-            + "    value = 'local'\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        nested = testing / "unit"
-        nested.mkdir()
-        nested.joinpath("provider.py").write_text(
-            "from tests import c, r\n"
-            f"class Tests{layout.class_stem}Provider(c):\n"
-            f"    __all__ = ('Tests{layout.class_stem}Provider',)\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
         original = declaration.read_bytes()
         request = m.Infra.CodegenGenerateRequest(
             root=repository,
@@ -269,54 +375,10 @@ class TestsFlextInfraLazyInitRuntime:
         generated = {path: path.read_bytes() for path in testing.rglob(c.Infra.INIT_PY)}
         tm.that(len(generated), eq=2)
         for content in generated.values():
-            source = content.decode(c.DEFAULT_ENCODING)
-            module = ast.parse(source)
-            roots = [node for node in module.body if isinstance(node, ast.ClassDef)]
-            tm.that(roots, empty=True)
-            for node in module.body:
-                if isinstance(node, ast.Expr):
-                    tm.that(
-                        (
-                            node is module.body[0]
-                            and isinstance(node.value, ast.Constant)
-                            and isinstance(node.value.value, str)
-                        )
-                        or (
-                            isinstance(node.value, ast.Call)
-                            and isinstance(node.value.func, ast.Name)
-                            and node.value.func.id == "install_lazy_exports"
-                        ),
-                        eq=True,
-                    )
-                elif isinstance(node, ast.If):
-                    tm.ok(isinstance(node.test, ast.Name))
-                    tm.that(ast.unparse(node.test), eq="TYPE_CHECKING")
-                    tm.fail(bool(node.orelse))
-                    tm.that(
-                        all(
-                            isinstance(item, (ast.Import, ast.ImportFrom))
-                            for item in node.body
-                        ),
-                        eq=True,
-                    )
-                else:
-                    tm.that(
-                        isinstance(
-                            node,
-                            (ast.Import, ast.ImportFrom, ast.Assign, ast.AnnAssign),
-                        ),
-                        eq=True,
-                    )
-            tm.that(
-                sum(
-                    isinstance(node, ast.Call)
-                    and isinstance(node.func, ast.Name)
-                    and node.func.id == "install_lazy_exports"
-                    for node in ast.walk(module)
-                ),
-                eq=1,
+            TestsFlextInfraLazyInitRuntime._assert_initializer_shape(
+                content.decode(c.DEFAULT_ENCODING)
             )
-            tm.ok(bool(u.Infra.public_export_names_source(source)))
+        TestsFlextInfraLazyInitRuntime._assert_generated_exports(repository, generated)
         initializer = testing / c.Infra.INIT_PY
         source = initializer.read_text(encoding=c.DEFAULT_ENCODING)
         tm.that(
@@ -563,8 +625,7 @@ class TestsFlextInfraLazyInitRuntime:
     @staticmethod
     @pytest.mark.parametrize("family", ["c", "m"])
     def test_competing_declared_publishers_keep_their_exact_diagnostic(
-        tmp_path: Path,
-        family: Literal["c", "m"],
+        tmp_path: Path, family: Literal["c", "m"]
     ) -> None:
         """Equal spellings cannot erase distinct declared implementations."""
         _, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -616,11 +677,11 @@ class TestsFlextInfraLazyInitRuntime:
         package.joinpath("models.py").write_text(
             "from flext_core import m as parent\n"
             "from ._models import FlextPlannedErrors\n"
-            "class FlextPlannedModels(FlextPlannedErrors):\n"
+            "class FlextModelsPlanned(FlextPlannedErrors):\n"
             "    class Response(FlextPlannedErrors.Payload):\n"
             '        code: int = parent.Field(description="Response code.")\n'
-            "m = FlextPlannedModels\n"
-            "__all__ = ('FlextPlannedModels', 'm')\n",
+            "m = FlextModelsPlanned\n"
+            "__all__ = ('FlextModelsPlanned', 'm')\n",
             encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
@@ -693,11 +754,11 @@ class TestsFlextInfraLazyInitRuntime:
         package.joinpath("models.py").write_text(
             "from flext_core import m as parent\n"
             "from ._models import FlextStaleErrors\n"
-            "class FlextStaleModels(FlextStaleErrors):\n"
+            "class FlextModelsStale(FlextStaleErrors):\n"
             "    class Response(FlextStaleErrors.Payload):\n"
             '        code: int = parent.Field(description="Response code.")\n'
-            "m = FlextStaleModels\n"
-            "__all__ = ('FlextStaleModels', 'm')\n",
+            "m = FlextModelsStale\n"
+            "__all__ = ('FlextModelsStale', 'm')\n",
             encoding=c.DEFAULT_ENCODING,
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
@@ -714,9 +775,22 @@ class TestsFlextInfraLazyInitRuntime:
             if plan.path.suffix == c.Infra.EXT_PYTHON
             and plan.desired_content is not None
         }
-        exports = u.Infra.public_export_names_source(
-            planned[(family / c.Infra.INIT_PY).resolve()],
-        )
+        with (
+            infra.rope_workspace(repository) as workspace,
+            u.Infra.facade_source_project(
+                repository,
+                planned_sources=planned,
+                source_project=workspace.rope_project,
+            ) as (project, _captured),
+        ):
+            module = u.Infra.resolve_pymodule(
+                project,
+                project.get_file(
+                    (family / c.Infra.INIT_PY).relative_to(repository).as_posix()
+                ),
+            )
+            tm.ok(isinstance(module, p.Infra.RopeSourceModule))
+            exports = u.Infra.public_export_names_source(module)
         tm.ok("FlextStaleErrors" in exports)
         derived = u.Infra.runtime_evaluated_base_classes(repository, planned, roots)
         tm.that(u.Tests.run_lazy_init(repository), eq=0)

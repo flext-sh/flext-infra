@@ -9,6 +9,25 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
+from collections.abc import Mapping
+
+import re
+from collections.abc import (
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 import hashlib
 import os
 import sys
@@ -87,7 +106,7 @@ def _consumer_pyproject_source(distribution: str) -> str:
 def _declare_fleet_members(
     root: Path,
     distribution: str,
-    member_dependencies: t.MappingKV[str, t.StrSequence],
+    member_dependencies: Mapping[str, Sequence[str]],
 ) -> None:
     """Commit each fleet member with its runtime requirements and attach it."""
     beads = u.Tests.BeadsIdentity(
@@ -132,7 +151,7 @@ def _declare_fleet_members(
 def _provision_consumer_template(
     parent: Path,
     *,
-    member_dependencies: t.MappingKV[str, t.StrSequence] | None = None,
+    member_dependencies: Mapping[str, Sequence[str]] | None = None,
 ) -> Path:
     """Publish activation inputs, then provision the consumer through real Make.
 
@@ -399,7 +418,7 @@ def _write_receipt(path: Path, output: p.Cli.CommandOutput) -> None:
 def _provision_make_template(
     run_root: Path,
     profile: c.Infra.MakeProfile,
-    git_environment: t.StrMapping,
+    git_environment: Mapping[str, str],
 ) -> None:
     """Resolve one generated consumer through ``make upg`` once per run.
 
@@ -546,7 +565,7 @@ def _ensure_provisioned(
     receipt: str,
     key: c.Infra.MakeProfile | str,
     *,
-    git_environment: t.StrMapping | None = None,
+    git_environment: Mapping[str, str] | None = None,
 ) -> None:
     """Provision only a consumed fixture under the shared file lock.
 
@@ -573,7 +592,7 @@ def _ensure_provisioned(
 
 
 @pytest.fixture(scope="session")
-def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMapping:
+def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> Mapping[str, str]:
     """Serve the fixture provider's Git sources from this run's local mirrors.
 
     The mirrors are built once per locked-source set under the canonical
@@ -583,7 +602,7 @@ def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> t.StrMa
     transport fail.
 
     Returns:
-        The resulting ``t.StrMapping``.
+        The resulting ``Mapping[str, str]``.
 
     """
     locked = u.Tests.locked_git_sources(_PROJECT_ROOT)
@@ -626,8 +645,8 @@ def generated_make_template(
 @pytest.fixture(scope="session")
 def resolved_make_templates(
     session_runtime: p.Tests.SessionRuntime,
-    hermetic_git_environment: t.StrMapping,
-) -> t.MappingKV[c.Infra.MakeProfile, Path]:
+    hermetic_git_environment: Mapping[str, str],
+) -> Mapping[c.Infra.MakeProfile, Path]:
     """Return committed templates owned by this isolated worker-session.
 
     Consumers clone a template rather than resolving inside their budget; the

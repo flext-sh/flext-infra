@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -137,7 +138,7 @@ class TestsFlextInfraDocsGenerator:
     @pytest.mark.parametrize("project_name", ["workspace", config.Infra.name])
     def test_workspace_package_api_and_member_docs_share_one_transaction(
         tmp_path: Path,
-        selected_projects: t.StrSequence | None,
+        selected_projects: Sequence[str] | None,
         project_name: str,
     ) -> None:
         """Publish root API and member aggregates together for every selection."""

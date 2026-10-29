@@ -11,10 +11,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, u
 
 
 class FlextInfraWorkspaceEnvironmentContracts:
@@ -32,14 +33,14 @@ class FlextInfraWorkspaceEnvironmentContracts:
         r"^# === SECTION: .* \(managed\) ===$",
     )
     _MANAGED_SECTION_END: Final[re.Pattern[str]] = re.compile(r"^# End SECTION: .*$")
-    _ENVRC_LOCAL_GENERATED_MARKERS: Final[t.StrSequence] = (
+    _ENVRC_LOCAL_GENERATED_MARKERS: Final[Sequence[str]] = (
         *c.Infra.WORKSPACE_ENV_GENERATED_MARKERS,
         *c.Infra.TEMPLATE_GENERATED_MARKERS,
     )
     # Local overrides carry operator customization only. Beads activation is a
     # generated property of `.envrc`; any residue here is a second activation
     # owner whose drift already diverged (historical jq conditions differed).
-    _ENVRC_LOCAL_FORBIDDEN_VARS: Final[t.StrSequence] = (
+    _ENVRC_LOCAL_FORBIDDEN_VARS: Final[Sequence[str]] = (
         c.Infra.ENVRC_LOCAL_FORBIDDEN_VARS
     )
 
@@ -90,7 +91,7 @@ class FlextInfraWorkspaceEnvironmentContracts:
         *,
         root: Path,
         resolve_home: bool = True,
-    ) -> t.VariadicTuple[m.Infra.EnvironmentContractViolation]:
+    ) -> tuple[m.Infra.EnvironmentContractViolation, ...]:
         """Return one typed violation per direnv contract issue in ``content``.
 
         Contracts enforced:
@@ -182,7 +183,7 @@ class FlextInfraWorkspaceEnvironmentContracts:
     def envrc_local_contract_violations(
         cls,
         content: str,
-    ) -> t.VariadicTuple[m.Infra.EnvironmentContractViolation]:
+    ) -> tuple[m.Infra.EnvironmentContractViolation, ...]:
         """Return one typed violation per activation residue in ``.envrc.local``.
 
         Local overrides never activate Beads: managed section markers,
@@ -241,4 +242,4 @@ class FlextInfraWorkspaceEnvironmentContracts:
         return tuple(violations)
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraWorkspaceEnvironmentContracts",)
+__all__: tuple[str, ...] = ("FlextInfraWorkspaceEnvironmentContracts",)

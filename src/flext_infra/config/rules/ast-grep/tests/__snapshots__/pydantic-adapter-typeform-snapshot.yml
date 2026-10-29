@@ -46,33 +46,33 @@ snapshots:
       style: secondary
       start: 21
       end: 57
-  "adapter = m.type_adapter(t.SequenceOf[str])":
-    fixed: adapter = m.type_adapter(TypeForm(t.SequenceOf[str]))
+  "adapter = m.type_adapter(t.Sequence[str])":
+    fixed: adapter = m.type_adapter(TypeForm(t.Sequence[str]))
     labels:
-    - source: t.SequenceOf[str]
+    - source: t.Sequence[str]
       style: primary
       start: 25
-      end: 42
+      end: 40
     - source: t
       style: secondary
       start: 25
       end: 26
-    - source: t.SequenceOf
+    - source: t.Sequence
       style: secondary
       start: 25
-      end: 37
+      end: 35
     - source: m.type_adapter
       style: secondary
       start: 10
       end: 24
-    - source: m.type_adapter(t.SequenceOf[str])
+    - source: m.type_adapter(t.Sequence[str])
       style: secondary
       start: 10
-      end: 43
-    - source: (t.SequenceOf[str])
+      end: 41
+    - source: (t.Sequence[str])
       style: secondary
       start: 24
-      end: 43
+      end: 41
   adapter = u.type_adapter(t.JsonMapping):
     fixed: adapter = u.type_adapter(TypeForm(t.JsonMapping))
     labels:

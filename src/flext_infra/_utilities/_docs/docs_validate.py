@@ -6,15 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
 from flext_cli import u
 
 from flext_infra import c, r, t
-from flext_infra._utilities._docs.docs_api import FlextInfraUtilitiesDocsApi
-from flext_infra._utilities._docs.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra._utilities._docs import (
+    FlextInfraUtilitiesDocsApi,
+    FlextInfraUtilitiesDocsScope,
+)
+from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,7 +43,7 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_extract_required_skills(
-        payload: t.JsonPayload | t.MappingKV[str, t.JsonValue],
+        payload: t.JsonPayload | Mapping[str, t.JsonValue],
     ) -> p.Result[t.JsonList]:
         """Extract the configured required skills list from architecture settings.
 
@@ -72,7 +74,7 @@ class FlextInfraUtilitiesDocsValidate:
                 return r[t.JsonList].fail("required_skills missing or not a list")
 
     @staticmethod
-    def docs_load_required_skills(repository_root: Path) -> p.Result[t.StrSequence]:
+    def docs_load_required_skills(repository_root: Path) -> p.Result[Sequence[str]]:
         """Load the required skills list from the architecture settings.
 
         Returns ``r.ok([])`` only when the config file is genuinely absent.
@@ -82,12 +84,12 @@ class FlextInfraUtilitiesDocsValidate:
         instead of a silent empty list — fail-fast over fail-quiet.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         settings = repository_root / "docs/architecture/architecture_config.json"
         if not settings.exists():
-            return r[t.StrSequence].ok([])
+            return r[Sequence[str]].ok([])
         return (
             u.Cli
             .json_read(settings)
@@ -98,28 +100,28 @@ class FlextInfraUtilitiesDocsValidate:
         )
 
     @staticmethod
-    def _validate_required_skills(raw: t.JsonList) -> p.Result[t.StrSequence]:
+    def _validate_required_skills(raw: t.JsonList) -> p.Result[Sequence[str]]:
         """Validate ``required_skills`` payload against the canonical adapter.
 
         Returns:
-            The resulting ``p.Result[t.StrSequence]``.
+            The resulting ``p.Result[Sequence[str]]``.
 
         """
         try:
-            validated: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
+            validated: Sequence[str] = t.Infra.STR_SEQ_ADAPTER.validate_python(
                 raw,
                 strict=True,
             )
         except c.ValidationError as exc:
-            return r[t.StrSequence].fail(
+            return r[Sequence[str]].fail(
                 f"invalid required_skills configuration: {exc}",
                 error_code="required_skills_validation",
                 exception=exc,
             )
-        return r[t.StrSequence].ok(validated)
+        return r[Sequence[str]].ok(validated)
 
     @staticmethod
-    def docs_missing_required_paths(scope: m.Infra.DocScope) -> t.StrSequence:
+    def docs_missing_required_paths(scope: m.Infra.DocScope) -> Sequence[str]:
         """Return required docs paths that are still missing from one scope.
 
         The scope label is the only topology input: the scope builder assigns
@@ -148,14 +150,14 @@ class FlextInfraUtilitiesDocsValidate:
             required = [
                 rel_path for rel_path in required if "/generated/" not in rel_path
             ]
-        missing: t.MutableSequenceOf[str] = []
+        missing: MutableSequence[str] = []
         for rel_path in sorted(set(required)):
             if not (scope.path / rel_path).exists():
                 missing.append(rel_path)
         return missing
 
     @staticmethod
-    def docs_contract_messages(scope: m.Infra.DocScope) -> t.StrSequence:
+    def docs_contract_messages(scope: m.Infra.DocScope) -> Sequence[str]:
         """Return public API contract problems for one governed project scope.
 
         Returns:
@@ -164,7 +166,7 @@ class FlextInfraUtilitiesDocsValidate:
         """
         if scope.name == c.Infra.RK_ROOT or not scope.package_name:
             return []
-        messages: t.MutableSequenceOf[str] = []
+        messages: MutableSequence[str] = []
         init_path = (
             scope.path / c.Infra.DEFAULT_SRC_DIR / scope.package_name / c.Infra.INIT_PY
         )
@@ -218,7 +220,7 @@ class FlextInfraUtilitiesDocsValidate:
             scope.report_dir / c.Infra.DOCS_VALIDATE_SUMMARY_FILENAME,
             {c.Infra.RK_SUMMARY: report.model_dump(mode="json")},
         )
-        _ = FlextInfraUtilitiesDocs.write_markdown(
+        _ = FlextInfraUtilitiesDocsBase.write_markdown(
             scope.report_dir / c.Infra.DOCS_VALIDATE_REPORT_FILENAME,
             [
                 "# Docs Validate Report",

@@ -11,8 +11,9 @@ import shlex
 import sys
 import time
 import traceback
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 from typing_extensions import TypeForm
 
@@ -34,9 +35,12 @@ class FlextInfraPytestRunnerExecution(
 ):
     """Execute pytest once and reject incomplete evidence."""
 
+    _cache_publication: m.Infra.TestmonCachePublication | None = None
+
     def _inspect_cache(
         self,
         *,
+        database: Path,
         digest: str | None,
     ) -> p.Result[m.Infra.TestmonCacheState]:
         """Run the SQLite integrity owner for the testmon database.
@@ -47,7 +51,7 @@ class FlextInfraPytestRunnerExecution(
         """
         return FlextInfraTestmonDbInspector(
             repository_root=self.repository_root,
-            db_path=self.testmon_db,
+            db_path=database,
             pre_run_digest=digest,
         ).execute()
 
@@ -55,12 +59,13 @@ class FlextInfraPytestRunnerExecution(
         self,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
+        database: Path | None = None,
         live: bool = False,
     ) -> p.Cli.ProcessOptions:
         """Declare child overrides and removals at the process boundary.
 
-        The coverage verb owns no testmon plugin, so its children neither
-        receive nor inherit a testmon database location.
+        Unselected full and coverage suites own no Testmon plugin, so their
+        children neither receive nor inherit a database location.
 
         Returns:
             The process options shared by every runner invocation.
@@ -73,7 +78,6 @@ class FlextInfraPytestRunnerExecution(
             config.Infra.codegen.make.testmon_cache.database_environment_variable,
             c.Infra.PYTEST_ENV_TESTMON_DATAFILE,
         )
-        coverage = execution_mode == c.Infra.PytestExecutionMode.COVERAGE
         source_root = self.repository_root
         if self.target_file is not None:
             target_root = u.Infra.nearest_project_root(
@@ -96,8 +100,11 @@ class FlextInfraPytestRunnerExecution(
                 )
                 if path
             )
-        if not coverage:
-            overrides.update(dict.fromkeys(testmon_keys, str(self.testmon_db)))
+        if execution_mode.is_incremental:
+            if database is None:
+                msg = "incremental pytest requires its external Testmon database"
+                raise ValueError(msg)
+            overrides.update(dict.fromkeys(testmon_keys, str(database)))
         if self.scratch_root is not None:
             overrides.update(
                 dict.fromkeys(
@@ -112,7 +119,7 @@ class FlextInfraPytestRunnerExecution(
         remove_keys = (
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             "GITHUB_OUTPUT",
-            *(testmon_keys if coverage else ()),
+            *(testmon_keys if not execution_mode.is_incremental else ()),
         )
         return m.Cli.ProcessOptions(
             env=overrides,
@@ -126,6 +133,7 @@ class FlextInfraPytestRunnerExecution(
         report_dir: Path,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
+        database: Path | None = None,
         complete: bool = False,
         verify_inventory: bool = True,
     ) -> m.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
@@ -148,6 +156,7 @@ class FlextInfraPytestRunnerExecution(
             report_dir,
             complete=complete,
             execution_mode=execution_mode,
+            database=database,
         )
         if not isinstance(selection, m.Infra.PytestSelectionPlan):
             return selection
@@ -157,6 +166,7 @@ class FlextInfraPytestRunnerExecution(
             report_dir,
             complete=True,
             execution_mode=execution_mode,
+            database=database,
         )
         if not isinstance(inventory, m.Infra.PytestSelectionPlan):
             return inventory
@@ -178,6 +188,7 @@ class FlextInfraPytestRunnerExecution(
         *,
         execution_mode: c.Infra.PytestExecutionMode,
         complete: bool,
+        database: Path | None = None,
     ) -> m.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
         """Run one read-only collection and publish its manifest artifacts.
 
@@ -208,7 +219,9 @@ class FlextInfraPytestRunnerExecution(
             command,
             selection_log,
             cwd=self.repository_root,
-            options=self._selection_process_options(execution_mode=execution_mode),
+            options=self._selection_process_options(
+                execution_mode=execution_mode, database=database
+            ),
         ).unwrap()
         self._record_process_outcome(
             report_dir,
@@ -324,10 +337,10 @@ class FlextInfraPytestRunnerExecution(
             u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
         )
         patterns = u.Infra.native_tool_setting(
-            tool_config, "pytest.ini_options", "python_files", TypeForm(t.StrSequence)
+            tool_config, "pytest.ini_options", "python_files", TypeForm(Sequence[str])
         )
         roots = u.Infra.native_tool_setting(
-            tool_config, "pytest.ini_options", "testpaths", TypeForm(t.StrSequence)
+            tool_config, "pytest.ini_options", "testpaths", TypeForm(Sequence[str])
         )
         for root in roots:
             base = self.repository_root / root
@@ -345,19 +358,18 @@ class FlextInfraPytestRunnerExecution(
             The absolute deadline shared by every phase of this operation.
 
         """
-        pytest_settings = config.Infra.tooling.tools.pytest
         return m.Cli.ProcessDeadline(
-            expires_at_monotonic=self.started_at_monotonic
-            + pytest_settings.run_timeout_seconds,
-            termination_grace_seconds=pytest_settings.termination_grace_seconds,
+            expires_at_monotonic=self.started_at_monotonic + self.run_timeout_seconds,
+            termination_grace_seconds=self.termination_grace_seconds,
         )
 
     def _run_suite(
         self,
-        command: t.VariadicTuple[str],
+        command: tuple[str, ...],
         report_dir: Path,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
+        database: Path | None = None,
     ) -> p.Cli.ProcessOutcome:
         """Execute one suite argv under the shared deadline and environment.
 
@@ -398,6 +410,7 @@ class FlextInfraPytestRunnerExecution(
             cwd=self.repository_root,
             options=self._selection_process_options(
                 execution_mode=execution_mode,
+                database=database,
                 live=True,
             ),
         ).unwrap()
@@ -728,7 +741,7 @@ class FlextInfraPytestRunnerExecution(
 
     @staticmethod
     def _phase_warning_lines(
-        phases: t.SequenceOf[t.Pair[str, m.Infra.PytestDiagnostics]],
+        phases: Sequence[tuple[str, m.Infra.PytestDiagnostics]],
     ) -> str:
         """Return one warnings line per phase.
 
@@ -740,7 +753,6 @@ class FlextInfraPytestRunnerExecution(
             f"{phase}_warnings={item.warning_count}\n" for phase, item in phases
         )
 
-    @override
     def execute(self) -> p.Result[int]:
         """Admit the global check before applicable Testmon impact selection.
 
@@ -786,32 +798,14 @@ class FlextInfraPytestRunnerExecution(
         runner = cls.from_project_context(
             context,
             started_at_monotonic=started_at_monotonic,
+            execution_mode=execution_mode,
         )
         scratch = runner.scratch_root
         if scratch is None:
             msg = "project context runner requires its exclusive scratch directory"
             raise ValueError(msg)
         try:
-            if execution_mode == c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL:
-                return runner.execute().unwrap()
-            original_inputs = runner.testmon_input_identity()
-            incremental = runner.execute().unwrap()
-            if incremental:
-                return incremental
-            if runner.testmon_input_identity() != original_inputs:
-                msg = (
-                    "pytest runtime or declared configuration changed "
-                    "after incremental execution"
-                )
-                raise ValueError(msg)
-            complete = runner.execute_full().unwrap()
-            if not complete and runner.testmon_input_identity() != original_inputs:
-                msg = (
-                    "pytest runtime or declared configuration changed "
-                    "during full execution"
-                )
-                raise ValueError(msg)
-            return complete
+            return runner.execute_global(execution_mode=execution_mode).unwrap()
         finally:
             primary = sys.exception()
             try:
@@ -845,8 +839,8 @@ class FlextInfraPytestRunnerExecution(
     ) -> p.Result[int]:
         """Select impacted global cases, retaining primary source admission.
 
-        Explicit FULL bypasses dependency selection, not the prerequisite. Both
-        operations retain the same marker inventory and testmon environment.
+        Explicit FULL executes once without Testmon. Both operations retain
+        the same marker inventory and original primary-source prerequisite.
 
         Returns:
             The native status with selection, inventory and execution evidence.
@@ -858,13 +852,25 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
-        return self._execute_testmon(
-            complete=execution_mode == c.Infra.PytestExecutionMode.FULL,
-            execution_mode=execution_mode,
+        root = u.Infra.runtime_owner_root(self.repository_root).unwrap()
+        approved = u.Infra.git_require_green_check_receipt(
+            root,
+            u.Infra.load_codegen_inputs(root).unwrap().spec.make,
+            phase=c.Infra.CheckPhase.PRIMARY,
+            plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
+                repository_root=root,
+            ).plan_global_targets(gates),
+        )
+        if approved.failure:
+            return r.from_failure(approved)
+        return (
+            self._execute_complete_suite()
+            if execution_mode == c.Infra.PytestExecutionMode.FULL
+            else self._execute_testmon(execution_mode=execution_mode)
         )
 
     def execute_file(self) -> p.Result[int]:
-        """Run the complete declared file once through its persistent database.
+        """Run the complete declared file once without Testmon.
 
         Returns:
             The native status of the complete file execution.
@@ -876,12 +882,45 @@ class FlextInfraPytestRunnerExecution(
         if self.target_file is None:
             msg = "complete file execution requires a declared target file"
             raise ValueError(msg)
-        return self._execute_testmon(complete=True)
+        return self.execute_full()
+
+    def _execute_complete_suite(self) -> p.Result[int]:
+        """Run and account for one complete suite without opening Testmon.
+
+        Returns:
+            The original suite status after its complete-inventory evidence.
+
+        """
+        report_dir = self._report_directory()
+        deadline = self._process_deadline()
+        mode = c.Infra.PytestExecutionMode.FULL
+        self._write_run_context(
+            report_dir,
+            m.Infra.PytestRunContext(
+                execution_mode=mode,
+                testmon_db=None,
+                testmon_lease_acquired=None,
+                deadline_monotonic=deadline.expires_at_monotonic,
+                report_directory=report_dir,
+            ),
+        )
+        outcome = self._run_suite(
+            self.build_command(report_dir, execution_mode=mode),
+            report_dir,
+            execution_mode=mode,
+        )
+        selection = self._selection_from_suite(report_dir, outcome)
+        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+            return r.ok(selection.raw_return_code)
+        if not u.Cli.process_succeeded(outcome) and not self._completed_failure(
+            outcome, report_dir
+        ):
+            return self._unfinished_result(outcome, report_dir)
+        return self._finalize(report_dir, raw_return_code=outcome.raw_return_code)
 
     def _execute_testmon(
         self,
         *,
-        complete: bool,
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.INCREMENTAL
         ),
@@ -891,21 +930,14 @@ class FlextInfraPytestRunnerExecution(
         Returns:
             The resulting ``p.Result[int]``.
 
+        Raises:
+            ValueError: If incremental pytest requires its external Testmon database.
+
         """
-        root = u.Infra.runtime_owner_root(self.repository_root).unwrap()
-        approved = u.Infra.git_require_green_check_receipt(
-            root,
-            u.Infra.load_codegen_inputs(root).unwrap().spec.make,
-            phase=c.Infra.CheckPhase.PRIMARY,
-            plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
-                repository_root=root,
-            ).plan_global_targets(gates),
-        )
-        if approved.failure:
-            return r[int].from_failure(approved)
-        execution_mode = (
-            c.Infra.PytestExecutionMode.FULL if complete else execution_mode
-        )
+        database = self.testmon_db
+        if database is None:
+            msg = "incremental pytest requires its external Testmon database"
+            raise ValueError(msg)
         slow_marker = config.Infra.tooling.tools.pytest.slow_marker
         if self.slow_phase and slow_marker in self.ci_excluded_markers(
             execution_mode=execution_mode,
@@ -921,14 +953,14 @@ class FlextInfraPytestRunnerExecution(
                 if self.target_file is not None
                 else 0,
             )
-        u.Cli.ensure_dir(self.testmon_db.parent).unwrap()
+        u.Cli.ensure_dir(database.parent).unwrap()
         # Selection, execution, and integrity inspection share one database.
         # Serialize competing worktrees within this invocation's typed deadline.
         deadline = self._process_deadline()
         report_dir = self._report_directory()
         context = m.Infra.PytestRunContext(
             execution_mode=execution_mode,
-            testmon_db=self.testmon_db,
+            testmon_db=database,
             testmon_lease_acquired=False,
             deadline_monotonic=deadline.expires_at_monotonic,
             report_directory=report_dir,
@@ -942,9 +974,9 @@ class FlextInfraPytestRunnerExecution(
         )
         self._cache_publication = None
         lease_started = time.monotonic()
-        sys.stderr.write(f"pytest cache lease: acquiring {self.testmon_db}\n")
+        sys.stderr.write(f"pytest cache lease: acquiring {database}\n")
         with u.Cli.file_changes_lock(
-            self.testmon_db.with_name(f"{self.testmon_db.name}.lock"),
+            database.with_name(f"{database.name}.lock"),
         ).acquire(timeout=wait_seconds):
             self._write_run_context(
                 report_dir,
@@ -955,7 +987,7 @@ class FlextInfraPytestRunnerExecution(
                 f"after {time.monotonic() - lease_started:.3f}s\n",
             )
             result = self._execute_testmon_leased(
-                complete=complete,
+                database=database,
                 execution_mode=execution_mode,
                 report_dir=report_dir,
             )
@@ -993,15 +1025,14 @@ class FlextInfraPytestRunnerExecution(
     def _execute_testmon_leased(
         self,
         *,
-        complete: bool,
+        database: Path,
         execution_mode: c.Infra.PytestExecutionMode,
         report_dir: Path,
     ) -> p.Result[int]:
         """Run one testmon phase while holding the database lease.
 
-        Whole-project FULL execution derives its selection only after the suite
-        publishes its native inventory. Other selections retain their existing
-        collection preflight and share the same execution and finalization.
+        The incremental selection retains its complete collection preflight
+        and the original database through execution and finalization.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -1010,48 +1041,36 @@ class FlextInfraPytestRunnerExecution(
             RuntimeError: If the testmon cache is unusable.
 
         """
-        pre_digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
-        cache_restored = self._preflight_cache(pre_digest, report_dir)
-        selection_plan = (
-            None
-            if execution_mode == c.Infra.PytestExecutionMode.FULL
-            and self.target_file is None
-            else self._resolve_selection(
-                report_dir,
-                complete=complete,
-                # Incremental and file requests retain their inventory proof.
-                verify_inventory=(
-                    pre_digest is not None
-                    or self.slow_phase
-                    or self.target_file is not None
-                ),
-                execution_mode=execution_mode,
-            )
+        pre_digest = FlextInfraTestmonDbInspector.digest_file(database)
+        cache_restored = self._preflight_cache(pre_digest, report_dir, database)
+        selection_plan = self._resolve_selection(
+            report_dir,
+            database=database,
+            verify_inventory=(
+                pre_digest is not None
+                or self.slow_phase
+                or self.target_file is not None
+            ),
+            execution_mode=execution_mode,
         )
-        if selection_plan is not None:
-            if not isinstance(selection_plan, m.Infra.PytestSelectionPlan):
-                return r.ok(selection_plan.raw_return_code)
-            self._record_selection_plan(
-                selection_plan, report_dir, cache_restored=cache_restored
-            )
-        # A selected run enforces its existing manifest; whole-project FULL
-        # publishes its inventory from the suite's own native collection.
+        if not isinstance(selection_plan, m.Infra.PytestSelectionPlan):
+            return r.ok(selection_plan.raw_return_code)
+        self._record_selection_plan(
+            selection_plan, report_dir, cache_restored=cache_restored
+        )
         command = self.build_command(
             report_dir,
             selection_plan,
             execution_mode=execution_mode,
         )
-        outcome = self._run_suite(command, report_dir, execution_mode=execution_mode)
-        if selection_plan is None:
-            selection_plan = self._selection_from_suite(report_dir, outcome)
-            if not isinstance(selection_plan, m.Infra.PytestSelectionPlan):
-                return r.ok(selection_plan.raw_return_code)
+        outcome = self._run_suite(
+            command, report_dir, execution_mode=execution_mode, database=database
+        )
         selection = selection_plan.node_ids
         # A declared file executes its complete collected inventory, so an empty
         # incremental suite selection never grants a cache hit to a file request.
         cache_hit = (
             self.target_file is None
-            and not complete
             and outcome.raw_return_code
             in {c.Infra.PytestExitCode.OK, c.Infra.PytestExitCode.NO_TESTS_COLLECTED}
             and not outcome.timed_out
@@ -1077,7 +1096,7 @@ class FlextInfraPytestRunnerExecution(
             and not self._completed_failure(outcome, report_dir)
         ):
             return self._unfinished_result(outcome, report_dir)
-        state = self._inspect_cache(digest=pre_digest).unwrap()
+        state = self._inspect_cache(database=database, digest=pre_digest).unwrap()
         self._record_cache_state(report_dir, "cache-after", state)
         policy = config.Infra.codegen.make.testmon_cache_policy
         if not policy.save_enabled:
@@ -1092,10 +1111,12 @@ class FlextInfraPytestRunnerExecution(
             cache_hit=cache_hit,
         )
         if result.success:
-            self._publish_cache_publication(report_dir, state, policy)
+            self._publish_cache_publication(report_dir, state, policy, database)
         return result
 
-    def _preflight_cache(self, pre_digest: str | None, report_dir: Path) -> bool:
+    def _preflight_cache(
+        self, pre_digest: str | None, report_dir: Path, database: Path
+    ) -> bool:
         """Require a restored cache whenever a testmon database already exists.
 
         Returns:
@@ -1107,7 +1128,7 @@ class FlextInfraPytestRunnerExecution(
         """
         if pre_digest is None:
             return False
-        pre_state = self._inspect_cache(digest=pre_digest).unwrap()
+        pre_state = self._inspect_cache(database=database, digest=pre_digest).unwrap()
         self._record_cache_state(report_dir, "cache-before", pre_state)
         if not pre_state.restored_accepted:
             msg = f"testmon preflight rejected cache: {pre_state.reason}"
@@ -1235,6 +1256,7 @@ class FlextInfraPytestRunnerExecution(
         report_dir: Path,
         state: m.Infra.TestmonCacheState,
         policy: m.Infra.TestmonCachePolicySpec,
+        database: Path,
     ) -> None:
         """Publish the checkpointed database as the run's cache publication.
 
@@ -1251,12 +1273,12 @@ class FlextInfraPytestRunnerExecution(
             and accounting.executed_count + accounting.deselected_count
             == accounting.inventory_count
         )
-        digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
+        digest = FlextInfraTestmonDbInspector.digest_file(database)
         if digest is None:
             msg = "completed testmon run has no checkpointed database"
             raise RuntimeError(msg)
         self._cache_publication = m.Infra.TestmonCachePublication(
-            database=self.testmon_db,
+            database=database,
             digest=digest,
             saveable=policy.save_enabled and state.saveable and completed,
         )

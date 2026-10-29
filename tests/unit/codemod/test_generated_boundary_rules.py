@@ -9,11 +9,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
 
-from tests import c, p, t, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraCodemodGeneratedBoundaryRules:
@@ -60,7 +61,7 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
         return (scenarios / f"{case}.py").read_text(encoding=c.DEFAULT_ENCODING)
 
     @staticmethod
-    def scan_sources(tmp_path: Path, sources: t.StrMapping) -> t.StrSequence:
+    def scan_sources(tmp_path: Path, sources: Mapping[str, str]) -> Sequence[str]:
         """Write ``sources`` into a real project and scan every generated rule.
 
         Returns:

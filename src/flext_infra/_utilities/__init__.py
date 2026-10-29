@@ -13,18 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra._utilities._codemod_rules_distributions import (
-        FlextInfraUtilitiesCodemodRulesDistributionsMixin,
-    )
-    from flext_infra._utilities._dependency_deptry import (
-        FlextInfraUtilitiesDependencyDeptryMixin,
-    )
-    from flext_infra._utilities._project_discovery_candidates import (
-        FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
-    )
-    from flext_infra._utilities._project_discovery_shape import (
-        FlextInfraUtilitiesProjectDiscoveryShapeMixin,
-    )
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -35,6 +23,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.codegen_file_plan import (
         FlextInfraUtilitiesCodegenFilePlan,
     )
+    from flext_infra._utilities.codemod import FlextInfraUtilitiesCodemod
     from flext_infra._utilities.compatibility_alias_validation import (
         FlextInfraUtilitiesCompatibilityAliasValidation,
     )
@@ -42,6 +31,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesDeferredSelfReferenceRewrite,
     )
     from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+    from flext_infra._utilities.dependency import FlextInfraUtilitiesDependency
     from flext_infra._utilities.dependency_requirements import (
         FlextInfraUtilitiesDependencyRequirements,
     )
@@ -82,6 +72,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesManagedConflicts,
     )
     from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
+    from flext_infra._utilities.mypy import FlextInfraUtilitiesMypy
     from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
     from flext_infra._utilities.namespace_analysis import (
         FlextInfraUtilitiesRefactorNamespaceFlext,
@@ -107,6 +98,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesPrivateImportValidation,
     )
     from flext_infra._utilities.process import FlextInfraUtilitiesProcess
+    from flext_infra._utilities.project import FlextInfraUtilitiesProject
     from flext_infra._utilities.project_discovery import (
         FlextInfraUtilitiesProjectDiscovery,
     )
@@ -127,10 +119,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.protected_edit_writes import (
         FlextInfraUtilitiesProtectedEditWrites,
     )
-    from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-    from flext_infra._utilities.pyproject_conform import (
-        FlextInfraUtilitiesPyprojectConform,
-    )
+    from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
@@ -174,11 +163,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
-    "FlextInfraUtilitiesCodemodRulesDistributionsMixin",
+    "FlextInfraUtilitiesCodemod",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
     "FlextInfraUtilitiesDeferredSelfReferenceRewrite",
     "FlextInfraUtilitiesDependencies",
-    "FlextInfraUtilitiesDependencyDeptryMixin",
+    "FlextInfraUtilitiesDependency",
     "FlextInfraUtilitiesDependencyRequirements",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -199,6 +188,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesMiseBinary",
+    "FlextInfraUtilitiesModelsProtocol",
+    "FlextInfraUtilitiesMypy",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesNativeTooling",
     "FlextInfraUtilitiesNetwork",
@@ -206,9 +197,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesPrivateImportFacades",
     "FlextInfraUtilitiesPrivateImportValidation",
     "FlextInfraUtilitiesProcess",
+    "FlextInfraUtilitiesProject",
     "FlextInfraUtilitiesProjectDiscovery",
-    "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
-    "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
     "FlextInfraUtilitiesProjectManagedArtifacts",
     "FlextInfraUtilitiesPromoted",
     "FlextInfraUtilitiesProtectedEdit",
@@ -216,8 +206,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditLinting",
     "FlextInfraUtilitiesProtectedEditPreview",
     "FlextInfraUtilitiesProtectedEditWrites",
-    "FlextInfraUtilitiesPyproject",
-    "FlextInfraUtilitiesPyprojectConform",
     "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesPytest",
     "FlextInfraUtilitiesPytestCollection",
@@ -252,9 +240,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",
-        "FlextInfraUtilitiesCodemodRulesDistributionsMixin": (
-            "._codemod_rules_distributions"
-        ),
+        "FlextInfraUtilitiesCodemod": ".codemod",
         "FlextInfraUtilitiesCompatibilityAliasValidation": (
             ".compatibility_alias_validation"
         ),
@@ -262,7 +248,7 @@ install_lazy_exports(
             ".deferred_self_reference_rewrite"
         ),
         "FlextInfraUtilitiesDependencies": ".dependencies",
-        "FlextInfraUtilitiesDependencyDeptryMixin": "._dependency_deptry",
+        "FlextInfraUtilitiesDependency": ".dependency",
         "FlextInfraUtilitiesDependencyRequirements": ".dependency_requirements",
         "FlextInfraUtilitiesDiscovery": ".discovery",
         "FlextInfraUtilitiesDocs": ".docs",
@@ -283,6 +269,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesLogParser": ".log_parser",
         "FlextInfraUtilitiesManagedConflicts": ".managed_conflicts",
         "FlextInfraUtilitiesMiseBinary": ".mise_binary",
+        "FlextInfraUtilitiesMypy": ".mypy",
         "FlextInfraUtilitiesNamespaceConfig": ".namespace_config",
         "FlextInfraUtilitiesNativeTooling": ".native_tooling",
         "FlextInfraUtilitiesNetwork": ".network",
@@ -290,11 +277,8 @@ install_lazy_exports(
         "FlextInfraUtilitiesPrivateImportFacades": ".private_import_facades",
         "FlextInfraUtilitiesPrivateImportValidation": ".private_import_validation",
         "FlextInfraUtilitiesProcess": ".process",
+        "FlextInfraUtilitiesProject": ".project",
         "FlextInfraUtilitiesProjectDiscovery": ".project_discovery",
-        "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin": (
-            "._project_discovery_candidates"
-        ),
-        "FlextInfraUtilitiesProjectDiscoveryShapeMixin": "._project_discovery_shape",
         "FlextInfraUtilitiesProjectManagedArtifacts": ".project_managed_artifacts",
         "FlextInfraUtilitiesPromoted": ".promoted",
         "FlextInfraUtilitiesProtectedEdit": ".protected_edit",
@@ -302,8 +286,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditLinting": ".protected_edit_linting",
         "FlextInfraUtilitiesProtectedEditPreview": ".protected_edit_preview",
         "FlextInfraUtilitiesProtectedEditWrites": ".protected_edit_writes",
-        "FlextInfraUtilitiesPyproject": ".pyproject",
-        "FlextInfraUtilitiesPyprojectConform": ".pyproject_conform",
+        "FlextInfraUtilitiesModelsProtocol": ".protocol_models",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",

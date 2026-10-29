@@ -6,22 +6,23 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from urllib.parse import urlparse
 
 from git import GitCommandError
 
-from flext_infra import p, r, t
+from flext_infra import p, r
 from flext_infra._constants import (
     FlextInfraConstantsCodegenProject,
     FlextInfraConstantsSharedInfra,
 )
 from flext_infra._utilities import FlextInfraUtilitiesBase
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRootsMixin
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRoots
 
 
-class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
-    FlextInfraUtilitiesGitWorktreeRootsMixin,
+class FlextInfraUtilitiesGitWorktreeDiscovery(
+    FlextInfraUtilitiesGitWorktreeRoots,
 ):
     """Own worktree discovery operations."""
 
@@ -62,11 +63,11 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
                 return remote_path.lower()
 
     @classmethod
-    def git_submodule_paths(cls, repository_root: Path) -> p.Result[t.SequenceOf[Path]]:
+    def git_submodule_paths(cls, repository_root: Path) -> p.Result[Sequence[Path]]:
         """Resolve every initialized recursive submodule path.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[Path]]``.
+            The resulting ``p.Result[Sequence[Path]]``.
 
         Raises:
             ValueError: If malformed git submodule status line.
@@ -76,13 +77,13 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
             repo = cls._repo(repository_root)
             status = repo.git.submodule("status", "--recursive")
         except GitCommandError as exc:
-            return r[t.SequenceOf[Path]].fail(str(exc), exception=exc)
+            return r[Sequence[Path]].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[t.SequenceOf[Path]].fail(
+            return r[Sequence[Path]].fail(
                 f"failed to discover Git submodules: {exc}",
                 exception=exc,
             )
-        paths: t.MutableSequenceOf[Path] = []
+        paths: MutableSequence[Path] = []
         for raw_line in status.splitlines():
             normalized = raw_line.strip()
             if not normalized:
@@ -98,9 +99,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
                 repository_root / relative_path / FlextInfraConstantsSharedInfra.GIT_DIR
             ).exists():
                 paths.append(relative_path)
-        return r[t.SequenceOf[Path]].ok(
+        return r[Sequence[Path]].ok(
             tuple(sorted(paths, key=FlextInfraUtilitiesBase.path_depth_then_text)),
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeDiscoveryMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeDiscovery"]

@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Self
 
 from flext_infra import c, u
 from flext_infra._promoted import FlextInfraPromotedRegistry
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from pathlib import Path
 
     from flext_infra import p, t
@@ -96,7 +96,7 @@ class FlextInfraPromotedDiscovery(FlextInfraPromotedRegistry):
         message: type[c.Infra.PromotedMessage],
         path: Path,
         verb_dir: Path,
-        headers: t.MappingKV[Path, t.JsonMapping | c.Infra.PromotedRegistryError],
+        headers: Mapping[Path, t.JsonMapping | c.Infra.PromotedRegistryError],
     ) -> p.Infra.PromotedCommand | None:
         """Validate one command file and load its promoted command.
 

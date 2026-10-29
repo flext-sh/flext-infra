@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -50,7 +51,7 @@ class FlextInfraModelsDuplication:
             c.Infra.JSCPD_MODE
         )
         scope: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Scope directory names"),
         ] = c.Infra.JSCPD_SCOPE_DIRNAMES
         fleet: Annotated[
@@ -66,6 +67,20 @@ class FlextInfraModelsDuplication:
                 ),
             ),
         ] = True
+        comparison_roots: Annotated[
+            Sequence[str],
+            m.Field(
+                description=(
+                    "External comparison checkout roots joined into this "
+                    "project's scan scope, analogous to mod consumer_roots. A "
+                    "clone stays a finding of THIS project only when one side "
+                    "remains under the invoking project root; clones wholly "
+                    "inside an external root belong to that root's owner. An "
+                    "absent root degrades: it is skipped and recorded in the "
+                    "gate output, like a standalone fleet checkout"
+                ),
+            ),
+        ] = ()
 
     class JscpdConfig(m.ContractModel):
         """Complete generated jscpd invocation configuration."""
@@ -77,12 +92,12 @@ class FlextInfraModelsDuplication:
         )
 
         absolute: Annotated[t.StrictBool, m.Field(description="Emit absolute paths")]
-        formats_exts: t.MappingKV[str, t.StrSequence] = m.Field(
+        formats_exts: Mapping[str, Sequence[str]] = m.Field(
             alias="formatsExts",
             description="Extensions by parser format",
         )
-        ignore: Annotated[t.StrSequence, m.Field(description="Ignored path patterns")]
-        ignore_pattern: t.StrSequence = m.Field(
+        ignore: Annotated[Sequence[str], m.Field(description="Ignored path patterns")]
+        ignore_pattern: Sequence[str] = m.Field(
             alias="ignorePattern",
             description="Code-level regexes whose tokens jscpd skips",
         )
@@ -104,7 +119,7 @@ class FlextInfraModelsDuplication:
             description="Disable tip output",
         )
         reporters: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Required report formats"),
         ]
         threshold: Annotated[
@@ -297,7 +312,7 @@ class FlextInfraModelsDuplication:
             m.Field(alias="detectionDate", description="jscpd detection timestamp"),
         ]
         formats: Annotated[
-            t.MappingKV[str, FlextInfraModelsDuplication.JscpdStatisticsSummary],
+            Mapping[str, FlextInfraModelsDuplication.JscpdStatisticsSummary],
             m.Field(description="Statistics keyed by parsed source format"),
         ]
         total: Annotated[
@@ -309,7 +324,7 @@ class FlextInfraModelsDuplication:
         """Validated complete jscpd JSON report."""
 
         duplicates: Annotated[
-            t.SequenceOf[FlextInfraModelsDuplication.JscpdDuplicate],
+            Sequence[FlextInfraModelsDuplication.JscpdDuplicate],
             m.Field(description="Complete detected clone records"),
         ]
         statistics: Annotated[
@@ -416,7 +431,7 @@ class FlextInfraModelsDuplication:
         source_count: t.NonNegativeInt = m.Field(
             description="Unique complete sources read"
         )
-        counts: t.MappingKV[str, int] = m.Field(
+        counts: Mapping[str, int] = m.Field(
             description="Disposition and ownership counters"
         )
         execution: str = m.Field(

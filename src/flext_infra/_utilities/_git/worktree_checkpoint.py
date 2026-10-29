@@ -6,25 +6,25 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from git import GitCommandError
 
-from flext_infra import c, config, m, p, r, t
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitWorktreeMaterializationMixin,
-)
+from flext_infra import c, config, m, p, r
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMaterialization
 
 
-class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
-    FlextInfraUtilitiesGitWorktreeMaterializationMixin,
+class FlextInfraUtilitiesGitWorktreeCheckpoint(
+    FlextInfraUtilitiesGitWorktreeMaterialization,
 ):
     """Own worktree checkpoint operations."""
 
     @staticmethod
-    def _transaction_exclusion_pathspecs() -> t.VariadicTuple[str]:
+    def _transaction_exclusion_pathspecs() -> tuple[str, ...]:
         """Pathspecs that exclude tool-cache directories from operation deltas.
 
         Returns:
-            The resulting ``t.VariadicTuple[str]``.
+            The resulting ``tuple[str, ...],``.
 
         """
         return tuple(
@@ -37,7 +37,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
         cls,
         repository: m.Infra.RepositoryWorktree,
         *,
-        source_gitlinks: t.MappingKV[str, str] | None = None,
+        source_gitlinks: Mapping[str, str] | None = None,
     ) -> p.Result[m.Infra.RepositoryDelta]:
         """Stage and capture the operation-only patch after a checkpoint.
 
@@ -110,4 +110,4 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeCheckpointMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeCheckpoint"]

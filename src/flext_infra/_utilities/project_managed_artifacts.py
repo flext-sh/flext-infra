@@ -8,12 +8,10 @@ from __future__ import annotations
 
 import os
 import stat
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import ClassVar
-from weakref import WeakKeyDictionary
 
 from flext_cli import u
 from flext_core import FlextStrictYamlConfigSource
@@ -30,7 +28,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         cls,
         repository_root: Path,
         *,
-        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        projections: tuple[m.Infra.CodegenLayerProjection, ...] = (),
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.CodegenInputs]:
         """Load one root's full policy through the ordered strict YAML source.
@@ -68,7 +66,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         cls,
         repository_root: Path,
         *,
-        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        projections: tuple[m.Infra.CodegenLayerProjection, ...] = (),
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.ToolingInputs]:
         """Elect tooling policy and capture every consulted configuration layer.
@@ -121,24 +119,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             Strict repository policy with current consulted source snapshots.
 
         """
-        if source_project is None:
-            return cls._repository_declaration_inputs(repository_root)
-        cache = cls._DECLARATION_CACHE.setdefault(source_project, {})
-        key = str(repository_root)
-        if key in cache:
-            return r[m.Infra.RepositoryDeclarationInputs].ok(cache[key])
-        loaded = cls._repository_declaration_inputs(
+        return cls._repository_declaration_inputs(
             repository_root, source_project=source_project
         )
-        if loaded.success:
-            cache[key] = loaded.value
-        return loaded
-
-    _DECLARATION_CACHE: ClassVar[
-        WeakKeyDictionary[
-            p.Infra.RopeProject, dict[str, m.Infra.RepositoryDeclarationInputs]
-        ]
-    ] = WeakKeyDictionary()
 
     @classmethod
     def _repository_declaration_inputs(
@@ -147,7 +130,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.RepositoryDeclarationInputs]:
-        """Load repository policy once through the captured YAML layers.
+        """Validate repository policy from the selected view's captured YAML layers.
 
         Returns:
             Strict repository policy with current consulted source snapshots.
@@ -186,7 +169,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         repository_root: Path,
         *,
         filename: str,
-        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        projections: tuple[m.Infra.CodegenLayerProjection, ...] = (),
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[m.Infra.ConfigDocumentInputs]:
         """Capture and compose one F.yaml through the same strict layer reader.
@@ -282,7 +265,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         repository_root: Path,
         captured: m.Infra.CodegenInputs,
         *,
-        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection] = (),
+        projections: tuple[m.Infra.CodegenLayerProjection, ...] = (),
         include_local: bool = True,
     ) -> p.Result[m.Infra.CodegenInputs]:
         """Project pending layers from captured bytes without rereading their sources.
@@ -321,9 +304,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 ),
             ),
         )
-        return loaded.map(
-            lambda spec: m.Infra.CodegenInputs(spec=spec, sources=captured.sources),
-        )
+
+        def codegen_inputs(spec: m.Infra.CodegenConfigSpec) -> m.Infra.CodegenInputs:
+            return m.Infra.CodegenInputs(spec=spec, sources=captured.sources)
+
+        return loaded.map(codegen_inputs)
 
     @staticmethod
     def read_codegen_config_document(content: bytes) -> p.Result[t.JsonMapping]:
@@ -398,8 +383,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def _repository_config_document(
         cls,
         sources: tuple[Path, ...],
-        snapshots: t.VariadicTuple[m.Cli.AtomicFileState],
-        projections: t.VariadicTuple[m.Infra.CodegenLayerProjection],
+        snapshots: tuple[m.Cli.AtomicFileState, ...],
+        projections: tuple[m.Infra.CodegenLayerProjection, ...],
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> t.JsonMapping:
@@ -457,9 +442,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def _validated_config_roots(
         cls,
         project_dir: Path,
-    ) -> p.Result[
-        t.Quad[Path, t.VariadicTuple[int], t.VariadicTuple[int], t.VariadicTuple[Path]]
-    ]:
+    ) -> p.Result[tuple[Path, tuple[int, ...], tuple[int, ...], tuple[Path, ...]]]:
         """Validate the physical project and config directories, list yaml paths.
 
         An absent ``config/`` directory keeps the validated identity empty; the
@@ -472,11 +455,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         """
         quad = r[
-            t.Quad[
+            tuple[
                 Path,
-                t.VariadicTuple[int],
-                t.VariadicTuple[int],
-                t.VariadicTuple[Path],
+                tuple[int, ...],
+                tuple[int, ...],
+                tuple[Path, ...],
             ]
         ]
         project_identity = cls._required_directory_identity(
@@ -506,21 +489,21 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         cls,
         project_dir: Path,
         config_dir: Path,
-        identity_value: t.VariadicTuple[int],
-        paths_value: t.VariadicTuple[Path],
-        project_identity_value: t.VariadicTuple[int],
-    ) -> p.Result[t.VariadicTuple[int]]:
+        identity_value: tuple[int, ...],
+        paths_value: tuple[Path, ...],
+        project_identity_value: tuple[int, ...],
+    ) -> p.Result[tuple[int, ...]]:
         """Re-read both identities and require the snapshot topology to hold.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[int]]``.
+            The resulting ``p.Result[tuple[int, ...]]``.
 
         """
         stable_paths = cls._config_yaml_paths(config_dir, identity_value)
         if stable_paths.failure:
-            return r[t.VariadicTuple[int]].from_failure(stable_paths)
+            return r[tuple[int, ...]].from_failure(stable_paths)
         if stable_paths.value != paths_value:
-            return r[t.VariadicTuple[int]].fail(
+            return r[tuple[int, ...]].fail(
                 f"{c.Infra.CONFIG_SNAPSHOT_TOPOLOGY_RACE_MARKER}: {config_dir}",
             )
         stable_project = cls._required_directory_identity(
@@ -528,9 +511,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             purpose="project root",
         )
         if stable_project.failure:
-            return r[t.VariadicTuple[int]].from_failure(stable_project)
+            return r[tuple[int, ...]].from_failure(stable_project)
         if stable_project.value != project_identity_value:
-            return r[t.VariadicTuple[int]].fail(
+            return r[tuple[int, ...]].fail(
                 f"{c.Infra.CONFIG_SNAPSHOT_ROOT_RACE_MARKER}: {project_dir}",
             )
         return stable_project
@@ -540,22 +523,22 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         cls,
         project_dir: Path,
         config_dir: Path,
-        identity_value: t.VariadicTuple[int],
-        paths_value: t.VariadicTuple[Path],
-        project_identity_value: t.VariadicTuple[int],
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        identity_value: tuple[int, ...],
+        paths_value: tuple[Path, ...],
+        project_identity_value: tuple[int, ...],
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
         """Read every config source, then require the topology to stay stable.
 
         Returns:
             The resulting
-                ``p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]``.
+                ``p.Result[tuple[m.Cli.AtomicFileState, ...]]``.
 
         """
         sources: list[m.Cli.AtomicFileState] = []
         for path in paths_value:
             source = u.Cli.atomic_read_binary_file_state(path, required=True)
             if source.failure:
-                return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(source)
+                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(source)
             sources.append(source.value)
         stable_project = cls._stable_snapshot_identity(
             project_dir,
@@ -565,10 +548,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             project_identity_value,
         )
         if stable_project.failure:
-            return r[t.VariadicTuple[m.Cli.AtomicFileState]].from_failure(
+            return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(
                 stable_project,
             )
-        return r[t.VariadicTuple[m.Cli.AtomicFileState]].ok(tuple(sources))
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(sources))
 
     @staticmethod
     def direct_config_source(project_dir: Path, path: Path) -> bool:
@@ -584,14 +567,14 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def snapshot_config_sources(
         cls,
         project_dir: Path,
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
         """Capture one stable, physical, direct ``config/*.yaml`` file set.
 
         A project root that is not materialized yet (a scaffold planned
         read-only) owns no config sources, exactly like an absent ``config/``.
 
         Returns:
-            The resulting ``p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]``.
+            The resulting ``p.Result[tuple[m.Cli.AtomicFileState, ...]]``.
 
         """
         if not project_dir.exists() and not project_dir.is_symlink():
@@ -616,40 +599,40 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         path: Path,
         *,
         purpose: str,
-    ) -> p.Result[t.VariadicTuple[int]]:
+    ) -> p.Result[tuple[int, ...]]:
         try:
             state = path.lstat()
         except OSError as exc:
-            return r[t.VariadicTuple[int]].fail_op(f"inspect {purpose}", exc)
+            return r[tuple[int, ...]].fail_op(f"inspect {purpose}", exc)
         attributes = getattr(state, "st_file_attributes", 0)
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
         if not stat.S_ISDIR(state.st_mode) or attributes & reparse:
-            return r[t.VariadicTuple[int]].fail(
+            return r[tuple[int, ...]].fail(
                 f"{purpose} is not a physical directory: {path}",
             )
-        return r[t.VariadicTuple[int]].ok(cls._directory_state_key(state))
+        return r[tuple[int, ...]].ok(cls._directory_state_key(state))
 
     @classmethod
     def _config_directory_identity(
         cls,
         config_dir: Path,
-    ) -> p.Result[t.VariadicTuple[int]]:
+    ) -> p.Result[tuple[int, ...]]:
         try:
             state = config_dir.lstat()
         except FileNotFoundError:
-            return r[t.VariadicTuple[int]].ok(())
+            return r[tuple[int, ...]].ok(())
         except OSError as exc:
-            return r[t.VariadicTuple[int]].fail_op(
+            return r[tuple[int, ...]].fail_op(
                 "inspect project config directory",
                 exc,
             )
         attributes = getattr(state, "st_file_attributes", 0)
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
         if not stat.S_ISDIR(state.st_mode) or attributes & reparse:
-            return r[t.VariadicTuple[int]].fail(
+            return r[tuple[int, ...]].fail(
                 f"project config path is not a physical directory: {config_dir}",
             )
-        return r[t.VariadicTuple[int]].ok(cls._directory_state_key(state))
+        return r[tuple[int, ...]].ok(cls._directory_state_key(state))
 
     @staticmethod
     def empty_snapshot() -> m.Infra.ProjectManagedArtifactsSnapshot:
@@ -674,8 +657,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def _config_yaml_paths(
         cls,
         config_dir: Path,
-        expected_identity: t.VariadicTuple[int],
-    ) -> p.Result[t.VariadicTuple[Path]]:
+        expected_identity: tuple[int, ...],
+    ) -> p.Result[tuple[Path, ...]]:
         try:
             paths = tuple(
                 sorted(
@@ -685,21 +668,21 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 ),
             )
         except OSError as exc:
-            return r[t.VariadicTuple[Path]].fail_op(
+            return r[tuple[Path, ...]].fail_op(
                 "enumerate project config sources",
                 exc,
             )
         current = cls._config_directory_identity(config_dir)
         if current.failure:
-            return r[t.VariadicTuple[Path]].from_failure(current)
+            return r[tuple[Path, ...]].from_failure(current)
         if current.value != expected_identity:
-            return r[t.VariadicTuple[Path]].fail(
+            return r[tuple[Path, ...]].fail(
                 f"project config directory changed during snapshot: {config_dir}",
             )
-        return r[t.VariadicTuple[Path]].ok(paths)
+        return r[tuple[Path, ...]].ok(paths)
 
     @staticmethod
-    def _directory_state_key(state: os.stat_result) -> t.VariadicTuple[int]:
+    def _directory_state_key(state: os.stat_result) -> tuple[int, ...]:
         return (
             state.st_dev,
             state.st_ino,
@@ -762,9 +745,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         cls,
         project_dir: Path,
         *,
-        read_committed_directory: Callable[
-            [Path, str], p.Result[t.MappingKV[str, bytes]]
-        ],
+        read_committed_directory: Callable[[Path, str], p.Result[Mapping[str, bytes]]],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Load ManagedArtifacts from the project's committed ``HEAD`` catalog.
 
@@ -792,9 +773,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         cls,
         project_dir: Path,
         *,
-        read_committed_directory: Callable[
-            [Path, str], p.Result[t.MappingKV[str, bytes]]
-        ],
+        read_committed_directory: Callable[[Path, str], p.Result[Mapping[str, bytes]]],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsSnapshot]:
         """Capture and parse the committed catalog without physical source states.
 
@@ -815,7 +794,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 f"cannot open committed project config catalog at {resolved}: "
                 f"{blobs.error}",
             )
-        payloads: t.MutableMappingKV[Path, bytes] = {
+        payloads: MutableMapping[Path, bytes] = {
             resolved / c.CONFIG_DIR_NAME / name: content
             for name, content in sorted(blobs.value.items())
             if name.endswith(".yaml")
@@ -835,7 +814,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @classmethod
     def load_project_managed_artifacts_from_snapshot(
         cls,
-        source_snapshot: t.VariadicTuple[m.Cli.AtomicFileState],
+        source_snapshot: tuple[m.Cli.AtomicFileState, ...],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one caller-owned immutable project YAML snapshot.
 
@@ -843,7 +822,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             The resulting ``p.Result[m.Infra.ProjectManagedArtifactsResolution]``.
 
         """
-        payloads: t.MutableMappingKV[Path, bytes] = {}
+        payloads: MutableMapping[Path, bytes] = {}
         for source_state in source_snapshot:
             if source_state.content is None:
                 return r[m.Infra.ProjectManagedArtifactsResolution].fail(
@@ -855,7 +834,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @classmethod
     def _load_project_managed_artifacts_from_payloads(
         cls,
-        payloads: t.MappingKV[Path, bytes],
+        payloads: Mapping[Path, bytes],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one immutable path-to-bytes project YAML catalog.
 
@@ -910,7 +889,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def _merge_unique_keys[V](
         label: str,
         source: Path,
-        items: t.MappingKV[str, V],
+        items: Mapping[str, V],
         merged: MutableMapping[str, V],
         owners: MutableMapping[str, Path],
     ) -> str | None:
@@ -965,7 +944,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @classmethod
     def _compose_project_fragments(
         cls,
-        fragments: t.SequenceOf[tuple[Path, m.Infra.ProjectManagedArtifactsFragment]],
+        fragments: Sequence[tuple[Path, m.Infra.ProjectManagedArtifactsFragment]],
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Compose source fragments in path order into one resolution.
 
@@ -1011,7 +990,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @classmethod
     def compose_mise_toml_from_snapshot(
         cls,
-        source_snapshot: t.VariadicTuple[m.Cli.AtomicFileState],
+        source_snapshot: tuple[m.Cli.AtomicFileState, ...],
         rendered: str,
     ) -> p.Result[str]:
         """Add local tools from one caller-owned immutable YAML snapshot.
@@ -1055,4 +1034,4 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         return r[str].ok(u.Cli.toml_dumps(doc))
 
 
-__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesProjectManagedArtifacts",)
+__all__: tuple[str, ...] = ("FlextInfraUtilitiesProjectManagedArtifacts",)

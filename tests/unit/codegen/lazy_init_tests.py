@@ -53,7 +53,9 @@ class TestsFlextInfraCodegenLazyInit:
 
     @staticmethod
     @pytest.fixture
-    def governed_project(tmp_path: Path) -> Path:
+    def governed_project(
+        tmp_path: Path,
+    ) -> Path:
         """Provide the project manifest every scanned package belongs to.
 
         Lazy-init plans a package only inside a physical project, and the
@@ -227,7 +229,7 @@ class TestsFlextInfraCodegenLazyInit:
             repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
             u.Tests.write_lazy_init_namespace_module(
                 package / "models.py",
-                class_name="FlextScopedModels",
+                class_name="FlextModelsScoped",
                 alias="m",
                 docstring="Owned models.",
             )

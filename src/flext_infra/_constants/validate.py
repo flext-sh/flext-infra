@@ -92,7 +92,7 @@ class FlextInfraConstantsSharedInfra:
     "Mypy verbose build source entry, capturing the path's Python literal."
     MYPY_BUILD_FINISHED_MARKER: ClassVar[str] = "Build finished in "
     "Mypy verbose trace marker proving the build completed."
-    INTERNAL_PREFIXES: ClassVar[t.VariadicTuple[str]] = ("flext_", "flext-")
+    INTERNAL_PREFIXES: ClassVar[tuple[str, ...]] = ("flext_", "flext-")
 
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: ClassVar[str] = c.PYPROJECT_FILENAME
@@ -174,7 +174,7 @@ class FlextInfraConstantsSharedInfra:
     EXT_PYTHON: ClassVar[str] = ".py"
     EXT_PYTHON_GLOB: ClassVar[str] = "*.py"
     EXT_PYTHON_STUB: ClassVar[str] = ".pyi"
-    PYTHON_SOURCE_SUFFIXES: ClassVar[t.VariadicTuple[str]] = (
+    PYTHON_SOURCE_SUFFIXES: ClassVar[tuple[str, ...]] = (
         EXT_PYTHON,
         EXT_PYTHON_STUB,
     )
@@ -230,7 +230,7 @@ class FlextInfraConstantsSharedInfra:
     # The origin gate runs inside the same probe namespace as the export
     # resolution, so its loop names must never rebind the probed ``module``.
     FRESH_IMPORT_ORIGIN_CODE: ClassVar[str] = (
-        "from flext_infra.workspace.environment_provenance import "
+        "from flext_infra.workspace import "
         "FlextInfraWorkspaceEnvironmentProvenance as native_origins\n"
         "for loaded_name in tuple(sys.modules):\n"
         "    for package, directory in {origins!r}:\n"

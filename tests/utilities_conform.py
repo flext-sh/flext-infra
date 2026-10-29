@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from typing_extensions import TypeForm
 
 from flext_infra import check, codegen, config, u
-from tests import TestsFlextInfraUtilitiesTomlMixin, c, m, t
+from tests import TestsFlextInfraUtilitiesTomlMixin, c, m
 
 
 class TestsFlextInfraUtilitiesConform:
@@ -63,7 +64,7 @@ class TestsFlextInfraUtilitiesConform:
                     config.Infra.tooling,
                     "ruff.lint",
                     "ignore",
-                    TypeForm(t.StrSequence),
+                    TypeForm(Sequence[str]),
                 ),
             }),
         )

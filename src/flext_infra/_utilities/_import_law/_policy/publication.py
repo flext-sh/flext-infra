@@ -7,8 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Mapping, MutableMapping, Sequence
+from contextlib import nullcontext
 from pathlib import Path
 from time import monotonic
+from typing import ClassVar
 
 from flext_cli import settings, u
 
@@ -16,6 +19,7 @@ from flext_infra import c, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._import_law._policy.namespace import (
     FlextInfraUtilitiesImportLawPolicyNamespace,
@@ -26,12 +30,25 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
+from flext_infra._utilities._rope.rope_runtime_types import (
+    FlextInfraUtilitiesTypesRopeRuntime,
+)
 
 
 class FlextInfraUtilitiesImportLawPolicyPublication(
     FlextInfraUtilitiesImportLawPolicyNamespace,
 ):
     """Declare the publication facts of the composed import policy."""
+
+    # Shared publication-scan progress. The heartbeat deadline and the
+    # cumulative totals live on the composed policy class so every lookup
+    # of a pass throttles against one interval and the aggregate rows carry
+    # running totals instead of per-symbol detail.
+    _scan_due = 0.0
+    _scan_consumers: ClassVar[t.Infra.MutableSetOf[Path]] = set()
+    _scan_lookups = 0
+    _scan_files = 0
+    _scan_providers = 0
 
     @staticmethod
     def codemod_progress(message: str, due: float = 0) -> float:
@@ -46,6 +63,22 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             return due
         u.Cli.info(f"mod: {message}")
         return now + settings.cli_process_heartbeat_seconds
+
+    @classmethod
+    def _publication_scan_summary(cls) -> None:
+        """Emit one aggregate publication-scan row and reset the shared totals."""
+        if not cls._scan_lookups:
+            return
+        u.Cli.info(
+            f"mod: import publication scan summary project-lookups="
+            f"{cls._scan_lookups} consumers={len(cls._scan_consumers)} "
+            f"files-scanned={cls._scan_files} "
+            f"providers-found={cls._scan_providers}"
+        )
+        cls._scan_lookups = 0
+        cls._scan_consumers.clear()
+        cls._scan_files = 0
+        cls._scan_providers = 0
 
     @classmethod
     def family_letter(cls, namespace_dir: Path, file_path: Path) -> str | None:
@@ -75,7 +108,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         module: str,
         name: str,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        source_project: p.Infra.RopeProject,
+        sources: Mapping[Path, str] | None = None,
     ) -> str | None:
         """Return the nearest package that lazily publishes one leaf object.
 
@@ -86,7 +120,9 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         package = module.rpartition(".")[0]
         directory = cls.import_package_dir(scope.project_root, module, sources=sources)
         if directory is not None:
-            return cls._declared_subpackage_source(scope, module, name, sources=sources)
+            return cls._declared_subpackage_source(
+                scope, module, name, source_project=source_project, sources=sources
+            )
         if not package or scope.module in {module, package}:
             return None
         if (
@@ -106,7 +142,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         module: str,
         name: str,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        source_project: p.Infra.RopeProject,
+        sources: Mapping[Path, str] | None = None,
     ) -> str | None:
         """Discover a unique source declaration published by its own package.
 
@@ -120,9 +157,12 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         directory = cls.import_package_dir(scope.project_root, module, sources=sources)
         if directory is None:
             return None
-        candidates: t.MutableMappingKV[str, str] = {}
-        due = 0.0
-        scanned = 0
+        candidates: MutableMapping[str, str] = {}
+        declared_sources = (
+            FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources
+        )
+        cls._scan_lookups += 1
+        cls._scan_consumers.add(scope.file_path)
         for source_path in sorted(
             directory.rglob("*.py")
             if sources is None
@@ -133,13 +173,16 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             ),
             key=lambda path: (len(path.parts), path),
         ):
-            due = cls.codemod_progress(
-                f"import publication lookup project={scope.project_root} "
-                f"consumer={scope.file_path} symbol={module}.{name} "
-                f"scanned={scanned} provider={source_path}",
-                due,
+            cls._scan_files += 1
+            cls._scan_due = cls.codemod_progress(
+                f"import publication scan project={scope.project_root} "
+                f"consumers={len(cls._scan_consumers)} "
+                f"lookups={cls._scan_lookups} "
+                f"files-scanned={cls._scan_files} "
+                f"providers-found={cls._scan_providers} "
+                f"(heartbeat {settings.cli_process_heartbeat_seconds:g}s)",
+                cls._scan_due,
             )
-            scanned += 1
             if source_path.name == c.Infra.INIT_PY:
                 continue
             source = (
@@ -147,9 +190,32 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                 if sources is None
                 else sources[source_path]
             )
-            if name not in (
-                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(source)
-            ):
+            with (
+                nullcontext(source_project)
+                if source_project.source_query(source_path, "isfile")
+                and source_project.source_text(source_path) == source
+                else source_project.source_view(
+                    declared_files=declared_sources(
+                        Path(source_project.root.real_path),
+                        (),
+                        {source_path: source},
+                        source_project=source_project,
+                    ),
+                    additional_source_folders=None,
+                )
+            ) as bound_project:
+                native = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                    bound_project.get_pymodule(
+                        FlextInfraUtilitiesRopeRuntime.file_resource_at(
+                            bound_project, source_path
+                        ),
+                        force_errors=True,
+                    )
+                )
+                exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                    native
+                )
+            if name not in exports:
                 continue
             declaration = cls._module_bindings(ast.parse(source)).get(name)
             if not isinstance(
@@ -166,12 +232,15 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                 frozenset(),
                 sources=sources,
             )
+            cls._scan_providers += 1
             candidates.setdefault(identity, owner)
-        cls.codemod_progress(
-            f"import publication ancestry project={scope.project_root} "
-            f"consumer={scope.file_path} symbol={module}.{name} "
-            f"scanned={scanned} candidates={len(candidates)}",
-            due,
+        cls._scan_due = cls.codemod_progress(
+            f"import publication scan done project={scope.project_root} "
+            f"consumers={len(cls._scan_consumers)} lookups={cls._scan_lookups} "
+            f"files-scanned={cls._scan_files} "
+            f"providers-found={cls._scan_providers} "
+            f"symbol={module}.{name} candidates={len(candidates)}",
+            cls._scan_due,
         )
         ancestors = cls._declared_ancestors(scope, tuple(candidates), sources=sources)
         candidates = {
@@ -193,7 +262,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         scope: m.Infra.ImportLawScope,
         identities: t.StrTuple,
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> frozenset[str]:
         """Find explicit source ancestors of the published declarations.
 
@@ -265,7 +334,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         name: str,
         seen: frozenset[str],
         *,
-        sources: t.MappingKV[Path, str] | None = None,
+        sources: Mapping[Path, str] | None = None,
     ) -> str:
         """Follow explicit reexports to their source, rejecting cyclic bindings.
 
@@ -335,7 +404,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         qualified: str,
         *,
         binding: p.Infra.RopePyName | None = None,
-    ) -> t.Triple[str, str, str] | None:
+    ) -> tuple[str, str, str] | None:
         """Prove a model helper's native static identity and lazy publication.
 
         Returns:
@@ -405,11 +474,9 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        resources: t.SequenceOf[p.Infra.RopeResource],
-        sources: t.MappingKV[Path, str],
-    ) -> t.SequenceOf[
-        t.Pair[p.Infra.RopeContractRule, t.SequenceOf[p.Infra.RopeResource]]
-    ]:
+        resources: Sequence[p.Infra.RopeResource],
+        sources: Mapping[Path, str],
+    ) -> Sequence[tuple[p.Infra.RopeContractRule, Sequence[p.Infra.RopeResource]]]:
         """Bind a family's new calls through its declared helper, never its facade.
 
         Returns:
@@ -441,7 +508,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
         resource: p.Infra.RopeResource,
-        sources: t.MappingKV[Path, str],
+        sources: Mapping[Path, str],
     ) -> p.Infra.RopeContractRule:
         """Apply existing family publication law to one consumer's native goals.
 
@@ -478,9 +545,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             module=module_name,
             layer=cls.module_import_layer(module_name),
             own_exports=frozenset(
-                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                    module.source_code
-                )
+                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(module)
             ),
             family_letter=letter,
         )
@@ -491,8 +556,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        frame: t.Pair[m.Infra.ImportLawScope, p.Infra.RopePyModule],
-        sources: t.MappingKV[Path, str],
+        frame: tuple[m.Infra.ImportLawScope, p.Infra.RopePyModule],
+        sources: Mapping[Path, str],
     ) -> p.Infra.RopeContractRule:
         """Rewrite eligible bindings without changing unrelated imports.
 
@@ -528,8 +593,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         cls,
         project: p.Infra.RopeProject,
         identity: str,
-        frame: t.Pair[m.Infra.ImportLawScope, p.Infra.RopePyModule],
-        sources: t.MappingKV[Path, str],
+        frame: tuple[m.Infra.ImportLawScope, p.Infra.RopePyModule],
+        sources: Mapping[Path, str],
     ) -> tuple[str, str, str | None, str] | None:
         """Resolve one published family binding into its consumer spelling.
 
@@ -553,13 +618,21 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             f"{provider.get_name()}."
         ).partition(".")
         if not separator or owner not in (
-            FlextInfraUtilitiesRopeAnalysis.public_export_names_source(sources[path])
+            FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(provider)
+            )
         ):
             return None
         owner_binding = FlextInfraUtilitiesRopeRuntime.qualified_name(
             project, f"{provider.get_name()}.{owner}"
         )
-        package = cls.lazy_source(context, provider.get_name(), owner, sources=sources)
+        package = cls.lazy_source(
+            context,
+            provider.get_name(),
+            owner,
+            source_project=project,
+            sources=sources,
+        )
         local = cls._family_owner_spelling(module.get_scope(), owner_binding, owner)
         if package is None and not FlextInfraUtilitiesRopeRuntime.same_name(
             owner_binding, module.get_scope().get_names().get(local)

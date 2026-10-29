@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
@@ -15,7 +16,7 @@ from flext_infra.gates import FlextInfraGate
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraPyreflyGate(FlextInfraGate):
@@ -24,12 +25,12 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.PYREFLY
     gate_name: ClassVar[str] = "Pyrefly"
     can_fix: ClassVar[bool] = False
-    checker_info_prefixes: ClassVar[t.StrSequence] = ("INFO",)
+    checker_info_prefixes: ClassVar[Sequence[str]] = ("INFO",)
     requires_python_targets: ClassVar[bool] = True
 
     # Native JSON report replaced before every run: ``{project}-pyrefly.json``.
     check_report_filename: ClassVar[str] = "pyrefly.json"
-    check_remove_env_keys: ClassVar[t.StrSequence] = (
+    check_remove_env_keys: ClassVar[Sequence[str]] = (
         *FlextInfraGate.check_remove_env_keys,
         c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,
     )
@@ -59,11 +60,11 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Check only local Python roots to avoid scanning dependency trees.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         del ctx
@@ -74,8 +75,8 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
-    ) -> t.StrSequence:
+        check_dirs: Sequence[str],
+    ) -> Sequence[str]:
         """Run Pyrefly against the project config, writing its JSON report file.
 
         Returns:
@@ -115,7 +116,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         result: p.Cli.CommandOutput,
         project_dir: Path,
         ctx: m.Infra.GateContext,
-    ) -> t.Pair[bool, t.SequenceOf[p.Infra.Issue]]:
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Read Pyrefly's freshly written JSON report file into findings.
 
         Returns:

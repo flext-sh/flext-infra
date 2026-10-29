@@ -13,13 +13,13 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
-class FlextInfraConfigModelsRelease:
+class FlextInfraModelsConfigRelease:
     """Release automation and override specification models."""
 
-    class ReleaseAutomationOverrideSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ReleaseAutomationOverrideSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One distribution's deviation from the shared release contract."""
 
         release_branch: Annotated[
@@ -31,11 +31,11 @@ class FlextInfraConfigModelsRelease:
             m.Field(default=None, description="Command that produces the artifacts"),
         ] = None
         version_variables: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Extra file:variable version anchors"),
         ] = ()
 
-    class ReleaseAutomationSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ReleaseAutomationSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Automated semantic versioning, owned by the market tool.
 
         Why: bump_version/parse_semver and the release orchestrator already
@@ -67,11 +67,11 @@ class FlextInfraConfigModelsRelease:
             m.Field(description="Branch that produces releases"),
         ]
         version_variables: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="file:variable anchors the tool rewrites"),
         ]
         version_toml: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="file:tomlpath anchors the tool rewrites"),
         ]
         build_command: Annotated[
@@ -89,7 +89,7 @@ class FlextInfraConfigModelsRelease:
         overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                FlextInfraConfigModelsRelease.ReleaseAutomationOverrideSpec,
+                FlextInfraModelsConfigRelease.ReleaseAutomationOverrideSpec,
             ],
             m.Field(description="Per-distribution deviations from the shared contract"),
         ]
@@ -111,7 +111,7 @@ class FlextInfraConfigModelsRelease:
                     raise ValueError(msg)
             return self
 
-    class ReleasePolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+    class ReleasePolicySpec(FlextInfraModelsConfigContract.ConfigContract):
         """The release protocol's declared data: who publishes, what bumps, where.
 
         Why: `ReleaseOrchestrator._build_targets` hardcoded
@@ -138,7 +138,7 @@ class FlextInfraConfigModelsRelease:
         )
 
         publishable_prefixes: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "Distribution-name prefixes eligible for build/publish. "
@@ -159,7 +159,7 @@ class FlextInfraConfigModelsRelease:
             }
         )
         maintenance_line: Annotated[
-            t.Pair[t.NonNegativeInt, t.NonNegativeInt] | None,
+            tuple[t.NonNegativeInt, t.NonNegativeInt] | None,
             m.Field(
                 description="Permitted major/minor release line; unset is unrestricted",
             ),
@@ -186,7 +186,7 @@ class FlextInfraConfigModelsRelease:
             ),
         ] = c.Infra.PYPI_UPLOAD_URL
         build_constraints: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsRelease.BuildConstraintSpec],
+            tuple[FlextInfraModelsConfigRelease.BuildConstraintSpec, ...],
             m.Field(
                 min_length=1,
                 description=(
@@ -212,17 +212,17 @@ class FlextInfraConfigModelsRelease:
                 raise ValueError(msg)
             return self
 
-    class BuildConstraintSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class BuildConstraintSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One hash-pinned build requirement (``uv build --require-hashes``)."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         version: Annotated[t.NonEmptyStr, m.Field(description="Exact version")]
         hashes: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
 
-    class UvEnvironmentPlan(FlextInfraConfigModelsContract.ConfigContract):
+    class UvEnvironmentPlan(FlextInfraModelsConfigContract.ConfigContract):
         """One deterministic uv environment operation plan."""
 
         project_root: Annotated[Path, m.Field(description="Selected project root")]
@@ -235,9 +235,9 @@ class FlextInfraConfigModelsRelease:
             m.Field(description="Mise/Python version selector"),
         ]
         groups: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Ordered dependency groups synchronized by setup"),
         ]
 
 
-__all__: list[str] = ["FlextInfraConfigModelsRelease"]
+__all__: list[str] = ["FlextInfraModelsConfigRelease"]

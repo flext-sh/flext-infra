@@ -6,16 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableSequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor import FlextInfraProjectClassifierFamilyMixin
+from flext_infra.refactor import FlextInfraRefactorProject
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FlextInfraProjectClassifier(FlextInfraProjectClassifierFamilyMixin):
+class FlextInfraProjectClassifier(
+    FlextInfraRefactorProject,
+):
     """Classify a project by kind and discover FLEXT family chains."""
 
     def __init__(
@@ -87,7 +90,7 @@ class FlextInfraProjectClassifier(FlextInfraProjectClassifierFamilyMixin):
         """
         raw_project = self._as_mapping(parsed.get(c.Infra.PROJECT))
         project_name = self._normalized_name_from_mapping(raw_project)
-        dependencies: t.MutableSequenceOf[str] = []
+        dependencies: MutableSequence[str] = []
         self._append_project_dependencies(
             raw_project=raw_project,
             dependencies=dependencies,
@@ -102,9 +105,9 @@ class FlextInfraProjectClassifier(FlextInfraProjectClassifierFamilyMixin):
         )
         return (project_name, dependencies)
 
+    @staticmethod
     def _normalized_name_from_mapping(
-        self,
-        raw_mapping: t.MappingKV[str, t.JsonValue],
+        raw_mapping: Mapping[str, t.JsonValue],
     ) -> str:
         """Return the normalized name from a mapping.
 
@@ -114,7 +117,7 @@ class FlextInfraProjectClassifier(FlextInfraProjectClassifierFamilyMixin):
         """
         raw_name = raw_mapping.get(c.Infra.NAME)
         if isinstance(raw_name, str):
-            return self._normalize_dependency_name(raw_name)
+            return u.norm_str(raw_name, case="lower").replace("_", "-")
         return ""
 
 

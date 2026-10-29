@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -20,8 +21,8 @@ from flext_infra._models import (
     FlextInfraModelsRope,
 )
 from flext_infra._models._config import (
-    FlextInfraConfigModels,
-    FlextInfraConfigModelsContexts,
+    FlextInfraModelsConfig,
+    FlextInfraModelsConfigContexts,
 )
 from flext_infra._models._git import FlextInfraModelsGitIdentity
 
@@ -45,29 +46,26 @@ class FlextInfraModelsWorkspace:
             )
         )
         optimize: int = m.Field(ge=0, le=2, description="Native compiler optimization")
-        inputs: t.VariadicTuple[m.Cli.AtomicFileReceipt] = m.Field(
+        inputs: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
             description="Pinned source/resource/distribution/runtime byte identities"
         )
-        bootstrap_sources: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+        bootstrap_sources: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             default=(),
             description=(
                 "Original buffered source candidates for atomic-reader bootstrap; "
                 "only consumed candidates enter the sealed native reference"
             ),
         )
-        _source_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
-        generator_trees: t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest] = m.Field(
+        _source_birth: tuple[int, str] | None = m.PrivateAttr(default=None)
+        generator_trees: tuple[m.Cli.AtomicPhysicalTreeManifest, ...] = m.Field(
             description="Authenticated physical producer membership"
         )
-        generator_modules: t.VariadicTuple[t.Pair[str, Path]] = m.Field(
+        generator_modules: tuple[tuple[str, Path], ...] = m.Field(
             description="Cold-elected physical producer namespaces"
         )
-        selections: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = (
-            m.Field(
-                min_length=1,
-                description="Portable entrypoint, receiver and explicitly "
-                "wired port roots",
-            )
+        selections: tuple[FlextInfraModelsRope.SourceClassReference, ...] = m.Field(
+            min_length=1,
+            description="Portable entrypoint, receiver and explicitly wired port roots",
         )
         generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
             m.Field(
@@ -92,14 +90,12 @@ class FlextInfraModelsWorkspace:
         witness: Annotated[bytes, m.Field(min_length=1)] | None = m.Field(
             description="Complete native compiler witness, never deserialized"
         )
-        locations: t.VariadicTuple[t.JsonValue] | None = m.Field(
+        locations: tuple[t.JsonValue, ...] | None = m.Field(
             description="Flat root and nested compiler locations"
         )
-        nonportable_constants: t.VariadicTuple[t.Pair[t.VariadicTuple[int], str]] = (
-            m.Field(
-                description="Constant paths and native types requiring identity "
-                "or containing NaN"
-            )
+        nonportable_constants: tuple[tuple[tuple[int, ...], str], ...] = m.Field(
+            description="Constant paths and native types requiring identity "
+            "or containing NaN"
         )
 
         @m.model_validator(mode="after")
@@ -136,11 +132,11 @@ class FlextInfraModelsWorkspace:
             description="Validated JSON compiler witness or explicit "
             "nonportable-constant refusal",
         )
-        operands: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+        operands: tuple[tuple[str, str], ...] = m.Field(
             default=(),
             description="Static executable links and native declaration inputs",
         )
-        operational: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+        operational: tuple[tuple[str, str], ...] = m.Field(
             default=(),
             description="Observable native cache state kept separate from "
             "executable links",
@@ -149,69 +145,61 @@ class FlextInfraModelsWorkspace:
     class NativeObservationContext(m.ArbitraryTypesModel):
         """Mutable native observations owned by one source-capture invocation."""
 
-        paths: t.VariadicTuple[t.Pair[Path, Path]] = m.Field(
+        paths: tuple[tuple[Path, Path], ...] = m.Field(
             description="Physical source relocation pairs for this observation",
         )
-        origins: t.MutableMappingKV[str, Path] = m.Field(
-            default_factory=u.empty(TypeForm(t.MutableMappingKV[str, Path])),
+        origins: MutableMapping[str, Path] = m.Field(
+            default_factory=u.empty(TypeForm(MutableMapping[str, Path])),
             description="Native module source elections observed during this capture",
         )
-        module_anchors: t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]] = (
-            m.Field(
-                default_factory=u.empty(
-                    TypeForm(t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]])
-                ),
-                description=(
-                    "Strong native identities of elected module anchors; "
-                    "live interpreter objects carried as validated ports"
-                ),
-            )
-        )
-        sources: t.Infra.MutableSetOf[t.Triple[str, str, str]] = m.Field(
+        module_anchors: MutableMapping[str, t.Port[t.Infra.NativeOperand]] = m.Field(
             default_factory=u.empty(
-                TypeForm(t.Infra.MutableSetOf[t.Triple[str, str, str]])
+                TypeForm(MutableMapping[str, t.Port[t.Infra.NativeOperand]])
+            ),
+            description=(
+                "Strong native identities of elected module anchors; "
+                "live interpreter objects carried as validated ports"
+            ),
+        )
+        sources: t.Infra.MutableSetOf[tuple[str, str, str]] = m.Field(
+            default_factory=u.empty(
+                TypeForm(t.Infra.MutableSetOf[tuple[str, str, str]])
             ),
             description="Observed suppliers and physical declaration sources",
         )
-        evidence: t.MutableSequenceOf[
-            FlextInfraModelsWorkspace.NativeBindingEvidence
-        ] = m.Field(
-            default_factory=u.empty(
-                contract_factory=lambda: TypeForm(
-                    t.MutableSequenceOf[FlextInfraModelsWorkspace.NativeBindingEvidence]
+        evidence: MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
+            m.Field(
+                default_factory=u.empty(
+                    contract_factory=lambda: TypeForm(
+                        MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence]
+                    ),
                 ),
-            ),
-            validate_default=True,
-            description="Ordered native binding and executable observations",
+                validate_default=True,
+                description="Ordered native binding and executable observations",
+            )
         )
-        evidence_index: t.MutableMappingKV[
+        evidence_index: MutableMapping[
             str, FlextInfraModelsWorkspace.NativeBindingEvidence
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
-                    t.MutableMappingKV[
-                        str, FlextInfraModelsWorkspace.NativeBindingEvidence
-                    ]
+                    MutableMapping[str, FlextInfraModelsWorkspace.NativeBindingEvidence]
                 )
             ),
             description="Invocation-local references to the first binding evidence",
         )
-        generated_owners: t.MutableMappingKV[
-            int, t.Triple[str, str, t.Port[p.AttributeProbe] | None]
+        generated_owners: MutableMapping[
+            int, tuple[str, str, t.Port[p.AttributeProbe] | None]
         ] = m.Field(
             default_factory=u.empty(
-                TypeForm(
-                    t.MutableMappingKV[int, t.Triple[str, str, p.AttributeProbe | None]]
-                )
+                TypeForm(MutableMapping[int, tuple[str, str, p.AttributeProbe | None]])
             ),
             description="Strongly retained generated function source receivers",
         )
-        references: t.MutableSequenceOf[t.Pair[str, t.Port[t.Infra.NativeOperand]]] = (
+        references: MutableSequence[tuple[str, t.Port[t.Infra.NativeOperand]]] = (
             m.Field(
                 default_factory=u.empty(
-                    TypeForm(
-                        t.MutableSequenceOf[t.Pair[str, t.Port[t.Infra.NativeOperand]]]
-                    )
+                    TypeForm(MutableSequence[tuple[str, t.Port[t.Infra.NativeOperand]]])
                 ),
                 description=(
                     "Native operand registrations awaiting graph traversal; "
@@ -219,8 +207,8 @@ class FlextInfraModelsWorkspace:
                 ),
             )
         )
-        pending: t.MutableSequenceOf[
-            t.Quint[
+        pending: MutableSequence[
+            tuple[
                 str,
                 t.Port[t.Infra.NativeOperand],
                 str,
@@ -230,8 +218,8 @@ class FlextInfraModelsWorkspace:
         ] = m.Field(
             default_factory=u.empty(
                 TypeForm(
-                    t.MutableSequenceOf[
-                        t.Quint[
+                    MutableSequence[
+                        tuple[
                             str,
                             t.Port[t.Infra.NativeOperand],
                             str,
@@ -256,9 +244,9 @@ class FlextInfraModelsWorkspace:
             description="The current edge consumes execution "
             "or existing instance storage",
         )
-        compiled: t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations] = m.Field(
+        compiled: MutableMapping[Path, t.Infra.NativeClassDeclarations] = m.Field(
             default_factory=u.empty(
-                TypeForm(t.MutableMappingKV[Path, t.Infra.NativeClassDeclarations])
+                TypeForm(MutableMapping[Path, t.Infra.NativeClassDeclarations])
             ),
             description="Immutable class compiler facts within this observation",
         )
@@ -286,13 +274,11 @@ class FlextInfraModelsWorkspace:
             default="",
             description="Physical owner source carried by the actual pending edge",
         )
-        visited: t.MutableMappingKV[int, t.Pair[t.Port[t.Infra.NativeOperand], str]] = (
+        visited: MutableMapping[int, tuple[t.Port[t.Infra.NativeOperand], str]] = (
             m.Field(
                 default_factory=u.empty(
                     TypeForm(
-                        t.MutableMappingKV[
-                            int, t.Pair[t.Port[t.Infra.NativeOperand], str]
-                        ]
+                        MutableMapping[int, tuple[t.Port[t.Infra.NativeOperand], str]]
                     )
                 ),
                 description=(
@@ -301,8 +287,8 @@ class FlextInfraModelsWorkspace:
                 ),
             )
         )
-        edges: t.MutableMappingKV[str, str] = m.Field(
-            default_factory=u.empty(TypeForm(t.MutableMappingKV[str, str])),
+        edges: MutableMapping[str, str] = m.Field(
+            default_factory=u.empty(TypeForm(MutableMapping[str, str])),
             description="Already observed edge-to-native-node identities",
         )
         absent_edges: t.Infra.MutableSetOf[str] = m.Field(
@@ -330,28 +316,26 @@ class FlextInfraModelsWorkspace:
         generated: bool = m.Field(
             description="Whether code was emitted during the real native import",
         )
-        generated_operands: t.VariadicTuple[t.Pair[str, str]] = m.Field(
+        generated_operands: tuple[tuple[str, str], ...] = m.Field(
             description="Actual generated binding and receiver identities",
         )
-        nonlocals: t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]] = m.Field(
+        nonlocals: MutableMapping[str, t.Port[t.Infra.NativeOperand]] = m.Field(
             default_factory=u.empty(
-                TypeForm(t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]])
+                TypeForm(MutableMapping[str, t.Port[t.Infra.NativeOperand]])
             ),
             description=(
                 "Actual closure cell values in native free-variable order: live "
                 "interpreter objects carried as validated ports"
             ),
         )
-        global_bindings: t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]] = (
-            m.Field(
-                default_factory=u.empty(
-                    TypeForm(t.MutableMappingKV[str, t.Port[t.Infra.NativeOperand]])
-                ),
-                description=(
-                    "Actual globals selected by native LOAD_GLOBAL instructions: "
-                    "live interpreter objects carried as validated ports"
-                ),
-            )
+        global_bindings: MutableMapping[str, t.Port[t.Infra.NativeOperand]] = m.Field(
+            default_factory=u.empty(
+                TypeForm(MutableMapping[str, t.Port[t.Infra.NativeOperand]])
+            ),
+            description=(
+                "Actual globals selected by native LOAD_GLOBAL instructions: "
+                "live interpreter objects carried as validated ports"
+            ),
         )
         operational_globals: frozenset[str] = m.Field(
             default_factory=u.empty(frozenset[str]),
@@ -363,21 +347,21 @@ class FlextInfraModelsWorkspace:
 
         runtime: Path = m.Field(description="Exact observed native interpreter")
         runtime_prefix: Path = m.Field(description="Physical interpreter environment")
-        modules: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = m.Field(
+        modules: tuple[FlextInfraModelsRope.SourceClassReference, ...] = m.Field(
             min_length=1,
             description="Selected modules and native lexical binding paths",
         )
-        sources: t.VariadicTuple[t.Triple[str, str, str]] = m.Field(
+        sources: tuple[tuple[str, str, str], ...] = m.Field(
             description="Physical supplier and generated declaration origins",
         )
-        bindings: t.VariadicTuple[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
-            m.Field(description="Complete static native binding observations")
+        bindings: tuple[FlextInfraModelsWorkspace.NativeBindingEvidence, ...] = m.Field(
+            description="Complete static native binding observations"
         )
-        executed_sources: t.VariadicTuple[m.Cli.AtomicFileReceipt] = m.Field(
+        executed_sources: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
             default=(),
             description="Sources authenticated before compilation in the cold import",
         )
-        _import_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
+        _import_birth: tuple[int, str] | None = m.PrivateAttr(default=None)
 
     class NativeImportReference(NativeImportObservation):
         """One loaded epoch authenticated against its cold physical source."""
@@ -385,7 +369,7 @@ class FlextInfraModelsWorkspace:
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority pinned by the capture call",
         )
-        _native_birth: t.Pair[int, str] | None = m.PrivateAttr(default=None)
+        _native_birth: tuple[int, str] | None = m.PrivateAttr(default=None)
 
     class NativeImportRequest(
         FlextInfraModelsBase.FrozenArbitrary, strict=True, validate_default=True
@@ -398,17 +382,17 @@ class FlextInfraModelsWorkspace:
         runtime_root: Path = m.Field(
             description="Declared resolution owner of the elected physical runtime",
         )
-        modules: t.VariadicTuple[FlextInfraModelsRope.SourceClassReference] = m.Field(
+        modules: tuple[FlextInfraModelsRope.SourceClassReference, ...] = m.Field(
             min_length=1,
             description="Source-owned module/binding selections for this epoch",
         )
-        import_roots: t.VariadicTuple[Path] = m.Field(
+        import_roots: tuple[Path, ...] = m.Field(
             description="Physical import roots carrying the elected producer sources",
         )
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority for reference consumption, not publication",
         )
-        inputs: t.VariadicTuple[m.Cli.AtomicFileState] = m.Field(
+        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             description="Pinned source inputs checked before and after authentication",
             exclude=True,
         )
@@ -453,7 +437,7 @@ class FlextInfraModelsWorkspace:
             Path, m.Field(description="Resolved FLEXT workspace root")
         ]
         distributions: Annotated[
-            t.MappingKV[str, Path],
+            Mapping[str, Path],
             m.Field(
                 min_length=1,
                 description=(
@@ -488,7 +472,7 @@ class FlextInfraModelsWorkspace:
             ),
         ]
         installation_inputs: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 description="Native lock and physical environment states "
                 "captured after installation"
@@ -507,7 +491,7 @@ class FlextInfraModelsWorkspace:
         """Original in-process repository operation, with its observed effects."""
 
         native_tool_qualifications: Annotated[
-            t.VariadicTuple[m.Cli.ProcessNativeToolEvidence],
+            tuple[m.Cli.ProcessNativeToolEvidence, ...],
             m.Field(description="Shared native qualification evidence."),
         ] = ()
         runtime_context: Annotated[
@@ -539,11 +523,11 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Declared reason preventing execution."),
         ] = ""
         files: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Paths returned by the original operation owner."),
         ] = ()
         issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            tuple[FlextInfraModelsCheck.Issue, ...],
             m.Field(description="Native findings at their actual repository."),
         ] = ()
 
@@ -576,11 +560,11 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Public operation name."),
         ]
         scope: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Roots discovered before the batch."),
         ]
         receipts: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt],
+            tuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt, ...],
             m.Field(description="Original receipts in discovered order."),
         ]
         candidate_read_exit_code: Annotated[
@@ -606,7 +590,7 @@ class FlextInfraModelsWorkspace:
             ),
         ]
         workspace_beads: Annotated[
-            FlextInfraConfigModels.BeadsProjectSpec | None,
+            FlextInfraModelsConfig.BeadsProjectSpec | None,
             m.Field(description="Workspace Beads ledger spec; absent disables routing"),
         ] = None
         allow_unprovisioned_members: Annotated[
@@ -620,7 +604,7 @@ class FlextInfraModelsWorkspace:
         ] = False
 
         declared_member: Annotated[
-            FlextInfraConfigModelsContexts.RepositoryRef | None,
+            FlextInfraModelsConfigContexts.RepositoryRef | None,
             m.Field(
                 description="Catalog-declared member reference for this entry",
             ),
@@ -655,11 +639,11 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Observed Git identity, absent outside a repository"),
         ] = None
         workspace: Annotated[
-            FlextInfraConfigModels.WorkspaceSpec | None,
+            FlextInfraModelsConfig.WorkspaceSpec | None,
             m.Field(description="Governed workspace contract when declared"),
         ] = None
         target: Annotated[
-            FlextInfraConfigModels.RepositoryConformTarget | None,
+            FlextInfraModelsConfig.RepositoryConformTarget | None,
             m.Field(description="Effective governed project properties"),
         ] = None
         governed: Annotated[
@@ -690,17 +674,17 @@ class FlextInfraModelsWorkspace:
 
         prefix: Annotated[Path, m.Field(description="Observed native sys.prefix")]
         metadata_paths: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description="Native physical purelib and platlib install directories"
             ),
         ]
         import_paths: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Native sys.path used for package resolution"),
         ]
         package_directories: Annotated[
-            t.MappingKV[str, t.VariadicTuple[Path]],
+            Mapping[str, tuple[Path, ...]],
             m.Field(description="Native package search locations by declared package"),
         ]
 
@@ -756,7 +740,7 @@ class FlextInfraModelsWorkspace:
             str | None, m.Field(description="Environment condition for this edge")
         ] = None
         extra: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(description="Requested extras; absent means none"),
         ] = ()
 
@@ -776,9 +760,7 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Resolved package edges; absent for a leaf package"),
         ] = ()
         optional_dependencies: Annotated[
-            t.MappingKV[
-                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
-            ],
+            Mapping[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
             m.Field(
                 alias="optional-dependencies",
                 description="Resolved edges by extra; absent when no extras exist",
@@ -786,18 +768,16 @@ class FlextInfraModelsWorkspace:
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
-                    t.MappingKV[
+                    Mapping[
                         str,
-                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+                        tuple[FlextInfraModelsWorkspace.LockedDependency, ...],
                     ]
                 ),
             ),
             validate_default=True,
         )
         dev_dependencies: Annotated[
-            t.MappingKV[
-                str, t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency]
-            ],
+            Mapping[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
             m.Field(
                 alias="dev-dependencies",
                 description="Resolved edges by development group; absent means none",
@@ -805,16 +785,16 @@ class FlextInfraModelsWorkspace:
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
-                    t.MappingKV[
+                    Mapping[
                         str,
-                        t.VariadicTuple[FlextInfraModelsWorkspace.LockedDependency],
+                        tuple[FlextInfraModelsWorkspace.LockedDependency, ...],
                     ]
                 ),
             ),
             validate_default=True,
         )
         resolution_markers: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(
                 alias="resolution-markers",
                 description="Package fork conditions; absent means no fork restriction",
@@ -825,11 +805,11 @@ class FlextInfraModelsWorkspace:
         """Typed installation identities, never a dependency resolver."""
 
         package: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.LockedPackage],
+            tuple[FlextInfraModelsWorkspace.LockedPackage, ...],
             m.Field(min_length=1, description="Nonempty lock-owned package inventory"),
         ]
         members: Annotated[
-            t.VariadicTuple[str],
+            tuple[str, ...],
             m.Field(
                 validation_alias=m.AliasPath("manifest", "members"),
                 description="Native workspace members; absent outside a workspace",
@@ -876,11 +856,11 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Whether the declared checkout exists on disk"),
         ]
         dirty_paths: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Porcelain status paths of the checkout"),
         ]
         open_pull_requests: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.FleetPullRequest],
+            tuple[FlextInfraModelsWorkspace.FleetPullRequest, ...],
             m.Field(description="Open pull requests; empty when the query fails"),
         ]
         unmerged_branches: Annotated[
@@ -947,7 +927,7 @@ class FlextInfraModelsWorkspace:
         ]
         workspace_name: Annotated[str, m.Field(description="Workspace identity name")]
         repos: Annotated[
-            t.VariadicTuple[FlextInfraModelsWorkspace.FleetRepoGaps],
+            tuple[FlextInfraModelsWorkspace.FleetRepoGaps, ...],
             m.Field(description="One row per declared member and external consumer"),
         ]
 
@@ -1013,7 +993,7 @@ class FlextInfraModelsWorkspace:
         project_name: Annotated[str, m.Field(description="Declared project name")] = ""
         package_name: Annotated[str, m.Field(description="Primary package name")] = ""
         dependency_names: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Declared dependency names"),
         ] = m.Field(default_factory=tuple)
 

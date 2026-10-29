@@ -9,8 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra._utilities import FlextInfraUtilitiesPyproject
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities._pyproject.conform import (
+    FlextInfraUtilitiesPyprojectConform,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,7 +34,7 @@ class FlextInfraUtilitiesNamespaceConfig:
             TypeError: If [tool.flext.namespace] must be a table in.
 
         """
-        flext_meta = FlextInfraUtilitiesPyproject.tool_flext_meta(project_root)
+        flext_meta = FlextInfraUtilitiesPyprojectConform.tool_flext_meta(project_root)
         if "namespace" not in flext_meta:
             return {}
         namespace = flext_meta["namespace"]

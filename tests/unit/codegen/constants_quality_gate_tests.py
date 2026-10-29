@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsFlextInfraCodegenConstantsQualityGate:
+class TestsFlextInfraConstantsCodegenQualityGate:
     """CLI dispatch, argument parsing, and verdict classification."""
 
     @staticmethod

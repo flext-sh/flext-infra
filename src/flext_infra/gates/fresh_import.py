@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
@@ -20,8 +21,6 @@ from flext_infra.validate import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraFreshImportGate(FlextInfraGate):
@@ -79,7 +78,7 @@ class FlextInfraFreshImportGate(FlextInfraGate):
     @override
     def check_files(
         self,
-        files: t.SequenceOf[Path],
+        files: Sequence[Path],
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:

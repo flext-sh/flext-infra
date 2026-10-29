@@ -103,6 +103,9 @@ exports its named captures through ast-grep's native argument mechanism. Relatio
 context stays inside that native predicate instead of repeating whole enclosing
 classes in every diagnostic. Primary match ranges, binding equality, messages and
 severity remain owned by the original rule; the complete native output is retained.
+The native diagnostic wire vocabulary (`error`, `warning`, `info`, `hint`) belongs
+to `c.Infra.NativeRuleSeverity`; `m` validates those same four literals under its
+strict scanner contract without changing any rule's severity policy.
 
 The producers and renderers registered in `Infra.codegen.ast_grep` render each
 governed project's generated utilities and rules (`codemod_native_generated`).
@@ -125,7 +128,7 @@ declared at the generation owner; authored files are never retired by that decla
 
 | Workspace declaration | Infra implementation |
 | --- | --- |
-| [ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17) requires one snapshot/planner per repository. | [Codemod native utilities](https://github.com/flext-sh/flext-infra/blob/0.12.0-dev/src/flext_infra/_utilities/codemod_native_utilities.py) |
+| [ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17) requires one snapshot/planner per repository. | [Codemod native utilities](https://github.com/flext-sh/flext-infra/blob/0.12.0-dev/src/flext_infra/_utilities/_codemod/codemod_native_utilities.py) |
 | [ADR-028 Decision 18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-18) owns one generalized source rule per law. | Repository plans preserve renderer IDs; the source catalog remains the single rule owner. |
 
 Every finding is the native match; no Python admission runs after the scan. A
@@ -297,9 +300,12 @@ executable module's guarded `main()` entry point and generator-emitted dunders
 (generator law p.11), plus the tests-tier delta of ADR-028 p.6 — pytest
 fixtures, `pytest_*` hooks and `pytest_plugins` at module level in `conftest.py`.
 Shared executable declarations belong to `c/t/p/m/u.Tests.*` and test modules
-remain governed. The complete `tests/fixtures/` tree is artifact data, excluded
-from source admission, lint, generation and refactoring. Python filenames remain
-valid engine inputs there; their bytes are never interpreted as suite support.
+remain governed. Fixture materialization roots do not define source-inventory,
+lint or type-analysis exclusions: directory-scoped iteration and repository-scoped
+discovery admit their Python files under the existing ownership checks, including
+fixture support and Python scenarios. Non-Python resources are not selected as
+Python sources. Materialization and automatic pytest
+collection retain their separate source-owned configuration.
 The test-import DAG rejects package/pytest wiring and static imports from those
 roots. `ban-artifact-execution` rejects literal executable loader and pytest plugin
 references using the native fact derived from `exclusions.scenario_data_roots`.
@@ -320,6 +326,11 @@ Artifact declarations marked
 source scans ignore them; environment, installed dependency, foreign Git and
 unmanaged submodule boundaries remain excluded. Reports distinguish `owned-path`
 evidence from `ast-grep` evidence and retain authenticated source states.
+
+Finding provenance, family transformation and member-collision policy are distinct
+closed domains owned by the refactor constants. Their typed models retain the
+exact accepted wire values: `owned-path`, `flatten-single-wrapper` and
+`prefix-wrapper` respectively; naming those domains does not admit new operations.
 
 The typed tooling document rejects stub options and producers in native pairs and
 derived declarations. Its canonical loader checks rooted native/topology search paths

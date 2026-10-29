@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping, Sequence
 from operator import itemgetter
 
-from flext_infra import c, t
+from flext_infra import c
 
 
 class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
@@ -42,11 +42,11 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         cls,
         source: str,
         outer: ast.ClassDef,
-    ) -> t.SequenceOf[t.Triple[int, int, str]]:
+    ) -> Sequence[tuple[int, int, str]]:
         """Make already-defined sibling bases executable inside the owner body.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Triple[int, int, str]]``.
+            The resulting ``Sequence[tuple[int, int, str]]``.
 
         Raises:
             ValueError: If definition-time base.
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         sibling_names = frozenset(node.name for node in siblings)
         available: set[str] = set()
         offsets = cls._line_offsets(source)
-        edits: list[t.Triple[int, int, str]] = []
+        edits: list[tuple[int, int, str]] = []
         for sibling in siblings:
             for base in sibling.bases:
                 if not (
@@ -102,11 +102,11 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         cls,
         source: str,
         outer: ast.ClassDef,
-    ) -> t.SequenceOf[t.Triple[int, int, str]]:
+    ) -> Sequence[tuple[int, int, str]]:
         """Plan owner-qualified sibling references inside deferred annotations.
 
         Returns:
-            The resulting ``t.SequenceOf[t.Triple[int, int, str]]``.
+            The resulting ``Sequence[tuple[int, int, str]]``.
 
         Raises:
             ValueError: If ambiguous self-qualified annotation.
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
                 if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
             )
         offsets = cls._line_offsets(source)
-        edits: MutableMapping[t.Pair[int, int], str] = {}
+        edits: MutableMapping[tuple[int, int], str] = {}
         for sibling in siblings:
             for expression in cls._annotation_expressions(sibling):
                 edits.update(
@@ -162,7 +162,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         return tuple((*span, replacement) for span, replacement in edits.items())
 
     @staticmethod
-    def _deferred_type_nodes(expression: ast.expr) -> t.SequenceOf[ast.expr]:
+    def _deferred_type_nodes(expression: ast.expr) -> Sequence[ast.expr]:
         """Walk one deferred annotation without descending into call arguments.
 
         Names inside nested calls (``m.Field(default_factory=...)``,
@@ -194,11 +194,11 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
     @classmethod
     def _call_value_edits(
         cls,
-        offsets: t.VariadicTuple[int],
+        offsets: tuple[int, ...],
         owner: str,
         owned_names: frozenset[str],
         expression: ast.expr,
-    ) -> t.MappingKV[t.Pair[int, int], str]:
+    ) -> Mapping[tuple[int, int], str]:
         """Repair owner-qualified siblings in one annotation's value positions.
 
         Every call reached through the annotation's type positions carries
@@ -246,7 +246,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         if isinstance(statement, c.Infra.AST_FUNCTION_TYPES):
             expressions.extend(cls._evaluated_function_annotations(statement))
         if isinstance(statement, c.Infra.AST_DEFINITION_TYPES):
-            children: t.SequenceOf[ast.stmt] = statement.body
+            children: Sequence[ast.stmt] = statement.body
         elif isinstance(statement, ast.TypeAlias):
             expressions.append(statement.value)
             return
@@ -260,11 +260,11 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
             cls._collect_annotation_expressions(expressions, child)
 
     @classmethod
-    def _annotation_expressions(cls, node: ast.ClassDef) -> t.SequenceOf[ast.expr]:
+    def _annotation_expressions(cls, node: ast.ClassDef) -> Sequence[ast.expr]:
         """Collect deferred annotations while excluding executable class bases.
 
         Returns:
-            The resulting ``t.SequenceOf[ast.expr]``.
+            The resulting ``Sequence[ast.expr]``.
 
         """
         expressions: list[ast.expr] = []
@@ -275,7 +275,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
     @staticmethod
     def _evaluated_function_annotations(
         node: ast.FunctionDef | ast.AsyncFunctionDef,
-    ) -> t.SequenceOf[ast.expr]:
+    ) -> Sequence[ast.expr]:
         """Return annotations evaluated when one function is defined.
 
         Returns:
@@ -296,7 +296,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         return tuple(annotations)
 
     @staticmethod
-    def _line_offsets(source: str) -> t.VariadicTuple[int]:
+    def _line_offsets(source: str) -> tuple[int, ...]:
         """Return the character offset of each source line.
 
         Returns:
@@ -309,7 +309,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         return tuple(offsets)
 
     @staticmethod
-    def _node_span(offsets: t.VariadicTuple[int], node: ast.expr) -> t.Pair[int, int]:
+    def _node_span(offsets: tuple[int, ...], node: ast.expr) -> tuple[int, int]:
         """Return one expression's exact source character span.
 
         Returns:
@@ -324,7 +324,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         )
 
     @staticmethod
-    def _apply_edits(source: str, edits: t.SequenceOf[t.Triple[int, int, str]]) -> str:
+    def _apply_edits(source: str, edits: Sequence[tuple[int, int, str]]) -> str:
         """Apply non-overlapping source edits from the end of the file.
 
         Returns:

@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import override
-
 from flext_infra import p, r
 from flext_infra.deps._modernizer import FlextInfraPyprojectModernizerRun
 
@@ -17,7 +15,6 @@ class FlextInfraPyprojectModernizerBase(
 ):
     """Modernize workspace pyproject.toml files to the canonical format."""
 
-    @override
     def execute(self) -> p.Result[bool]:
         """Execute pyproject modernization for the configured workspace.
 

@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import importlib.machinery
 import importlib.util
-from collections.abc import Generator
+import sys
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Self, cast, overload, override
@@ -36,7 +37,7 @@ class FlextInfraRopeNativeProject(Project):
 
     fscommands: p.Infra.RopeProjectFiles
     _frozen_folders: tuple[list[File | Folder], list[File | Folder]] | None = None
-    _frozen_modules: dict[t.Pair[str, str | None], File | Folder | None] | None = None
+    _frozen_modules: dict[tuple[str, str | None], File | Folder | None] | None = None
     _snapshot_python_path_folders: list[File | Folder] | None = None
     _custom_source_folders: list[File | Folder]
 
@@ -95,7 +96,13 @@ class FlextInfraRopeNativeProject(Project):
 
         """
         native = cast("p.Infra.RopeProject", super())
-        if self.find_module(name, folder) is None:
+        if self.find_module(name, folder) is None and (
+            name.partition(".")[0] in sys.stdlib_module_names
+        ):
+            # Per-repository resolution law: the interpreter's import system
+            # elects stdlib modules only. Governed member modules resolve
+            # through this project's own index — never through the shared
+            # environment, where divergent member libraries would leak in.
             spec = importlib.util.find_spec(name)
             if spec is not None and isinstance(
                 spec.loader, importlib.machinery.ExtensionFileLoader
@@ -206,7 +213,7 @@ class FlextInfraRopeNativeProject(Project):
 
         """
         project = cast("p.Infra.RopeProject", self)
-        resources: t.SequenceOf[p.Infra.RopeResource]
+        resources: Sequence[p.Infra.RopeResource]
         root = Path(self.root.real_path)
         paths = {
             path

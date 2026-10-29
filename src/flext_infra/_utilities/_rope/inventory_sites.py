@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
@@ -13,7 +14,7 @@ from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
 
 
-class FlextInfraUtilitiesRopeInventorySitesMixin:
+class FlextInfraUtilitiesRopeInventorySites:
     """Reference-site, fingerprint, and facade-tier helpers of the inventory."""
 
     @staticmethod
@@ -39,13 +40,11 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
         if file_path is None:
             return None
         return m.Infra.ReferenceSite(
-            file_path=FlextInfraUtilitiesRopeInventorySitesMixin._normalize_file_path(
+            file_path=FlextInfraUtilitiesRopeInventorySites._normalize_file_path(
                 file_path
             ),
-            line=FlextInfraUtilitiesRopeInventorySitesMixin._location_line(location),
-            surface=FlextInfraUtilitiesRopeInventorySitesMixin._reference_surface(
-                file_path
-            ),
+            line=FlextInfraUtilitiesRopeInventorySites._location_line(location),
+            surface=FlextInfraUtilitiesRopeInventorySites._reference_surface(file_path),
         )
 
     @staticmethod
@@ -57,9 +56,7 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
     ) -> None:
         """Discard definition site."""
         definition_key = (
-            FlextInfraUtilitiesRopeInventorySitesMixin._normalize_file_path(
-                definition_path
-            ),
+            FlextInfraUtilitiesRopeInventorySites._normalize_file_path(definition_path),
             line,
         )
         match_index = next(
@@ -223,14 +220,14 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
             return FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                 c.Infra.CONSTANTS_PY,
             ).suffix
-        return FlextInfraUtilitiesRopeInventorySitesMixin._actual_tier(convention)
+        return FlextInfraUtilitiesRopeInventorySites._actual_tier(convention)
 
     @staticmethod
     def _is_facade_member(
         convention: m.Infra.RopeModuleConvention,
         *,
         name: str,
-        scope_chain: t.StrSequence,
+        scope_chain: Sequence[str],
     ) -> bool:
         """Is facade member.
 
@@ -250,4 +247,4 @@ class FlextInfraUtilitiesRopeInventorySitesMixin:
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesRopeInventorySitesMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeInventorySites"]

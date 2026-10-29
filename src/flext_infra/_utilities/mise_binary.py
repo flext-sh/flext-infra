@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -330,38 +330,38 @@ class FlextInfraUtilitiesMiseBinary:
         lock_path: Path,
         *,
         tool: str,
-    ) -> p.Result[t.SequenceOf[t.JsonValue]]:
+    ) -> p.Result[Sequence[t.JsonValue]]:
         """Read one tool's lock entries from the committed mise.lock.
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[t.JsonValue]]``.
+            The resulting ``p.Result[Sequence[t.JsonValue]]``.
 
         """
         payload = u.Cli.toml_mapping_from_text(
             lock_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if payload is None:
-            return r[t.SequenceOf[t.JsonValue]].fail(f"{lock_path} is not valid TOML")
+            return r[Sequence[t.JsonValue]].fail(f"{lock_path} is not valid TOML")
         tools = payload.get("tools", {})
         if not isinstance(tools, Mapping):
-            return r[t.SequenceOf[t.JsonValue]].fail(
+            return r[Sequence[t.JsonValue]].fail(
                 f"{lock_path} has a malformed [tools] table",
             )
         entries = tools.get(tool)
         if not isinstance(entries, list):
-            return r[t.SequenceOf[t.JsonValue]].fail(
+            return r[Sequence[t.JsonValue]].fail(
                 f"{lock_path} pins no [[tools.{tool}]] entry",
             )
-        return r[t.SequenceOf[t.JsonValue]].ok(entries)
+        return r[Sequence[t.JsonValue]].ok(entries)
 
     @staticmethod
     def _locked_entry_version(
         entry: t.JsonValue,
-    ) -> t.Pair[str, t.SequenceOf[t.JsonValue]] | None:
+    ) -> tuple[str, Sequence[t.JsonValue]] | None:
         """Return one lock entry's pinned version and specifiers when wellformed.
 
         Returns:
-            The resulting ``t.Pair | None``.
+            The resulting ``tuple | None``.
 
         """
         if not isinstance(entry, Mapping):

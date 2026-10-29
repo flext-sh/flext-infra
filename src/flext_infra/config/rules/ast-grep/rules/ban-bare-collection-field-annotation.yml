@@ -1,6 +1,6 @@
 # A model field contract is read-only data: its annotation never names the
 # mutable `list` or `set` builtin, at any depth outside a call. Annotate the
-# field with `Sequence`/`t.SequenceOf[...]` or `frozenset`/`AbstractSet`
+# field with `Sequence`/`Sequence[...]` or `frozenset`/`AbstractSet`
 # (`dict` annotations are ban-broad-annotation's).
 id: ban-bare-collection-field-annotation
 language: python
@@ -36,7 +36,7 @@ rule:
           stopBy:
             kind: type
 message: >-
-  Model field annotation names mutable `$KIND`: use `t.SequenceOf[...]` for a
+  Model field annotation names mutable `$KIND`: use `Sequence[...]` for a
   list and `frozenset[...]` for a set.
   Detection only: consumers that mutate the container change with the annotation.
 metadata:

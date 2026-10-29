@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraLazyInitOwnership:
@@ -121,7 +122,7 @@ class TestsFlextInfraLazyInitOwnership:
     def test_duplicate_public_export_fails_before_generation(
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
-        export_names: t.StrSequence,
+        export_names: Sequence[str],
     ) -> None:
         """Two owners of one public name stop the phase before any file plan.
 
@@ -202,7 +203,7 @@ class TestsFlextInfraLazyInitOwnership:
         [("holder_part_01", "holder_part_99"), ("api", "_api")],
     )
     def test_legacy_filename_shapes_do_not_authenticate_competing_owners(
-        tmp_path: Path, modules: t.StrPair
+        tmp_path: Path, modules: tuple[str, str]
     ) -> None:
         """Old filenames never make distinct declarations reexports."""
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
@@ -327,7 +328,7 @@ class TestsFlextInfraLazyInitOwnership:
         [("holder_part_99", "holder_part_01"), ("foundation", "runtime")],
     )
     def test_native_introducing_subclass_owns_composed_behavior(
-        tmp_path: Path, modules: t.StrPair
+        tmp_path: Path, modules: tuple[str, str]
     ) -> None:
         """Ancestry elects the facade independently of legacy numbering."""
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)

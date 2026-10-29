@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -32,13 +33,13 @@ class TestsFlextInfraModernizerPyrefly:
         *,
         is_root: bool = True,
         project_dir: Path | None = None,
-        declared_python_dirs: t.StrSequence | None = None,
-    ) -> t.Triple[t.MutableJsonMapping, t.JsonMapping, t.StrSequence]:
+        declared_python_dirs: Sequence[str] | None = None,
+    ) -> tuple[t.MutableJsonMapping, t.JsonMapping, Sequence[str]]:
         """Apply the Pyrefly phase once; return payload, pyrefly table, and changes.
 
         Returns:
-            The resulting ``t.Triple[t.MutableJsonMapping, t.JsonMapping,
-                t.StrSequence]``.
+            The resulting ``tuple[t.MutableJsonMapping, t.JsonMapping,
+                Sequence[str]]``.
 
         """
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(

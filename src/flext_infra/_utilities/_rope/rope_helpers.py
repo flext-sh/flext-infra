@@ -7,14 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import Sequence
 
 from flext_infra import c, t
-from flext_infra._utilities._rope.method_order import (
-    FlextInfraUtilitiesRopeMethodOrderMixin,
-)
+from flext_infra._utilities._rope.method_order import FlextInfraUtilitiesRopeMethodOrder
 
 
-class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrderMixin):
+class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrder):
     """AST definition spans and method-order helpers."""
 
     @staticmethod
@@ -25,7 +24,7 @@ class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrderMixin):
             The 1-based inclusive line span of one statement, decorators included.
 
         """
-        decorators: t.SequenceOf[ast.expr] = (
+        decorators: Sequence[ast.expr] = (
             statement.decorator_list
             if isinstance(statement, c.Infra.AST_DEFINITION_TYPES)
             else ()
@@ -50,8 +49,8 @@ class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrderMixin):
 
         """
         if kind == "function":
-            node_types: t.VariadicTuple[
-                type[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef]
+            node_types: tuple[
+                type[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef], ...
             ] = (
                 ast.FunctionDef,
                 ast.AsyncFunctionDef,

@@ -12,7 +12,7 @@ from pathlib import Path
 from tests import c, tm, u
 
 
-class TestsFlextInfraInfraUtilities:
+class TestsFlextInfraUtilitiesInfra:
     """Test u class import and structure."""
 
     @staticmethod

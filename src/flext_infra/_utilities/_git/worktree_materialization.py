@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from stat import S_IMODE
 from typing import TYPE_CHECKING
@@ -13,9 +14,9 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from git import GitCommandError
 
-from flext_infra import c, p, r, t
+from flext_infra import c, p, r
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+    FlextInfraUtilitiesGitWorktreeDiscovery,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
@@ -23,8 +24,8 @@ if TYPE_CHECKING:
     from git import Repo
 
 
-class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
+class FlextInfraUtilitiesGitWorktreeMaterialization(
+    FlextInfraUtilitiesGitWorktreeDiscovery,
 ):
     """Own worktree materialization operations."""
 
@@ -77,7 +78,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
         return head_result
 
     @staticmethod
-    def _git_path_is_excluded(path: Path, excluded: t.SequenceOf[Path]) -> bool:
+    def _git_path_is_excluded(path: Path, excluded: Sequence[Path]) -> bool:
         """Return whether a relative path belongs to an excluded subtree.
 
         Returns:
@@ -126,7 +127,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
         cls,
         source_root: Path,
         worktree_root: Path,
-        excluded: t.SequenceOf[Path],
+        excluded: Sequence[Path],
     ) -> p.Result[bool]:
         """Copy non-ignored untracked files into an isolated worktree.
 
@@ -162,7 +163,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
         source_root: Path,
         worktree_root: Path,
         *,
-        excluded: t.SequenceOf[Path] = (),
+        excluded: Sequence[Path] = (),
     ) -> p.Result[bool]:
         """Copy both Git layers to a pristine sibling worktree at the same HEAD.
 
@@ -253,15 +254,15 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
     @staticmethod
     def _worktree_layer_patches(
         repo: Repo,
-        pathspecs: t.VariadicTuple[str],
-    ) -> t.Pair[t.VariadicTuple[bytes], frozenset[Path]]:
+        pathspecs: tuple[str, ...],
+    ) -> tuple[tuple[bytes, ...], frozenset[Path]]:
         """Build both layer patches and the HEAD-deleted path set.
 
         Returns:
             The resulting ``(patches, deleted paths)`` pair.
 
         """
-        patches: t.VariadicTuple[bytes] = tuple(
+        patches: tuple[bytes, ...] = tuple(
             repo.git.diff(
                 *layer,
                 "--binary",
@@ -320,7 +321,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
         cls,
         source_root: Path,
         worktree_root: Path,
-        excluded: t.SequenceOf[Path],
+        excluded: Sequence[Path],
         deleted: frozenset[Path],
         untracked_listing: str,
     ) -> p.Result[bool]:
@@ -353,7 +354,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
     def _apply_layer_patches(
         cls,
         worktree_repo: Repo,
-        patches: t.VariadicTuple[bytes],
+        patches: tuple[bytes, ...],
     ) -> None:
         """Verify then apply both layer patches through one stdin stream each."""
         for check in (True, False):
@@ -374,7 +375,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
         repo: Repo,
         source_root: Path,
         worktree_root: Path,
-        excluded: t.SequenceOf[Path],
+        excluded: Sequence[Path],
     ) -> None:
         """Copy physical file permissions Git's apply does not record."""
         for raw_path in repo.git.ls_files(
@@ -393,8 +394,8 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
         cls,
         source_root: Path,
         worktree_root: Path,
-        excluded: t.SequenceOf[Path],
-        pathspecs: t.VariadicTuple[str],
+        excluded: Sequence[Path],
+        pathspecs: tuple[str, ...],
     ) -> p.Result[bool]:
 
         repo = cls._repo(source_root)
@@ -424,4 +425,4 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
         return cls._git_copy_untracked(source_root, worktree_root, tuple(excluded))
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeMaterializationMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitWorktreeMaterialization"]

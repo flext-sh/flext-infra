@@ -19,44 +19,38 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import Mapping
-from importlib.util import find_spec
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
 
 from flext_infra import FlextInfraConfig, c, config, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
-from flext_infra._utilities._codemod.codemod_native_package_utilities import (
-    FlextInfraUtilitiesCodemodNativePackageUtilities,
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesFacadeMembers,
+    FlextInfraUtilitiesImportLaw,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._codemod.codemod_native_utilities import (
-    FlextInfraUtilitiesCodemodNativeUtilities,
-)
-from flext_infra._utilities._codemod.codemod_project import (
+from flext_infra._utilities._codemod import (
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodNativePackage,
     FlextInfraUtilitiesCodemodProject,
-)
-from flext_infra._utilities._codemod.codemod_rules import (
     FlextInfraUtilitiesCodemodRules,
-)
-from flext_infra._utilities._codemod.codemod_scopes import (
     FlextInfraUtilitiesCodemodScopes,
 )
-from flext_infra._utilities._rope._analysis.exports import (
-    FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
+from flext_infra._utilities._rope._analysis import (
+    FlextInfraUtilitiesRopeAnalysisExports,
+)
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
-from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
-from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraUtilitiesCodemodProjectFacts:
@@ -65,7 +59,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def codemod_facade_package_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Facade package: the own package or a reached package publishing aliases.
 
         Returns:
@@ -74,8 +68,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         return {
             c.Infra.CODEMOD_FACADE_PACKAGE_UTILITY: (
-                FlextInfraUtilitiesCodemodNativeUtilities.codemod_module_names_rule(
-                    FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_facade_packages(
+                FlextInfraUtilitiesCodemodNative.codemod_module_names_rule(
+                    FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages(
                         snapshot, project
                     )
                 )
@@ -85,7 +79,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def codemod_alias_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Runtime aliases: the own package's, and each imported package's.
 
         ``local-alias`` matches a name the own package publishes as a runtime
@@ -97,7 +91,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         aliases = cls._reached_facade_aliases(snapshot, project)
-        own = FlextInfraUtilitiesPyproject.project_package_name(project.absolute())
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(
+            project.absolute()
+        )
         return {
             c.Infra.CODEMOD_LOCAL_ALIAS_UTILITY: cls._fact_exact_names(
                 tuple(aliases[own])
@@ -108,25 +104,42 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def codemod_imported_export_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Package export: an imported name its import's root package declares.
+
+        Per-repository resolution law: a package's declared exports come from
+        this project's own indexed tree only. A reached package whose tree
+        lives in another repository resolves nowhere here and contributes no
+        export fact; installed environments are never consulted, where
+        divergent member libraries would leak into the rule.
 
         Returns:
             The ``package-export`` utility rule of the project.
 
         """
+        root = project.absolute().resolve()
+        initializers = {
+            path.parts[path.parts.index(c.Infra.DEFAULT_SRC_DIR) + 1]: path
+            for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+                snapshot, root
+            )
+            if path.name == c.Infra.INIT_PY and c.Infra.DEFAULT_SRC_DIR in path.parts
+        }
         exports: dict[str, frozenset[str]] = {}
-        for (
-            package
-        ) in FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_facade_packages(
+        for package in FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages(
             snapshot, project
         ):
-            spec = find_spec(package)
-            if spec is None or spec.origin is None:
+            initializer = initializers.get(package)
+            if initializer is None:
                 continue
             exports[package] = frozenset(
                 FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                    Path(spec.origin).read_text(encoding=c.DEFAULT_ENCODING)
+                    FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                        snapshot.engine,
+                        FlextInfraUtilitiesRopeRuntime.file_resource_at(
+                            snapshot.engine, initializer
+                        ),
+                    ),
                 )
             )
         return {
@@ -136,7 +149,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def codemod_compose_module_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Compose module: ``<package>.<leaf>`` for a canonical family leaf.
 
         The own package composes a leaf it declares beside its family
@@ -149,10 +162,10 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         del snapshot
         root = project.absolute()
-        own = FlextInfraUtilitiesPyproject.project_package_name(root)
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         leaves = c.Infra.FAMILY_COMPOSE_MODULES
-        runtime = FlextInfraUtilitiesCodemodNativeUtilities.codemod_runtime_modules
+        runtime = FlextInfraUtilitiesCodemodNative.codemod_runtime_modules
         modules = {
             *(
                 f"{own}.{leaf}"
@@ -171,7 +184,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def codemod_file_scopes(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.StrTuple]:
+    ) -> Mapping[str, t.StrTuple]:
         """File scopes: layer-zero modules, facade modules and family members.
 
         ``layer-zero`` holds the modules the import law ranks layer zero;
@@ -214,7 +227,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 families.setdefault(letter, []).append(relative.as_posix())
         return {
             c.Infra.CODEMOD_LAYER_ZERO_SCOPE: (
-                FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_layer_zero_files(
+                FlextInfraUtilitiesCodemodNativePackage.codemod_layer_zero_files(
                     snapshot, root
                 )
             ),
@@ -253,7 +266,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def codemod_layout_scopes(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.StrTuple]:
+    ) -> Mapping[str, t.StrTuple]:
         """File scopes of the project's package layout verdicts.
 
         ``lacks-layer-<layer>`` holds every package ``__init__.py`` whose
@@ -361,7 +374,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             ):
                 scopes.setdefault(selector, []).append(relative.as_posix())
         scopes[c.Infra.CODEMOD_FAMILY_ROLE_SCOPE] = list(
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_role_files(
+            FlextInfraUtilitiesCodemodNativePackage.codemod_role_files(
                 snapshot, root, (c.Infra.IMPORT_LAW_FAMILY_ROLE,)
             )
         )
@@ -371,8 +384,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
     @staticmethod
     def _missing_layers(
-        path: Path, order: t.StrSequence, aliases: frozenset[str]
-    ) -> t.StrSequence:
+        path: Path, order: Sequence[str], aliases: frozenset[str]
+    ) -> Sequence[str]:
         """Name the layers the package an ``__init__.py`` opens does not provide.
 
         ``aliases`` are the letters the package's modules declare.
@@ -399,7 +412,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         path: Path,
         root: Path,
         layout: m.Infra.RopeProjectLayout,
-        namespaces: t.StrSequence,
+        namespaces: Sequence[str],
     ) -> str:
         """Name the class-stem group of one module.
 
@@ -426,8 +439,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         snapshot: p.Infra.WorkspaceSnapshot,
         files: frozenset[Path],
         path: Path,
-        order: t.StrSequence,
-    ) -> t.StrSequence:
+        order: Sequence[str],
+    ) -> Sequence[str]:
         """Name the family-peer group of one facade module.
 
         A family peer of a facade module is a class whose final CamelCase word
@@ -471,7 +484,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @staticmethod
     def _incomplete_namespaces(
         snapshot: p.Infra.WorkspaceSnapshot, path: Path, *, facade: bool
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Name the nested namespaces of a facade module its family misses.
 
         Returns:
@@ -499,7 +512,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def codemod_declaration_scopes(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.StrTuple]:
+    ) -> Mapping[str, t.StrTuple]:
         """File scopes of the model and payload classes the family modules declare.
 
         ``model-class-<name>`` holds the family modules whose top-level class
@@ -531,7 +544,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             is not None
         }
         # (relative path, qualified class, selector) per asked class.
-        questions: list[t.Triple[str, str, str]] = []
+        questions: list[tuple[str, str, str]] = []
         family = cls._family_files(snapshot, root)
         for module, (path, _text) in sources.items():
             relative = path.relative_to(root).as_posix()
@@ -617,7 +630,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         return frozenset(
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_role_files(
+            FlextInfraUtilitiesCodemodNativePackage.codemod_role_files(
                 snapshot, root, (c.Infra.IMPORT_LAW_FAMILY_ROLE,)
             )
         )
@@ -625,7 +638,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def _nested_classes(
         cls, owner: ast.ClassDef, prefix: str
-    ) -> t.SequenceOf[t.StrPair]:
+    ) -> Sequence[tuple[str, str]]:
         """List every class with bases nested in a class body, outside functions.
 
         Returns:
@@ -645,7 +658,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def codemod_requested_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Utilities the packaged catalog requests by a parametrized identity.
 
         ``library-member-owner-<library>-<letter>`` matches a public member of
@@ -688,7 +701,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @classmethod
     def codemod_implementation_scopes(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, t.StrTuple]:
+    ) -> Mapping[str, t.StrTuple]:
         """File scopes of the implementation closures the catalog requests.
 
         ``implementation-owner-<module> <primitive>`` holds the project's
@@ -700,7 +713,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         root = project.absolute()
-        own = FlextInfraUtilitiesPyproject.project_package_name(root)
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         prefix = c.Infra.CODEMOD_IMPLEMENTATION_OWNER_SCOPE_PREFIX
         requested = cls._catalog_references(prefix)
         scopes: dict[str, t.StrTuple] = {}
@@ -718,7 +731,6 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             closure = FlextInfraUtilitiesCodemodProject.implementation_owner_modules(
                 snapshot.engine,
                 m.Infra.CodemodPrimitiveOwner(arg=(module, primitive)),
-                {},
             )
             scopes[selector] = tuple(
                 sorted(
@@ -732,16 +744,14 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @staticmethod
     def _specialized_aliases(
         snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Name the ``p`` aliases that specialize the same-named ``t`` generic.
 
         Returns:
             The specialized alias names across the reached facade packages.
 
         """
-        packages = (
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_facade_packages
-        )
+        packages = FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages
         return tuple(
             sorted({
                 name
@@ -753,7 +763,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         )
 
     @staticmethod
-    def _catalog_references(prefix: str) -> t.StrSequence:
+    def _catalog_references(prefix: str) -> Sequence[str]:
         """Collect the parametrized identities the packaged catalog references.
 
         A ``matches`` utility identity or a ``metadata.scope`` selector that
@@ -766,7 +776,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         catalog = (
             FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH
         )
-        documents: dict[Path, t.SequenceOf[t.JsonMapping]] = {}
+        documents: dict[Path, Sequence[t.JsonMapping]] = {}
         FlextInfraUtilitiesCodemodRules.codemod_catalog_rules(
             canonicalize_name(c.Infra.PKG_INFRA_UNDERSCORE),
             catalog,
@@ -802,9 +812,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         return tuple(sorted(rule.id for rule in rules if rule.partitioned))
 
     @staticmethod
-    def _infra_catalog() -> t.Pair[
-        t.SequenceOf[m.Infra.CodemodRule],
-        t.MappingKV[Path, t.SequenceOf[t.JsonMapping]],
+    def _infra_catalog() -> tuple[
+        Sequence[m.Infra.CodemodRule],
+        Mapping[Path, Sequence[t.JsonMapping]],
     ]:
         """Read the packaged catalog's validated rules and parsed documents.
 
@@ -815,7 +825,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         catalog = (
             FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH
         )
-        documents: dict[Path, t.SequenceOf[t.JsonMapping]] = {}
+        documents: dict[Path, Sequence[t.JsonMapping]] = {}
         rules = FlextInfraUtilitiesCodemodRules.codemod_catalog_rules(
             canonicalize_name(c.Infra.PKG_INFRA_UNDERSCORE),
             catalog,
@@ -829,7 +839,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         facts: m.Infra.CodemodScopeFacts,
-    ) -> t.MappingKV[str, t.JsonMapping]:
+    ) -> Mapping[str, t.JsonMapping]:
         """Render every partitioned catalog rule over the project's file groups.
 
         A catalog rule whose verdict pairs a captured value with the file it
@@ -846,7 +856,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         root = project.absolute()
         rules, documents = cls._infra_catalog()
         scopes = facts.scopes
-        package = FlextInfraUtilitiesPyproject.project_package_name(root)
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         utilities = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rules(
             FlextInfraConfig.ssot_config_dir().parent / c.Infra.CODEMOD_CONFIG_RELPATH
         )
@@ -874,7 +884,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @staticmethod
     def _private_family_scopes(
         snapshot: p.Infra.WorkspaceSnapshot, root: Path
-    ) -> t.MappingKV[str, t.StrTuple]:
+    ) -> Mapping[str, t.StrTuple]:
         """Group the project's modules by the private family package they belong to.
 
         A private family is a dotted module path up to its first
@@ -924,7 +934,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     @staticmethod
     def _reached_facade_aliases(
         snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> t.MappingKV[str, frozenset[str]]:
+    ) -> Mapping[str, frozenset[str]]:
         """Read every reached facade package's runtime aliases.
 
         The own package's aliases come from its source layout; an installed
@@ -938,14 +948,12 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         root = project.absolute()
-        own = FlextInfraUtilitiesPyproject.project_package_name(root)
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
-        packages = (
-            FlextInfraUtilitiesCodemodNativePackageUtilities.codemod_facade_packages
-        )
+        packages = FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages
         return {
             package: (
                 frozenset(layout.runtime_aliases)
@@ -956,7 +964,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         }
 
     @staticmethod
-    def _fact_exact_names(names: t.StrSequence) -> t.JsonDict:
+    def _fact_exact_names(names: Sequence[str]) -> t.JsonDict:
         """Match exactly one of ``names``, or nothing when there is none.
 
         Returns:
@@ -970,9 +978,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         return {"regex": f"^(?:{alternatives})$"}
 
     @classmethod
-    def _fact_imported_from(
-        cls, names: t.MappingKV[str, frozenset[str]]
-    ) -> t.JsonMapping:
+    def _fact_imported_from(cls, names: Mapping[str, frozenset[str]]) -> t.JsonMapping:
         """Match an imported name listed for the package its import names.
 
         Returns:

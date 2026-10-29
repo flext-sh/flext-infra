@@ -9,8 +9,9 @@ from __future__ import annotations
 import io
 import token
 import tokenize
+from collections.abc import Sequence
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 
 
 class FlextInfraUtilitiesTransformerHeaderParser:
@@ -136,7 +137,7 @@ class FlextInfraUtilitiesTransformerHeaderParser:
     def _find_import_line_end(
         cls,
         source: str,
-        tokens: t.SequenceOf[tokenize.TokenInfo],
+        tokens: Sequence[tokenize.TokenInfo],
         from_index: int,
     ) -> int:
         """Return the offset after the selected import statement.
@@ -151,7 +152,7 @@ class FlextInfraUtilitiesTransformerHeaderParser:
         return 0
 
     @classmethod
-    def _line_end_offset(cls, source: str, position: t.Pair[int, int]) -> int:
+    def _line_end_offset(cls, source: str, position: tuple[int, int]) -> int:
         """Return the offset after the line containing a token position.
 
         Returns:
@@ -163,7 +164,7 @@ class FlextInfraUtilitiesTransformerHeaderParser:
         return len(source) if newline == -1 else newline + 1
 
     @staticmethod
-    def _position_offset(source: str, position: t.Pair[int, int]) -> int:
+    def _position_offset(source: str, position: tuple[int, int]) -> int:
         """Convert a tokenizer line and column into a source offset.
 
         Returns:
@@ -183,7 +184,7 @@ class FlextInfraUtilitiesTransformerHeaderParser:
 
     @staticmethod
     def _extract_imported_aliases(
-        tokens: t.SequenceOf[tokenize.TokenInfo],
+        tokens: Sequence[tokenize.TokenInfo],
         from_index: int,
     ) -> frozenset[str]:
         """Return local names bound by a from-import statement.

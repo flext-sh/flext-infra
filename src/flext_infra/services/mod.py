@@ -27,7 +27,7 @@ class FlextInfraModHandlers:
         decisions: Path,
         output: Path | None,
         request: p.Infra.ModRequest,
-    ) -> t.Pair[m.Infra.SemanticRenamePlanCommand, m.Cli.AtomicFileState]:
+    ) -> tuple[m.Infra.SemanticRenamePlanCommand, m.Cli.AtomicFileState]:
         """Validate configured decisions at their required-content boundary.
 
         Returns:
@@ -167,10 +167,10 @@ class FlextInfraModHandlers:
                 rope=rope,
                 rename_inputs=campaigns,
                 phase_callbacks=(
-                    codemod.FlextInfraImportNormalizationPhase(),
-                    codemod.FlextInfraNamespaceRelocationPhase(),
-                    codemod.FlextInfraDuplicateApplyPhase(),
-                    codemod.FlextInfraAccessorRenamePhase(),
+                    codemod.FlextInfraCodemodLoopPhaseImportNormalization(),
+                    codemod.FlextInfraCodemodLoopPhaseNamespaceRelocation(),
+                    codemod.FlextInfraCodemodLoopPhaseDuplicateApply(),
+                    codemod.FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project),
                 ),
             ).execute()
 

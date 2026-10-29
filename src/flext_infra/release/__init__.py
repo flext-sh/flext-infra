@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra.release package.
+"""Release package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,42 +13,45 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.release._release_artifact import FlextInfraReleaseArtifactMixin
-    from flext_infra.release._release_boundary import FlextInfraReleaseBoundaryMixin
-    from flext_infra.release._release_build import FlextInfraReleaseBuildMixin
-    from flext_infra.release._release_metadata import FlextInfraReleaseMetadataMixin
-    from flext_infra.release._release_plan import FlextInfraReleasePlanMixin
-    from flext_infra.release._release_project import FlextInfraReleaseProjectMixin
-    from flext_infra.release._release_publish import FlextInfraReleasePublishMixin
-    from flext_infra.release._release_source import FlextInfraReleaseSourceMixin
+    from flext_infra.release._release.artifact import FlextInfraReleaseReleaseArtifact
+    from flext_infra.release._release.boundary import FlextInfraReleaseReleaseBoundary
+    from flext_infra.release._release.build import FlextInfraReleaseReleaseBuild
+    from flext_infra.release._release.metadata import FlextInfraReleaseReleaseMetadata
+    from flext_infra.release._release.plan import FlextInfraReleaseReleasePlan
+    from flext_infra.release._release.project import FlextInfraReleaseReleaseProject
+    from flext_infra.release._release.publish import FlextInfraReleaseReleasePublish
+    from flext_infra.release._release.source import FlextInfraReleaseReleaseSource
     from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+    from flext_infra.release.release import FlextInfraReleaseRelease
 
 
 __all__: tuple[str, ...] = (
-    "FlextInfraReleaseArtifactMixin",
-    "FlextInfraReleaseBoundaryMixin",
-    "FlextInfraReleaseBuildMixin",
-    "FlextInfraReleaseMetadataMixin",
     "FlextInfraReleaseOrchestrator",
-    "FlextInfraReleasePlanMixin",
-    "FlextInfraReleaseProjectMixin",
-    "FlextInfraReleasePublishMixin",
-    "FlextInfraReleaseSourceMixin",
+    "FlextInfraReleaseRelease",
+    "FlextInfraReleaseReleaseArtifact",
+    "FlextInfraReleaseReleaseBoundary",
+    "FlextInfraReleaseReleaseBuild",
+    "FlextInfraReleaseReleaseMetadata",
+    "FlextInfraReleaseReleasePlan",
+    "FlextInfraReleaseReleaseProject",
+    "FlextInfraReleaseReleasePublish",
+    "FlextInfraReleaseReleaseSource",
 )
 
 install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "FlextInfraReleaseArtifactMixin": "._release_artifact",
-        "FlextInfraReleaseBoundaryMixin": "._release_boundary",
-        "FlextInfraReleaseBuildMixin": "._release_build",
-        "FlextInfraReleaseMetadataMixin": "._release_metadata",
         "FlextInfraReleaseOrchestrator": ".orchestrator",
-        "FlextInfraReleasePlanMixin": "._release_plan",
-        "FlextInfraReleaseProjectMixin": "._release_project",
-        "FlextInfraReleasePublishMixin": "._release_publish",
-        "FlextInfraReleaseSourceMixin": "._release_source",
+        "FlextInfraReleaseRelease": ".release",
+        "FlextInfraReleaseReleaseArtifact": "._release.artifact",
+        "FlextInfraReleaseReleaseBoundary": "._release.boundary",
+        "FlextInfraReleaseReleaseBuild": "._release.build",
+        "FlextInfraReleaseReleaseMetadata": "._release.metadata",
+        "FlextInfraReleaseReleasePlan": "._release.plan",
+        "FlextInfraReleaseReleaseProject": "._release.project",
+        "FlextInfraReleaseReleasePublish": "._release.publish",
+        "FlextInfraReleaseReleaseSource": "._release.source",
     }),
     public_exports=__all__,
 )

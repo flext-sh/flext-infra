@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import pytest
 
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 @pytest.mark.slow
@@ -22,7 +23,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     def _render_root_makefile(
         tmp_path: Path,
         *,
-        extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec],
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
         script_dispatch: m.Infra.ScriptDispatchSpec | None,
     ) -> str:
         # The engine is consumer-agnostic, so this fixture models a
@@ -253,7 +254,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         # The regeneration contract published on every projection speaks gen.
         tm.ok("# @flext-regenerate: make gen" in rendered)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
-        handler_policies: t.MutableMappingKV[str, m.Infra.CustomHandlerPolicy] = dict(
+        handler_policies: MutableMapping[str, m.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies,
         )
         for policy in handler_policies.values():
@@ -342,7 +343,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that(profile_test, has='database="$(FLEXT_PYTEST_TESTMON_DATABASE)";')
         tm.that(profile_test, has=f'{datafile}="$$database"')
         # The thin entry delegates profiling to the execution adapter.
-        tm.that(profile_test, has="-m flext_infra._pytest_entry profile")
+        tm.that(profile_test, has="-m flext_infra._pytest.entry profile")
         tm.that(profile_test, lacks="import cProfile")
         tm.that(profile_test, has="$(PROFILE_REPORTS_DIR)/pytest.pstats")
         # Only the bounded gate adds the outer hard wall clock wrapper.
@@ -352,7 +353,7 @@ class TestsFlextInfraScriptDispatchMakefile:
             "\n\n",
             1,
         )[0]
-        tm.that(report, has="flext_infra._cprofile_entry")
+        tm.that(report, has="flext_infra._cprofile.entry")
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats")
         tm.that(report, has="$(PROFILE_REPORTS_DIR)/pytest.pstats.json")
 
@@ -374,7 +375,7 @@ class TestsFlextInfraScriptDispatchMakefile:
             report,
             has=(
                 '\t@cd "$(PROJECT_ROOT)" || exit $$?; \\\n'
-                "\t\t$(PROJECT_INFRA_RUN) -m flext_infra._cprofile_entry \\\n"
+                "\t\t$(PROJECT_INFRA_RUN) -m flext_infra._cprofile.entry \\\n"
                 '\t\t"$(PROFILE_REPORTS_DIR)/mod.pstats"'
             ),
         )
@@ -444,8 +445,8 @@ class TestsFlextInfraScriptDispatchMakefile:
                 f'{cache.database_environment_variable}="$$database"',
             ],
         )
-        tm.that(full.count("-m flext_infra._pytest_entry"), eq=1)
-        tm.ok(full.rstrip().endswith("-m flext_infra._pytest_entry full"))
+        tm.that(full.count("-m flext_infra._pytest.entry"), eq=1)
+        tm.ok(full.rstrip().endswith("-m flext_infra._pytest.entry full"))
         tm.that(full, lacks="PYTEST_BOUNDED")
         tm.that(
             full,

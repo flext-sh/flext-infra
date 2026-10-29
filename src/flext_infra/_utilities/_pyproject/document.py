@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from functools import partial
-from typing import Annotated
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from functools import cache, partial
+from pathlib import Path
+from typing import Annotated, ClassVar
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
@@ -17,11 +18,14 @@ from typing_extensions import TypeForm
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesGit,
+    FlextInfraUtilitiesManagedConflicts,
     FlextInfraUtilitiesProjectManagedArtifacts,
-    FlextInfraUtilitiesPyproject,
 )
-from flext_infra._utilities._pyproject import (
+from flext_infra._utilities._pyproject.overlay import (
     FlextInfraUtilitiesPyprojectOverlay,
+)
+from flext_infra._utilities._pyproject.uv_sources import (
     FlextInfraUtilitiesPyprojectUvSources,
 )
 
@@ -29,11 +33,553 @@ from flext_infra._utilities._pyproject import (
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
     """Render root workspace and autonomous library metadata deterministically."""
 
-    type _CustomGroupsPair = t.Pair[
-        t.SequenceOf[str | m.Infra.DependencyGroupInclude],
-        t.SequenceOf[str | m.Infra.DependencyGroupInclude],
+    _live_text_memo: ClassVar[dict[str, p.Result[str]]] = {}
+
+    @classmethod
+    def declared_dependency_payload(
+        cls,
+        pyproject_path: Path,
+    ) -> p.Result[t.JsonMapping]:
+        """Read owner-recovered TOML without admitting generated group inputs.
+
+        Returns:
+            The parsed mapping with authored dependency-group entries only.
+
+        """
+        text = cls.live_pyproject_text(pyproject_path)
+        if text.failure:
+            return r[t.JsonMapping].from_failure(text)
+        payload = u.Cli.toml_mapping_from_text(text.value)
+        if payload is None:
+            return r[t.JsonMapping].fail(
+                f"pyproject is not valid TOML: {pyproject_path}",
+            )
+        groups = u.Cli.toml_mapping_path(payload, (c.Infra.DEPENDENCY_GROUPS,))
+        if groups is not None:
+            for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
+                selected = cls.dependency_group_name(tuple(groups), str(group))
+                if selected not in groups:
+                    continue
+                custom = cls.custom_dev_additions(payload, text.value, group=selected)
+                if custom.failure:
+                    return r[t.JsonMapping].from_failure(custom)
+                groups[selected] = cls.dependency_group_wire(custom.value)
+        return r[t.JsonMapping].ok(payload)
+
+    @staticmethod
+    def recover_live_pyproject_text(raw: str) -> p.Result[str]:
+        """Return live pyproject text with merge-control lines resolved.
+
+        Unconflicted text is returned unchanged. A conflict is resolved only
+        inside owner-declared managed TOML sections
+        (``config.Infra.codegen.managed_file_specs``) via
+        ``FlextInfraUtilitiesManagedConflicts.recover_managed_toml``; a
+        conflict outside those sections fails loud through that utility's
+        own contract. Read-only: no file is written here.
+
+        The recovery is a pure function of the text and the frozen managed
+        file declaration, so one recovery per distinct text serves every
+        reader of the process.
+
+        Returns:
+            Live pyproject text with merge-control lines resolved.
+
+        """
+        recovered = FlextInfraUtilitiesPyprojectDocument._live_text_memo.get(raw)
+        if recovered is not None:
+            return recovered
+        spec_result = FlextInfraUtilitiesManagedConflicts.pyproject_managed_file()
+        if spec_result.failure:
+            return r[str].from_failure(spec_result)
+        recovered = FlextInfraUtilitiesManagedConflicts.recover_managed_toml(
+            raw,
+            conflict_sections=spec_result.value.conflict_sections,
+        )
+        FlextInfraUtilitiesPyprojectDocument._live_text_memo[raw] = recovered
+        return recovered
+
+    @staticmethod
+    def live_pyproject_text(
+        pyproject_path: Path,
+        *,
+        regenerate_managed_tools: bool = False,
+    ) -> p.Result[str]:
+        """Read one live pyproject and resolve managed merge conflicts.
+
+        Returns:
+            The resulting ``p.Result[str]``.
+
+        """
+        raw = u.Cli.atomic_read_binary_file_state(pyproject_path, required=True)
+        if raw.failure:
+            return r[str].from_failure(raw)
+        content = raw.value.content
+        if content is None:
+            return r[str].fail(f"pyproject is absent: {pyproject_path}")
+        live = FlextInfraUtilitiesPyprojectDocument.recover_live_pyproject_text(
+            content.decode(c.DEFAULT_ENCODING),
+        )
+        if live.failure or not regenerate_managed_tools:
+            return live
+        return FlextInfraUtilitiesManagedConflicts.pyproject_regeneration_source(
+            live.value,
+        )
+
+    @staticmethod
+    def read_project_metadata_result(
+        project_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[p.ProjectMetadata]:
+        """Read retained metadata from the canonical single-document ingress.
+
+        Returns:
+            The original structural metadata or its causal ingress failure.
+
+        """
+        state = FlextInfraUtilitiesPyprojectDocument.read_project_metadata_state(
+            project_root,
+            source_project=source_project,
+        )
+        if state.failure:
+            return r[p.ProjectMetadata].from_failure(state)
+        return r[p.ProjectMetadata].ok(state.value.metadata)
+
+    @staticmethod
+    def read_project_metadata_state(
+        project_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[m.Infra.ProjectMetadataState]:
+        """Parse metadata and packaging declarations without importing source exports.
+
+        Returns:
+            Retained typed metadata and packaging facts from one live TOML read.
+
+        """
+        result_type = r[m.Infra.ProjectMetadataState]
+        live = (
+            FlextInfraUtilitiesPyprojectDocument.live_pyproject_text(
+                project_root / c.PYPROJECT_FILENAME
+            )
+            if source_project is None
+            else FlextInfraUtilitiesPyprojectDocument.recover_live_pyproject_text(
+                source_project.source_text(project_root / c.PYPROJECT_FILENAME),
+            )
+        )
+        if live.failure:
+            return result_type.from_failure(live)
+        # The facade returns None for unparseable text rather than raising, so
+        # the invalid case is named here instead of reaching model_validate as
+        # a None that fails with a shape error about the wrong subject.
+        payload = u.Cli.toml_mapping_from_text(live.value)
+        if payload is None:
+            return result_type.fail(
+                f"cannot read project metadata from {project_root}: "
+                f"{c.PYPROJECT_FILENAME} is not valid TOML",
+            )
+        try:
+            document = u.PyprojectDocument.model_validate(payload)
+            packaging = m.Infra.ProjectPackagingDeclaration.model_validate(payload)
+            metadata = u.build_project_metadata(project_root, document)
+        except (OSError, ValueError) as exc:
+            return result_type.fail(
+                f"cannot read project metadata from {project_root}: {exc}",
+                exception=exc,
+            )
+        return result_type.ok(
+            m.Infra.ProjectMetadataState(metadata=metadata, packaging=packaging),
+        )
+
+    @staticmethod
+    def project_package_participation(
+        declaration: m.Infra.ProjectPackagingDeclaration,
+    ) -> bool:
+        """Apply native project defaults without consulting directories or exports.
+
+        Args:
+            declaration: Packaging declaration read from the project payload.
+
+        Returns:
+            Whether the project participates in packaging under native defaults.
+
+        """
+        return (
+            declaration.build_backend is not None
+            if declaration.uv_package is None
+            else declaration.uv_package
+        )
+
+    @staticmethod
+    def pyproject_payload(
+        pyproject_path: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> t.JsonMapping:
+        """Return the shared TOML ingress's validated ``pyproject.toml`` mapping.
+
+        The payload is parsed from the live text with managed merge
+        conflicts resolved (``live_pyproject_text``).
+
+        Returns:
+            One mapping validated by the shared TOML ingress.
+
+        Raises:
+            RuntimeError: If failed to read pyproject payload at; or if pyproject
+                payload at.
+
+        """
+        if not (
+            pyproject_path.is_file()
+            if source_project is None
+            else source_project.source_query(pyproject_path, "isfile")
+        ):
+            return {}
+        live = (
+            FlextInfraUtilitiesPyprojectDocument.live_pyproject_text(pyproject_path)
+            if source_project is None
+            else FlextInfraUtilitiesPyprojectDocument.recover_live_pyproject_text(
+                source_project.source_text(pyproject_path)
+            )
+        )
+        if live.failure:
+            msg = f"failed to read pyproject payload at {pyproject_path}: {live.error}"
+            raise RuntimeError(msg)
+        # The parse is memoized by the live text, never by the path alone: a
+        # process that rewrites a manifest (gen, mod, a test) reads its new
+        # content on the next call instead of a stale parse.
+        return FlextInfraUtilitiesPyprojectDocument._parsed_pyproject_payload(
+            pyproject_path,
+            live.value,
+        )
+
+    @staticmethod
+    @cache
+    def _parsed_pyproject_payload(pyproject_path: Path, text: str) -> t.JsonMapping:
+        """Parse and validate one manifest text (memoized per exact content).
+
+        Returns:
+            The validated mapping of ``text``.
+
+        Raises:
+            RuntimeError: If ``text`` is not valid TOML.
+
+        """
+        payload = u.Cli.toml_mapping_from_text(text)
+        if payload is None:
+            msg = f"pyproject payload at {pyproject_path} is not valid TOML"
+            raise RuntimeError(msg)
+        return payload
+
+    @staticmethod
+    def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
+        """Return the shared TOML ingress's validated document mapping.
+
+        Returns:
+            One mapping validated by the shared TOML ingress.
+
+        """
+        payload = u.Cli.toml_as_mapping(document)
+        if not payload:
+            return {}
+        return payload
+
+    @classmethod
+    def sync_document_values(
+        cls,
+        document: t.Cli.TomlDocument | t.Cli.TomlTable,
+        payload: t.JsonMapping,
+    ) -> None:
+        """Synchronize changed semantic values through the original TOML tree."""
+        for key, value in payload.items():
+            if u.Cli.toml_value(document, key) == value:
+                continue
+            child = u.Cli.toml_table_child(document, key)
+            if child is not None and isinstance(value, Mapping):
+                cls.sync_document_values(child, value)
+            elif isinstance(value, list) and all(
+                isinstance(item, str) for item in value
+            ):
+                u.Cli.toml_sync_string_list(
+                    document,
+                    key,
+                    tuple(item for item in value if isinstance(item, str)),
+                )
+            else:
+                u.Cli.toml_sync_value(document, key, value)
+
+    @staticmethod
+    def tool_flext_meta(project_root: Path) -> t.JsonMapping:
+        """Return the normalized ``tool.flext`` table from a project root.
+
+        Returns:
+            The normalized ``tool.flext`` table from a project root.
+
+        """
+        payload = FlextInfraUtilitiesPyprojectDocument.pyproject_payload(
+            project_root / c.PYPROJECT_FILENAME,
+        )
+        tool = payload.get(c.Infra.TOOL)
+        if not isinstance(tool, dict):
+            return {}
+        flext = tool.get("flext")
+        return flext if isinstance(flext, dict) else {}
+
+    @staticmethod
+    def docs_meta_from_payload(payload: t.JsonMapping) -> t.JsonMapping:
+        """Extract ``tool.flext.docs`` metadata from an already-parsed payload.
+
+        Returns:
+            The resulting ``t.JsonMapping``.
+
+        """
+        tool = payload.get(c.Infra.TOOL)
+        if not isinstance(tool, dict):
+            return {}
+        flext = tool.get("flext")
+        if not isinstance(flext, dict):
+            return {}
+        docs = flext.get("docs")
+        return docs if isinstance(docs, dict) else {}
+
+    @staticmethod
+    def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:
+        """Return the declared project name from ``[project].name``.
+
+        Returns:
+            The declared project name from ``[project].name``.
+
+        Raises:
+            TypeError: If ``not isinstance(project_section, dict)``.
+            ValueError: If ``not isinstance(raw_name, str) or not raw_name.strip()``.
+
+        """
+        project_section = payload.get("project")
+        if not isinstance(project_section, dict):
+            msg = f"{entry}: missing [project] table in pyproject.toml"
+            raise TypeError(msg)
+        raw_name = project_section.get("name")
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            msg = f"{entry}: missing or empty [project].name in pyproject.toml"
+            raise ValueError(msg)
+        return raw_name.strip()
+
+    @staticmethod
+    def _hatch_wheel_package(payload: t.JsonMapping) -> str | None:
+        """Return the package name the hatch wheel targets declare.
+
+        Returns:
+            The resulting ``str | None``.
+
+        """
+        current: t.JsonMapping | None = payload
+        for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
+            if current is None:
+                break
+            candidate = current.get(key)
+            current = candidate if isinstance(candidate, dict) else None
+        packages = current.get("packages") if current is not None else None
+        if not isinstance(packages, list):
+            return None
+        for item in packages:
+            package_path = Path(str(item).strip())
+            if package_path.parts:
+                return package_path.parts[-1]
+        return None
+
+    @staticmethod
+    def _src_dir_package(project_root: Path) -> str | None:
+        """Return the first ``src`` child package carrying an initializer.
+
+        Returns:
+            The resulting ``str | None``.
+
+        """
+        src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
+        if not src_dir.is_dir():
+            return None
+        for child in sorted(src_dir.iterdir()):
+            if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
+                return child.name
+        return None
+
+    @staticmethod
+    def package_name_from_payload(
+        project_root: Path,
+        payload: t.JsonMapping,
+        docs_meta: t.JsonMapping,
+        *,
+        source_paths: Sequence[Path] | None = None,
+    ) -> str:
+        """Return the primary package name using pre-loaded pyproject payload.
+
+        Returns:
+            The primary package name using pre-loaded pyproject payload.
+
+        Raises:
+            ValueError: If ``project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN)``.
+
+        """
+        configured = docs_meta.get("package_name")
+        if isinstance(configured, str) and configured.strip():
+            return configured.strip()
+        wheel_package = FlextInfraUtilitiesPyprojectDocument._hatch_wheel_package(
+            payload
+        )
+        if wheel_package is not None:
+            return wheel_package
+        source_package = (
+            next(
+                (
+                    path.parent.name
+                    for path in sorted(source_paths)
+                    if path.name == c.Infra.INIT_PY
+                    and path.parent.parent == project_root / c.Infra.DEFAULT_SRC_DIR
+                ),
+                None,
+            )
+            if source_paths is not None
+            else FlextInfraUtilitiesPyprojectDocument._src_dir_package(project_root)
+        )
+        if source_package is not None:
+            return source_package
+        # A manifest without a [project] table declares no package at all:
+        # it configures tools only and owns no importable provider.
+        if isinstance(payload.get("project"), dict):
+            project_name = (
+                FlextInfraUtilitiesPyprojectDocument.project_name_from_payload(
+                    project_root,
+                    payload,
+                )
+            )
+            if project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
+                msg = (
+                    f"{project_root}: cannot resolve package name — "
+                    "no [tool.flext.docs].package_name, no hatch wheel packages, "
+                    "and no src/<pkg>/__init__.py present"
+                )
+                raise ValueError(msg)
+        return ""
+
+    @staticmethod
+    def project_package_name(
+        project_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> str:
+        """Return the primary Python package name for a project root.
+
+        Returns:
+            The primary Python package name for a project root.
+
+        """
+        payload = FlextInfraUtilitiesPyprojectDocument.pyproject_payload(
+            project_root / c.PYPROJECT_FILENAME,
+            source_project=source_project,
+        )
+        docs_meta = FlextInfraUtilitiesPyprojectDocument.docs_meta_from_payload(payload)
+        source_paths: tuple[Path, ...] | None = None
+        if source_project is not None:
+            src = project_root / c.Infra.DEFAULT_SRC_DIR
+            source_paths = (
+                tuple(
+                    child / c.Infra.INIT_PY
+                    for child in source_project.source_children(src)
+                    if source_project.source_query(child, "isdir")
+                    and source_project.source_query(child / c.Infra.INIT_PY, "isfile")
+                )
+                if source_project.source_query(src, "isdir")
+                else ()
+            )
+        return FlextInfraUtilitiesPyprojectDocument.package_name_from_payload(
+            project_root,
+            payload,
+            docs_meta,
+            source_paths=source_paths,
+        )
+
+    @staticmethod
+    @cache
+    def workspace_project_paths(repository_root: Path) -> Sequence[str]:
+        """Return governed project paths declared by this directory's ``.gitmodules``.
+
+        A missing file denotes a standalone project and therefore an empty
+        sequence. A malformed declaration is an invalid workspace contract and
+        remains a loud error; no pyproject table or parent directory is used as
+        an alternate topology source. A submodule that opts out through
+        ``flext-managed`` is not a workspace project, the same contract the
+        workspace detector applies; every governed path stays in the sequence
+        so a missing or unreadable member pyproject still fails at its reader.
+
+        Returns:
+            Governed project paths declared by this directory's ``.gitmodules``.
+
+        Raises:
+            ValueError: If ``declared.failure``.
+
+        """
+        if not (repository_root / c.Infra.GITMODULES).exists(follow_symlinks=False):
+            return ()
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(repository_root)
+        if declared.failure:
+            msg = declared.error or f"invalid workspace topology: {repository_root}"
+            raise ValueError(msg)
+        return tuple(
+            item.path.as_posix() for item in declared.value if item.managed is not False
+        )
+
+    @staticmethod
+    @cache
+    def workspace_member_layer_names(
+        project_root: Path,
+    ) -> tuple[frozenset[str], frozenset[str]]:
+        """Derive declared domain/platform member name sets from the topology.
+
+        The containing workspace root resolves first (the superproject when
+        this checkout is a member, the checkout itself otherwise), so a
+        member project classifies through the same declared per-member
+        ``flext-layer`` attributes the workspace composes. A standalone
+        repository (no ``.gitmodules``) declares no members and both sets
+        stay empty — the same topology contract the modernizer applies to
+        internal dependency names. Unknown layer declarations fail closed at
+        the declaration parser.
+
+        Returns:
+            The resulting ``(domain_names, platform_names)`` pair.
+
+        Raises:
+            ValueError: If the topology root or the declarations are invalid.
+
+        """
+        topology = FlextInfraUtilitiesGit.git_repository_root(
+            m.Infra.GitRepoRequest(repo_root=project_root),
+        )
+        if topology.failure:
+            msg = topology.error or f"invalid repository topology: {project_root}"
+            raise ValueError(msg)
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
+            topology.value.repository_root,
+        )
+        if declared.failure:
+            msg = (
+                declared.error
+                or f"invalid workspace topology: {topology.value.repository_root}"
+            )
+            raise ValueError(msg)
+        domain: set[str] = set()
+        platform: set[str] = set()
+        for item in declared.value:
+            if item.layer == c.Infra.MemberArchitectureLayer.DOMAIN:
+                domain.add(item.path.name)
+            elif item.layer == c.Infra.MemberArchitectureLayer.PLATFORM:
+                platform.add(item.path.name)
+        return (frozenset(domain), frozenset(platform))
+
+    type _CustomGroupsPair = tuple[
+        Sequence[str | m.Infra.DependencyGroupInclude],
+        Sequence[str | m.Infra.DependencyGroupInclude],
     ]
-    type _ConformedProvenance = t.Triple[
+    type _ConformedProvenance = tuple[
         t.Cli.TomlDocument,
         str,
         m.Infra.RequirementsProvenance,
@@ -53,14 +599,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def parsed_pyproject(
         cls,
         pyproject_content: str,
-    ) -> p.Result[t.Triple[t.Cli.TomlDocument, str, t.JsonMapping]]:
+    ) -> p.Result[tuple[t.Cli.TomlDocument, str, t.JsonMapping]]:
         """Parse a source, its distribution identity, and its mapping once.
 
         Returns:
             The validated document, project name, and metadata mapping.
 
         """
-        result = r[t.Triple[t.Cli.TomlDocument, str, t.JsonMapping]]
+        result = r[tuple[t.Cli.TomlDocument, str, t.JsonMapping]]
         source = u.Cli.toml_parse_text(pyproject_content)
         if source is None:
             return result.fail(
@@ -87,7 +633,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         pyproject_content: str,
         *,
         workspace: m.Infra.WorkspaceSpec,
-        required_dev_dependencies: t.StrSequence,
+        required_dev_dependencies: Sequence[str],
         uv_resolution: m.Infra.UvResolutionSpec,
         options: PyprojectConformOptions | None = None,
     ) -> p.Result[str]:
@@ -163,7 +709,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         pyproject_content: str,
         *,
         workspace: m.Infra.WorkspaceSpec,
-        required_dev_dependencies: t.StrSequence,
+        required_dev_dependencies: Sequence[str],
         options: PyprojectConformOptions | None,
     ) -> p.Result[_ConformedProvenance]:
         """Parse the source and compose its declared requirement provenance.
@@ -237,14 +783,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         source: t.Cli.TomlDocument,
         provenance: m.Infra.RequirementsProvenance,
-    ) -> p.Result[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]]:
+    ) -> p.Result[tuple[Sequence[str], Mapping[str, str], Mapping[str, str]]]:
         """Validate composed declarations before applying the one source context.
 
         Returns:
             Local requirements and source mappings, or the original failure.
 
         """
-        result_type = r[t.Triple[t.StrSequence, t.StrMapping, t.StrMapping]]
+        result_type = r[tuple[Sequence[str], Mapping[str, str], Mapping[str, str]]]
         local = cls.document_requirement_lines(source)
         if local.failure:
             return result_type.from_failure(
@@ -292,14 +838,12 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 "root metadata is not a TOML mapping",
             )
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
-        retained: t.MutableMappingKV[
-            str, t.SequenceOf[str | m.Infra.DependencyGroupInclude]
+        retained: MutableMapping[
+            str, Sequence[str | m.Infra.DependencyGroupInclude]
         ] = {}
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
-            authored_name = FlextInfraUtilitiesPyproject.dependency_group_name(
-                groups, str(group)
-            )
-            custom = FlextInfraUtilitiesPyproject.custom_dev_additions(
+            authored_name = cls.dependency_group_name(groups, str(group))
+            custom = cls.custom_dev_additions(
                 payload,
                 original,
                 group=group,
@@ -310,7 +854,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             u.Cli.toml_sync_value(
                 groups,
                 authored_name,
-                FlextInfraUtilitiesPyproject.dependency_group_wire(retained[group]),
+                cls.dependency_group_wire(retained[group]),
             )
         return result_type.ok(
             (retained[str(c.Infra.DEV)], retained[c.Infra.DependencyGroup.CODEGEN]),
@@ -334,7 +878,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             custom_groups,
             strict=True,
         ):
-            normalized_custom: t.MutableSequenceOf[
+            normalized_custom: MutableSequence[
                 str | m.Infra.DependencyGroupInclude
             ] = []
             for value in custom:
@@ -357,9 +901,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         workspace: m.Infra.WorkspaceSpec,
         *,
         project_name: str,
-        requirements: t.StrSequence,
+        requirements: Sequence[str],
         flext_line: m.Infra.WorkspaceIntegrationSpec | None,
-    ) -> p.Result[t.StrMapping]:
+    ) -> p.Result[Mapping[str, str]]:
         """Derive governed source defaults solely for generated bare floors.
 
         Returns:
@@ -384,14 +928,14 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 and requirement.strip() == name
             }
             if floors and flext_line.base_url is None:
-                return r[t.StrMapping].fail(
+                return r[Mapping[str, str]].fail(
                     "detected FLEXT line carries no provider base URL",
                 )
             declared_sources.update({
                 name: f"git+{flext_line.base_url}/{name}.git@{flext_line.branch}"
                 for name in floors
             })
-        return r[t.StrMapping].ok(declared_sources)
+        return r[Mapping[str, str]].ok(declared_sources)
 
     @staticmethod
     def _render_pyproject(source: t.Cli.TomlDocument) -> p.Result[str]:
@@ -422,7 +966,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
                 if u.Cli.toml_value(groups, group) is None:
                     continue
-                custom = FlextInfraUtilitiesPyproject.custom_dev_additions(
+                custom = FlextInfraUtilitiesPyprojectDocument.custom_dev_additions(
                     payload,
                     original,
                     group=group,
@@ -445,9 +989,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         *,
         project_name: str,
         workspace: m.Infra.WorkspaceSpec,
-        required_dev_dependencies: t.StrSequence,
+        required_dev_dependencies: Sequence[str],
         flext_line: m.Infra.WorkspaceIntegrationSpec | None,
-    ) -> p.Result[t.Pair[t.StrMapping, t.StrMapping]]:
+    ) -> p.Result[tuple[Mapping[str, str], Mapping[str, str]]]:
         """Return the declared and candidate Git sources of internal requirements.
 
         Explicit requirement URLs and refs remain authoritative. Source-less
@@ -466,13 +1010,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             flext_line=flext_line,
         )
         if declared.failure:
-            return r[t.Pair[t.StrMapping, t.StrMapping]].from_failure(declared)
+            return r[tuple[Mapping[str, str], Mapping[str, str]]].from_failure(declared)
         declared_sources = declared.value
         candidate_sources = {
             item.distribution: f"git+{item.url}@{item.commit}"
             for item in workspace.candidate_dependencies
         }
-        return r[t.Pair[t.StrMapping, t.StrMapping]].ok(
+        return r[tuple[Mapping[str, str], Mapping[str, str]]].ok(
             (declared_sources, candidate_sources),
         )
 
@@ -482,8 +1026,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         source: t.Cli.TomlDocument,
         *,
         uv_resolution: m.Infra.UvResolutionSpec,
-        candidate_sources: t.StrMapping,
-        local_requirements: t.StrSequence,
+        candidate_sources: Mapping[str, str],
+        local_requirements: Sequence[str],
         workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[bool]:
         """Sync the canonical typecheck, namespace, uv, and provenance tables.
@@ -510,7 +1054,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                         config.Infra.tooling,
                         c.Infra.DEPTRY,
                         "optional_dependencies_dev_groups",
-                        TypeForm(t.StrSequence),
+                        TypeForm(Sequence[str]),
                     )
                 )
                 if optional is not None and group in optional
@@ -626,7 +1170,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     @staticmethod
     def _sync_namespace_scope(
         document: t.Cli.TomlDocument,
-        namespace_scan_dirs: t.StrSequence | None,
+        namespace_scan_dirs: Sequence[str] | None,
     ) -> p.Result[bool]:
         """Sync ``[tool.flext.namespace].scan_dirs`` from the project SSOT.
 
@@ -673,7 +1217,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         raw_environments = u.Cli.json_as_sequence(
             u.Cli.toml_value(pyright, "executionEnvironments"),
         )
-        normalized_environments: t.JsonValueList = []
+        normalized_environments: list[t.JsonValue] = []
         for index, environment in enumerate(raw_environments):
             if not isinstance(environment, Mapping):
                 return r[bool].fail(

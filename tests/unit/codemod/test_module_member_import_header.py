@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodemodModuleMemberImportHeader:
     """A member reached through a child package object imports from the child."""
 
     @staticmethod
-    def _project(tmp_path: Path) -> t.Pair[Path, Path]:
+    def _project(tmp_path: Path) -> tuple[Path, Path]:
         """Build a project whose child package publishes one class.
 
         Returns:

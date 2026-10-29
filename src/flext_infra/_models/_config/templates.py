@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from functools import cached_property
 from keyword import iskeyword
 from pathlib import Path
@@ -16,14 +16,14 @@ import flext_core
 from flext_cli import m, u
 
 from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.scaffold import FlextInfraConfigModelsScaffold
+from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra._models._config.scaffold import FlextInfraModelsConfigScaffold
 
 
-class FlextInfraConfigModelsTemplates:
+class FlextInfraModelsConfigTemplates:
     """Managed file and template entry specification models."""
 
-    class CodegenVscodeSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class CodegenVscodeSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed editor declarations shared by target and artifact planning."""
 
         model_config = m.ConfigDict(extra="forbid")
@@ -32,6 +32,15 @@ class FlextInfraConfigModelsTemplates:
             t.Infra.SettingsPairs,
             m.Field(description="Ordered VS Code key/value pairs; the last key wins"),
         ] = ()
+        runtime_environment_token: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Declared generation token replaced by the topology-owned "
+                    "environment path, relative to the opened workspace folder"
+                ),
+            ),
+        ] = None
         map_union_settings: Annotated[
             Mapping[str, t.JsonMapping],
             m.Field(description="VS Code objects union-merged over project settings"),
@@ -41,7 +50,7 @@ class FlextInfraConfigModelsTemplates:
         )
 
         stripped_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(
                 description=(
                     "VS Code keys actively stripped from the settings projection "
@@ -52,10 +61,10 @@ class FlextInfraConfigModelsTemplates:
         ] = ()
 
         stripped_map_keys: Annotated[
-            Mapping[str, t.VariadicTuple[str]],
+            Mapping[str, tuple[str, ...]],
             m.Field(description="Retired keys inside language-specific setting maps"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(Mapping[str, t.VariadicTuple[str]]),
+            default_factory=flext_core.u.empty(Mapping[str, tuple[str, ...]]),
             validate_default=True,
         )
 
@@ -91,7 +100,7 @@ class FlextInfraConfigModelsTemplates:
             return self
 
     class CodegenVscodeDeclarationDelta(
-        FlextInfraConfigModelsContract.ConfigContract,
+        FlextInfraModelsConfigContract.ConfigContract,
     ):
         """Portable editor overrides extracted from one captured document."""
 
@@ -102,7 +111,7 @@ class FlextInfraConfigModelsTemplates:
             ),
         ]
 
-    class CodegenLayerProjection(FlextInfraConfigModelsContract.ConfigContract):
+    class CodegenLayerProjection(FlextInfraModelsConfigContract.ConfigContract):
         """An owned declaration delta projected into one elected config layer."""
 
         path: Annotated[Path, m.Field(description="Exact target config layer")]
@@ -111,7 +120,7 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="JSON-compatible declaration fragment"),
         ]
 
-    class ConfigDocumentInputs(FlextInfraConfigModelsContract.ConfigContract):
+    class ConfigDocumentInputs(FlextInfraModelsConfigContract.ConfigContract):
         """One composed F.yaml document with its consulted physical sources."""
 
         values: Annotated[
@@ -119,14 +128,14 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="Strictly parsed and ordered configuration document"),
         ]
         sources: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True,
                 description="Exact physical files consulted by this document",
             ),
         ] = ()
 
-    class ManagedFileOwnership(FlextInfraConfigModelsContract.ConfigContract):
+    class ManagedFileOwnership(FlextInfraModelsConfigContract.ConfigContract):
         """Path-independent ownership shared by declarations and planned views."""
 
         model_config = m.ConfigDict(extra="forbid")
@@ -155,15 +164,15 @@ class FlextInfraConfigModelsTemplates:
             ),
         ] = 0o644
         conflict_sections: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Dotted sections rendered by the canonical owner"),
         ] = ()
         preserve_project_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Authored PEP 621 project keys retained on merge"),
         ] = ()
         overwrite_project_keys: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="PEP 621 project keys replaced by generation"),
         ] = ()
 
@@ -191,7 +200,7 @@ class FlextInfraConfigModelsTemplates:
 
         @m.computed_field
         @property
-        def managed_tool_tables(self) -> t.VariadicTuple[str]:
+        def managed_tool_tables(self) -> tuple[str, ...]:
             """Derive tool-relative table paths from the owner's sections.
 
             Returns:
@@ -207,7 +216,7 @@ class FlextInfraConfigModelsTemplates:
                 ),
             )
 
-    class TemplateDeclarationSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class TemplateDeclarationSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Path-independent template body stored under one destination key."""
 
         model_config = m.ConfigDict(extra="forbid")
@@ -233,7 +242,7 @@ class FlextInfraConfigModelsTemplates:
             ),
         ] = None
         source_closure: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Complete package-relative resource source closure"),
         ] = ()
         enforce: Annotated[
@@ -245,15 +254,15 @@ class FlextInfraConfigModelsTemplates:
             ),
         ] = ()
         requires_artifacts: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
+            tuple[t.NonEmptyStr, ...],
             m.Field(description="Catalog destination keys required by this artifact"),
         ] = ()
         profiles: Annotated[
-            t.VariadicTuple[c.Infra.MakeProfile],
+            tuple[c.Infra.MakeProfile, ...],
             m.Field(min_length=1, description="Profiles that consume the artifact"),
         ]
         ownership: Annotated[
-            FlextInfraConfigModelsTemplates.ManagedFileOwnership | None,
+            FlextInfraModelsConfigTemplates.ManagedFileOwnership | None,
             m.Field(
                 description=(
                     "Explicit generated-file ownership, or null for an authored "
@@ -376,7 +385,7 @@ class FlextInfraConfigModelsTemplates:
                 raise ValueError(msg)
             return self
 
-    class TemplatesSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class TemplatesSpec(FlextInfraModelsConfigContract.ConfigContract):
         """The single ordered catalog of generated artifacts and authored seeds."""
 
         model_config = m.ConfigDict(
@@ -390,7 +399,7 @@ class FlextInfraConfigModelsTemplates:
         catalog: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                FlextInfraConfigModelsTemplates.TemplateDeclarationSpec,
+                FlextInfraModelsConfigTemplates.TemplateDeclarationSpec,
             ],
             m.Field(
                 alias="entries",
@@ -401,10 +410,10 @@ class FlextInfraConfigModelsTemplates:
         @cached_property
         def entries(
             self,
-        ) -> t.VariadicTuple[FlextInfraConfigModelsTemplates.TemplateEntrySpec]:
+        ) -> tuple[FlextInfraModelsConfigTemplates.TemplateEntrySpec, ...]:
             """Expose the typed consumer view, validated once per catalog instance."""
             return tuple(
-                FlextInfraConfigModelsTemplates.TemplateEntrySpec.model_validate({
+                FlextInfraModelsConfigTemplates.TemplateEntrySpec.model_validate({
                     **dict(declaration),
                     "destination": destination,
                 })
@@ -412,7 +421,7 @@ class FlextInfraConfigModelsTemplates:
             )
 
         @property
-        def artifact_requirements(self) -> t.MappingKV[str, t.StrSequence]:
+        def artifact_requirements(self) -> Mapping[str, Sequence[str]]:
             """Expose each catalog key's declared artifact dependencies."""
             return {
                 destination: declaration.requires_artifacts
@@ -486,31 +495,27 @@ class FlextInfraConfigModelsTemplates:
                 raise ValueError(msg)
             return self
 
-    class GitignoreRenderContext(FlextInfraConfigModelsContract.ConfigContract):
+    class GitignoreRenderContext(FlextInfraModelsConfigContract.ConfigContract):
         """Profile-filtered input consumed by the Git ignore template."""
 
         gitignore_sections: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
-            ],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
-    class GitignoreRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class GitignoreRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed, profile-filtered input for the generated Git ignore file."""
 
         gitignore_sections: Annotated[
-            t.VariadicTuple[
-                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
-            ],
+            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(
                 min_length=1,
                 description="Canonical ignore sections applicable to one profile",
             ),
         ]
 
-    class StaticTextRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class StaticTextRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Empty typed context for a variable-free governed text template."""
 
 
-__all__: list[str] = ["FlextInfraConfigModelsTemplates"]
+__all__: list[str] = ["FlextInfraModelsConfigTemplates"]

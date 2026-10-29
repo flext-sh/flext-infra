@@ -7,11 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 import pytest
 
-from flext_infra import t, u
+from flext_infra import u
 from tests import tm
 from tests.unit.codemod.private_import_cutover_support import (
     TestsFlextInfraFacadeNaming,
@@ -159,11 +160,11 @@ class TestsFlextInfraPrivateImportCutover(
     def _seed_sample_dependency(
         self,
         package: Path,
-        facade_sources: t.MappingKV[Path, str],
+        facade_sources: Mapping[Path, str],
         *,
         case: str,
         depth: int,
-    ) -> t.MutableMappingKV[Path, str]:
+    ) -> MutableMapping[Path, str]:
         """Materialize the installed sample dependency package for one case.
 
         Deep cases bridge the private facade through real subclasses and
@@ -414,7 +415,7 @@ class TestsFlextInfraPrivateImportCutover(
         package_import: bool = False,
         root_export: bool = False,
         renamed: bool = False,
-    ) -> t.Triple[Path, str, t.MutableMappingKV[Path, str]]:
+    ) -> tuple[Path, str, MutableMapping[Path, str]]:
         package = root / "sample/src/sample"
         public_name = "PublicClient" if renamed else "Client"
         sources = {

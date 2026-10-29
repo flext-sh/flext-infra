@@ -6,21 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities._docs._docs_generate_root import (
-    FlextInfraUtilitiesDocsGenerateRootMixin,
-)
-from flext_infra._utilities._docs._docs_guides import FlextInfraUtilitiesDocsGuidesMixin
-from flext_infra._utilities._docs.docs_collection import (
+from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsCollection,
+    FlextInfraUtilitiesDocsGenerateRoot,
+    FlextInfraUtilitiesDocsGuides,
 )
 
-# Why: restored lost composition — FlextInfraUtilitiesDocsGuidesMixin was
+# Why: restored lost composition — FlextInfraUtilitiesDocsGuides was
 # never wired into any composed Docs* facade, leaving consumers unresolved.
 
 
 class FlextInfraUtilitiesDocsGenerate(
-    FlextInfraUtilitiesDocsGenerateRootMixin,
-    FlextInfraUtilitiesDocsGuidesMixin,
+    FlextInfraUtilitiesDocsGenerateRoot,
+    FlextInfraUtilitiesDocsGuides,
     FlextInfraUtilitiesDocsCollection,
 ):
     """Reusable generation helpers exposed through ``u.Infra``."""

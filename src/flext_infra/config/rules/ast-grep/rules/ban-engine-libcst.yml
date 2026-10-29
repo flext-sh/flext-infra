@@ -1,0 +1,38 @@
+# Engine-map D2 (flext-pipol / flext-u9h2i, W1 census): libcst is a second
+# Python interpreter beside rope, the only one FLEXT-authored engine code may
+# use (engine-map section 0, law 2). A module of the flext-infra engine that
+# imports libcst keeps a parallel CST pipeline; the import is the census
+# anchor of the deprecated route, so every consumer is a finding here until
+# the W2 waves move the transforms to public rope transforms or native
+# refactorings and the route is deleted at census zero.
+#
+# The two BLOCKED sites of engine-map section 2 do not import libcst, so no
+# BLOCKED ignore applies to this document (policy checked, not applicable).
+id: ban-engine-libcst
+language: Python
+severity: error
+files:
+  - "flext-infra/src/flext_infra/**/*.py"
+  - "src/flext_infra/**/*.py"
+ignores:
+  # The rope adapter family: its internal bridging is the capability the
+  # engine routes through (engine-map section 0, law 6; D17).
+  - "**/_utilities/_rope/**"
+rule:
+  any:
+    - all:
+        - kind: import_statement
+        - has:
+            stopBy: end
+            kind: dotted_name
+            regex: "^libcst(?:\\.|$)"
+    - all:
+        - kind: import_from_statement
+        - has:
+            field: module_name
+            regex: "^libcst(?:\\.|$)"
+message: >-
+  Engine code imports libcst: rope is the only Python interpreter in
+  FLEXT-authored engine code (engine-map D2); move the transform to public
+  rope transforms or native refactorings. compat: libcst_transforms ->
+  rope_native_refactorings; fix: rewire via make mod.

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra.codegen package.
+"""Codegen package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,26 +13,44 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codegen._consolidator_steps import (
-        FlextInfraCodegenConsolidatorStepsMixin,
+    from flext_infra.codegen._conform.artifact_render import (
+        FlextInfraCodegenConformArtifactRender,
     )
-    from flext_infra.codegen._execution import FlextInfraCodegenExecutionBase
-    from flext_infra.codegen._fixer_passes import FlextInfraCodegenFixerPassesMixin
-    from flext_infra.codegen._fixer_results import FlextInfraCodegenFixerResultsMixin
-    from flext_infra.codegen._fixer_workspace import (
-        FlextInfraCodegenFixerWorkspaceMixin,
+    from flext_infra.codegen._conform.bootstrap import FlextInfraCodegenConformBootstrap
+    from flext_infra.codegen._conform.context_render import (
+        FlextInfraCodegenConformContextRender,
     )
-    from flext_infra.codegen._layout_apply import FlextInfraCodegenLayoutApplyMixin
-    from flext_infra.codegen._layout_files import FlextInfraCodegenLayoutFilesMixin
-    from flext_infra.codegen._layout_gitignore import (
-        FlextInfraCodegenLayoutGitignoreMixin,
+    from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
+    from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
+    from flext_infra.codegen._conform.existing_plan import (
+        FlextInfraCodegenConformExistingPlan,
     )
-    from flext_infra.codegen._layout_plan import FlextInfraCodegenLayoutPlanMixin
+    from flext_infra.codegen._conform.file_plans import (
+        FlextInfraCodegenConformFilePlans,
+    )
+    from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
+    from flext_infra.codegen._conform.pyproject_policy import (
+        FlextInfraCodegenConformPyprojectPolicy,
+    )
+    from flext_infra.codegen._conform.scaffold_plan import (
+        FlextInfraCodegenConformScaffoldPlan,
+    )
+    from flext_infra.codegen._consolidator.steps import (
+        FlextInfraCodegenConsolidatorSteps,
+    )
+    from flext_infra.codegen._fixer.passes import FlextInfraCodegenFixerPasses
+    from flext_infra.codegen._fixer.results import FlextInfraCodegenFixerResults
+    from flext_infra.codegen._fixer.workspace import FlextInfraCodegenFixerWorkspace
+    from flext_infra.codegen._layout.apply import FlextInfraCodegenLayoutApply
+    from flext_infra.codegen._layout.files import FlextInfraCodegenLayoutFiles
+    from flext_infra.codegen._layout.gitignore import FlextInfraCodegenLayoutGitignore
+    from flext_infra.codegen._layout.plan import FlextInfraCodegenLayoutPlan
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
     from flext_infra.codegen.conform import FlextInfraCodegenConform
     from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
     from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
+    from flext_infra.codegen.execution import FlextInfraCodegenExecution
     from flext_infra.codegen.fixer import FlextInfraCodegenFixer
     from flext_infra.codegen.layout import FlextInfraCodegenLayout
     from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -52,18 +70,28 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
+    "FlextInfraCodegenConformArtifactRender",
+    "FlextInfraCodegenConformBootstrap",
+    "FlextInfraCodegenConformContextRender",
+    "FlextInfraCodegenConformEditor",
+    "FlextInfraCodegenConformExecute",
+    "FlextInfraCodegenConformExistingPlan",
+    "FlextInfraCodegenConformFilePlans",
+    "FlextInfraCodegenConformPlan",
+    "FlextInfraCodegenConformPyprojectPolicy",
+    "FlextInfraCodegenConformScaffoldPlan",
     "FlextInfraCodegenConsolidator",
-    "FlextInfraCodegenConsolidatorStepsMixin",
-    "FlextInfraCodegenExecutionBase",
+    "FlextInfraCodegenConsolidatorSteps",
+    "FlextInfraCodegenExecution",
     "FlextInfraCodegenFixer",
-    "FlextInfraCodegenFixerPassesMixin",
-    "FlextInfraCodegenFixerResultsMixin",
-    "FlextInfraCodegenFixerWorkspaceMixin",
+    "FlextInfraCodegenFixerPasses",
+    "FlextInfraCodegenFixerResults",
+    "FlextInfraCodegenFixerWorkspace",
     "FlextInfraCodegenLayout",
-    "FlextInfraCodegenLayoutApplyMixin",
-    "FlextInfraCodegenLayoutFilesMixin",
-    "FlextInfraCodegenLayoutGitignoreMixin",
-    "FlextInfraCodegenLayoutPlanMixin",
+    "FlextInfraCodegenLayoutApply",
+    "FlextInfraCodegenLayoutFiles",
+    "FlextInfraCodegenLayoutGitignore",
+    "FlextInfraCodegenLayoutPlan",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseToolchainProof",
@@ -82,18 +110,28 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraCodegenCensus": ".census",
         "FlextInfraCodegenConform": ".conform",
+        "FlextInfraCodegenConformArtifactRender": "._conform.artifact_render",
+        "FlextInfraCodegenConformBootstrap": "._conform.bootstrap",
+        "FlextInfraCodegenConformContextRender": "._conform.context_render",
+        "FlextInfraCodegenConformEditor": "._conform.editor",
+        "FlextInfraCodegenConformExecute": "._conform.execute",
+        "FlextInfraCodegenConformExistingPlan": "._conform.existing_plan",
+        "FlextInfraCodegenConformFilePlans": "._conform.file_plans",
+        "FlextInfraCodegenConformPlan": "._conform.plan",
+        "FlextInfraCodegenConformPyprojectPolicy": "._conform.pyproject_policy",
+        "FlextInfraCodegenConformScaffoldPlan": "._conform.scaffold_plan",
         "FlextInfraCodegenConsolidator": ".consolidator",
-        "FlextInfraCodegenConsolidatorStepsMixin": "._consolidator_steps",
-        "FlextInfraCodegenExecutionBase": "._execution",
+        "FlextInfraCodegenConsolidatorSteps": "._consolidator.steps",
+        "FlextInfraCodegenExecution": ".execution",
         "FlextInfraCodegenFixer": ".fixer",
-        "FlextInfraCodegenFixerPassesMixin": "._fixer_passes",
-        "FlextInfraCodegenFixerResultsMixin": "._fixer_results",
-        "FlextInfraCodegenFixerWorkspaceMixin": "._fixer_workspace",
+        "FlextInfraCodegenFixerPasses": "._fixer.passes",
+        "FlextInfraCodegenFixerResults": "._fixer.results",
+        "FlextInfraCodegenFixerWorkspace": "._fixer.workspace",
         "FlextInfraCodegenLayout": ".layout",
-        "FlextInfraCodegenLayoutApplyMixin": "._layout_apply",
-        "FlextInfraCodegenLayoutFilesMixin": "._layout_files",
-        "FlextInfraCodegenLayoutGitignoreMixin": "._layout_gitignore",
-        "FlextInfraCodegenLayoutPlanMixin": "._layout_plan",
+        "FlextInfraCodegenLayoutApply": "._layout.apply",
+        "FlextInfraCodegenLayoutFiles": "._layout.files",
+        "FlextInfraCodegenLayoutGitignore": "._layout.gitignore",
+        "FlextInfraCodegenLayoutPlan": "._layout.plan",
         "FlextInfraCodegenLazyInit": ".lazy_init",
         "FlextInfraCodegenMakeBootstrap": ".make_bootstrap",
         "FlextInfraCodegenMiseToolchainProof": ".mise_toolchain_proof",

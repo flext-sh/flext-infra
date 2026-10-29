@@ -8,27 +8,390 @@ from __future__ import annotations
 
 import ast
 import textwrap
+from collections.abc import Mapping, MutableSequence, Sequence
 from operator import itemgetter
 from pathlib import Path
 
 from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.rope_runtime_base import (
+    FlextInfraUtilitiesRopeRuntimeBase,
+)
 
 
-class FlextInfraUtilitiesRopeSource:
+class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
     """Text-oriented helpers shared by Rope-backed refactors."""
+
+    @classmethod
+    def source_class_fields(
+        cls, owner: p.Infra.RopeSourceClass
+    ) -> Mapping[str, tuple[int, int]]:
+        """Describe direct annotated fields through native class bindings.
+
+        Inherited field precedence belongs to the native class-order owner.
+        This query neither duplicates that order nor interprets syntax nodes.
+
+        Returns:
+            Declared field names mapped to their annotation source regions.
+
+        Raises:
+            TypeError: The declaring module is not a native source module.
+            ValueError: A direct field has competing annotated declarations.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module = owner.get_module()
+        if not runtime.source_module(module):
+            message = "Class field declarations require a native source module"
+            raise TypeError(message)
+        scope = owner.get_scope()
+        fields: dict[str, tuple[int, int]] = {}
+        index = module.get_source_binding_index()
+        for name, binding in scope.get_defined_names().items():
+            if not runtime.assigned_name(binding):
+                continue
+            regions: set[tuple[int, int]] = set()
+            for assignment in binding.assignments:
+                if assignment.type_hint is None:
+                    continue
+                region = cls.source_declaration_region(module, assignment.type_hint)
+                if index.context_at(region[0]).structural_scope.pyobject is owner:
+                    regions.add(region)
+            if len(regions) > 1:
+                message = (
+                    f"Competing native field annotations: {owner.get_name()}.{name}"
+                )
+                raise ValueError(message)
+            if regions:
+                fields[name] = next(iter(regions))
+        return fields
+
+    @staticmethod
+    def source_return_annotation(
+        owner: p.Infra.RopeSourceFunction,
+    ) -> tuple[int, int] | None:
+        """Select the complete return annotation already classified by Rope.
+
+        Returns:
+            Its source region, or ``None`` for an unannotated function.
+
+        Raises:
+            TypeError: The declaring module is not a native source module.
+            ValueError: Rope reports competing return-annotation roots.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module = owner.get_module()
+        if not runtime.source_module(module):
+            message = "Return annotations require a native source module"
+            raise TypeError(message)
+        regions = frozenset(
+            (fragment.start, fragment.end)
+            for fragment in module.get_source_binding_index().fragments
+            if fragment.context.role == "return-annotation"
+            and fragment.context.structural_scope.pyobject is owner
+        )
+        roots = tuple(
+            region
+            for region in regions
+            if not any(
+                other != region and other[0] <= region[0] < region[1] <= other[1]
+                for other in regions
+            )
+        )
+        if len(roots) > 1:
+            message = f"Competing native return annotations: {owner.get_name()}"
+            raise ValueError(message)
+        return roots[0] if roots else None
+
+    @staticmethod
+    def source_parameter_annotations(
+        owner: p.Infra.RopeSourceFunction,
+    ) -> Mapping[str, tuple[int, int]]:
+        """Associate native parameter-annotation regions with native formal names.
+
+        Returns:
+            Annotated parameter names and their exact annotation regions.
+
+        Raises:
+            TypeError: The module or word finder lacks its native contract.
+            ValueError: A parameter has competing native annotation roots.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module = owner.get_module()
+        if not runtime.source_module(module):
+            message = "Parameter annotations require a native source module"
+            raise TypeError(message)
+        word = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
+        )
+        if not isinstance(word, p.Infra.RopeWorder):
+            message = "Parameter annotations require the native word finder"
+            raise TypeError(message)
+        fragments = module.get_source_binding_index().fragments
+        annotations: dict[str, tuple[int, int]] = {}
+        for _kind, name in owner.get_parameter_layout():
+            formals = tuple(
+                fragment
+                for fragment in fragments
+                if fragment.context.role == "formal-token"
+                and fragment.context.structural_scope.pyobject is owner
+                and word.get_word_at(fragment.start) == name
+            )
+            regions = frozenset(
+                (fragment.start, fragment.end)
+                for fragment in fragments
+                if fragment.context.role == "parameter-annotation"
+                and fragment.context.structural_scope.pyobject is owner
+                and any(
+                    formal.start <= fragment.start < fragment.end <= formal.end
+                    for formal in formals
+                )
+            )
+            roots = tuple(
+                region
+                for region in regions
+                if not any(
+                    other != region and other[0] <= region[0] < region[1] <= other[1]
+                    for other in regions
+                )
+            )
+            if len(roots) > 1:
+                message = f"Competing native parameter annotations: {name}"
+                raise ValueError(message)
+            if roots:
+                annotations[name] = roots[0]
+        return annotations
+
+    @staticmethod
+    def source_type_parameters(
+        owner: p.Infra.RopeSourceObject,
+    ) -> tuple[tuple[int, int], ...]:
+        """Retain native PEP 695 declarations, including their bounds/defaults.
+
+        Rope records the complete parameter node in ``fragments`` under the
+        ``type-parameter-token`` role. Its separate ``token_bindings`` index
+        contains only the identifier. These fragment regions therefore retain
+        unpacking prefixes, bounds and defaults without parsing their text.
+
+        Returns:
+            Complete type-parameter regions in their original declaration order.
+
+        Raises:
+            TypeError: The declaring module is not a native source module.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module = owner.get_module()
+        if not runtime.source_module(module):
+            message = "Type parameters require a native source module"
+            raise TypeError(message)
+        return tuple(
+            sorted({
+                (fragment.start, fragment.end)
+                for fragment in module.get_source_binding_index().fragments
+                if fragment.context.role == "type-parameter-token"
+                and fragment.context.structural_scope.pyobject is owner
+            })
+        )
+
+    @classmethod
+    def settings_branch_fields(
+        cls,
+        source_project: p.Infra.RopeProject,
+        source_files: Sequence[Path],
+        wanted: frozenset[str],
+    ) -> frozenset[str]:
+        """Authenticate immediate annotated settings fields through native identity.
+
+        The invocation supplies its elected files and original project. Rope's
+        class graph elects the settings owners; its semantic matcher and binding
+        index distinguish direct declarations from conditional suite bindings.
+
+        Returns:
+            Requested names declared directly on genuine settings/config classes.
+
+        Raises:
+            TypeError: A canonical owner or indexed source violates its contract.
+
+        """
+        if not wanted:
+            return frozenset()
+        runtime = FlextInfraUtilitiesRopeRuntime
+        roots = cls._settings_owner_roots(source_project)
+        proven: set[str] = set()
+        for path in source_files:
+            module = source_project.get_pymodule(
+                runtime.file_resource_at(source_project, path), force_errors=True
+            )
+            if not runtime.source_module(module):
+                msg = f"Settings field inventory is not a native source module: {path}"
+                raise TypeError(msg)
+            proven.update(
+                name
+                for scope in cls._class_scopes(module)
+                if wanted.intersection(scope.get_defined_names())
+                and cls._settings_owner(scope.pyobject, roots)
+                for name in cls._direct_settings_fields(module, scope, wanted)
+            )
+        return frozenset(proven)
+
+    @classmethod
+    def _settings_owner_roots(
+        cls,
+        source_project: p.Infra.RopeProject,
+    ) -> list[p.Infra.RopeSourceClass]:
+        """Authenticate the canonical settings owner classes in flext-core.
+
+        Returns:
+            The native settings and config owner classes.
+
+        Raises:
+            TypeError: A canonical owner violates its native class contract.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        roots: list[p.Infra.RopeSourceClass] = []
+        for module_name, name in (
+            ("flext_core._settings", "FlextSettings"),
+            ("flext_core._config", "FlextConfig"),
+        ):
+            module = source_project.get_module(module_name)
+            if not runtime.source_module(module):
+                msg = f"Native settings module is not a source module: {module_name}"
+                raise TypeError(msg)
+            owner = module.get_attribute(name).get_object()
+            if not runtime.py_class(owner):
+                msg = (
+                    f"Native settings owner is not a source class: {module_name}.{name}"
+                )
+                raise TypeError(msg)
+            roots.append(owner)
+        return roots
+
+    @staticmethod
+    def _class_scopes(module: p.Infra.RopeSourceModule) -> list[p.Infra.RopeScope]:
+        """Collect every class scope of one module.
+
+        Returns:
+            The module's class scopes.
+
+        """
+        scopes: list[p.Infra.RopeScope] = []
+        pending: list[p.Infra.RopeScope] = [module.get_scope()]
+        while pending:
+            scope = pending.pop()
+            pending.extend(scope.get_scopes())
+            if scope.get_kind() == "Class":
+                scopes.append(scope)
+        return scopes
+
+    @staticmethod
+    def _settings_owner(
+        candidate: p.Infra.RopePyObject,
+        roots: Sequence[p.Infra.RopeSourceClass],
+    ) -> bool:
+        """Follow Rope's original superclass identities without spelling rules.
+
+        Returns:
+            The resulting ``bool``.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        pending = [candidate]
+        visited: set[int] = set()
+        while pending:
+            owner = pending.pop()
+            if any(owner is root for root in roots):
+                return True
+            if id(owner) in visited:
+                continue
+            visited.add(id(owner))
+            if runtime.abstract_class(owner):
+                pending.extend(owner.get_superclasses())
+        return False
+
+    @staticmethod
+    def _direct_settings_fields(
+        module: p.Infra.RopeSourceModule,
+        scope: p.Infra.RopeScope,
+        wanted: frozenset[str],
+    ) -> frozenset[str]:
+        """Query whole native annotated declarations at class-body depth.
+
+        Returns:
+            The resulting ``frozenset[str]``.
+
+        Raises:
+            TypeError: If Settings field query requires the native word finder contract.
+            ValueError: If Native settings class has no unique indexed declaration.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        index = module.get_source_binding_index()
+        finder = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
+        )
+        if not isinstance(finder, p.Infra.RopeWorder):
+            msg = "Settings field query requires the native word finder contract"
+            raise TypeError(msg)
+        owners = tuple(
+            fragment
+            for fragment in index.fragments
+            if module.lines.get_line_number(fragment.start) == scope.get_start()
+            and finder.get_word_at(fragment.start) == "class"
+        )
+        if len(owners) != 1:
+            msg = "Native settings class has no unique indexed declaration"
+            raise ValueError(msg)
+        owner = owners[0]
+        direct = frozenset(
+            (fragment.start, fragment.end)
+            for fragment in index.fragments
+            if fragment.depth == owner.depth + 1
+            and owner.start < fragment.start < fragment.end <= owner.end
+            and index.context_at(fragment.start).structural_scope.pyobject
+            is scope.pyobject
+        )
+        proven: set[str] = set()
+        for name in wanted:
+            binding = scope.get_defined_names().get(name)
+            if (
+                binding is None
+                or not runtime.assigned_name(binding)
+                or not any(
+                    assignment.type_hint is not None
+                    for assignment in binding.assignments
+                )
+            ):
+                continue
+            for pattern in (
+                f"{name}: ${{annotation}}",
+                f"{name}: ${{annotation}} = ${{value}}",
+            ):
+                regions = runtime.semantic_regions(
+                    module,
+                    pattern,
+                    arguments={},
+                    start=owner.start,
+                    end=owner.end,
+                )
+                if direct.intersection(regions):
+                    proven.add(name)
+        return frozenset(proven)
 
     @staticmethod
     def discover_first_party_namespaces(
         project_dir: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrSequence:
+    ) -> Sequence[str]:
         """Discover live regular, namespace, and stub packages under ``src/``.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         """
         src_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
@@ -44,7 +407,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def find_import_insert_position(
-        lines: t.StrSequence,
+        lines: Sequence[str],
         *,
         past_existing: bool = True,
     ) -> int:
@@ -107,7 +470,7 @@ class FlextInfraUtilitiesRopeSource:
             The resulting ``t.StrPairSequence``.
 
         """
-        result: t.MutableSequenceOf[t.StrPair] = []
+        result: MutableSequence[tuple[str, str]] = []
         for part in names_str.split(","):
             candidate = part.strip().rstrip("\\").strip()
             if not candidate or candidate.startswith(("(", ")")):
@@ -120,38 +483,11 @@ class FlextInfraUtilitiesRopeSource:
         return result
 
     @classmethod
-    def hoist_inline_imports(
-        cls,
-        file_path: Path,
-        statement_lines: t.SequenceOf[t.IntPair],
-    ) -> bool:
-        """Move function-local import statements to the module import block.
-
-        ``statement_lines`` holds the 1-based inclusive line span of each
-        import statement a rule found. The statements are removed from their
-        function bodies and their dedented text is added once after the
-        module's last top-level import. A body left empty, or a result that no
-        longer parses, raises: the move is never half-applied.
-
-        Returns:
-            The resulting ``bool``.
-
-        """
-        if not statement_lines:
-            return False
-        source = file_path.read_text(encoding=c.DEFAULT_ENCODING)
-        updated = cls.plan_hoist_inline_imports(file_path, source, statement_lines)
-        if updated == source:
-            return False
-        file_path.write_text(updated, encoding=c.DEFAULT_ENCODING)
-        return True
-
-    @classmethod
     def plan_hoist_inline_imports(
         cls,
         file_path: Path,
         source: str,
-        statement_lines: t.SequenceOf[t.IntPair],
+        statement_lines: Sequence[t.IntPair],
     ) -> str:
         """Plan the same statement hoist without changing its physical source.
 
@@ -180,7 +516,7 @@ class FlextInfraUtilitiesRopeSource:
     @staticmethod
     def statements_at_module_end(
         source: str,
-        statement_lines: t.SequenceOf[t.IntPair],
+        statement_lines: Sequence[t.IntPair],
         *,
         filename: str,
     ) -> str:
@@ -222,7 +558,7 @@ class FlextInfraUtilitiesRopeSource:
     def rewrite_source_at_offsets(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-        changes: t.SequenceOf[t.Triple[int, int, str]],
+        changes: Sequence[tuple[int, int, str]],
         *,
         apply: bool = True,
     ) -> str:

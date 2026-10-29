@@ -6,16 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Sequence
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
-from flext_infra import c, m, t
-from flext_infra._utilities._docs.docs_collection_sources import (
+from flext_infra import c, m
+from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsCollectionSources,
+    FlextInfraUtilitiesDocsContract,
 )
-from flext_infra._utilities._docs.docs_contract import FlextInfraUtilitiesDocsContract
 
 
 class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources):
@@ -33,8 +33,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             self.canonical = canonical
             self.projection = projection
             self.manifest = manifest
-            self.states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-            self.desired: t.MutableMappingKV[Path, bytes] = {}
+            self.states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+            self.desired: MutableMapping[Path, bytes] = {}
             self.history = list(manifest.revisions)
             self.observed = {
                 (item.identity, item.digest) for item in manifest.revisions
@@ -67,7 +67,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
 
         def absorb_artifacts(
             self,
-            artifacts: t.VariadicTuple[m.Cli.AtomicFileState],
+            artifacts: tuple[m.Cli.AtomicFileState, ...],
         ) -> None:
             """Merge one path's collected states, rejecting concurrent change.
 
@@ -118,7 +118,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         def record_private(
             self,
             source: m.Infra.PlanCollectionSource,
-            paths: t.VariadicTuple[Path],
+            paths: tuple[Path, ...],
         ) -> None:
             """Record a private-inventory source's coverage."""
             self.coverage.append(
@@ -147,7 +147,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         def record_public(
             self,
             source: m.Infra.PlanCollectionSource,
-            paths: t.VariadicTuple[Path],
+            paths: tuple[Path, ...],
         ) -> None:
             """Record a published source's coverage."""
             self.coverage.append(
@@ -223,7 +223,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         repository_root: Path,
         configuration: m.Infra.PlanCollectionConfig,
-    ) -> t.Triple[Path, Path, Path | None]:
+    ) -> tuple[Path, Path, Path | None]:
         """Validate and resolve the collection canonical and projection roots.
 
         Returns:
@@ -324,9 +324,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         source_root: Path,
         source: m.Infra.PlanCollectionSource,
-        paths: t.VariadicTuple[Path],
+        paths: tuple[Path, ...],
         state: _CollectionState,
-        excluded_outputs: t.VariadicTuple[Path],
+        excluded_outputs: tuple[Path, ...],
     ) -> None:
         """Collect every published artifact of one source path set."""
         for path in paths:
@@ -354,7 +354,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         root: Path,
         configuration: m.Infra.PlanCollectionConfig,
         state: _CollectionState,
-        excluded_outputs: t.VariadicTuple[Path],
+        excluded_outputs: tuple[Path, ...],
     ) -> None:
         """Run every configured source through its collection adapter.
 
@@ -384,7 +384,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
 
     @staticmethod
     def _collection_index_text(
-        revisions: t.SequenceOf[m.Infra.PlanCollectionRevision],
+        revisions: Sequence[m.Infra.PlanCollectionRevision],
     ) -> str:
         """Render the collected-plan index markdown.
 
@@ -418,7 +418,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         root: Path,
         state: _CollectionState,
-        revisions: t.SequenceOf[m.Infra.PlanCollectionRevision],
+        revisions: Sequence[m.Infra.PlanCollectionRevision],
     ) -> m.Infra.PlanCollectionBundle:
         """Plan every desired output and assemble the collection bundle.
 
@@ -469,7 +469,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             configuration,
         )
         cls._require_unique_sources(configuration)
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
+        states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
         manifest, excluded_outputs = cls.docs_collection_manifest(
             canonical,
             projection,
@@ -493,7 +493,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         canonical: Path,
         source_root: Path,
         source: m.Infra.PlanCollectionSource,
-        artifacts: t.VariadicTuple[m.Cli.AtomicFileState],
+        artifacts: tuple[m.Cli.AtomicFileState, ...],
         *,
         previous: m.Infra.PlanCollectionRevision | None,
     ) -> m.Infra.PlanCollectionRevision:
@@ -565,10 +565,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         canonical: Path,
         incoming_revision: m.Infra.PlanCollectionRevision,
-        artifacts: t.VariadicTuple[m.Cli.AtomicFileState],
-        desired: t.MutableMappingKV[Path, bytes],
+        artifacts: tuple[m.Cli.AtomicFileState, ...],
+        desired: MutableMapping[Path, bytes],
         *,
-        states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
     ) -> m.Infra.PlanCollectionRevision:
         """Keep curated canonical text intact while recording incoming revisions.
 

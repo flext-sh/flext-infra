@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import ClassVar
@@ -18,11 +18,9 @@ from typing import ClassVar
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesProtectedEditLinting
 from flext_infra._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
-)
-from flext_infra._utilities.protected_edit_linting import (
-    FlextInfraUtilitiesProtectedEditLinting,
+    FlextInfraUtilitiesGitSemanticIdentity,
 )
 
 
@@ -83,7 +81,7 @@ class FlextInfraUtilitiesRefactor:
     @contextmanager
     def mod_native_readers(
         artifacts: tuple[m.Cli.AtomicFileReceipt, ...],
-    ) -> Generator[t.MappingKV[Path, p.Cli.AtomicFileReader]]:
+    ) -> Generator[Mapping[Path, p.Cli.AtomicFileReader]]:
         """Retain one authenticated descriptor per artifact for one consumer pass.
 
         Args:
@@ -112,7 +110,7 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def mod_native_payload(
         finding: m.Infra.ModScanFinding,
-        readers: t.MappingKV[Path, p.Cli.AtomicFileReader],
+        readers: Mapping[Path, p.Cli.AtomicFileReader],
     ) -> t.JsonMapping:
         """Hydrate one complete native record explicitly through its retained reader.
 
@@ -180,7 +178,7 @@ class FlextInfraUtilitiesRefactor:
     def _finding_repository(
         entry: m.Infra.ModOccurrence | m.Infra.ModTextFinding,
         repository_root: Path | None,
-        topology: t.SequenceOf[Path],
+        topology: Sequence[Path],
     ) -> str:
         """Resolve the repository owner of one native finding.
 
@@ -220,10 +218,10 @@ class FlextInfraUtilitiesRefactor:
         | m.Infra.ModScanEvidence
         | m.Infra.ModTextReport,
         repository_root: Path | None,
-        topology: t.SequenceOf[Path],
-    ) -> t.Pair[
-        t.MutableMappingKV[t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]],
-        t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]],
+        topology: Sequence[Path],
+    ) -> tuple[
+        MutableMapping[tuple[str, str], MutableMapping[tuple[str, str], int]],
+        MutableMapping[tuple[str, str], list[int]],
     ]:
         """Count one report's lexical occurrences and entry positions.
 
@@ -238,13 +236,11 @@ class FlextInfraUtilitiesRefactor:
             and rule key.
 
         """
-        occurrences: t.MutableMappingKV[
-            t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
+        occurrences: MutableMapping[
+            tuple[str, str], MutableMapping[tuple[str, str], int]
         ] = defaultdict(Counter)
-        positions: t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]] = defaultdict(
-            list
-        )
-        entries: t.SequenceOf[m.Infra.ModOccurrence | m.Infra.ModTextFinding] = (
+        positions: MutableMapping[tuple[str, str], list[int]] = defaultdict(list)
+        entries: Sequence[m.Infra.ModOccurrence | m.Infra.ModTextFinding] = (
             report.entries
         )
         for index, entry in enumerate(entries):
@@ -257,12 +253,10 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def _rule_delta_rows(
         engine: str,
-        counters: t.SequenceOf[
-            t.MutableMappingKV[
-                t.Pair[str, str], t.MutableMappingKV[t.Pair[str, str], int]
-            ]
+        counters: Sequence[
+            MutableMapping[tuple[str, str], MutableMapping[tuple[str, str], int]]
         ],
-        indexes: t.SequenceOf[t.MutableMappingKV[t.Pair[str, str], t.ListOf[int]]],
+        indexes: Sequence[MutableMapping[tuple[str, str], list[int]]],
         inventory: tuple[tuple[str, str], ...],
     ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
         """Build the per-repository and per-rule occurrence deltas.
@@ -394,7 +388,7 @@ class FlextInfraUtilitiesRefactor:
         project: Path,
         before: m.Infra.ViolationsSweepSources,
         after: m.Infra.ViolationsSweepSources,
-        lint_failures: t.SequenceOf[str],
+        lint_failures: Sequence[str],
         *,
         ast_observed: bool,
     ) -> tuple[m.Infra.ViolationsEngineCoverage, ...]:
@@ -734,11 +728,11 @@ class FlextInfraUtilitiesRefactor:
         return tuple(introduced)
 
     @staticmethod
-    def string_list(value: t.JsonValue | None) -> t.StrSequence:
+    def string_list(value: t.JsonValue | None) -> Sequence[str]:
         """Normalize policy fields that should contain string collections.
 
         Returns:
-            The resulting ``t.StrSequence``.
+            The resulting ``Sequence[str]``.
 
         Raises:
             TypeError: If expected list value.
@@ -748,7 +742,7 @@ class FlextInfraUtilitiesRefactor:
             return []
         if isinstance(value, str):
             return [value]
-        validated: p.Result[t.StrSequence] = u.validate_value(
+        validated: p.Result[Sequence[str]] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             value,
         )
@@ -776,7 +770,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def write_impact_map(
-        results: t.SequenceOf[m.Infra.Result],
+        results: Sequence[m.Infra.Result],
         output_path: Path,
     ) -> p.Result[bool]:
         """Write refactor impact map JSON to disk.
@@ -1001,7 +995,7 @@ class FlextInfraUtilitiesRefactor:
             The exact worktree Git directory, or the original identity failure.
 
         """
-        return FlextInfraUtilitiesGitSemanticIdentityMixin.exact_worktree_git_dir(root)
+        return FlextInfraUtilitiesGitSemanticIdentity.exact_worktree_git_dir(root)
 
     @staticmethod
     def publish_refactor_report_evidence(

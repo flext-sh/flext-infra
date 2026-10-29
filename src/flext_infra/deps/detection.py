@@ -6,21 +6,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.deps import FlextInfraDependencyDetectionRunnersMixin
+from flext_infra.deps import FlextInfraDepsDetectionRunners
 
 
-class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionRunnersMixin):
+class FlextInfraDependencyDetectionService(FlextInfraDepsDetectionRunners):
     """Runtime vs dev dependency detector using deptry and pip-check."""
 
     _log = u.fetch_logger(__name__)
 
     @staticmethod
     def classify_issues(
-        issues: t.SequenceOf[t.JsonMapping],
+        issues: Sequence[t.JsonMapping],
     ) -> m.Infra.DeptryIssueGroups:
         """Classify deptry issues by error code (DEP001-DEP004).
 
@@ -57,7 +57,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionRunnersM
     def build_project_report(
         self,
         project_name: str,
-        deptry_issues: t.SequenceOf[t.JsonMapping],
+        deptry_issues: Sequence[t.JsonMapping],
     ) -> m.Infra.ProjectDependencyReport:
         """Build a project dependency report from classified deptry issues.
 
@@ -68,12 +68,12 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionRunnersM
         classified = self.classify_issues(deptry_issues)
 
         def _module_names(
-            items: t.SequenceOf[t.MappingKV[str, t.JsonValue | None]],
-        ) -> t.MutableSequenceOf[str]:
+            items: Sequence[Mapping[str, t.JsonValue | None]],
+        ) -> MutableSequence[str]:
             """Extract module names from classified issue items.
 
             Returns:
-                The resulting ``t.MutableSequenceOf[str]``.
+                The resulting ``MutableSequence[str]``.
 
             """
             return [
@@ -96,28 +96,28 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionRunnersM
     @staticmethod
     def discover_project_paths(
         repository_root: Path,
-        projects_filter: t.StrSequence | None = None,
-    ) -> p.Result[t.SequenceOf[Path]]:
+        projects_filter: Sequence[str] | None = None,
+    ) -> p.Result[Sequence[Path]]:
         """Discover project paths with pyproject.toml in workspace.
 
         Returns only the Path objects, filtered to those with pyproject.toml.
         For full ProjectInfo metadata, use u.Infra.discover_projects().
 
         Returns:
-            The resulting ``p.Result[t.SequenceOf[Path]]``.
+            The resulting ``p.Result[Sequence[Path]]``.
 
         """
         names = projects_filter or []
         result = u.Infra.resolve_projects(repository_root, names)
         if result.failure:
-            return r[t.SequenceOf[Path]].from_failure(result)
-        projects_info: t.SequenceOf[m.Infra.ProjectInfo] = result.value
+            return r[Sequence[Path]].from_failure(result)
+        projects_info: Sequence[m.Infra.ProjectInfo] = result.value
         projects = [
             project.path
             for project in projects_info
             if (project.path / c.PYPROJECT_FILENAME).exists()
         ]
-        return r[t.SequenceOf[Path]].ok(sorted(projects))
+        return r[Sequence[Path]].ok(sorted(projects))
 
 
 __all__: list[str] = ["FlextInfraDependencyDetectionService"]

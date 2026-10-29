@@ -7,16 +7,20 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from contextlib import closing
+from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from pathlib import Path
-from typing import TYPE_CHECKING, override
-
-import libcst as cst
-from libcst.metadata import MetadataWrapper, PositionProvider
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r
+from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
+)
+from flext_infra._utilities._rope.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._semantic_cutover.declaration_payload import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -27,14 +31,9 @@ from flext_infra._utilities._semantic_cutover.edits import (
 from flext_infra._utilities._semantic_cutover.own_mro import (
     FlextInfraUtilitiesSemanticCutoverOwnMro,
 )
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-    from libcst.metadata import CodeRange
-
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticComposition(
@@ -46,72 +45,12 @@ class FlextInfraUtilitiesSemanticComposition(
 ):
     """Implement the composition law using native identities and existing edits."""
 
-    class _Rewrite(cst.CSTTransformer):
-        """Publish only the authenticated declaration and consumer coordinates."""
-
-        def __init__(
-            self,
-            source: str,
-            positions: t.MappingKV[cst.CSTNode, CodeRange],
-            bases: t.MappingKV[int, t.StrSequence],
-            retired: frozenset[int],
-            consumers: t.MappingKV[t.Pair[int, int], cst.BaseExpression],
-        ) -> None:
-            self.lines = source.splitlines()
-            self.positions = positions
-            self.bases = bases
-            self.retired = retired
-            self.consumers = consumers
-
-        @override
-        def leave_SimpleStatementLine(
-            self,
-            original_node: cst.SimpleStatementLine,
-            updated_node: cst.SimpleStatementLine,
-        ) -> cst.SimpleStatementLine | cst.RemovalSentinel:
-            position = self.positions[original_node]
-            return (
-                cst.RemovalSentinel.REMOVE
-                if position.start.line in self.retired
-                else updated_node
-            )
-
-        @override
-        def leave_ClassDef(
-            self, original_node: cst.ClassDef, updated_node: cst.ClassDef
-        ) -> cst.ClassDef:
-            position = self.positions[original_node]
-            additions = self.bases.get(position.start.line, ())
-            if not additions:
-                return updated_node
-            return updated_node.with_changes(
-                bases=(
-                    *updated_node.bases,
-                    *(cst.Arg(cst.parse_expression(name)) for name in additions),
-                )
-            )
-
-        @override
-        def leave_Attribute(
-            self, original_node: cst.Attribute, updated_node: cst.Attribute
-        ) -> cst.BaseExpression:
-            position = self.positions[original_node]
-            key = (
-                position.start.line,
-                len(
-                    self.lines[position.start.line - 1][: position.start.column].encode(
-                        c.DEFAULT_ENCODING
-                    )
-                ),
-            )
-            return self.consumers.get(key, updated_node)
-
     @classmethod
     def plan_facade_composition(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        sources: t.MappingKV[Path, str],
-    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        sources: Mapping[Path, str],
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Plan authored MRO dispatch, utility alias retirement and every consumer.
 
         Returns:
@@ -120,14 +59,27 @@ class FlextInfraUtilitiesSemanticComposition(
         """
         authored = dict(cls._editable_sources(sources))
         working = dict(sources)
-        for path, source in authored.items():
-            working[path] = cls.rewrite_own_method_mro_calls(source)[0]
-        with closing(cls.snapshot_project(workspace.rope_project, working)) as project:
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            workspace.repository_root,
+            planned_sources=working,
+            source_project=workspace.rope_project,
+        ) as (project, _sources):
+            for path, source in authored.items():
+                working[path] = cls.rewrite_own_method_mro_calls(
+                    source,
+                    source_project=project,
+                    file_path=path,
+                )[0]
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            workspace.repository_root,
+            planned_sources=working,
+            source_project=workspace.rope_project,
+        ) as (project, _sources):
             aliases: list[
-                t.Quad[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
+                tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
             ] = []
             bases: dict[Path, dict[int, list[str]]] = {}
-            retired: dict[Path, set[int]] = {}
+            retired: dict[Path, set[tuple[int, int]]] = {}
             for path in authored:
                 if (
                     cls.facade_family_of_source(
@@ -138,10 +90,10 @@ class FlextInfraUtilitiesSemanticComposition(
                     continue
                 module = cls._composition_module(project, path)
                 selected = cls._composition_aliases(project, module)
-                for owner, name, target, expression, line in selected:
+                for owner, name, target, expression, span in selected:
                     cls._require_composition_members(owner, target, aliases)
                     aliases.append((owner, name, target, expression))
-                    retired.setdefault(path, set()).add(line)
+                    retired.setdefault(path, set()).add(span)
                     if target not in owner.get_superclasses():
                         additions = bases.setdefault(path, {}).setdefault(
                             cls._composition_class_ast(owner).lineno, []
@@ -151,17 +103,23 @@ class FlextInfraUtilitiesSemanticComposition(
             for path in authored:
                 module = cls._composition_module(project, path)
                 consumers = cls._composition_consumers(module, working[path], aliases)
-                wrapper = MetadataWrapper(cst.parse_module(working[path]))
-                working[path] = wrapper.visit(
-                    cls._Rewrite(
-                        working[path],
-                        wrapper.resolve(PositionProvider),
-                        bases.get(path, {}),
-                        frozenset(retired.get(path, set())),
-                        consumers,
-                    )
-                ).code
-        return r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+                working[path] = cls._apply_composition_edits(
+                    project,
+                    path,
+                    working[path],
+                    (
+                        *cls._retired_statement_rewrites(
+                            working[path],
+                            frozenset(retired.get(path, set())),
+                        ),
+                        *cls._class_base_rewrites(
+                            working[path],
+                            bases.get(path, {}),
+                        ),
+                        *consumers.values(),
+                    ),
+                )
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -195,7 +153,13 @@ class FlextInfraUtilitiesSemanticComposition(
     def _composition_aliases(
         cls, project: p.Infra.RopeProject, module: p.Infra.RopeParsedModule
     ) -> Iterator[
-        tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str, int]
+        tuple[
+            p.Infra.RopeSourceClass,
+            str,
+            p.Infra.RopeSourceClass,
+            str,
+            tuple[int, int],
+        ]
     ]:
         for owner in cls._composition_classes(module.get_scope()):
             if not cls.utility_namespace_declaration(project, owner):
@@ -225,7 +189,8 @@ class FlextInfraUtilitiesSemanticComposition(
                 if cls.py_class(target) and cls.utility_behavior_provider(
                     project, target
                 ):
-                    yield owner, name, target, ast.unparse(expression), statement.lineno
+                    span = (statement.lineno, statement.end_lineno or statement.lineno)
+                    yield owner, name, target, ast.unparse(expression), span
 
     @staticmethod
     def _composition_class_ast(owner: p.Infra.RopeSourceClass) -> ast.ClassDef:
@@ -251,8 +216,8 @@ class FlextInfraUtilitiesSemanticComposition(
         cls,
         owner: p.Infra.RopeSourceClass,
         target: p.Infra.RopeSourceClass,
-        aliases: t.SequenceOf[
-            t.Quad[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
+        aliases: Sequence[
+            tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
         ],
     ) -> None:
         """Reject formerly independent namespaces with competing behavior.
@@ -281,21 +246,21 @@ class FlextInfraUtilitiesSemanticComposition(
         cls,
         module: p.Infra.RopeParsedModule,
         source: str,
-        aliases: t.SequenceOf[
-            t.Quad[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
+        aliases: Sequence[
+            tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
         ],
-    ) -> dict[t.Pair[int, int], cst.BaseExpression]:
+    ) -> dict[tuple[int, int], m.Infra.SourceRewrite]:
         """Rebind method receivers only after their complete native owner proof.
 
         Returns:
-            Authenticated method references keyed by original source coordinates.
+            Authenticated method rewrites keyed by original source coordinates.
 
         Raises:
             ValueError: A behavior alias escapes as a class identity.
             TypeError: If the composition consumer has no native module syntax.
 
         """
-        rewritten: dict[t.Pair[int, int], cst.BaseExpression] = {}
+        rewritten: dict[tuple[int, int], m.Infra.SourceRewrite] = {}
         tree = module.get_ast()
         if not isinstance(tree, ast.AST):
             message = "Composition consumer has no native module syntax"
@@ -338,10 +303,122 @@ class FlextInfraUtilitiesSemanticComposition(
                         f"{module.get_name()}:{node.lineno}:{ast.unparse(node)}"
                     )
                     raise ValueError(message)
-                rewritten[parent.lineno, parent.col_offset] = cst.parse_expression(
-                    f"{ast.unparse(node.value)}.{parent.attr}"
+                replacement = f"{ast.unparse(node.value)}.{parent.attr}"
+                span = cls.node_span_offsets(source, parent)
+                if span is None:
+                    message = "composition consumer has no complete source span"
+                    raise ValueError(message)
+                rewritten[parent.lineno, parent.col_offset] = m.Infra.SourceRewrite(
+                    start=span[0],
+                    end=span[1],
+                    text=replacement,
                 )
         return rewritten
+
+    @staticmethod
+    def _retired_statement_rewrites(
+        source: str,
+        retired: AbstractSet[tuple[int, int]],
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
+        """Plan whole-line removal of every retired alias declaration.
+
+        Returns:
+            The deletion rewrites for the retired statement line ranges.
+
+        """
+        lines = source.splitlines(keepends=True)
+        return tuple(
+            m.Infra.SourceRewrite(
+                start=sum(len(line) for line in lines[: node.lineno - 1]),
+                end=sum(len(line) for line in lines[: node.end_lineno or node.lineno]),
+                text="",
+            )
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Assign | ast.AnnAssign)
+            and (node.lineno, node.end_lineno or node.lineno) in retired
+        )
+
+    @staticmethod
+    def _class_base_rewrites(
+        source: str,
+        bases: Mapping[int, Sequence[str]],
+    ) -> tuple[m.Infra.SourceRewrite, ...]:
+        """Plan appending composed bases to their authenticated declarations.
+
+        Returns:
+            The insertion rewrites for the composed class bases.
+
+        """
+        lines = source.splitlines(keepends=True)
+        return tuple(
+            FlextInfraUtilitiesSemanticComposition._class_base_addition(
+                lines,
+                node,
+                additions,
+            )
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.ClassDef)
+            and (additions := bases.get(node.lineno, ()))
+        )
+
+    @classmethod
+    def _apply_composition_edits(
+        cls,
+        project: p.Infra.RopeProject,
+        path: Path,
+        source: str,
+        edits: tuple[m.Infra.SourceRewrite, ...],
+    ) -> str:
+        """Apply every authenticated composition edit in one change transaction.
+
+        Returns:
+            The rewritten source, unchanged when no edit was authenticated.
+
+        """
+        if not edits:
+            return source
+        return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            cls.file_resource_at(project, path),
+            source,
+            edits,
+        ).new_contents
+
+    @staticmethod
+    def _class_base_addition(
+        lines: Sequence[str],
+        declaration: ast.ClassDef,
+        additions: Sequence[str],
+    ) -> m.Infra.SourceRewrite:
+        """Plan appending composed bases to one class declaration header.
+
+        Returns:
+            The insertion rewrite after the last declared base, or the rewrite
+            opening a base list on a previously bare declaration.
+
+        Raises:
+            ValueError: If the declaration or its last base has no complete span.
+
+        """
+        rendered = ", ".join(additions)
+        if declaration.bases:
+            last = declaration.bases[-1]
+            if last.end_lineno is None or last.end_col_offset is None:
+                msg = "composition base has no complete source span"
+                raise ValueError(msg)
+            prefix = lines[last.end_lineno - 1].encode(c.DEFAULT_ENCODING)
+            end = sum(len(line) for line in lines[: last.end_lineno - 1]) + len(
+                prefix[: last.end_col_offset].decode(c.DEFAULT_ENCODING)
+            )
+            return m.Infra.SourceRewrite(start=end, end=end, text=f", {rendered}")
+        line = lines[declaration.lineno - 1]
+        column = len(
+            line.encode(c.DEFAULT_ENCODING)[: declaration.col_offset].decode(
+                c.DEFAULT_ENCODING
+            )
+        )
+        colon = line.index(":", column)
+        start = sum(len(item) for item in lines[: declaration.lineno - 1]) + colon
+        return m.Infra.SourceRewrite(start=start, end=start + 1, text=f"({rendered}):")
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticComposition"]

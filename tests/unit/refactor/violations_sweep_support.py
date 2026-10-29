@@ -6,15 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli, config
 from tests import c, m, tm, u
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
 
 LOCAL_RULE_CATALOG = (
     f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"

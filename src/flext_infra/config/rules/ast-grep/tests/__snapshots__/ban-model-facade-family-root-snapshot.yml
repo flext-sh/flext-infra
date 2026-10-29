@@ -1,14 +1,14 @@
 id: ban-model-facade-family-root
 snapshots:
-  "class FlextFooModels(FlextCliModels):\n    pass\n":
+  "class FlextModelsFoo(FlextCliModels):\n    pass\n":
     labels:
     - source: |-
-        class FlextFooModels(FlextCliModels):
+        class FlextModelsFoo(FlextCliModels):
             pass
       style: primary
       start: 0
       end: 46
-    - source: FlextFooModels
+    - source: FlextModelsFoo
       style: secondary
       start: 6
       end: 20
@@ -17,21 +17,21 @@ snapshots:
       start: 20
       end: 36
     - source: |
-        class FlextFooModels(FlextCliModels):
+        class FlextModelsFoo(FlextCliModels):
             pass
       style: secondary
       start: 0
       end: 47
-  "class FlextFooModels(StateModel, FlextCliModels):\n    class State(m.BaseModel):\n        name: str\n":
+  "class FlextModelsFoo(StateModel, FlextCliModels):\n    class State(m.BaseModel):\n        name: str\n":
     labels:
     - source: |-
-        class FlextFooModels(StateModel, FlextCliModels):
+        class FlextModelsFoo(StateModel, FlextCliModels):
             class State(m.BaseModel):
                 name: str
       style: primary
       start: 0
       end: 97
-    - source: FlextFooModels
+    - source: FlextModelsFoo
       style: secondary
       start: 6
       end: 20
@@ -40,7 +40,7 @@ snapshots:
       start: 20
       end: 48
     - source: |
-        class FlextFooModels(StateModel, FlextCliModels):
+        class FlextModelsFoo(StateModel, FlextCliModels):
             class State(m.BaseModel):
                 name: str
       style: secondary

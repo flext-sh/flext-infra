@@ -7,18 +7,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tempfile
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitStateSnapshotMixin,
+    FlextInfraUtilitiesGitStateSnapshot,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotMixin):
+class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
     """Read and assemble checkpoint trees without touching a real index."""
 
     @classmethod
@@ -26,8 +26,8 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
         cls,
         root: Path,
         commit: str,
-        paths: t.SequenceOf[Path],
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+        paths: Sequence[Path],
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         if not paths:
             return ()
         repo = cls._repo(root)
@@ -51,8 +51,8 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
     def state_index_update(
         cls,
         root: Path,
-        removed: t.SequenceOf[Path],
-        entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        removed: Sequence[Path],
+        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
         *,
         index_file: Path | None = None,
     ) -> None:
@@ -80,8 +80,8 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
         cls,
         root: Path,
         base: str,
-        paths: t.SequenceOf[Path],
-        entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        paths: Sequence[Path],
+        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
     ) -> Generator[Path]:
         """Select an isolated index containing only the explicit scoped effects.
 
@@ -119,7 +119,7 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
     def _state_tree(
         cls,
         snapshot: m.Infra.GitWorktreeStateSnapshot,
-        entries: t.SequenceOf[m.Infra.GitWorktreeIndexEntry],
+        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
     ) -> str:
         """Write the captured tree through the same isolated-index owner.
 
@@ -147,7 +147,7 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
     def _state_working_entries(
         cls,
         snapshot: m.Infra.GitWorktreeStateSnapshot,
-    ) -> t.VariadicTuple[m.Infra.GitWorktreeIndexEntry]:
+    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
         return tuple(
             m.Infra.GitWorktreeIndexEntry(path=file.path, mode=file.mode, oid=file.oid)
             for file in snapshot.files
@@ -193,4 +193,4 @@ class FlextInfraUtilitiesGitStateTreesMixin(FlextInfraUtilitiesGitStateSnapshotM
                 raise ValueError(msg)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesGitStateTreesMixin"]
+__all__: list[str] = ["FlextInfraUtilitiesGitStateTrees"]

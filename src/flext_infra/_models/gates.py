@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
@@ -56,7 +56,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         files: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.SccFile],
+            tuple[FlextInfraModelsGates.SccFile, ...],
             m.Field(alias="Files", description="Every scanned file in this language"),
         ]
 
@@ -130,7 +130,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Explicit runtime binary directory owning the scanner"),
         ]
         source: Annotated[
-            t.VariadicTuple[m.Cli.AtomicPhysicalTreeManifest],
+            tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
             m.Field(
                 min_length=1, description="Production trees consumed by the scanner"
             ),
@@ -216,21 +216,21 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ] = None
         ruff_args: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Extra arguments for Ruff"),
         ] = ()
         pyright_args: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Extra arguments for Pyright"),
         ] = ()
         selected_files: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(
                 description="Validated literal file selection; empty means project"
             ),
         ] = ()
         candidate_files: Annotated[
-            t.VariadicTuple[Path],
+            tuple[Path, ...],
             m.Field(description="Complete sealed source-plan inventory for admission"),
         ] = ()
         check_progress: Annotated[
@@ -361,7 +361,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         version: Annotated[t.NonEmptyStr, m.Field(description="Pyright version")]
         time: Annotated[t.NonEmptyStr, m.Field(description="Report timestamp")]
         general_diagnostics: Annotated[
-            t.SequenceOf[FlextInfraModelsGates.PyrightDiagnostic],
+            Sequence[FlextInfraModelsGates.PyrightDiagnostic],
             m.Field(alias="generalDiagnostics", description="Pyright diagnostics"),
         ]
         summary: Annotated[
@@ -423,7 +423,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         """Required native Pyrefly JSON envelope, including a clean empty list."""
 
         errors: Annotated[
-            t.SequenceOf[FlextInfraModelsGates.PyreflyDiagnostic],
+            Sequence[FlextInfraModelsGates.PyreflyDiagnostic],
             m.Field(description="Native Pyrefly diagnostics"),
         ]
 
@@ -573,7 +573,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         reports: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.GateReportEvidence],
+            tuple[FlextInfraModelsGates.GateReportEvidence, ...],
             m.Field(
                 min_length=1, description="Original report identities and byte digests"
             ),
@@ -719,7 +719,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Reaped original producer outcome"),
         ]
         reports: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.GateReportEvidence],
+            tuple[FlextInfraModelsGates.GateReportEvidence, ...],
             m.Field(description="Original producer report byte bindings"),
         ]
         report_root: Annotated[
@@ -740,7 +740,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             Path | None, m.Field(description="Published immutable original receipt")
         ]
         issues: Annotated[
-            t.VariadicTuple[FlextInfraModelsCheck.Issue],
+            tuple[FlextInfraModelsCheck.Issue, ...],
             m.Field(description="Actual capture or candidate eligibility failures"),
         ] = ()
 
@@ -785,13 +785,13 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         covered_gates: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 min_length=1, max_length=1, description="Exactly covered original stage"
             ),
         ]
         commands: Annotated[
-            t.VariadicTuple[FlextInfraModelsGates.GateCommandEvidence],
+            tuple[FlextInfraModelsGates.GateCommandEvidence, ...],
             m.Field(
                 min_length=1, max_length=1, description="Original accepted execution"
             ),
@@ -830,7 +830,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Allowed-signers principal"),
         ]
         gates: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 min_length=1, max_length=1, description="Original canonical Make stage"
             ),
@@ -876,7 +876,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="OpenSSH allowed_signers file"),
         ]
         expected_gates: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(min_length=1, max_length=1, description="Required original stage"),
         ]
         context_digest: Annotated[
@@ -922,7 +922,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             t.NonEmptyStr,
             m.Field(description="Verified signer principal"),
         ]
-        covered_gates: Annotated[t.StrSequence, m.Field(description="Covered gates")]
+        covered_gates: Annotated[Sequence[str], m.Field(description="Covered gates")]
         context_digest: Annotated[
             str, m.Field(description="Verified execution context")
         ]

@@ -12,7 +12,7 @@ from typing import Annotated, Literal
 from flext_cli import c, m, t
 
 
-class FlextInfraSettingsModels:
+class FlextInfraModelsSettings:
     """Private namespace for validated settings payloads."""
 
     class InfraSettings(m.BaseSettings):
@@ -45,6 +45,11 @@ class FlextInfraSettingsModels:
             default=None,
             validation_alias="GITHUB_ACTIONS",
             description="Actual hosted-runner signal used before host-path election.",
+        )
+        upgrade_packages: Annotated[tuple[t.NonEmptyStr, ...], m.ForceDecode] = m.Field(
+            default=(),
+            validation_alias="FLEXT_INFRA_UPGRADE_PACKAGES",
+            description="Explicit Python package upgrade scope; empty upgrades all.",
         )
         profile: bool = m.Field(
             default=False,
@@ -138,4 +143,4 @@ class FlextInfraSettingsModels:
         )
 
 
-__all__: list[str] = ["FlextInfraSettingsModels"]
+__all__: list[str] = ["FlextInfraModelsSettings"]

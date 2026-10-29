@@ -12,12 +12,12 @@ from pathlib import Path
 from tests import c, m, p, t, tm
 
 
-class TestsFlextInfraImmutableConstants:
+class TestsFlextInfraConstantsImmutable:
     """Observe exact scalar types and construction identity after public plans."""
 
     @staticmethod
     def test_integer_returns_and_frozenset_predicates_reach_fixed_point(
-        constants_workspace: t.Pair[Path, Path],
+        constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
         infra_subprocess: p.Cli.CommandRunner,
     ) -> None:
@@ -126,7 +126,7 @@ class TestsFlextInfraImmutableConstants:
 
     @staticmethod
     def test_reassigned_and_mutable_owners_are_not_candidates(
-        constants_workspace: t.Pair[Path, Path],
+        constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
     ) -> None:
         """Reassignment, mutable containers and call-produced values stay local."""

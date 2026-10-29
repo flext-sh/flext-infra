@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -86,7 +87,7 @@ class TestsFlextInfraServiceBaseAlias:
         ],
     )
     def test_command_filter_normalization(
-        value: str | t.StrSequence | None,
+        value: str | Sequence[str] | None,
         expected: str | None,
     ) -> None:
         """Services and public helpers consume the same selector normalization."""

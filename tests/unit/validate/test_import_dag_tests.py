@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import pytest
@@ -16,14 +17,14 @@ from tests import c, tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m, p, t
+    from tests import m, p
 
 
 class TestsFlextInfraImportDag:
     """Verify allowed and forbidden package-test import edges."""
 
     @staticmethod
-    def _project(tmp_path: Path, files: t.MappingKV[str, str]) -> Path:
+    def _project(tmp_path: Path, files: Mapping[str, str]) -> Path:
         project = tmp_path / "sample"
         (project / c.PYPROJECT_FILENAME).parent.mkdir(parents=True, exist_ok=True)
         (project / c.PYPROJECT_FILENAME).write_text(

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraScannerGateMixin(FlextInfraGate):
+class FlextInfraScannerGate(FlextInfraGate):
     """Mixin for gates that detect per-file issues via a rope-backed scanner.
 
     Subclasses provide ``scan_error_message`` and implement
@@ -78,15 +79,15 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
         file_path: Path,
         project_dir: Path,
         rope_project: t.Infra.RopeProject,
-    ) -> t.SequenceOf[m.Infra.Issue]:
+    ) -> Sequence[m.Infra.Issue]:
         """Override in subclass to detect issues for a single file.
 
         Returns:
-            The resulting ``t.SequenceOf[m.Infra.Issue]``.
+            The resulting ``Sequence[m.Infra.Issue]``.
 
         """
         _ = file_path, project_dir, rope_project
         return ()
 
 
-__all__: list[str] = ["FlextInfraScannerGateMixin"]
+__all__: list[str] = ["FlextInfraScannerGate"]

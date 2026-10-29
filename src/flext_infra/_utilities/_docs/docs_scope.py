@@ -6,12 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities._docs.docs_scope_projects import (
-    FlextInfraUtilitiesDocsScopeProjectsMixin,
-)
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeProjects
 
 
-class FlextInfraUtilitiesDocsScope(FlextInfraUtilitiesDocsScopeProjectsMixin):
+class FlextInfraUtilitiesDocsScope(FlextInfraUtilitiesDocsScopeProjects):
     """Utility helpers for docs scope policy and project classification."""
 
 

@@ -846,12 +846,20 @@ rule:
             kind: decorated_definition
             inside:
               kind: module
-  not:
-    has:
-      field: superclasses
-      has:
-        kind: identifier
-        regex: "Mixin$"
+    # Fires only outside legitimate composition: no Mixin base and no
+    # upstream facade base (Flext*Aliases, FlextFooCache, ...).
+    - not:
+        has:
+          field: superclasses
+          has:
+            kind: identifier
+            regex: "Mixin$"
+    - not:
+        has:
+          field: superclasses
+          has:
+            kind: identifier
+            regex: "^Flext[A-Z]"
   any:
     - has:
         field: superclasses

@@ -15,12 +15,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import FlextRuntime
 from flext_core.config_sources import FlextStrictYamlConfigSource
 
 from flext_infra import c, m, r, t, u
@@ -29,7 +28,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodegenVscodeMixin:
+class FlextInfraCodegenVscode:
     """Produce the canonical ``.vscode/settings.json`` document for one root."""
 
     @classmethod
@@ -43,9 +42,11 @@ class FlextInfraCodegenVscodeMixin:
             Library defaults overlaid by this project's and local declarations.
 
         """
-        return u.Infra.load_codegen_inputs(repository_root).map(
-            lambda inputs: inputs.spec.vscode,
-        )
+
+        def editor_spec(inputs: m.Infra.CodegenInputs) -> m.Infra.CodegenVscodeSpec:
+            return inputs.spec.vscode
+
+        return u.Infra.load_codegen_inputs(repository_root).map(editor_spec)
 
     @staticmethod
     def vscode_settings(spec: m.Infra.CodegenVscodeSpec) -> t.JsonMapping:
@@ -113,7 +114,7 @@ class FlextInfraCodegenVscodeMixin:
 
         """
         artifact_settings = cls._artifact_settings(codegen)
-        pairs: t.JsonValueList = [
+        pairs: list[t.JsonValue] = [
             [key, value]
             for key, value in sorted(portable.items())
             if key not in spec.stripped_keys
@@ -155,8 +156,9 @@ class FlextInfraCodegenVscodeMixin:
         """Return the canonical-merged ``settings.json`` document for one root.
 
         ``spec`` is an explicitly resolved project configuration. Live custom
-        keys remain intact outside its declared ownership. Rendering never
-        consults Git or rewrites paths for an attached member's physical runtime.
+        keys remain intact outside its declared ownership. Rendering
+        elects the runtime through the existing topology owner when the
+        declaration selects an environment token.
 
         Returns:
             The canonical-merged ``settings.json`` document for one root.
@@ -169,7 +171,7 @@ class FlextInfraCodegenVscodeMixin:
         if read_result.failure:
             return r[str].from_failure(read_result)
         settings: t.MutableJsonMapping = {
-            key: FlextRuntime.normalize_to_json_value(value)
+            key: u.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
         if codegen is None:
@@ -291,7 +293,7 @@ class FlextInfraCodegenVscodeMixin:
                 index += 1
                 continue
             if char == '"':
-                index = FlextInfraCodegenVscodeMixin._copy_string_literal(
+                index = FlextInfraCodegenVscode._copy_string_literal(
                     content,
                     index,
                     output,
@@ -322,7 +324,7 @@ class FlextInfraCodegenVscodeMixin:
         while index < len(content):
             char = content[index]
             if char == '"':
-                index = FlextInfraCodegenVscodeMixin._copy_string_literal(
+                index = FlextInfraCodegenVscode._copy_string_literal(
                     content,
                     index,
                     output,
@@ -361,31 +363,94 @@ class FlextInfraCodegenVscodeMixin:
             codegen = loaded.value.spec
         spec = codegen.vscode if spec is None else spec
         changed = cls._apply_union_settings(settings, spec.map_union_settings)
-        for key, value in cls.vscode_settings(spec).items():
-            normalized = FlextRuntime.normalize_to_json_value(value)
-            if key not in settings or settings[key] != normalized:
-                settings[key] = normalized
-                changed = True
+        token = spec.runtime_environment_token
+        changed |= cls._apply_declared_settings(settings, spec, repository_root, token)
         # The three exclude maps are complete projections of the artifact SSOT.
         # Replacing them removes retired artifacts instead of preserving stale
         # generated keys forever. Only explicitly declared non-artifact maps use
         # merge semantics.
-        artifact_maps = cls._artifact_settings(codegen)
-        artifacts_changed = False
-        for key, canonical_map in artifact_maps.items():
-            canonical = {
-                name: FlextRuntime.normalize_to_json_value(value)
-                for name, value in canonical_map.items()
-            }
-            if settings.get(key) == canonical:
-                continue
-            settings[key] = canonical
-            artifacts_changed = True
+        artifacts_changed = cls._replace_artifact_maps(settings, codegen)
         # Stripped keys are owned canonically by pyproject.toml [tool.pyright];
         # keeping them in settings.json makes Pylance emit settingsNotOverridable
         # warnings. Actively delete every retired key so existing files converge
         # to a warning-free projection.
         stripped_changed = cls._strip_retired_keys(settings, spec.stripped_keys)
+        stripped_changed |= cls._strip_retired_map_keys(settings, spec)
+        return r[bool].ok(
+            artifacts_changed or stripped_changed or changed,
+        )
+
+    @classmethod
+    def _apply_declared_settings(
+        cls,
+        settings: t.MutableJsonMapping,
+        spec: m.Infra.CodegenVscodeSpec,
+        repository_root: Path,
+        token: str | None,
+    ) -> bool:
+        """Merge declared settings with environment binding into the mapping.
+
+        Returns:
+            Whether any declared setting changed.
+
+        """
+        environment = (
+            "${workspaceFolder}/"
+            + u.Infra
+            .runtime_environment_dir(repository_root)
+            .relative_to(repository_root.resolve(), walk_up=True)
+            .as_posix()
+            if token is not None
+            else ""
+        )
+        changed = False
+        for key, value in cls.vscode_settings(spec).items():
+            normalized = u.normalize_to_json_value(value)
+            if token is not None:
+                normalized = cls._bind_environment_value(
+                    normalized, token=token, environment=environment
+                )
+            if key not in settings or settings[key] != normalized:
+                settings[key] = normalized
+                changed = True
+        return changed
+
+    @staticmethod
+    def _replace_artifact_maps(
+        settings: t.MutableJsonMapping,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> bool:
+        """Replace the artifact-owned exclude maps with their canonical values.
+
+        Returns:
+            Whether any artifact map changed.
+
+        """
+        changed = False
+        artifact_maps = FlextInfraCodegenVscode._artifact_settings(codegen)
+        for key, canonical_map in artifact_maps.items():
+            canonical = {
+                name: u.normalize_to_json_value(value)
+                for name, value in canonical_map.items()
+            }
+            if settings.get(key) == canonical:
+                continue
+            settings[key] = canonical
+            changed = True
+        return changed
+
+    @staticmethod
+    def _strip_retired_map_keys(
+        settings: t.MutableJsonMapping,
+        spec: m.Infra.CodegenVscodeSpec,
+    ) -> bool:
+        """Drop retired names from non-artifact maps the spec declares.
+
+        Returns:
+            Whether any retired map entry was removed.
+
+        """
+        changed = False
         for key, retired in spec.stripped_map_keys.items():
             current = settings.get(key)
             if isinstance(current, Mapping):
@@ -395,16 +460,40 @@ class FlextInfraCodegenVscodeMixin:
                     if name not in retired
                 }
                 if retained != current:
-                    settings[key] = FlextRuntime.normalize_to_json_value(retained)
-                    stripped_changed = True
-        return r[bool].ok(
-            artifacts_changed or stripped_changed or changed,
-        )
+                    settings[key] = u.normalize_to_json_value(retained)
+                    changed = True
+        return changed
+
+    @classmethod
+    def _bind_environment_value(
+        cls, value: t.JsonValue, *, token: str, environment: str
+    ) -> t.JsonValue:
+        """Bind the declared environment token inside one validated setting.
+
+        Returns:
+            The same JSON shape with environment tokens resolved in string values.
+
+        """
+        if isinstance(value, str):
+            return value.replace(token, environment)
+        if isinstance(value, list):
+            return [
+                cls._bind_environment_value(item, token=token, environment=environment)
+                for item in value
+            ]
+        if isinstance(value, Mapping):
+            return {
+                key: cls._bind_environment_value(
+                    item, token=token, environment=environment
+                )
+                for key, item in value.items()
+            }
+        return value
 
     @staticmethod
     def _artifact_settings(
         codegen: m.Infra.CodegenConfigSpec,
-    ) -> t.MappingKV[str, t.MappingKV[str, str | bool]]:
+    ) -> Mapping[str, Mapping[str, str | bool]]:
         """Project the declared artifact maps through their single editor owner.
 
         Returns:
@@ -420,7 +509,7 @@ class FlextInfraCodegenVscodeMixin:
     @staticmethod
     def _strip_retired_keys(
         settings: t.MutableJsonMapping,
-        stripped_keys: t.StrSequence,
+        stripped_keys: Sequence[str],
     ) -> bool:
         """Delete every key listed in ``stripped_keys`` from the settings mapping.
 
@@ -451,7 +540,7 @@ class FlextInfraCodegenVscodeMixin:
             current = settings.get(key)
             existing: t.MutableJsonMapping = (
                 {
-                    name: FlextRuntime.normalize_to_json_value(value)
+                    name: u.normalize_to_json_value(value)
                     for name, value in current.items()
                 }
                 if isinstance(current, Mapping)
@@ -460,7 +549,7 @@ class FlextInfraCodegenVscodeMixin:
             merged = {
                 **dict(existing),
                 **{
-                    name: FlextRuntime.normalize_to_json_value(value)
+                    name: u.normalize_to_json_value(value)
                     for name, value in canonical_map.items()
                 },
             }
@@ -471,4 +560,4 @@ class FlextInfraCodegenVscodeMixin:
         return changed
 
 
-__all__: list[str] = ["FlextInfraCodegenVscodeMixin"]
+__all__: list[str] = ["FlextInfraCodegenVscode"]

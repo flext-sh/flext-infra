@@ -20,9 +20,9 @@ snapshots:
       style: secondary
       start: 111
       end: 112
-  "m = FlextDemoModels\n":
+  "m = FlextModelsDemo\n":
     labels:
-    - source: m = FlextDemoModels
+    - source: m = FlextModelsDemo
       style: primary
       start: 0
       end: 19
