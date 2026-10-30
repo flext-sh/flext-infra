@@ -211,10 +211,10 @@ class FlextInfraModelsDocsCollection:
                 "Typed source association digest; None only before first collection"
             ),
         )
-        coverage: tuple[
-            FlextInfraModelsDocsCollection.PlanCollectionCoverage, ...
-        ] = m.Field(
-            description="Complete source coverage from the published collection",
+        coverage: tuple[FlextInfraModelsDocsCollection.PlanCollectionCoverage, ...] = (
+            m.Field(
+                description="Complete source coverage from the published collection",
+            )
         )
 
         revisions: tuple[FlextInfraModelsDocsCollection.PlanCollectionRevision, ...] = (
@@ -279,7 +279,7 @@ class FlextInfraModelsDocsCollection:
         )
         source_revisions: tuple[tuple[Path, t.NonEmptyStr], ...] = m.Field(
             description="Source-relative plans and revision digests observed in this "
-                        "run",
+            "run",
         )
         status: Literal["collected", "private-inventory", "empty"] = m.Field(
             description="Observed collection coverage, not reconciliation status",

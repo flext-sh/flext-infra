@@ -1018,9 +1018,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return self._external_reference(
                     target, attributes[1:], visiting | {target}, depth + 1
                 )
-            if attributes[0] in self._provider_source_bindings(
-                module_name, self._providers[module_name].get_module(), resource
-            ) or owned or module_name in self._sources:
+            if (
+                attributes[0]
+                in self._provider_source_bindings(
+                    module_name, self._providers[module_name].get_module(), resource
+                )
+                or owned
+                or module_name in self._sources
+            ):
                 physical = self._physical_declared_reference(
                     module_name, resource, attributes[0]
                 )
@@ -1958,6 +1963,23 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 bindings.get(name) if bindings is not None else None
             ) or self._planned_lazy_binding(module, name)
             if binding is None:
+                # The last path segment may be a submodule rather than a
+                # lazy binding: dissolve-move waves publish classes into
+                # sibling modules elected by file stem, so the module's own
+                # declaration carries the base.
+                submodule = f"{module}.{name}"
+                if submodule in self._modules:
+                    return self._resolve(
+                        m.Infra.SourceClassReference(
+                            target=submodule,
+                            attributes=tuple(remaining),
+                            qualified_base=f"{submodule}.{remaining[0]}"
+                            if remaining
+                            else submodule,
+                        ),
+                        visiting | {key},
+                        depth + 1,
+                    )
                 message = (
                     f"Planned namespace has no module binding: {module}.{name}"
                     if bindings is None

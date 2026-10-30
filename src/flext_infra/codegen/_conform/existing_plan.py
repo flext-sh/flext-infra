@@ -1215,10 +1215,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             for item in codegen.templates.entries
             if item.destination == destination
         )
-        rendered = self.render_artifact_source(codegen, entry, context)
+        rendered = self._render_artifact_authenticated(codegen, entry, context)
         if rendered.failure:
             return result_type.from_failure(rendered)
-        content = rendered.value
+        content = rendered.value.rendered
         conflict_marker = u.Infra.first_merge_conflict_marker(content)
         if conflict_marker is not None:
             return result_type.fail(
@@ -1236,6 +1236,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             content,
             mode=managed_spec.mode,
             ownership=managed_spec,
+            inputs=rendered.value.source_states,
         )
 
     @classmethod
@@ -1600,7 +1601,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         result_type = r[m.Infra.CodegenFilePlan]
         root = render_inputs.target.root
         rendered = (
-            r[str].fail(
+            r[m.Cli.AuthenticatedTemplateRender].fail(
                 f"managed render entry has no template source: {entry.destination}",
             )
             if entry.source is None
@@ -1621,12 +1622,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             )
             return result_type.from_failure(rendered)
         composed = (
-            rendered
+            rendered.map(lambda payload: payload.rendered)
             if entry.source_kind == "resource"
             else self.compose_project_artifact(
                 root,
                 entry.destination,
-                rendered.value,
+                rendered.value.rendered,
                 render_inputs=render_inputs,
             )
         )
@@ -1655,16 +1656,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             mode=managed.mode,
             ownership=managed,
             inputs=(
-                ()
-                if entry.bootstrap_distribution is None
-                else (
-                    *render_inputs.workspace.inputs,
-                    *(
-                        state
-                        for plan in planned_manifests
-                        for state in (plan.before, *plan.inputs)
-                    ),
-                )
+                *rendered.value.source_states,
+                *(
+                    ()
+                    if entry.bootstrap_distribution is None
+                    else (
+                        *render_inputs.workspace.inputs,
+                        *(
+                            state
+                            for plan in planned_manifests
+                            for state in (plan.before, *plan.inputs)
+                        ),
+                    )
+                ),
             ),
         )
         if planned.success and names is not None:

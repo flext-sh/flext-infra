@@ -436,12 +436,12 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         if rendered.failure:
             return result_type.from_failure(rendered)
         rendered_content = (
-            rendered
+            rendered.map(lambda payload: payload.rendered)
             if entry.source_kind == "resource"
             else self.compose_project_artifact(
                 root,
                 destination,
-                rendered.value,
+                rendered.value.rendered,
                 render_inputs=render_inputs,
             )
         )
@@ -466,16 +466,19 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             ),
             ownership=entry.ownership,
             inputs=(
-                ()
-                if entry.bootstrap_distribution is None
-                else (
-                    *render_inputs.workspace.inputs,
-                    *(
-                        state
-                        for plan in planned_manifests
-                        for state in (plan.before, *plan.inputs)
-                    ),
-                )
+                *rendered.value.source_states,
+                *(
+                    ()
+                    if entry.bootstrap_distribution is None
+                    else (
+                        *render_inputs.workspace.inputs,
+                        *(
+                            state
+                            for plan in planned_manifests
+                            for state in (plan.before, *plan.inputs)
+                        ),
+                    )
+                ),
             ),
         )
         if planned.success and names is not None:

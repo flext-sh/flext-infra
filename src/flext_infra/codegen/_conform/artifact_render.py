@@ -58,16 +58,44 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             A result containing the rendered artifact or an error.
 
         """
+        return FlextInfraCodegenConformArtifactRender._render_artifact_authenticated(
+            codegen, entry, context
+        ).map(lambda rendered: rendered.rendered)
+
+    @staticmethod
+    def _render_artifact_authenticated(
+        codegen: m.Infra.CodegenConfigSpec,
+        entry: m.Infra.TemplateEntrySpec,
+        context: p.Model,
+    ) -> p.Result[m.Cli.AuthenticatedTemplateRender]:
+        """Retain the original resource or Jinja observations with its text.
+
+        Returns:
+            The native authenticated payload, or the first read/render failure.
+
+        """
+        result_type = r[m.Cli.AuthenticatedTemplateRender]
         source = u.Infra.codegen_artifact_source(codegen, entry)
         if entry.source_kind == "resource":
             if entry.source_package is None:
-                return r[str].fail(
+                return result_type.fail(
                     f"resource has no explicit package owner: {entry.destination}",
                 )
-            return u.Cli.files_read_text(source)
-        return u.Cli.template_render_authenticated(source, context).map(
-            lambda rendered: rendered.rendered,
-        )
+            captured = u.Cli.atomic_read_binary_file_state(source, required=True)
+            if captured.failure:
+                return result_type.from_failure(captured)
+            content = captured.value.content
+            if content is None:
+                return result_type.fail(
+                    f"authenticated resource has no bytes: {source}"
+                )
+            return result_type.create_from_callable(
+                lambda: m.Cli.AuthenticatedTemplateRender(
+                    rendered=content.decode(c.DEFAULT_ENCODING),
+                    source_states=(captured.value,),
+                )
+            )
+        return u.Cli.template_render_authenticated(source, context)
 
     @staticmethod
     def _artifact_dependency_plans(
@@ -515,7 +543,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
         route: m.Infra.ArtifactRenderRoute,
-    ) -> p.Result[str]:
+    ) -> p.Result[m.Cli.AuthenticatedTemplateRender]:
         """Resolve one artifact render route and render its template source.
 
         ``route.failure_prefix`` carries the only difference between the
@@ -523,7 +551,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         scaffold planner prepends to a render failure.
 
         Returns:
-            The rendered content.
+            The rendered content with its original consumed source observations.
 
         Raises:
             ValueError: If the catalog entry has no renderable source.
@@ -535,7 +563,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             msg = f"render entry has no source: {destination}"
             raise ValueError(msg)
         if entry.source_kind == "resource":
-            return self.render_artifact_source(
+            return self._render_artifact_authenticated(
                 render_inputs.codegen,
                 entry,
                 m.Infra.StaticTextRenderSpec(),
@@ -556,26 +584,35 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
         )
         if artifact_context.failure:
-            return r[str].from_failure(artifact_context)
-        rendered = self.render_artifact_source(
+            return r[m.Cli.AuthenticatedTemplateRender].from_failure(artifact_context)
+        rendered = self._render_artifact_authenticated(
             render_inputs.codegen,
             entry,
             artifact_context.value,
         )
-        if rendered.failure or rendered.value.strip():
+        if rendered.failure or rendered.value.rendered.strip():
             return rendered
-        template = u.Cli.files_read_text(
-            u.Infra.codegen_artifact_source(render_inputs.codegen, entry)
+        source = (
+            u.Infra
+            .codegen_artifact_source(render_inputs.codegen, entry)
+            .expanduser()
+            .absolute()
         )
-        if template.failure:
-            return r[str].from_failure(template)
+        template = next(
+            (state for state in rendered.value.source_states if state.path == source),
+            None,
+        )
+        if template is None or template.content is None:
+            return r[m.Cli.AuthenticatedTemplateRender].fail(
+                f"rendered template has no original source observation: {source}"
+            )
         return self._require_rendered_content(
-            rendered.value,
+            rendered.value.rendered,
             template_relpath=entry.source,
             destination=destination,
             failure_prefix=route.failure_prefix,
-            template_source=template.value,
-        )
+            template_source=template.content.decode(c.DEFAULT_ENCODING),
+        ).map(lambda _content: rendered.value)
 
     def _bootstrap_rendered_source(
         self,
@@ -583,22 +620,27 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         entry: m.Infra.TemplateEntrySpec,
         *,
         planned_manifests: Sequence[m.Infra.CodegenFilePlan],
-    ) -> p.Result[str]:
+    ) -> p.Result[m.Cli.AuthenticatedTemplateRender]:
         """Render an executor-bootstrap artifact from its declared closure.
 
         Returns:
-            The rendered content.
+            The rendered content with its original template observations.
 
         """
+        distribution = entry.bootstrap_distribution
+        if distribution is None:
+            return r[m.Cli.AuthenticatedTemplateRender].fail(
+                "bootstrap artifact has no declared executor"
+            )
         bootstrap = u.Infra.workspace_bootstrap_requirements(
             render_inputs.target.root,
             render_inputs.workspace,
-            entry.bootstrap_distribution,
+            distribution,
             planned_manifests=planned_manifests,
         )
         if bootstrap.failure:
-            return r[str].from_failure(bootstrap)
-        return self.render_artifact_source(
+            return r[m.Cli.AuthenticatedTemplateRender].from_failure(bootstrap)
+        return self._render_artifact_authenticated(
             render_inputs.codegen, entry, bootstrap.value
         )
 

@@ -36,6 +36,46 @@ from flext_infra._utilities._rope.rope_source_bases_runtime import (
 class FlextInfraUtilitiesWorkspaceSnapshot:
     """Build the one snapshot of a workspace run and answer its queries."""
 
+    @staticmethod
+    def facade_original_sources(
+        root: Path,
+        states: tuple[m.Cli.AtomicFileState, ...],
+    ) -> Mapping[Path, str]:
+        """Select owned Python observations without another read or discovery.
+
+        Returns:
+            Captured Python text keyed by its authenticated source path.
+
+        """
+        return {
+            state.path: state.content.decode(c.DEFAULT_ENCODING)
+            for state in states
+            if state.content is not None
+            and state.path.is_relative_to(root)
+            and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            and not FlextInfraUtilitiesProjectDiscovery.source_scan_ignored_path(
+                root, state.path
+            )
+        }
+
+    @classmethod
+    def candidate_python_sources(
+        cls,
+        candidate: m.Infra.StageSourcePlan,
+        states: tuple[m.Cli.AtomicFileState, ...],
+    ) -> MutableMapping[Path, str]:
+        """Project source observations over the candidate's declared scopes.
+
+        Returns:
+            Python observations retained by reference until their decode boundary.
+
+        """
+        return {
+            path: source
+            for scope in candidate.workspaces or (candidate.workspace,)
+            for path, source in cls.facade_original_sources(scope, states).items()
+        }
+
     @classmethod
     @contextmanager
     def facade_source_project(

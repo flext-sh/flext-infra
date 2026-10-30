@@ -204,9 +204,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 The resulting ``list[m.Infra.PlanCollectionRevision]``.
 
             """
-            current = {
-                item.identity: item for item in self.current_revisions.values()
-            }
+            current = {item.identity: item for item in self.current_revisions.values()}
             return sorted(
                 current.values(),
                 key=FlextInfraUtilitiesDocsCollectionSources.collection_revision_order,
@@ -240,8 +238,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             self.desired[manifest_path] = (
                 m.Infra.PlanCollectionManifest(
                     configuration_sha256=(
-                        FlextInfraUtilitiesDocsCollectionSources
-                        .collection_configuration_digest(self.configuration)
+                        FlextInfraUtilitiesDocsCollectionSources.collection_configuration_digest(
+                            self.configuration
+                        )
                     ),
                     coverage=tuple(self.coverage),
                     revisions=tuple(self.history),
@@ -564,7 +563,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             msg = "collection verification requires enabled collection"
             raise ValueError(msg)
         _root, canonical, _projection = cls._validated_collection_roots(
-            repository_root, configuration,
+            repository_root,
+            configuration,
         )
         cls._require_unique_sources(configuration)
         states: MutableMapping[Path, m.Cli.AtomicFileState] = {
@@ -622,8 +622,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 raise ValueError(msg)
             if item.status != ("collected" if item.files else "empty"):
                 msg = (
-                    "published collection source coverage is inconsistent: "
-                    f"{identity}"
+                    f"published collection source coverage is inconsistent: {identity}"
                 )
                 raise ValueError(msg)
             cls._verify_collected_revisions(source, item, manifest)
@@ -684,9 +683,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             cls._validated_owned_path(locator)
             if not any(
                 locator.full_match(pattern) for pattern in source.plan_globs
-            ) or any(
-                locator.full_match(pattern) for pattern in source.exclude_globs
-            ):
+            ) or any(locator.full_match(pattern) for pattern in source.exclude_globs):
                 msg = f"collection coverage locator escapes source selectors: {locator}"
                 raise ValueError(msg)
             if (source.id, locator, digest) not in by_locator:
@@ -752,10 +749,13 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             incoming = canonical / cls._validated_owned_path(
                 revision.canonical_path.with_suffix("") / "incoming" / revision.digest,
             )
-            names = (Path(revision.source_path.name), *(
-                Path(revision.source_path.name).with_suffix("") / name
-                for name in revision.attachments
-            ))
+            names = (
+                Path(revision.source_path.name),
+                *(
+                    Path(revision.source_path.name).with_suffix("") / name
+                    for name in revision.attachments
+                ),
+            )
             paths = (
                 incoming / "plan.md",
                 *(incoming / "attachments" / name for name in revision.attachments),
@@ -780,12 +780,16 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             provenance = m.Infra.PlanCollectionRevision.model_validate_json(
                 provenance_content,
             )
-            if provenance != revision or cls.collection_revision_digest(
-                tuple(
-                    (name, states[path])
-                    for name, path in zip(names, paths, strict=True)
-                ),
-            ) != revision.digest:
+            if (
+                provenance != revision
+                or cls.collection_revision_digest(
+                    tuple(
+                        (name, states[path])
+                        for name, path in zip(names, paths, strict=True)
+                    ),
+                )
+                != revision.digest
+            ):
                 msg = (
                     "published collection revision provenance or digest differs: "
                     f"{revision.identity}"

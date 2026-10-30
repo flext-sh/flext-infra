@@ -460,10 +460,45 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> tuple[int, int] | tuple[None, None]: ...
 
     @runtime_checkable
+    class RopeSourceClassLayout(Protocol):
+        """Native class source regions and resolved direct annotation qualifiers."""
+
+        @property
+        def region(self) -> tuple[int, int]: ...
+
+        @property
+        def header(self) -> tuple[int, int]: ...
+
+        @property
+        def body(self) -> tuple[int, int]: ...
+
+        @property
+        def bases(self) -> tuple[tuple[int, int], ...]: ...
+
+        @property
+        def decorators(self) -> tuple[tuple[int, int], ...]: ...
+
+        @property
+        def annotated_bindings(
+            self,
+        ) -> tuple[
+            tuple[
+                tuple[int, int],
+                FlextInfraProtocolsRopeRuntime.RopePyName | None,
+                bool,
+            ],
+            ...,
+        ]: ...
+
+    @runtime_checkable
     class RopeSourceBindingIndex(Protocol):
         """Native source binding index, including PEP 695 type parameters."""
 
         def absolute_import_roots(self) -> frozenset[str]: ...
+
+        def class_layout(
+            self, scope: FlextInfraProtocolsRopeRuntime.RopeScope
+        ) -> FlextInfraProtocolsRopeRuntime.RopeSourceClassLayout: ...
 
         def assignment_string_sequence(
             self,

@@ -121,7 +121,7 @@ class FlextInfraModelsCodegenPipeline:
             )
 
     class CodegenPlan(FlextInfraModelsConfigContract.ConfigContract):
-        """Fully validated plan produced before any managed-file write."""
+        """Candidate effects retaining their native repository failure boundaries."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
@@ -155,6 +155,12 @@ class FlextInfraModelsCodegenPipeline:
             tuple[FlextInfraModelsCheck.Issue, ...],
             m.Field(description="Planning failures retained alongside valid outputs"),
         ] = ()
+        outcomes: tuple[
+            FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
+        ] = m.Field(
+            default=(),
+            description="Original repository outcomes retained for coherent admission",
+        )
 
     class CodegenResult(FlextInfraModelsBase.FrozenArbitrary):
         """The generation plan and the files its publication changed."""

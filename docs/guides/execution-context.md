@@ -3960,6 +3960,29 @@ the performance result without reducing scope or raising deadlines.
 
 ## Workspace snapshot and analysis engine
 
+**Approved facade-planner cutover, 2026-10-29; implementation and runtime proof
+pending.** [ADR-018's nested projection contract](../../../docs/architecture/adr/018-generator-declarations.md#nested-facade-projection)
+requires a total rewrite of `codegen_facades.py` into a few declarative
+composition lines, extending the existing workspace DSL with facade planning.
+Reuse its native session, source bindings, queries and the existing utility
+operations through `c/t/p/m/u`. Retire `CodegenFacadeSyntax` and the authored
+CST/AST routes with their consumers; neither a moved monolith, a wrapper nor
+visitors over native syntax nodes satisfies this cutover. Existing typed
+candidate, initializer planner, injected ports and publisher remain the sole
+owners of their responsibilities. Preserve all features and establish net code
+reduction across the complete change. The mechanism descriptions below retain
+their behavioral requirements, not permission to preserve superseded analysis.
+
+Scope failures through the existing typed result/model and publication owners,
+at the smallest coherent transaction or cohort. Retain cause, traceback and
+context in diagnostics, and account for failed and unreached units. Continue
+only proven independent work; an integrity failure blocks unsafe dependents.
+The final command remains nonzero if errors occurred, preserving valid effects
+and WIP. A local failure must neither crash unrelated independent work nor
+become a silent skip or fake success. Unexpected exceptions are not broadly
+captured and normalized; no second error framework is introduced. This is the
+current target under ADR-018, not proof that the executor implements it.
+
 Recursive component facades use the existing family declaration renderer and
 native C3 ordering. Each private component domain publishes through its sibling
 module and the child package's generated initializer. Discovery follows the
@@ -3989,9 +4012,11 @@ native resolution state, not cached declaration kinds. Exception, enum and proto
 classification still precede that query; unresolved contracts, empty contracts and
 invalid ancestry retain their failures. The factory is discarded when its operation
 or captured source view ends, never retained across publication or source changes.
-The method admission predicate reads the class's cached native AST, including
-conditional definitions and excluding methods owned by nested classes. Native
-member bindings are evaluated only when superclass suppliers do not elect it.
+Method admission must use the existing DSL's native declaration, callable and
+descriptor queries, retaining conditional definitions and excluding methods
+owned by nested classes. The former predicate over cached native AST is a
+superseded implementation path, not a permitted replacement for LibCST.
+Native member bindings are evaluated only when superclass suppliers do not elect it.
 Domains at one depth stage their seeds together before one dependent initializer
 pass; shallower domains then consume the completed child publications.
 An unchanged module owner retains its captured native view while seeding.

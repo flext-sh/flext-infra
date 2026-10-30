@@ -263,17 +263,28 @@ class FlextInfraUtilitiesImportLawNormalization(
         source_project, import_graph, member_resolver = native
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         plans: list[m.Infra.CodegenFilePlan] = []
+        skipped: list[str] = []
         for path in files:
             source = sources[path]
             if source.startswith(c.Infra.AUTOGEN_HEADER):
                 continue
-            normalized = cls._import_law_normalize_source(
-                location=(project_root, path),
-                source=source,
-                inputs=(import_graph, sources, source_project),
-                member_resolver=member_resolver,
-                runtime_diagnostics=runtime_diagnostics,
-            )
+            try:
+                normalized = cls._import_law_normalize_source(
+                    location=(project_root, path),
+                    source=source,
+                    inputs=(import_graph, sources, source_project),
+                    member_resolver=member_resolver,
+                    runtime_diagnostics=runtime_diagnostics,
+                )
+            except (ValueError, TypeError) as exc:
+                # Resilient degradation: one unnormalizable source is recorded
+                # in the typed evidence sink and skipped so the repository plan
+                # keeps building; the check gates surface the underlying
+                # violation at their own owner.
+                skipped.append(f"{path}: {exc}")
+                if runtime_diagnostics is not None:
+                    runtime_diagnostics[path.as_posix()] = (str(exc),)
+                continue
             if normalized is None or normalized == source:
                 continue
             before = (
@@ -297,6 +308,13 @@ class FlextInfraUtilitiesImportLawNormalization(
             )
         cls._import_law_annotation_summary()
         cls._publication_scan_summary()
+        if skipped:
+            u.Cli.warning(
+                f"import normalization degraded sources count={len(skipped)}; "
+                "recorded in runtime diagnostics, violations owned by check gates"
+            )
+            for entry in skipped:
+                u.Cli.warning(f"  degraded {entry}")
         return result_type.ok(tuple(plans))
 
     @classmethod

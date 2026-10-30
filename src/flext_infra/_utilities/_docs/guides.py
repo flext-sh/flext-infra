@@ -127,9 +127,7 @@ class FlextInfraUtilitiesDocsGuides:
         if captured.failure:
             return result.from_failure(captured)
         content = (
-            previous.desired_content
-            if previous is not None
-            else captured.value.content
+            previous.desired_content if previous is not None else captured.value.content
         )
         if content is None:
             return result.fail(f"declared Make contract guide is absent: {path}")

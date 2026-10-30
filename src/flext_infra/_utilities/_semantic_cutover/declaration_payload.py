@@ -54,30 +54,17 @@ class FlextInfraUtilitiesDeclarationPayload(
         cls,
         value: p.Infra.RopePyObject,
     ) -> Sequence[p.Infra.RopePyObject]:
-        """Retain the native C3 order, including positioned unresolved witnesses.
-
-        Rope dc15 keeps an ``UnresolvedBase`` in its MRO position by policy
-        (TypedDict synthetic bases, staged renames): the witness occupies its
-        slot, contributes no ancestors, and never matches a first-party
-        declaration, so membership queries stay correct without rejecting
-        classes the native rope already accepted.
-
-        A candidate overlay can present one class through two concurrent views
-        (in-memory move target and disk resource), which the native C3
-        linearization rejects as blocked heads. Such a class degrades to the
-        singleton ancestry for this pass, exactly like a non-class value.
+        """Retain native C3 order, witnesses and the first hierarchy exception.
 
         Returns:
             The SDK ancestry, or the unchanged non-class singleton.
 
         """
-        # SDK ownership keeps classification and generation on one ancestry contract.
-        if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
-            try:
-                return tuple(value.get_mro())
-            except tuple(FlextInfraUtilitiesTypesRopeRuntime.rope_hierarchy_errors()):
-                return (value,)
-        return (value,)
+        return (
+            tuple(value.get_mro())
+            if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value)
+            else (value,)
+        )
 
     @classmethod
     def utility_behavior_provider(
@@ -125,45 +112,19 @@ class FlextInfraUtilitiesDeclarationPayload(
         Returns:
             Whether the declaration contains only admissible class storage.
 
-        Raises:
-            TypeError: The native utility declaration is not a class syntax tree.
-
         """
-        node = owner.get_ast()
-        if not isinstance(node, ast.ClassDef):
-            message = "utility provider has no native class syntax tree"
-            raise TypeError(message)
-        return not node.decorator_list and not any(
-            isinstance(member, ast.AnnAssign)
-            and not cls._declares_class_storage(project, owner.get_scope(), member)
-            for member in node.body
+        layout = (
+            owner
+            .get_module()
+            .get_source_binding_index()
+            .class_layout(owner.get_scope())
         )
-
-    @classmethod
-    def _declares_class_storage(
-        cls,
-        project: p.Infra.RopeProject,
-        scope: p.Infra.RopeScope,
-        member: ast.AnnAssign,
-    ) -> bool:
-        """Authenticate ClassVar and initialized Final through native identities.
-
-        Returns:
-            Whether the annotation proves class storage for this declaration.
-
-        """
-        annotation = member.annotation
-        qualifier = cls.resolve_symbol(
-            scope,
-            annotation.value if isinstance(annotation, ast.Subscript) else annotation,
-        )
-        return cls.same_name(
-            cls.qualified_name(project, "ClassVar", module_name="typing"), qualifier
-        ) or (
-            member.value is not None
-            and cls.same_name(
-                cls.qualified_name(project, "Final", module_name="typing"), qualifier
-            )
+        classvar = cls.qualified_name(project, "ClassVar", module_name="typing")
+        final = cls.qualified_name(project, "Final", module_name="typing")
+        return not layout.decorators and all(
+            cls.same_name(classvar, qualifier)
+            or (initialized and cls.same_name(final, qualifier))
+            for _region, qualifier, initialized in layout.annotated_bindings
         )
 
     @classmethod

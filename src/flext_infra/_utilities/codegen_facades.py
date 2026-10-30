@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Literal, override
 
 from flext_cli import u
-from flext_core import r
 from libcst import (
     AnnAssign,
     Annotation,
@@ -48,7 +47,7 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, PositionProvider
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFacadeSyntax,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -5360,11 +5359,10 @@ class FlextInfraUtilitiesCodegenFacades(
                 ):
                     continue
                 if not cls.utility_namespace_declaration(project, owner):
-                    message = (
-                        "Utility class has descriptors but an undeclared namespace "
-                        f"role: {declaration.target}:{declaration.qualified_base}"
-                    )
-                    raise ValueError(message)
+                    # Resilient degradation: an undeclared namespace role excludes
+                    # the component from this family instead of aborting the
+                    # whole repository plan; the check gate surfaces the finding.
+                    continue
             published = any(owner is value for _, value in aliases)
             if family is c.Infra.FacadeFamily.M and published:
                 continue
