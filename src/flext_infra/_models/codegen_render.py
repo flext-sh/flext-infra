@@ -423,9 +423,31 @@ class FlextInfraModelsCodegenRender:
         )
 
         class_name: t.NonEmptyStr = m.Field(description="Generated class name.")
-        base_class: t.NonEmptyStr = m.Field(description="Generated base class name.")
-        base_module: t.NonEmptyStr = m.Field(description="Module owning base_class.")
+        base_class: t.NonEmptyStr | None = m.Field(
+            description="Declared base class, absent for an uncomposed namespace."
+        )
+        base_module: t.NonEmptyStr | None = m.Field(
+            description="Module owning the declared base, paired with base_class."
+        )
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
+
+        @m.model_validator(mode="after")
+        def validate_declared_base(self) -> Self:
+            """Keep the optional class and module as one declaration contract.
+
+            Returns:
+                This validated source context.
+
+            Raises:
+                ValueError: Only one half of an imported base was supplied.
+
+            """
+            if (self.base_class is None) != (self.base_module is None):
+                message = (
+                    "A module skeleton declares its base class and module together"
+                )
+                raise ValueError(message)
+            return self
 
     class TestModuleSkeletonRenderContext(m.ContractModel):
         """Validated context for one generated test facade skeleton."""

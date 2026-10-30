@@ -37,8 +37,8 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesSemanticComposition(
-    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverOwnMro,
     FlextInfraUtilitiesSemanticCutoverEdits,

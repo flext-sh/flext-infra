@@ -23,6 +23,7 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities._rope._analysis.sourcescan import (
@@ -41,6 +42,56 @@ class FlextInfraUtilitiesCodegenNamespace:
     _declared_exports_cache: ClassVar[
         MutableMapping[str, tuple[str, Sequence[str]]]
     ] = {}
+
+    @classmethod
+    def facade_module_path(
+        cls,
+        pkg_dir: Path,
+        family: str,
+        *,
+        project: p.Infra.RopeProject | None = None,
+        sources: Mapping[Path, str] | None = None,
+    ) -> Path | None:
+        """Elect the immediate module publishing the requested native facade.
+
+        Returns:
+            The declared owner, or absence when this package declares no facade.
+
+        Raises:
+            ValueError: Source provenance or the publication identity is ambiguous.
+
+        """
+        if project is None or sources is None:
+            if project is not None or sources is not None:
+                message = "Facade election requires its project and source epoch"
+                raise ValueError(message)
+            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+                pkg_dir.parent
+            ) as (captured, contents):
+                return cls.facade_module_path(
+                    pkg_dir, family, project=captured, sources=contents
+                )
+        owners = tuple(
+            path
+            for path in project.source_children(pkg_dir)
+            if path.name != c.Infra.INIT_PY
+            and path.suffix == c.Infra.EXT_PYTHON
+            and project.source_query(path, "isfile")
+            and (
+                owner := FlextInfraUtilitiesRopeAnalysis.published_facade_owner(
+                    project,
+                    project.get_file(
+                        path.relative_to(Path(project.root.real_path)).as_posix()
+                    ),
+                )
+            )
+            is not None
+            and owner[0] == family
+        )
+        if len(owners) > 1:
+            message = f"Competing facade publications: {pkg_dir}:{family}: {owners}"
+            raise ValueError(message)
+        return owners[0] if owners else None
 
     @staticmethod
     def isort_member_key(name: str) -> tuple[int, str]:

@@ -1,4 +1,4 @@
-"""Small Rope-driven text patch helpers for governed module aliases.
+"""Native module bindings and import changes over the caller's source candidate.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,185 +6,105 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, p
+from flext_infra import c, m, p
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._rope._analysis.sourcescan import (
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
+from flext_infra._utilities._rope.rope_runtime_refactors import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+)
+from flext_infra._utilities.workspace_snapshot import (
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 
 
 class FlextInfraUtilitiesRopeModulePatch:
-    """String-level patch helpers driven by Rope-discovered module rules."""
+    """Compose native metadata, refactorings and import planning without effects."""
 
     @staticmethod
     def runtime_alias_bindings(
-        source: str,
-        *,
-        alias: str,
-    ) -> tuple[ast.Assign | ast.AnnAssign, ...]:
-        """Return only direct module bindings for the declared alias.
-
-        Returns:
-            Only direct module bindings for the declared alias.
-
-        """
+        module: p.Infra.RopeSourceModule, *, alias: str
+    ) -> tuple[p.Infra.RopeSourceAssignmentLayout, ...]:
+        """Return direct assignments without inferring unrelated values."""
         return tuple(
-            node
-            for node in ast.parse(source).body
-            if isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES)
-            and any(
-                isinstance(target, ast.Name) and target.id == alias
-                for target in (
-                    node.targets if isinstance(node, ast.Assign) else [node.target]
-                )
+            binding
+            for binding in module.get_source_binding_index().assignment_layouts(
+                name=alias
             )
-        )
-
-    @staticmethod
-    def _unique_class_binding_root(
-        bindings: MutableSequence[ast.Assign | ast.AnnAssign],
-    ) -> ast.expr | None:
-        """Return the root expression of one unambiguous module binding.
-
-        Returns:
-            The root expression below attribute access, or ``None`` when the
-            name has no single binding carrying a value.
-
-        """
-        if len(bindings) != 1 or bindings[0].value is None:
-            return None
-        root: ast.expr = bindings[0].value
-        while isinstance(root, ast.Attribute):
-            root = root.value
-        return root
-
-    @staticmethod
-    def facade_letter_names_at(
-        project: p.Infra.RopeProject,
-        path: Path,
-    ) -> frozenset[str]:
-        """Return the exported lower-case names bound directly to a class.
-
-        A facade letter (ADR-015 R1a, ADR-018 p.1) is a published alias whose
-        single module binding names a class the module declares or imports,
-        e.g. ``c = FlextCliConstants`` or ``tm = FlextTestsUtilitiesMatchers.X``.
-        Singleton instances (``cli = FlextCli.fetch_global()``), functions
-        (``main``), and attributes of instances (``lazy.attribute``) stay in
-        the namespace root that declares them and are never inherited.
-
-        Returns:
-            The exported lower-case names bound directly to a class.
-
-        Raises:
-            TypeError: If the native module exposes no module syntax tree.
-
-        """
-        module = project.get_pymodule(
-            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
-            force_errors=True,
-        )
-        if not FlextInfraUtilitiesRopeRuntime.source_module(module):
-            message = f"Facade export metadata has no native source module: {path}"
-            raise TypeError(message)
-        tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            message = f"facade source carries no module syntax tree: {path}"
-            raise TypeError(message)
-        class_names = {
-            node.name for node in tree.body if isinstance(node, ast.ClassDef)
-        } | {
-            alias.asname or alias.name
-            for node in tree.body
-            if isinstance(node, ast.ImportFrom)
-            for alias in node.names
-        }
-        # One parse serves every export: indexing the direct module bindings by
-        # name once keeps this linear in the module size.
-        bindings_by_name: MutableMapping[
-            str,
-            MutableSequence[ast.Assign | ast.AnnAssign],
-        ] = {}
-        for node in tree.body:
-            if not isinstance(node, c.Infra.AST_ASSIGNMENT_TYPES):
-                continue
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            for bound in {
-                target.id for target in targets if isinstance(target, ast.Name)
-            }:
-                bindings_by_name.setdefault(bound, []).append(node)
-        letters: set[str] = set()
-        for (
-            name
-        ) in FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
-            module,
-            c.Infra.DUNDER_ALL,
-        ):
-            if not name.islower() or name.startswith("_"):
-                continue
-            root = FlextInfraUtilitiesRopeModulePatch._unique_class_binding_root(
-                bindings_by_name.get(name, []),
-            )
-            if isinstance(root, ast.Name) and root.id in class_names:
-                letters.add(name)
-        return frozenset(letters)
-
-    @staticmethod
-    def absolute_import_sources_source(source: str, *, name: str) -> Sequence[str]:
-        """Return the top-level packages an absolute ``from X import`` binds name from.
-
-        Returns:
-            The top-level packages an absolute ``from X import`` binds name from.
-
-        """
-        return tuple(
-            dict.fromkeys(
-                node.module.split(".", 1)[0]
-                for node in ast.walk(ast.parse(source))
-                if isinstance(node, ast.ImportFrom)
-                and node.level == 0
-                and node.module is not None
-                and any((alias.asname or alias.name) == name for alias in node.names)
-            ),
+            if binding.kind in {"Assign", "AnnAssign"}
         )
 
     @classmethod
-    def remove_runtime_alias_export(
-        cls, source_module: p.Infra.RopeSourceModule, *, alias: str
-    ) -> str:
-        """Return source with one published alias letter removed from ``__all__``.
-
-        The owner of a declared-but-unbound letter is the declaration itself:
-        removing the letter repairs the published surface without inventing a
-        runtime binding the module never wrote.
+    def facade_letter_names_at(
+        cls, project: p.Infra.RopeProject, path: Path
+    ) -> frozenset[str]:
+        """Read published class aliases through their native bindings.
 
         Returns:
-            Source with one published alias letter removed from ``__all__``.
+            The resulting ``frozenset[str]``.
 
         """
-        source = source_module.source_code
-        exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            source_module
+        runtime = FlextInfraUtilitiesRopeRuntime
+        module = runtime.require_source_object(
+            project.get_pymodule(
+                runtime.file_resource_at(project, path), force_errors=True
+            )
         )
-        if alias not in exports:
-            return source
-        return cls.rewrite_all_declaration(
-            source,
-            names=[name for name in exports if name != alias],
+        letters: set[str] = set()
+        for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+            module
+        ):
+            if not name.islower() or name.startswith("_"):
+                continue
+            if len(cls.runtime_alias_bindings(module, alias=name)) != 1:
+                continue
+            binding = module.get_source_binding_index().assignment_layouts(
+                name=name, resolve_values=True
+            )[0]
+            root, value = binding.root_binding, binding.value_binding
+            if (
+                root is not None
+                and runtime.abstract_class(root.get_object())
+                and value is not None
+                and runtime.abstract_class(value.get_object())
+            ):
+                letters.add(name)
+        return frozenset(letters)
+
+    @classmethod
+    def remove_runtime_alias_export(
+        cls, module: p.Infra.RopeSourceModule, *, alias: str
+    ) -> str:
+        """Remove one explicit alias through native export metadata.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+            module
+        )
+        return (
+            cls.rewrite_all_declaration(
+                module, names=[name for name in exports if name != alias]
+            )
+            if alias in exports
+            else module.source_code
         )
 
     @staticmethod
-    def rewrite_all_declaration(source: str, *, names: list[str]) -> str:
-        """Publish exactly ``names`` through the canonical ``__all__`` rewrite.
+    def rewrite_all_declaration(
+        module: p.Infra.RopeSourceModule, *, names: list[str]
+    ) -> str:
+        """Replace a unique literal export declaration by native source region.
 
         Returns:
             The resulting ``str``.
@@ -192,91 +112,255 @@ class FlextInfraUtilitiesRopeModulePatch:
         Raises:
             ValueError: If ambiguous __all__ declarations during facade repair; or if
                 facade repair requires an explicit literal __all__ declaration; or if
-                __all__ declaration has no complete source span; or if __all__
-                declaration shares a source line with another statement.
+                export declaration has no source resource.
 
         """
-        declarations = [
-            node
-            for node in ast.parse(source).body
-            if isinstance(node, ast.Assign | ast.AnnAssign | ast.AugAssign)
-            and any(
-                isinstance(target, ast.Name) and target.id == "__all__"
-                for target in (
-                    node.targets if isinstance(node, ast.Assign) else [node.target]
-                )
-            )
-        ]
+        declarations = module.get_source_binding_index().assignment_layouts(
+            name="__all__"
+        )
         if len(declarations) > 1:
-            message = "ambiguous __all__ declarations during facade repair"
-            raise ValueError(message)
-        rendered = f"__all__: list[str] = {names!r}\n"
+            msg = "ambiguous __all__ declarations during facade repair"
+            raise ValueError(msg)
+        source = module.source_code
+        rendered = f"__all__: list[str] = {names!r}"
         if not declarations:
-            return source.rstrip() + "\n\n" + rendered
+            return source.rstrip() + "\n\n" + rendered + "\n"
         declaration = declarations[0]
         if (
-            isinstance(declaration, ast.AugAssign)
-            or not isinstance(declaration.value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
-            or not all(
-                isinstance(item, ast.Constant) and isinstance(item.value, str)
-                for item in declaration.value.elts
-            )
-            or (isinstance(declaration, ast.Assign) and len(declaration.targets) != 1)
+            declaration.kind not in {"Assign", "AnnAssign"}
+            or len(declaration.targets) != 1
+            or declaration.string_sequence is None
         ):
-            message = "facade repair requires an explicit literal __all__ declaration"
-            raise ValueError(message)
-        lines = source.splitlines(keepends=True)
-        if declaration.end_lineno is None or declaration.end_col_offset is None:
-            message = "__all__ declaration has no complete source span"
-            raise ValueError(message)
-        if lines[declaration.lineno - 1][: declaration.col_offset].strip() or (
-            (
-                trailing := lines[declaration.end_lineno - 1][
-                    declaration.end_col_offset :
-                ].strip()
-            )
-            and not trailing.startswith("#")
-        ):
-            message = "__all__ declaration shares a source line with another statement"
-            raise ValueError(message)
-        lines[declaration.lineno - 1 : declaration.end_lineno] = [rendered]
-        return "".join(lines)
+            msg = "facade repair requires an explicit literal __all__ declaration"
+            raise ValueError(msg)
+        resource = module.get_resource()
+        if resource is None:
+            msg = "export declaration has no source resource"
+            raise ValueError(msg)
+        start, end = declaration.region
+        return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource,
+            source,
+            (m.Infra.SourceRewrite(start=start, end=end, text=rendered),),
+        ).new_contents
 
     @staticmethod
-    def ensure_from_import(source: str, *, module: str, name: str) -> str:
-        """Insert one top-level from-import after the module header when absent.
-
-        The module header is the leading docstring and import block; the
-        from-import joins its end. A binding already present at module scope
-        leaves the source untouched.
+    def ensure_from_import(
+        source_module: p.Infra.RopeSourceModule, *, module: str, name: str
+    ) -> str:
+        """Delegate insertion and binding reuse to the native import manager.
 
         Returns:
-            Source with ``from <module> import <name>`` present at module scope.
+            The resulting ``str``.
 
         """
-        for statement in ast.parse(source).body:
-            if (
-                isinstance(statement, ast.ImportFrom)
-                and statement.level == 0
-                and statement.module == module
-                and any(alias.name == name for alias in statement.names)
-            ):
-                return source
-        lines = source.splitlines(keepends=True)
-        header_end = 0
-        for statement in ast.parse(source).body:
-            is_docstring = (
-                isinstance(statement, ast.Expr)
-                and isinstance(statement.value, ast.Constant)
-                and isinstance(statement.value.value, str)
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        imports = runtime.module_imports_for_pymodule(
+            source_module.pycore.project, source_module
+        )
+        imports.add_import(runtime.from_import(module, 0, ((name, None),)))
+        return imports.get_changed_source()
+
+    @staticmethod
+    @contextmanager
+    def candidate_module(
+        module: p.Infra.RopeSourceModule, source: str
+    ) -> Generator[p.Infra.RopeSourceModule]:
+        """Retain the complete candidate while binding one changed module.
+
+        Yields:
+            Each ``p.Infra.RopeSourceModule``.
+
+        Raises:
+            ValueError: If candidate module has no source resource.
+
+        """
+        project = module.pycore.project
+        resource = module.get_resource()
+        if resource is None:
+            msg = "candidate module has no source resource"
+            raise ValueError(msg)
+        path = Path(resource.real_path)
+        declarations = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+            Path(project.root.real_path), (), {path: source}, source_project=project
+        )
+        with project.source_view(
+            declared_files=declarations, additional_source_folders=None
+        ) as candidate:
+            yield FlextInfraUtilitiesRopeRuntime.require_source_object(
+                candidate.get_pymodule(candidate.get_resource(resource.path))
             )
-            if not is_docstring and not isinstance(
-                statement, ast.Import | ast.ImportFrom
-            ):
-                break
-            header_end = statement.end_lineno or statement.lineno
-        lines.insert(header_end, f"from {module} import {name}\n")
-        return "".join(lines)
+
+    @staticmethod
+    def _changed_source(
+        module: p.Infra.RopeSourceModule,
+        changes: p.Infra.RopeChangeSet | None,
+    ) -> str:
+        """Read the current resource's native content change.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If native module rewrite changed another resource.
+
+        """
+        resource = module.get_resource()
+        if changes is None or not changes.changes:
+            return module.source_code
+        selected = tuple(
+            change.new_contents
+            for change in changes.changes
+            if isinstance(change, p.Infra.RopeChangeContents)
+            and resource is not None
+            and change.resource.real_path == resource.real_path
+        )
+        if len(selected) != 1 or len(changes.changes) != 1:
+            msg = "native module rewrite changed another resource"
+            raise ValueError(msg)
+        return selected[0]
+
+    @classmethod
+    def strip_type_checking_scaffold(cls, module: p.Infra.RopeSourceModule) -> str:
+        """Retire empty typing guards through native semantic restructuring.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            ValueError: If typing scaffold has no source resource.
+
+        """
+        project = module.pycore.project
+        resource = module.get_resource()
+        if resource is None:
+            msg = "typing scaffold has no source resource"
+            raise ValueError(msg)
+        source = module.source_code
+        for statement in ("pass", "..."):
+            with cls.candidate_module(module, source) as candidate:
+                changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
+                    project,
+                    m.Infra.RopeRestructureRequest(
+                        pattern=f"if ${{guard}}:\n    {statement}",
+                        goal="",
+                        arguments={"guard": "name=typing.TYPE_CHECKING"},
+                        resources=(resource,),
+                    ),
+                )
+                source = cls._changed_source(candidate, changes)
+        with cls.candidate_module(module, source) as candidate:
+            runtime = FlextInfraUtilitiesRopeRuntime
+            imports = FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
+                project, candidate
+            )
+            original = tuple((item, item.import_info) for item in imports.imports)
+            imports.remove_unused_imports()
+            for item, before in original:
+                retained = frozenset(item.import_info.names_and_aliases)
+                if runtime.from_import_info(before) and before.module_name == "typing":
+                    item.import_info = runtime.from_import(
+                        before.module_name,
+                        before.level,
+                        tuple(
+                            pair
+                            for pair in before.names_and_aliases
+                            if pair[0] != "TYPE_CHECKING" or pair in retained
+                        ),
+                    )
+                elif runtime.normal_import_info(before):
+                    item.import_info = runtime.normal_import(
+                        tuple(
+                            pair
+                            for pair in before.names_and_aliases
+                            if pair[0] != "typing" or pair in retained
+                        )
+                    )
+                else:
+                    item.import_info = before
+            return imports.get_changed_source()
+
+    @classmethod
+    def unalias_own_package_imports(
+        cls, module: p.Infra.RopeSourceModule, *, package: str
+    ) -> str:
+        """Rename proven imported bindings through their native lexical scopes.
+
+        Returns:
+            The resulting ``str``.
+
+        Raises:
+            TypeError: If native import aliases require Worder.
+            ValueError: If import alias has no source resource; or if import alias
+                destination is occupied; or if native import alias rename made no
+                change.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        project = module.pycore.project
+        resource = module.get_resource()
+        if resource is None:
+            msg = "import alias has no source resource"
+            raise ValueError(msg)
+        source = module.source_code
+        while True:
+            with cls.candidate_module(module, source) as candidate:
+                words = runtime.runtime_callable("rope.base.worder", "Worder")(source)
+                if not isinstance(words, p.Infra.RopeWorder):
+                    msg = "native import aliases require Worder"
+                    raise TypeError(msg)
+                selected = next(
+                    (
+                        (fragment, alias, original)
+                        for fragment in candidate.get_source_binding_index().fragments
+                        if words.is_from_aliased(fragment.start)
+                        if (provider := words.get_from_module(fragment.start))
+                        is not None
+                        and (provider == package or provider.startswith(f"{package}."))
+                        if (alias := words.get_from_aliased(fragment.start)) is not None
+                        and alias not in c.Infra.ALIAS_NAMES
+                        if (original := words.get_word_at(fragment.start))
+                    ),
+                    None,
+                )
+                if selected is None:
+                    return source
+                fragment, alias, original = selected
+                if alias == original:
+                    source = refactors.content_change(
+                        resource,
+                        source,
+                        (
+                            m.Infra.SourceRewrite(
+                                start=fragment.start, end=fragment.end, text=original
+                            ),
+                        ),
+                    ).new_contents
+                    continue
+                context = candidate.get_source_binding_index().context_at(
+                    fragment.start
+                )
+                existing = context.environment.lookup(original)
+                imported = context.environment.lookup(alias)
+                if existing is not None and not runtime.same_name(existing, imported):
+                    msg = f"import alias destination is occupied: {original}"
+                    raise ValueError(msg)
+                offset = words.get_word_range(fragment.end - 1)[0]
+                changes = refactors.rename_changes(
+                    project,
+                    resource,
+                    offset,
+                    original,
+                    options=m.Infra.RopeRenameOptions(
+                        resources=(resource,), docs=False
+                    ),
+                )
+                rewritten = cls._changed_source(candidate, changes)
+                if rewritten == source:
+                    msg = f"native import alias rename made no change: {alias}"
+                    raise ValueError(msg)
+                source = rewritten
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeModulePatch"]

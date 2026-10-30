@@ -92,7 +92,7 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         return isinstance(value, cls.runtime_type("rope.base.pyobjectsdef", "PyModule"))
 
     @classmethod
-    def require_source_module(cls, value: p.AttributeProbe) -> p.Infra.RopeSourceModule:
+    def require_source_object(cls, value: p.AttributeProbe) -> p.Infra.RopeSourceModule:
         """Admit the native source-bearing module at the shared runtime boundary.
 
         Returns:

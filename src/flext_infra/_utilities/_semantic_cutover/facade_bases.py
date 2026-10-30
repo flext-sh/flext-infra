@@ -427,7 +427,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 continue
             tree = ast.parse(source)
             exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
                     source_project.get_module(module)
                 )
             )

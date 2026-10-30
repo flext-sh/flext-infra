@@ -458,6 +458,25 @@ The Rope DSL import organizer constructs the installed native
 change through `organize_imports(resource)`. File writes narrow native resources
 through the existing typed file-resource owner before publication.
 
+Generation retains the shared writer's actual completed-path receipt through
+index retirement, directory pruning and callback failures. A failed result never
+implies zero effects: the final failure preserves its original cause and metadata
+and reports all proven written paths. Receipt propagation alone does not qualify
+batch atomicity, crash recovery or transaction compensation.
+
+Repository outcomes and request-local diagnostics retain the original failed
+Result by reference, excluded from serialization. Admission propagates that same
+failure contract, keeping its exception, error code and error data together.
+Additional documentation failures become further issues and cannot replace an
+earlier native failure. No-op destinations retain read-input dependency edges to
+pending writers, while unchanged providers do not become write dependencies.
+
+Planning outcomes, conform state and plan coordination are operational mutable
+models. Reuse the existing mutable preset and update these objects by reference;
+do not freeze and copy their whole state on every failure or phase. A distinct
+cohort plan composes the original request, workspace and immutable file witnesses
+directly. Expected negative outcomes use typed result branches before effects.
+
 Incremental workspace indexing accepts its prior typed index and changed paths
 as one refresh request. Module evolution and package assembly remain in the
 existing workspace-index owner; equal package records retain their prior identity.
@@ -3989,6 +4008,12 @@ module and the child package's generated initializer. Discovery follows the
 declared facade family and source ownership, including nested domains; it does
 not maintain a separate directory or class catalog. Existing authored
 declarations retain their identity and behavior.
+Missing domain declarations reuse the existing module-skeleton context and
+template with no declared base. The optional base module and class are paired;
+ordinary skeleton consumers retain their explicit bases. Native projection
+subsequently composes the complete provider set. The domain initializer owns
+the required documentation; neither a selected first provider nor a fabricated
+docstring supplies a missing declaration contract.
 An owning composition's base order is part of that semantic contract. Two
 individually valid domains can impose opposite precedence on shared ancestors,
 making their generated aggregate impossible to import. Repair the contradictory

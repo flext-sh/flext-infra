@@ -222,7 +222,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 raise ValueError(message)
             if resource.is_folder():
                 resource = project.get_resource(f"{resource.path}/{c.Infra.INIT_PY}")
-            source_module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+            source_module = FlextInfraUtilitiesRopeRuntime.require_source_object(
                 project.get_pymodule(resource)
             )
             public_names = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(

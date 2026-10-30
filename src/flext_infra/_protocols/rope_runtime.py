@@ -434,6 +434,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         @property
         def role(self) -> str: ...
 
+        @property
+        def access(self) -> Literal["read", "write", "delete"] | None: ...
+
     @runtime_checkable
     class RopeScopeNameFinder(Protocol):
         """Native lexical lookup through the source-binding index."""
@@ -473,10 +476,33 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def body(self) -> tuple[int, int]: ...
 
         @property
+        def name_region(self) -> tuple[int, int]: ...
+
+        @property
+        def bases_insertion_offset(self) -> int: ...
+
+        @property
+        def arguments_region(self) -> tuple[int, int] | None: ...
+
+        @property
+        def keywords(self) -> tuple[tuple[int, int], ...]: ...
+
+        @property
         def bases(self) -> tuple[tuple[int, int], ...]: ...
 
         @property
+        def base_bindings(
+            self,
+        ) -> tuple[
+            tuple[tuple[int, int], FlextInfraProtocolsRopeRuntime.RopePyName | None],
+            ...,
+        ]: ...
+
+        @property
         def decorators(self) -> tuple[tuple[int, int], ...]: ...
+
+        @property
+        def type_parameters(self) -> tuple[tuple[str, tuple[int, int]], ...]: ...
 
         @property
         def annotated_bindings(
@@ -491,6 +517,37 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ]: ...
 
     @runtime_checkable
+    class RopeSourceAssignmentLayout(Protocol):
+        """Direct native binding regions and the original value identity."""
+
+        @property
+        def kind(self) -> str: ...
+
+        @property
+        def region(self) -> tuple[int, int]: ...
+
+        @property
+        def targets(self) -> tuple[tuple[str, tuple[int, int]], ...]: ...
+
+        @property
+        def value(self) -> tuple[int, int] | None: ...
+
+        @property
+        def annotation(self) -> tuple[int, int] | None: ...
+
+        @property
+        def value_binding(self) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
+
+        @property
+        def root_binding(self) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
+
+        @property
+        def string_sequence(self) -> tuple[str, ...] | None: ...
+
+        @property
+        def type_parameters(self) -> tuple[tuple[str, tuple[int, int]], ...]: ...
+
+    @runtime_checkable
     class RopeSourceBindingIndex(Protocol):
         """Native source binding index, including PEP 695 type parameters."""
 
@@ -499,6 +556,14 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def class_layout(
             self, scope: FlextInfraProtocolsRopeRuntime.RopeScope
         ) -> FlextInfraProtocolsRopeRuntime.RopeSourceClassLayout: ...
+
+        def assignment_layouts(
+            self,
+            scope: FlextInfraProtocolsRopeRuntime.RopeScope | None = None,
+            *,
+            name: str | None = None,
+            resolve_values: bool = False,
+        ) -> tuple[FlextInfraProtocolsRopeRuntime.RopeSourceAssignmentLayout, ...]: ...
 
         def assignment_string_sequence(
             self,
@@ -922,6 +987,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> None: ...
 
         def remove_duplicates(self) -> None: ...
+
+        def remove_unused_imports(self) -> None: ...
 
         def sort_imports(self) -> None: ...
 

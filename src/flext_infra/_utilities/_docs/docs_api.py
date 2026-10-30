@@ -120,7 +120,7 @@ class FlextInfraUtilitiesDocsApi:
         source = cls._source_text(module_file)
         if source is None:
             return []
-        source_module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+        source_module = FlextInfraUtilitiesRopeRuntime.require_source_object(
             rope_project.get_pymodule(
                 rope_project.get_resource(
                     module_file.relative_to(
@@ -327,7 +327,7 @@ class FlextInfraUtilitiesDocsApi:
             Runtime public exports from lazy-loader or ``__all__`` contracts.
 
         """
-        source_module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+        source_module = FlextInfraUtilitiesRopeRuntime.require_source_object(
             rope_project.get_pymodule(
                 rope_project.get_resource(
                     cls
@@ -522,7 +522,7 @@ class FlextInfraUtilitiesDocsApi:
         if not module_file.exists():
             return False
         source = module_file.read_text(encoding=c.DEFAULT_ENCODING)
-        source_module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+        source_module = FlextInfraUtilitiesRopeRuntime.require_source_object(
             rope_project.get_pymodule(
                 rope_project.get_resource(
                     module_file.relative_to(
@@ -580,7 +580,7 @@ class FlextInfraUtilitiesDocsApi:
             source = FlextInfraUtilitiesDocsApi._source_text(module_file)
             if source is None:
                 continue
-            pymodule = FlextInfraUtilitiesRopeRuntime.require_source_module(
+            pymodule = FlextInfraUtilitiesRopeRuntime.require_source_object(
                 rope_project.get_pymodule(
                     rope_project.get_resource(
                         module_file.relative_to(
@@ -698,7 +698,7 @@ class FlextInfraUtilitiesDocsApi:
             The resulting ``t.JsonMapping``.
 
         """
-        source_module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+        source_module = FlextInfraUtilitiesRopeRuntime.require_source_object(
             rope_project.get_pymodule(
                 rope_project.get_resource(
                     FlextInfraUtilitiesDocsApi
@@ -907,7 +907,7 @@ class FlextInfraUtilitiesDocsApi:
             )
             if not module_file.exists():
                 continue
-            module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+            module = FlextInfraUtilitiesRopeRuntime.require_source_object(
                 rope_project.get_pymodule(
                     rope_project.get_resource(
                         module_file.relative_to(

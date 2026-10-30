@@ -21,7 +21,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities import (
+    FlextInfraUtilitiesIterationDirectory,
+    FlextInfraUtilitiesProjectDiscovery,
+)
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
@@ -53,7 +56,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             if state.content is not None
             and state.path.is_relative_to(root)
             and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
-            and not FlextInfraUtilitiesProjectDiscovery.source_scan_ignored_path(
+            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
                 root, state.path
             )
         }

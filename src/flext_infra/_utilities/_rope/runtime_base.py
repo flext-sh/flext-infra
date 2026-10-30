@@ -64,7 +64,9 @@ class FlextInfraUtilitiesRopeRuntimeBase:
 
     @classmethod
     def require_class_object(
-        cls, value: p.AttributeProbe, label: str
+        cls,
+        value: p.AttributeProbe,
+        label: str = "native Rope class",
     ) -> p.Infra.RopeClassObject:
         """Admit the actual SDK class and its consumed superclass capability.
 
@@ -86,7 +88,9 @@ class FlextInfraUtilitiesRopeRuntimeBase:
 
     @classmethod
     def require_source_object(
-        cls, value: p.AttributeProbe, label: str
+        cls,
+        value: p.AttributeProbe,
+        label: str = "native source definition",
     ) -> p.Infra.RopeSourceObject:
         """Admit source and scope capabilities only on native Python definitions.
 

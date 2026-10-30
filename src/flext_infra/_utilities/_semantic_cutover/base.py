@@ -278,7 +278,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 rope_workspace, sources, selected
             ),
             c.Infra.SemanticCutoverPhase.MODEL_FIELDS: lambda: cls._plan_model_fields(
-                sources
+                sources, source_project=rope_workspace.rope_project
             ),
         }
         factory = dispatch.get(phase)

@@ -357,7 +357,7 @@ class FlextInfraCodemodSemanticApply(
             )
             if parent_resource.exists() and replacement in (
                 u.Infra.public_export_names_source(
-                    u.Infra.require_source_module(
+                    u.Infra.require_source_object(
                         workspace.rope_project.get_pymodule(
                             parent_resource, force_errors=True
                         )
@@ -550,7 +550,7 @@ class FlextInfraCodemodSemanticApply(
             owned = any(
                 letter
                 in u.Infra.public_export_names_source(
-                    u.Infra.require_source_module(
+                    u.Infra.require_source_object(
                         workspace.rope_project.get_pymodule(
                             u.Infra.file_resource_at(workspace.rope_project, facade),
                             force_errors=True,

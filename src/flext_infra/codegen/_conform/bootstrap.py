@@ -10,7 +10,7 @@ from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, assert_never
 
-from flext_infra import c, m, p, s, u
+from flext_infra import c, m, p, r, s, u
 
 
 class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
@@ -32,14 +32,20 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         self,
         *exceptions: BaseException | None,
         issues: Sequence[m.Infra.Issue] = (),
+        failure: p.FailureLike | None = None,
     ) -> None:
-        """Collect issues and keep the first cause the invocation re-raises."""
+        """Retain the first native failure as one indivisible contract."""
         self.state.planning_issues.extend(issues)
-        if self.state.planning_exception is None:
-            self.state.planning_exception = next(
+        if self.state.planning_failure is None:
+            exception = next(
                 (exception for exception in exceptions if exception is not None),
                 None,
             )
+            if failure is None and exception is not None:
+                failure = r.fail(str(exception), exception=exception)
+            if failure is not None:
+                self.state.planning_failure = failure
+                self.state.planning_exception = failure.exception
 
     def _record_file_failure(
         self,

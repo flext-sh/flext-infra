@@ -281,15 +281,18 @@ class FlextInfraRuffLintGate(FlextInfraRuffGate):
         recipes = tooling.tools.ruff.lint.fix_recipes
         owned = {issue.code: recipes[issue.code] for issue in issues}
         if c.Infra.LintFixRecipe.NORMALIZE_IMPORTS in owned.values():
-            source = (
-                u.Infra.normalize_import_source(
-                    project_root=project_dir,
-                    file_path=path,
-                    source=source,
-                    import_graph=import_graph,
-                )
-                or source
+            normalized = u.Infra.normalize_import_source(
+                project_root=project_dir,
+                file_path=path,
+                source=source,
+                import_graph=import_graph,
             )
+            if normalized.failure:
+                u.Cli.warning(
+                    f"import normalization degraded {path}: {normalized.error}"
+                )
+            else:
+                source = normalized.value
         wrapped = [
             issue.line
             for issue in issues

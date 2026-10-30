@@ -11,10 +11,11 @@ from collections.abc import (
     Sequence,
 )
 
-from {{ base_module }} import {{ base_class }}
+{% if base_class is not none %}from {{ base_module }} import {{ base_class }}
+{% endif %}
 
 
-class {{ class_name }}({{ base_class }}):
+class {{ class_name }}{% if base_class is not none %}({{ base_class }}){% endif %}:
     """{{ docstring }}"""
 
 

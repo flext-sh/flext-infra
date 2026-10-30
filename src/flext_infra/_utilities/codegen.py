@@ -82,8 +82,8 @@ class FlextInfraUtilitiesCodegen(
     def generate_module_skeleton(
         *,
         class_name: str,
-        base_class: str,
-        base_module: str,
+        base_class: str | None,
+        base_module: str | None,
         docstring: str,
     ) -> str:
         """Render one module skeleton through the cli template engine (ADR-005).

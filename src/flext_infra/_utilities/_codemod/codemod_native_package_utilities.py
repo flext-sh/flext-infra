@@ -722,7 +722,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         imported: set[str] = set()
         for path in snapshots.workspace_python_files(snapshot, root):
             snapshots.workspace_source(snapshot, path)
-            module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+            module = FlextInfraUtilitiesRopeRuntime.require_source_object(
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     snapshot.engine,
                     FlextInfraUtilitiesRopeRuntime.file_resource_at(

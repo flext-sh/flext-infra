@@ -26,6 +26,92 @@ from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRun
 class FlextInfraUtilitiesRopeAnalysisImportState:
     """Rope semantic import state, class discovery, and project-backed probes."""
 
+    @classmethod
+    def facade_class_publications(
+        cls,
+        root: Path,
+        rows: Mapping[Path, frozenset[int]],
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> frozenset[tuple[Path, int, int]]:
+        """Authenticate direct class publications using the native binding index.
+
+        Args:
+            root: The root path of the source project.
+            rows: A mapping from file paths to the set of line numbers to check for publications.
+            source_project: The Rope project representing the source code.
+
+        Returns:
+            The exact source, row and column of each native PEP 613 publication.
+
+        Raises:
+            ValueError: If the publication query belongs to another native source project.
+
+        """
+        selected = {path.resolve(): wanted for path, wanted in rows.items() if wanted}
+        if not selected:
+            return frozenset()
+        from_view = FlextInfraUtilitiesRopeRuntime
+        publications: set[tuple[Path, int, int]] = set()
+        project = source_project
+        if Path(project.root.real_path) != root.resolve():
+            message = "Publication query belongs to another native source project"
+            raise ValueError(message)
+        if selected:
+            declared_alias = from_view.qualified_name(
+                project, "TypeAlias", module_name="typing"
+            )
+            for path, wanted in selected.items():
+                resource = from_view.file_resource_at(project, path)
+                published = cls.published_facade_owner(project, resource)
+                if published is None:
+                    continue
+                module = from_view.require_source_object(project.get_pymodule(resource))
+                owner = module.get_attributes()[published[1]].get_object()
+                if not from_view.py_class(owner):
+                    continue
+                index = module.get_source_binding_index()
+                for scope in (owner.get_scope(), *owner.get_scope().get_scopes()):
+                    if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
+                        continue
+                    for metadata in index.assignment_layouts(scope):
+                        if metadata.annotation is None or not metadata.targets:
+                            continue
+                        line = module.lines.get_line_number(metadata.region[0])
+                        if line not in wanted:
+                            continue
+                        (declaration,) = tuple(
+                            declaration
+                            for declaration in index.assignment_layouts(
+                                scope, name=metadata.targets[0][0], resolve_values=True
+                            )
+                            if declaration.region == metadata.region
+                        )
+                        if (
+                            declaration.value_binding is None
+                            or not from_view.abstract_class(
+                                declaration.value_binding.get_object()
+                            )
+                        ):
+                            continue
+                        begin, end = declaration.annotation
+                        annotation = from_view.expression_name(
+                            index.context_at(begin).environment,
+                            module.source_code[begin:end],
+                        )
+                        if annotation is None or not from_view.same_name(
+                            declared_alias, annotation
+                        ):
+                            continue
+                        publications.add((
+                            path,
+                            line,
+                            declaration.region[0]
+                            - module.lines.get_line_start(line)
+                            + 1,
+                        ))
+        return frozenset(publications)
+
     _SEMANTIC_STATE_CACHE: ClassVar[
         MutableMapping[tuple[str, str, str], m.Infra.ModuleSemanticState]
     ] = {}

@@ -112,3 +112,19 @@ ownership before-image. All configured sources must still be collected and every
 publication must emit the current association and coverage proof. Malformed or partly
 upgraded manifests are rejected. Verification never admits this before-image;
 migration neither patches evidence by hand nor exposes a second successful format.
+
+## Failure boundary
+
+The collector preserves failed Results from configuration reads/parsing, publication,
+locking and pruning through `from_failure`. The exception, error code and structured
+data remain available to the existing CLI failure renderer; a failed prerequisite
+blocks its dependent effects. Already published independent effects are not reverted.
+
+Native configuration decoding and evidence validation retain their exception contract.
+`config_decode` adds the document source to the original validation exception and
+rethrows it. Collection helpers use the selected Result owner's causal `unwrap`
+contract: a stored exception is rethrown with its Result context, while a logical
+failure without an exception raises explicitly. The collector does not introduce a
+catch-all conversion, default, retry or successful empty collection. Its CLI boundary
+owns rendering and the nonzero exit; migration never changes invalid input into
+qualified evidence.

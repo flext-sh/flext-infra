@@ -329,17 +329,7 @@ class FlextInfraModReplacements:
             )
             if normalized.failure:
                 return r[bytes].from_failure(normalized)
-            stripped = u.Infra.strip_type_checking_scaffold(normalized.value)
-            final = (
-                normalized
-                if stripped == normalized.value
-                else u.Infra.normalize_source(
-                    root,
-                    path,
-                    stripped,
-                    before_source=before.decode(c.DEFAULT_ENCODING),
-                )
-            )
+            final = normalized
         if final.failure:
             return r[bytes].from_failure(final)
         introduced = u.Infra.lint_new_errors(

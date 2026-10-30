@@ -20,6 +20,291 @@ from flext_infra.workspace import FlextInfraWorkspaceRopeQuery
 class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     """Open one shared Rope workspace with cached public DSL methods."""
 
+    def facade_projection(
+        self,
+        *,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        planners: tuple[p.Infra.SourceInitializerPlanner, p.Infra.SourceViewProvider],
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Compose facade, native consumer and lazy-export effects in this session.
+
+        Every family is planned against the same native source candidate. A failed
+        family retains its original exception and contributes no incomplete effects.
+        Publication and admission remain owned by the injected operation callbacks.
+
+        Args:
+            declared_files: The set of declared file plans to consider.
+            planners: The source initializer and view provider planners.
+            selection: Optional selection of a specific path and facade family.
+
+        Returns:
+            Complete candidate cohorts and the first causal planning diagnostics.
+
+        Raises:
+            ValueError: If the selection is invalid.
+
+        """
+        root, project = self.repository_root, self.rope_project
+        initializer, _source_view = planners
+        staged = {plan.path: plan for plan in declared_files}
+        completed: dict[Path, m.Infra.CodegenFilePlan] = {}
+        issues: list[m.Infra.Issue] = []
+        failure: BaseException | None = None
+        self.bind_candidate(declared_files=declared_files)
+        sources = {
+            Path(resource.real_path): project.source_text(Path(resource.real_path))
+            for resource in project.get_python_files()
+            if Path(resource.real_path).is_relative_to(root)
+        }
+        packages = sorted({
+            path.parent
+            for path in sources
+            if path.name == c.Infra.INIT_PY
+            and (selection is None or path.parent.is_relative_to(selection[0].parent))
+        })
+        families = u.Infra.facade_families()
+        for package in packages:
+            for letter, family in families.items():
+                selected = c.Infra.FacadeFamily(letter)
+                if (
+                    selection is not None
+                    and selection[1] is not None
+                    and (package != selection[0].parent or selected is not selection[1])
+                ):
+                    continue
+                directory = package / family.directory
+                if not project.source_query(directory, "isdir"):
+                    continue
+                baseline = tuple(staged.values())
+                cohort: dict[Path, m.Infra.CodegenFilePlan] = {}
+
+                def stage(plans: Sequence[m.Infra.CodegenFilePlan]) -> None:
+                    """Advance authenticated plans without replacing their witnesses."""
+                    u.Infra.codegen_stage_file_plans(cohort, plans, ordered=True)
+                    u.Infra.codegen_stage_file_plans(staged, plans, ordered=True)
+                    self.bind_candidate(declared_files=tuple(staged.values()))
+
+                def source(path: Path, text: str) -> None:
+                    """Bind a source result through the existing file-plan owner."""
+                    planned = u.Infra.workspace_declared_sources(
+                        Path(project.root.real_path),
+                        (),
+                        {path: text},
+                        source_project=project,
+                    )
+                    stage(tuple(plan for plan in planned if plan.path == path))
+
+                try:
+                    destination = u.Infra.facade_module_path(
+                        package, letter, project=project, sources=sources
+                    )
+                    if destination is None:
+                        if u.Infra.facade_component_declarations(project, directory):
+                            message = f"Family declarations have no facade: {directory}"
+                            raise ValueError(message)
+                        continue
+                    domains = sorted(
+                        {
+                            parent
+                            for path in sources
+                            if path.is_relative_to(directory)
+                            for parent in path.parents
+                            if parent != directory
+                            and parent.is_relative_to(directory)
+                            and all(
+                                part.startswith("_")
+                                for part in parent.relative_to(directory).parts
+                            )
+                        },
+                        key=lambda path: (-len(path.parts), path),
+                    )
+                    for domain in domains:
+                        owners = u.Infra.family_subfacade_owners(project, domain)
+                        if len(owners) > 1:
+                            message = (
+                                f"Competing native domain owners: {domain}: {owners}"
+                            )
+                            raise ValueError(message)
+                        target = domain.parent / f"{domain.name.lstrip('_')}.py"
+                        if owners:
+                            original, name = owners[0]
+                            if (
+                                original
+                                == directory / c.Infra.IMPORT_LAW_FAMILY_BASE_FILE
+                                and original != target
+                            ):
+                                message = (
+                                    f"Root family base cannot move to a domain: "
+                                    f"{domain}"
+                                )
+                                raise ValueError(message)
+                            if original != target:
+                                captured = {
+                                    Path(resource.real_path): project.source_text(
+                                        Path(resource.real_path)
+                                    )
+                                    for resource in project.get_python_files()
+                                }
+                                stage(
+                                    u.Infra.plan_module_move(
+                                        project,
+                                        original,
+                                        destination_file=target,
+                                        inputs=u.Infra.NativeSourceView(
+                                            captured,
+                                            tuple(
+                                                project.source_state(
+                                                    path, required=False
+                                                )
+                                                for path in captured
+                                            ),
+                                            declared_files=tuple(staged.values()),
+                                        ),
+                                    )
+                                )
+                        else:
+                            if project.source_query(target, "exists"):
+                                message = (
+                                    f"Domain destination has unrelated "
+                                    f"ownership: {target}"
+                                )
+                                raise ValueError(message)
+                            declarations = u.Infra.facade_component_declarations(
+                                project, domain
+                            )
+                            if not declarations:
+                                continue
+                            prefix = u.Infra.project_prefix(
+                                target, source_project=project
+                            )
+                            if not prefix:
+                                message = (
+                                    f"Domain has no native project identity: {domain}"
+                                )
+                                raise ValueError(message)
+                            name = (
+                                prefix
+                                + family.suffix
+                                + u.derive_class_stem(
+                                    "-".join(
+                                        part.lstrip("_").replace("_", "-")
+                                        for part in domain.relative_to(directory).parts
+                                    )
+                                )
+                            )
+                            domain_module = project.get_pymodule(
+                                project.get_folder(
+                                    domain.relative_to(
+                                        Path(project.root.real_path)
+                                    ).as_posix()
+                                )
+                            )
+                            documentation = domain_module.get_doc()
+                            if not documentation:
+                                message = (
+                                    f"Domain has no declared documentation: {domain}"
+                                )
+                                raise ValueError(message)
+                            source(
+                                target,
+                                u.Infra.generate_module_skeleton(
+                                    class_name=name,
+                                    base_class=None,
+                                    base_module=None,
+                                    docstring=documentation,
+                                ),
+                            )
+                        exports = initializer(
+                            root,
+                            declared_files=tuple(staged.values()),
+                            snapshot=self.snapshot,
+                            selection=selection,
+                        )
+                        if exports.failure:
+                            raise exports.exception or ValueError(exports.error)
+                        stage(exports.value)
+                        source(
+                            target,
+                            u.Infra.facade_component_source(
+                                project,
+                                target,
+                                domain,
+                                family=selected,
+                                owner_name=name,
+                            ),
+                        )
+                    rendered = (
+                        u.Infra.render_type_facade(
+                            package, destination, sources, project=project
+                        )
+                        if selected is c.Infra.FacadeFamily.T
+                        else u.Infra.render_utility_facade(
+                            package, family=selected, project=project, sources=sources
+                        )
+                    )
+                    if rendered is not None:
+                        source(destination, rendered)
+                    stage(
+                        u.Infra.plan_component_consumers(
+                            root,
+                            source_project=project,
+                            declared_files=tuple(staged.values()),
+                        )
+                    )
+                    if selected is c.Infra.FacadeFamily.U:
+                        stage(
+                            u.Infra.facade_component_retirements(
+                                project,
+                                tuple(
+                                    path
+                                    for path in cohort
+                                    if path.suffix == c.Infra.EXT_PYTHON
+                                ),
+                                declared_files=tuple(staged.values()),
+                            )
+                        )
+                    exports = initializer(
+                        root,
+                        declared_files=tuple(staged.values()),
+                        snapshot=self.snapshot,
+                        selection=selection,
+                    )
+                    if exports.failure:
+                        raise exports.exception or ValueError(exports.error)
+                    stage(exports.value)
+                except (ValueError, OSError, *u.Infra.rope_hierarchy_errors()) as error:
+                    error.add_note(f"facade cohort={directory}; repository={root}")
+                    if failure is None:
+                        failure = error
+                    issues.append(
+                        m.Infra.Issue(
+                            file=str(directory),
+                            line=0,
+                            column=0,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=str(error),
+                        )
+                    )
+                    staged = {plan.path: plan for plan in baseline}
+                    self.bind_candidate(declared_files=baseline)
+                else:
+                    u.Infra.codegen_stage_file_plans(
+                        completed, tuple(cohort.values()), ordered=True
+                    )
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=root.name,
+            files=tuple(completed.values()),
+            issues=tuple(issues),
+            exception=failure,
+            error=str(failure) if failure is not None else "",
+            error_type=(
+                f"{type(failure).__module__}.{type(failure).__qualname__}"
+                if failure is not None
+                else ""
+            ),
+        )
+
     rope_repository_root_override: Annotated[
         Path | None,
         m.Field(description="Optional Rope project root; defaults to repository_root"),

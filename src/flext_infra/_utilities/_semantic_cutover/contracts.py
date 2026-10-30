@@ -1134,7 +1134,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 admit,
             )
             self.modules = {
-                path: FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                path: FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
                     FlextInfraUtilitiesRopeCore.resolve_pymodule(
                         project,
                         project.get_resource(
@@ -1502,7 +1502,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 )
             ):
                 return {}
-            module = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+            module = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
                 owner.get_module()
             )
             refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -1800,7 +1800,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 return None
             refactors = FlextInfraUtilitiesRopeRuntimeRefactors
             if region in self._strings(module):
-                provider = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                provider = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
                     owner.get_module()
                 )
                 selected = refactors.source_declaration_region(

@@ -45,7 +45,9 @@ class FlextInfraModelsRope:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
 
         pattern: t.NonEmptyStr = m.Field(description="Native Rope match template")
-        goal: t.NonEmptyStr = m.Field(description="Native Rope replacement template")
+        goal: str = m.Field(
+            description="Native Rope replacement template; empty removes the match"
+        )
         arguments: Mapping[str, str | Sequence[str]] = m.Field(
             description="Native wildcard constraints and exact identity alternatives",
         )

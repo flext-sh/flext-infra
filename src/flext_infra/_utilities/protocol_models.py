@@ -479,8 +479,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 if name.startswith("_") or name == "model_config":
                     continue
                 if isinstance(
-                    statement, FlextInfraUtilitiesRopeAnalysis.Tree.AnnAssign
-                ) and self._declares_class_storage(self.project, scope, statement):
+                    annotation, FlextInfraUtilitiesRopeAnalysis.Tree.Subscript
+                ) and self._denotes(annotation.value, scope, "typing", "ClassVar"):
+                    # Armazenamento de classe (ClassVar) não é campo de
+                    # modelo: exclui da projeção e segue.
                     fields.pop(name, None)
                     continue
                 if isinstance(

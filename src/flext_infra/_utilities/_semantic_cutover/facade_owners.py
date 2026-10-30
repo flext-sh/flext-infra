@@ -108,7 +108,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             project, entry[0]
         )
         return FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module)
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_object(module)
         )
 
     @classmethod

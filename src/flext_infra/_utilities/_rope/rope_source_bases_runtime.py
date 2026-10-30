@@ -1686,16 +1686,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 source_path /= c.Infra.INIT_PY
             try:
                 source = source_path.read_text()
-                declared = (
-                    FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
-                        module_name,
-                        source_path,
-                        source,
-                        project=self._project,
-                    )
-                )
-            except (OSError, ValueError, TypeError):
+            except FileNotFoundError:
+                # The candidate world retired the initializer; nothing is
+                # declared at a path that no longer exists.
                 return None
+            declared = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                module_name,
+                source_path,
+                source,
+                project=self._project,
+            )
             return declared.get(name)
 
         def _staged_owner_module(
@@ -2116,7 +2116,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             on_disk = source_path
             try:
                 raw = on_disk.read_text()
-            except OSError:
+            except FileNotFoundError:
+                # Retired in the candidate world: the name is undeclared.
                 return None
             if raw == (self._sources.get(module, (None, ""))[1] or ""):
                 return None

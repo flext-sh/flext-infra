@@ -10,6 +10,8 @@ import ast
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCompatibilityAliasValidation,
@@ -66,7 +68,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                     or path.parent / c.Infra.INIT_PY not in sources
                 ):
                     continue
-                module = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                module = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
                     source_project.get_pymodule(
                         FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
                             source_project, path
@@ -421,7 +423,12 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                     import_graph=service_graph,
                     sources={**sources, path: rewritten},
                 )
-                rewritten = rewritten if normalized is None else normalized
+                if normalized.failure:
+                    u.Cli.warning(
+                        f"import normalization degraded {path}: {normalized.error}"
+                    )
+                else:
+                    rewritten = normalized.value
             FlextInfraUtilitiesCompatibilityAliasValidation.require_zero_compatibility_alias_residue(
                 rewritten,
                 path,

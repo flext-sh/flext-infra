@@ -168,12 +168,21 @@ class FlextInfraUtilitiesProtectedEditLinting:
             )
             if published.failure:
                 return published
-            retired = cls._retire_published_index_entries(plans)
-            if retired.failure:
-                return result_type.from_failure(retired)
-            pruned = cls._prune_emptied_directories(lock.value, plans, published.value)
-            if pruned.failure:
-                return result_type.from_failure(pruned)
+            completed = cls._retire_published_index_entries(plans).flat_map(
+                lambda _: cls._prune_emptied_directories(
+                    lock.value, plans, published.value
+                )
+            )
+            if completed.failure:
+                return result_type.fail(
+                    completed.error or "publication finalization failed",
+                    error_code=completed.error_code,
+                    error_data={
+                        **(completed.error_data or {}),
+                        "written_files": [str(path) for path in published.value],
+                    },
+                    exception=completed.exception,
+                )
             if any(path.name == c.PYPROJECT_FILENAME for path in published.value):
                 u.read_project_document_cached.cache_clear()
             return published

@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
@@ -459,36 +458,20 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         source = refactors.content_change(
             resource=resource, source=source, rewrites=edits
         ).new_contents
-        if (
-            container is not None
-            and FlextInfraUtilitiesRopeModulePatch.runtime_alias_bindings(
-                source, alias="__all__"
-            )
-        ):
-            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-                Path(project.root.real_path),
-                planned_sources={**proposed, path: source},
-                source_project=project,
-            ) as (bound_project, _captured):
-                export_module = (
-                    FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
-                        bound_project.get_pymodule(
-                            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
-                                bound_project, path
-                            ),
-                            force_errors=True,
-                        )
-                    )
-                )
-                exports = (
-                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+        if container is not None:
+            with FlextInfraUtilitiesRopeModulePatch.candidate_module(
+                module, source
+            ) as export_module:
+                if FlextInfraUtilitiesRopeModulePatch.runtime_alias_bindings(
+                    export_module, alias="__all__"
+                ):
+                    exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
                         export_module
                     )
-                )
-            source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
-                source,
-                names=[name for name in exports if name != target.name],
-            )
+                    source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
+                        export_module,
+                        names=[name for name in exports if name != target.name],
+                    )
         proposed[path] = source
         cls._drop_changed_orphaned_imports(project, proposed)
         empty = cls._prove_retired_module_emptiness(
@@ -793,7 +776,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         path, _source = entry
         binding, container = owners
         for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module)
+            FlextInfraUtilitiesTypesRopeRuntime.require_source_object(module)
         ):
             exported = module.get_attributes().get(name)
             if path != owner_path and (

@@ -1014,7 +1014,7 @@ class FlextInfraUtilitiesRopeImports:
             if source_resource is not None
             else ()
         )
-        pymodule = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+        pymodule = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
             FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         )
         source = "".join(lines)

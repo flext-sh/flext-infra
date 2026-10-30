@@ -83,7 +83,7 @@ class FlextInfraModelsDocsGeneration:
                 default=(),
                 exclude=True,
                 description="Captured presentation candidates",
-            ),
+            )
         )
         name: Annotated[t.NonEmptyStr, m.Field(description="Scope name")]
         path: Annotated[Path, m.Field(description="Absolute lexical scope root")]

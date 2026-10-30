@@ -198,41 +198,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         """
         if contract.destinations == self._editor_destinations(codegen):
             return self._plan_existing_editor(target, workspace, codegen)
-        if contract.destinations == frozenset({c.Infra.ENVRC_FILENAME}):
-            context = m.Infra.EnvrcRenderSpec(
-                native_environment_unset=codegen.make.native_environment_unset,
-                toolchain=codegen.toolchain,
-                repository_root_rel=self._repository_root_rel(workspace),
-                environment_path_prepends=codegen.toolchain.environment_path_prepends,
-            )
-            destination = c.Infra.ENVRC_FILENAME
-        elif contract.destinations == frozenset({c.Infra.MISE_TOML_FILENAME}):
-            context = m.Infra.ToolchainSpec(**{
-                name: value
-                for name, value in codegen.toolchain.model_dump().items()
-                if name in m.Infra.ToolchainSpec.model_fields
-            })
-            destination = c.Infra.MISE_TOML_FILENAME
-        elif contract.destinations == c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS:
-            return self._plan_existing_bootstrap(target, workspace, codegen)
-        else:
+        destinations = contract.destinations
+        if destinations is None or destinations not in {
+            frozenset({c.Infra.ENVRC_FILENAME}),
+            frozenset({c.Infra.MISE_TOML_FILENAME}),
+            c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
+        }:
             return None
-        plans: list[m.Infra.CodegenFilePlan] = []
-        for required in sorted(
-            u.Cli.dag_closure(
-                codegen.templates.artifact_requirements, frozenset({destination})
-            ).unwrap(),
-        ):
-            planned = self._bootstrap_destination_plan(
-                target,
-                codegen,
-                context,
-                required,
-            )
-            if planned.failure:
-                return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(planned)
-            plans.append(planned.value)
-        return self._artifact_dependency_plans(codegen, target.root, plans)
+        return self._plan_existing_bootstrap(
+            target, workspace, codegen, destinations=destinations
+        )
 
     def _plan_existing_managed(
         self,
@@ -813,13 +788,66 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 "selected family composition requires caller-bound planning "
                 "and an authenticated repository snapshot"
             )
-        return ports.component_planner(
-            root,
-            declared_files=declared_files,
-            snapshot=snapshot,
-            planners=(self._projected_exports, self._source_view),
-            selection=selection,
-        )
+        return self._component_projection(root, declared_files, selection=selection)
+
+    def _component_projection(
+        self,
+        root: Path,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        *,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Borrow the existing engine and preserve the DSL's complete outcome.
+
+        Returns:
+            A complete source cohort or its original causal planning failure.
+
+        """
+        ports, snapshot = self.state.ports, self.state.snapshot
+        if ports is None or snapshot is None:
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                "Facade planning requires its invocation ports and source snapshot"
+            )
+        with (
+            self._source_view(root, declared_files=declared_files) as binding,
+            workspace_services.FlextInfraRopeWorkspace.open_workspace(
+                root,
+                rope_repository_root=Path(binding[0].root.real_path),
+                source_project=binding[0],
+                snapshot=snapshot,
+            ) as workspace,
+        ):
+            outcome = ports.component_planner(
+                workspace,
+                declared_files=declared_files,
+                planners=(self._projected_exports, self._source_view),
+                selection=selection,
+            )
+        self.retain_diagnostics(outcome.exception, issues=outcome.issues)
+        if outcome.failed:
+            if not outcome.issues:
+                self._record_file_failure(
+                    root,
+                    "\n".join(
+                        part
+                        for part in (
+                            outcome.error,
+                            outcome.error_type,
+                            outcome.error_traceback,
+                        )
+                        if part
+                    ),
+                    exception=outcome.exception,
+                )
+            self.state.completed_source_plans = u.Infra.codegen_compose_file_plans(
+                (*(self.state.completed_source_plans or ()), *outcome.files),
+                ordered=True,
+            )
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                outcome.error or f"Facade source planning failed: {root}",
+                exception=outcome.exception,
+            )
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(outcome.files)
 
     def _planned_source_imports(
         self,
@@ -1161,43 +1189,56 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
+        *,
+        destinations: frozenset[str] = c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
     ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
         """Render the bootstrap Make surface before sibling checkouts exist.
 
-        Every destination of the surface renders from the one Makefile spec:
-        the lock publisher the bootstrap runs reads only its Mise contract.
+        The existing renderer elects each entry's context in native dependency
+        order. Public surface roots retain their declared destinations.
 
         Returns:
-            One file plan per bootstrap destination, in destination order.
+            One authenticated file plan per destination, dependencies first.
 
         """
-        context = self._makefile_render_spec(target, workspace, codegen)
-        if context.failure:
-            return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(context)
+        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
+        graph = codegen.templates.artifact_requirements
+        ordered = u.Cli.dag_closure(graph, destinations).flat_map(
+            lambda closed: u.Cli.dag_order({name: graph[name] for name in closed})
+        )
+        if ordered.failure:
+            return result_type.from_failure(ordered)
+        managed = u.Infra.snapshot_committed_project_managed_artifacts(
+            target.root,
+            read_committed_directory=u.Infra.git_committed_directory_blobs,
+        )
+        if managed.failure:
+            return result_type.from_failure(managed)
+        render_inputs = self.resolve_render_inputs(
+            target=target,
+            workspace=workspace,
+            codegen=codegen,
+            tooling_runtime=None,
+            managed_artifacts=managed.value,
+        )
         plans: list[m.Infra.CodegenFilePlan] = []
-        for destination in sorted(
-            u.Cli.dag_closure(
-                codegen.templates.artifact_requirements,
-                c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
-            ).unwrap(),
-        ):
+        for destination in ordered.value:
             planned = self._bootstrap_destination_plan(
-                target,
-                codegen,
-                context.value,
+                render_inputs,
                 destination,
+                planned=plans,
             )
             if planned.failure:
-                return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(planned)
+                return result_type.from_failure(planned)
             plans.append(planned.value)
         return self._artifact_dependency_plans(codegen, target.root, plans)
 
     def _bootstrap_destination_plan(
         self,
-        target: m.Infra.RepositoryConformTarget,
-        codegen: m.Infra.CodegenConfigSpec,
-        context: p.Model,
+        render_inputs: m.Infra.CodegenRenderInputs,
         destination: str,
+        *,
+        planned: Sequence[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Render and plan exactly one bootstrap destination.
 
@@ -1206,16 +1247,33 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         result_type = r[m.Infra.CodegenFilePlan]
+        target = render_inputs.target
+        codegen = render_inputs.codegen
         binding = self._bootstrap_template_binding(target, codegen, destination)
         if binding.failure:
             return result_type.from_failure(binding)
-        _template, managed_spec = binding.value
-        entry = next(
-            item
-            for item in codegen.templates.entries
-            if item.destination == destination
+        entry, managed_spec = binding.value
+        if not u.Infra.codegen_bootstrap_provider_available(
+            entry, render_inputs.workspace
+        ):
+            return result_type.fail(
+                f"bootstrap artifact provider is not declared: {destination}"
+            )
+        manifests = (
+            self._candidate_manifests(planned)
+            if entry.bootstrap_distribution is not None
+            else ()
         )
-        rendered = self._render_artifact_authenticated(codegen, entry, context)
+        rendered = self._rendered_artifact_source(
+            render_inputs,
+            m.Infra.ArtifactRenderRoute(
+                entry=entry,
+                destination=destination,
+                failure_prefix="",
+                project_context=None,
+                planned_manifests=manifests,
+            ),
+        )
         if rendered.failure:
             return result_type.from_failure(rendered)
         content = rendered.value.rendered
@@ -1236,7 +1294,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             content,
             mode=managed_spec.mode,
             ownership=managed_spec,
-            inputs=rendered.value.source_states,
+            inputs=(
+                *rendered.value.source_states,
+                *render_inputs.workspace.inputs,
+                *(state for plan in manifests for state in (plan.before, *plan.inputs)),
+            ),
         )
 
     @classmethod
@@ -1245,7 +1307,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         target: m.Infra.RepositoryConformTarget,
         codegen: m.Infra.CodegenConfigSpec,
         destination: str,
-    ) -> p.Result[tuple[Path, m.Infra.ManagedFileSpec]]:
+    ) -> p.Result[tuple[m.Infra.TemplateEntrySpec, m.Infra.ManagedFileSpec]]:
         """Resolve the single render template and managed spec of a destination.
 
         Args:
@@ -1254,11 +1316,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             destination: The bootstrap destination being planned.
 
         Returns:
-            The authenticated template path with its managed-file spec, or a
-            failure when the destination lacks a unique binding.
+            The original selected entry with its managed-file spec, or a failure
+            when the destination lacks a unique binding.
 
         """
-        result_type = r[tuple[Path, m.Infra.ManagedFileSpec]]
+        result_type = r[tuple[m.Infra.TemplateEntrySpec, m.Infra.ManagedFileSpec]]
         entries = tuple(
             entry
             for entry in codegen.templates.entries
@@ -1279,8 +1341,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return result_type.fail(
                 f"{destination} requires exactly one managed-file declaration",
             )
-        template = u.Infra.codegen_artifact_source(codegen, entries[0])
-        return result_type.ok((template, managed[0]))
+        return result_type.ok((entries[0], managed[0]))
 
     def _plan_existing_docs_config(
         self,
@@ -1722,13 +1783,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     "recursive family composition requires caller-bound "
                     "planning and an authenticated repository snapshot"
                 )
-            recursive = ports.component_planner(
-                root,
-                declared_files=declared_files,
-                snapshot=snapshot,
-                planners=(self._projected_exports, self._source_view),
-                selection=None,
-            )
+            recursive = self._component_projection(root, declared_files, selection=None)
             if recursive.failure:
                 return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(recursive)
             plans.extend(recursive.value)
