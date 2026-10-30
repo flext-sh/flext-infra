@@ -2013,6 +2013,7 @@ Infra:
       entries:
         requirements-infra.txt:
           source: base/requirements-infra.txt.j2
+          source_kind: template
           bootstrap_distribution: flext-infra
           profiles: [ workspace ]
           ownership:

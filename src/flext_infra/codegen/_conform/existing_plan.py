@@ -1452,6 +1452,22 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         if ordered.failure:
             return result_type.from_failure(ordered)
+        # A dependency whose template declares no entry for the running
+        # profile is not part of this profile's contract (a workspace-only
+        # bootstrap requirement never applies to a standalone member): the
+        # branch election skips it instead of failing the closure.
+        ordered = ordered.map(
+            lambda names: tuple(
+                name
+                for name in names
+                if any(
+                    entry.destination == name
+                    and target.make_profile in entry.profiles
+                    for entry in codegen.templates.entries
+                    if entry.source is not None
+                )
+            )
+        )
         managed = u.Infra.snapshot_committed_project_managed_artifacts(
             target.root,
             read_committed_directory=u.Infra.git_committed_directory_blobs,

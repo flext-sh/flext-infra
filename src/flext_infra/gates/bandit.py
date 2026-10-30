@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, t, u
+from flext_infra import FlextInfra, c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p

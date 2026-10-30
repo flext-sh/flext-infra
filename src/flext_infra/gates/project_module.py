@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import m, p, u
+from flext_infra import FlextInfra, m, p, u
 
 
 class FlextInfraGatesProjectModuleGate(FlextInfra):
