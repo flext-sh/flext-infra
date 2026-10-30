@@ -263,7 +263,6 @@ class FlextInfraUtilitiesImportLawNormalization(
         source_project, import_graph, member_resolver = native
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         plans: list[m.Infra.CodegenFilePlan] = []
-        skipped: list[str] = []
         for path in files:
             source = sources[path]
             if source.startswith(c.Infra.AUTOGEN_HEADER):
@@ -276,12 +275,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                 runtime_diagnostics=runtime_diagnostics,
             )
             if normalized.failure:
-                # A degraded source keeps its typed evidence row; the cohort
-                # keeps building and the check gates own the violation.
-                skipped.append(f"{path}: {normalized.error}")
-                if runtime_diagnostics is not None:
-                    runtime_diagnostics[path.as_posix()] = normalized.error
-                continue
+                return result_type.from_failure(normalized)
             if normalized.value == source:
                 continue
             normalized_source = normalized.value
@@ -306,14 +300,6 @@ class FlextInfraUtilitiesImportLawNormalization(
             )
         cls._import_law_annotation_summary()
         cls._publication_scan_summary()
-        if skipped:
-            u.Cli.warning(
-                c.Infra.IMPORT_NORMALIZATION_DEGRADED_MESSAGE.format(count=len(skipped))
-            )
-            for entry in skipped:
-                u.Cli.warning(
-                    c.Infra.IMPORT_NORMALIZATION_DEGRADED_SOURCE.format(entry=entry)
-                )
         return result_type.ok(tuple(plans))
 
     @classmethod
@@ -442,9 +428,12 @@ class FlextInfraUtilitiesImportLawNormalization(
             return r[str].fail(
                 f"Import normalization source differs from its candidate: {file_path}",
             )
-        current = FlextInfraUtilitiesRopeModulePatch.unalias_own_package_imports(
+        unaliased = FlextInfraUtilitiesRopeModulePatch.unalias_own_package_imports(
             native, package=namespace
         )
+        if unaliased.failure:
+            return unaliased
+        current = unaliased.value
         declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(project.root.real_path),
             (),
@@ -454,9 +443,12 @@ class FlextInfraUtilitiesImportLawNormalization(
         with project.source_view(
             declared_files=declared, additional_source_folders=None
         ):
-            current = FlextInfraUtilitiesRopeModulePatch.strip_type_checking_scaffold(
+            cleaned = FlextInfraUtilitiesRopeModulePatch.strip_type_checking_scaffold(
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             )
+        if cleaned.failure:
+            return cleaned
+        current = cleaned.value
         state: m.Infra.ImportLawPass | None = None
         for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
             tree = ast.parse(current, filename=str(file_path))

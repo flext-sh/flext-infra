@@ -444,7 +444,6 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 native.close()
         return intermediate
 
-    @classmethod
     @staticmethod
     def _rewritten_init_publications(
         composed: p.Infra.RopeProject,
@@ -498,8 +497,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             else {},
         )
 
+    @classmethod
     def _module_quoted_sources(
-        self,
+        cls,
         project: p.Infra.RopeProject,
         candidate: MutableMapping[Path, str],
         source: Path,
@@ -520,14 +520,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         """
         root = Path(project.root.real_path).resolve()
         expected = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-            project, self._resource(project, root, source)
+            project, cls._resource(project, root, source)
         )
         resolved = project.find_module(expected.get_name())
         if resolved is None or Path(resolved.real_path).resolve() != source:
             msg = f"native module identity does not select its source file: {source}"
             raise ValueError(msg)
         destination = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-            project, self._resource(project, root, target)
+            project, cls._resource(project, root, target)
         ).get_name()
         resolved = project.find_module(destination)
         if resolved is None or Path(resolved.real_path).resolve() != target:
@@ -541,35 +541,40 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         )
         try:
             destination_module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-                composed, self._resource(composed, root, target)
+                composed, cls._resource(composed, root, target)
+            )
+            retired = frozenset(
+                plan.path
+                for plan in composed.source_plans
+                if plan.desired_content is None
             )
 
-            for path, captured_text in tuple(candidate.items()):
+            for path, epoch_text in tuple(candidate.items()):
                 # A sibling staged plan may have advanced this consumer after
                 # the candidate epoch was captured; the composed project's
                 # current bytes are the authoritative pre-move text, and the
                 # stale copy would mis-describe the scope baseline.
-                # A candidate retirement removes the consumer from the
-                # overlaid view; the branch (not an exception) elects the
-                # captured text as the only pre-move witness.
-                if not composed.source_query(path, "isfile"):
+                # Only a manifested retirement removes a consumer from this
+                # candidate. Other missing resources retain their native error.
+                if path in retired:
                     continue
                 staged_text = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-                    composed, self._resource(composed, root, path)
+                    composed, cls._resource(composed, root, path)
                 ).source_code
-                if staged_text != captured_text:
-                    captured_text = staged_text
-                consumer_text = self._divergence_diagnostic(
-                    project, path, captured_text
+                if staged_text != epoch_text:
+                    epoch_text = staged_text
+                consumer_text = cls._divergence_diagnostic(
+                    project, path, epoch_text
                 )
                 if path.name == c.Infra.INIT_PY and path != source:
-                    candidate[path] = self._rewritten_init_publications(
+                    consumer_text = cls._rewritten_init_publications(
                         composed,
                         root,
                         path,
-                        captured_text,
+                        epoch_text,
                         route=(expected, destination, target, candidate),
                     )
+                    candidate[path] = consumer_text
                 # A quoted prefix resolves to the moved module object only through
                 # a binding that names it (an import, a package attribute or an
                 # export), and every such binding spells the module's stem; a
@@ -577,7 +582,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 if path == source or source.stem not in consumer_text:
                     continue
                 # Module and PyObject protocols expose the same native identities.
-                rewritten, required = self._module_quoted_consumer(
+                rewritten, required = cls._module_quoted_consumer(
                     (project, composed),
                     (source, target, path),
                     consumer_text,
@@ -594,11 +599,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         )
         try:
             relocated = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-                verified, self._resource(verified, root, target)
+                verified, cls._resource(verified, root, target)
             )
 
             for path, required in checks.items():
-                self._validate_module_quoted_consumer(
+                cls._validate_module_quoted_consumer(
                     verified, path, candidate[path], required, id(relocated)
                 )
         finally:

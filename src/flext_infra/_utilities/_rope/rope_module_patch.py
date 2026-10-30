@@ -10,7 +10,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, m, p
+from flext_infra import c, m, p, r
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
@@ -221,11 +221,13 @@ class FlextInfraUtilitiesRopeModulePatch:
         return selected[0]
 
     @classmethod
-    def strip_type_checking_scaffold(cls, module: p.Infra.RopeSourceModule) -> str:
+    def strip_type_checking_scaffold(
+        cls, module: p.Infra.RopeSourceModule
+    ) -> p.Result[str]:
         """Retire empty typing guards through native semantic restructuring.
 
         Returns:
-            The resulting ``str``.
+            The native candidate text on the existing typed result boundary.
 
         Raises:
             ValueError: If typing scaffold has no source resource.
@@ -278,22 +280,20 @@ class FlextInfraUtilitiesRopeModulePatch:
                     )
                 else:
                     item.import_info = before
-            return imports.get_changed_source()
+            return r[str].ok(imports.get_changed_source())
 
     @classmethod
     def unalias_own_package_imports(
         cls, module: p.Infra.RopeSourceModule, *, package: str
-    ) -> str:
-        """Rename proven imported bindings through their native lexical scopes.
+    ) -> p.Result[str]:
+        """Plan imported bindings with expected refusals on the result boundary.
 
         Returns:
-            The resulting ``str``.
+            Native candidate text, or a typed binding-collision/no-change refusal.
 
         Raises:
             TypeError: If native import aliases require Worder.
-            ValueError: If import alias has no source resource; or if import alias
-                destination is occupied; or if native import alias rename made no
-                change.
+            ValueError: If the supplied native module has no source resource.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntime
@@ -325,7 +325,7 @@ class FlextInfraUtilitiesRopeModulePatch:
                     None,
                 )
                 if selected is None:
-                    return source
+                    return r[str].ok(source)
                 fragment, alias, original = selected
                 if alias == original:
                     source = refactors.content_change(
@@ -344,8 +344,9 @@ class FlextInfraUtilitiesRopeModulePatch:
                 existing = context.environment.lookup(original)
                 imported = context.environment.lookup(alias)
                 if existing is not None and not runtime.same_name(existing, imported):
-                    msg = f"import alias destination is occupied: {original}"
-                    raise ValueError(msg)
+                    return r[str].fail(
+                        f"import alias destination is occupied: {original}"
+                    )
                 offset = words.get_word_range(fragment.end - 1)[0]
                 changes = refactors.rename_changes(
                     project,
@@ -358,8 +359,9 @@ class FlextInfraUtilitiesRopeModulePatch:
                 )
                 rewritten = cls._changed_source(candidate, changes)
                 if rewritten == source:
-                    msg = f"native import alias rename made no change: {alias}"
-                    raise ValueError(msg)
+                    return r[str].fail(
+                        f"native import alias rename made no change: {alias}"
+                    )
                 source = rewritten
 
 

@@ -870,10 +870,20 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         managed.error = "\n".join(
             value for value in (lazy.error, managed.error) if value
         )
-        managed.error_type = lazy.error_type or managed.error_type
-        managed.error_traceback = "\n".join(
-            value for value in (lazy.error_traceback, managed.error_traceback) if value
-        )
+        if native is not None:
+            managed.error_type = (
+                f"{type(native.exception).__module__}.{type(native.exception).__qualname__}"
+                if native.exception is not None else ""
+            )
+            managed.error_traceback = (
+                "".join(traceback.format_exception(native.exception))
+                if native.exception is not None else ""
+            )
+        else:
+            managed.error_type = lazy.error_type or managed.error_type
+            managed.error_traceback = "\n".join(
+                value for value in (lazy.error_traceback, managed.error_traceback) if value
+            )
         managed.elapsed += lazy.elapsed
         return managed
 
@@ -1326,18 +1336,19 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 and repository.name == task.initial_workspace.repository.name
                 else planner._planned_lazy_init_files(resolved.value)
             )
+            native = planner.state.planning_failure
+            if native is None and planned.failure:
+                native = planned
             return m.Infra.CodegenRepositoryPlanOutcome(
                 repository=repository.name,
-                native_failure=(
-                    planned if planned.failure else planner.state.planning_failure
-                ),
+                native_failure=native,
                 files=() if planned.failure else tuple(planned.value),
                 error=(
-                    (planned.error or "lazy planning failed") if planned.failure else ""
+                    native.error or "" if native is not None else ""
                 ),
                 exception=(
-                    planned.exception
-                    if planned.failure
+                    native.exception
+                    if native is not None
                     else planner.state.planning_exception
                 ),
                 issues=tuple(planner.state.planning_issues),
