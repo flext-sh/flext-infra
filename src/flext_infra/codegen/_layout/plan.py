@@ -116,7 +116,7 @@ class FlextInfraCodegenLayoutPlan:
                     project_name,
                 ),
             )
-        findings.extend(self._gitignore_findings(spec, override, project_dir))
+        findings.extend(self._ignore_findings(spec, override, project_dir))
         return m.Infra.LayoutProjectReport(
             project=project_name,
             findings=tuple(findings),
@@ -330,13 +330,13 @@ class FlextInfraCodegenLayoutPlan:
             findings.append(self._finding("review", name))
         return tuple(findings)
 
-    def _gitignore_findings(
+    def _ignore_findings(
         self,
         spec: m.Infra.LayoutSpec,
         override: m.Infra.LayoutProjectOverrideSpec | None,
         project_dir: Path,
     ) -> Sequence[m.Infra.LayoutFinding]:
-        """Missing ``.gitignore`` patterns required by the layout SSOT.
+        """Missing ``.ignore`` patterns required by the layout SSOT.
 
         Returns:
             The resulting ``Sequence[m.Infra.LayoutFinding]``.
@@ -344,11 +344,11 @@ class FlextInfraCodegenLayoutPlan:
         """
         required = [f"{spec.archive_root}/"]
         if override is not None:
-            required.extend(override.gitignore_additions)
+            required.extend(override.ignore_additions)
         current = ""
-        gitignore_path = project_dir / c.Infra.GITIGNORE
-        if gitignore_path.is_file():
-            read = u.Cli.files_read_text(gitignore_path)
+        ignore_path = project_dir / c.Infra.GITIGNORE
+        if ignore_path.is_file():
+            read = u.Cli.files_read_text(ignore_path)
             if read.success:
                 current = read.value
         covered = {line.strip() for line in current.splitlines()}
@@ -356,7 +356,7 @@ class FlextInfraCodegenLayoutPlan:
         for pattern in required:
             if pattern in covered or pattern.rstrip("/") in covered:
                 continue
-            findings.append(self._finding("gitignore", c.Infra.GITIGNORE, pattern))
+            findings.append(self._finding("ignore", c.Infra.GITIGNORE, pattern))
         return tuple(findings)
 
     @staticmethod
@@ -376,7 +376,7 @@ class FlextInfraCodegenLayoutPlan:
         messages: Mapping[t.Infra.LayoutRule, str] = {
             "move": f"move {path} -> {target}",
             "archive": f"archive {path} -> {target}",
-            "gitignore": f"add .gitignore entry: {target}",
+            "ignore": f"add .ignore entry: {target}",
             "review": f"non-canonical root entry requires review: {path}",
         }
         return m.Infra.LayoutFinding(

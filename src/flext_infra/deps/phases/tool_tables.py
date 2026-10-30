@@ -28,7 +28,7 @@ from flext_infra._utilities._pyproject.conform import (
 from flext_infra._utilities._pyproject.toml_phases import (
     FlextInfraUtilitiesPyprojectTomlPhases,
 )
-from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraToolTablesPhase:

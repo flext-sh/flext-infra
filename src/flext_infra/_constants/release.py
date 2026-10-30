@@ -106,7 +106,7 @@ class FlextInfraConstantsRelease:
     "Path parts that never ship, at any depth, unless codegen owns the file."
     RELEASE_SDIST_ROOT_DIRS: ClassVar[frozenset[str]] = frozenset({"config", "src"})
     RELEASE_SDIST_ROOT_FILES: ClassVar[frozenset[str]] = frozenset({
-        ".gitignore",
+        ".ignore",
         # A project may ship its governance agent manifests as declared
         # runtime assets at the sdist root (a consumer may embed AGENTS.md
         # and CLAUDE.md for the agents it deploys); the build hook

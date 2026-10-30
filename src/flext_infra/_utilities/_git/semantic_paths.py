@@ -368,7 +368,7 @@ class FlextInfraUtilitiesGitSemanticPaths(
         paths the preceding ``git status --porcelain`` listed (the preflight
         proved the checkout clean, so every listed path was produced by the
         stamp). ``--force`` is required because generated release artifacts
-        may also match ``.gitignore`` projections; ignore rules must never
+        may also match ``.ignore`` projections; ignore rules must never
         silently drop a proven produced path from the release commit.
 
         Returns:

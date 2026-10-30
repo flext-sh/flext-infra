@@ -12,7 +12,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra._utilities import FlextInfraUtilitiesLintRecipes
-from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )

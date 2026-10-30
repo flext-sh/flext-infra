@@ -458,7 +458,7 @@ class TestsFlextInfraSemanticPublication:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.provision_checkout(root)
         u.Tests.provision_runtime_environment(root)
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             root,
             {
                 "source-campaign": (

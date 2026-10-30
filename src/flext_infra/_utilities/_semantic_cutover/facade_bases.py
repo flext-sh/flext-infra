@@ -40,18 +40,18 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
+from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
+from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (

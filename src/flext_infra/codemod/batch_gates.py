@@ -1204,7 +1204,7 @@ class FlextInfraModGateEngine:
         ) as directory:
             entries: list[m.Infra.ModScanFinding] = []
             artifacts: list[m.Cli.AtomicFileReceipt] = []
-            for project, project_targets in u.Infra.codemod_project_targets(
+            for project, project_targets in u.Infra.project_targets(
                 plan, native_targets
             ):
                 resolved_project = (
@@ -1219,7 +1219,7 @@ class FlextInfraModGateEngine:
                     )
                 stage = Path(directory) / str(len(artifacts))
                 ruleset = u.Infra.codemod_stage_scan_ruleset(
-                    u.Infra.codemod_project_plan(plan, project), stage
+                    u.Infra.project_plan(plan, project), stage
                 )
                 sys.stderr.write(
                     f"mod: ast-grep project={project.name} "

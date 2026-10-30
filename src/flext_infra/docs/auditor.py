@@ -106,10 +106,10 @@ class FlextInfraDocAuditor(
             issues,
             set(checks),
             docstring_coverage=docstring_coverage,
-            to_markdown_fn=u.Infra.docs_audit_markdown,
+            to_markdown_fn=u.Infra.audit_markdown,
         )
         self.logger.info(
-            "docs_audit_scope_completed",
+            "audit_scope_completed",
             project=scope.name,
             phase="audit",
             result=report.result,

@@ -31,12 +31,12 @@ from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodNativePackage,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
+from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
 
@@ -104,6 +104,10 @@ class FlextInfraUtilitiesCodemodProject(
         following the native MRO by object identity. Only classes declared at
         module scope participate; imported aliases and nested descendants do not
         become declarations of that module. A missing family package holds.
+        Each module's declarations are compared as they are read; the first
+        missing class disproves composition without resolving later modules.
+        The native ancestry is read once, at the first nonempty declaration set.
+        Visited declarations and ancestry retain their native resolution errors.
 
         Returns:
             Whether ``namespace`` in a facade module composes its family.
@@ -134,7 +138,7 @@ class FlextInfraUtilitiesCodemodProject(
             raise ValueError(msg)
         types = FlextInfraUtilitiesTypesRopeRuntime
         owner = types.require_class_object(namespaces[0], str(facade_file))
-        required: set[int] = set()
+        reached: set[int] | None = None
         member = snapshots.workspace_source(snapshot, facade_file).member
         for path in snapshots.workspace_python_files(snapshot, member):
             if (
@@ -149,19 +153,22 @@ class FlextInfraUtilitiesCodemodProject(
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                 project, FlextInfraUtilitiesRopeRuntime.file_resource_at(project, path)
             )
-            required.update(
+            required = {
                 id(scope.pyobject)
                 for scope in cls.declared_class_scopes(
                     module.get_scope(), names=declared
                 )
-            )
-        if not required:
-            return True
-        reached = {
-            id(types.require_class_object(ancestor, f"ancestry of {namespace}"))
-            for ancestor in owner.get_mro()[1:]
-        }
-        return required <= reached
+            }
+            if not required:
+                continue
+            if reached is None:
+                reached = {
+                    id(types.require_class_object(ancestor, f"ancestry of {namespace}"))
+                    for ancestor in owner.get_mro()[1:]
+                }
+            if not required <= reached:
+                return False
+        return True
 
     @staticmethod
     def declared_class_scopes(

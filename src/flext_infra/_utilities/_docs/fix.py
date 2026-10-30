@@ -17,7 +17,7 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGithubLinks,
 )
-from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
+from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesDocsFix:
         return result
 
     @staticmethod
-    def docs_fix_python_codeblocks(
+    def fix_python_codeblocks(
         scope: m.Infra.DocScope,
         *,
         path: Path,
@@ -161,7 +161,7 @@ class FlextInfraUtilitiesDocsFix:
             updated,
             c.Infra.DOCS_NOTEST_ATTR_INFO_FORMAT,
         )
-        updated, toc_changed = FlextInfraUtilitiesDocsContract.docs_contract_update_toc(
+        updated, toc_changed = FlextInfraUtilitiesDocsContract.contract_update_toc(
             updated,
         )
         return (

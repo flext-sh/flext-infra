@@ -475,7 +475,7 @@ class FlextInfraUtilitiesCodemodRules(
         )
 
     @staticmethod
-    def codemod_project_targets(
+    def project_targets(
         plan: m.Infra.CodemodRulePlan, targets: Sequence[str]
     ) -> Sequence[tuple[Path, Sequence[str]]]:
         """Assign each scan target to its deepest governed project.
@@ -506,7 +506,7 @@ class FlextInfraUtilitiesCodemodRules(
         )
 
     @staticmethod
-    def codemod_project_plan(
+    def project_plan(
         plan: m.Infra.CodemodRulePlan,
         project: Path,
         rule_ids: frozenset[str] | None = None,
@@ -729,7 +729,7 @@ class FlextInfraUtilitiesCodemodRules(
             The project's applicable rule plan.
 
         """
-        project = cls.codemod_project_requirements(root)
+        project = cls.project_requirements(root)
         if project.failure:
             return r[m.Infra.CodemodRulePlan].from_failure(project)
         root_name, direct_runtime = project.value

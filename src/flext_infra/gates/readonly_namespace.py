@@ -10,7 +10,7 @@ from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, p, u
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraReadonlyNamespace:

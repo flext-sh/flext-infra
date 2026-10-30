@@ -263,7 +263,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         if destination == c.Infra.GITIGNORE:
-            overlay = cls._composed_gitignore_overlay(
+            overlay = cls._composed_ignore_overlay(
                 repository_root,
                 rendered,
                 render_inputs,
@@ -281,13 +281,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         return composer(repository_root, rendered, render_inputs)
 
     @classmethod
-    def _composed_gitignore_overlay(
+    def _composed_ignore_overlay(
         cls,
         repository_root: Path,
         rendered: str,
         render_inputs: m.Infra.CodegenRenderInputs | None,
     ) -> p.Result[str]:
-        """Preserve the live gitignore's owned blocks in the render.
+        """Preserve the live ignore's owned blocks in the render.
 
         Returns:
             The resulting ``p.Result[str]``.
@@ -300,10 +300,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             artifacts = resolved.value.artifacts
         else:
             artifacts = render_inputs.managed_artifacts.resolution.artifacts
-        suffix = u.Infra.gitignore_runtime_suffix(config.Infra.codegen)
+        suffix = u.Infra.ignore_runtime_suffix(config.Infra.codegen)
         if suffix.failure:
             return r[str].from_failure(suffix)
-        return u.Infra.preserve_project_gitignore_blocks(
+        return u.Infra.preserve_project_ignore_blocks(
             rendered,
             repository_root,
             artifacts.Gitignore.preserved_blocks,
@@ -721,7 +721,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         render_inputs: m.Infra.CodegenRenderInputs,
         destination: str,
     ) -> p.Result[p.Model] | None:
-        """Resolve the repository-shaped config specs (gitignore/sonar/qlty/envrc).
+        """Resolve the repository-shaped config specs (ignore/sonar/qlty/envrc).
 
         Returns:
             The resulting ``p.Result[p.Model] | None`` where None marks a
@@ -738,7 +738,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
             return r[p.Model].ok(
                 m.Infra.GitignoreRenderSpec(
-                    gitignore_sections=u.Infra.gitignore_sections(
+                    ignore_sections=u.Infra.ignore_sections(
                         codegen,
                         profile=target.make_profile,
                         # The declared distribution is the project identity; a

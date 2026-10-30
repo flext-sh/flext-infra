@@ -18,8 +18,8 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsScope,
 )
-from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesDocsAuditDetectors:
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
             return False
 
     @staticmethod
-    def docs_scope_boundary_issues(
+    def scope_boundary_issues(
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect references to excluded non-FLEXT roots in root docs.
@@ -209,7 +209,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         return issues
 
     @staticmethod
-    def docs_generated_ownership_issues(
+    def generated_ownership_issues(
         scope: m.Infra.DocScope,
     ) -> Sequence[m.Infra.AuditIssue]:
         """Collect manual API pages that duplicate generated ownership.

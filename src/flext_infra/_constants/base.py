@@ -248,7 +248,7 @@ class FlextInfraConstantsBase(
         "--no-config",
         "--no-sources",
         "--no-python-downloads",
-        "--no-create-gitignore",
+        "--no-create-ignore",
         "--no-progress",
         "--color",
         "never",

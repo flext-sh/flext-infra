@@ -362,7 +362,7 @@ class FlextInfraConstantsDocs:
     """Regex matching a per-user absolute root (``/home/<user>``, ``/Users/<user>``)."""
     # NOTE: MACHINE_PATH_CONTAINER_USERS was removed: container/CI home
     # identities are declared documentation-audit contract
-    # (config/codegen.yaml repository.docs_audit.container_home_identities,
+    # (config/codegen.yaml repository.audit.container_home_identities,
     # rendered into docs_config.json and validated by DocsAuditPolicySpec),
     # and the detector flags per-user absolute paths outside the checkout
     # root instead of allowlisting names.

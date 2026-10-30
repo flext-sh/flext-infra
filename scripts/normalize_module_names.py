@@ -1,7 +1,7 @@
 """Normalize module names that repeat their parent package prefix.
 
 FLEXT naming law: the module stem must not repeat its package name —
-``_rope/rope_class_move.py`` under package ``_rope`` duplicates the namespace
+``_rope/class_move.py`` under package ``_rope`` duplicates the namespace
 segment. This repairer renames each offending module to the stripped stem
 (``class_move.py``), rewrites every textual reference to the old dotted path
 (imports, lazy maps, string spec references) across the governed tree, and
@@ -25,7 +25,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-_SOURCE_SUFFIX = ".py"
+_SOURCE_SUFFIX = "*.py"
+_SOURCE_EXTENSION = ".py"
 
 
 def _git_root() -> Path:
@@ -68,14 +69,14 @@ def rename_map(package_root: Path) -> dict[Path, Path]:
 
     """
     renames: dict[Path, Path] = {}
-    for path in sorted(package_root.rglob(_SOURCE_SUFFIX)):
+    for path in sorted(package_root.rglob("*.py")):
         if path.name == "__init__.py":
             continue
         package_dir = path.parent
         new_stem = normalize_stem(package_dir, path.stem)
         if new_stem == path.stem:
             continue
-        renames[path] = package_dir / f"{new_stem}{_SOURCE_SUFFIX}"
+        renames[path] = package_dir / f"{new_stem}{_SOURCE_EXTENSION}"
     return renames
 
 
@@ -115,7 +116,7 @@ def rewrite_references(
     """
     changed = 0
     for tree in tree_roots:
-        for path in sorted(tree.rglob(_SOURCE_SUFFIX)):
+        for path in sorted(tree.rglob("*.py")):
             text = path.read_text(encoding="utf-8")
             updated = text
             for old, new in zip(old_identities, new_identities, strict=True):

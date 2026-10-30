@@ -117,7 +117,7 @@ class TestsFlextInfraDocsFixer:
         tm.fail("   \n```\n" in content)
 
     @staticmethod
-    def test_fix_rewrites_bare_notest_fences_for_the_mkdocs_build(
+    def test_fix_rewrites_bare_notest_fences_for_the_mkbuild(
         tmp_path: Path,
     ) -> None:
         """A bare ``notest`` qualifier is rewritten to the attr_list form.

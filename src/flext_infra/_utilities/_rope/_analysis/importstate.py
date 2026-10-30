@@ -19,8 +19,8 @@ from flext_infra._utilities._rope._analysis.asthelpers import (
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisImportState:

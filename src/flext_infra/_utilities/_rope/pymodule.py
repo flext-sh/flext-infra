@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import ClassVar, overload
 
 from flext_infra import t
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeCorePyModule:
@@ -161,7 +161,7 @@ class FlextInfraUtilitiesRopeCorePyModule:
 
         """
         runtime_errors: tuple[type[BaseException], ...] = (
-            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+            *FlextInfraUtilitiesRopeRuntime.runtime_errors(),
             TypeError,
         )
         try:

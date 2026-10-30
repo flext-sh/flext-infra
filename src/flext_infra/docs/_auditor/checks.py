@@ -32,7 +32,7 @@ class FlextInfraDocsAuditorChecks:
         """
         return u.Infra.docs_text_token_issues(
             scope,
-            tokens=u.Infra.docs_audit_policy(scope).forbidden_terms,
+            tokens=u.Infra.audit_policy(scope).forbidden_terms,
             issue_type="forbidden_term",
         )
 
@@ -46,7 +46,7 @@ class FlextInfraDocsAuditorChecks:
         """
         return u.Infra.docs_placeholder_issues(
             scope,
-            patterns=u.Infra.docs_audit_policy(scope).placeholder_patterns,
+            patterns=u.Infra.audit_policy(scope).placeholder_patterns,
         )
 
     @staticmethod
@@ -59,7 +59,7 @@ class FlextInfraDocsAuditorChecks:
             Machine-local paths outside exact historical evidence files.
 
         """
-        policy = u.Infra.docs_audit_policy(scope)
+        policy = u.Infra.audit_policy(scope)
         return u.Infra.docs_machine_path_issues(
             scope,
             historical_evidence_files=policy.historical_evidence_files,
@@ -86,8 +86,8 @@ class FlextInfraDocsAuditorChecks:
             ("placeholders", self.placeholder_issues),
             ("machine-paths", self.machine_path_issues),
             ("stale-symbols", u.Infra.docs_stale_symbol_issues),
-            ("scope-boundary", u.Infra.docs_scope_boundary_issues),
-            ("generated-ownership", u.Infra.docs_generated_ownership_issues),
+            ("scope-boundary", u.Infra.scope_boundary_issues),
+            ("generated-ownership", u.Infra.generated_ownership_issues),
             ("command-contract", u.Infra.docs_command_contract_issues),
             ("docstrings", u.Infra.docs_public_docstring_issues),
             ("python-codeblocks", u.Infra.docs_python_codeblock_issues),

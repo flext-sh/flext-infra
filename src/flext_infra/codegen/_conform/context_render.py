@@ -605,13 +605,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.ProjectRenderContext].from_failure(version)
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
-                docs_audit=workspace.docs_audit,
+                audit=workspace.audit,
                 dist=repository.distribution,
                 make_profile=profile,
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 tooling_runtime=tooling_runtime,
                 scaffold=codegen.scaffold,
-                gitignore_sections=u.Infra.gitignore_sections(
+                ignore_sections=u.Infra.ignore_sections(
                     codegen,
                     profile=profile,
                     # The declared distribution is the project identity: a
@@ -867,7 +867,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         generated marker is its projection. An absent file is not a failure —
         it means Beads has not minted an identity for this checkout yet.
 
-        Why the marker read-back: identity.toml is a gitignored per-checkout
+        Why the marker read-back: identity.toml is a ignored per-checkout
         file, so CI clones and fresh runners run unminted while the TRACKED
         marker still carries the ledger identity the repository was cloned
         with. Rendering ``project_id: null`` over it dirties the tree (the

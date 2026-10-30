@@ -30,12 +30,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceManifest,
 )
 from flext_infra._utilities._git import FlextInfraUtilitiesGitignore
-from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
+from flext_infra._utilities._rope._analysis.analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
-from flext_infra._utilities._rope.rope_module_patch import (
-    FlextInfraUtilitiesRopeModulePatch,
-)
+from flext_infra._utilities._rope.module_patch import FlextInfraUtilitiesRopeModulePatch
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 

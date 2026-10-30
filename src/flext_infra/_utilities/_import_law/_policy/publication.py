@@ -30,7 +30,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
+from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
 

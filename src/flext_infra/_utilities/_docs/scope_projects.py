@@ -123,7 +123,7 @@ class FlextInfraUtilitiesDocsScopeProjects(
         ):
             return None
         is_workspace_declared_repository = entry in workspace_declared_repositories
-        if not FlextInfraUtilitiesDocsScopeProjects.docs_scope_enabled(
+        if not FlextInfraUtilitiesDocsScopeProjects.scope_enabled(
             project_state.docs_meta,
         ):
             return None

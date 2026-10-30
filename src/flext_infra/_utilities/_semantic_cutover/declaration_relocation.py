@@ -18,15 +18,15 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
+from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.source_bases_aliases import (

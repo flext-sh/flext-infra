@@ -15,14 +15,12 @@ from typing import ClassVar
 from rope.base import exceptions as rope_exceptions
 
 from flext_infra import c, p, t
-from flext_infra._utilities._rope.rope_ast import FlextInfraUtilitiesRopeAst
-from flext_infra._utilities._rope.rope_bindings import (
-    FlextInfraUtilitiesRopeAstBindings,
-)
-from flext_infra._utilities._rope.rope_runtime_module_queries import (
+from flext_infra._utilities._rope.ast import FlextInfraUtilitiesRopeAst
+from flext_infra._utilities._rope.bindings import FlextInfraUtilitiesRopeAstBindings
+from flext_infra._utilities._rope.runtime_module_queries import (
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
+from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
 

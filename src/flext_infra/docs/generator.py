@@ -119,7 +119,7 @@ class FlextInfraDocGenerator(
                 passed=True,
             )
             self.logger.info(
-                "docs_generate_scope_planned",
+                "generate_scope_planned",
                 project=scope.name,
                 phase="generate",
                 result=report.result,

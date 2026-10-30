@@ -27,7 +27,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
+from flext_infra._utilities._rope._analysis.analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
 from flext_infra.codegen import FlextInfraCodegenExecution

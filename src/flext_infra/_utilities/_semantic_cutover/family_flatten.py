@@ -13,14 +13,14 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
+from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
 from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure

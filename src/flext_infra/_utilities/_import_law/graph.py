@@ -26,7 +26,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 

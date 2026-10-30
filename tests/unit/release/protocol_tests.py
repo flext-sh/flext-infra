@@ -196,9 +196,9 @@ class TestsFlextInfraReleaseProtocol:
                     version=c.Tests.RELEASE_VERSION_PRERELEASE,
                 ),
             )
-            (workspace / ".gitignore").write_text(
+            (workspace / ".ignore").write_text(
                 tm.ok(
-                    u.Infra.render_project_gitignore(
+                    u.Infra.render_project_ignore(
                         config.Infra.codegen,
                         profile=c.Infra.MakeProfile.STANDALONE,
                         project_name=workspace.name,

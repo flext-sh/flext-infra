@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra._utilities._rope._analysis.analysis_workspace import (
+        FlextInfraUtilitiesRopeAnalysisWorkspace,
+    )
     from flext_infra._utilities._rope._analysis.asthelpers import (
         FlextInfraUtilitiesRopeAnalysisAstHelpers,
     )
@@ -27,9 +30,6 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._rope._analysis.introspection import (
         FlextInfraUtilitiesRopeAnalysisIntrospection,
-    )
-    from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
-        FlextInfraUtilitiesRopeAnalysisWorkspace,
     )
     from flext_infra._utilities._rope._analysis.sourcescan import (
         FlextInfraUtilitiesRopeAnalysisSourceScan,
@@ -56,7 +56,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeAnalysisImportState": ".importstate",
         "FlextInfraUtilitiesRopeAnalysisIntrospection": ".introspection",
         "FlextInfraUtilitiesRopeAnalysisSourceScan": ".sourcescan",
-        "FlextInfraUtilitiesRopeAnalysisWorkspace": ".rope_analysis_workspace",
+        "FlextInfraUtilitiesRopeAnalysisWorkspace": ".analysis_workspace",
     }),
     public_exports=__all__,
 )

@@ -105,7 +105,7 @@ class FlextInfraUtilitiesGitignore:
         return frozenset(sources)
 
     @staticmethod
-    def render_project_gitignore(
+    def render_project_ignore(
         codegen: m.Infra.CodegenConfigSpec,
         *,
         profile: c.Infra.MakeProfile,
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesGitignore:
         workspace: m.Infra.WorkspaceSpec | None = None,
         project_dir: Path | None = None,
     ) -> p.Result[str]:
-        """Render the canonical ``.gitignore`` for one named project.
+        """Render the canonical ``.ignore`` for one named project.
 
         Render the declared fleet sections, then retain any external blocks
         delegated by the project's typed config from its live ignore file.
@@ -132,11 +132,11 @@ class FlextInfraUtilitiesGitignore:
         )
         if entry is None:
             return r[str].fail(
-                "gitignore template is missing from codegen configuration",
+                "ignore template is missing from codegen configuration",
             )
         if entry.source is None:
             return r[str].fail(
-                "gitignore codegen entry must declare a render template source",
+                "ignore codegen entry must declare a render template source",
             )
         templates_root = FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
         project_patterns: Sequence[str] = ()
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesGitignore:
             project_patterns = resolved.value.artifacts.Gitignore.patterns
             preserved_blocks = resolved.value.artifacts.Gitignore.preserved_blocks
         context = m.Infra.GitignoreRenderSpec(
-            gitignore_sections=FlextInfraUtilitiesGitignore.gitignore_sections(
+            ignore_sections=FlextInfraUtilitiesGitignore.ignore_sections(
                 codegen,
                 profile=profile,
                 project_name=project_name,
@@ -160,10 +160,10 @@ class FlextInfraUtilitiesGitignore:
         rendered = u.Cli.template_render(templates_root / entry.source, context)
         if rendered.failure or project_dir is None:
             return rendered
-        suffix = FlextInfraUtilitiesGitignore.gitignore_runtime_suffix(codegen)
+        suffix = FlextInfraUtilitiesGitignore.ignore_runtime_suffix(codegen)
         if suffix.failure:
             return r[str].from_failure(suffix)
-        return FlextInfraUtilitiesGitignore.preserve_project_gitignore_blocks(
+        return FlextInfraUtilitiesGitignore.preserve_project_ignore_blocks(
             rendered.value,
             project_dir,
             preserved_blocks,
@@ -171,7 +171,7 @@ class FlextInfraUtilitiesGitignore:
         )
 
     @staticmethod
-    def preserve_project_gitignore_blocks(
+    def preserve_project_ignore_blocks(
         rendered: str,
         project_dir: Path,
         blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...],
@@ -193,7 +193,7 @@ class FlextInfraUtilitiesGitignore:
         )
         if any(line in markers for line in rendered.splitlines()):
             return r[str].fail(
-                f"generated gitignore claims a declared external block: {destination}",
+                f"generated ignore claims a declared external block: {destination}",
             )
         snapshot = u.Cli.atomic_read_binary_file_state(destination, required=False)
         if snapshot.failure:
@@ -203,7 +203,7 @@ class FlextInfraUtilitiesGitignore:
             return r[str].ok(rendered)
         if runtime_suffix and not rendered.endswith(runtime_suffix):
             error = ValueError(
-                f"generated gitignore lacks its declared runtime policy: {destination}",
+                f"generated ignore lacks its declared runtime policy: {destination}",
             )
             return r[str].fail(str(error), exception=error)
         prefix = rendered.removesuffix(runtime_suffix) if runtime_suffix else rendered
@@ -227,7 +227,7 @@ class FlextInfraUtilitiesGitignore:
         """Re-append the runtime tracking policy after preserved external blocks.
 
         Returns:
-            The composed gitignore with its declared runtime policy restored.
+            The composed ignore with its declared runtime policy restored.
 
         """
         if composed.failure or not runtime_suffix:
@@ -236,14 +236,14 @@ class FlextInfraUtilitiesGitignore:
         return r[str].ok(composed.value + separator + runtime_suffix)
 
     @staticmethod
-    def gitignore_runtime_suffix(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
+    def ignore_runtime_suffix(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
         """Render the final tracking policy from the same typed section owner.
 
         Returns:
             The exact final fragment, empty only when no local artifacts are declared.
 
         """
-        sections = FlextInfraUtilitiesGitignore._runtime_gitignore_sections(codegen)
+        sections = FlextInfraUtilitiesGitignore._runtime_ignore_sections(codegen)
         if not sections:
             return r[str].ok("")
         entry = next(
@@ -255,11 +255,11 @@ class FlextInfraUtilitiesGitignore:
             None,
         )
         if entry is None or entry.source is None:
-            error = ValueError("gitignore rendering source is not declared")
+            error = ValueError("ignore rendering source is not declared")
             return r[str].fail(str(error), exception=error)
         return u.Cli.template_render(
             FlextInfraUtilitiesGitignore.codegen_templates_root(codegen) / entry.source,
-            m.Infra.GitignoreRenderSpec(gitignore_sections=sections),
+            m.Infra.GitignoreRenderSpec(ignore_sections=sections),
         )
 
     @staticmethod
@@ -281,7 +281,7 @@ class FlextInfraUtilitiesGitignore:
                 found[text].append(index)
             elif any(text.startswith(marker) for marker in markers):
                 return r[MutableMapping[str, list[int]]].fail(
-                    f"malformed gitignore preserved marker: {destination}: {text!r}",
+                    f"malformed ignore preserved marker: {destination}: {text!r}",
                 )
         return r[MutableMapping[str, list[int]]].ok(found)
 
@@ -306,8 +306,7 @@ class FlextInfraUtilitiesGitignore:
                 continue
             if len(begins) != 1 or len(ends) != 1 or begins[0] >= ends[0]:
                 return r[tuple[tuple[int, int, str], ...]].fail(
-                    f"ambiguous gitignore preserved block {block.begin!r}: "
-                    f"{destination}",
+                    f"ambiguous ignore preserved block {block.begin!r}: {destination}",
                 )
             sections.append((
                 begins[0],
@@ -317,7 +316,7 @@ class FlextInfraUtilitiesGitignore:
         sections.sort(key=itemgetter(0))
         if any(previous[1] >= current[0] for previous, current in pairwise(sections)):
             return r[tuple[tuple[int, int, str], ...]].fail(
-                f"overlapping gitignore preserved blocks: {destination}",
+                f"overlapping ignore preserved blocks: {destination}",
             )
         return r[tuple[tuple[int, int, str], ...]].ok(tuple(sections))
 
@@ -361,7 +360,7 @@ class FlextInfraUtilitiesGitignore:
         return r[str].ok(composed)
 
     @staticmethod
-    def gitignore_sections(
+    def ignore_sections(
         codegen: m.Infra.CodegenConfigSpec,
         *,
         profile: c.Infra.MakeProfile,
@@ -369,12 +368,12 @@ class FlextInfraUtilitiesGitignore:
         workspace: m.Infra.WorkspaceSpec | None = None,
         project_patterns: Sequence[str] = (),
     ) -> tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...]:
-        """Derive the ordered ``.gitignore`` sections for one project.
+        """Derive the ordered ``.ignore`` sections for one project.
 
         Single owner of the section list: the profile-filtered SSOT sections,
         the workspace-root subproject whitelist derived from the live topology,
         the layout override additions and the repository-owned patterns. Every
-        renderer of ``base/gitignore.j2`` (conform planning, the layout engine,
+        renderer of ``base/ignore.j2`` (conform planning, the layout engine,
         ``codegen new``) consumes this projection, so the layout gate can never
         demand a pattern that ``make gen`` does not materialize.
 
@@ -384,7 +383,7 @@ class FlextInfraUtilitiesGitignore:
         """
         sections = [
             section
-            for section in codegen.gitignore_sections
+            for section in codegen.ignore_sections
             if not section.profiles or profile in section.profiles
         ]
         # The deny-all root policy (`/*` + `/*/`) would swallow every governed
@@ -417,11 +416,11 @@ class FlextInfraUtilitiesGitignore:
             )
         if project_name is not None:
             override = codegen.layout.project_overrides.get(project_name)
-            if override is not None and override.gitignore_additions:
+            if override is not None and override.ignore_additions:
                 sections.append(
                     m.Infra.ScaffoldGitignoreSectionSpec(
                         name=c.Infra.GITIGNORE_LAYOUT_SECTION_NAME,
-                        patterns=override.gitignore_additions,
+                        patterns=override.ignore_additions,
                     ),
                 )
         if project_patterns:
@@ -434,13 +433,11 @@ class FlextInfraUtilitiesGitignore:
                     patterns=tuple(project_patterns),
                 ),
             )
-        sections.extend(
-            FlextInfraUtilitiesGitignore._runtime_gitignore_sections(codegen)
-        )
+        sections.extend(FlextInfraUtilitiesGitignore._runtime_ignore_sections(codegen))
         return tuple(sections)
 
     @staticmethod
-    def _runtime_gitignore_sections(
+    def _runtime_ignore_sections(
         codegen: m.Infra.CodegenConfigSpec,
     ) -> tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...]:
         """Declare final ignore precedence for precisely the runtime-local artifacts.

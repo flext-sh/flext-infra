@@ -361,7 +361,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         for project, sources in owned.items():
             if not sources:
                 continue
-            changed.update(u.Infra.codemod_native_cascade(project, rule_plan, sources))
+            changed.update(u.Infra.native_cascade(project, rule_plan, sources))
         return changed
 
     @staticmethod

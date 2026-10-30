@@ -16,7 +16,7 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsScope,
 )
-from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
+from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesDocsValidate:
         return missing
 
     @staticmethod
-    def docs_contract_messages(scope: m.Infra.DocScope) -> Sequence[str]:
+    def contract_messages(scope: m.Infra.DocScope) -> Sequence[str]:
         """Return public API contract problems for one governed project scope.
 
         Returns:

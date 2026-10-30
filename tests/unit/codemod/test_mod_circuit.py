@@ -333,7 +333,7 @@ class TestsFlextInfraModCliRoute:
     ) -> None:
         """Carry findings exposed by one rewrite into the next apply iteration."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {
                 "first": (

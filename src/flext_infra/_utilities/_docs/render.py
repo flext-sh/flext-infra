@@ -23,7 +23,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRepository,
 )
-from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
+from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -414,7 +414,7 @@ class FlextInfraUtilitiesDocsRender:
         )
 
     @staticmethod
-    def docs_api_readme(
+    def api_readme(
         scope: m.Infra.DocScope,
         contract: t.JsonMapping,
         modules: Sequence[str],

@@ -18,17 +18,15 @@ from flext_cli import u
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities._rope.module_patch import FlextInfraUtilitiesRopeModulePatch
 from flext_infra._utilities._rope.move_publication import (
     FlextInfraUtilitiesRopeMovePublication,
 )
 from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities._rope.rope_module_patch import (
-    FlextInfraUtilitiesRopeModulePatch,
-)
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._semantic_cutover import (

@@ -163,7 +163,7 @@ class TestsFlextInfraGeneratedRuntime:
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
-                root / ".gitignore",
+                root / ".ignore",
                 f"/{generated.relative_to(root).as_posix()}/\n",
             )
         )

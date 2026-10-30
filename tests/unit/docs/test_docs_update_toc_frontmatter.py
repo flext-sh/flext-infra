@@ -13,12 +13,12 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
     """TOC normalization must preserve YAML frontmatter and real H1 headings."""
 
     @staticmethod
-    def test_docs_contract_update_toc_inserts_after_h1_beyond_frontmatter() -> None:
+    def test_contract_update_toc_inserts_after_h1_beyond_frontmatter() -> None:
         """Test docs contract update toc inserts after h1 beyond frontmatter."""
         content = (
             "---\ntitle: ADR-001\n---\n\n# ADR-001 — Example\n\n## Context\n\nBody.\n"
         )
-        updated, changed = u.Infra.docs_contract_update_toc(content)
+        updated, changed = u.Infra.contract_update_toc(content)
         tm.that(changed, eq=1)
         tm.ok(updated.startswith("---\n"))
         tm.fail("# Documentation" in updated)
@@ -29,7 +29,7 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
         )
 
     @staticmethod
-    def test_docs_contract_update_toc_repairs_invented_h1_before_frontmatter() -> None:
+    def test_contract_update_toc_repairs_invented_h1_before_frontmatter() -> None:
         """Test docs contract update toc repairs invented h1 before frontmatter."""
         mangled = (
             "# Documentation\n"
@@ -48,7 +48,7 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
             "\n"
             "Body.\n"
         )
-        updated, changed = u.Infra.docs_contract_update_toc(mangled)
+        updated, changed = u.Infra.contract_update_toc(mangled)
         tm.that(changed, eq=1)
         tm.ok(updated.startswith("---\n"))
         tm.fail(updated.startswith("# Documentation"))
@@ -59,10 +59,10 @@ class TestsFlextInfraDocsUpdateTocFrontmatter:
         )
 
     @staticmethod
-    def test_docs_contract_update_toc_still_invents_h1_for_headingless_stub() -> None:
+    def test_contract_update_toc_still_invents_h1_for_headingless_stub() -> None:
         """Test docs contract update toc still invents h1 for headingless stub."""
         content = "<!-- AUTO-GENERATED -->\n\nStub body.\n"
-        updated, changed = u.Infra.docs_contract_update_toc(content)
+        updated, changed = u.Infra.contract_update_toc(content)
         tm.that(changed, eq=1)
         tm.ok(updated.startswith("# Documentation\n"))
         tm.ok("<!-- TOC START -->" in updated)

@@ -14,13 +14,13 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities._rope.inventory_sites import (
     FlextInfraUtilitiesRopeInventorySites,
 )
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure

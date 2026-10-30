@@ -1,4 +1,4 @@
-"""Project-owned gitignore configuration models.
+"""Project-owned ignore configuration models.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -17,7 +17,7 @@ from flext_infra._models import FlextInfraModelsDepsToolConfigProjectMise
 class FlextInfraModelsDepsToolConfigProjectGitignore(
     FlextInfraModelsDepsToolConfigProjectMise,
 ):
-    """Project-local ignore patterns appended to generated gitignore output."""
+    """Project-local ignore patterns appended to generated ignore output."""
 
     class ProjectGitignorePreservedBlock(m.ArbitraryTypesModel):
         """Delimit one section written by another declared generator."""
@@ -54,14 +54,14 @@ class FlextInfraModelsDepsToolConfigProjectGitignore(
                 The resulting ``Self``.
 
             Raises:
-                ValueError: If gitignore preserved block markers must be distinct single
+                ValueError: If ignore preserved block markers must be distinct single
                     lines.
 
             """
             if self._overlap(self.end) or not (
                 self._is_single_line(self.begin) and self._is_single_line(self.end)
             ):
-                msg = "gitignore preserved block markers must be distinct single lines"
+                msg = "ignore preserved block markers must be distinct single lines"
                 raise ValueError(msg)
             return self
 
@@ -73,7 +73,7 @@ class FlextInfraModelsDepsToolConfigProjectGitignore(
             m.Field(
                 description=(
                     "Ignore patterns appended, in declaration order, as one "
-                    "project-owned section of the generated .gitignore."
+                    "project-owned section of the generated .ignore."
                 ),
             ),
         ] = ()
@@ -84,7 +84,7 @@ class FlextInfraModelsDepsToolConfigProjectGitignore(
             ],
             m.Field(
                 description=(
-                    "External generated blocks preserved from the live .gitignore; "
+                    "External generated blocks preserved from the live .ignore; "
                     "the external owner alone supplies their contents."
                 ),
             ),

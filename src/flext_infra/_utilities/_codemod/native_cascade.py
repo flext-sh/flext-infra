@@ -137,7 +137,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         rule_ids = frozenset(rule.id for rule in rules)
         staging = Path(tempfile.mkdtemp(prefix=f".{stage.name}-", dir=reports))
         FlextInfraUtilitiesCodemodRules.codemod_stage_scan_ruleset(
-            FlextInfraUtilitiesCodemodRules.codemod_project_plan(plan, root, rule_ids),
+            FlextInfraUtilitiesCodemodRules.project_plan(plan, root, rule_ids),
             staging,
         )
         retired = reports / f".{stage.name}-retired"
@@ -218,7 +218,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             path.write_bytes(repaired.encode(c.DEFAULT_ENCODING))
 
     @classmethod
-    def codemod_native_cascade(
+    def native_cascade(
         cls,
         project: Path,
         plan: m.Infra.CodemodRulePlan,

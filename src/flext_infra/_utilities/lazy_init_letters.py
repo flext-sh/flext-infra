@@ -21,7 +21,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPythonModel,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesLazyInitLetters:

@@ -147,13 +147,11 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             updated, item = u.Infra.docs_process_markdown_file(
                 before.path, content=original
             )
-            fixed = u.Infra.docs_fix_python_codeblocks(
+            fixed = u.Infra.fix_python_codeblocks(
                 scope, path=before.path, content=updated
             )
             final, toc_changed = (
-                u.Infra.docs_contract_update_toc(fixed)
-                if fixed != updated
-                else (updated, 0)
+                u.Infra.contract_update_toc(fixed) if fixed != updated else (updated, 0)
             )
             if final.encode(c.DEFAULT_ENCODING) == before.content:
                 continue
@@ -206,7 +204,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             passed=apply or not items,
         )
         self.logger.info(
-            "docs_fix_scope_completed",
+            "fix_scope_completed",
             project=scope.name,
             phase="fix",
             result=report.result,

@@ -69,7 +69,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         environment = u.Infra.runtime_environment_dir(root)
         tm.ok(
             u.Cli.atomic_write_text_file(
-                root / ".gitignore", f"/{environment.relative_to(root).as_posix()}/\n"
+                root / ".ignore", f"/{environment.relative_to(root).as_posix()}/\n"
             ),
         )
         resolver = u.Infra.env_value("UV_PROJECT")
@@ -596,7 +596,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         )
         tm.ok(u.Cli.atomic_write_text_file(infra_git_repo / ignored, "private state\n"))
         tm.that(self._conform_self(infra_git_repo), eq=0)
-        with (infra_git_repo / ".gitignore").open("a", encoding="utf-8") as stream:
+        with (infra_git_repo / ".ignore").open("a", encoding="utf-8") as stream:
             stream.write(f"\n/{ignored}\n/{catalog}\n")
         output = infra_git_repo.parent / "artifacts"
         direct = output / "direct"

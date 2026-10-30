@@ -15,7 +15,7 @@ from flext_core.lazy import install_lazy_exports
 if TYPE_CHECKING:
     from flext_infra.codegen._layout.apply import FlextInfraCodegenLayoutApply
     from flext_infra.codegen._layout.files import FlextInfraCodegenLayoutFiles
-    from flext_infra.codegen._layout.gitignore import FlextInfraCodegenLayoutGitignore
+    from flext_infra.codegen._layout.ignore import FlextInfraCodegenLayoutGitignore
     from flext_infra.codegen._layout.plan import FlextInfraCodegenLayoutPlan
 
 
@@ -32,7 +32,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraCodegenLayoutApply": ".apply",
         "FlextInfraCodegenLayoutFiles": ".files",
-        "FlextInfraCodegenLayoutGitignore": ".gitignore",
+        "FlextInfraCodegenLayoutGitignore": ".ignore",
         "FlextInfraCodegenLayoutPlan": ".plan",
     }),
     public_exports=__all__,

@@ -28,7 +28,7 @@ class TestsFlextInfraFailedInvocationProgress:
     ) -> None:
         """Whole-module native absence survives selected token publication."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {
                 "repair-marker": (
@@ -65,7 +65,7 @@ class TestsFlextInfraFailedInvocationProgress:
     ) -> None:
         """CSV selection elects exact rules, not regex or prefix neighbours."""
         selected = ("selection.first", "selection.second")
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {
                 name: (
@@ -124,7 +124,7 @@ class TestsFlextInfraFailedInvocationProgress:
         diagnostic: str,
     ) -> None:
         """Invalid selections neither publish scan evidence nor rewrite source."""
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {"known": "id: known\nlanguage: Python\nrule:\n  pattern: dict()\n"},
         )
@@ -159,7 +159,7 @@ class TestsFlextInfraFailedInvocationProgress:
     ) -> None:
         """Selected authenticated fixes do not execute other rules or callbacks."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {
                 name: (
@@ -264,7 +264,7 @@ class TestsFlextInfraFailedInvocationProgress:
     ) -> None:
         """Mechanical quiescence cannot accept a warning-level no-fix finding."""
         rule_id = "no-fix-warning"
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {
                 rule_id: (
@@ -314,7 +314,7 @@ class TestsFlextInfraFailedInvocationProgress:
         """A real receipt rejection retains accepted bytes and its primary cause."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))
         rule_id = "selected-receipt"
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {
                 rule_id: (
@@ -368,7 +368,7 @@ class TestsFlextInfraFailedInvocationProgress:
         mod_workspace: Path,
     ) -> None:
         """A real syntax cycle fails without restoring its initial source."""
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {
                 name: (

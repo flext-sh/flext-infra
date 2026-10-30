@@ -1,4 +1,4 @@
-"""Tests for layout gitignore, tracked-file moves, and the canonical render.
+"""Tests for layout ignore, tracked-file moves, and the canonical render.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -17,7 +17,7 @@ from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSuppor
 
 
 class TestsFlextInfraCodegenLayoutGitignore:
-    """Test suite for layout gitignore, tracked-file moves, and canonical render."""
+    """Test suite for layout ignore, tracked-file moves, and canonical render."""
 
     @staticmethod
     def _declare_layout_override(root: Path, project_name: str) -> None:
@@ -25,7 +25,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         artifact = f"{project_name}.local.json"
         override = m.Infra.LayoutProjectOverrideSpec(
             archive_names=(artifact,),
-            gitignore_additions=(artifact,),
+            ignore_additions=(artifact,),
         )
         _, declaration, _ = FlextInfraConfig.config_layer_paths_for_repository(
             root,
@@ -49,7 +49,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tm.ok(u.Cli.yaml_dump(declaration, payload))
 
     @classmethod
-    def test_apply_adds_gitignore_entries_exactly_once(
+    def test_apply_adds_ignore_entries_exactly_once(
         cls,
         tmp_path: Path,
     ) -> None:
@@ -76,9 +76,9 @@ class TestsFlextInfraCodegenLayoutGitignore:
         second = engine.execute()
         tm.ok(second)
 
-        gitignore = (project / c.Infra.GITIGNORE).read_text(encoding="utf-8")
-        entries = gitignore.splitlines()
-        for pattern in override.gitignore_additions:
+        ignore = (project / c.Infra.GITIGNORE).read_text(encoding="utf-8")
+        entries = ignore.splitlines()
+        for pattern in override.ignore_additions:
             tm.that(entries.count(pattern), eq=1)
         tm.that(entries.count(f"{codegen.layout.archive_root}/"), eq=1)
         tm.that(
@@ -111,16 +111,16 @@ class TestsFlextInfraCodegenLayoutGitignore:
         )
 
     @classmethod
-    def test_managed_gitignore_render_includes_layout_additions(
+    def test_managed_ignore_render_includes_layout_additions(
         cls,
         tmp_path: Path,
     ) -> None:
-        """The canonical gitignore render owns the layout SSOT additions."""
+        """The canonical ignore render owns the layout SSOT additions."""
         project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
         cls._declare_layout_override(project, project.name)
         codegen = tm.ok(u.Infra.load_codegen_inputs(project)).spec
         override = codegen.layout.project_overrides[project.name]
-        rendered = u.Infra.render_project_gitignore(
+        rendered = u.Infra.render_project_ignore(
             codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name=project.name,
@@ -128,22 +128,22 @@ class TestsFlextInfraCodegenLayoutGitignore:
         )
 
         entries = tm.ok(rendered).splitlines()
-        for pattern in override.gitignore_additions:
+        for pattern in override.ignore_additions:
             tm.that(entries.count(pattern), eq=1)
         tm.that(entries.count(f"{codegen.layout.archive_root}/"), eq=1)
 
     @staticmethod
-    def test_rendered_gitignore_keeps_backup_named_python_sources(
+    def test_rendered_ignore_keeps_backup_named_python_sources(
         tmp_path: Path,
     ) -> None:
         """A backup module is source code even when its name contains backup."""
-        rendered = u.Infra.render_project_gitignore(
+        rendered = u.Infra.render_project_ignore(
             config.Infra.codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name="flext-cli",
         )
         tm.ok(rendered)
-        (tmp_path / ".gitignore").write_text(rendered.value, encoding="utf-8")
+        (tmp_path / ".ignore").write_text(rendered.value, encoding="utf-8")
         tm.ok(u.Cli.capture([c.Infra.GIT, "init"], cwd=tmp_path))
         source = tmp_path / "src" / "dc_backup" / "workspace_backup_request.py"
         source.parent.mkdir(parents=True)
@@ -157,18 +157,18 @@ class TestsFlextInfraCodegenLayoutGitignore:
     @classmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("directory_suffix", ["", "-lane"])
-    def test_rendered_gitignore_satisfies_layout_additions(
+    def test_rendered_ignore_satisfies_layout_additions(
         cls,
         tmp_path: Path,
         directory_suffix: str,
     ) -> None:
-        """The public gitignore renderer satisfies the layout consumer.
+        """The public ignore renderer satisfies the layout consumer.
 
-        The planner used to render ``base/gitignore.j2`` from its own section list
+        The planner used to render ``base/ignore.j2`` from its own section list
         without the layout override, so ``make gen`` never satisfied the layout gate
         and a governed member ended up hand-editing the projection. One owner now
         derives the sections for every renderer: after conform, the layout engine
-        finds no missing gitignore pattern for a project declared in the SSOT.
+        finds no missing ignore pattern for a project declared in the SSOT.
 
         The override is keyed by the declared ``[project].name``, never by the
         checkout directory: a linked worktree named after its lane renders the same
@@ -221,16 +221,14 @@ class TestsFlextInfraCodegenLayoutGitignore:
         entries = (root / c.Infra.GITIGNORE).read_text(encoding="utf-8").splitlines()
         missing = tuple(
             pattern
-            for pattern in override.gitignore_additions
+            for pattern in override.ignore_additions
             if entries.count(pattern) != 1
         )
         tm.that(missing, eq=())
         report = FlextInfraCodegenLayout(repository_root=root).check_project(root)
         tm.that(report.project, eq=owner)
         tm.that(
-            tuple(
-                finding for finding in report.findings if finding.rule == "gitignore"
-            ),
+            tuple(finding for finding in report.findings if finding.rule == "ignore"),
             eq=(),
         )
 

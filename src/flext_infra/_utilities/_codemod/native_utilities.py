@@ -205,7 +205,7 @@ class FlextInfraUtilitiesCodemodNative:
             The import packages whose distributions the closure contains.
 
         """
-        project = FlextInfraUtilitiesCodemodRules.codemod_project_requirements(
+        project = FlextInfraUtilitiesCodemodRules.project_requirements(
             root,
         ).unwrap()
         if not project[1]:
@@ -299,7 +299,7 @@ class FlextInfraUtilitiesCodemodNative:
         if rendered is None:
             scopes = cls.codemod_native_scopes(snapshot, root, spec.scopes)
             rendered = m.Infra.CodemodNativeGenerated(
-                utilities=cls.codemod_native_utilities(snapshot, root, spec.producers),
+                utilities=cls.native_utilities(snapshot, root, spec.producers),
                 rules=cls.codemod_native_rules(
                     snapshot,
                     root,
@@ -773,7 +773,7 @@ class FlextInfraUtilitiesCodemodNative:
         return MappingProxyType(dict(sorted(documents.items())))
 
     @classmethod
-    def codemod_native_utilities(
+    def native_utilities(
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,

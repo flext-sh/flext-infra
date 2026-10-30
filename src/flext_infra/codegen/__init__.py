@@ -40,10 +40,9 @@ if TYPE_CHECKING:
     from flext_infra.codegen._fixer.workspace import FlextInfraCodegenFixerWorkspace
     from flext_infra.codegen._layout.apply import FlextInfraCodegenLayoutApply
     from flext_infra.codegen._layout.files import FlextInfraCodegenLayoutFiles
-    from flext_infra.codegen._layout.gitignore import FlextInfraCodegenLayoutGitignore
+    from flext_infra.codegen._layout.ignore import FlextInfraCodegenLayoutGitignore
     from flext_infra.codegen._layout.plan import FlextInfraCodegenLayoutPlan
     from flext_infra.codegen.census import FlextInfraCodegenCensus
-    from flext_infra.codegen.codegen_preconditions import FlextInfraCodegenPreconditions
     from flext_infra.codegen.conform import FlextInfraCodegenConform
     from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
     from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
@@ -58,6 +57,7 @@ if TYPE_CHECKING:
     from flext_infra.codegen.mise_toolchain_repair import (
         FlextInfraCodegenMiseToolchainRepair,
     )
+    from flext_infra.codegen.preconditions import FlextInfraCodegenPreconditions
     from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
     from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
     from flext_infra.codegen.staged_package import FlextInfraStagedPackage
@@ -125,13 +125,13 @@ install_lazy_exports(
         "FlextInfraCodegenLayout": ".layout",
         "FlextInfraCodegenLayoutApply": "._layout.apply",
         "FlextInfraCodegenLayoutFiles": "._layout.files",
-        "FlextInfraCodegenLayoutGitignore": "._layout.gitignore",
+        "FlextInfraCodegenLayoutGitignore": "._layout.ignore",
         "FlextInfraCodegenLayoutPlan": "._layout.plan",
         "FlextInfraCodegenLazyInit": ".lazy_init",
         "FlextInfraCodegenMakeBootstrap": ".make_bootstrap",
         "FlextInfraCodegenMiseToolchainProof": ".mise_toolchain_proof",
         "FlextInfraCodegenMiseToolchainRepair": ".mise_toolchain_repair",
-        "FlextInfraCodegenPreconditions": ".codegen_preconditions",
+        "FlextInfraCodegenPreconditions": ".preconditions",
         "FlextInfraCodegenPyTyped": ".py_typed",
         "FlextInfraCodegenQualityGate": ".constants_quality_gate",
         "FlextInfraCodegenScaffolder": ".scaffolder",

@@ -24,13 +24,13 @@ class TestsFlextInfraLockfilePolicyProjection:
             c.Infra.MISE_LOCK_FILENAME,
         ],
     )
-    def test_rendered_gitignore_tracks_dependency_locks(
+    def test_rendered_ignore_tracks_dependency_locks(
         profile: c.Infra.MakeProfile,
         lock_filename: str,
     ) -> None:
         """Git itself decides that the rendered ignore file keeps the lock tracked."""
         rendered = tm.ok(
-            u.Infra.render_project_gitignore(
+            u.Infra.render_project_ignore(
                 config.Infra.codegen,
                 profile=profile,
                 project_name="fixture-project",
@@ -50,13 +50,13 @@ class TestsFlextInfraLockfilePolicyProjection:
             "mise.test.local.lock",
         ],
     )
-    def test_rendered_gitignore_keeps_local_mise_state_untracked(
+    def test_rendered_ignore_keeps_local_mise_state_untracked(
         profile: c.Infra.MakeProfile,
         relative_path: str,
     ) -> None:
         """Track native dependency graphs without tracking local installation state."""
         rendered = tm.ok(
-            u.Infra.render_project_gitignore(
+            u.Infra.render_project_ignore(
                 config.Infra.codegen,
                 profile=profile,
                 project_name="fixture-project",

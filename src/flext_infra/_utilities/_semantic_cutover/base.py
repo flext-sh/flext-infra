@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._semantic_cutover import (

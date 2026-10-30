@@ -18,16 +18,16 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
+from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
 )
-from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -270,7 +270,7 @@ class FlextInfraUtilitiesRopeImports:
 
         """
         runtime_errors: tuple[type[BaseException], ...] = (
-            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+            *FlextInfraUtilitiesRopeRuntime.runtime_errors(),
             TypeError,
             RecursionError,
         )
@@ -443,7 +443,7 @@ class FlextInfraUtilitiesRopeImports:
         """
         runtime_errors: tuple[type[BaseException], ...] = (
             *FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),
-            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+            *FlextInfraUtilitiesRopeRuntime.runtime_errors(),
             TypeError,
         )
         try:

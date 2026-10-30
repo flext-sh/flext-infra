@@ -334,7 +334,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         ))
 
     @staticmethod
-    def docs_scope_artifacts(
+    def scope_artifacts(
         scope: m.Infra.DocScope,
         *,
         repository_root: Path,

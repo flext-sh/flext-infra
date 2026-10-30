@@ -198,7 +198,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         # resolves the tooling context correctly on the first pass, so these
         # managed files already converge after one apply — the fabricated
         # synthetic spec previously left them requiring a second pass.
-        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+        for required in ("Makefile", ".mise.toml", ".python-version", ".ignore"):
             tm.fail(u.Infra.codegen_file_requires_effect(plans[required]))
 
         tm.ok(infra.codegen_conform(request))
@@ -206,7 +206,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         for relative, content in preserved.items():
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         tm.ok((root / "README.md").is_file())
-        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+        for required in ("Makefile", ".mise.toml", ".python-version", ".ignore"):
             tm.ok((root / required).is_file())
         fixed_point = FlextInfraCodegenConform.Generate(repository_root=root).plan(
             request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),

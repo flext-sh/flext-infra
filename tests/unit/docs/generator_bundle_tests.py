@@ -92,7 +92,7 @@ tm.that(unmanaged.read_text(encoding="utf-8"), eq="keep\n")
         )
 
     @staticmethod
-    def test_docs_generated_parent_symlink_is_rejected_before_prune(
+    def test_generated_parent_symlink_is_rejected_before_prune(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:

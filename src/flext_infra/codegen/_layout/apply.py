@@ -1,7 +1,7 @@
 """Apply orchestration for the project-layout engine.
 
 Executes the typed findings produced by the planning mixin, composing the
-file/archive primitives and the gitignore owner through FLEXT.
+file/archive primitives and the ignore owner through FLEXT.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -36,22 +36,22 @@ class FlextInfraCodegenLayoutApply(
 
         """
         findings: list[m.Infra.LayoutFinding] = []
-        gitignore_status: t.Infra.LayoutStatus = "noop"
+        ignore_status: t.Infra.LayoutStatus = "noop"
         actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
-        gitignore_patterns = tuple(
-            finding.target for finding in actionable if finding.rule == "gitignore"
+        ignore_patterns = tuple(
+            finding.target for finding in actionable if finding.rule == "ignore"
         )
-        if gitignore_patterns:
-            applied = self._apply_gitignore(project_dir, gitignore_patterns)
+        if ignore_patterns:
+            applied = self._apply_ignore(project_dir, ignore_patterns)
             if applied.failure:
                 return r[m.Infra.LayoutProjectReport].from_failure(applied)
-            gitignore_status = applied.value
+            ignore_status = applied.value
         for finding in report.findings:
             if finding.rule == "review":
                 findings.append(finding)
                 continue
-            if finding.rule == "gitignore":
-                findings.append(finding.model_copy(update={"status": gitignore_status}))
+            if finding.rule == "ignore":
+                findings.append(finding.model_copy(update={"status": ignore_status}))
                 continue
             executed = self._execute_path_finding(project_dir, finding)
             if executed.failure:

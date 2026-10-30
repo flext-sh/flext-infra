@@ -67,7 +67,7 @@ def mkdocs_project_config(
 class TestsFlextInfraDocsRender:
     """nav404 regression: exclude_docs must keep nested section READMEs (flext-3o9s).
 
-    MkDocs evaluates ``exclude_docs`` as gitignore-style patterns
+    MkDocs evaluates ``exclude_docs`` as ignore-style patterns
     (``pathspec.GitIgnoreSpec``). A bare ``README.md`` drops every section
     README that generated index pages link to, producing 404s in the built
     site nav; the rooted ``/README.md`` excludes only the docs-dir root README.

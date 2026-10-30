@@ -70,7 +70,7 @@ class TestsFlextInfraScannerHelpers:
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
         tm.ok(u.Cli.process_succeeded(init_result.value.outcome))
-        (tmp_path / ".gitignore").write_text("scratch/\n", encoding="utf-8")
+        (tmp_path / ".ignore").write_text("scratch/\n", encoding="utf-8")
         scope = tmp_path / "scratch" / "project"
         scope.mkdir(parents=True)
         explicit_file = scope / "README.md"

@@ -53,14 +53,12 @@ class TestsFlextInfraAuditorCodeblocks:
         tm.ok(bool(u.Infra.docs_python_codeblock_issues(scope)))
 
         original = snippet.read_text(encoding="utf-8")
-        repaired = u.Infra.docs_fix_python_codeblocks(
-            scope, path=snippet, content=original
-        )
+        repaired = u.Infra.fix_python_codeblocks(scope, path=snippet, content=original)
         tm.that(repaired, ne=original)
         snippet.write_text(repaired, encoding="utf-8")
         tm.that(u.Infra.docs_python_codeblock_issues(scope), eq=[])
         tm.that(
-            u.Infra.docs_fix_python_codeblocks(scope, path=snippet, content=repaired),
+            u.Infra.fix_python_codeblocks(scope, path=snippet, content=repaired),
             eq=repaired,
         )
 
@@ -138,7 +136,7 @@ class TestsFlextInfraAuditorCodeblocks:
         tm.that(issues[0].file, eq="docs/broken.md")
 
         with pytest.raises(RuntimeError, match="Ruff could not fix"):
-            u.Infra.docs_fix_python_codeblocks(
+            u.Infra.fix_python_codeblocks(
                 scope, path=broken, content=broken.read_text(encoding="utf-8")
             )
 

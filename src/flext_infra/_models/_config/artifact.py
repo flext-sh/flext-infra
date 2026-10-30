@@ -55,9 +55,9 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             bool,
             m.Field(description="Feed VS Code files.watcherExclude"),
         ] = True
-        gitignore: Annotated[
+        ignore: Annotated[
             bool,
-            m.Field(description="Feed the Python/tool section of .gitignore"),
+            m.Field(description="Feed the Python/tool section of .ignore"),
         ] = True
         source_scan_ignore: Annotated[
             bool,
@@ -76,7 +76,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             m.Field(
                 description=(
                     "Tracked directory of generator output that ships and imports "
-                    "as a regular package: never gitignored and given a generated "
+                    "as a regular package: never ignored and given a generated "
                     "package initializer, without excluding executable source "
                     "from analysis or establishing third-party provenance"
                 ),
@@ -959,7 +959,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
                 )
             )
 
-        # The canonical .gitignore body is ONE computed
+        # The canonical .ignore body is ONE computed
         # projection — the artifact SSOT feeds the Python/build section and the
         # static scaffold sections carry only what the SSOT cannot express
         # (file globs, secrets, editor/OS noise). Per-project exception fields
@@ -967,10 +967,10 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
         # this projection is the seam they will extend.
         @m.computed_field
         @property
-        def gitignore_sections(
+        def ignore_sections(
             self,
         ) -> tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...]:
-            """Derived canonical ``.gitignore`` sections (SSOT order, deduplicated).
+            """Derived canonical ``.ignore`` sections (SSOT order, deduplicated).
 
             Ignore files are order-sensitive: a pattern placed before a
             catch-all such as ``/*`` is dead, and a directory ignored before
@@ -984,7 +984,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
                 ``FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec``.
 
             """
-            scaffold_sections = self.scaffold.gitignore_sections
+            scaffold_sections = self.scaffold.ignore_sections
             # A declared section may already govern a derived artifact, in
             # either direction: a whitelist re-allows `.agents/` with `!`, so
             # appending a bare `.agents/` ignore would contradict the declared
@@ -1012,7 +1012,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
                     and candidate not in managed_allowed
                 )
             derived: MutableSequence[str] = []
-            for pattern in self.gitignore_artifact_patterns:
+            for pattern in self.ignore_artifact_patterns:
                 if pattern not in governed and pattern not in derived:
                     derived.append(pattern)
             sections: MutableSequence[
@@ -1045,8 +1045,8 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
         @m.computed_field
         @property
-        def gitignore_artifact_patterns(self) -> tuple[str, ...]:
-            """Derived ``.gitignore`` artifact patterns from the SSOT (stable order).
+        def ignore_artifact_patterns(self) -> tuple[str, ...]:
+            """Derived ``.ignore`` artifact patterns from the SSOT (stable order).
 
             Returns:
                 The resulting ``tuple[str, ...]``.
@@ -1057,7 +1057,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             return tuple(
                 f"{artifact.name}/" if artifact.is_dir else artifact.name
                 for artifact in self.artifacts
-                if artifact.gitignore and not artifact.generated_source
+                if artifact.ignore and not artifact.generated_source
             )
 
         @m.computed_field

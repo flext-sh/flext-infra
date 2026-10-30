@@ -297,7 +297,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             Sequence[str],
             m.Field(description="Derived uv editable-build cache-key files"),
         ] = ()
-        docs_audit: Annotated[
+        audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(
                 description="Repository-owned documentation audit declarations",
@@ -392,12 +392,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             FlextInfraModelsConfigScaffold.ScaffoldSpec,
             m.Field(description="New-project scaffold policy"),
         ]
-        gitignore_sections: Annotated[
+        ignore_sections: Annotated[
             tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(
                 min_length=1,
                 description=(
-                    "Canonical .gitignore sections derived from the artifact SSOT"
+                    "Canonical .ignore sections derived from the artifact SSOT"
                 ),
             ),
         ]

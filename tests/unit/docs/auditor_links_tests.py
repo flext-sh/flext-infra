@@ -20,24 +20,24 @@ class TestsFlextInfraAuditorLinks:
     """Tests for FlextInfraDocAuditor broken-link and markdown helpers."""
 
     class TestAuditorToMarkdown:
-        """Tests for docs_audit_markdown helper."""
+        """Tests for audit_markdown helper."""
 
         @staticmethod
         def test_to_markdown_empty_issues(tmp_path: Path) -> None:
-            """Test docs_audit_markdown with no issues."""
+            """Test audit_markdown with no issues."""
             (tmp_path / "docs").mkdir()
             scope = m.Infra.DocScope(
                 name="test",
                 path=tmp_path,
                 report_dir=tmp_path / "reports",
             )
-            result = u.Infra.docs_audit_markdown(scope, [])
+            result = u.Infra.audit_markdown(scope, [])
             tm.that(len(result), gte=0)
             tm.that(result, has="# Docs Audit Report")
 
         @staticmethod
         def test_to_markdown_with_issues(tmp_path: Path) -> None:
-            """Test docs_audit_markdown with issues."""
+            """Test audit_markdown with issues."""
             (tmp_path / "docs").mkdir()
             scope = m.Infra.DocScope(
                 name="test",
@@ -50,7 +50,7 @@ class TestsFlextInfraAuditorLinks:
                 severity="high",
                 message="Link not found",
             )
-            result = u.Infra.docs_audit_markdown(scope, [issue])
+            result = u.Infra.audit_markdown(scope, [issue])
             tm.that(len(result), gte=0)
             tm.ok(any("README.md" in line for line in result))
 

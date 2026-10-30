@@ -640,6 +640,10 @@ class FlextInfraUtilitiesDependencies(
                 no owning payload or does not parse.
 
         """
+        from flext_infra._utilities._pyproject.document import (
+            FlextInfraUtilitiesPyprojectDocument,
+        )
+
         path = project / c.PYPROJECT_FILENAME
         plan = manifests.get(path)
         if plan is None:
@@ -648,25 +652,32 @@ class FlextInfraUtilitiesDependencies(
                 if observed is None or observed.content is None:
                     msg = f"workspace manifest has no captured input: {path}"
                     raise ValueError(msg)
-                payload = u.Cli.toml_mapping_from_text(
-                    observed.content.decode(c.DEFAULT_ENCODING)
-                )
-                if payload is None:
-                    msg = f"invalid captured manifest: {path}"
+                content = observed.content
+            else:
+                physical = u.Cli.atomic_read_binary_file_state(path, required=True)
+                if physical.failure:
+                    if physical.exception is not None:
+                        raise physical.exception
+                    raise ValueError(physical.error)
+                content = physical.value.content
+                if content is None:
+                    msg = f"workspace manifest is absent: {path}"
                     raise ValueError(msg)
-                return payload
-            physical = u.Cli.toml_read_json(path)
-            if physical.failure:
-                raise ValueError(physical.error) from physical.exception
-            return physical.value
-        if plan.project.resolve() != project or plan.desired_content is None:
-            msg = f"planned manifest has no owning payload: {path}"
-            raise ValueError(msg)
-        payload = u.Cli.toml_mapping_from_text(
-            plan.desired_content.decode(c.DEFAULT_ENCODING),
+        else:
+            if plan.project.resolve() != project or plan.desired_content is None:
+                msg = f"planned manifest has no owning payload: {path}"
+                raise ValueError(msg)
+            content = plan.desired_content
+        recovered = FlextInfraUtilitiesPyprojectDocument.recover_live_pyproject_text(
+            content.decode(c.DEFAULT_ENCODING)
         )
+        if recovered.failure:
+            if recovered.exception is not None:
+                raise recovered.exception
+            raise ValueError(recovered.error)
+        payload = u.Cli.toml_mapping_from_text(recovered.value)
         if payload is None:
-            msg = f"invalid planned manifest: {path}"
+            msg = f"invalid workspace manifest: {path}"
             raise ValueError(msg)
         return payload
 

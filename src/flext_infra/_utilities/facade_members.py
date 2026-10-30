@@ -35,18 +35,18 @@ from flext_infra._utilities._rope._analysis.exports import (
 from flext_infra._utilities._rope._analysis.importstate import (
     FlextInfraUtilitiesRopeAnalysisImportState,
 )
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
+from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesTypesRopeRuntime,
-)
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
+)
+from flext_infra._utilities._rope.source_bases_runtime import (
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover.declaration_payload import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -769,8 +769,9 @@ class FlextInfraUtilitiesFacadeMembers:
             return None
         target = None if binding is None else binding.get_object()
         if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(target):
-            message = f"unresolved specialization facade: {package}.{letter}"
-            raise ValueError(message)
+            # Um binding que não é classe (módulo stageado, parcial) não é
+            # publicação: a letra segue não publicada nesta vista.
+            return None
         owner = target.get_module()
         observed_owner = (
             FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(

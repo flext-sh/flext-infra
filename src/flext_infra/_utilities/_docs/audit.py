@@ -20,7 +20,7 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsGithubLinks,
     FlextInfraUtilitiesDocsScope,
 )
-from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
+from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocsAudit(
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesDocsAudit(
         return looks_like_prose and ("," in raw or " " in raw)
 
     @staticmethod
-    def docs_audit_policy(scope: m.Infra.DocScope) -> m.Infra.DocsAuditPolicySpec:
+    def audit_policy(scope: m.Infra.DocScope) -> m.Infra.DocsAuditPolicySpec:
         """Parse the scope's authenticated audit declaration once into its contract.
 
         Returns:
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesDocsAudit(
         return m.Infra.DocsAuditPolicySpec.model_validate(payload.get("audit", {}))
 
     @staticmethod
-    def docs_generated_api_reference_path(relative_docs_path: str) -> bool:
+    def generated_api_reference_path(relative_docs_path: str) -> bool:
         """Return whether a docs path is owned by generated API reference.
 
         Returns:
@@ -208,7 +208,7 @@ class FlextInfraUtilitiesDocsAudit(
             The resulting ``Sequence[m.Infra.AuditIssue]``.
 
         """
-        policy = FlextInfraUtilitiesDocsAudit.docs_audit_policy(scope)
+        policy = FlextInfraUtilitiesDocsAudit.audit_policy(scope)
         tokens = policy.stale_symbols
         exempt_paths = set(policy.stale_symbol_exempt_paths)
         issues: MutableSequence[m.Infra.AuditIssue] = []
@@ -222,7 +222,7 @@ class FlextInfraUtilitiesDocsAudit(
             if rel in exempt_paths:
                 continue
             is_generated_api_reference = (
-                FlextInfraUtilitiesDocsAudit.docs_generated_api_reference_path(rel)
+                FlextInfraUtilitiesDocsAudit.generated_api_reference_path(rel)
             )
             text = md_file.read_text(
                 encoding=c.DEFAULT_ENCODING,
@@ -244,7 +244,7 @@ class FlextInfraUtilitiesDocsAudit(
         return issues
 
     @staticmethod
-    def docs_audit_markdown(
+    def audit_markdown(
         scope: m.Infra.DocScope,
         issues: Sequence[m.Infra.AuditIssue],
         docstring_coverage: m.Infra.DocstringCoverage | None = None,

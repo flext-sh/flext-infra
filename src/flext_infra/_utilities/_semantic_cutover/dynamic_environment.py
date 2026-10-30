@@ -23,13 +23,11 @@ from flext_infra._utilities._pyproject.conform import (
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
-from flext_infra._utilities._rope.rope_module_patch import (
-    FlextInfraUtilitiesRopeModulePatch,
-)
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.module_patch import FlextInfraUtilitiesRopeModulePatch
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._semantic_cutover import (

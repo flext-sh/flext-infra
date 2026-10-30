@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure

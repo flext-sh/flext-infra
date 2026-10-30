@@ -742,7 +742,7 @@ class TestsFlextInfraCodegenConform:
         expected_tree = TestsFlextInfraConformSupport.project_tree(existing_root)
         tm.ok(
             u.Cli.atomic_write_text_file(
-                existing_root / ".gitignore",
+                existing_root / ".ignore",
                 "# committed managed drift\n",
             ),
         )
@@ -902,7 +902,7 @@ class TestsFlextInfraCodegenConform:
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
         }
-        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+        for required in ("Makefile", ".mise.toml", ".python-version", ".ignore"):
             tm.that(plans[required].path, eq=root / required)
             if not (root / required).exists():
                 tm.ok(u.Infra.codegen_file_requires_effect(plans[required]))
@@ -914,7 +914,7 @@ class TestsFlextInfraCodegenConform:
         tm.ok((root / "Makefile").is_file())
         tm.ok((root / ".mise.toml").is_file())
         tm.ok((root / ".python-version").is_file())
-        tm.ok((root / ".gitignore").is_file())
+        tm.ok((root / ".ignore").is_file())
         tm.fail((root / ".env.example").exists())
         tm.fail(root / ".env.example" in applied.value.written_files)
 

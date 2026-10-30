@@ -31,7 +31,7 @@ class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
 
     @staticmethod
-    def _docs_contract_body_start(lines: list[str]) -> int:
+    def _contract_body_start(lines: list[str]) -> int:
         """Return the first body line index, skipping YAML frontmatter when present.
 
         Returns:
@@ -46,7 +46,7 @@ class FlextInfraUtilitiesDocsContract:
         return 0
 
     @staticmethod
-    def docs_contract_strip_invented_toc_before_frontmatter(content: str) -> str:
+    def contract_strip_invented_toc_before_frontmatter(content: str) -> str:
         """Undo H1+TOC wrongly prepended ahead of YAML frontmatter.
 
         Returns:
@@ -66,7 +66,7 @@ class FlextInfraUtilitiesDocsContract:
         return after_toc
 
     @classmethod
-    def docs_contract_update_toc(cls, content: str) -> tuple[str, int]:
+    def contract_update_toc(cls, content: str) -> tuple[str, int]:
         """Normalize the managed table of contents in Markdown content.
 
         Returns:
@@ -74,17 +74,17 @@ class FlextInfraUtilitiesDocsContract:
 
         """
         original = content
-        docs_contract = FlextInfraUtilitiesDocsContract
-        strip_toc = docs_contract.docs_contract_strip_invented_toc_before_frontmatter
+        contract = FlextInfraUtilitiesDocsContract
+        strip_toc = contract.contract_strip_invented_toc_before_frontmatter
         content = strip_toc(
             content,
         )
-        toc = FlextInfraUtilitiesDocsContract.docs_contract_build_toc(content)
+        toc = FlextInfraUtilitiesDocsContract.contract_build_toc(content)
         if c.Infra.TOC_START in content and c.Infra.TOC_END in content:
             updated = c.Infra.TOC_BLOCK_RE.sub(toc, content, count=1)
             return (updated, int(updated != original))
         lines = content.splitlines()
-        body_start = FlextInfraUtilitiesDocsContract._docs_contract_body_start(lines)
+        body_start = FlextInfraUtilitiesDocsContract._contract_body_start(lines)
         heading_at = next(
             (
                 index
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesDocsContract:
         return (updated, int(updated != original))
 
     @staticmethod
-    def docs_contract_anchorize(text: str) -> str:
+    def contract_anchorize(text: str) -> str:
         """Use the Python-Markdown anchor algorithm consumed by MkDocs.
 
         Returns:
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesDocsContract:
         return slugify(text, "-")
 
     @staticmethod
-    def _docs_contract_headings(content: str, depth: str) -> m.Infra.DocsRenderedToc:
+    def _contract_headings(content: str, depth: str) -> m.Infra.DocsRenderedToc:
         """Parse real headings through the same Markdown extensions as MkDocs.
 
         Returns:
@@ -147,9 +147,7 @@ class FlextInfraUtilitiesDocsContract:
         lines = body.splitlines()
         renderer.convert(
             "\n".join(
-                lines[
-                    FlextInfraUtilitiesDocsContract._docs_contract_body_start(lines) :
-                ],
+                lines[FlextInfraUtilitiesDocsContract._contract_body_start(lines) :],
             ),
         )
         return m.Infra.DocsRenderedToc.model_validate(
@@ -158,14 +156,14 @@ class FlextInfraUtilitiesDocsContract:
         )
 
     @staticmethod
-    def docs_contract_title(content: str) -> str | None:
+    def contract_title(content: str) -> str | None:
         """Read the authored H1, excluding frontmatter and fenced examples.
 
         Returns:
             The first rendered H1 label, or no title when none exists.
 
         """
-        rendered = FlextInfraUtilitiesDocsContract._docs_contract_headings(
+        rendered = FlextInfraUtilitiesDocsContract._contract_headings(
             content, c.ParserBooleanToken.ONE
         )
         if not rendered.toc_tokens:
@@ -177,18 +175,16 @@ class FlextInfraUtilitiesDocsContract:
         )
 
     @staticmethod
-    def docs_contract_build_toc(content: str) -> str:
+    def contract_build_toc(content: str) -> str:
         """Generate the managed TOC from real second- and third-level headings.
 
         Returns:
             The canonical TOC block, without headings inside code fences.
 
         """
-        rendered = FlextInfraUtilitiesDocsContract._docs_contract_headings(
-            content, "2-3"
-        )
+        rendered = FlextInfraUtilitiesDocsContract._contract_headings(content, "2-3")
         items: MutableSequence[str] = []
-        FlextInfraUtilitiesDocsContract._docs_contract_toc_items(
+        FlextInfraUtilitiesDocsContract._contract_toc_items(
             rendered.toc_tokens,
             items,
         )
@@ -198,7 +194,7 @@ class FlextInfraUtilitiesDocsContract:
         return f"{c.Infra.TOC_START}\n\n" + "\n".join(items) + f"\n\n{c.Infra.TOC_END}"
 
     @staticmethod
-    def _docs_contract_toc_items(
+    def _contract_toc_items(
         tokens: Sequence[m.Infra.DocsTocToken],
         items: MutableSequence[str],
         depth: int = 0,
@@ -214,7 +210,7 @@ class FlextInfraUtilitiesDocsContract:
             )
             indent = "  " * depth
             items.append(f"{indent}- [{title}](#{token.id})")
-            FlextInfraUtilitiesDocsContract._docs_contract_toc_items(
+            FlextInfraUtilitiesDocsContract._contract_toc_items(
                 token.children,
                 items,
                 depth + 1,
@@ -356,7 +352,7 @@ class FlextInfraUtilitiesDocsContract:
         exists = path.exists()
         current = path.read_text(encoding=c.DEFAULT_ENCODING) if exists else ""
         normalized = (
-            FlextInfraUtilitiesDocsContract.docs_contract_update_toc(content)[0]
+            FlextInfraUtilitiesDocsContract.contract_update_toc(content)[0]
             if path.suffix == ".md"
             else content
         )

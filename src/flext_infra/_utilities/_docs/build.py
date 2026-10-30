@@ -16,7 +16,7 @@ import mkdocs.config
 from flext_cli import u
 
 from flext_infra import c, m, p
-from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
+from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -111,7 +111,7 @@ class FlextInfraUtilitiesDocsBuild:
             / c.Infra.DEFAULT_DOCS_OUTPUT_DIR
             / f"{c.Infra.DIR_SITE}{site_suffix}"
         ).resolve()
-        FlextInfraUtilitiesDocsBuild._run_mkdocs_api(settings, site_dir)
+        FlextInfraUtilitiesDocsBuild._run_mkapi(settings, site_dir)
         return m.Infra.DocsPhaseReport(
             phase="build",
             scope=scope.name,
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesDocsBuild:
         )
 
     @staticmethod
-    def _run_mkdocs_api(settings: Path, site_dir: Path) -> None:
+    def _run_mkapi(settings: Path, site_dir: Path) -> None:
         """Validate and build through the typed public MkDocs SDK."""
         site_dir.parent.mkdir(parents=True, exist_ok=True)
         logger = logging.getLogger("mkdocs")

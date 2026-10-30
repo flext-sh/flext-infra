@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p, t, u
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraCodemodRenameSymbols:

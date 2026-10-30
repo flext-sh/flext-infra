@@ -16,7 +16,7 @@ from rope.refactor.similarfinder import Match
 from rope.refactor.wildcards import DefaultWildcard
 
 from flext_infra import m, p, t
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraRopeRestructure(Restructure):

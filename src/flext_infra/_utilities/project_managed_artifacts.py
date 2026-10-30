@@ -925,29 +925,29 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         return None
 
     @staticmethod
-    def _merge_gitignore(
+    def _merge_ignore(
         source: Path,
-        gitignore: m.Infra.ProjectGitignoreConfig | None,
+        ignore: m.Infra.ProjectGitignoreConfig | None,
         patterns: list[str],
         blocks: list[m.Infra.ProjectGitignorePreservedBlock],
         markers: MutableMapping[str, Path],
     ) -> str | None:
-        """Merge one source's gitignore patterns and uniquely owned blocks.
+        """Merge one source's ignore patterns and uniquely owned blocks.
 
         Returns:
             The duplicate-marker failure message, or ``None`` when all merged.
 
         """
-        if gitignore is None:
+        if ignore is None:
             return None
         patterns.extend(
             pattern
-            for pattern in dict.fromkeys(gitignore.patterns)
+            for pattern in dict.fromkeys(ignore.patterns)
             if pattern not in patterns
         )
-        for block in gitignore.preserved_blocks:
+        for block in ignore.preserved_blocks:
             failure = FlextInfraUtilitiesProjectManagedArtifacts._merge_unique_keys(
-                "gitignore preserved marker",
+                "ignore preserved marker",
                 source,
                 dict.fromkeys((block.begin, block.end), source),
                 markers,
@@ -971,16 +971,16 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         """
         mise_tools: MutableMapping[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: MutableMapping[str, Path] = {}
-        gitignore_patterns: list[str] = []
-        gitignore_blocks: list[m.Infra.ProjectGitignorePreservedBlock] = []
-        gitignore_markers: MutableMapping[str, Path] = {}
+        ignore_patterns: list[str] = []
+        ignore_blocks: list[m.Infra.ProjectGitignorePreservedBlock] = []
+        ignore_markers: MutableMapping[str, Path] = {}
         for source, fragment in fragments:
-            failure = cls._merge_gitignore(
+            failure = cls._merge_ignore(
                 source,
                 fragment.Gitignore,
-                gitignore_patterns,
-                gitignore_blocks,
-                gitignore_markers,
+                ignore_patterns,
+                ignore_blocks,
+                ignore_markers,
             ) or cls._merge_unique_keys(
                 "Mise selector",
                 source,
@@ -993,8 +993,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         artifacts = m.Infra.ProjectManagedArtifactsConfig(
             Mise=m.Infra.ProjectMiseConfig(tools=dict(sorted(mise_tools.items()))),
             Gitignore=m.Infra.ProjectGitignoreConfig(
-                patterns=tuple(gitignore_patterns),
-                preserved_blocks=tuple(gitignore_blocks),
+                patterns=tuple(ignore_patterns),
+                preserved_blocks=tuple(ignore_blocks),
             ),
         )
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(

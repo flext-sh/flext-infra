@@ -91,7 +91,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 The private-submodule init mechanism is proven against this
                 synthetic contract instead of any real workspace entry: real
                 deploy-key contracts are operator-private config living in the
-                gitignored local override layer, never in this public repository.
+                ignored local override layer, never in this public repository.
 
                 Returns:
                     The resulting ``m.Infra.CiPrivateSubmodulesSpec``.

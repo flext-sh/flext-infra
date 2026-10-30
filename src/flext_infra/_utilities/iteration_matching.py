@@ -91,7 +91,7 @@ class FlextInfraUtilitiesIterationMatching(
         """Apply the declared positive glob view through native path matching.
 
         Git inventory owns tracking and ignore semantics; these derived globs
-        describe analysis eligibility, not another interpretation of .gitignore.
+        describe analysis eligibility, not another interpretation of .ignore.
 
         Returns:
             Eligible paths, retaining the original path objects and order.

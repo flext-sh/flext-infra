@@ -25,7 +25,7 @@ class TestsFlextInfraModRuleExpectedReceipt:
     @staticmethod
     def _declare(workspace: Path, *, expected: str) -> None:
         """Point the workspace at one local rule carrying the receipt clause."""
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             workspace,
             {
                 "receipt-probe": (

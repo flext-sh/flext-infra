@@ -18,7 +18,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from rope.base import ast
 
 from flext_infra import c, m, p
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeSourceBindingCollector:

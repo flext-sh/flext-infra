@@ -67,7 +67,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         manifest = m.Infra.WorkspaceManifestSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=observed.repository.name,
-            docs_audit=observed.docs_audit,
+            audit=observed.audit,
             repository=observed.repository,
             project=project,
             members=(

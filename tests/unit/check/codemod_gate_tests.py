@@ -50,7 +50,7 @@ class TestsFlextInfraCodemodGate:
             'module-name = "scanner_contract"\n',
             encoding="utf-8",
         )
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             project,
             {
                 name: (

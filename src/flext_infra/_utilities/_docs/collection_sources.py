@@ -282,7 +282,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         return original, timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
     @classmethod
-    def docs_collection_manifest(
+    def collection_manifest(
         cls,
         canonical: Path,
         projection: Path | None,

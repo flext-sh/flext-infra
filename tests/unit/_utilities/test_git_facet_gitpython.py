@@ -482,7 +482,7 @@ class TestsFlextInfraGitFacet:
         destination = scope / ' rename -> target\n".csv '
         u.Tests.git_run(repository, "mv", "--", str(renamed), str(destination))
         u.Tests.git_run(repository, "rm", "--cached", "--", str(removed))
-        (repository / ".gitignore").write_text("removed.csv\n", encoding="utf-8")
+        (repository / ".ignore").write_text("removed.csv\n", encoding="utf-8")
         untracked = scope / ' new\n" -> file.csv '
         untracked.write_text("column\nnew\n", encoding="utf-8")
 
@@ -614,7 +614,7 @@ class TestsFlextInfraGitFacet:
     ) -> None:
         """An explicitly selected ignored scope remains excluded by its repository."""
         repository = u.Tests.git_repository(tmp_path)
-        (repository / ".gitignore").write_text("scratch/\n", encoding="utf-8")
+        (repository / ".ignore").write_text("scratch/\n", encoding="utf-8")
         ignored_scope = repository / "scratch" / "project"
         ignored_scope.mkdir(parents=True)
         (ignored_scope / "README.md").write_text("# Project\n", encoding="utf-8")

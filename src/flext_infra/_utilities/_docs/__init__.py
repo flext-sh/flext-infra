@@ -13,37 +13,25 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra._utilities._docs.api import FlextInfraUtilitiesDocsApi
+    from flext_infra._utilities._docs.audit import FlextInfraUtilitiesDocsAudit
     from flext_infra._utilities._docs.audit_detectors import (
         FlextInfraUtilitiesDocsAuditDetectors,
+    )
+    from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
+    from flext_infra._utilities._docs.build import FlextInfraUtilitiesDocsBuild
+    from flext_infra._utilities._docs.collection import (
+        FlextInfraUtilitiesDocsCollection,
+    )
+    from flext_infra._utilities._docs.collection_sources import (
+        FlextInfraUtilitiesDocsCollectionSources,
     )
     from flext_infra._utilities._docs.command_contract import (
         FlextInfraUtilitiesDocsCommandContract,
     )
-    from flext_infra._utilities._docs.docs_api import FlextInfraUtilitiesDocsApi
-    from flext_infra._utilities._docs.docs_audit import FlextInfraUtilitiesDocsAudit
-    from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
-    from flext_infra._utilities._docs.docs_build import FlextInfraUtilitiesDocsBuild
-    from flext_infra._utilities._docs.docs_collection import (
-        FlextInfraUtilitiesDocsCollection,
-    )
-    from flext_infra._utilities._docs.docs_collection_sources import (
-        FlextInfraUtilitiesDocsCollectionSources,
-    )
-    from flext_infra._utilities._docs.docs_contract import (
-        FlextInfraUtilitiesDocsContract,
-    )
-    from flext_infra._utilities._docs.docs_fix import FlextInfraUtilitiesDocsFix
-    from flext_infra._utilities._docs.docs_generate import (
-        FlextInfraUtilitiesDocsGenerate,
-    )
-    from flext_infra._utilities._docs.docs_render import FlextInfraUtilitiesDocsRender
-    from flext_infra._utilities._docs.docs_scope import FlextInfraUtilitiesDocsScope
-    from flext_infra._utilities._docs.docs_scope_projects import (
-        FlextInfraUtilitiesDocsScopeProjects,
-    )
-    from flext_infra._utilities._docs.docs_validate import (
-        FlextInfraUtilitiesDocsValidate,
-    )
+    from flext_infra._utilities._docs.contract import FlextInfraUtilitiesDocsContract
+    from flext_infra._utilities._docs.fix import FlextInfraUtilitiesDocsFix
+    from flext_infra._utilities._docs.generate import FlextInfraUtilitiesDocsGenerate
     from flext_infra._utilities._docs.generate_plan import (
         FlextInfraUtilitiesDocsGeneratePlan,
     )
@@ -60,6 +48,8 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesDocsGithubLinks,
     )
     from flext_infra._utilities._docs.guides import FlextInfraUtilitiesDocsGuides
+    from flext_infra._utilities._docs.render import FlextInfraUtilitiesDocsRender
+    from flext_infra._utilities._docs.scope import FlextInfraUtilitiesDocsScope
     from flext_infra._utilities._docs.scope_build import (
         FlextInfraUtilitiesDocsScopeBuild,
     )
@@ -69,12 +59,16 @@ if TYPE_CHECKING:
     from flext_infra._utilities._docs.scope_policy import (
         FlextInfraUtilitiesDocsScopePolicy,
     )
+    from flext_infra._utilities._docs.scope_projects import (
+        FlextInfraUtilitiesDocsScopeProjects,
+    )
     from flext_infra._utilities._docs.scope_selection import (
         FlextInfraUtilitiesDocsScopeSelection,
     )
     from flext_infra._utilities._docs.scope_state import (
         FlextInfraUtilitiesDocsScopeState,
     )
+    from flext_infra._utilities._docs.validate import FlextInfraUtilitiesDocsValidate
 
 
 __all__: tuple[str, ...] = (
@@ -110,32 +104,32 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
-        "FlextInfraUtilitiesDocsApi": ".docs_api",
-        "FlextInfraUtilitiesDocsAudit": ".docs_audit",
+        "FlextInfraUtilitiesDocsApi": ".api",
+        "FlextInfraUtilitiesDocsAudit": ".audit",
         "FlextInfraUtilitiesDocsAuditDetectors": ".audit_detectors",
-        "FlextInfraUtilitiesDocsBase": ".docs_base",
-        "FlextInfraUtilitiesDocsBuild": ".docs_build",
-        "FlextInfraUtilitiesDocsCollection": ".docs_collection",
-        "FlextInfraUtilitiesDocsCollectionSources": ".docs_collection_sources",
+        "FlextInfraUtilitiesDocsBase": ".base",
+        "FlextInfraUtilitiesDocsBuild": ".build",
+        "FlextInfraUtilitiesDocsCollection": ".collection",
+        "FlextInfraUtilitiesDocsCollectionSources": ".collection_sources",
         "FlextInfraUtilitiesDocsCommandContract": ".command_contract",
-        "FlextInfraUtilitiesDocsContract": ".docs_contract",
-        "FlextInfraUtilitiesDocsFix": ".docs_fix",
-        "FlextInfraUtilitiesDocsGenerate": ".docs_generate",
+        "FlextInfraUtilitiesDocsContract": ".contract",
+        "FlextInfraUtilitiesDocsFix": ".fix",
+        "FlextInfraUtilitiesDocsGenerate": ".generate",
         "FlextInfraUtilitiesDocsGeneratePlan": ".generate_plan",
         "FlextInfraUtilitiesDocsGenerateProject": ".generate_project",
         "FlextInfraUtilitiesDocsGenerateRoot": ".generate_root",
         "FlextInfraUtilitiesDocsGenerateSources": ".generate_sources",
         "FlextInfraUtilitiesDocsGithubLinks": ".github_links",
         "FlextInfraUtilitiesDocsGuides": ".guides",
-        "FlextInfraUtilitiesDocsRender": ".docs_render",
-        "FlextInfraUtilitiesDocsScope": ".docs_scope",
+        "FlextInfraUtilitiesDocsRender": ".render",
+        "FlextInfraUtilitiesDocsScope": ".scope",
         "FlextInfraUtilitiesDocsScopeBuild": ".scope_build",
         "FlextInfraUtilitiesDocsScopePaths": ".scope_paths",
         "FlextInfraUtilitiesDocsScopePolicy": ".scope_policy",
-        "FlextInfraUtilitiesDocsScopeProjects": ".docs_scope_projects",
+        "FlextInfraUtilitiesDocsScopeProjects": ".scope_projects",
         "FlextInfraUtilitiesDocsScopeSelection": ".scope_selection",
         "FlextInfraUtilitiesDocsScopeState": ".scope_state",
-        "FlextInfraUtilitiesDocsValidate": ".docs_validate",
+        "FlextInfraUtilitiesDocsValidate": ".validate",
     }),
     public_exports=__all__,
 )

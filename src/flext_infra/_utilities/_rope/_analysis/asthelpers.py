@@ -14,9 +14,9 @@ from typing import ClassVar
 from flext_cli import u
 
 from flext_infra import c, m, p, settings, t
-from flext_infra._utilities._rope.rope_ast import FlextInfraUtilitiesRopeAst
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.ast import FlextInfraUtilitiesRopeAst
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):

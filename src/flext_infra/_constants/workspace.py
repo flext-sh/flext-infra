@@ -66,8 +66,8 @@ class FlextInfraConstantsWorkspace:
     PERSISTENT_STATE_ARTIFACT_NAMES: ClassVar[frozenset[str]] = frozenset({".serena"})
     "Persistent-state artifact basenames owned by the local repository."
 
-    # NOTE: the .gitignore body is derived from the artifact SSOT
-    # (config/codegen.yaml artifacts -> CodegenConfigSpec.gitignore_sections)
+    # NOTE: the .ignore body is derived from the artifact SSOT
+    # (config/codegen.yaml artifacts -> CodegenConfigSpec.ignore_sections)
     # and written only by codegen conform; the old REQUIRED_GITIGNORE_ENTRIES,
     # GITIGNORE_REMOVE_EXACT and GITIGNORE_MANAGED_HEADER append-paths were
     # removed with the migrator/sync parallel writers.

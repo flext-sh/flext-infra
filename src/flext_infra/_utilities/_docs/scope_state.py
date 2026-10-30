@@ -228,7 +228,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         raise ValueError(msg)
 
     @staticmethod
-    def docs_scope_enabled(docs_meta: t.JsonMapping) -> bool:
+    def scope_enabled(docs_meta: t.JsonMapping) -> bool:
         """Return the ``enabled`` docs-scope flag for pre-loaded metadata.
 
         The flag defaults to ``True`` only when the key is absent. A present

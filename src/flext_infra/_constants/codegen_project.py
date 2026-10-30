@@ -116,7 +116,7 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     BEADS_LOCAL_VERSION_FILENAME: ClassVar[str] = ".local_version"
     BEADS_LAST_TOUCHED_FILENAME: ClassVar[str] = "last-touched"
     BEADS_RUNTIME_ENTRY_NAMES: ClassVar[frozenset[str]] = frozenset({
-        # Provenance: bd's own `.beads/.gitignore`. These are the live Dolt
+        # Provenance: bd's own `.beads/.ignore`. These are the live Dolt
         # server and daemon runtime entries bd writes beside the ledger: they
         # are projections of ledger truth, never composed output, so the
         # composed-project verify must tolerate them exactly as it tolerates

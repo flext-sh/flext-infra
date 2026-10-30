@@ -112,7 +112,7 @@ class FlextInfraCodegenConformEditor(
         )
         if settings.failure:
             return result_type.from_failure(settings)
-        ignored = u.Infra.render_project_gitignore(
+        ignored = u.Infra.render_project_ignore(
             codegen,
             profile=target.make_profile,
             project_name=target.repository.name,

@@ -112,12 +112,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
             The resulting ``Sequence[Path]``.
 
         """
-        return FlextInfraUtilitiesDocsBase.docs_scope_markdown_paths(
+        return FlextInfraUtilitiesDocsBase.scope_markdown_paths(
             scope, FlextInfraUtilitiesDocsBase.iter_markdown_files(scope.path)
         )
 
     @staticmethod
-    def docs_scope_markdown_paths(
+    def scope_markdown_paths(
         scope: m.Infra.DocScope,
         candidates: Sequence[Path],
     ) -> Sequence[Path]:

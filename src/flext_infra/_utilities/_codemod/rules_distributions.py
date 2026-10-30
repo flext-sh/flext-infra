@@ -26,7 +26,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
     """Project requirements, installed distributions, and codemod providers."""
 
     @staticmethod
-    def codemod_project_requirements(
+    def project_requirements(
         root: Path,
     ) -> p.Result[tuple[str, Sequence[str]]]:
 

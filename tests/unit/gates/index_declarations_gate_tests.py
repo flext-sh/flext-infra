@@ -47,12 +47,12 @@ class TestsFlextInfraIndexDeclarationsGate:
             declare_gitlink: bool = False,
         ) -> m.Infra.GateResult:
             u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=tmp_path))
-            (tmp_path / ".gitignore").write_text("ignored/\n", encoding="utf-8")
+            (tmp_path / ".ignore").write_text("ignored/\n", encoding="utf-8")
             (tmp_path / "kept.txt").write_text("kept\n", encoding="utf-8")
             u.Infra.git_add_paths(
                 m.Infra.GitPathsRequest(
                     repo_root=tmp_path,
-                    paths=[".gitignore", "kept.txt"],
+                    paths=[".ignore", "kept.txt"],
                 ),
             )
             if orphan_gitlink:

@@ -23,11 +23,11 @@ from flext_infra._utilities import (
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:

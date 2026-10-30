@@ -160,7 +160,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         )
 
     @classmethod
-    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
+    def runtime_errors(cls) -> tuple[type[BaseException], ...]:
         """Return recoverable exceptions raised by Rope operations.
 
         Returns:

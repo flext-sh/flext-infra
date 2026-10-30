@@ -14,7 +14,7 @@ class FlextInfraUtilitiesDocsGenerateSources:
     """Derive one docs scope's identity from its live or projected metadata."""
 
     @staticmethod
-    def docs_scope_from_sources(
+    def scope_from_sources(
         scope: m.Infra.DocScope,
         *,
         metadata_projection: m.Infra.CodegenFilePlan | None = None,
@@ -38,7 +38,7 @@ class FlextInfraUtilitiesDocsGenerateSources:
             state = FlextInfraUtilitiesDocsScope.project_state(
                 scope.path, metadata_projection=metadata_projection
             )
-            if not FlextInfraUtilitiesDocsScope.docs_scope_enabled(state.docs_meta):
+            if not FlextInfraUtilitiesDocsScope.scope_enabled(state.docs_meta):
                 msg = f"docs scope is disabled in its metadata: {scope.path}"
                 raise ValueError(msg)
             name = state.project_name

@@ -144,10 +144,10 @@ class FlextInfraCodemodGate(FlextInfraGate):
             prefix="check-codemod-", dir=settings.work_dir
         ) as directory:
             for index, (project, project_targets) in enumerate(
-                u.Infra.codemod_project_targets(planned.value, native_targets)
+                u.Infra.project_targets(planned.value, native_targets)
             ):
                 ruleset = u.Infra.codemod_stage_scan_ruleset(
-                    u.Infra.codemod_project_plan(planned.value, project),
+                    u.Infra.project_plan(planned.value, project),
                     Path(directory) / str(index),
                 )
                 if not self._scan_ruleset(

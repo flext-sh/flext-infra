@@ -167,7 +167,7 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
             m.Field(description="Explicit repository integration contract"),
         ] = None
-        docs_audit: Annotated[
+        audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(description="Own documentation audit declarations"),
         ] = m.Field(
@@ -547,7 +547,7 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        docs_audit: Annotated[
+        audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(
                 description="Repository-owned documentation audit declarations",
@@ -764,7 +764,7 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = ()
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        docs_audit: Annotated[
+        audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(
                 description="Validated local documentation audit declarations",

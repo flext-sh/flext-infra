@@ -108,7 +108,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         if missing_paths:
             status = c.Infra.ResultStatus.FAIL
             messages.append(f"missing required docs files: {', '.join(missing_paths)}")
-        contract_messages = u.Infra.docs_contract_messages(scope)
+        contract_messages = u.Infra.contract_messages(scope)
         if contract_messages:
             status = c.Infra.ResultStatus.FAIL
             messages.extend(contract_messages)
@@ -130,7 +130,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         )
         u.Infra.docs_write_validate_reports(scope, report)
         self.logger.info(
-            "docs_validate_scope_completed",
+            "validate_scope_completed",
             project=scope.name,
             phase=c.Infra.VERB_VALIDATE,
             result=status,

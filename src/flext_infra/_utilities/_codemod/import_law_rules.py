@@ -35,8 +35,8 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 

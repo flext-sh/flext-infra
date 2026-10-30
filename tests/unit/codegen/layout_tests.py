@@ -130,7 +130,7 @@ class TestsFlextInfraCodegenLayout:
             )
 
     @staticmethod
-    def test_check_reports_move_archive_review_and_gitignore(
+    def test_check_reports_move_archive_review_and_ignore(
         tmp_path: Path,
     ) -> None:
         """Check mode classifies every loose root entry without writing."""
@@ -149,12 +149,10 @@ class TestsFlextInfraCodegenLayout:
             eq=f"{TestsFlextInfraCodegenLayoutSupport.archive_root()}/{project.name}/output.log",
         )
         tm.that(by_path["loose.txt"].rule, eq="review")
-        gitignore = [
-            finding for finding in report.findings if finding.rule == "gitignore"
-        ]
-        tm.ok(bool(gitignore))
+        ignore = [finding for finding in report.findings if finding.rule == "ignore"]
+        tm.ok(bool(ignore))
         tm.that(
-            gitignore[0].target,
+            ignore[0].target,
             eq=f"{TestsFlextInfraCodegenLayoutSupport.archive_root()}/",
         )
 

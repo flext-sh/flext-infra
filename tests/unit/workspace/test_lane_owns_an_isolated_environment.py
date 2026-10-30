@@ -40,7 +40,7 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
             '"$${GNUMAKEFLAGS-unset}" "$${PYTHONPATH-unset}" >> setup-runs.log\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        (repository / ".gitignore").write_text(
+        (repository / ".ignore").write_text(
             f"setup-runs.log\n{c.Infra.ENVIRONMENT_DIRECTORY}/\n",
             encoding=c.DEFAULT_ENCODING,
         )
