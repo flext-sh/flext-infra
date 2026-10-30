@@ -16,7 +16,12 @@ from tests import c, tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.gates.base_gate import FlextInfraGates
+    from flext_infra.gates.base_gate import (
+        FlextInfraGates,
+        FlextInfraGatesMypy,
+        FlextInfraGatesPyrefly,
+        FlextInfraGatesRuffLint,
+    )
 
 
 class TestsFlextInfraOwnedPythonCoverage:

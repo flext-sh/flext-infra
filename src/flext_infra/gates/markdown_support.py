@@ -15,13 +15,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfra, c, config, u
+from flext_infra import c, config, u
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import m, p
 
 
-class FlextInfraMarkdownGateBase(FlextInfra):
+class FlextInfraMarkdownGateBase(FlextInfraGates):
     """Share file selection, configuration, and the rumdl invocation."""
 
     # Relative flavor and exclusion patterns belong to each configuration root.

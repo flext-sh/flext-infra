@@ -11,13 +11,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfra, m, u
+from flext_infra import m, u
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraGatesScanner(FlextInfra):
+class FlextInfraGatesScanner(FlextInfraGates):
     """Mixin for gates that detect per-file issues via a rope-backed scanner.
 
     Subclasses provide ``scan_error_message`` and implement

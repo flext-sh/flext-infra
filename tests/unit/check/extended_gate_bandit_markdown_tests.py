@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, ClassVar
 import pytest
 
 from flext_infra import config
+from flext_infra.gates import FlextInfraGatesBandit, FlextInfraGatesMarkdown
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:

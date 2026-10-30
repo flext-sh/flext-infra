@@ -35,6 +35,7 @@ from flext_infra._utilities._codemod import (
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -928,10 +929,19 @@ class FlextInfraUtilitiesFacadeComponents:
             return ()
         declared = {plan.path: plan for plan in declared_files}
         plans: list[m.Infra.CodegenFilePlan] = []
+        module_syntax_error = FlextInfraUtilitiesRopeRuntime.exception_type(
+            "rope.base.exceptions", "ModuleSyntaxError"
+        )
         for resource in source_project.get_python_files():
             path = Path(resource.real_path)
-            module = cls._consumer_module(source_project, path)
-            calls = cls._component_calls(module, claims)
+            try:
+                module = cls._consumer_module(source_project, path)
+                calls = cls._component_calls(module, claims)
+            except module_syntax_error:
+                # A projected consumer with invalid syntax (a render bug owned
+                # by its own stage) cannot be a valid consumer candidate; the
+                # syntax defect surfaces at its owner's validation, not here.
+                continue
             if not calls:
                 continue
             source = module.source_code
