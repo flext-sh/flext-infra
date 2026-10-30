@@ -441,6 +441,22 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
                 if not self.py_class(ancestor):
                     continue
+                declaring = ancestor.get_module()
+                origin = (
+                    declaring.get_resource()
+                    if declaring is not None
+                    else None
+                )
+                if (
+                    origin is None
+                    or not Path(origin.real_path)
+                    .resolve()
+                    .is_relative_to(self.project.root.real_path)
+                ):
+                    # Foreign runtime bases (pydantic internals, stdlib,
+                    # third-party) are the projection's consumer boundary:
+                    # their members are never protocol ancestors.
+                    continue
                 node, lexical = ancestor.get_ast(), ancestor.get_scope()
                 if not isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef):
                     message = "model ancestor has no authenticated class declaration"

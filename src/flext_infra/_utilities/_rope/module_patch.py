@@ -299,6 +299,15 @@ class FlextInfraUtilitiesRopeModulePatch:
         """
         runtime = FlextInfraUtilitiesRopeRuntime
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        if resource.exists() and resource.read() != source:
+            # The rename offsets belong to the held text epoch; rope computes
+            # changes against the resource's own bytes. A divergent epoch
+            # would splice foreign content into the candidate — refuse it as
+            # typed evidence instead.
+            return r[str].fail(
+                "import alias rename raced its source epoch: "
+                f"{resource.real_path}"
+            )
         context = candidate.get_source_binding_index().context_at(fragment.start)
         existing = context.environment.lookup(original)
         imported = context.environment.lookup(alias)

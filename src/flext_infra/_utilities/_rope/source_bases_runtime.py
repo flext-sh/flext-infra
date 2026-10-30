@@ -1568,7 +1568,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 # A cached candidate view can trail the latest projection:
                 # when the candidate declares no installer at all, the raw
                 # disk initializer is the lazy SSOT and its text parses
-                # standalone (no candidate snapshot to diff).
+                # standalone (no candidate snapshot to diff). Preferring the
+                # disk unconditionally re-widens the walk into foreign
+                # runtime lineages and re-triggers candidate-epoch splices.
                 physical = Path(resource.real_path)
                 if physical.is_file():
                     disk = physical.read_text(
