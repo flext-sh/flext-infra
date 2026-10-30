@@ -1,5 +1,5 @@
 {%- set documentation = docstring | replace('\\', '\\\\') | replace('"""', '\\"\\"\\"') if docstring is not none else '' -%}
-{%- set bases = class_bases if class_bases else ((base_class,) if base_class is not none else ()) -%}
+{%- set bases = class_bases if class_bases else ([base_class] if base_class is not none else []) -%}
 {%- set arguments = bases + class_keywords -%}
 {%- if managed_header is not none %}{{ managed_header }}
 {% endif -%}
