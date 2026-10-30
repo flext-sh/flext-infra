@@ -1027,6 +1027,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         visiting | {declared.target},
                         depth + 1,
                     )
+                if attributes[0] not in provider.get_attributes():
+                    # The captured inventory elects the binding but the live
+                    # provider view does not declare it: the walk falls back
+                    # to the reexport and family-package routes upstream.
+                    return None
                 binding = self._provider_attribute_binding(
                     provider, attributes[0], target
                 )
@@ -1264,6 +1269,24 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
                 if reexported is not None:
                     return reexported
+                outer = module.get_resource()
+                if (
+                    outer is not None
+                    and outer.is_folder()
+                    and self._project.find_module(target) is not None
+                ):
+                    # A family package publishes submodules, not attributes:
+                    # the cached package view can trail a fresh sibling file,
+                    # so the native module election is the truth — continue
+                    # the walk inside the elected child module. A plain
+                    # module (file resource) keeps the declared failure.
+                    return self._external_reference(
+                        target, attributes[1:], visiting | {target}, depth + 1
+                    )
+                message = (
+                    f"Provider {module.get_name()} does not declare {name}: {target}"
+                )
+                raise ValueError(message)
             binding = self._provider_attribute_binding(module, name, target)
             return self._native_provider_reference(
                 module, binding, attributes, visiting, depth
@@ -1506,22 +1529,60 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         ) -> Mapping[str, m.Infra.SourceClassReference]:
             """Read a provider's declared lazy aliases from its native source module.
 
+            An uncaptured candidate view can shadow the physical initializer
+            with empty bytes; the physical raw disk is the lazy SSOT fallback
+            when the candidate text declares no installer at all.
+
             Returns:
                 Declared provider modules keyed by their lazy aliases.
 
             """
             declaring = module.get_module()
             if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
-                return {}
+                # An abstract package election has no source module of its
+                # own; its initializer on the raw disk is the lazy SSOT.
+                outer = module.get_resource()
+                if outer is None:
+                    return {}
+                folder = (
+                    Path(outer.real_path)
+                    if outer.is_folder()
+                    else Path(outer.real_path).parent
+                )
+                init_path = folder / c.Infra.INIT_PY
+                if not init_path.is_file():
+                    return {}
+                return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+                    self._provider_name(module),
+                    init_path,
+                    init_path.read_text(encoding=c.DEFAULT_ENCODING, errors="replace"),
+                    project=self._project,
+                    pymodule=None,
+                )
             resource = declaring.get_resource()
             if resource is None:
                 return {}
+            source = declaring.source_code
+            used_disk = False
+            if "install_lazy_exports" not in source and resource.exists():
+                # A cached candidate view can trail the latest projection:
+                # when the candidate declares no installer at all, the raw
+                # disk initializer is the lazy SSOT and its text parses
+                # standalone (no candidate snapshot to diff).
+                physical = Path(resource.real_path)
+                if physical.is_file():
+                    disk = physical.read_text(
+                        encoding=c.DEFAULT_ENCODING, errors="replace"
+                    )
+                    if "install_lazy_exports" in disk:
+                        source = disk
+                        used_disk = True
             return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
                 self._provider_name(module),
                 Path(resource.real_path),
-                declaring.source_code,
+                source,
                 project=self._project,
-                pymodule=declaring,
+                pymodule=None if used_disk else declaring,
             )
 
         def _star_reexporter(

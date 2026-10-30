@@ -18,6 +18,9 @@ from collections.abc import Generator, Mapping, Sequence
 from importlib.metadata import packages_distributions
 from pathlib import Path
 
+import rope.base.exceptions
+import rope.base.libutils
+
 from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
@@ -628,29 +631,37 @@ class FlextInfraUtilitiesFacadeComponents:
             current = runtime.require_source_object(project.get_pymodule(resource))
             attributes = current.get_attributes()
             if owner.get_name() not in attributes:
-                # Fachada lazy-init: a publicação é rota do mapa
-                # ``install_lazy_exports`` no __init__, não atributo nativo.
-                # Resolve pelo contrato lazy (mesma SSOT) antes de falhar.
-                route = FlextInfraUtilitiesRopeRuntimeModules._lazy_route(
-                    project,
-                    current.get_module().get_name(),
-                    owner.get_name(),
+                # O candidate overlay compartilha o caminho de disco com
+                # conteúdo diverso: o mesmo módulo pode chegar aqui sem a
+                # declaração que o disco tem (dropped/dissolved parts).
+                # Parse one-shot do disco (string module, fora do cache do
+                # projeto — sem inflar memória na fase de facades).
+                # O resource do view pode remapear o caminho (staging do
+                # quoted-move troca conteúdos no mesmo path); o disco físico
+                # é lido pelo path absoluto real, nunca pelo view.
+                real_disk = Path(str(path))
+                if not real_disk.is_absolute():
+                    real_disk = Path(project.root.real_path) / real_disk
+                disk_source = real_disk.read_text()
+                disk_module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                    project, disk_source
                 )
-                if route is None:
+                disk_attributes = disk_module.get_attributes()
+                if owner.get_name() in disk_attributes:
+                    current = disk_module
+                    attributes = disk_attributes
+                else:
                     return r[str].fail(
                         f"Projected facade lost its native declaration: {path}"
+                        f" (owner {owner.get_name()!r} absent from disk source;"
+                        f" disk exports {sorted(disk_attributes)[:6]})"
                     )
-                module_name = current.get_module().get_name()
-                owner_module = f"{module_name}{route}"
-                owner_resource = project.get_module(owner_module).get_resource()
-                current = runtime.require_source_object(
-                    project.get_pymodule(owner_resource)
-                )
-                attributes = current.get_attributes()
             actual = attributes[owner.get_name()].get_object()
             if not types.py_class(actual):
                 return r[str].fail(
                     f"Projected facade lost its native declaration: {path}"
+                    f" (owner {owner.get_name()!r} is"
+                    f" {type(actual).__name__}, not a class)"
                 )
             if namespace is not owner:
                 actual = actual.get_attributes()[namespace.get_name()].get_object()
@@ -1353,9 +1364,19 @@ class FlextInfraUtilitiesFacadeComponents:
         resource = engine.get_file(
             path.relative_to(Path(engine.root.real_path)).as_posix()
         )
-        module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
-            engine.get_pymodule(resource, force_errors=True)
-        )
+        try:
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+                engine.get_pymodule(resource)
+            )
+        except rope.base.exceptions.ModuleSyntaxError:
+            # Conteúdo candidate do overlay pode ser inválido (staging do
+            # quoted-move troca conteúdos no mesmo path): o consumo segue
+            # com módulo vazio e a re-leitura settled pelo disco corrige.
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+                FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                    engine, Path(path).read_text()
+                )
+            )
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             message = f"component consumer has no native source module: {path}"
             raise TypeError(message)
