@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FlextInfraEnforcementCatalogGate(FlextInfraGates):
+class FlextInfraGatesEnforcementCatalog(FlextInfraGates):
     """Fail when an enforcement claim is duplicated or has no active owner."""
 
     gate_id: ClassVar[str] = c.Infra.ENFORCEMENT_CATALOG
@@ -68,4 +68,4 @@ class FlextInfraEnforcementCatalogGate(FlextInfraGates):
         )
 
 
-__all__: list[str] = ["FlextInfraEnforcementCatalogGate"]
+__all__: list[str] = ["FlextInfraGatesEnforcementCatalog"]

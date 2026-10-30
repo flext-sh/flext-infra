@@ -13,10 +13,11 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m, p, u
+from flext_infra.gates import FlextInfraGates
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
-class FlextInfraGatesRuntimeIntegrityGate(FlextInfra):
+class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
     """Retain each existing runtime owner's native process exactly once."""
 
     gate_id: ClassVar[str] = c.Infra.RUNTIME_INTEGRITY

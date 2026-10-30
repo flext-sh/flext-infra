@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 import flext_core
-from flext_cli import m
+from flext_cli import m, t
 
-from flext_infra import c, p, t
+from flext_infra import c
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
@@ -35,6 +35,8 @@ from flext_infra._models._config import (
     FlextInfraModelsConfigTemplates,
     FlextInfraModelsConfigWorkspace,
 )
+from flext_infra._protocols import FlextInfraProtocolsBase
+from flext_infra._typings import FlextInfraTypesAdapters
 
 
 class FlextInfraModelsConfigArtifact(
@@ -547,8 +549,10 @@ class FlextInfraModelsConfigArtifact(
 
             """
             for project, roles in value.items():
-                if project != t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
-                    project
+                if project != (
+                    FlextInfraTypesAdapters.DISTRIBUTION_NAME_ADAPTER.validate_python(
+                        project
+                    )
                 ):
                     msg = f"runtime module project identity is not canonical: {project}"
                     raise ValueError(msg)
@@ -1349,7 +1353,7 @@ class FlextInfraModelsConfigArtifact(
         """One repository's read-only planning inputs sent to a fleet worker."""
 
         ports: Annotated[
-            t.Port[p.Infra.CodegenConformPorts] | None,
+            t.Port[FlextInfraProtocolsBase.CodegenConformPorts] | None,
             m.Field(
                 exclude=True,
                 description="Caller-bound capabilities shared by repository phases",

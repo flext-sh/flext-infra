@@ -10,6 +10,7 @@ from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, t, u
+from flext_infra.gates.ruff_base import FlextInfraGatesRuffGate
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraGatesRuffFormatGate(FlextInfraRuff):
+class FlextInfraGatesRuffFormat(FlextInfraGatesRuffGate):
     """Gate for Ruff formatter checks and fixes."""
 
     gate_id: ClassVar[str] = c.Infra.FORMAT

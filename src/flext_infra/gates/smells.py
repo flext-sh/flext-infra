@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraSmellsGate(FlextInfraGates):
+class FlextInfraGatesSmells(FlextInfraGates):
     """Report qlty smells for one project from a scan of its check directories.
 
     Every repository evaluates only itself, locally exactly as in CI: qlty

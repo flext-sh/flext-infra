@@ -15,9 +15,14 @@ from collections.abc import Mapping, Sequence
 from keyword import iskeyword
 from pathlib import Path
 
-from flext_cli import u
+from flext_cli import p, r, t, u
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config
+from flext_infra._models._codegen import (
+    FlextInfraModelsCodegenLazyInit,
+    FlextInfraModelsCodegenTransaction,
+)
+from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -33,20 +38,20 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @staticmethod
     def lazy_init_run(
-        source_project: p.Infra.RopeProject,
-        index: m.Infra.RopeWorkspaceIndex,
+        source_project: FlextInfraProtocolsWorkspaceSnapshot.RopeProject,
+        index: FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex,
         *,
         root: Path,
         scoped: bool,
-        snapshot: p.Infra.WorkspaceSnapshot | None = None,
-    ) -> m.Infra.LazyInitRun:
+        snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None = None,
+    ) -> FlextInfraModelsCodegenLazyInit.LazyInitRun:
         """Open one repository run over its source inventory.
 
         Returns:
             The run every planning step reads and caches through.
 
         """
-        return m.Infra.LazyInitRun(
+        return FlextInfraModelsCodegenLazyInit.LazyInitRun(
             root=root,
             scoped=scoped,
             index=index,
@@ -74,7 +79,7 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @staticmethod
     def lazy_init_target_dirs(
-        index: m.Infra.RopeWorkspaceIndex,
+        index: FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex,
         root: Path,
         *,
         module: str,
@@ -101,8 +106,8 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @classmethod
     def lazy_init_plan_root(
-        cls, run: m.Infra.LazyInitRun, target: Path | None
-    ) -> p.Result[tuple[m.Infra.LazyInitPlan, ...]]:
+        cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun, target: Path | None
+    ) -> p.Result[tuple[FlextInfraModelsCodegenLazyInit.LazyInitPlan, ...]]:
         """Plan the repository's packages bottom-up; a target narrows the tree.
 
         ``target`` is the selected package directory, ``None`` plans the tree.
@@ -111,7 +116,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             The selected package plans, or the first planning failure.
 
         """
-        result_type = r[tuple[m.Infra.LazyInitPlan, ...]]
+        result_type = r[tuple[FlextInfraModelsCodegenLazyInit.LazyInitPlan, ...]]
         entries = tuple(
             run.index.packages_by_dir[str(package_dir)]
             for package_dir in run.index.package_dirs
@@ -140,7 +145,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             return result_type.fail(
                 f"lazy-init target belongs to retired support: {target}"
             )
-        selected: list[m.Infra.LazyInitPlan] = []
+        selected: list[FlextInfraModelsCodegenLazyInit.LazyInitPlan] = []
         for package_dir in package_dirs:
             if target is not None and not package_dir.is_relative_to(target):
                 continue
@@ -160,11 +165,11 @@ class FlextInfraUtilitiesLazyInitPlan:
     @classmethod
     def lazy_init_file_plans(
         cls,
-        run: m.Infra.LazyInitRun,
-        plans: tuple[m.Infra.LazyInitPlan, ...],
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        plans: tuple[FlextInfraModelsCodegenLazyInit.LazyInitPlan, ...],
         *,
         first_party: Mapping[Path, frozenset[str]],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]]:
         """Bind every decided initializer and generated-source tree to its effect.
 
         ``first_party`` maps each owning project root to its first-party
@@ -174,9 +179,9 @@ class FlextInfraUtilitiesLazyInitPlan:
             The file plans sorted by destination path.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]]
         view = run.model.source_project
-        by_path: dict[Path, m.Infra.CodegenFilePlan] = {}
+        by_path: dict[Path, FlextInfraModelsCodegenTransaction.CodegenFilePlan] = {}
         for plan in plans:
             entry = run.index.packages_by_dir.get(str(plan.context.pkg_dir))
             project = entry.project_root if entry is not None else None
@@ -189,7 +194,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 run.model, plan.context.pkg_dir
             )
             for path, desired in cls._lazy_init_effects(run, plan, first_party[owner]):
-                file_plan = m.Infra.CodegenFilePlan(
+                file_plan = FlextInfraModelsCodegenTransaction.CodegenFilePlan(
                     project=project,
                     path=path,
                     before=view.source_state(path, required=False),
@@ -207,8 +212,8 @@ class FlextInfraUtilitiesLazyInitPlan:
     @classmethod
     def _lazy_init_effects(
         cls,
-        run: m.Infra.LazyInitRun,
-        plan: m.Infra.LazyInitPlan,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        plan: FlextInfraModelsCodegenLazyInit.LazyInitPlan,
         first_party: frozenset[str],
     ) -> Sequence[tuple[Path, bytes | None]]:
         """Return the desired bytes of one package and its generated-source trees.
@@ -260,8 +265,8 @@ class FlextInfraUtilitiesLazyInitPlan:
                 and view.source_query(module, "isfile")
                 for module in view.source_children(tree)
             ):
-                tree_plan = m.Infra.LazyInitPlan(
-                    context=m.Infra.LazyInitPackageContext(
+                tree_plan = FlextInfraModelsCodegenLazyInit.LazyInitPlan(
+                    context=FlextInfraModelsCodegenLazyInit.LazyInitPackageContext(
                         pkg_dir=tree,
                         init_path=init_path,
                         current_pkg=f"{plan.context.current_pkg}.{tree.name}",
@@ -285,8 +290,8 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @classmethod
     def lazy_init_context(
-        cls, run: m.Infra.LazyInitRun, pkg_dir: Path
-    ) -> m.Infra.LazyInitPackageContext:
+        cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun, pkg_dir: Path
+    ) -> FlextInfraModelsCodegenLazyInit.LazyInitPackageContext:
         """Return the package context of one directory.
 
         Returns:
@@ -300,7 +305,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             init = FlextInfraUtilitiesLazyInitLetters.lazy_init_text(
                 run, pkg_dir / c.Infra.INIT_PY
             )
-            context = m.Infra.LazyInitPackageContext(
+            context = FlextInfraModelsCodegenLazyInit.LazyInitPackageContext(
                 pkg_dir=pkg_dir,
                 init_path=pkg_dir / c.Infra.INIT_PY,
                 current_pkg=name,
@@ -318,8 +323,8 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @classmethod
     def _lazy_init_build_plan(
-        cls, run: m.Infra.LazyInitRun, pkg_dir: Path
-    ) -> m.Infra.LazyInitPlan:
+        cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun, pkg_dir: Path
+    ) -> FlextInfraModelsCodegenLazyInit.LazyInitPlan:
         """Decide one package's initializer after its children are planned.
 
         Returns:
@@ -345,7 +350,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 )
                 or ()
             )
-            return m.Infra.LazyInitPlan(
+            return FlextInfraModelsCodegenLazyInit.LazyInitPlan(
                 context=context,
                 action=c.Infra.LazyInitAction.RETAIN,
                 ownership="authored",
@@ -390,7 +395,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 c.Infra.LazyInitAction.WRITE if keeps else residue,
                 child_packages=children,
             )
-        return m.Infra.LazyInitPlan(
+        return FlextInfraModelsCodegenLazyInit.LazyInitPlan(
             context=context,
             action=c.Infra.LazyInitAction.WRITE,
             ownership="generator",
@@ -403,11 +408,11 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @staticmethod
     def _lazy_init_empty_plan(
-        context: m.Infra.LazyInitPackageContext,
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
         action: c.Infra.LazyInitAction,
         *,
         child_packages: Sequence[str] = (),
-    ) -> m.Infra.LazyInitPlan:
+    ) -> FlextInfraModelsCodegenLazyInit.LazyInitPlan:
         """Return a plan without exports for one decided action.
 
         Returns:
@@ -415,7 +420,7 @@ class FlextInfraUtilitiesLazyInitPlan:
 
         """
         owned = action in {c.Infra.LazyInitAction.WRITE, c.Infra.LazyInitAction.REMOVE}
-        return m.Infra.LazyInitPlan(
+        return FlextInfraModelsCodegenLazyInit.LazyInitPlan(
             context=context,
             action=action,
             ownership="generator" if owned else None,
@@ -426,7 +431,9 @@ class FlextInfraUtilitiesLazyInitPlan:
         )
 
     @staticmethod
-    def lazy_init_is_facade_root(context: m.Infra.LazyInitPackageContext) -> bool:
+    def lazy_init_is_facade_root(
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
+    ) -> bool:
         """Return whether a package is a public ``src`` root or the tests root.
 
         Returns:
@@ -441,7 +448,9 @@ class FlextInfraUtilitiesLazyInitPlan:
         ) or (name == c.Infra.DIR_TESTS and context.pkg_dir.name == c.Infra.DIR_TESTS)
 
     @staticmethod
-    def _lazy_init_shadows_stdlib(context: m.Infra.LazyInitPackageContext) -> bool:
+    def _lazy_init_shadows_stdlib(
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
+    ) -> bool:
         """Return whether the importable name shadows a stdlib module for Ruff.
 
         Returns:
@@ -454,7 +463,9 @@ class FlextInfraUtilitiesLazyInitPlan:
         return len(parts) == 1 and parts[0] in sys.stdlib_module_names
 
     @staticmethod
-    def _lazy_init_owns_modules(run: m.Infra.LazyInitRun, pkg_dir: Path) -> bool:
+    def _lazy_init_owns_modules(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun, pkg_dir: Path
+    ) -> bool:
         """Return whether a package tree owns any module besides initializers.
 
         Returns:
@@ -473,7 +484,9 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @classmethod
     def _lazy_init_package_exports(
-        cls, run: m.Infra.LazyInitRun, context: m.Infra.LazyInitPackageContext
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
     ) -> t.MutableLazyAliasMap:
         """Collect what the package's direct modules declare in ``__all__``.
 
@@ -533,8 +546,8 @@ class FlextInfraUtilitiesLazyInitPlan:
     @classmethod
     def _lazy_init_child_packages(
         cls,
-        run: m.Infra.LazyInitRun,
-        context: m.Infra.LazyInitPackageContext,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
     ) -> Sequence[str]:
         """Record importable direct child packages without publishing their names.
 
@@ -570,8 +583,8 @@ class FlextInfraUtilitiesLazyInitPlan:
     @classmethod
     def _lazy_init_child_name(
         cls,
-        run: m.Infra.LazyInitRun,
-        context: m.Infra.LazyInitPackageContext,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
         child_dir: Path,
     ) -> str:
         """Return an importable child package name for the parent's metadata.
@@ -616,7 +629,7 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @classmethod
     def _lazy_init_has_live_content(
-        cls, run: m.Infra.LazyInitRun, pkg_dir: Path
+        cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun, pkg_dir: Path
     ) -> bool:
         """Return whether a package tree owns a module or an authored initializer.
 
@@ -643,7 +656,7 @@ class FlextInfraUtilitiesLazyInitPlan:
     @classmethod
     def _lazy_init_add(
         cls,
-        run: m.Infra.LazyInitRun,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
         lazy_map: t.MutableLazyAliasMap,
         name: str,
         target: tuple[str, str],
@@ -667,7 +680,7 @@ class FlextInfraUtilitiesLazyInitPlan:
     @classmethod
     def _lazy_init_elect(
         cls,
-        run: m.Infra.LazyInitRun,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
         a: tuple[str, str],
         b: tuple[str, str],
         *,
@@ -722,7 +735,7 @@ class FlextInfraUtilitiesLazyInitPlan:
     @classmethod
     def _lazy_init_rank(
         cls,
-        run: m.Infra.LazyInitRun,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
         a: tuple[str, str],
         b: tuple[str, str],
         *,
@@ -753,9 +766,9 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @staticmethod
     def _lazy_init_route_identity(
-        run: m.Infra.LazyInitRun,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
         path: Path,
-        module: m.Infra.PythonModuleFacts,
+        module: FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
         exports: Sequence[str],
     ) -> tuple[str | None, str | None]:
         """Return a route module's facade alias and family suffix.
@@ -793,7 +806,10 @@ class FlextInfraUtilitiesLazyInitPlan:
 
     @classmethod
     def _lazy_init_score(
-        cls, run: m.Infra.LazyInitRun, name: str, target: tuple[str, str]
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        name: str,
+        target: tuple[str, str],
     ) -> int:
         """Score one route by its module's governed publication facts.
 

@@ -31,13 +31,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfra, m, r, u
+from flext_infra import m, r, u
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraGatesIndexDeclarationsGate(FlextInfra):
+class FlextInfraGatesIndexDeclarations(FlextInfraGates):
     """Prove every indexed gitlink is declared by the repository itself."""
 
     gate_id: ClassVar[str] = "index-declarations"

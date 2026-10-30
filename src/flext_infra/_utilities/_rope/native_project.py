@@ -14,9 +14,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Self, cast, overload, override
 
-from rope.base import libutils
 from rope.base.builtins import BuiltinModule
-from rope.base import exceptions as rope_exceptions
 from rope.base.project import NoProject, Project
 from rope.base.resources import File, Folder, Resource
 
@@ -71,6 +69,8 @@ class FlextInfraRopeNativeProject(Project):
     ) -> t.Infra.RopeNativeParsedModule:
         """Resolve a native resource while preserving the SDK return classes.
 
+        Candidate syntax failures propagate unchanged from the native lookup.
+
         Returns:
             The original native module or package.
 
@@ -82,23 +82,10 @@ class FlextInfraRopeNativeProject(Project):
             message = "Rope module lookup requires a native resource"
             raise TypeError(message)
         native = cast("p.Infra.RopeProject", super())
-        try:
-            return native.get_pymodule(
-                cast("p.Infra.RopeResource", resource),
-                force_errors=force_errors,
-            )
-        except rope_exceptions.ModuleSyntaxError:
-            # O candidate overlay compartilha o caminho de disco com
-            # conteúdo diverso (staging do quoted-move): o conteúdo do
-            # view pode ser sintaticamente inválido. Um parse one-shot do
-            # disco físico (fora do overlay) devolve o módulo real sem
-            # contaminar o cache do projeto.
-            real_path = Path(self.root.real_path) / str(resource.path).lstrip('/')
-            source = real_path.read_text()
-            return cast(
-                "t.Infra.RopeNativeParsedModule",
-                libutils.get_string_module(self, source),
-            )
+        return native.get_pymodule(
+            cast("p.Infra.RopeResource", resource),
+            force_errors=force_errors,
+        )
 
     @override
     def get_module(
@@ -107,6 +94,8 @@ class FlextInfraRopeNativeProject(Project):
         folder: Folder | p.Infra.RopeRoot | None = None,
     ) -> t.Infra.RopeNativeSemanticModule:
         """Resolve the native semantic module elected by the SDK.
+
+        Candidate syntax failures propagate unchanged from the native lookup.
 
         Returns:
             The original native builtin, package, or source module.
@@ -125,21 +114,7 @@ class FlextInfraRopeNativeProject(Project):
                 spec.loader, importlib.machinery.ExtensionFileLoader
             ):
                 return BuiltinModule(name, self.pycore)
-        try:
-            return native.get_module(name, self._native_folder(folder))
-        except rope_exceptions.ModuleSyntaxError:
-            # Conteúdo candidate inválido no overlay (mesma medicina do
-            # get_pymodule): parse one-shot do disco físico.
-            found = self.find_module(name, folder)
-            if found is None:
-                raise
-            real_path = Path(self.root.real_path) / str(found.path).lstrip('/')
-            return cast(
-                "t.Infra.RopeNativeSemanticModule",
-                libutils.get_string_module(
-                    self, real_path.read_text(), resource=found
-                ),
-            )
+        return native.get_module(name, self._native_folder(folder))
 
     @override
     def get_relative_module(

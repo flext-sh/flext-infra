@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraGatesScannerGate(FlextInfra):
+class FlextInfraGatesScanner(FlextInfra):
     """Mixin for gates that detect per-file issues via a rope-backed scanner.
 
     Subclasses provide ``scan_error_message`` and implement

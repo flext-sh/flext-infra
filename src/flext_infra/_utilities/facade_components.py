@@ -19,8 +19,6 @@ from importlib.metadata import packages_distributions
 from pathlib import Path
 
 import rope.base.exceptions
-import rope.base.libutils
-
 from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
@@ -537,6 +535,10 @@ class FlextInfraUtilitiesFacadeComponents:
             )
         )
         imports = runtime.module_imports_for_pymodule(project, module)
+        # Imports this planning adds on top of the module's own epoch; the
+        # rewritten text replay adds only this delta, never the module's
+        # original statements (a cross-epoch replay glues the class header).
+        added_imports: list[t.Infra.RopeFromImport] = []
         package = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
             directory, project_root=Path(project.root.real_path), source_project=project
         )
@@ -553,6 +555,7 @@ class FlextInfraUtilitiesFacadeComponents:
             if occupied is not None and occupied.get_object() is not provider:
                 message = f"Occupied facade provider binding: {path}:{binding}"
                 return r[str].fail(message)
+            added_imports.append(runtime.from_import(package, 0, ((binding, None),)))
             imports.add_import(runtime.from_import(package, 0, ((binding, None),)))
             retained.append((binding, provider))
         missing = tuple(
@@ -570,6 +573,9 @@ class FlextInfraUtilitiesFacadeComponents:
                 return r[str].fail(
                     f"Occupied nominal facade import: {path}:{published_name}"
                 )
+            added_imports.append(
+                runtime.from_import(package, 0, ((published_name, None),))
+            )
             imports.add_import(
                 runtime.from_import(package, 0, ((published_name, None),))
             )
@@ -584,7 +590,9 @@ class FlextInfraUtilitiesFacadeComponents:
             and not assignment.type_parameters
         )
         if publications or alias_names:
-            imports.add_import(runtime.from_import("typing", 0, (("TypeAlias", None),)))
+            type_alias_import = runtime.from_import("typing", 0, (("TypeAlias", None),))
+            added_imports.append(type_alias_import)
+            imports.add_import(type_alias_import)
         step = u.type_adapter(int).validate_python(
             runtime.runtime_callable("rope.refactor.sourceutils", "get_indent")(
                 project
@@ -617,8 +625,8 @@ class FlextInfraUtilitiesFacadeComponents:
         ):
             current = runtime.require_source_object(project.get_pymodule(resource))
             native_imports = runtime.module_imports_for_pymodule(project, current)
-            for statement in imports.imports:
-                native_imports.add_import(statement.import_info)
+            for import_info in added_imports:
+                native_imports.add_import(import_info)
             native_imports.remove_duplicates()
             native_imports.sort_imports()
             source = native_imports.get_changed_source()
@@ -1374,7 +1382,7 @@ class FlextInfraUtilitiesFacadeComponents:
             # com módulo vazio e a re-leitura settled pelo disco corrige.
             module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
                 FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-                    engine, Path(path).read_text()
+                    engine, Path(path).read_text(encoding="utf-8")
                 )
             )
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):

@@ -442,7 +442,17 @@ class FlextInfraUtilitiesCodegenNamespace:
         cached = cls._declared_exports_cache.get(cache_key)
         if cached is not None and cached[0] == source:
             return cached[1]
-        tree = ast.parse(source, filename=str(file_path))
+        try:
+            tree = ast.parse(source, filename=str(file_path))
+        except SyntaxError:
+            # Conteúdo candidate do staging pode chegar sintaticamente
+            # inválido (quoted-move associa conteúdos no mesmo path); um
+            # candidato inválido nunca é entrada válida para a varredura
+            # de exportações: re-leitura pelo disco físico.
+            tree = ast.parse(
+                resolved.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+                filename=str(file_path),
+            )
         result: Sequence[str] = ()
         for node in FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(
             tree

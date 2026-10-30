@@ -1461,8 +1461,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 name
                 for name in names
                 if any(
-                    entry.destination == name
-                    and target.make_profile in entry.profiles
+                    entry.destination == name and target.make_profile in entry.profiles
                     for entry in codegen.templates.entries
                     if entry.source is not None
                 )

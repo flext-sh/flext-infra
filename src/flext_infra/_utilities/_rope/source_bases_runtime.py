@@ -77,6 +77,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             The operation-local factory; construction failures escape unchanged.
 
         """
+        entry = sources.get("flext_core._protocols._logging")
+        if entry is not None:
+            import sys as _sys
+
+            print(
+                f"FACTORY-DBG len={len(entry[1])} "
+                f"has03={'FlextProtocolsLoggingPart03' in entry[1]}",
+                file=_sys.stderr,
+                flush=True,
+            )
         return cache(
             partial(
                 cls.source_member_resolver,
@@ -1283,8 +1293,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return self._external_reference(
                         target, attributes[1:], visiting | {target}, depth + 1
                     )
+                captured = self._sources.get(self._provider_name(module))
+                captured_state = (
+                    "absent"
+                    if captured is None
+                    else f"len={len(captured[1])} has03={'FlextProtocolsLoggingPart03' in captured[1]}"
+                )
                 message = (
                     f"Provider {module.get_name()} does not declare {name}: {target}"
+                    f"; captured={captured_state}"
                 )
                 raise ValueError(message)
             binding = self._provider_attribute_binding(module, name, target)
@@ -1392,6 +1409,58 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return self._provider_reference(
                     reexporter, attributes, visiting | {target}, depth + 1
                 )
+            moved = self._moved_class_module(module, name)
+            if moved is not None:
+                # An owner move dissolved the declaring part module into a
+                # staged sibling; the planned world is the SSOT for where the
+                # class now lives.
+                return self._provider_reference(
+                    moved, attributes, visiting | {target}, depth + 1
+                )
+            return None
+
+        def _moved_class_module(
+            self,
+            module: t.Infra.RopeSemanticModule,
+            name: str,
+        ) -> p.Infra.RopeSemanticModule | None:
+            """Elect the planned sibling module that defines a moved class.
+
+            An owner move dissolves the declaring part module; the planned
+            sibling modules of the same package are the only authority for
+            where the class lives after the dissolution.
+
+            Returns:
+                The staged semantic module defining the class, or none when no
+                planned sibling declares it.
+
+            """
+            module_name = module.get_name()
+            parent = module_name.rpartition(".")[0]
+            prefix = f"{parent}."
+            modules = FlextInfraUtilitiesRopeRuntimeModules
+            marker = f"class {name}"
+            for candidate_name, (_, candidate_source) in sorted(self._sources.items()):
+                if (
+                    not candidate_name.startswith(prefix)
+                    or candidate_name == module_name
+                    or candidate_name.endswith((".__init__", ".__version__"))
+                    or marker not in candidate_source
+                ):
+                    continue
+                candidate = modules.build_string_module(
+                    self._project,
+                    candidate_source,
+                    resource=self._project.find_module(candidate_name),
+                )
+                try:
+                    binding = candidate.get_attribute(name).get_object()
+                except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
+                    continue
+                if FlextInfraUtilitiesRopeRuntime.py_class(binding):
+                    return FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                        candidate
+                    )
             return None
 
         def _provider_name(
@@ -1563,6 +1632,16 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if resource is None:
                 return {}
             source = declaring.source_code
+            if "_logging" in str(resource.real_path):
+                import sys as _sys
+
+                print(
+                    f"LAZY-DBG path={resource.real_path} "
+                    f"len={len(source)} has03={'Part03' in source} "
+                    f"captured={'flext_core._protocols._logging' in self._sources}",
+                    file=_sys.stderr,
+                    flush=True,
+                )
             used_disk = False
             if "install_lazy_exports" not in source and resource.exists():
                 # A cached candidate view can trail the latest projection:

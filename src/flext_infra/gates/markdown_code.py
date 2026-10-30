@@ -20,7 +20,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfra, c, m, u
+from flext_infra import c, m, u
 from flext_infra.gates import (
     FlextInfraGates,
     FlextInfraMarkdownCodeSources,
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraMarkdownCodeGate(FlextInfraGates):
+class FlextInfraGatesMarkdownCode(FlextInfraGates):
     """Embedded documentation-code gate."""
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN_CODE

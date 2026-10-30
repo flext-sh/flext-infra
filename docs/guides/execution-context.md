@@ -60,6 +60,16 @@
 
 ## Runtime is the authority
 
+For the active complete facade-generator rewrite, resume from the branch-matched
+root plan, section `Handoff de retomada — 2026-10-30, chat 01a18a11`, at
+`.kilo/plans/2026-10-28-gen-mod-parametrization-performance/plan.md`, and Bead
+`flext-u9h2i`. It records the shared owners and failed/partial Make receipts;
+source implementation is not runtime acceptance. ADR-018 owns the template
+clarification: existing templates are the base of existing-module refactoring,
+filled from the current Infra Rope semantic inventory via typed contexts.
+Never substitute physical source after a candidate parse failure or repair a
+generated initializer manually. Preserve the first cause and fix its producer.
+
 Generation must remain importable before repairing projections. Authored component
 facades that share ancestors must impose compatible C3 precedence; reordering a
 generated outer facade cannot repair contradictory component hierarchies. Repair
@@ -202,6 +212,13 @@ owns cold import repair. Elect the same projector and original planning models
 before the aggregate they repair, retaining public package imports. The former
 defining-module workaround is superseded; generated initializers remain owned by
 the existing projector and are never repaired manually.
+
+The dated [2026-10-30 consolidation handoff][make-consolidation-handoff]
+records the bootstrap source cursor, owners and unqualified command receipts
+under `flext-9t6gn`. Read the latest Bead updates before resuming; this contract
+does not attest that the CLI is repaired.
+
+[make-consolidation-handoff]: ../../../docs/ways-of-working/make-consolidation-handoff.md
 
 The root has one native uv workspace and composes member locks per
 [ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md).

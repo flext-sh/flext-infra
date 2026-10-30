@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from flext_infra import m, p
 
 
-class FlextInfraGatesMarkdownGateBase(FlextInfra):
+class FlextInfraMarkdownGateBase(FlextInfra):
     """Share file selection, configuration, and the rumdl invocation."""
 
     # Relative flavor and exclusion patterns belong to each configuration root.

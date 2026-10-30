@@ -14,12 +14,84 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import m, p, t
-    from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
 
 
 @runtime_checkable
 class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
     """Workspace snapshot protocols exposed through ``p.Infra``."""
+
+    @runtime_checkable
+    class RopeProjectFiles(Protocol):
+        """Filesystem observations consumed by native project construction."""
+
+        def realpath(self, path: str) -> str: ...
+
+        def exists(self, path: str) -> bool: ...
+
+        def isfile(self, path: str) -> bool: ...
+
+        def isdir(self, path: str) -> bool: ...
+
+        def listdir(self, path: str) -> list[str]: ...
+
+        def read(self, path: str) -> bytes: ...
+
+    @runtime_checkable
+    class RopeResource(Protocol):
+        """Rope project resource shape shared by files and folders."""
+
+        def is_folder(self) -> bool: ...
+
+        def exists(self) -> bool: ...
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def path(self) -> str: ...
+
+        @property
+        def real_path(self) -> str: ...
+
+        @property
+        def parent(self) -> FlextInfraProtocolsWorkspaceSnapshot.RopeRoot: ...
+
+    @runtime_checkable
+    class RopeRoot(RopeResource, Protocol):
+        """Folder resource with the SDK's child lookup contract."""
+
+        def get_children(
+            self,
+        ) -> Sequence[FlextInfraProtocolsWorkspaceSnapshot.RopeResource]: ...
+
+        def get_child(
+            self,
+            name: str,
+        ) -> FlextInfraProtocolsWorkspaceSnapshot.RopeResource: ...
+
+        def has_child(self, name: str) -> bool: ...
+
+    @runtime_checkable
+    class RopeFile(RopeResource, Protocol):
+        """Rope file resource with content access."""
+
+        def read(self) -> str: ...
+
+        def write(self, contents: str) -> None: ...
+
+    @runtime_checkable
+    class RopePreferences(Protocol):
+        """Native preference updates required by project source election."""
+
+        def add(self, key: str, value: str) -> None: ...
+
+        def set(self, key: str, value: bool | Sequence[str]) -> None: ...
+
+    @runtime_checkable
+    class RopeChangeSet(Protocol):
+        """Rope change set shape."""
+
+        changes: list[p.AttributeProbe]
 
     @runtime_checkable
     class RopeModuleFinder(Protocol):
@@ -28,9 +100,9 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         def find_relative_module(
             self,
             modname: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot,
             level: int,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+        ) -> FlextInfraProtocolsWorkspaceSnapshot.RopeResource | None: ...
 
     @runtime_checkable
     class RopeSourceAccess(Protocol):
@@ -70,30 +142,32 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         """Compose native project lifecycle with authenticated source access."""
 
         @property
-        def root(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+        def root(self) -> FlextInfraProtocolsWorkspaceSnapshot.RopeRoot: ...
 
         @property
-        def fscommands(self) -> FlextInfraProtocolsRopeRuntime.RopeProjectFiles: ...
+        def fscommands(
+            self,
+        ) -> FlextInfraProtocolsWorkspaceSnapshot.RopeProjectFiles: ...
 
         def get_resource(
             self,
             resource_name: str,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+        ) -> FlextInfraProtocolsWorkspaceSnapshot.RopeResource: ...
 
         def get_file(
             self,
             path: str,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeFile: ...
+        ) -> FlextInfraProtocolsWorkspaceSnapshot.RopeFile: ...
 
         def get_folder(
             self,
             path: str,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+        ) -> FlextInfraProtocolsWorkspaceSnapshot.RopeRoot: ...
 
         def get_pymodule(
             self,
             resource: t.Infra.RopeNativeResource
-            | FlextInfraProtocolsRopeRuntime.RopeResource,
+            | FlextInfraProtocolsWorkspaceSnapshot.RopeResource,
             *,
             force_errors: bool = False,
         ) -> t.Infra.RopeNativeParsedModule: ...
@@ -102,45 +176,47 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
 
         def get_source_folders(
             self,
-        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+        ) -> Sequence[FlextInfraProtocolsWorkspaceSnapshot.RopeResource]: ...
 
         def get_python_path_folders(
             self,
-        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+        ) -> Sequence[FlextInfraProtocolsWorkspaceSnapshot.RopeResource]: ...
 
         def find_module(
             self,
             modname: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot | None = None,
+        ) -> FlextInfraProtocolsWorkspaceSnapshot.RopeResource | None: ...
 
         def get_module(
             self,
             name: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot | None = None,
         ) -> t.Infra.RopeNativeSemanticModule: ...
 
         def get_relative_module(
             self,
             name: str,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot,
             level: int,
         ) -> t.Infra.RopeNativeParsedModule: ...
 
         def get_python_files(
             self,
-        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeFile]: ...
+        ) -> Sequence[FlextInfraProtocolsWorkspaceSnapshot.RopeFile]: ...
 
-        def do(self, changes: FlextInfraProtocolsRopeRuntime.RopeChangeSet) -> None: ...
+        def do(
+            self, changes: FlextInfraProtocolsWorkspaceSnapshot.RopeChangeSet
+        ) -> None: ...
 
         def validate(
             self,
-            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot | None = None,
         ) -> None: ...
 
         def close(self) -> None: ...
 
-        def get_prefs(self) -> FlextInfraProtocolsRopeRuntime.RopePreferences: ...
+        def get_prefs(self) -> FlextInfraProtocolsWorkspaceSnapshot.RopePreferences: ...
 
         def frozen_layout(self) -> AbstractContextManager[Self]: ...
 

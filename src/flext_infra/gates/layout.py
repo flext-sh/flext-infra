@@ -12,11 +12,12 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import FlextInfra, c, m
+from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenLayout
+from flext_infra.gates import FlextInfraGates
 
 
-class FlextInfraGatesLayoutGate(FlextInfra):
+class FlextInfraGatesLayout(FlextInfraGates):
     """Layout-SSOT conformance gate backed by the layout engine check mode."""
 
     gate_id: ClassVar[str] = "layout"

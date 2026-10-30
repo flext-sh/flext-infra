@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraLocCapGate(FlextInfraGates):
+class FlextInfraGatesLocCap(FlextInfraGates):
     """Flag any module whose scc `Code` LOC exceeds the config-owned ceiling."""
 
     gate_id: ClassVar[str] = "loc-cap"

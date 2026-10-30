@@ -11,13 +11,14 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import FlextInfra, c, m, t, u
+from flext_infra import c, m, t, u
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraGatesMypyGate(FlextInfra):
+class FlextInfraGatesMypy(FlextInfraGates):
     """Gate for Mypy type checking."""
 
     gate_id: ClassVar[str] = c.Infra.MYPY

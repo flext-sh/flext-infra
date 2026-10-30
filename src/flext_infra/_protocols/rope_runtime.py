@@ -22,22 +22,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     """Rope object contracts used instead of importing untyped Rope classes."""
 
     @runtime_checkable
-    class RopeProjectFiles(Protocol):
-        """Filesystem observations consumed by native project construction."""
-
-        def realpath(self, path: str) -> str: ...
-
-        def exists(self, path: str) -> bool: ...
-
-        def isfile(self, path: str) -> bool: ...
-
-        def isdir(self, path: str) -> bool: ...
-
-        def listdir(self, path: str) -> list[str]: ...
-
-        def read(self, path: str) -> bytes: ...
-
-    @runtime_checkable
     class RopeResourceOwner(Protocol):
         """External resource election used by the native project initializer."""
 
@@ -109,49 +93,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
 
         @property
         def python_path_folders(self) -> t.StrTuple: ...
-
-    @runtime_checkable
-    class RopeResource(Protocol):
-        """Rope project resource shape shared by files and folders."""
-
-        def is_folder(self) -> bool: ...
-
-        def exists(self) -> bool: ...
-
-        @property
-        def name(self) -> str: ...
-
-        @property
-        def path(self) -> str: ...
-
-        @property
-        def real_path(self) -> str: ...
-
-        @property
-        def parent(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
-
-    @runtime_checkable
-    class RopeRoot(RopeResource, Protocol):
-        """Folder resource with the SDK's child lookup contract."""
-
-        def get_children(
-            self,
-        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
-
-        def get_child(
-            self,
-            name: str,
-        ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
-
-        def has_child(self, name: str) -> bool: ...
-
-    @runtime_checkable
-    class RopeFile(RopeResource, Protocol):
-        """Rope file resource with content access."""
-
-        def read(self) -> str: ...
-
-        def write(self, contents: str) -> None: ...
 
     @runtime_checkable
     class RopePyObject(Protocol):
@@ -731,14 +672,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         def pycore(self) -> FlextInfraProtocolsRopeRuntime.RopePyCore: ...
 
     @runtime_checkable
-    class RopePreferences(Protocol):
-        """Native preference updates required by project source election."""
-
-        def add(self, key: str, value: str) -> None: ...
-
-        def set(self, key: str, value: bool | Sequence[str]) -> None: ...
-
-    @runtime_checkable
     class RopeLocation(Protocol):
         """Rope occurrence location shape."""
 
@@ -821,12 +754,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         def find_function_offset(self, offset: int) -> int: ...
 
         def get_function_and_args_in_header(self, offset: int) -> str: ...
-
-    @runtime_checkable
-    class RopeChangeSet(Protocol):
-        """Rope change set shape."""
-
-        changes: list[p.AttributeProbe]
 
     @runtime_checkable
     class RopeInlineVariable(Protocol):

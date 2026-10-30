@@ -305,8 +305,7 @@ class FlextInfraUtilitiesRopeModulePatch:
             # would splice foreign content into the candidate — refuse it as
             # typed evidence instead.
             return r[str].fail(
-                "import alias rename raced its source epoch: "
-                f"{resource.real_path}"
+                f"import alias rename raced its source epoch: {resource.real_path}"
             )
         context = candidate.get_source_binding_index().context_at(fragment.start)
         existing = context.environment.lookup(original)

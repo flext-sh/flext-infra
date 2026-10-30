@@ -166,9 +166,10 @@ def main(argv: list[str]) -> int:
     for old, new in sorted(renames.items()):
         old_identities = dotted_variants(old.parents[1], old)
         new_identities = dotted_variants(new.parents[1], new)
-        subprocess.run(
-            ["/usr/bin/git", "mv", str(old), str(new)],
-            check=True,  # ruff: ignore[subprocess-without-shell-equals-true, start-process-with-partial-path]
+        git_binary = Path(sys.executable).parents[1] / "git"
+        subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+            [str(git_binary), "mv", str(old), str(new)],
+            check=True,
         )
         changed = rewrite_references(tree_roots, old_identities, new_identities)
         sys.stderr.write(

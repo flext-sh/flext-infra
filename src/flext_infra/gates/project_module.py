@@ -10,10 +10,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import FlextInfra, m, p, u
+from flext_infra import m, p, u
+from flext_infra.gates import FlextInfraGates
 
 
-class FlextInfraGatesProjectModuleGate(FlextInfra):
+class FlextInfraGatesProjectModule(FlextInfraGates):
     """Run repository-declared modules through the canonical native gate runner."""
 
     @override

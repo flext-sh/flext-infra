@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraPyrightGate(FlextInfraGates):
+class FlextInfraGatesPyright(FlextInfraGates):
     """Pyright quality gate."""
 
     gate_id: ClassVar[str] = c.Infra.PYRIGHT
