@@ -20,17 +20,13 @@ from libcst.metadata import (
 )
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
-)
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverNestingOwner,
     FlextInfraUtilitiesSemanticCutoverNestingReferences,
@@ -595,7 +591,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             project, source, resource=resource
         )
         facts = FlextInfraUtilitiesRopeStructure.logical_statements(source)
-        typing = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+        typing = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module("typing")
         )
         selection = cls._nesting_selection(module, facts, definitions)

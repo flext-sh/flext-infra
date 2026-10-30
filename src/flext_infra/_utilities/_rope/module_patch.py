@@ -11,18 +11,14 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._rope._analysis.exports import (
-    FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
+from flext_infra._utilities._rope._analysis import (
+    FlextInfraUtilitiesRopeAnalysisExports,
 )
 
 

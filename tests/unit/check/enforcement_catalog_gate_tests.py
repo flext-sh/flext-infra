@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.gates.enforcement_catalog import FlextInfraEnforcementCatalogGate
+from flext_infra.gates.enforcement_catalog import FlextInfraGatesEnforcementCatalog
 from tests import c, m, t, tm, u
 
 
@@ -72,9 +72,9 @@ class TestsFlextInfraEnforcementCatalogGate:
         registry = FlextInfraGateRegistry.default()
         tm.ok(
             registry.get(c.Infra.ENFORCEMENT_CATALOG)
-            is FlextInfraEnforcementCatalogGate
+            is FlextInfraGatesEnforcementCatalog
         )
-        execution = FlextInfraEnforcementCatalogGate(tmp_path).check(
+        execution = FlextInfraGatesEnforcementCatalog(tmp_path).check(
             tmp_path,
             m.Infra.GateContext(repository_root=tmp_path, reports_dir=tmp_path / "r"),
         )

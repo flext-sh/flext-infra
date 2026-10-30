@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.gates import FlextInfraRuffLintGate
+from flext_infra.gates import FlextInfraGatesRuffLint
 from tests import c, m, tm, u
 
 
@@ -144,7 +144,7 @@ class TestsFlextInfraLazyInitGeneration:
             ),
             eq=["True", "True"],
         )
-        checked = FlextInfraRuffLintGate(repository).check_files(
+        checked = FlextInfraGatesRuffLint(repository).check_files(
             (init_path,),
             repository,
             m.Infra.GateContext(

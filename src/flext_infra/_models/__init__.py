@@ -54,7 +54,6 @@ if TYPE_CHECKING:
     from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
     from flext_infra._models.codegen_toolchain import FlextInfraModelsCodegenToolchain
     from flext_infra._models.codemod import FlextInfraModelsCodemod
-    from flext_infra._models.collection import FlextInfraModelsDocsCollection
     from flext_infra._models.deps import FlextInfraModelsDeps
     from flext_infra._models.deps_toml import FlextInfraModelsDepsToml
     from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
@@ -67,7 +66,7 @@ if TYPE_CHECKING:
     from flext_infra._models.deps_tool_config_project_artifacts import (
         FlextInfraModelsDepsToolConfigProjectArtifacts,
     )
-    from flext_infra._models.deps_tool_config_project_ignore import (
+    from flext_infra._models.deps_tool_config_project_gitignore import (
         FlextInfraModelsDepsToolConfigProjectGitignore,
     )
     from flext_infra._models.deps_tool_config_project_mise import (
@@ -77,6 +76,7 @@ if TYPE_CHECKING:
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
     from flext_infra._models.docs import FlextInfraModelsDocs
+    from flext_infra._models.docs_collection import FlextInfraModelsDocsCollection
     from flext_infra._models.docs_generation import FlextInfraModelsDocsGeneration
     from flext_infra._models.duplication import FlextInfraModelsDuplication
     from flext_infra._models.enforcement_catalog import (
@@ -238,12 +238,12 @@ install_lazy_exports(
             ".deps_tool_config_project_artifacts"
         ),
         "FlextInfraModelsDepsToolConfigProjectGitignore": (
-            ".deps_tool_config_project_ignore"
+            ".deps_tool_config_project_gitignore"
         ),
         "FlextInfraModelsDepsToolConfigProjectMise": ".deps_tool_config_project_mise",
         "FlextInfraModelsDepsToolConfigTypeCheckers": ".deps_tool_config_type_checkers",
         "FlextInfraModelsDocs": ".docs",
-        "FlextInfraModelsDocsCollection": ".collection",
+        "FlextInfraModelsDocsCollection": ".docs_collection",
         "FlextInfraModelsDocsGeneration": ".docs_generation",
         "FlextInfraModelsDuplication": ".duplication",
         "FlextInfraModelsEnforcementCatalog": ".enforcement_catalog",

@@ -132,21 +132,22 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                         )
                         for resource in project.get_python_files()
                     }
-                    stage(
-                        u.Infra.plan_module_move(
-                            project,
-                            previous,
-                            destination_file=target,
-                            inputs=u.Infra.NativeSourceView(
-                                captured,
-                                tuple(
-                                    project.source_state(path, required=False)
-                                    for path in captured
-                                ),
-                                declared_files=self._candidate_files,
+                    moved = u.Infra.plan_module_move(
+                        project,
+                        previous,
+                        destination_file=target,
+                        inputs=u.Infra.NativeSourceView(
+                            captured,
+                            tuple(
+                                project.source_state(path, required=False)
+                                for path in captured
                             ),
-                        )
+                            declared_files=self._candidate_files,
+                        ),
                     )
+                    if moved.failure:
+                        return r[tuple[Path, Path, str]].from_failure(moved)
+                    stage(moved.value)
             else:
                 if project.source_query(target, "exists"):
                     return r[tuple[Path, Path, str]].fail(
@@ -177,15 +178,17 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                         )
                     )
                 )
-                source(
-                    target,
-                    u.Infra.generate_module_skeleton(
+                rendered = u.Infra.generate_module_skeleton(
+                    context=m.Infra.ModuleSkeletonRenderContext(
                         class_name=name,
                         base_class=None,
                         base_module=None,
                         docstring=documentation,
-                    ),
+                    )
                 )
+                if rendered.failure:
+                    return r[tuple[Path, Path, str]].from_failure(rendered)
+                source(target, rendered.value)
             return r[tuple[Path, Path, str]].ok((domain, target, name))
 
         packages = sorted({
@@ -351,7 +354,10 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             plan for plan in self._candidate_files if original.get(plan.path) != plan
         )
         if outcome.exception is not None:
-            outcome.error_type = f"{type(outcome.exception).__module__}.{type(outcome.exception).__qualname__}"
+            outcome.error_type = (
+                f"{type(outcome.exception).__module__}.",
+                f"{type(outcome.exception).__qualname__}",
+            )
         return outcome
 
     rope_repository_root_override: Annotated[

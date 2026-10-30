@@ -10,13 +10,13 @@ import time
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FlextInfraEnforcementCatalogGate(FlextInfraGate):
+class FlextInfraEnforcementCatalogGate(FlextInfraGates):
     """Fail when an enforcement claim is duplicated or has no active owner."""
 
     gate_id: ClassVar[str] = c.Infra.ENFORCEMENT_CATALOG

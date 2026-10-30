@@ -22,18 +22,12 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesPrivateImportFacades
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
-)
-from flext_infra._utilities._rope.source_bases_aliases import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeSourceBasesAliases,
-)
-from flext_infra._utilities._rope.source_bases_inventory_collector import (
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 
@@ -108,7 +102,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             project, entry[0]
         )
         return FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-            FlextInfraUtilitiesTypesRopeRuntime.require_source_object(module)
+            FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(module)
         )
 
     @classmethod

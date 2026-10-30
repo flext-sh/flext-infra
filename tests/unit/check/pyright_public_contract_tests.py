@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.gates import FlextInfraPyrightGate
+from flext_infra.gates import FlextInfraGatesPyright
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -103,7 +103,7 @@ class TestsFlextInfraPyrightPublicContract:
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
             encoding=c.DEFAULT_ENCODING,
         )
-        result = FlextInfraPyrightGate(root).check(
+        result = FlextInfraGatesPyright(root).check(
             root,
             m.Infra.GateContext(repository_root=root, reports_dir=root / ".reports"),
         )
@@ -200,7 +200,7 @@ class TestsFlextInfraPyrightPublicContract:
             repository_root=project,
             reports_dir=project / ".reports",
         )
-        result = FlextInfraPyrightGate(project).check(project, context)
+        result = FlextInfraGatesPyright(project).check(project, context)
 
         tm.that(result.result.passed, eq=True, msg=result.raw_output)
         tm.that(result.issues, eq=(), msg=result.raw_output)
@@ -289,7 +289,7 @@ class TestsFlextInfraPyrightPublicContract:
             repository_root=tmp_path,
             reports_dir=tmp_path / ".reports",
         )
-        result = FlextInfraPyrightGate(tmp_path).check(tmp_path, context)
+        result = FlextInfraGatesPyright(tmp_path).check(tmp_path, context)
 
         private_issues = tuple(
             issue for issue in result.issues if issue.code == "reportPrivateUsage"

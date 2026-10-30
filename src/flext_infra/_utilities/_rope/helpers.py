@@ -10,7 +10,7 @@ import ast
 from collections.abc import Sequence
 
 from flext_infra import c
-from flext_infra._utilities._rope.method_order import FlextInfraUtilitiesRopeMethodOrder
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeMethodOrder
 
 
 class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeMethodOrder):

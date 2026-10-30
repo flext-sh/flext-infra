@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra, m
-from flext_infra.gates import FlextInfraMarkdownGate
+from flext_infra.gates import FlextInfraGatesMarkdown
 from flext_infra.refactor import FlextInfraRefactorCensus
 from tests import c, tm, u
 
@@ -404,7 +404,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
             apply_fixes=True,
         )
 
-        execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
+        execution = FlextInfraGatesMarkdown(tmp_path).fix(project_dir, context)
 
         # Valid trailing-space repair remains published; MD041 still fails
         # this invocation with the same diagnostic as the read-only check.
@@ -413,7 +413,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(execution.issues[0].code, eq="MD041")
         tm.that(
             execution.issues,
-            eq=FlextInfraMarkdownGate(tmp_path).check(project_dir, context).issues,
+            eq=FlextInfraGatesMarkdown(tmp_path).check(project_dir, context).issues,
         )
 
     @staticmethod
@@ -442,7 +442,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         )
         u.Tests.initialize_git_repo(project_dir)
 
-        execution = FlextInfraMarkdownGate(tmp_path).check(
+        execution = FlextInfraGatesMarkdown(tmp_path).check(
             project_dir,
             m.Infra.GateContext(repository_root=tmp_path, reports_dir=tmp_path),
         )

@@ -62,7 +62,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
             u.Infra.pyrefly_target_args(project, targets, selected_files=()),
             eq=(*targets, c.Infra.PYREFLY_PROJECT_EXCLUDES_FLAG, "**/excluded/**"),
         )
-        gate = gates.FlextInfraPyreflyGate(project)
+        gate = gates.FlextInfraGatesPyrefly(project)
         valid = gate.check_files((selected,), project, context)
         tm.that(valid.result.passed, eq=True, msg=str(valid.issues))
         selected.write_text('value: int = "incorrect"\n', encoding="utf-8")
@@ -114,7 +114,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
         reports = project / ".reports"
         reports.mkdir()
         context = m.Infra.GateContext(repository_root=project, reports_dir=reports)
-        gate = gates.FlextInfraPyreflyGate(project)
+        gate = gates.FlextInfraGatesPyrefly(project)
 
         excluded = gate.check(project, context)
 

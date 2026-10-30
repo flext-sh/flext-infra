@@ -13,17 +13,13 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
-)
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyReferences,
 )
@@ -117,7 +113,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         root = Path(project.root.real_path)
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 project.get_resource(path.relative_to(root).as_posix()), path
             ),
         )
@@ -223,7 +219,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             item for item in facts if item.line == owner_scope.get_start()
         )
         if len(
-            FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
                 owner_scope.pyobject, "family facade owner"
             ).get_superclasses()
         ) != len(

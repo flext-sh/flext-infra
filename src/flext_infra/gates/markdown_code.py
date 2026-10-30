@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.gates import (
-    FlextInfraGate,
+    FlextInfraGates,
     FlextInfraMarkdownCodeSources,
     FlextInfraMarkdownGateBase,
 )
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraMarkdownCodeGate(FlextInfraGate):
+class FlextInfraMarkdownCodeGate(FlextInfraGates):
     """Embedded documentation-code gate."""
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN_CODE

@@ -164,7 +164,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     after_cohort_publication=after_cohort_publication,
                 )
             )
-        control_plan = self._control_plan(request)
+        guarded_control = r.safe(self._control_plan, exceptions=(Exception,))
+        control_plan = guarded_control(request).flat_map(r.from_result)
         if control_plan.failure:
             return r[p.Infra.CodegenResult].from_failure(control_plan)
         control = self._published(
@@ -309,6 +310,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             ): repository
             for repository in selected.value
         }
+        if len(by_name) != len(selected.value):
+            return result_type.fail(
+                "workspace declares duplicate distribution identities"
+            )
+        if len({repository.name for repository in selected.value}) != len(
+            selected.value
+        ):
+            return result_type.fail(
+                "workspace declares duplicate repository identities"
+            )
         seed: tuple[m.Infra.CodegenFilePlan, ...] = ()
         if workspace.flext_source is not None:
             initial = self._plan_existing_control(
@@ -808,6 +819,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             )
             if published.failure:
                 failures.append(published)
+                for outcome in cohort.outcomes:
+                    if outcome.native_failure is None and not outcome.failed:
+                        outcome.native_failure = published
+                        outcome.exception = published.exception
                 failed_repositories.update(
                     repository.name for repository in cohort.repositories
                 )

@@ -15,7 +15,7 @@ from flext_infra import c, m, u
 from flext_infra.gates import FlextInfraGate
 
 
-class FlextInfraConflictMarkersGate(FlextInfraGate):
+class FlextInfraGatesConflictMarker(FlextInfraGate):
     """Detect unresolved merge controls without following source symlinks."""
 
     gate_id: ClassVar[str] = c.Infra.CONFLICT_MARKERS
@@ -132,4 +132,4 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraConflictMarkersGate"]
+__all__: list[str] = ["FlextInfraGatesConflictMarkers"]

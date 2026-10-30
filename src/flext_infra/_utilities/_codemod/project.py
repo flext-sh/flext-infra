@@ -37,7 +37,7 @@ from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 
 
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesCodemodProject(
         ) as snapshot:
             project = snapshot.engine
             resources = tuple(
-                FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                     project.get_resource(path.relative_to(resolved).as_posix()),
                     path,
                 )
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesCodemodProject(
         if len(namespaces) != 1:
             msg = f"class {namespace} has no unique nested declaration in {facade_file}"
             raise ValueError(msg)
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         owner = types.require_class_object(namespaces[0], str(facade_file))
         reached: set[int] | None = None
         member = snapshots.workspace_source(snapshot, facade_file).member
@@ -456,7 +456,7 @@ class FlextInfraUtilitiesCodemodProject(
         elected: set[Path] = set()
         with FlextInfraUtilitiesRopeCore.open_project(root) as project:
             for path, calls in candidates.items():
-                resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                     project.get_resource(path.relative_to(root).as_posix()), path
                 )
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
@@ -510,7 +510,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         fields = {keyword.arg: keyword.value for keyword in node.keywords}
         if set(fields) != set(m.Cli.PythonScriptExecution.model_fields):
             return None
@@ -575,7 +575,7 @@ class FlextInfraUtilitiesCodemodProject(
             msg = "implementation-owner requires a module and public primitive"
             raise ValueError(msg)
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         module_name, expression = condition.arg
         primitive = runtime.qualified_name(
             project, expression, module_name=module_name
@@ -618,7 +618,7 @@ class FlextInfraUtilitiesCodemodProject(
             ValueError: If the declaration has no source resource.
 
         """
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         pending: list[p.Infra.RopePyObject] = []
         if not (types.py_class(target) or types.py_function(target)):
             return None
@@ -675,7 +675,7 @@ class FlextInfraUtilitiesCodemodProject(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntime
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         source = module.source_code
         finder = runtime.runtime_callable("rope.base.worder", "Worder")(source)
         if not isinstance(finder, p.Infra.RopeWorder):

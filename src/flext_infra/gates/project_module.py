@@ -11,10 +11,9 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import m, p, u
-from flext_infra.gates import FlextInfraGate
 
 
-class FlextInfraProjectModuleGate(FlextInfraGate):
+class FlextInfraGatesProjectModuleGate(FlextInfra):
     """Run repository-declared modules through the canonical native gate runner."""
 
     @override
@@ -93,4 +92,4 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraProjectModuleGate"]
+__all__: list[str] = ["FlextInfraGatesProjectModule"]

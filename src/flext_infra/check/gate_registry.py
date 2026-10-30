@@ -14,33 +14,33 @@ from flext_cli import u
 
 from flext_infra import c, m, p, r, t
 from flext_infra.gates import (
-    FlextInfraBanditGate,
-    FlextInfraConflictMarkersGate,
-    FlextInfraDepsGate,
-    FlextInfraDirenvGate,
-    FlextInfraDuplicationGate,
-    FlextInfraFreshImportGate,
-    FlextInfraIndexDeclarationsGate,
-    FlextInfraLayoutGate,
-    FlextInfraLintConfigFreezeGate,
-    FlextInfraLocCapGate,
-    FlextInfraMarkdownCodeGate,
-    FlextInfraMarkdownFormatGate,
-    FlextInfraMarkdownGate,
-    FlextInfraMypyGate,
-    FlextInfraPyreflyGate,
-    FlextInfraPyrightGate,
-    FlextInfraRuffFormatGate,
-    FlextInfraRuffLintGate,
-    FlextInfraSmellsGate,
+    FlextInfraGatesBandit,
+    FlextInfraGatesCodemod,
+    FlextInfraGatesConflictMarkers,
+    FlextInfraGatesDeps,
+    FlextInfraGatesDirenv,
+    FlextInfraGatesDuplication,
+    FlextInfraGatesEnforcementCatalog,
+    FlextInfraGatesFreshImport,
+    FlextInfraGatesIndexDeclarations,
+    FlextInfraGatesLayout,
+    FlextInfraGatesLintConfigFreeze,
+    FlextInfraGatesLocCap,
+    FlextInfraGatesMarkdown,
+    FlextInfraGatesMarkdownCode,
+    FlextInfraGatesMarkdownFormat,
+    FlextInfraGatesMypy,
+    FlextInfraGatesProjectModule,
+    FlextInfraGatesPyrefly,
+    FlextInfraGatesPyright,
+    FlextInfraGatesRuffFormat,
+    FlextInfraGatesRuffLint,
+    FlextInfraGatesRuntimeIntegrity,
+    FlextInfraGatesSmells,
 )
-from flext_infra.gates.codemod import FlextInfraCodemodGate
-from flext_infra.gates.enforcement_catalog import FlextInfraEnforcementCatalogGate
-from flext_infra.gates.project_module import FlextInfraProjectModuleGate
-from flext_infra.gates.runtime_integrity import FlextInfraRuntimeIntegrityGate
 
 if TYPE_CHECKING:
-    from flext_infra.gates import FlextInfraGate
+    from flext_infra.gates import FlextInfraGates
 
 
 class FlextInfraGateRegistry:
@@ -66,7 +66,7 @@ class FlextInfraGateRegistry:
 
         """
         classes = self._gate_classes()
-        self._gates: MutableMapping[str, type[FlextInfraGate]] = {
+        self._gates: MutableMapping[str, type[FlextInfraGates]] = {
             gate_cls.gate_id: gate_cls for gate_cls in classes
         }
         if len(self._gates) != len(classes):
@@ -78,7 +78,7 @@ class FlextInfraGateRegistry:
                 raise ValueError(msg)
             self._gates[declaration.name] = type(
                 declaration.name,
-                (FlextInfraProjectModuleGate,),
+                (FlextInfraGatesProjectModule,),
                 {
                     "gate_id": declaration.name,
                     "gate_name": declaration.name,
@@ -115,7 +115,7 @@ class FlextInfraGateRegistry:
         )
 
     @staticmethod
-    def _gate_classes() -> tuple[type[FlextInfraGate], ...]:
+    def _gate_classes() -> tuple[type[FlextInfraGates], ...]:
         """Return the runtime gate classes registered for workspace checks.
 
         Returns:
@@ -123,31 +123,31 @@ class FlextInfraGateRegistry:
 
         """
         return (
-            FlextInfraRuntimeIntegrityGate,
-            FlextInfraRuffLintGate,
-            FlextInfraConflictMarkersGate,
-            FlextInfraLintConfigFreezeGate,
-            FlextInfraDepsGate,
-            FlextInfraRuffFormatGate,
-            FlextInfraPyreflyGate,
-            FlextInfraMypyGate,
-            FlextInfraPyrightGate,
-            FlextInfraBanditGate,
-            FlextInfraMarkdownGate,
-            FlextInfraMarkdownFormatGate,
-            FlextInfraMarkdownCodeGate,
-            FlextInfraLocCapGate,
-            FlextInfraEnforcementCatalogGate,
-            FlextInfraFreshImportGate,
-            FlextInfraLayoutGate,
-            FlextInfraIndexDeclarationsGate,
-            FlextInfraSmellsGate,
-            FlextInfraCodemodGate,
-            FlextInfraDirenvGate,
-            FlextInfraDuplicationGate,
+            FlextInfraGatesRuntimeIntegrity,
+            FlextInfraGatesRuffLint,
+            FlextInfraGatesConflictMarkers,
+            FlextInfraGatesLintConfigFreeze,
+            FlextInfraGatesDeps,
+            FlextInfraGatesRuffFormat,
+            FlextInfraGatesPyrefly,
+            FlextInfraGatesMypy,
+            FlextInfraGatesPyright,
+            FlextInfraGatesBandit,
+            FlextInfraGatesMarkdown,
+            FlextInfraGatesMarkdownFormat,
+            FlextInfraGatesMarkdownCode,
+            FlextInfraGatesLocCap,
+            FlextInfraGatesEnforcementCatalog,
+            FlextInfraGatesFreshImport,
+            FlextInfraGatesLayout,
+            FlextInfraGatesIndexDeclarations,
+            FlextInfraGatesSmells,
+            FlextInfraGatesCodemod,
+            FlextInfraGatesDirenv,
+            FlextInfraGatesDuplication,
         )
 
-    def get(self, gate_id: str) -> type[FlextInfraGate] | None:
+    def get(self, gate_id: str) -> type[FlextInfraGates] | None:
         """Return the registered gate class for one gate id, when present.
 
         Returns:
@@ -240,11 +240,11 @@ class FlextInfraGateRegistry:
             )
         )
 
-    def create(self, gate_id: str, repository_root: Path) -> FlextInfraGate | None:
+    def create(self, gate_id: str, repository_root: Path) -> FlextInfraGates | None:
         """Instantiate one registered gate for ``repository_root`` when available.
 
         Returns:
-            The resulting ``FlextInfraGate | None``.
+            The resulting ``FlextInfraGates | None``.
 
         """
         gate_cls = self._gates.get(gate_id)

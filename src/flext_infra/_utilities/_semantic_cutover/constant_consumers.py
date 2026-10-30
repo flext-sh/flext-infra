@@ -34,7 +34,7 @@ from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -201,7 +201,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         signatures: list[tuple[str, p.Infra.RopePyName]] = []
         for binding in (original, target):
             if (
-                not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(binding)
+                not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
                 or len(binding.assignments) != 1
             ):
                 return False
@@ -622,7 +622,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(resource, path),
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(resource, path),
         )
         statements = cls._constant_imports(project, module)
         if not cls._has_constant_imports(rope_workspace, project, module, statements):
@@ -764,7 +764,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             reference
             for reference, binding in public.items()
             if reference.count(".") == 1
-            and FlextInfraUtilitiesTypesRopeRuntime.abstract_class(binding.get_object())
+            and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
             and binding.get_object().get_module() is owner_module
         }
         destinations: MutableMapping[str, list[str]] = {}
@@ -1155,7 +1155,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 continue
             if (
                 binding.get_object()
-                in FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
+                in FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
                     scope.pyobject, "constant facade composition"
                 ).get_superclasses()
             ):

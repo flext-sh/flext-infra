@@ -13,12 +13,5 @@ valid:
 - |
   class FlextMeltanoModels(FlextResult):
       pass
+# __all__ string-form membership is semantic (rope: public_export_names_source owns it; bead flext-wjxd7) — not expressible as ast-grep textual equality.
 invalid:
-- |
-  class FlextMeltanoModels(FlextResult):
-      pass
-  __all__ = ["FlextMeltanoModels"]
-- |
-  class FlextMeltanoModels(FlextCliModels):
-      pass
-  __all__ = ["FlextMeltanoModels"]

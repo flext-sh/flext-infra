@@ -10,12 +10,10 @@ import ast
 from collections.abc import Mapping, MutableMapping
 
 from flext_infra import m, t
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.source_bases_aliases import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
-)
-from flext_infra._utilities._rope.source_bases_inventory_collector import (
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 

@@ -82,7 +82,7 @@ class TestsFlextInfraMypyBudget:
         source_root.mkdir(exist_ok=True)
         source = source_root / "budgeted.py"
         source.write_text("value: int = 1\n", encoding="utf-8")
-        execution = gates.FlextInfraMypyGate(project).check_files(
+        execution = gates.FlextInfraGatesMypy(project).check_files(
             [source],
             project,
             context,

@@ -63,10 +63,24 @@ read/write aliases; it must not relax path-escape validation.
 
 Immutable revisions live below each canonical plan's `incoming/` directory. The
 documentation renderer excludes every `incoming` subtree so formatting, TOC generation,
-and link rewriting cannot mutate digest-attested evidence. If an unintegrated collection
-is interrupted after publication, rebuilding its generated manifest and incoming
-artifacts requires explicit operator approval; never repair those files manually or
-accept a changed digest.
+and link rewriting cannot mutate digest-attested evidence. Canonical display documents
+and the index use the existing Markdown renderer with captured tooling inputs before
+their artifact digests and publication plans are built. Source revision digests still
+attest the original bytes; a rendered-output change is not a new source revision.
+Verification uses the same representation and authenticates its tooling inputs.
+Rendering applies only to the Markdown body. The existing documentation contract
+admits its boundary and preserves the frontmatter prefix, including BOM and CRLF,
+byte for byte. An opened YAML header without a closing delimiter fails before
+publication; wrapping never repairs or reinterprets configuration fields.
+The strict collection renderer propagates admission and UTF-8 failures as Results to
+the public collector. Existing optional TOC discovery retains its prior body-offset
+meaning; it neither qualifies a document for collection nor converts a failed Result
+into a default offset.
+
+After an interrupted publication, preserve confirmed effects and reconcile forward
+through the existing owner and its original receipts. Missing ownership or source
+evidence blocks dependent publication; never patch the manifest or immutable incoming
+bytes manually, silently accept a changed digest, or discard history to restart.
 
 The post-publication verifier checks every declared output against its planned bytes and
 mode, while retaining exact snapshots for unrelated inputs. Manifest, receipt and

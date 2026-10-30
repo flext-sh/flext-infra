@@ -12,15 +12,11 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
-from flext_infra._utilities._rope.module_patch import FlextInfraUtilitiesRopeModulePatch
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -366,7 +362,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         builtin = (
-            FlextInfraUtilitiesTypesRopeRuntime
+            FlextInfraUtilitiesRopeRuntimeTypes
             .require_semantic_module(project.get_module("__builtin__"))
             .get_attributes()
             .get(keyword.value.id)
@@ -434,7 +430,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         cls._require_unshadowed_guard(tree)
         for start, end, replacement in sorted(replacements, reverse=True):
             lines[start:end] = [replacement]
-        module = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             source_project.get_pymodule(
                 FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
                     source_project, path

@@ -16,7 +16,7 @@ from tests import c, m, tm
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
 
 if TYPE_CHECKING:
-    from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates.base_gate import FlextInfraGates
 
 
 class TestsFlextInfraUtilitiesGatesMixin:
@@ -55,7 +55,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
 
     @staticmethod
     def check_gate_asserting(
-        gate_class: type[FlextInfraGate],
+        gate_class: type[FlextInfraGates],
         tmp_path: Path,
         project_dir: Path,
         *,
@@ -176,7 +176,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
 
     @staticmethod
     def run_gate_check(
-        gate_class: type[FlextInfraGate],
+        gate_class: type[FlextInfraGates],
         repository_root: Path,
         project_dir: Path,
         *,

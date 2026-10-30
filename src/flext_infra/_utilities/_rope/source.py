@@ -14,8 +14,10 @@ from pathlib import Path
 
 from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeBase,
+)
 
 
 class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):

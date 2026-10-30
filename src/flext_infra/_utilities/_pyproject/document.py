@@ -21,10 +21,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesManagedConflicts,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities._pyproject.overlay import (
+from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectOverlay,
-)
-from flext_infra._utilities._pyproject.uv_sources import (
     FlextInfraUtilitiesPyprojectUvSources,
 )
 

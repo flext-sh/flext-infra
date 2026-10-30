@@ -23,6 +23,7 @@ from flext_infra._models import (
     FlextInfraModelsLayout,
     FlextInfraModelsMiseToolchain,
 )
+from flext_infra._models._codegen import FlextInfraModelsCodegenTransaction
 from flext_infra._models._config import (
     FlextInfraModelsConfigContexts,
     FlextInfraModelsConfigContract,
@@ -34,10 +35,12 @@ from flext_infra._models._config import (
     FlextInfraModelsConfigTemplates,
     FlextInfraModelsConfigWorkspace,
 )
-from flext_infra._models._git import FlextInfraModelsGitWorktreeState
 
 
-class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
+class FlextInfraModelsConfigArtifact(
+    FlextInfraModelsConfigRefactorCampaigns,
+    FlextInfraModelsCodegenTransaction,
+):
     """Codegen artifact, conform, and plan result models."""
 
     class CodegenArtifactSpec(FlextInfraModelsConfigContract.ConfigContract):
@@ -1341,77 +1344,6 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
                 "committed one is the source"
             ),
         )
-
-    class CodegenFilePlan(m.Cli.FileChange):
-        """One managed file change plus its governed ownership metadata."""
-
-        inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
-            m.Field(
-                exclude=True,
-                description="Original read-only observations consumed by this effect",
-            ),
-        ] = ()
-        project: Annotated[Path, m.Field(description="Physical owning project root")]
-        owner: Annotated[
-            str,
-            m.Field(description="Canonical artifact owner, empty for scaffold files"),
-        ] = ""
-        policy: Annotated[
-            Literal["full", "merge"] | None,
-            m.Field(description="Governed root artifact policy"),
-        ] = None
-        tracking: Annotated[
-            Literal["versioned", "runtime-local"],
-            m.Field(description="Declared persistence policy of this artifact"),
-        ] = "versioned"
-        index_before: Annotated[
-            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
-            m.Field(description="Captured index entry scheduled for retirement"),
-        ] = None
-        tracking_dependencies: Annotated[
-            tuple[Path, ...],
-            m.Field(
-                description=(
-                    "Portable declaration destinations required before retirement"
-                ),
-            ),
-        ] = ()
-
-        @m.model_validator(mode="after")
-        def validate_publication_identity(self) -> Self:
-            """Keep every plan inside its project and its retirement consistent.
-
-            Returns:
-                The validated plan.
-
-            Raises:
-                ValueError: If the plan escapes its project, publishes a
-                    first-party stub, or declares an inconsistent retirement.
-
-            """
-            if not self.project.is_absolute() or not self.path.is_relative_to(
-                self.project
-            ):
-                msg = f"codegen path escapes owning project: {self.path}"
-                raise ValueError(msg)
-            if self.path.suffix == ".pyi" and self.desired_content is not None:
-                msg = f"first-party .pyi publication is forbidden: {self.path}"
-                raise ValueError(msg)
-            if self.index_before is not None and (
-                self.tracking != "runtime-local"
-                or self.index_before.path.is_absolute()
-                or self.project / self.index_before.path != self.path
-            ):
-                msg = "index retirement must match its runtime-local artifact"
-                raise ValueError(msg)
-            if any(
-                not path.is_relative_to(self.project)
-                for path in self.tracking_dependencies
-            ):
-                msg = "tracking declaration escapes the owning project"
-                raise ValueError(msg)
-            return self
 
     class CodegenRepositoryPlanTask(FlextInfraModelsConfigContract.ConfigContract):
         """One repository's read-only planning inputs sent to a fleet worker."""

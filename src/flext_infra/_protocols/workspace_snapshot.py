@@ -6,18 +6,143 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from collections.abc import Iterator, MutableMapping, Sequence
+from contextlib import AbstractContextManager
+from typing import TYPE_CHECKING, Literal, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import m, p, t
+    from flext_infra._protocols import FlextInfraProtocolsRopeRuntime
 
 
 @runtime_checkable
 class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
     """Workspace snapshot protocols exposed through ``p.Infra``."""
+
+    @runtime_checkable
+    class RopeModuleFinder(Protocol):
+        """Native relative module lookup shared by every Rope project flavour."""
+
+        def find_relative_module(
+            self,
+            modname: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            level: int,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+
+    @runtime_checkable
+    class RopeSourceAccess(Protocol):
+        """Source reads through the project's overlaid filesystem view."""
+
+        @property
+        def source_plans(self) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
+
+        def source_view(
+            self,
+            *,
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = (),
+            additional_source_folders: tuple[str, ...] | None = (),
+        ) -> AbstractContextManager[Self]: ...
+
+        def source_state(
+            self, path: Path, *, required: bool = True
+        ) -> m.Cli.AtomicFileState: ...
+
+        def source_query(
+            self, path: Path, predicate: Literal["exists", "isfile", "isdir"]
+        ) -> bool: ...
+
+        def source_children(self, path: Path) -> tuple[Path, ...]: ...
+
+        def source_text(self, path: Path) -> str: ...
+
+        def source_bytes(self, path: Path) -> bytes: ...
+
+        def source_walk(
+            self,
+            path: Path,
+        ) -> Iterator[tuple[Path, list[str], list[str]]]: ...
+
+    @runtime_checkable
+    class RopeProject(RopeModuleFinder, RopeSourceAccess, Protocol):
+        """Compose native project lifecycle with authenticated source access."""
+
+        @property
+        def root(self) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+
+        @property
+        def fscommands(self) -> FlextInfraProtocolsRopeRuntime.RopeProjectFiles: ...
+
+        def get_resource(
+            self,
+            resource_name: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
+
+        def get_file(
+            self,
+            path: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeFile: ...
+
+        def get_folder(
+            self,
+            path: str,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeRoot: ...
+
+        def get_pymodule(
+            self,
+            resource: t.Infra.RopeNativeResource
+            | FlextInfraProtocolsRopeRuntime.RopeResource,
+            *,
+            force_errors: bool = False,
+        ) -> t.Infra.RopeNativeParsedModule: ...
+
+        def get_pycore(self) -> p.AttributeProbe: ...
+
+        def get_source_folders(
+            self,
+        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+
+        def get_python_path_folders(
+            self,
+        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeResource]: ...
+
+        def find_module(
+            self,
+            modname: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+
+        def get_module(
+            self,
+            name: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
+        ) -> t.Infra.RopeNativeSemanticModule: ...
+
+        def get_relative_module(
+            self,
+            name: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot,
+            level: int,
+        ) -> t.Infra.RopeNativeParsedModule: ...
+
+        def get_python_files(
+            self,
+        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeFile]: ...
+
+        def do(self, changes: FlextInfraProtocolsRopeRuntime.RopeChangeSet) -> None: ...
+
+        def validate(
+            self,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
+        ) -> None: ...
+
+        def close(self) -> None: ...
+
+        def get_prefs(self) -> FlextInfraProtocolsRopeRuntime.RopePreferences: ...
+
+        def frozen_layout(self) -> AbstractContextManager[Self]: ...
 
     @runtime_checkable
     class WorkspaceSnapshotSource(Protocol):

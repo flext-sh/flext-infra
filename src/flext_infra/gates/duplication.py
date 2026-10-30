@@ -15,17 +15,13 @@ from urllib.parse import urlsplit
 
 from flext_infra import c, config, m, r, u
 from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
-from flext_infra.gates import (
-    FlextInfraDuplicationEvidence,
-    FlextInfraDuplicationReport,
-    FlextInfraGate,
-)
+from flext_infra.gates import FlextInfraDuplicationEvidence, FlextInfraDuplicationReport
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
+class FlextInfraGatesDuplicationGate(FlextInfraDuplicationReport, FlextInfra):
     """Report every clone owned by one project from a fresh scan of that project.
 
     R2 extension: consumer+family scope via [tool.flext.project] config keys;
@@ -672,4 +668,4 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraDuplicationGate"]
+__all__: list[str] = ["FlextInfraGatesDuplication"]

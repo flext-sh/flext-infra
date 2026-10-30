@@ -1,4 +1,4 @@
-"""Tests for FlextInfraIndexDeclarationsGate.
+"""Tests for FlextInfraGatesIndexDeclarations.
 
 The gate proves every indexed gitlink is declared by the repository itself.
 The fixture builds real repositories inside ``tmp_path``: the defect is a
@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import m, u
-from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
+from flext_infra.gates.index_declarations import FlextInfraGatesIndexDeclarations
 from tests import tm
 
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ class TestsFlextInfraIndexDeclarationsGate:
                 repository_root=tmp_path,
                 reports_dir=tmp_path / ".reports",
             )
-            gate = FlextInfraIndexDeclarationsGate(repository_root=tmp_path)
+            gate = FlextInfraGatesIndexDeclarations(repository_root=tmp_path)
             return gate.check(tmp_path, context).result
 
         return run

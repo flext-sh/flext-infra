@@ -27,8 +27,9 @@ class FlextInfraUtilitiesCodegenFilePlan:
         plans: Sequence[m.Infra.CodegenFilePlan],
         *,
         ordered: bool = False,
+        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
-        """Compose authenticated effects, advancing bytes only for ordered phases.
+        """Compose effects and original inputs, advancing bytes for ordered phases.
 
         Returns:
             One effect per destination with its original witness and dependencies.
@@ -37,9 +38,11 @@ class FlextInfraUtilitiesCodegenFilePlan:
         files: dict[Path, m.Infra.CodegenFilePlan] = {}
         for file in plans:
             previous = files.get(file.path)
-            if previous is None:
+            if previous is None and not inputs:
                 files[file.path] = file
                 continue
+            previous_inputs = () if previous is None else previous.inputs
+            previous = file if previous is None else previous
             conflicts = tuple(
                 name
                 for name, equal in (
@@ -79,13 +82,13 @@ class FlextInfraUtilitiesCodegenFilePlan:
                     *file.tracking_dependencies,
                 ))
             )
-            inputs = (*previous.inputs, *file.inputs)
+            combined_inputs = (*previous_inputs, *file.inputs, *inputs)
             selected = file if ordered else previous
             files[file.path] = (
                 selected
                 if selected.before is previous.before
                 and dependencies == selected.tracking_dependencies
-                and inputs == selected.inputs
+                and combined_inputs == selected.inputs
                 else m.Infra.CodegenFilePlan(
                     project=selected.project,
                     path=selected.path,
@@ -97,7 +100,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
                     tracking=selected.tracking,
                     index_before=selected.index_before,
                     tracking_dependencies=dependencies,
-                    inputs=inputs,
+                    inputs=combined_inputs,
                 )
             )
         return tuple(files.values())

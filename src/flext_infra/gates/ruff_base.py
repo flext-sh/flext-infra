@@ -11,10 +11,9 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
 
 
-class FlextInfraRuffGate(FlextInfraGate):
+class FlextInfraGatesRuffGate(FlextInfra):
     """Own the environment facts every Ruff-backed gate shares."""
 
     @override
@@ -37,4 +36,4 @@ class FlextInfraRuffGate(FlextInfraGate):
         }
 
 
-__all__: list[str] = ["FlextInfraRuffGate"]
+__all__: list[str] = ["FlextInfraGatesRuff"]

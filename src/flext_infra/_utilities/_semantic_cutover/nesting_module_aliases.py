@@ -20,7 +20,7 @@ from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -81,7 +81,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
         package: str,
         sources: Mapping[Path, str],
     ) -> tuple[Mapping[str, tuple[str, bool]], p.Infra.RopeResource]:
-        native_package = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+        native_package = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module(package),
         )
         resource = native_package.get_resource()
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingModuleAliases:
             qualified, bindings, exports
         )
         if declared is not None:
-            native = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+            native = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                 project.get_module(declared[0]),
             )
             if (

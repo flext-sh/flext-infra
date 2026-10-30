@@ -14,10 +14,9 @@ from typing import ClassVar, override
 
 from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenLayout
-from flext_infra.gates import FlextInfraGate
 
 
-class FlextInfraLayoutGate(FlextInfraGate):
+class FlextInfraGatesLayoutGate(FlextInfra):
     """Layout-SSOT conformance gate backed by the layout engine check mode."""
 
     gate_id: ClassVar[str] = "layout"
@@ -64,4 +63,4 @@ class FlextInfraLayoutGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraLayoutGate"]
+__all__: list[str] = ["FlextInfraGatesLayout"]

@@ -1058,6 +1058,99 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             msg = "root dependency graph changed after metadata planning"
             raise ValueError(msg)
 
+    def _blocked_control_outcomes(
+        self,
+        root: Path,
+        tasks: Sequence[m.Infra.CodegenRepositoryPlanTask],
+    ) -> Mapping[str, m.Infra.CodegenRepositoryPlanOutcome]:
+        """Close failed controls before any target Python source is opened."""
+        controlled = {
+            outcome.repository: outcome
+            for outcome in self.state.control_outcomes
+            if outcome.failed
+        }
+        failures = {
+            u.Infra.dep_name(task.repository.distribution): controlled[
+                task.repository.name
+            ]
+            for task in tasks
+            if task.repository.name in controlled
+        }
+        if not failures:
+            return {}
+        for failure in failures.values():
+            if failure.native_failure is None:
+                failure.native_failure = r.fail(
+                    failure.error
+                    or "\n".join(issue.formatted for issue in failure.issues),
+                    exception=failure.exception,
+                )
+            self.retain_diagnostics(failure.exception, failure=failure.native_failure)
+        graph = r[Mapping[str, tuple[str, ...]]].create_from_callable(
+            lambda: u.Infra.workspace_dependency_graph(
+                root, tuple(task.repository for task in tasks)
+            )
+        )
+        blocked: dict[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
+        if graph.success:
+            dependents = {
+                name: tuple(
+                    consumer
+                    for consumer, dependencies in graph.value.items()
+                    if name in dependencies
+                )
+                for name in graph.value
+            }
+            for name, failure in failures.items():
+                affected = u.Cli.dag_closure(dependents, frozenset((name,)))
+                if affected.failure:
+                    graph = r[Mapping[str, tuple[str, ...]]].from_failure(affected)
+                    break
+                for dependent in affected.value:
+                    blocked.setdefault(dependent, failure)
+        if graph.failure:
+            self.retain_diagnostics(
+                graph.exception,
+                failure=graph,
+                issues=(
+                    m.Infra.Issue(
+                        file=str(root),
+                        line=0,
+                        column=0,
+                        code=c.Infra.ToolOutcome.ERROR.value,
+                        message=graph.error or "source dependency inventory failed",
+                    ),
+                ),
+            )
+            first = next(iter(failures.values()))
+            blocked = {
+                u.Infra.dep_name(task.repository.distribution): first for task in tasks
+            }
+        outcomes: dict[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
+        for task in tasks:
+            cause = blocked.get(u.Infra.dep_name(task.repository.distribution))
+            if cause is None:
+                continue
+            detail = cause.error
+            if not detail and cause.native_failure is not None:
+                detail = (
+                    cause.native_failure.error
+                    or cause.native_failure.error_code
+                    or "control failed"
+                )
+            outcomes[task.repository.name] = m.Infra.CodegenRepositoryPlanOutcome(
+                repository=task.repository.name,
+                error=(
+                    f"not planned: control prerequisite {cause.repository} failed: "
+                    f"{detail or cause.exception}"
+                ),
+                native_failure=cause.native_failure,
+                exception=cause.exception,
+                error_type=cause.error_type,
+                error_traceback=cause.error_traceback,
+            )
+        return outcomes
+
     def _gathered_repository_plans(
         self,
         root: Path,
@@ -1151,6 +1244,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             task.repository.name: (root / task.repository.path).resolve()
             for task in tasks
         }
+        blocked = self._blocked_control_outcomes(root, tasks)
+        eligible = tuple(task for task in tasks if task.repository.name not in blocked)
         with ExitStack() as stack:
             snapshots = {
                 name: stack.enter_context(
@@ -1164,8 +1259,18 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     )
                 )
                 for name, project_root in roots.items()
+                if name not in blocked
             }
-            outcomes = self._repository_plan_outcomes(tasks, surface, inputs, snapshots)
+            planned = self._repository_plan_outcomes(
+                eligible, surface, inputs, snapshots
+            )
+            observed = {outcome.repository: outcome for outcome in planned}
+            outcomes = tuple(
+                blocked[task.repository.name]
+                if task.repository.name in blocked
+                else observed[task.repository.name]
+                for task in tasks
+            )
             for name, snapshot in snapshots.items():
                 verified = u.Infra.workspace_snapshot_verify(
                     snapshot, tuple(snapshot.sources)

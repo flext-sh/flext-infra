@@ -32,7 +32,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraCodegenLayoutApply": ".apply",
         "FlextInfraCodegenLayoutFiles": ".files",
-        "FlextInfraCodegenLayoutGitignore": ".ignore",
+        "FlextInfraCodegenLayoutGitignore": ".gitignore",
         "FlextInfraCodegenLayoutPlan": ".plan",
     }),
     public_exports=__all__,

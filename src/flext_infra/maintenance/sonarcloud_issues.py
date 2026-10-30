@@ -10,13 +10,15 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.maintenance import FlextInfraSonarcloudClient
+from flext_infra.maintenance import FlextInfraMaintenanceSonarcloudClient
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
+class FlextInfraMaintenanceSonarcloudIssues(
+    FlextInfraMaintenanceSonarcloudClient[bool]
+):
     """Report every unresolved new-code issue without changing SonarCloud."""
 
     @staticmethod
@@ -195,4 +197,4 @@ class FlextInfraSonarcloudIssues(FlextInfraSonarcloudClient[bool]):
         return None
 
 
-__all__: list[str] = ["FlextInfraSonarcloudIssues"]
+__all__: list[str] = ["FlextInfraMaintenanceSonarcloudIssues"]

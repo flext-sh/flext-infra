@@ -39,7 +39,7 @@ class FlextInfraTransformersSemanticPublication:
         """
         selected = m.Infra.SemanticPublicationOptions() if options is None else options
         composed = cls._with_projections(
-            plans, repository_root, selected.projection_roots
+            plans, repository_root, selected.projection_roots, inputs=selected.inputs
         )
         if composed.failure:
             return r[tuple[Path, ...]].from_failure(composed)
@@ -270,6 +270,8 @@ class FlextInfraTransformersSemanticPublication:
         plans: Sequence[m.Infra.CodegenFilePlan],
         repository_root: Path,
         projection_roots: tuple[Path, ...],
+        *,
+        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Join the lazy-init projections the planned sources require.
 
@@ -282,8 +284,13 @@ class FlextInfraTransformersSemanticPublication:
 
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        admitted = result_type.create_from_callable(
+            lambda: u.Infra.codegen_compose_file_plans(plans, inputs=inputs)
+        )
+        if admitted.failure:
+            return admitted
         if not projection_roots:
-            return result_type.ok(tuple(plans))
+            return admitted
         repository = repository_root.resolve()
         workspaces: dict[Path, list[Path]] = {}
         for root in dict.fromkeys(projection_roots):
@@ -294,10 +301,12 @@ class FlextInfraTransformersSemanticPublication:
                 else u.Infra.import_project_roots(resolved)[0].resolve()
             )
             workspaces.setdefault(workspace, []).append(resolved)
-        combined = {plan.path: plan for plan in plans}
+        combined = admitted.value
         for workspace, scope_roots in workspaces.items():
             scoped = tuple(
-                plan for plan in plans if plan.path.resolve().is_relative_to(workspace)
+                plan
+                for plan in combined
+                if plan.path.resolve().is_relative_to(workspace)
             )
             roots = tuple(
                 dict.fromkeys((
@@ -321,15 +330,15 @@ class FlextInfraTransformersSemanticPublication:
                 ).plan_files(source_project=source_project)
             if generated.failure:
                 return result_type.from_failure(generated)
-            for item in generated.value:
-                previous = combined.get(item.path)
-                if previous is not None and previous.before != item.before:
-                    return result_type.fail(
-                        "semantic projection changed its original destination: "
-                        f"{item.path}"
-                    )
-                combined[item.path] = item
-        return result_type.ok(tuple(combined.values()))
+            composed = result_type.create_from_callable(
+                lambda: u.Infra.codegen_compose_file_plans(
+                    (*combined, *generated.value), ordered=True, inputs=inputs
+                )
+            )
+            if composed.failure:
+                return composed
+            combined = composed.value
+        return result_type.ok(combined)
 
 
 __all__: list[str] = ["FlextInfraTransformersSemanticPublication"]

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities._rope.bindings import FlextInfraUtilitiesRopeAstBindings
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAstBindings
 
 
 class FlextInfraUtilitiesSemanticCutoverBindings(FlextInfraUtilitiesRopeAstBindings):

@@ -22,8 +22,10 @@ from rope.base.resourceobserver import ChangeIndicator
 from rope.base.resources import File, Folder
 
 from flext_infra import c, config, m, p
-from flext_infra._utilities._rope.native_project import FlextInfraRopeNativeProject
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraRopeNativeProject,
+    FlextInfraUtilitiesRopeRuntime,
+)
 
 
 class FlextInfraRopeProject(FlextInfraRopeNativeProject):

@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra, settings
-from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
 from tests import c, m, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
@@ -350,7 +349,7 @@ print(
         for file in plan.files:
             tm.that(file.path.read_bytes(), eq=file.desired_content)
         context = m.Infra.GateContext(repository_root=root, reports_dir=root)
-        for gate in (FlextInfraRuffLintGate(root), FlextInfraRuffFormatGate(root)):
+        for gate in (FlextInfraGatesRuffLint(root), FlextInfraRuffFormat(root)):
             checked = gate.check_files(
                 tuple(file.path for file in plan.files),
                 root,

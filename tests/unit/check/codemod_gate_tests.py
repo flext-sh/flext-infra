@@ -16,7 +16,7 @@ from flext_infra import config
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.cli import FlextInfraCli
 from flext_infra.codemod import FlextInfraModGateEngine
-from flext_infra.gates.codemod import FlextInfraCodemodGate
+from flext_infra.gates.codemod import FlextInfraGatesCodemod
 from tests import c, m, t, tm, u
 
 
@@ -74,7 +74,7 @@ class TestsFlextInfraCodemodGate:
         source = project / "src" / "subject.py"
         source.write_text("\nsecond(1)\n", encoding="utf-8")
 
-        execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        execution = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
 
         tm.fail(execution.result.passed)
         policy_findings = tuple(
@@ -104,7 +104,7 @@ class TestsFlextInfraCodemodGate:
         project = self._project(tmp_path, installed_dependency_path)
         (project / "src" / "subject.py").write_text("", encoding="utf-8")
 
-        execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        execution = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
 
         tm.that(execution.result.passed, eq=True, msg=execution.raw_output)
         tm.that(execution.issues, empty=True)
@@ -122,7 +122,7 @@ class TestsFlextInfraCodemodGate:
             The sorted project-relative files the real scan reported.
 
         """
-        execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        execution = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
         return sorted(
             (project / issue.file).resolve().relative_to(project.resolve()).as_posix()
             for issue in execution.issues
@@ -184,7 +184,7 @@ class TestsFlextInfraCodemodGate:
         (tree / "wire_pb2.py").write_text("\nsecond(1)\n", encoding="utf-8")
         (project / "src" / "pkg" / "subject.py").write_text("", encoding="utf-8")
 
-        execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        execution = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
 
         tm.that(execution.result.passed, eq=True, msg=str(execution.issues))
         tm.that(execution.issues, empty=True)
@@ -232,7 +232,7 @@ class TestsFlextInfraCodemodGate:
             '[project]\nname = "owned-stubs"\nversion = "1.0.0"\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        gate = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        gate = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
         observed = {
             Path(issue.file).as_posix()
             for issue in gate.issues
@@ -302,7 +302,7 @@ class TestsFlextInfraCodemodGate:
                     ("ban-stub-file", stub.relative_to(project).as_posix()),
                     ("contract-second", active.relative_to(project).as_posix()),
                 }
-                gate = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+                gate = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
                 tm.fail(gate.result.passed)
                 tm.that(
                     {
@@ -355,7 +355,7 @@ class TestsFlextInfraCodemodGate:
             u.Infra.ast_grep_scan_targets(project, source_files=(stub,)),
             eq=(stub.relative_to(project).as_posix(),),
         )
-        gate = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        gate = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
         tm.that(
             [issue.file for issue in gate.issues if issue.code == "ban-stub-file"],
             eq=[stub.relative_to(project).as_posix()],
@@ -404,7 +404,7 @@ class TestsFlextInfraCodemodGate:
             encoding=c.DEFAULT_ENCODING,
         )
         (project / "py.typed").write_bytes(b"")
-        gate = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        gate = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
         tm.that(any(issue.code == "ban-stub-file" for issue in gate.issues), eq=False)
         report = tm.ok(
             FlextInfraModGateEngine.scan(
@@ -445,7 +445,7 @@ class TestsFlextInfraCodemodGate:
             encoding="utf-8",
         )
 
-        execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        execution = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
 
         tm.fail(execution.result.passed)
         findings = tuple(
@@ -466,7 +466,7 @@ class TestsFlextInfraCodemodGate:
         other = project / "src" / "other.py"
         other.write_text("second(2)\n", encoding="utf-8")
 
-        execution = FlextInfraCodemodGate(tmp_path).check_files(
+        execution = FlextInfraGatesCodemod(tmp_path).check_files(
             (selected,),
             project,
             u.Tests.gate_context(tmp_path),
@@ -485,7 +485,7 @@ class TestsFlextInfraCodemodGate:
         """Test missing requested file cannot be deselected."""
         project = self._project(tmp_path, installed_dependency_path)
         missing = project / "src" / "missing.py"
-        gate = FlextInfraCodemodGate(tmp_path)
+        gate = FlextInfraGatesCodemod(tmp_path)
         context = u.Tests.gate_context(tmp_path)
 
         with pytest.raises(FileNotFoundError):
@@ -596,7 +596,7 @@ class TestsFlextInfraCodemodGate:
         )
         (project / "src" / "subject.py").write_text("second(1)\n", encoding="utf-8")
 
-        execution = u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+        execution = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
 
         tm.fail(execution.result.passed)
         tm.that(
@@ -625,7 +625,7 @@ class TestsFlextInfraCodemodGate:
             with pytest.raises(PermissionError):
                 tuple(blocked.iterdir())
             with pytest.raises(PermissionError):
-                u.Tests.run_gate_check(FlextInfraCodemodGate, tmp_path, project)
+                u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
         finally:
             blocked.chmod(original_mode)
 

@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, t
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeCoreResources:

@@ -16,14 +16,13 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
 from flext_infra.validate import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FlextInfraFreshImportGate(FlextInfraGate):
+class FlextInfraGatesFreshImportGate(FlextInfra):
     """Fresh-process import gate over the checkout's own package."""
 
     gate_id: ClassVar[str] = c.Infra.FRESH_IMPORT
@@ -101,4 +100,4 @@ class FlextInfraFreshImportGate(FlextInfraGate):
         return self.check(project_dir, ctx)
 
 
-__all__: list[str] = ["FlextInfraFreshImportGate"]
+__all__: list[str] = ["FlextInfraGatesFreshImport"]

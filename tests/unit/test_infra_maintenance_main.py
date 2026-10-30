@@ -1,7 +1,7 @@
 """Tests for maintenance CLI entry point using real services.
 
 Tests the main() function with various argument combinations using
-real FlextInfraPythonVersionEnforcer against tmp_path workspaces.
+real FlextInfraMaintenancePythonVersion against tmp_path workspaces.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import FlextInfraCli
-from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_infra.maintenance.python_version import FlextInfraMaintenancePythonVersion
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -50,8 +50,8 @@ class TestsFlextInfraInfraMaintenanceMain:
         return root
 
     @staticmethod
-    def _make_enforcer(workspace: Path) -> FlextInfraPythonVersionEnforcer:
-        class _TestEnforcer(FlextInfraPythonVersionEnforcer):
+    def _make_enforcer(workspace: Path) -> FlextInfraMaintenancePythonVersion:
+        class _TestEnforcer(FlextInfraMaintenancePythonVersion):
             @staticmethod
             @override
             def _repository_root_from_file(file: str | Path) -> Path:
@@ -181,5 +181,5 @@ class TestsFlextInfraInfraMaintenanceMain:
     @staticmethod
     def test_enforcer_creates_instance() -> None:
         """Test enforcer creates instance."""
-        enforcer = FlextInfraPythonVersionEnforcer()
-        tm.that(type(enforcer).__name__, eq="FlextInfraPythonVersionEnforcer")
+        enforcer = FlextInfraMaintenancePythonVersion()
+        tm.that(type(enforcer).__name__, eq="FlextInfraMaintenancePythonVersion")

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from importlib.metadata import packages_distributions
 from pathlib import Path
 
@@ -36,21 +36,38 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._rope._analysis.exports import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._rope._analysis.importstate import (
     FlextInfraUtilitiesRopeAnalysisImportState,
 )
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
 
 
 class FlextInfraUtilitiesFacadeComponents:
     """Derive component-to-namespace references and render their relocation."""
+
+    @staticmethod
+    def generate_module_skeleton(
+        *,
+        context: m.Infra.ModuleSkeletonRenderContext,
+    ) -> p.Result[str]:
+        """Fill the existing module template with its validated native inventory.
+
+        Returns:
+            Rendered source or the template owner's original typed failure.
+
+        """
+        template = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_MODULE_SKELETON
+        )
+        return u.Cli.template_render(template, context)
 
     @staticmethod
     def facade_component_declarations(
@@ -80,7 +97,7 @@ class FlextInfraUtilitiesFacadeComponents:
             )
             for scope in module.get_scope().get_scopes():
                 owner = scope.pyobject
-                if not FlextInfraUtilitiesTypesRopeRuntime.py_class(owner):
+                if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(owner):
                     continue
                 binding = module.get_attributes().get(owner.get_name())
                 if (
@@ -104,44 +121,90 @@ class FlextInfraUtilitiesFacadeComponents:
             Maximal native owners at the canonical sibling precedence.
 
         """
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         canonical = directory.parent / f"{directory.name.lstrip('_')}.py"
         elected: list[tuple[Path, p.Infra.RopeSourceClass]] = []
-        for path, owner in (
+        composed: dict[p.Infra.RopeSourceClass, frozenset[p.Infra.RopePyObject]] = {}
+        declarations = (
             *cls.facade_component_declarations(project, directory.parent),
             *cls.facade_component_declarations(project, directory),
-        ):
+        )
+        resolver_factory = (
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                project,
+                sources={
+                    FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                        owner.get_module(), source_project=project
+                    ): (path, owner.get_module().source_code)
+                    for path, owner in declarations
+                },
+            )
+        )
+        for path, owner in declarations:
+            if (
+                FlextInfraUtilitiesFacadeMembers.class_kind(
+                    owner, resolver_factory=resolver_factory, source_project=project
+                )
+                is not c.Infra.FacadeMemberKind.TYPE
+            ):
+                continue
+            if path.parent != directory.parent and any(
+                types.py_function(scope.pyobject)
+                for scope in owner.get_scope().get_scopes()
+            ):
+                continue
             index = owner.get_module().get_source_binding_index()
             suppliers = tuple(owner.get_superclasses())
+            member_suppliers: list[p.Infra.RopePyObject] = []
             if not any(
                 types.py_class(supplier)
                 and (resource := supplier.get_module().get_resource()) is not None
                 and Path(resource.real_path).parent == directory
                 for supplier in suppliers
-            ):
-                suppliers = (
-                    *suppliers,
-                    *(
+            ) and cls.facade_composes_class(owner, source_project=project):
+                pending = [owner]
+                while pending:
+                    holder = pending.pop()
+                    member_suppliers.extend(
                         binding.value_binding.get_object()
-                        for declaration in index.assignment_layouts(owner.get_scope())
+                        for declaration in index.assignment_layouts(holder.get_scope())
                         if declaration.targets
                         and declaration.targets[0][0] != c.Infra.MODEL_CONFIG_ATTRIBUTE
                         for binding in index.assignment_layouts(
-                            owner.get_scope(),
+                            holder.get_scope(),
                             name=declaration.targets[0][0],
                             resolve_values=True,
                         )
                         if binding.region == declaration.region
                         and binding.value_binding is not None
                         and types.py_class(binding.value_binding.get_object())
-                    ),
-                )
+                    )
+                    for scope in holder.get_scope().get_scopes():
+                        nested = scope.pyobject
+                        if (
+                            types.py_class(nested)
+                            and FlextInfraUtilitiesFacadeMembers.class_kind(
+                                nested,
+                                resolver_factory=resolver_factory,
+                                source_project=project,
+                            )
+                            is c.Infra.FacadeMemberKind.TYPE
+                        ):
+                            member_suppliers.extend(nested.get_superclasses())
+                            pending.append(nested)
+                suppliers = (*suppliers, *member_suppliers)
+            if path == canonical:
+                suppliers = (*suppliers, *cls._component_callable_suppliers(owner))
             origins = {
                 Path(resource.real_path).parent
                 for supplier in suppliers
                 if types.py_class(supplier)
                 and supplier is not owner
                 and (resource := supplier.get_module().get_resource()) is not None
+                and FlextInfraUtilitiesFacadeMembers.class_kind(
+                    supplier, resolver_factory=resolver_factory, source_project=project
+                )
+                is c.Infra.FacadeMemberKind.TYPE
             }
             if directory in origins and (
                 path == canonical
@@ -149,6 +212,12 @@ class FlextInfraUtilitiesFacadeComponents:
                 == 1
             ):
                 elected.append((path, owner))
+                composed[owner] = frozenset(
+                    ancestor
+                    for supplier in (owner, *member_suppliers)
+                    if types.py_class(supplier)
+                    for ancestor in supplier.get_mro()
+                )
         if not elected:
             return []
         priority = max(
@@ -159,11 +228,64 @@ class FlextInfraUtilitiesFacadeComponents:
             for path, owner in elected
             if (path == canonical, path.parent == directory) == priority
             and not any(
-                other is not owner and owner in other.get_mro()[1:]
+                other is not owner
+                and owner in composed[other]
+                and other not in composed[owner]
                 for other_path, other in elected
                 if (other_path == canonical, other_path.parent == directory) == priority
             )
         ]
+
+    @staticmethod
+    def _component_callable_suppliers(
+        owner: p.Infra.RopeSourceClass,
+    ) -> Generator[p.Infra.RopeSourceClass]:
+        """Observe direct method delegation through the existing native index.
+
+        Yields:
+            Actual class receivers called in this owner's own method bodies.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        module = owner.get_module()
+        words = runtime.runtime_callable("rope.base.worder", "Worder")(
+            module.source_code
+        )
+        if not isinstance(words, p.Infra.RopeWorder):
+            message = "Callable supplier election requires native word regions"
+            raise TypeError(message)
+        methods = {
+            scope.pyobject
+            for scope in owner.get_scope().get_scopes()
+            if types.py_function(scope.pyobject)
+        }
+        for fragment in module.get_source_binding_index().fragments:
+            context = fragment.context
+            if (
+                context.role != "function-body"
+                or context.structural_scope.pyobject not in methods
+            ):
+                continue
+            if words.get_primary_range(fragment.end - 1) != (
+                fragment.start,
+                fragment.end,
+            ):
+                continue
+            prefix, _member, offset = words.get_splitted_primary_before(fragment.end)
+            if not prefix or not words.is_a_function_being_called(offset):
+                continue
+            receiver = runtime.expression_name(context.environment, prefix)
+            called = runtime.expression_name(
+                context.environment, module.source_code[fragment.start : fragment.end]
+            )
+            if (
+                receiver is not None
+                and types.py_class(supplier := receiver.get_object())
+                and called is not None
+                and types.py_function(called.get_object())
+            ):
+                yield supplier
 
     @classmethod
     def render_type_facade(
@@ -259,7 +381,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         resource = runtime.file_resource_at(project, path)
         module = runtime.require_source_object(
             project.get_pymodule(resource), "facade component source"
@@ -285,14 +407,25 @@ class FlextInfraUtilitiesFacadeComponents:
             if types.py_class(scope.pyobject)
         )
         payload = FlextInfraUtilitiesDeclarationPayload
-        entity_bases = tuple(
-            payload.identity_name(project, identity).get_object()
-            for identity in ("enum.Enum", "pydantic.BaseModel", "typing.Protocol")
+        declarations = cls.facade_component_declarations(project, directory)
+        resolver_factory = (
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                project,
+                sources={
+                    FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                        declaration.get_module(), source_project=project
+                    ): (origin, declaration.get_module().source_code)
+                    for origin, declaration in ((path, owner), *declarations)
+                },
+            )
         )
         namespaces = tuple(
             child
             for child in nested
-            if not any(base in entity_bases for base in child.get_mro())
+            if FlextInfraUtilitiesFacadeMembers.class_kind(
+                child, resolver_factory=resolver_factory, source_project=project
+            )
+            is c.Infra.FacadeMemberKind.TYPE
             and (
                 any(
                     child.get_name() in parent.get_attributes()
@@ -342,11 +475,13 @@ class FlextInfraUtilitiesFacadeComponents:
         }
         admitted: list[tuple[Path, p.Infra.RopeSourceClass]] = []
         nominal: list[p.Infra.RopeSourceClass] = []
-        for provider_path, provider in cls.facade_component_declarations(
-            project, directory
-        ):
-            ancestry = provider.get_mro()
-            if any(ancestor in entity_bases for ancestor in ancestry):
+        for provider_path, provider in declarations:
+            if (
+                FlextInfraUtilitiesFacadeMembers.class_kind(
+                    provider, resolver_factory=resolver_factory, source_project=project
+                )
+                is not c.Infra.FacadeMemberKind.TYPE
+            ):
                 nominal.append(provider)
                 continue
             if family is c.Infra.FacadeFamily.M and provider in aliases.values():
@@ -417,130 +552,167 @@ class FlextInfraUtilitiesFacadeComponents:
                 return r[str].fail(message)
             imports.add_import(runtime.from_import(package, 0, ((binding, None),)))
             retained.append((binding, provider))
-        rewrites: list[m.Infra.SourceRewrite] = []
-        if tuple(expression for expression, _ in retained) != tuple(
-            expression for expression, _ in bases
-        ):
-            if layout.bases:
-                first, last = layout.bases[0][0], layout.bases[-1][1]
-                replacement = ", ".join(expression for expression, _ in retained)
-            elif layout.arguments_region is not None:
-                first = last = layout.arguments_region[0]
-                replacement = ", ".join(expression for expression, _ in retained)
-                if layout.keywords:
-                    replacement += ", "
-            else:
-                first = last = layout.bases_insertion_offset
-                replacement = (
-                    "(" + ", ".join(expression for expression, _ in retained) + ")"
-                )
-            rewrites.append(
-                m.Infra.SourceRewrite(start=first, end=last, text=replacement)
-            )
         missing = tuple(
             provider for provider in nominal if provider not in aliases.values()
         )
-        if missing:
-            body_line = module.lines.get_line_number(layout.body[0])
-            indent = source[module.lines.get_line_start(body_line) : layout.body[0]]
-            if indent.strip():
-                class_line = namespace.get_scope().get_start()
-                prefix = source[
-                    module.lines.get_line_start(class_line) : layout.region[0]
-                ]
-                step = u.type_adapter(int).validate_python(
-                    runtime.runtime_callable("rope.refactor.sourceutils", "get_indent")(
-                        project
-                    ),
-                    strict=True,
+        publications: dict[str, str] = {}
+        for provider in missing:
+            published_name = provider.get_name()
+            if published_name in namespace.get_scope().get_defined_names():
+                return r[str].fail(
+                    f"Occupied nominal facade publication: {path}:{published_name}"
                 )
-                indent = prefix + " " * step
-                rewrites.append(
-                    m.Infra.SourceRewrite(
-                        start=layout.body[0], end=layout.body[0], text="\n" + indent
-                    )
+            imported = module.get_scope().get_names().get(published_name)
+            if imported is not None and imported.get_object() is not provider:
+                return r[str].fail(
+                    f"Occupied nominal facade import: {path}:{published_name}"
                 )
-            publications: list[str] = []
-            for provider in missing:
-                published_name = provider.get_name()
-                occupied = namespace.get_scope().get_defined_names().get(published_name)
-                if occupied is not None:
-                    message = (
-                        f"Occupied nominal facade publication: {path}:{published_name}"
-                    )
-                    return r[str].fail(message)
-                imported = module.get_scope().get_names().get(published_name)
-                if imported is not None and imported.get_object() is not provider:
-                    message = f"Occupied nominal facade import: {path}:{published_name}"
-                    return r[str].fail(message)
-                imports.add_import(
-                    runtime.from_import(package, 0, ((published_name, None),))
-                )
-                publications.append(
-                    f"{indent}{published_name}: TypeAlias = {published_name}"
-                )
+            imports.add_import(
+                runtime.from_import(package, 0, ((published_name, None),))
+            )
+            publications[published_name] = published_name
+        alias_names = frozenset(
+            assignment.targets[0][0]
+            for assignment in assignments
+            if assignment.value_binding is not None
+            and types.abstract_class(assignment.value_binding.get_object())
+            and assignment.value is not None
+            and len(assignment.targets) == 1
+            and not assignment.type_parameters
+        )
+        if publications or alias_names:
             imports.add_import(runtime.from_import("typing", 0, (("TypeAlias", None),)))
-            insertion = module.lines.get_line_end(
-                module.lines.get_line_number(layout.body[1])
-            )
-            rewrites.append(
-                m.Infra.SourceRewrite(
-                    start=insertion,
-                    end=insertion,
-                    text="\n" + "\n".join(publications),
-                )
-            )
-        for assignment in assignments:
-            if (
-                assignment.value_binding is None
-                or not types.abstract_class(assignment.value_binding.get_object())
-                or assignment.value is None
-                or len(assignment.targets) != 1
-                or assignment.type_parameters
-            ):
-                continue
-            if assignment.annotation is not None:
-                first, last = assignment.annotation
-                annotation = runtime.expression_name(
-                    index.context_at(first).environment, source[first:last]
-                )
-                if annotation is not None and runtime.same_name(
-                    annotation,
-                    runtime.qualified_name(project, "TypeAlias", module_name="typing"),
-                ):
-                    continue
-            target, _region = assignment.targets[0]
-            first, last = assignment.value
-            imports.add_import(runtime.from_import("typing", 0, (("TypeAlias", None),)))
-            rewrites.append(
-                m.Infra.SourceRewrite(
-                    start=assignment.region[0],
-                    end=assignment.region[1],
-                    text=f"{target}: TypeAlias = {source[first:last]}",
-                )
-            )
-        if rewrites:
+        step = u.type_adapter(int).validate_python(
+            runtime.runtime_callable("rope.refactor.sourceutils", "get_indent")(
+                project
+            ),
+            strict=True,
+        )
+        body_line = module.lines.get_line_number(layout.body[0])
+        body_prefix = source[module.lines.get_line_start(body_line) : layout.body[0]]
+        if publications and body_prefix.strip():
+            class_line = namespace.get_scope().get_start()
+            indentation = source[
+                module.lines.get_line_start(class_line) : layout.region[0]
+            ]
             source = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-                resource, source, rewrites
+                resource,
+                source,
+                (
+                    m.Infra.SourceRewrite(
+                        start=layout.body[0],
+                        end=layout.body[0],
+                        text="\n" + indentation + " " * step,
+                    ),
+                ),
             ).new_contents
-        declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+        planned = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(project.root.real_path), (), {path: source}, source_project=project
         )
         with project.source_view(
-            declared_files=declared, additional_source_folders=None
+            declared_files=planned, additional_source_folders=None
         ):
-            candidate = runtime.require_source_object(project.get_pymodule(resource))
-            changes = runtime.module_imports_for_pymodule(project, candidate)
+            current = runtime.require_source_object(project.get_pymodule(resource))
+            native_imports = runtime.module_imports_for_pymodule(project, current)
             for statement in imports.imports:
-                changes.add_import(statement.import_info)
-            changes.remove_duplicates()
-            changes.sort_imports()
-            source = changes.get_changed_source()
-        return r[str].ok(
-            source
-            if source.startswith(c.Infra.AUTOGEN_HEADER)
-            else (f"{c.Infra.AUTOGEN_HEADER}\n{source}")
+                native_imports.add_import(statement.import_info)
+            native_imports.remove_duplicates()
+            native_imports.sort_imports()
+            source = native_imports.get_changed_source()
+        planned = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+            Path(project.root.real_path), (), {path: source}, source_project=project
         )
+        with project.source_view(
+            declared_files=planned, additional_source_folders=None
+        ):
+            current = runtime.require_source_object(project.get_pymodule(resource))
+            actual = current.get_attributes()[owner.get_name()].get_object()
+            if not types.py_class(actual):
+                return r[str].fail(
+                    f"Projected facade lost its native declaration: {path}"
+                )
+            if namespace is not owner:
+                actual = actual.get_attributes()[namespace.get_name()].get_object()
+                if not types.py_class(actual):
+                    return r[str].fail(
+                        f"Projected namespace lost its native declaration: {path}"
+                    )
+            scope = actual.get_scope()
+            index = current.get_source_binding_index()
+            layout = index.class_layout(scope)
+            end = current.lines.get_line_end(
+                current.lines.get_line_number(layout.region[1])
+            )
+            parts: list[str | tuple[str, str]] = []
+            cursor = layout.header_end
+            for declaration in index.assignment_layouts(scope):
+                if (
+                    len(declaration.targets) != 1
+                    or declaration.targets[0][0] not in alias_names
+                    or declaration.value is None
+                ):
+                    continue
+                parts.append(source[cursor : declaration.region[0]])
+                first, last = declaration.value
+                parts.append((declaration.targets[0][0], source[first:last]))
+                cursor = declaration.region[1]
+            parts.append(source[cursor:end])
+            class_line = scope.get_start()
+            desired_bases = tuple(expression for expression, _base in retained)
+            unchanged_header = desired_bases == tuple(
+                source[first:last] for first, last in layout.bases
+            )
+            comments: tuple[str, ...] = ()
+            if not unchanged_header and layout.arguments_region is not None:
+                beginning, ending = layout.arguments_region
+                arguments = source[beginning:ending]
+                preserved = (
+                    *(
+                        (first, last)
+                        for first, last in layout.bases
+                        if source[first:last] in desired_bases
+                    ),
+                    *layout.keywords,
+                )
+                comments = tuple(
+                    arguments[first:last]
+                    for first, last, _metadata in FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(
+                        arguments
+                    )
+                    if arguments[first] == "#"
+                    and not any(
+                        start <= beginning + first and beginning + last <= stop
+                        for start, stop in preserved
+                    )
+                )
+            context = m.Infra.ModuleSkeletonRenderContext(
+                class_name=actual.get_name(),
+                base_class=None,
+                base_module=None,
+                module_prefix=source[: layout.region[0]],
+                module_suffix=source[end:],
+                class_bases=desired_bases,
+                class_keywords=tuple(
+                    source[first:last] for first, last in layout.keywords
+                ),
+                type_parameters_source=source[
+                    layout.name_region[1] : layout.bases_insertion_offset
+                ],
+                header_source=source[layout.region[0] : layout.header_end]
+                if unchanged_header
+                else None,
+                header_comments=comments,
+                class_indent=source[
+                    current.lines.get_line_start(class_line) : layout.region[0]
+                ],
+                indentation=" " * step,
+                body_source=tuple(parts),
+                publications=publications,
+                managed_header=None
+                if source.startswith(c.Infra.AUTOGEN_HEADER)
+                else c.Infra.AUTOGEN_HEADER,
+            )
+            return cls.generate_module_skeleton(context=context)
 
     @classmethod
     def facade_component_retirements(
@@ -560,7 +732,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         publications: dict[
             tuple[p.Infra.RopeClassObject, str], p.Infra.RopeClassObject
         ] = {}
@@ -790,7 +962,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     receiver = runtime.expression_name(context.environment, prefix)
                     if (
                         receiver is None
-                        or not FlextInfraUtilitiesTypesRopeRuntime.py_class(
+                        or not FlextInfraUtilitiesRopeRuntimeTypes.py_class(
                             owner := receiver.get_object()
                         )
                     ):
@@ -857,13 +1029,13 @@ class FlextInfraUtilitiesFacadeComponents:
             while pending:
                 holder, target = pending.pop()
                 holders.append((holder, target))
-                if not FlextInfraUtilitiesTypesRopeRuntime.py_class(holder):
+                if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(holder):
                     message = f"facade namespace has no native scope: {root}.{target}"
                     raise ValueError(message)
                 for nested in holder.get_scope().get_scopes():
                     if nested.get_kind() != "Class":
                         continue
-                    value = FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
+                    value = FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
                         nested.pyobject, f"{root}.{target}"
                     )
                     if not value.get_name().startswith("_"):
@@ -883,7 +1055,7 @@ class FlextInfraUtilitiesFacadeComponents:
             Every native ancestor once, in method resolution order.
 
         """
-        runtime = FlextInfraUtilitiesTypesRopeRuntime
+        runtime = FlextInfraUtilitiesRopeRuntimeTypes
         ancestors = holder.get_mro()[1:]
         return tuple(
             runtime.require_class_object(ancestor, holder.get_name())
@@ -938,7 +1110,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     source_project=source_project,
                     declarations=declarations,
                 )
-                and FlextInfraUtilitiesTypesRopeRuntime.py_function(
+                and FlextInfraUtilitiesRopeRuntimeTypes.py_function(
                     binding.get_object()
                 )
                 and member in holder_members
@@ -1094,7 +1266,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         scope = module.get_source_binding_index().context_at(offset).environment
         receiver = runtime.expression_name(scope, reference)
         if receiver is not None:
@@ -1160,10 +1332,10 @@ class FlextInfraUtilitiesFacadeComponents:
         resource = engine.get_file(
             path.relative_to(Path(engine.root.real_path)).as_posix()
         )
-        module = FlextInfraUtilitiesTypesRopeRuntime.require_parsed_module(
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
             engine.get_pymodule(resource, force_errors=True)
         )
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             message = f"component consumer has no native source module: {path}"
             raise TypeError(message)
         return module

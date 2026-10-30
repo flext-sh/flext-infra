@@ -62,7 +62,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesRopeRuntimeRefactors,
     )
     from flext_infra._utilities._rope.runtime_types import (
-        FlextInfraUtilitiesTypesRopeRuntime,
+        FlextInfraUtilitiesRopeRuntimeTypes,
     )
     from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
     from flext_infra._utilities._rope.source_bases_aliases import (
@@ -105,13 +105,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeRuntimeModuleQueries",
     "FlextInfraUtilitiesRopeRuntimeModules",
     "FlextInfraUtilitiesRopeRuntimeRefactors",
+    "FlextInfraUtilitiesRopeRuntimeTypes",
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesRopeSourceBasesAliases",
     "FlextInfraUtilitiesRopeSourceBasesInventory",
     "FlextInfraUtilitiesRopeSourceBasesRuntime",
     "FlextInfraUtilitiesRopeSourceBindingCollector",
     "FlextInfraUtilitiesRopeStructure",
-    "FlextInfraUtilitiesTypesRopeRuntime",
 )
 
 install_lazy_exports(
@@ -142,7 +142,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeRuntimeModuleQueries": ".runtime_module_queries",
         "FlextInfraUtilitiesRopeRuntimeModules": ".runtime_modules",
         "FlextInfraUtilitiesRopeRuntimeRefactors": ".runtime_refactors",
-        "FlextInfraUtilitiesTypesRopeRuntime": ".runtime_types",
+        "FlextInfraUtilitiesRopeRuntimeTypes": ".runtime_types",
         "FlextInfraUtilitiesRopeSource": ".source",
         "FlextInfraUtilitiesRopeSourceBasesAliases": ".source_bases_aliases",
         "FlextInfraUtilitiesRopeSourceBasesInventory": ".source_bases_inventory",

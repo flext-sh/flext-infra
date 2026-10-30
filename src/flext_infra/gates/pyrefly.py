@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraPyreflyGate(FlextInfraGate):
+class FlextInfraGatesPyreflyGate(FlextInfra):
     """Pyrefly quality gate."""
 
     gate_id: ClassVar[str] = c.Infra.PYREFLY
@@ -31,7 +31,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     # Native JSON report replaced before every run: ``{project}-pyrefly.json``.
     check_report_filename: ClassVar[str] = "pyrefly.json"
     check_remove_env_keys: ClassVar[Sequence[str]] = (
-        *FlextInfraGate.check_remove_env_keys,
+        *FlextInfraGates.check_remove_env_keys,
         c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,
     )
 
@@ -51,7 +51,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         """
         report_path = self._check_report_path(project_dir, ctx)
         if report_path is None:
-            msg = "FlextInfraPyreflyGate.check_report_filename is empty"
+            msg = "FlextInfraGatesPyrefly.check_report_filename is empty"
             raise RuntimeError(msg)
         return report_path
 
@@ -169,4 +169,4 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraPyreflyGate"]
+__all__: list[str] = ["FlextInfraGatesPyrefly"]

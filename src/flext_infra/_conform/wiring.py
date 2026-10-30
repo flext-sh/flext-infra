@@ -50,7 +50,7 @@ class FlextInfraConformWiring:
             The resulting ``p.Infra.MarkdownFormatGate``.
 
         """
-        return gates.FlextInfraMarkdownFormatGate(repository_root)
+        return gates.FlextInfraGatesMarkdownFormat(repository_root)
 
     def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts:
         """Bind planning and guarded publication at the public composition root.

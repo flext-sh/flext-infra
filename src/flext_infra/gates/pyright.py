@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraPyrightGate(FlextInfraGate):
+class FlextInfraPyrightGate(FlextInfraGates):
     """Pyright quality gate."""
 
     gate_id: ClassVar[str] = c.Infra.PYRIGHT
@@ -154,4 +154,4 @@ class FlextInfraPyrightGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraPyrightGate"]
+__all__: list[str] = ["FlextInfraGatesPyright"]

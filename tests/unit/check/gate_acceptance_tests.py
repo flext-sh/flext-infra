@@ -76,7 +76,7 @@ class TestsFlextInfraGateAcceptance:
             apply_fixes=True,
             selected_files=(source,),
         )
-        gate = gates.FlextInfraRuffFormatGate(tmp_path)
+        gate = gates.FlextInfraGatesRuffFormat(tmp_path)
         for execution in (
             gate.check_files((source,), project, context),
             gate.fix(project, context),
@@ -88,7 +88,7 @@ class TestsFlextInfraGateAcceptance:
             )
             tm.that(execution.raw_output, has="COM812")
         tm.fail(
-            gates.FlextInfraRuffFormatGate.format_files(project, (source,)),
+            gates.FlextInfraGatesRuffFormat.format_files(project, (source,)),
             has="COM812",
         )
 
@@ -252,7 +252,7 @@ class TestsFlextInfraGateAcceptance:
             encoding="utf-8",
         )
         u.Tests.initialize_git_repo(project)
-        execution = gates.FlextInfraRuffFormatGate(tmp_path).fix(
+        execution = gates.FlextInfraGatesRuffFormat(tmp_path).fix(
             project,
             m.Infra.GateContext(
                 repository_root=tmp_path,
@@ -333,7 +333,7 @@ class TestsFlextInfraGateAcceptance:
             "import os\n" + ("missing_name()\n" if residual else ""),
             encoding="utf-8",
         )
-        gate = gates.FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraGatesRuffLint(tmp_path)
         context = m.Infra.GateContext(
             repository_root=tmp_path,
             reports_dir=tmp_path / "reports",
@@ -367,7 +367,7 @@ class TestsFlextInfraGateAcceptance:
         )
         source = project / "src" / "sample.py"
         source.write_text("import os\n", encoding="utf-8")
-        gate = gates.FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraGatesRuffLint(tmp_path)
         context = m.Infra.GateContext(
             repository_root=tmp_path,
             reports_dir=tmp_path / "reports",
@@ -407,7 +407,7 @@ class TestsFlextInfraGateAcceptance:
             apply_fixes=True,
             ruff_args=("--select", rule, "--line-length", str(limit)),
         )
-        gate = gates.FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraGatesRuffLint(tmp_path)
         execution = gate.fix(project, context)
         tm.fail(execution.result.passed)
         tm.that(
@@ -445,7 +445,7 @@ class TestsFlextInfraGateAcceptance:
             reports_dir=tmp_path / "reports",
             apply_fixes=True,
         )
-        gate = gates.FlextInfraMarkdownGate(tmp_path)
+        gate = gates.FlextInfraGatesMarkdown(tmp_path)
         execution = gate.fix(project, context)
         tm.that(execution.result.passed, eq=not residual)
         tm.that(execution.issues, eq=gate.check(project, context).issues)
@@ -493,7 +493,7 @@ class TestsFlextInfraGateAcceptance:
         tm.that(execution.result.passed, eq=not (check_only or residual))
         tm.that("import os" in selected.read_text(encoding="utf-8"), eq=check_only)
         tm.that(unselected.read_text(encoding="utf-8"), eq="import os\n")
-        gate = gates.FlextInfraRuffLintGate(tmp_path)
+        gate = gates.FlextInfraGatesRuffLint(tmp_path)
         tm.that(
             execution.issues,
             eq=gate.check_files((selected,), project, context).issues,

@@ -15,11 +15,9 @@ from flext_cli import u
 from flext_core import build_lazy_import_map
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 
 
@@ -144,7 +142,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 project, source
             )
         )
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(parsed):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(parsed):
             message = "Lazy aliases require a native Rope source module"
             raise TypeError(message)
         if parsed.source_code != source:
@@ -281,14 +279,14 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             binding = runtime.resolve_symbol(scope, node)
             if (
                 binding is None
-                or not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(binding)
+                or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
                 or len(binding.assignments) != 1
             ):
                 message = "Lazy alias mapping requires one native assignment"
                 raise ValueError(message)
             provider, line = runtime.definition_location(binding)
             if (
-                not FlextInfraUtilitiesTypesRopeRuntime.source_module(provider)
+                not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider)
                 or line is None
             ):
                 message = "Lazy alias mapping requires a source declaration"
@@ -338,7 +336,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         if isinstance(expression, ast.Name):
             binding = runtime.resolve_symbol(scope, expression)
             if not types.imported_name(binding):

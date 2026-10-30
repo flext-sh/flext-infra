@@ -13,7 +13,7 @@ from typing import Literal
 
 import pytest
 
-from flext_infra.gates import FlextInfraMypyGate, FlextInfraPyreflyGate
+from flext_infra.gates import FlextInfraGatesMypyGate, FlextInfraPyrefly
 from tests import c, m, p, tm, u
 
 
@@ -232,7 +232,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
             repository_root=root, reports_dir=root / ".reports"
         )
         context.reports_dir.mkdir(parents=True, exist_ok=True)
-        for gate in (FlextInfraMypyGate(root), FlextInfraPyreflyGate(root)):
+        for gate in (FlextInfraGatesMypyGate(root), FlextInfraPyrefly(root)):
             checked = gate.check(root, context)
             tm.that(checked.result.passed, eq=True, msg=checked.raw_output)
 

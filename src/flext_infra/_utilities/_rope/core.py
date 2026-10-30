@@ -17,11 +17,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesWorkspaceInventory,
 )
-from flext_infra._utilities._rope.core_resources import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCorePyModule,
     FlextInfraUtilitiesRopeCoreResources,
+    FlextInfraUtilitiesRopeRuntime,
 )
-from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeCore(

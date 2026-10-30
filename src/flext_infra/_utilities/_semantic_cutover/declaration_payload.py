@@ -18,7 +18,7 @@ from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -28,7 +28,7 @@ from flext_infra._utilities._semantic_cutover import (
 
 class FlextInfraUtilitiesDeclarationPayload(
     FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 ):
     """Resolve declaration roles, specialization facts and native identities."""
 
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         """
         return (
             tuple(value.get_mro())
-            if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value)
+            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value)
             else (value,)
         )
 
@@ -168,7 +168,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         """
         return (
             tuple(value.get_superclasses())
-            if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value)
+            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value)
             else ()
         )
 
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             TypeError: If the reader does not satisfy the declared Rope contract.
 
         """
-        words = FlextInfraUtilitiesTypesRopeRuntime.runtime_callable(
+        words = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
             "rope.base.worder",
             "Worder",
         )(source, handle_ignores=True)
@@ -208,7 +208,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             Every qualified class declaration matching the supplied short name.
 
         """
-        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
@@ -298,7 +298,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         if resolved is None:
             return None
         module, binding = resolved
-        value = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+        value = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             binding.get_object(), qualified_name
         )
         scope = value.get_scope()
@@ -372,7 +372,7 @@ class FlextInfraUtilitiesDeclarationPayload(
             The native module and class binding, or ``None`` for a non-class.
 
         """
-        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
@@ -393,7 +393,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         if binding is None:
             return None
         value = binding.get_object()
-        if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
             return None
         return module, binding
 
@@ -453,7 +453,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         if resolved is None:
             return None
         _module, binding = resolved
-        value = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+        value = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             binding.get_object(), qualified_name
         )
         base = cls.identity_name(project, c.Infra.PYDANTIC_MODEL_IDENTITY).get_object()

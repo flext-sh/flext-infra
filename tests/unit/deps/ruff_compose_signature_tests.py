@@ -13,9 +13,9 @@ import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import config
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
+from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
-from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
+from flext_infra.gates import FlextInfraGatesRuffFormat, FlextInfraGatesRuffLint
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -253,7 +253,7 @@ class TestsFlextInfraRuffProjectPolicy:
             )["name"],
             eq=project.name,
         )
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = FlextInfraGatesRuffLint(tmp_path)
         context = m.Infra.GateContext(
             repository_root=tmp_path,
             reports_dir=tmp_path / "reports",
@@ -317,8 +317,8 @@ class TestsFlextInfraRuffProjectPolicy:
             apply_fixes=True,
             selected_files=(source,),
         )
-        lint = FlextInfraRuffLintGate(tmp_path)
-        formatter = FlextInfraRuffFormatGate(tmp_path)
+        lint = FlextInfraGatesRuffLint(tmp_path)
+        formatter = FlextInfraGatesRuffFormat(tmp_path)
         before = formatter.check_files((source,), project, context)
         tm.fail(before.result.passed)
         tm.that(before.outcome, eq=c.Infra.ToolOutcome.FINDINGS)

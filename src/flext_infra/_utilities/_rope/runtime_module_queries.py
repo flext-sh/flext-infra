@@ -15,7 +15,7 @@ from flext_cli import u
 from flext_infra import config, m, p, t
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeBase,
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 
 
@@ -38,8 +38,8 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         module, line = binding.get_definition_location()
         if (
             line is not None
-            or not FlextInfraUtilitiesTypesRopeRuntime.source_module(module)
-            or not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(binding)
+            or not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
+            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
             or not binding.assignments
         ):
             return module, line
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         """
         if not (
-            FlextInfraUtilitiesTypesRopeRuntime.abstract_class(candidate)
+            FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(candidate)
             and isinstance(candidate, p.Infra.RopeBuiltinClass)
         ):
             return False
@@ -357,7 +357,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             native,
             {},
         )
-        if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(wrapped):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(wrapped):
             msg = "Rope native class factory did not return a class"
             raise TypeError(msg)
         if (

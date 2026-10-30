@@ -22,6 +22,7 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependency,
     FlextInfraUtilitiesDependencyRequirements,
+    FlextInfraUtilitiesManagedConflicts,
 )
 
 
@@ -640,10 +641,6 @@ class FlextInfraUtilitiesDependencies(
                 no owning payload or does not parse.
 
         """
-        from flext_infra._utilities._pyproject.document import (
-            FlextInfraUtilitiesPyprojectDocument,
-        )
-
         path = project / c.PYPROJECT_FILENAME
         plan = manifests.get(path)
         if plan is None:
@@ -668,8 +665,13 @@ class FlextInfraUtilitiesDependencies(
                 msg = f"planned manifest has no owning payload: {path}"
                 raise ValueError(msg)
             content = plan.desired_content
-        recovered = FlextInfraUtilitiesPyprojectDocument.recover_live_pyproject_text(
-            content.decode(c.DEFAULT_ENCODING)
+        recovered = (
+            FlextInfraUtilitiesManagedConflicts.pyproject_managed_file().flat_map(
+                lambda spec: FlextInfraUtilitiesManagedConflicts.recover_managed_toml(
+                    content.decode(c.DEFAULT_ENCODING),
+                    conflict_sections=spec.conflict_sections,
+                )
+            )
         )
         if recovered.failure:
             if recovered.exception is not None:

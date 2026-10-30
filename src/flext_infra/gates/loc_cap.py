@@ -15,13 +15,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraLocCapGate(FlextInfraGate):
+class FlextInfraLocCapGate(FlextInfraGates):
     """Flag any module whose scc `Code` LOC exceeds the config-owned ceiling."""
 
     gate_id: ClassVar[str] = "loc-cap"
@@ -126,4 +126,4 @@ class FlextInfraLocCapGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraLocCapGate"]
+__all__: list[str] = ["FlextInfraGatesLocCap"]

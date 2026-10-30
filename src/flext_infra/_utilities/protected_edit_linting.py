@@ -539,15 +539,15 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 apply_fixes=True,
                 selected_files=tuple(paths),
             )
-            lint = gates.FlextInfraRuffLintGate(root).fix(project, context)
+            lint = gates.FlextInfraGatesRuffLint(root).fix(project, context)
             if lint.outcome is c.Infra.ToolOutcome.ERROR:
                 return r[bool].fail(lint.raw_output or "configured lint repair failed")
-            formatted = gates.FlextInfraRuffFormatGate(root).fix(project, context)
+            formatted = gates.FlextInfraGatesRuffFormat(root).fix(project, context)
             if not formatted.result.passed:
                 return r[bool].fail(
                     formatted.raw_output or "configured format repair failed"
                 )
-            checked = gates.FlextInfraRuffLintGate(root).check_files(
+            checked = gates.FlextInfraGatesRuffLint(root).check_files(
                 paths, project, context
             )
             if not checked.result.passed:

@@ -12,13 +12,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, t, u
-from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraMypyGate(FlextInfraGate):
+class FlextInfraGatesMypyGate(FlextInfra):
     """Gate for Mypy type checking."""
 
     gate_id: ClassVar[str] = c.Infra.MYPY
@@ -365,4 +364,4 @@ class FlextInfraMypyGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraMypyGate"]
+__all__: list[str] = ["FlextInfraGatesMypy"]

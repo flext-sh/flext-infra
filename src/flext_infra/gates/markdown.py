@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraMarkdownGate(FlextInfraMarkdownGateBase):
+class FlextInfraGatesMarkdown(FlextInfraMarkdownGateBase):
     """Markdown quality gate."""
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN
@@ -94,4 +94,4 @@ class FlextInfraMarkdownGate(FlextInfraMarkdownGateBase):
         return self._finalize_parse_result(result, project_dir, issues, c.Infra.RUMDL)
 
 
-__all__: list[str] = ["FlextInfraMarkdownGate"]
+__all__: list[str] = ["FlextInfraGatesMarkdown"]

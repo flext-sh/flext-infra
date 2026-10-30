@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, m
-from flext_infra.maintenance import FlextInfraSonarcloudSettingsSync
+from flext_infra.maintenance import FlextInfraMaintenanceSonarcloud
 from tests import c, t, tm, u
 
 if TYPE_CHECKING:
@@ -140,7 +140,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         """The key is <organization>_<repository> whatever the origin transport."""
         u.Tests.initialize_git_repo(tmp_path, origin_url=origin)
 
-        key = tm.ok(FlextInfraSonarcloudSettingsSync.project_key(tmp_path))
+        key = tm.ok(FlextInfraMaintenanceSonarcloud.project_key(tmp_path))
 
         tm.that(
             key,
@@ -155,8 +155,8 @@ class TestsFlextInfraSonarcloudSettingsSync:
     ) -> None:
         """The request honors both the current SSOT and arbitrary valid configs."""
         spec = self._spec(count)
-        plan = tm.ok(FlextInfraSonarcloudSettingsSync.settings_plan(spec, "org_repo"))
-        request = FlextInfraSonarcloudSettingsSync.settings_write_request(plan)
+        plan = tm.ok(FlextInfraMaintenanceSonarcloud.settings_plan(spec, "org_repo"))
+        request = FlextInfraMaintenanceSonarcloud.settings_write_request(plan)
         form = request.form
 
         tm.that(form[0], eq=("component", "org_repo"))
@@ -191,19 +191,19 @@ class TestsFlextInfraSonarcloudSettingsSync:
     ) -> None:
         """Inherited entries affect convergence exactly like project entries."""
         spec = self._spec(count)
-        plan = tm.ok(FlextInfraSonarcloudSettingsSync.settings_plan(spec, "org_repo"))
+        plan = tm.ok(FlextInfraMaintenanceSonarcloud.settings_plan(spec, "org_repo"))
         pairs = self._pairs(spec)
         values = m.Infra.SonarcloudSettingsValues.model_validate_json
 
         for ordered in (pairs, tuple(reversed(pairs))):
             current = values(self._server_payload(ordered, inherited=inherited))
             tm.that(
-                FlextInfraSonarcloudSettingsSync.in_sync_with(plan, current),
+                FlextInfraMaintenanceSonarcloud.in_sync_with(plan, current),
                 eq=True,
             )
         absent = values(self._server_payload((), include_setting=False))
         tm.that(
-            FlextInfraSonarcloudSettingsSync.in_sync_with(plan, absent),
+            FlextInfraMaintenanceSonarcloud.in_sync_with(plan, absent),
             eq=not spec.issue_exclusions,
         )
         extra = values(
@@ -212,7 +212,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
                 inherited=inherited,
             ),
         )
-        tm.fail(FlextInfraSonarcloudSettingsSync.in_sync_with(plan, extra))
+        tm.fail(FlextInfraMaintenanceSonarcloud.in_sync_with(plan, extra))
 
     @pytest.mark.parametrize(c.Aggregation.COUNT, [1, 3])
     def test_repeated_config_entries_fail_and_server_duplicates_require_a_write(
@@ -226,14 +226,14 @@ class TestsFlextInfraSonarcloudSettingsSync:
             "issue_exclusions": spec.issue_exclusions * 2,
         })
         tm.fail(
-            FlextInfraSonarcloudSettingsSync.settings_plan(repeated, "org_repo"),
+            FlextInfraMaintenanceSonarcloud.settings_plan(repeated, "org_repo"),
             has="repeats",
         )
-        plan = tm.ok(FlextInfraSonarcloudSettingsSync.settings_plan(spec, "org_repo"))
+        plan = tm.ok(FlextInfraMaintenanceSonarcloud.settings_plan(spec, "org_repo"))
         current = m.Infra.SonarcloudSettingsValues.model_validate_json(
             self._server_payload(self._pairs(spec) * 2),
         )
-        tm.fail(FlextInfraSonarcloudSettingsSync.in_sync_with(plan, current))
+        tm.fail(FlextInfraMaintenanceSonarcloud.in_sync_with(plan, current))
 
     def test_absent_token_skips_green_before_any_effect(
         self,

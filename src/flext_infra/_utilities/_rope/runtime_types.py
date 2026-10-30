@@ -10,10 +10,10 @@ from pathlib import Path
 from typing import TypeGuard, TypeIs
 
 from flext_infra import c, p, t
-from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeBase
 
 
-class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
+class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
     """Expose typed predicates for Rope runtime objects."""
 
     @classmethod
@@ -288,4 +288,4 @@ class FlextInfraUtilitiesTypesRopeRuntime(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesTypesRopeRuntime"]
+__all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeTypes"]

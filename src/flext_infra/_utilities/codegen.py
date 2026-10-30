@@ -30,10 +30,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceManifest,
 )
 from flext_infra._utilities._git import FlextInfraUtilitiesGitignore
-from flext_infra._utilities._rope._analysis.analysis_workspace import (
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeModulePatch
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
-from flext_infra._utilities._rope.module_patch import FlextInfraUtilitiesRopeModulePatch
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
@@ -75,41 +75,6 @@ class FlextInfraUtilitiesCodegen(
                 config.Infra.codegen.toolchain.environment_path_prepends
             ),
         )
-
-    @staticmethod
-    def generate_module_skeleton(
-        *,
-        class_name: str,
-        base_class: str | None,
-        base_module: str | None,
-        docstring: str,
-    ) -> str:
-        """Render one module skeleton through the cli template engine (ADR-005).
-
-        The body lives in ``templates/module_skeleton.py.j2``; this method only
-        builds the context (explicit base module) and renders fail-closed via
-        ``u.Cli.template_render``. A render failure is a real incident and
-        surfaces via ``unwrap`` (no silent fallback).
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        template_path = (
-            Path(__file__).resolve().parent.parent
-            / "templates"
-            / c.Infra.TEMPLATE_MODULE_SKELETON
-        )
-        # Preserve the exact validated model identity across the template boundary.
-        context = m.Infra.ModuleSkeletonRenderContext(
-            class_name=class_name,
-            base_class=base_class,
-            base_module=base_module,
-            docstring=docstring,
-        )
-        rendered: p.Result[str] = u.Cli.template_render(template_path, context)
-        content: str = rendered.unwrap()
-        return content
 
     @staticmethod
     def generate_test_module_skeleton(

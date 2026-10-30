@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import FlextCli, u
 
-from flext_infra import c, m
+from flext_infra import c
+from flext_infra._models import FlextInfraModelsBase
 from flext_infra.services import FlextInfraCliRouteService
 
 if TYPE_CHECKING:
@@ -116,7 +117,9 @@ class FlextInfraCliDispatchService(FlextInfraCliRouteService, FlextCli):
         if result.success:
             return c.Infra.PROCESS_SUCCESS_EXIT_CODE
         if result.error_code == c.Infra.PROCESS_EXIT_ERROR_CODE:
-            process_exit = m.Infra.ProcessExit.model_validate(result.error_data)
+            process_exit = FlextInfraModelsBase.ProcessExit.model_validate(
+                result.error_data
+            )
             exit_code: int = process_exit.exit_code
             return exit_code
         error_message = result.error

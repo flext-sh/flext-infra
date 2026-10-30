@@ -12,13 +12,12 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
 from flext_infra.gates.readonly_namespace import FlextInfraReadonlyNamespace
-from flext_infra.gates.ruff_base import FlextInfraRuffGate
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraRuffLintGate(FlextInfraRuffGate):
+class FlextInfraGatesRuffLintGate(FlextInfraRuff):
     """Ruff Lint quality gate."""
 
     gate_id: ClassVar[str] = c.Infra.LINT
@@ -330,13 +329,13 @@ class FlextInfraRuffLintGate(FlextInfraRuffGate):
 
         """
         return (
-            *FlextInfraRuffLintGate._static_hook_keys(
+            *FlextInfraGatesRuffLint._static_hook_keys(
                 issues,
                 recipes,
                 u.Infra.overridden_findings,
                 overridden=overridden,
             ),
-            *FlextInfraRuffLintGate._static_hook_keys(
+            *FlextInfraGatesRuffLint._static_hook_keys(
                 issues,
                 recipes,
                 u.Infra.service_operation_findings,
@@ -506,4 +505,4 @@ class FlextInfraRuffLintGate(FlextInfraRuffGate):
         return config.Infra.tooling.tools.ruff.findings_exit_codes
 
 
-__all__: list[str] = ["FlextInfraRuffLintGate"]
+__all__: list[str] = ["FlextInfraGatesRuffLint"]

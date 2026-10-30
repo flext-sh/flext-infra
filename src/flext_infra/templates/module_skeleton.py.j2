@@ -1,22 +1,30 @@
-"""{{ docstring }}"""
+{%- set documentation = docstring | replace('\\', '\\\\') | replace('"""', '\\"\\"\\"') if docstring is not none else '' -%}
+{%- set bases = class_bases if class_bases else ((base_class,) if base_class is not none else ()) -%}
+{%- set arguments = bases + class_keywords -%}
+{%- if managed_header is not none %}{{ managed_header }}
+{% endif -%}
+{%- if module_prefix is none -%}
+"""{{ documentation }}"""
 
 from __future__ import annotations
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-{% if base_class is not none %}from {{ base_module }} import {{ base_class }}
+{% if base_class is not none %}
+from {{ base_module }} import {{ base_class }}
 {% endif %}
 
 
-class {{ class_name }}{% if base_class is not none %}({{ base_class }}){% endif %}:
-    """{{ docstring }}"""
+{% else -%}
+{{ module_prefix }}
+{%- endif -%}
+{% if header_source is not none %}{{ header_source }}{% else %}class {{ class_name }}{{ type_parameters_source }}{% if arguments or header_comments %}(
+{% for comment in header_comments %}{{ class_indent }}{{ indentation }}{{ comment }}
+{% endfor %}{% for argument in arguments %}{{ class_indent }}{{ indentation }}{{ argument }},
+{% endfor %}{{ class_indent }}){% endif %}:{% endif %}{% if body_source is not none %}{% for part in body_source %}{% if part is string %}{{ part }}{% else %}{{ part[0] }}: TypeAlias = {{ part[1] }}{% endif %}{% endfor %}{% else %}
+{{ class_indent }}{{ indentation }}"""{{ documentation }}"""{% endif %}{% for name, expression in publications.items() %}
+{{ class_indent }}{{ indentation }}{{ name }}: TypeAlias = {{ expression }}{% endfor %}{{ module_suffix }}{% if exports is not none %}
+
+__all__: list[str] = [{% for name in exports %}"{{ name }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+{% elif module_prefix is none %}
 
 
 __all__: list[str] = ["{{ class_name }}"]
+{% endif -%}

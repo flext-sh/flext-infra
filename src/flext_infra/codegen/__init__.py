@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from flext_infra.codegen.census import FlextInfraCodegenCensus
     from flext_infra.codegen.conform import FlextInfraCodegenConform
     from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-    from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
+    from flext_infra.codegen.constants_quality_gate import FlextInfraGatesCodegenQuality
     from flext_infra.codegen.execution import FlextInfraCodegenExecution
     from flext_infra.codegen.fixer import FlextInfraCodegenFixer
     from flext_infra.codegen.layout import FlextInfraCodegenLayout
@@ -94,9 +94,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenMiseToolchainRepair",
     "FlextInfraCodegenPreconditions",
     "FlextInfraCodegenPyTyped",
-    "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",
+    "FlextInfraGatesCodegenQuality",
     "FlextInfraStagedPackage",
 )
 
@@ -125,7 +125,7 @@ install_lazy_exports(
         "FlextInfraCodegenLayout": ".layout",
         "FlextInfraCodegenLayoutApply": "._layout.apply",
         "FlextInfraCodegenLayoutFiles": "._layout.files",
-        "FlextInfraCodegenLayoutGitignore": "._layout.ignore",
+        "FlextInfraCodegenLayoutGitignore": "._layout.gitignore",
         "FlextInfraCodegenLayoutPlan": "._layout.plan",
         "FlextInfraCodegenLazyInit": ".lazy_init",
         "FlextInfraCodegenMakeBootstrap": ".make_bootstrap",
@@ -133,7 +133,7 @@ install_lazy_exports(
         "FlextInfraCodegenMiseToolchainRepair": ".mise_toolchain_repair",
         "FlextInfraCodegenPreconditions": ".preconditions",
         "FlextInfraCodegenPyTyped": ".py_typed",
-        "FlextInfraCodegenQualityGate": ".constants_quality_gate",
+        "FlextInfraGatesCodegenQuality": ".constants_quality_gate",
         "FlextInfraCodegenScaffolder": ".scaffolder",
         "FlextInfraCodegenVersionFile": ".version_file",
         "FlextInfraStagedPackage": ".staged_package",

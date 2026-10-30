@@ -111,12 +111,15 @@ class FlextInfraRefactorRoutes:
                         states,
                     ),
                 )
-                if any(not plan.path.is_relative_to(root) for plan in plans):
-                    msg = "exact module move effects escape the declared repository"
-                    raise ValueError(msg)
+                if plans.failure:
+                    return r[t.Cli.ResultValue].from_failure(plans)
+                if any(not plan.path.is_relative_to(root) for plan in plans.value):
+                    return r[t.Cli.ResultValue].fail(
+                        "exact module move effects escape the declared repository"
+                    )
                 publication = FlextInfraTransformersSemanticPublication
                 published = publication.publish_semantic_artifact_plans(
-                    plans,
+                    plans.value,
                     repository_root=root,
                     options=m.Infra.SemanticPublicationOptions(
                         projection_roots=(root,),

@@ -18,7 +18,7 @@ from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -51,7 +51,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
         if module is None or line is None:
             return False
         module = module.get_module()
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             message = "Constant declarations require a native source module"
             raise TypeError(message)
         owner = runtime.scope_at(module, module.lines.get_line_start(line)).pyobject
@@ -87,7 +87,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
         for reference, candidate in public.items():
             binding = cls._constant_terminal(project, candidate, reference)
             if (
-                not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(binding)
+                not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
                 or len(binding.assignments) != 1
             ):
                 continue
@@ -95,7 +95,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             if module is None or line is None:
                 continue
             module = module.get_module()
-            if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
                 message = "Constant bindings require a native source module"
                 raise TypeError(message)
             resource = module.get_resource()
@@ -263,7 +263,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 declaration = owner.parent.get_child(c.Infra.CONSTANTS_PY)
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                         declaration, declaration.path
                     ),
                 )
@@ -300,7 +300,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             resource = resource.get_child(c.Infra.INIT_PY)
         return FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource, qualified
             ),
         )
@@ -345,7 +345,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             Public reference paths bound to their native declaration identities.
 
         """
-        module = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
         )
         facade = module.get_attributes().get("c")
@@ -359,7 +359,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             prefix, owner, ancestors = pending.pop()
             if owner in ancestors:
                 continue
-            if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(owner):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
                 continue
             for name, binding in owner.get_attributes().items():
                 if name.startswith("_"):
@@ -367,7 +367,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 reference = f"{prefix}.{name}"
                 found[reference] = binding
                 value = binding.get_object()
-                if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
+                if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
                     pending.append((reference, value, (*ancestors, owner)))
         return found
 
@@ -382,7 +382,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
 
         """
         return FlextInfraUtilitiesRopeRuntimeModules.same_name(candidate, binding) or (
-            FlextInfraUtilitiesTypesRopeRuntime.abstract_class(binding.get_object())
+            FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
             and binding.get_object()
             in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
                 candidate.get_object()

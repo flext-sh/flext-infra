@@ -695,7 +695,7 @@ class FlextInfraProtocolsBase(Protocol):
         def __call__(
             self,
             repository_root: Path,
-        ) -> FlextInfraProtocolsBase.MarkdownFormatGate:
+        ) -> FlextInfraGatesProtocolsBase.MarkdownFormat:
             """Bind the gate to the scope root."""
             ...
 

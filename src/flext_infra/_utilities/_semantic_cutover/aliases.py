@@ -17,13 +17,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -66,7 +64,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                     or path.parent / c.Infra.INIT_PY not in sources
                 ):
                     continue
-                module = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+                module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
                     source_project.get_pymodule(
                         FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
                             source_project, path
@@ -113,7 +111,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 .get_attribute("s")
                 .get_object()
             )
-            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(kernel):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(kernel):
                 message = "upstream service alias has no native class declaration"
                 raise ValueError(message)
             for path, declaration in candidates.items():
@@ -206,7 +204,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             ),
         )
         value = module.get_attribute(declaration.name).get_object()
-        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
             return None
         provider, scope = value.get_module(), value.get_scope()
         origin = provider.get_resource()

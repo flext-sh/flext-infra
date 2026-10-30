@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraGate:
+class FlextInfraGates:
     """Abstract template implementing common check/fix execution flow for gates."""
 
     gate_id: ClassVar[str] = ""
@@ -1152,4 +1152,4 @@ class FlextInfraGate:
         )
 
 
-__all__: list[str] = ["FlextInfraGate"]
+__all__: list[str] = ["FlextInfraGates"]

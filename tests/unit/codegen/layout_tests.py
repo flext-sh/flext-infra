@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, m
-from flext_infra.gates.layout import FlextInfraLayoutGate
+from flext_infra.gates.layout import FlextInfraGatesLayout
 from tests import c, t, tm, u
 from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
 
@@ -269,7 +269,7 @@ class TestsFlextInfraCodegenLayout:
     def test_gate_reports_violations_as_blocking_errors(tmp_path: Path) -> None:
         """Every layout finding fails the gate and is reported at error severity."""
         project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
-        gate = FlextInfraLayoutGate(tmp_path)
+        gate = FlextInfraGatesLayout(tmp_path)
         ctx = m.Infra.GateContext(
             repository_root=tmp_path,
             reports_dir=tmp_path / ".reports",

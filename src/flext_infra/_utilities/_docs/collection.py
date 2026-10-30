@@ -14,9 +14,11 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m
+from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsCollectionSources,
     FlextInfraUtilitiesDocsContract,
+    FlextInfraUtilitiesDocsRender,
 )
 
 
@@ -426,6 +428,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     @staticmethod
     def _collection_index_text(
         revisions: Sequence[m.Infra.PlanCollectionRevision],
+        *,
+        width: int,
     ) -> str:
         """Render the collected-plan index markdown.
 
@@ -440,10 +444,11 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             "",
         ]
         lines.extend(
-            f"- [{revision.identity}]({revision.canonical_path.name})"
-            f" — {revision.source_updated_at or 'source update unknown'}"
+            f"- [Plan]({revision.canonical_path.name})\n\n"
+            f"  {revision.identity}\n\n"
+            f"  {revision.source_updated_at or 'source update unknown'}"
             + (
-                " (chronology unresolved: no timezone-aware instant)"
+                "\n\n  Chronology unresolved: no timezone-aware instant."
                 if revision.source_updated_at_utc is None
                 else ""
             )
@@ -455,7 +460,42 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         index, _changed = FlextInfraUtilitiesDocsContract.contract_update_toc(
             "\n".join(lines) + "\n",
         )
-        return index
+        return (
+            FlextInfraUtilitiesDocsContract
+            .contract_wrap_markdown(
+                index.encode(),
+                width=width,
+            )
+            .unwrap()
+            .decode()
+        )
+
+    @staticmethod
+    def _collection_markdown_width(
+        root: Path,
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
+    ) -> int:
+        """Bind the renderer's elected tooling policy to original observations.
+
+        Returns:
+            The same prose width consumed by the native Markdown gate.
+
+        Raises:
+            ValueError: If an influential tooling input changed after capture.
+
+        """
+        tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
+            root,
+        ).unwrap()
+        for state in tooling.sources:
+            previous = states.get(state.path)
+            if previous is not None and previous != state:
+                msg = f"collection tooling changed after capture: {state.path}"
+                raise ValueError(msg)
+            states[state.path] = state
+        return FlextInfraUtilitiesDocsRender.docs_markdown_line_length(
+            tooling.document,
+        )
 
     @classmethod
     def _planned_collection_bundle(
@@ -535,8 +575,16 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             return cls._disabled_collection_bundle(root, state)
         state.absorb_owned_artifacts()
         cls._collect_all_sources(root, configuration, state, excluded_outputs)
+        width = cls._collection_markdown_width(root, states)
+        for path in sorted({canonical / item.canonical_path for item in state.history}):
+            state.desired[path] = (
+                FlextInfraUtilitiesDocsContract.contract_wrap_markdown(
+                    state.desired[path],
+                    width=width,
+                ).unwrap()
+            )
         revisions = state.sorted_revisions()
-        index_text = cls._collection_index_text(revisions)
+        index_text = cls._collection_index_text(revisions, width=width)
         state.desired[canonical / "collection-index.md"] = index_text.encode()
         state.verify_immutable_owned()
         return cls._planned_collection_bundle(root, state, revisions)
@@ -570,6 +618,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         states: MutableMapping[Path, m.Cli.AtomicFileState] = {
             state.path: state for state in inputs
         }
+        width = cls._collection_markdown_width(repository_root, states)
         before = cls.collection_capture(canonical / "collection-manifest.json", states)
         if before.content is None:
             raise FileNotFoundError(before.path)
@@ -578,7 +627,21 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls._validate_revision_locators(manifest)
         cls._verify_collection_artifacts(canonical, manifest, states)
         cls._verify_collection_revisions(canonical, manifest, states)
-        cls._verify_collection_index(canonical, manifest, states)
+        cls._verify_collection_index(canonical, manifest, states, width=width)
+        for path in sorted({
+            canonical / item.canonical_path for item in manifest.revisions
+        }):
+            content = states[path].content
+            if (
+                content is None
+                or FlextInfraUtilitiesDocsContract.contract_wrap_markdown(
+                    content,
+                    width=width,
+                ).unwrap()
+                != content
+            ):
+                msg = f"collected canonical Markdown requires rendering: {path}"
+                raise ValueError(msg)
         u.Cli.atomic_verify_binary_file_states(
             tuple(states.values()),
         ).unwrap()
@@ -633,6 +696,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         canonical: Path,
         manifest: m.Infra.PlanCollectionManifest,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
+        *,
+        width: int,
     ) -> None:
         """Render the index from current references in authenticated source order.
 
@@ -650,7 +715,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 revision = by_revision[coverage.source_id, locator, digest]
                 current[revision.identity] = revision
         if states[canonical / "collection-index.md"].content != (
-            cls._collection_index_text(tuple(current.values())).encode()
+            cls._collection_index_text(tuple(current.values()), width=width).encode()
         ):
             msg = "published collection index differs from current source references"
             raise ValueError(msg)

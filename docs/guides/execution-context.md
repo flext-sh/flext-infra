@@ -197,10 +197,11 @@ upgrade fetches nothing beyond version resolution. Plain `mise lock` with no too
 arguments would refresh every locked entry and re-download each provenance
 artifact, so it is never used. Neither command installs tools; setup consumes
 the resulting lock.
-An owning facade composes a declared component from its source module, not a stale
-generated package export that prevents the generator itself from importing. Keep
-the public facade and component behavior unchanged; regenerate package exports
-through their owner rather than hand-editing a generated initializer.
+The [projector bootstrap dependency cut](../../../docs/architecture/adr/018-generator-declarations.md#projector-bootstrap-dependency-cut)
+owns cold import repair. Elect the same projector and original planning models
+before the aggregate they repair, retaining public package imports. The former
+defining-module workaround is superseded; generated initializers remain owned by
+the existing projector and are never repaired manually.
 
 The root has one native uv workspace and composes member locks per
 [ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md).
@@ -493,6 +494,11 @@ retains normal admission, normalization, input verification and guarded publishi
 it does not derive documentation or Python projections for the control operation.
 Failure metadata names the actual failed repository cohorts directly, allowing
 control outcomes to be updated without inferring ownership from written paths.
+Before source snapshots are opened, failed control outcomes block their producer
+and actual dependent closure through the existing workspace dependency graph.
+Every declared target retains an explicit source-planning outcome; independent
+targets continue. A failed publication or hook stores that original failed Result
+on its shared cohort outcomes only when no earlier native failure was retained.
 
 The existing per-repository execution boundary contains unexpected `Exception`
 values as native outcomes with their original object and traceback. Native SDK
@@ -2737,6 +2743,8 @@ Diagnostics do not admit unknown objects, skip ancestors or widen the class
 contract without evidence from the real consumer.
 Component composition uses that same admission: a rejected base stops the whole
 query and retains its original exception, never a partial ancestry result.
+Native identifier resolution likewise preserves hierarchy and integrity errors;
+only an absent binding or attribute produces an absent result.
 Native startup imports Core utilities before planning. A syntax error in an
 authored declaration means generation has not run. Repair its minimal bootstrap
 declaration without changing tuple arity or parameter separators, then repair the
@@ -2748,6 +2756,17 @@ own provider moved outside that family leaves its MRO and unused imports.
 Unresolved providers fail before publication. Class-move previews and immutable
 plans leave absent destination directories absent; only an authorized apply
 creates them after source and identifier validation.
+Module-move publication edits use the same candidate module's native binding
+index. Literal installer arguments retain their lexical provider and token spans;
+unsupported or ambiguous publications return a typed refusal before file plans
+are published. Executable imports remain native Rope move effects. Existing
+initializer templates own generated structure; these edits preserve the authored
+body, comments and all unrelated literals.
+Scoped alias relocation stays in the existing Rope imports owner. It consumes
+native import layouts and original scope identities, uses native ImportInfo for
+new import declarations and ChangeCollector for indexed alias/provider spans.
+Mixed imports keep comments and their original guard or local suite. Refusals
+remain typed before any resource write; callers propagate the same failure.
 Snapshot resources derive existence, children and observer indicators from the
 authenticated source inventory. External providers keep their native Rope
 identity through a snapshot-owned external project and read the captured bytes.
@@ -4056,12 +4075,17 @@ module and the child package's generated initializer. Discovery follows the
 declared facade family and source ownership, including nested domains; it does
 not maintain a separate directory or class catalog. Existing authored
 declarations retain their identity and behavior.
-Missing domain declarations reuse the existing module-skeleton context and
-template with no declared base. The optional base module and class are paired;
-ordinary skeleton consumers retain their explicit bases. Native projection
-subsequently composes the complete provider set. The domain initializer owns
-the required documentation; neither a selected first provider nor a fabricated
-docstring supplies a missing declaration contract.
+The existing module-skeleton context and template are the structural base for
+both missing declarations and refactoring existing modules. The same native
+session inventories declarations, imports, bases/MRO, aliases, authored bodies,
+exports and ownership, and fills that typed context by reference. Its generated
+slots own class structure and publications; Rope preserves and repositions
+authored source through authenticated regions and native refactorings. No
+parallel Python string emitter, parser, registry or rendering engine replaces
+those slots. The optional base module and class remain paired for ordinary
+skeleton consumers. Missing domains start without an invented first provider;
+their initializer owns the required documentation. Existing authored regions
+remain actual source inputs, never placeholder Config/Settings/Ping content.
 An owning composition's base order is part of that semantic contract. Two
 individually valid domains can impose opposite precedence on shared ancestors,
 making their generated aggregate impossible to import. Repair the contradictory
@@ -4518,13 +4542,14 @@ identity fails explicitly; no AST interpretation, physical `rglob` census,
 name-keyed ancestry reconstruction or fallback authorizes a composition result.
 Required declaration names filter native class scopes before binding inference:
 the selected namespace elects only its own name, and family modules elect only
-their explicit exports. Collect those final declaration identities before asking
-for ancestry. A known replacement does not retain the former class declaration;
-an unresolved final binding fails instead of silently emptying the required set.
-When the family exports no owned class, a unique valid namespace
-satisfies the composition contract without an MRO query; otherwise every native
-MRO witness must be valid before comparing the complete required set. This uses
-the same snapshot and adds no separate semantic index or cache. The native Make
+their explicit exports. Admit required identities incrementally per module.
+Compute the facade's complete native MRO once, only after the first nonempty
+required set, and return false at the first missing required identity. Errors in
+visited bindings or ancestry remain failures; they are never treated as empty sets.
+A known replacement does not retain the former class declaration. When the family
+exports no owned class, a unique valid namespace satisfies the composition contract
+without an MRO query. This uses the same snapshot and adds no separate semantic
+index or cache. The native Make
 profile measured composition in the hot path; source changes alone do not prove
 an improvement or complete the public command.
 This is the active Rope-only cutover contract under ADR-028 Decision 17. At the

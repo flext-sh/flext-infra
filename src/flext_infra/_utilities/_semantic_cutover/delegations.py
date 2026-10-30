@@ -21,7 +21,7 @@ from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
@@ -57,7 +57,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             )
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                 project,
-                FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                     resource, path
                 ),
             )
@@ -375,7 +375,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         node = value.get_ast()
         location = FlextInfraUtilitiesRopeRuntimeModules.definition_location(binding)
         module = location[0]
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
             module
         ) or not isinstance(node, c.Infra.AST_DEFINITION_TYPES):
             return None
@@ -434,7 +434,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             )
         ):
             return None, ()
-        target_scope = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+        target_scope = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             binding.get_object(), "delegation wrapper"
         ).get_scope()
         descriptor, selected = cls._factory(
@@ -684,7 +684,7 @@ class FlextInfraUtilitiesSemanticDelegations(
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = binding.get_object().get_module()
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             msg = "descriptor has no native lexical scope"
             raise ValueError(msg)
         for expression, identity in zip(
@@ -982,7 +982,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             for parameter in signature.type_params
             if isinstance(parameter, c.Infra.AST_TYPE_PARAM_TYPES)
         }
-        native_scope = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+        native_scope = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             binding.get_object(), "prototype annotation scope"
         ).get_scope()
         required: list[p.Infra.RopeImportInfo] = []

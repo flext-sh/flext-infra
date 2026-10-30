@@ -15,10 +15,10 @@ from typing import ClassVar, override
 from uuid import uuid4
 
 from flext_infra import c, config, m, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 
-class FlextInfraDepsGate(FlextInfraGate):
+class FlextInfraGatesDeps(FlextInfraGates):
     """Fail every import the project's declared dependencies never declare.
 
     Why (aihub-l42it.11): undeclared runtime imports surface today only deep
@@ -339,4 +339,4 @@ class FlextInfraDepsGate(FlextInfraGate):
         ), scan
 
 
-__all__: list[str] = ["FlextInfraDepsGate"]
+__all__: list[str] = ["FlextInfraGatesDeps"]

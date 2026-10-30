@@ -323,6 +323,10 @@ class FlextInfraCodemodSemanticApply(
     ) -> tuple[tuple[Path, str], ...]:
         """Select module names without changing the authenticated native sources.
 
+        Directory-owned prefixes follow the native package chain. A remaining
+        responsibility is preserved; the same prefix is not consumed repeatedly
+        across successive naming waves.
+
         Returns:
             Introducing module paths and their unambiguous destination basenames.
 
@@ -346,6 +350,10 @@ class FlextInfraCodemodSemanticApply(
                     if part.group()[-1].isdigit()
                     else owner.lstrip("_")
                 )
+            else:
+                replacement = cls._directory_owned_module_name(
+                    workspace, path, replacement
+                )
             if replacement == name:
                 continue
             # A public name of the parent package (the `config`/`settings`
@@ -364,6 +372,12 @@ class FlextInfraCodemodSemanticApply(
                     )
                 )
             ):
+                if part is None and replacement != name.lstrip("_"):
+                    msg = (
+                        f"module naming destination shadows its parent publication: "
+                        f"{path} -> {replacement}"
+                    )
+                    raise ValueError(msg)
                 continue
             if not replacement.isidentifier() or keyword.iskeyword(replacement):
                 msg = (
@@ -387,6 +401,42 @@ class FlextInfraCodemodSemanticApply(
                 raise ValueError(msg)
             selected.append((path, replacement))
         return tuple(selected)
+
+    @staticmethod
+    def _directory_owned_module_name(
+        workspace: p.Infra.RopeWorkspaceDsl, path: Path, name: str
+    ) -> str:
+        """Remove one unambiguous directory-owned prefix from a native module.
+
+        Prefixes end at the containing package, so an ancestor word appearing
+        alone in a deeper domain remains part of that module's responsibility.
+
+        Returns:
+            The remaining responsibility, or the original unprefixed basename.
+
+        Raises:
+            ValueError: If the module is not inventoried or its remaining name
+                would repeat the same naming decision in another wave.
+
+        """
+        module = workspace.module(path)
+        if module is None:
+            msg = f"module naming requires an inventoried module: {path}"
+            raise ValueError(msg)
+        owners = tuple(part.lstrip("_") for part in module.module_name.split(".")[:-1])
+        prefixes = tuple("_".join(owners[index:]) + "_" for index in range(len(owners)))
+        for prefix in prefixes:
+            if not name.startswith(prefix):
+                continue
+            replacement = name[len(prefix) :].lstrip("_")
+            if any(replacement.startswith(other) for other in prefixes):
+                msg = (
+                    f"module naming has an ambiguous repeated responsibility: "
+                    f"{path} -> {replacement}"
+                )
+                raise ValueError(msg)
+            return replacement
+        return name
 
     @classmethod
     def _module_responsibility_name(
@@ -1268,6 +1318,7 @@ class FlextInfraCodemodSemanticApply(
                 plans,
                 repository_root=u.Infra.import_project_roots(root)[0].resolve(),
                 options=m.Infra.SemanticPublicationOptions(
+                    inputs=artifact.candidate.inputs,
                     projection_roots=tuple(
                         sorted({
                             root,

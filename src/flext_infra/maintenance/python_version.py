@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraPythonVersionEnforcer(s[int]):
+class FlextInfraMaintenancePythonVersion(s[int]):
     """Service for enforcing Python version constraints across workspace.
 
     Validates that all projects have consistent Python version requirements
@@ -245,4 +245,4 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         raise RuntimeError(msg)
 
 
-__all__: list[str] = ["FlextInfraPythonVersionEnforcer"]
+__all__: list[str] = ["FlextInfraMaintenancePythonVersion"]

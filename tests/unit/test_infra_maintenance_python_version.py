@@ -1,4 +1,4 @@
-"""Tests for FlextInfraPythonVersionEnforcer.
+"""Tests for FlextInfraMaintenancePythonVersion.
 
 Tests Python version enforcement with real pyproject.toml and tmp_path.
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, override
 
-from flext_infra.maintenance import FlextInfraPythonVersionEnforcer
+from flext_infra.maintenance import FlextInfraMaintenancePythonVersion
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -68,8 +68,8 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         return proj
 
     @staticmethod
-    def _svc(ws: Path) -> FlextInfraPythonVersionEnforcer:
-        class _TestEnforcer(FlextInfraPythonVersionEnforcer):
+    def _svc(ws: Path) -> FlextInfraMaintenancePythonVersion:
+        class _TestEnforcer(FlextInfraMaintenancePythonVersion):
             @staticmethod
             @override
             def _repository_root_from_file(file: str | Path) -> Path:

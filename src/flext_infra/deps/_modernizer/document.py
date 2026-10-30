@@ -25,7 +25,7 @@ from flext_infra.deps.phases import (
     FlextInfraInjectCommentsPhase,
     FlextInfraToolTablesPhase,
 )
-from flext_infra.gates.lint_freeze import FlextInfraLintConfigFreezeGate
+from flext_infra.gates.lint_freeze import FlextInfraGatesLintConfigFreeze
 from flext_infra.refactor import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
@@ -287,7 +287,7 @@ class FlextInfraPyprojectModernizerDocument(
                     f"{state.pyproject_path}"
                 )
                 raise ValueError(message)
-            observations = FlextInfraLintConfigFreezeGate.require_projection(
+            observations = FlextInfraGatesLintConfigFreeze.require_projection(
                 self.root, state
             )
             published = u.Infra.publish_codegen_plans(

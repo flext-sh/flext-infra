@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import re
 from collections import defaultdict
 from collections.abc import Callable, MutableMapping, Sequence
 from pathlib import Path
@@ -15,19 +14,14 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
-)
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
-)
-from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -790,11 +784,10 @@ class FlextInfraUtilitiesRopeImports:
         source_module: str,
         target_module: str,
         aliases: Sequence[str],
-    ) -> str | None:
+    ) -> p.Result[str]:
         """Move names and their bindings between absolute imports using Rope.
 
-        The relocated source is written to ``resource`` and returned; ``None``
-        means no import changed.
+        The relocated source is written only after successful admission.
 
         Returns:
             The resulting ``str | None``.
@@ -807,8 +800,10 @@ class FlextInfraUtilitiesRopeImports:
             target_module=target_module,
             aliases=aliases,
         )
-        if updated is not None:
-            resource.write(updated)
+        if updated.failure:
+            return r[str].from_failure(updated)
+        if updated.value != resource.read():
+            resource.write(updated.value)
         return updated
 
     @classmethod
@@ -864,13 +859,15 @@ class FlextInfraUtilitiesRopeImports:
             target_module=own,
             aliases=aliases,
         )
-        if updated is None:
+        if updated.failure:
+            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].from_failure(updated)
+        if updated.value == original:
             return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(())
         return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok((
             m.Infra.SemanticMigrationEdit(
                 file_path=file_path.resolve(),
                 original_source=original,
-                updated_source=updated,
+                updated_source=updated.value,
                 changes=(f"bound import to declared package {own}",),
             ),
         ))
@@ -878,107 +875,141 @@ class FlextInfraUtilitiesRopeImports:
     @classmethod
     def plan_from_import_aliases(
         cls,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeFile,
+        rope_project: p.Infra.RopeProject,
+        resource: p.Infra.RopeFile,
         *,
         source_module: str,
         target_module: str,
         aliases: Sequence[str],
-    ) -> str | None:
-        """Prepare scoped imports in place without changing reference text.
-
-        Invalid Rope or CST representations propagate their native type errors.
+    ) -> p.Result[str]:
+        """Prepare indexed imports in their original lexical boundaries.
 
         Returns:
-            The prepared source, or None when no selected import exists.
-
-        Raises:
-            RuntimeError: If an import identity is unresolved, unsupported, or
-                conflicts with a target binding in the same lexical scope.
+            Candidate source, or an admission refusal before any resource write.
 
         """
-        aliases_to_move = frozenset(aliases)
-        if not aliases_to_move:
-            return None
-        original_source: str = resource.read()
-        tree = ast.parse(original_source)
-        owners = (
-            (source_module, rope_project.find_module(source_module)),
-            (target_module, rope_project.find_module(target_module)),
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         )
-        # Only physical Python newlines contribute to AST line numbers.
-        lines = re.split(r"(?<=\n)|(?<=\r)(?!\n)", original_source)
-        imports = cls._scoped_from_imports(
+        original = module.source_code
+        selected = frozenset(aliases)
+        if not selected or source_module == target_module:
+            return r[str].ok(original)
+        source_resource = rope_project.find_module(source_module)
+        target_resource = rope_project.find_module(target_module)
+        consumers = cls._reject_module_alias_consumers(
             rope_project,
             resource,
-            tree,
-            owners,
-            cls._reject_module_alias_consumers(
-                rope_project,
-                resource,
-                lines,
-                owners[0][1],
-                aliases_to_move,
-            ),
+            original.splitlines(keepends=True),
+            source_resource,
+            selected,
         )
-        if owners[0][1] is None:
-            for statement, module_name, _scope in imports:
-                if module_name != source_module or not any(
-                    name.name in aliases_to_move for name in statement.names
-                ):
+        if consumers.failure:
+            return r[str].from_failure(consumers)
+        index = module.get_source_binding_index()
+        imports: list[
+            tuple[p.Infra.RopeSourceImportLayout, str, p.Infra.RopeScope]
+        ] = []
+        for declaration in index.import_layouts():
+            if declaration.module_region is None:
+                continue
+            provider = declaration.module_name or ""
+            if declaration.level:
+                imported = rope_project.find_relative_module(
+                    provider, resource.parent, declaration.level
+                )
+                if imported is None:
+                    # No native provider means this declaration has not been
+                    # elected as either relocation endpoint. A matching local
+                    # spelling alone must not capture an unrelated import.
                     continue
-                # Repeated bindings fail before unresolved source identities.
-                if len({name.asname or name.name for name in statement.names}) != len(
-                    statement.names,
-                ):
-                    msg = (
-                        "conflicting Rope imported binding: "
-                        f"{resource.path}:{statement.lineno}"
+                matched = tuple(
+                    name
+                    for name, owner in (
+                        (source_module, source_resource),
+                        (target_module, target_resource),
                     )
-                    raise RuntimeError(msg)
-                msg = f"unresolved Rope source module: {source_module}"
-                raise RuntimeError(msg)
-        changes = [
-            cls._render_import_alias_statement(
-                resource,
-                statement,
-                lines,
-                target_module,
-                aliases_to_move,
+                    if owner is not None and owner.real_path == imported.real_path
+                )
+                provider = (
+                    matched[0]
+                    if matched
+                    else (
+                        FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                            rope_project, imported
+                        ).get_name()
+                    )
+                )
+            if provider not in {source_module, target_module}:
+                continue
+            context = index.context_at(declaration.region[0])
+            imports.append((declaration, provider, context.structural_scope))
+        changes: list[m.Infra.SourceRewrite] = []
+        for declaration, provider, scope in imports:
+            if any(name == "*" for name, _alias, _region in declaration.aliases):
+                owner_resource = (
+                    source_resource if provider == source_module else target_resource
+                )
+                if owner_resource is None:
+                    return r[str].fail(
+                        f"unresolved Rope star-import provider: {provider}"
+                    )
+                imported = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    rope_project, owner_resource
+                )
+                exported = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                    imported
+                )
+                if any(
+                    FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
+                    for name, binding in imported.get_attributes().items()
+                    if name in exported
+                    for expected in consumers.value
+                ):
+                    return r[str].fail(
+                        f"unsupported Rope module/star consumer: {resource.path}"
+                    )
+            moved = tuple(
+                (name, alias)
+                for name, alias, _region in declaration.aliases
+                if name in selected
             )
-            for statement, module_name, _scope in imports
-            if module_name == source_module
-            and cls._validate_import_alias_bindings(
-                resource,
-                statement,
-                imports,
-                target_module,
-                aliases_to_move,
+            if provider != source_module or not moved:
+                continue
+            bound = tuple(alias or name for name, alias, _region in declaration.aliases)
+            if len(set(bound)) != len(bound):
+                return r[str].fail(
+                    f"conflicting Rope imported binding: {resource.path}"
+                )
+            if source_resource is None:
+                return r[str].fail(f"unresolved Rope source module: {source_module}")
+            for other, other_provider, other_scope in imports:
+                if other_provider != target_module or other_scope is not scope:
+                    continue
+                if any(
+                    name == "*"
+                    or any(
+                        (alias or name) == (moved_alias or moved_name)
+                        and name != moved_name
+                        for moved_name, moved_alias in moved
+                    )
+                    for name, alias, _region in other.aliases
+                ):
+                    return r[str].fail(
+                        f"ambiguous Rope target binding: {target_module}"
+                    )
+            rendered = cls._render_import_alias_statement(
+                module, declaration, target_module, selected
             )
-        ]
+            if rendered.failure:
+                return r[str].from_failure(rendered)
+            changes.extend(rendered.value)
         if not changes:
-            return None
-        return FlextInfraUtilitiesRopeSource.rewrite_source_at_offsets(
-            rope_project,
-            resource,
-            changes,
-            apply=False,
-        )
-
-    @staticmethod
-    def _ast_character_offset(
-        lines: Sequence[str],
-        line: int,
-        column: int | None,
-    ) -> int:
-        """Convert a physical AST UTF-8 byte position into a Rope character offset.
-
-        Returns:
-            The character offset in the original source snapshot.
-
-        """
-        return sum(map(len, lines[: line - 1])) + len(
-            lines[line - 1].encode("utf-8")[:column].decode("utf-8"),
+            return r[str].ok(original)
+        return r[str].ok(
+            FlextInfraUtilitiesRopeRuntime.content_change(
+                resource, original, changes
+            ).new_contents
         )
 
     @classmethod
@@ -989,14 +1020,11 @@ class FlextInfraUtilitiesRopeImports:
         lines: Sequence[str],
         source_resource: t.Infra.RopeResource | None,
         aliases: frozenset[str],
-    ) -> tuple[t.Infra.RopePyName, ...]:
+    ) -> p.Result[tuple[p.Infra.RopePyName, ...]]:
         """Reject selected exports in runtime or scoped quoted type attributes.
 
         Returns:
             The selected export identities for subsequent star-import validation.
-
-        Raises:
-            RuntimeError: If an attribute consumes a selected source export.
 
         """
         selected_names = (
@@ -1014,7 +1042,7 @@ class FlextInfraUtilitiesRopeImports:
             if source_resource is not None
             else ()
         )
-        pymodule = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+        pymodule = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         )
         source = "".join(lines)
@@ -1044,7 +1072,7 @@ class FlextInfraUtilitiesRopeImports:
                     f"unsupported Rope module consumer: "
                     f"{resource.path}:{pymodule.lines.get_line_number(begin)}"
                 )
-                raise RuntimeError(msg)
+                return r[tuple[p.Infra.RopePyName, ...]].fail(msg)
         type_sources = FlextInfraUtilitiesSemanticFamilyTypeReferences
         for expression, scope, line in type_sources.scoped_quoted_type_references(
             "".join(lines),
@@ -1059,315 +1087,81 @@ class FlextInfraUtilitiesRopeImports:
                 for expected in selected_names
             ):
                 msg = f"unsupported Rope module consumer: {resource.path}:{line}"
-                raise RuntimeError(msg)
-        return selected_names
-
-    @classmethod
-    def _scoped_from_imports(
-        cls,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeFile,
-        tree: ast.Module,
-        owners: Sequence[tuple[str, t.Infra.RopeResource | None]],
-        selected_names: Sequence[t.Infra.RopePyName],
-    ) -> list[tuple[ast.ImportFrom, str, ast.AST]]:
-        """Resolve import identities and lexical scopes before planning any edit.
-
-        Returns:
-            Resolved imports and their innermost lexical scopes.
-
-        """
-        imports: list[tuple[ast.ImportFrom, str, ast.AST]] = []
-        scopes = [
-            node
-            for node in ast.walk(tree)
-            if isinstance(node, c.Infra.AST_DEFINITION_TYPES)
-        ]
-        for statement in ast.walk(tree):
-            if not isinstance(statement, ast.ImportFrom):
-                continue
-            module_name = cls._relocated_from_import_module(
-                rope_project,
-                resource,
-                statement,
-                owners,
-            )
-            if module_name is None:
-                continue
-            if any(name.name == "*" for name in statement.names):
-                cls._reject_star_alias_consumer(
-                    rope_project,
-                    resource,
-                    statement,
-                    module_name,
-                    selected_names,
-                )
-            scope = max(
-                (
-                    candidate
-                    for candidate in scopes
-                    if (candidate.lineno, candidate.col_offset)
-                    < (statement.lineno, statement.col_offset)
-                    and statement.lineno <= (candidate.end_lineno or candidate.lineno)
-                ),
-                key=lambda candidate: (candidate.lineno, candidate.col_offset),
-                default=tree,
-            )
-            imports.append((statement, module_name, scope))
-        return imports
+                return r[tuple[p.Infra.RopePyName, ...]].fail(msg)
+        return r[tuple[p.Infra.RopePyName, ...]].ok(selected_names)
 
     @staticmethod
-    def _relocated_from_import_module(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeFile,
-        statement: ast.ImportFrom,
-        owners: Sequence[tuple[str, t.Infra.RopeResource | None]],
-    ) -> str | None:
-        """Resolve relative imports by physical Rope identity, in owner order.
-
-        Returns:
-            The absolute module name, or None for an unresolved relative import.
-
-        """
-        if not statement.level:
-            return statement.module or ""
-        imported_resource = rope_project.find_relative_module(
-            statement.module or "",
-            resource.parent,
-            statement.level,
-        )
-        if imported_resource is None:
-            return None
-        module_name = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-            rope_project,
-            imported_resource,
-        ).get_name()
-        return next(
-            (
-                name
-                for name, owner in owners
-                if owner is not None and imported_resource.real_path == owner.real_path
-            ),
-            module_name,
-        )
-
-    @staticmethod
-    def _reject_star_alias_consumer(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeFile,
-        statement: ast.ImportFrom,
-        module_name: str,
-        selected_names: Sequence[t.Infra.RopePyName],
-    ) -> None:
-        """Reject star imports exposing a selected Rope identity.
-
-        Raises:
-            TypeError: If the imported module has no valid module AST.
-            RuntimeError: If the star import exposes a selected source export.
-
-        """
-        imported_resource = (
-            rope_project.find_relative_module(
-                statement.module or "",
-                resource.parent,
-                statement.level,
-            )
-            if statement.level
-            else rope_project.find_module(module_name)
-        )
-        if imported_resource is None:
-            return
-        imported = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-            rope_project,
-            imported_resource,
-        )
-        imported_tree = imported.get_ast()
-        if not isinstance(imported_tree, ast.Module):
-            msg = f"invalid Rope module AST: {module_name}"
-            raise TypeError(msg)
-        exports: Sequence[str] | None = None
-        for declaration in imported_tree.body:
-            if not isinstance(declaration, c.Infra.AST_ASSIGNMENT_TYPES):
-                continue
-            if "__all__" in (
-                FlextInfraUtilitiesRopeAnalysis.assignment_target_names(declaration)
-            ):
-                exports = (
-                    FlextInfraUtilitiesRopeAnalysis.literal_string_sequence(
-                        declaration.value,
-                    )
-                    if isinstance(declaration.value, ast.List | ast.Tuple | ast.Set)
-                    and all(
-                        isinstance(element, ast.Constant)
-                        and isinstance(element.value, str)
-                        for element in declaration.value.elts
-                    )
-                    else None
-                )
-        # Only a sole, unescaped literal binding proves exclusion. Any extra
-        # access can mutate or publish the list through an unknown writer.
-        if sum(
-            isinstance(node, ast.Name) and node.id == "__all__"
-            for node in ast.walk(imported_tree)
-        ) != 1 or any(
-            (isinstance(node, ast.Constant) and node.value == "__all__")
-            or (isinstance(node, ast.Attribute) and node.attr == "__all__")
-            or (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Name)
-                and node.func.id in {"exec", "eval", "globals", "locals", "vars"}
-            )
-            for node in ast.walk(imported_tree)
-        ):
-            exports = None
-        exported_names = (
-            exports
-            if exports is not None
-            else tuple(
-                name for name in imported.get_attributes() if not name.startswith("_")
-            )
-        )
-        if any(
-            FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
-            for name, binding in imported.get_attributes().items()
-            if name in exported_names
-            for expected in selected_names
-        ):
-            msg = (
-                "unsupported Rope module/star consumer: "
-                f"{resource.path}:{statement.lineno}"
-            )
-            raise RuntimeError(msg)
-
-    @staticmethod
-    def _validate_import_alias_bindings(
-        resource: t.Infra.RopeFile,
-        statement: ast.ImportFrom,
-        imports: Sequence[tuple[ast.ImportFrom, str, ast.AST]],
-        target_module: str,
-        aliases: frozenset[str],
-    ) -> bool:
-        """Reject repeated or conflicting selected bindings before rendering.
-
-        Returns:
-            Whether this statement contains any selected import.
-
-        Raises:
-            RuntimeError: If source bindings repeat or conflict.
-
-        """
-        moved = [name for name in statement.names if name.name in aliases]
-        if not moved:
-            return False
-        if len({name.asname or name.name for name in statement.names}) != len(
-            statement.names,
-        ):
-            msg = (
-                f"conflicting Rope imported binding: {resource.path}:{statement.lineno}"
-            )
-            raise RuntimeError(msg)
-        scope = next(
-            scope for imported, _module_name, scope in imports if imported is statement
-        )
-        for target_statement, imported_module, target_scope in imports:
-            if imported_module != target_module or target_scope is not scope:
-                continue
-            if any(
-                existing.name == "*"
-                or any(
-                    (existing.asname or existing.name) == (name.asname or name.name)
-                    and existing.name != name.name
-                    for name in moved
-                )
-                for existing in target_statement.names
-            ):
-                msg = f"ambiguous Rope target binding: {target_module}"
-                raise RuntimeError(msg)
-        return True
-
-    @classmethod
     def _render_import_alias_statement(
-        cls,
-        resource: t.Infra.RopeFile,
-        statement: ast.ImportFrom,
-        lines: Sequence[str],
+        module: p.Infra.RopeSourceModule,
+        statement: p.Infra.RopeSourceImportLayout,
         target_module: str,
         aliases: frozenset[str],
-    ) -> tuple[int, int, str]:
-        """Render a source range with its contiguous relocated CST alias groups.
+    ) -> p.Result[tuple[m.Infra.SourceRewrite, ...]]:
+        """Use native import serialization while retaining original trivia.
 
         Returns:
-            The original character range and its replacement source.
-
-        Raises:
-            RuntimeError: If a mixed import occurs in an inline suite.
+            Disjoint source changes, or an unsupported inline-suite refusal.
 
         """
-        start = cls._ast_character_offset(lines, statement.lineno, statement.col_offset)
-        end = cls._ast_character_offset(
-            lines,
-            statement.end_lineno or statement.lineno,
-            statement.end_col_offset,
-        )
-        indentation = (
-            lines[statement.lineno - 1]
-            .encode("utf-8")[: statement.col_offset]
-            .decode("utf-8")
-        )
-        replacements = cls._relocated_import_groups(
-            statement,
-            target_module,
-            aliases,
-            f"{resource.path}:{statement.lineno}",
-        )
-        if len(replacements) > 1 and indentation.strip():
-            msg = (
-                "unsupported Rope inline mixed import: "
-                f"{resource.path}:{statement.lineno}"
+        provider = statement.module_region
+        if provider is None:
+            return r[tuple[m.Infra.SourceRewrite, ...]].fail(
+                "Scoped relocation requires a from-import provider"
             )
-            raise RuntimeError(msg)
-        return (
-            start,
-            end,
-            ("\n" + indentation).join(replacements),
-        )
-
-    @staticmethod
-    def _relocated_import_groups(
-        statement: ast.ImportFrom,
-        target_module: str,
-        aliases: frozenset[str],
-        location: str,
-    ) -> list[str]:
-        """Render contiguous relocated import groups preserving alias order.
-
-        Returns:
-            The contiguous selected and unselected import statements.
-
-        Raises:
-            TypeError: If the statement is a star import or binds no module.
-
-        """
-        if statement.module is None or any(
-            alias.name == "*" for alias in statement.names
-        ):
-            msg = f"unsupported Rope import statement: {location}"
-            raise TypeError(msg)
-        groups: list[tuple[bool, list[ast.alias]]] = []
-        for alias in statement.names:
-            selected = alias.name in aliases
+        groups: list[tuple[bool, list[tuple[str, str | None]]]] = []
+        for name, alias, _region in statement.aliases:
+            selected = name in aliases
             if groups and groups[-1][0] == selected:
-                groups[-1][1].append(alias)
+                groups[-1][1].append((name, alias))
             else:
-                groups.append((selected, [alias]))
-        origin = "." * statement.level + statement.module
-        return [
-            "from {} import {}".format(
-                target_module if selected else origin,
-                ", ".join(ast.unparse(alias) for alias in names),
+                groups.append((selected, [(name, alias)]))
+        if not groups:
+            return r[tuple[m.Infra.SourceRewrite, ...]].ok(())
+        first_selected, first_names = groups[0]
+        edits: list[m.Infra.SourceRewrite] = []
+        if first_selected:
+            edits.append(
+                m.Infra.SourceRewrite(
+                    start=provider[0], end=provider[1], text=target_module
+                )
             )
-            for selected, names in groups
+        if len(groups) == 1:
+            return r[tuple[m.Infra.SourceRewrite, ...]].ok(tuple(edits))
+        begin, end = statement.region
+        line = module.lines.get_line_number(begin)
+        indentation = module.source_code[module.lines.get_line_start(line) : begin]
+        if indentation.strip():
+            return r[tuple[m.Infra.SourceRewrite, ...]].fail(
+                "Scoped relocation cannot split an inline mixed import"
+            )
+        # The original first group retains every comment, parenthesis and
+        # whitespace token. Only indexed aliases and separators are removed.
+        edits.extend(
+            m.Infra.SourceRewrite(start=region[0], end=region[1], text="")
+            for _name, _alias, region in statement.aliases[len(first_names) :]
+        )
+        edits.extend(
+            m.Infra.SourceRewrite(start=left, end=right, text="")
+            for left, right in statement.separators[len(first_names) - 1 :]
+        )
+        declarations = [
+            FlextInfraUtilitiesRopeRuntime.from_import(
+                target_module if selected else (statement.module_name or ""),
+                0 if selected else statement.level,
+                names,
+            ).get_import_statement()
+            for selected, names in groups[1:]
         ]
+        edits.append(
+            m.Infra.SourceRewrite(
+                start=end,
+                end=end,
+                text="".join(
+                    "\n" + indentation + declaration for declaration in declarations
+                ),
+            )
+        )
+        return r[tuple[m.Infra.SourceRewrite, ...]].ok(tuple(edits))
 
     @staticmethod
     def _persisted_import_block(

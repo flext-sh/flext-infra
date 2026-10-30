@@ -11,17 +11,13 @@ from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterator, Sequence
 
 from flext_infra import c, m, p
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
-)
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesSemanticFamilyTypeReferences:
@@ -553,7 +549,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             source,
             "quoted types require native Rope delimiters",
         )
-        typing = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+        typing = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module("typing")
         )
         bindings = module.get_source_binding_index() if module is not None else None
@@ -593,7 +589,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     ) -> tuple[bool, tuple[m.Infra.SourceRewrite, ...]]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             flatten.project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource, resource.path
             ),
         )

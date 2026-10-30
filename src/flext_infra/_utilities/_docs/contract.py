@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from codecs import BOM_UTF8
 from collections.abc import Mapping, MutableSequence, Sequence
 from html import unescape
 from typing import TYPE_CHECKING
 
+from flext_cli import u
 from markdown import Markdown
 from markdown.extensions.toc import slugify
 from pymdownx.superfences import SuperFencesCodeExtension
@@ -31,19 +33,53 @@ class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
 
     @staticmethod
-    def _contract_body_start(lines: list[str]) -> int:
+    def _contract_body_boundary(lines: list[str]) -> int | None:
         """Return the first body line index, skipping YAML frontmatter when present.
 
         Returns:
-            The first body line index, skipping YAML frontmatter when present.
+            The body index, or no boundary for an unclosed YAML header.
 
         """
-        if not lines or lines[0].strip() != "---":
+        if not lines or lines[0].removeprefix("\ufeff").strip() != "---":
             return 0
         for index in range(1, len(lines)):
             if lines[index].strip() == "---":
                 return index + 1
-        return 0
+        return None
+
+    @staticmethod
+    def _contract_body_start(lines: list[str]) -> int:
+        """Return the optional TOC offset without admitting collection input.
+
+        Returns:
+            The prior optional frontmatter offset for TOC discovery.
+
+        """
+        boundary = FlextInfraUtilitiesDocsContract._contract_body_boundary(lines)
+        return 0 if boundary is None else boundary
+
+    @staticmethod
+    def contract_wrap_markdown(content: bytes, *, width: int) -> p.Result[bytes]:
+        """Wrap the admitted body without modifying its original metadata prefix.
+
+        Returns:
+            Rendered bytes, or the original body-admission failure.
+
+        """
+        decoded = r[str].create_from_callable(content.decode)
+        if decoded.failure:
+            return r[bytes].from_failure(decoded)
+        lines = decoded.value.splitlines(keepends=True)
+        body_start = FlextInfraUtilitiesDocsContract._contract_body_boundary(lines)
+        if body_start is None:
+            return r[bytes].fail("Markdown YAML frontmatter has no closing delimiter")
+        prefix_text = "".join(lines[:body_start])
+        prefix = content[: len(prefix_text.encode("utf-8"))]
+        if not prefix and content.startswith(BOM_UTF8):
+            prefix = BOM_UTF8
+            prefix_text = "\ufeff"
+        body = decoded.value[len(prefix_text) :]
+        return r[bytes].ok(prefix + u.Cli.markdown_wrap(body, width).encode("utf-8"))
 
     @staticmethod
     def contract_strip_invented_toc_before_frontmatter(content: str) -> str:

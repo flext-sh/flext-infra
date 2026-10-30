@@ -12,9 +12,9 @@ import pytest
 
 from flext_infra import config, m
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
+from flext_infra.gates.markdown_code import FlextInfraGatesMarkdownCode
 from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
-from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
+from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -83,7 +83,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
 
         with tm.scope(env={"FORCE_COLOR": force_color}):
             result = u.Tests.check_gate_asserting(
-                FlextInfraMarkdownFormatGate,
+                FlextInfraGatesMarkdownFormat,
                 tmp_path,
                 project_dir,
                 passed=False,
@@ -106,7 +106,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         )
 
         _ = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownFormatGate,
+            FlextInfraGatesMarkdownFormat,
             tmp_path,
             project_dir,
             passed=True,
@@ -118,7 +118,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """Zero collected markdown is red, never a neutral pass."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-format-empty")
 
-        result = FlextInfraMarkdownFormatGate(tmp_path).check(
+        result = FlextInfraGatesMarkdownFormat(tmp_path).check(
             project_dir,
             u.Tests.gate_context(tmp_path),
         )
@@ -140,12 +140,12 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             apply_fixes=True,
         )
 
-        result = FlextInfraMarkdownFormatGate(tmp_path).fix(project_dir, context)
+        result = FlextInfraGatesMarkdownFormat(tmp_path).fix(project_dir, context)
 
         tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED_LIST)
         _ = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownFormatGate,
+            FlextInfraGatesMarkdownFormat,
             tmp_path,
             project_dir,
             passed=True,
@@ -161,7 +161,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         (project_dir / "README.md").write_text(self.FORMATTED_LIST, encoding="utf-8")
 
         result = u.Tests.run_gate_check(
-            FlextInfraMarkdownFormatGate,
+            FlextInfraGatesMarkdownFormat,
             tmp_path,
             project_dir,
         )
@@ -176,7 +176,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         (project_dir / "README.md").write_text(self.FORMATTED, encoding="utf-8")
 
         _ = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownCodeGate,
+            FlextInfraGatesMarkdownCode,
             tmp_path,
             project_dir,
             passed=True,
@@ -266,7 +266,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """A ``notest`` fence is not embedded code to check (#1223 selection)."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-notest")
         (project_dir / "README.md").write_text(self.NOTEST_PSEUDO, encoding="utf-8")
-        gate = FlextInfraMarkdownCodeGate(tmp_path)
+        gate = FlextInfraGatesMarkdownCode(tmp_path)
 
         tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
         result = gate.check(project_dir, u.Tests.gate_context(tmp_path))
@@ -285,7 +285,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             apply_fixes=True,
         )
 
-        result = FlextInfraMarkdownCodeGate(tmp_path).fix(project_dir, context)
+        result = FlextInfraGatesMarkdownCode(tmp_path).fix(project_dir, context)
 
         tm.ok(result.result.passed)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.CLEAN)
@@ -308,7 +308,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             apply_fixes=True,
         )
 
-        result = FlextInfraMarkdownCodeGate(tmp_path).fix(project_dir, context)
+        result = FlextInfraGatesMarkdownCode(tmp_path).fix(project_dir, context)
 
         tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq=self.FRAGMENT_THEN_FORMATTED)
@@ -331,7 +331,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             apply_fixes=True,
         )
 
-        FlextInfraMarkdownCodeGate(tmp_path).fix(project_dir, context)
+        FlextInfraGatesMarkdownCode(tmp_path).fix(project_dir, context)
         tm.that(readme.read_text(encoding="utf-8"), eq=self.SYNTAX_BROKEN)
 
     def test_code_gate_names_the_unformatted_block(self, tmp_path: Path) -> None:
@@ -341,7 +341,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         (project_dir / "README.md").write_text(content, encoding="utf-8")
 
         result = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownCodeGate,
+            FlextInfraGatesMarkdownCode,
             tmp_path,
             project_dir,
             passed=False,
@@ -372,7 +372,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         original = f'"""Widget.\n\n>>> {example}\n\n"""'
         source.write_text(original, encoding="utf-8")
         u.Tests.initialize_git_repo(project_dir)
-        result = FlextInfraMarkdownCodeGate(tmp_path).fix(
+        result = FlextInfraGatesMarkdownCode(tmp_path).fix(
             project_dir,
             m.Infra.GateContext(
                 repository_root=tmp_path,
@@ -408,7 +408,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         )
 
         result = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownCodeGate,
+            FlextInfraGatesMarkdownCode,
             tmp_path,
             project_dir,
             passed=False,
@@ -438,7 +438,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         tm.that(len({name for name, _, _ in sources}), eq=2)
 
         result = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownCodeGate,
+            FlextInfraGatesMarkdownCode,
             tmp_path,
             project_dir,
             passed=False,
@@ -453,7 +453,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """Prose-only documentation is an examined input without embedded code."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-empty")
         (project_dir / "README.md").write_text("# Prose only\n", encoding="utf-8")
-        gate = FlextInfraMarkdownCodeGate(tmp_path)
+        gate = FlextInfraGatesMarkdownCode(tmp_path)
 
         tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
         result = gate.check(project_dir, u.Tests.gate_context(tmp_path))
@@ -466,7 +466,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         (project_dir / "README.md").write_text(self.FORMATTED, encoding="utf-8")
 
         tm.ok(
-            FlextInfraMarkdownCodeGate(tmp_path).selected_for(
+            FlextInfraGatesMarkdownCode(tmp_path).selected_for(
                 project_dir, u.Tests.gate_context(project_dir)
             )
         )

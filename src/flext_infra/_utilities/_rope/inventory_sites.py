@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities._rope.imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeImports
 
 
 class FlextInfraUtilitiesRopeInventorySites:

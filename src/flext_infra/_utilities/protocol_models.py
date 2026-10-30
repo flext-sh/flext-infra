@@ -28,7 +28,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
@@ -417,8 +417,8 @@ class FlextInfraUtilitiesModelsProtocol:
             }
             native_ancestors = source.get_mro()
             if not all(
-                FlextInfraUtilitiesTypesRopeRuntime.abstract_class(native_ancestor)
-                or FlextInfraUtilitiesTypesRopeRuntime.unresolved_witness(
+                FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(native_ancestor)
+                or FlextInfraUtilitiesRopeRuntimeTypes.unresolved_witness(
                     native_ancestor
                 )
                 for native_ancestor in native_ancestors
@@ -431,7 +431,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 source.invalidate_bases()
                 native_ancestors = source.get_mro()
             for native_ancestor in reversed(native_ancestors):
-                if FlextInfraUtilitiesTypesRopeRuntime.unresolved_witness(
+                if FlextInfraUtilitiesRopeRuntimeTypes.unresolved_witness(
                     native_ancestor
                 ):
                     continue

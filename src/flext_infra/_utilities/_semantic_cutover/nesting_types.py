@@ -19,7 +19,7 @@ from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project,
             source,
-            resource=FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            resource=FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -206,7 +206,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = expression.partition(".")[0]
         module = scope.pyobject.get_module()
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             msg = "quoted type scope has no declaring module"
             raise ValueError(msg)
         local = runtime.expression_name(scope, root)

@@ -9,10 +9,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope.runtime_refactors import (
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )

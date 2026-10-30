@@ -11,12 +11,15 @@ valid:
 # A name the module publishes in its own __all__ is its facade alias.
 - |
   tm = FlextTestsMatchers
-  __all__ = ["FlextTestsMatchers", "tm"]
-- |
-  tm = FlextTestsMatchers
   _PUBLIC_EXPORTS = ("FlextTestsMatchers", "tm")
   __all__ = tuple(_PUBLIC_EXPORTS)
+# Shape-level rule: string-form __all__ membership is the rope engine's
+# semantic admission (public_export_names_source) — the raw rule reports here
+# and the engine filters (bead flext-wjxd7).
 invalid:
+- |
+  tm = FlextTestsMatchers
+  __all__ = ["FlextTestsMatchers", "tm"]
 - "OldService = NewService"
 - "LegacyClient = CanonicalClient"
 # Absent from the module's __all__, the alias keeps an old name alive.

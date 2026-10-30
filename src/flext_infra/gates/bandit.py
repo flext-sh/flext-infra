@@ -11,13 +11,12 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, t, u
-from flext_infra.gates import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraBanditGate(FlextInfraGate):
+class FlextInfraGatesBanditGate(FlextInfra):
     """Bandit security quality gate."""
 
     gate_id: ClassVar[str] = c.Infra.SECURITY
@@ -117,4 +116,4 @@ class FlextInfraBanditGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraBanditGate"]
+__all__: list[str] = ["FlextInfraGatesBandit"]

@@ -21,10 +21,10 @@ from flext_infra.docs import (
     FlextInfraDocValidator,
 )
 from flext_infra.maintenance import (
-    FlextInfraCleanService,
-    FlextInfraPythonVersionEnforcer,
-    FlextInfraSonarcloudIssues,
-    FlextInfraSonarcloudSettingsSync,
+    FlextInfraMaintenanceClean,
+    FlextInfraMaintenancePythonVersion,
+    FlextInfraMaintenanceSonarcloud,
+    FlextInfraMaintenanceSonarcloudIssues,
 )
 from flext_infra.services import FlextInfraValidationCommandRoutes
 
@@ -111,8 +111,8 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
             m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,
                 help_text="Enforce Python version constraints",
-                model_cls=FlextInfraPythonVersionEnforcer,
-                handler=FlextInfraPythonVersionEnforcer.execute_command,
+                model_cls=FlextInfraMaintenancePythonVersion,
+                handler=FlextInfraMaintenancePythonVersion.execute_command,
                 success_message="Maintenance completed",
             ),
             m.Cli.ResultCommandRoute(
@@ -120,8 +120,8 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
                 help_text=(
                     "Report or remove declared disposables owned by this repository"
                 ),
-                model_cls=FlextInfraCleanService,
-                handler=FlextInfraCleanService.execute_command,
+                model_cls=FlextInfraMaintenanceClean,
+                handler=FlextInfraMaintenanceClean.execute_command,
                 success_message="Clean completed",
             ),
             m.Cli.ResultCommandRoute(
@@ -130,8 +130,8 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
                     "Write the SSOT SonarCloud issue exclusions to the server-side "
                     "project settings (requires SONAR_TOKEN)"
                 ),
-                model_cls=FlextInfraSonarcloudSettingsSync,
-                handler=FlextInfraSonarcloudSettingsSync.execute_command,
+                model_cls=FlextInfraMaintenanceSonarcloud,
+                handler=FlextInfraMaintenanceSonarcloud.execute_command,
                 success_message="SonarCloud issue exclusions match the SSOT",
             ),
             m.Cli.ResultCommandRoute(
@@ -139,8 +139,8 @@ class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
                 help_text=(
                     "Read unresolved new-code SonarCloud issues (requires SONAR_TOKEN)"
                 ),
-                model_cls=FlextInfraSonarcloudIssues,
-                handler=FlextInfraSonarcloudIssues.execute_command,
+                model_cls=FlextInfraMaintenanceSonarcloudIssues,
+                handler=FlextInfraMaintenanceSonarcloudIssues.execute_command,
                 success_message="SonarCloud issue search completed",
             ),
         ),

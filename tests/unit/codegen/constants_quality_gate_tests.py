@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli, infra
-from flext_infra.codegen import FlextInfraCodegenQualityGate
+from flext_infra.codegen import FlextInfraGatesCodegenQuality
 from tests import tm, u
 
 if TYPE_CHECKING:
@@ -62,25 +62,25 @@ class TestsFlextInfraConstantsCodegenQualityGate:
     @staticmethod
     def test_success_verdict_accepts_pass() -> None:
         """successful_verdict returns True for PASS."""
-        tm.ok(FlextInfraCodegenQualityGate.successful_verdict("PASS"))
+        tm.ok(FlextInfraGatesCodegenQuality.successful_verdict("PASS"))
 
     @staticmethod
     def test_success_verdict_rejects_conditional_pass() -> None:
         """successful_verdict returns False for removed conditional verdicts."""
         tm.that(
-            not FlextInfraCodegenQualityGate.successful_verdict("CONDITIONAL_PASS"),
+            not FlextInfraGatesCodegenQuality.successful_verdict("CONDITIONAL_PASS"),
             eq=True,
         )
 
     @staticmethod
     def test_success_verdict_rejects_fail() -> None:
         """successful_verdict returns False for FAIL."""
-        tm.ok(not FlextInfraCodegenQualityGate.successful_verdict("FAIL"))
+        tm.ok(not FlextInfraGatesCodegenQuality.successful_verdict("FAIL"))
 
     @staticmethod
     def test_real_workspace_run_returns_report(tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
-        gate = FlextInfraCodegenQualityGate(
+        gate = FlextInfraGatesCodegenQuality(
             workspace_factory=infra.rope_workspace,
             repository_root=tmp_path,
             source_preview=infra.source_preview(tmp_path),
@@ -111,7 +111,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
         )
         u.Tests.provision_checkout(project)
         tm.that(u.Tests.run_lazy_init(project), eq=0)
-        gate = FlextInfraCodegenQualityGate(
+        gate = FlextInfraGatesCodegenQuality(
             workspace_factory=infra.rope_workspace,
             repository_root=project,
             source_preview=infra.source_preview(project),

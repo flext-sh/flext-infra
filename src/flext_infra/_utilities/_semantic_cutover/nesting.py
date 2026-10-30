@@ -32,7 +32,7 @@ from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope.runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
@@ -200,7 +200,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ValueError: When a native alias lacks captured source evidence.
 
         """
-        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
                 file_path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
@@ -210,7 +210,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         attributes = module.get_attributes()
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            FlextInfraUtilitiesTypesRopeRuntime.require_source_object(module),
+            FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(module),
         )
         aliases: set[str] = set()
         for node in tree.body:
@@ -241,7 +241,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             if (
                 name is None
                 or binding is None
-                or not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(
+                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
                     name.get_object()
                 )
                 or target.id not in exports
@@ -320,7 +320,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 }:
                     continue
                 pytest_module = (
-                    FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                         project.get_module("pytest"),
                     )
                 )
@@ -396,7 +396,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         if isinstance(body, ast.Raise):
             actual = runtime.expression_name(module.get_scope(), ast.unparse(call.func))
-            builtin = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+            builtin = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                 project.get_module("builtins")
             )
             if (
@@ -412,7 +412,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         if target is None:
             return False
         holder, _line = target.get_definition_location()
-        return holder is module and FlextInfraUtilitiesTypesRopeRuntime.py_function(
+        return holder is module and FlextInfraUtilitiesRopeRuntimeTypes.py_function(
             target.get_object()
         )
 
@@ -499,7 +499,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ast.unparse(target.value),
         )
         return binding is not None and (
-            FlextInfraUtilitiesTypesRopeRuntime.py_class(binding.get_object())
+            FlextInfraUtilitiesRopeRuntimeTypes.py_class(binding.get_object())
             and binding.get_object().get_module() is module
         )
 
@@ -1582,10 +1582,10 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         target = owner.get_attribute(site.namespace.name).get_object()
         destinations = [
             base
-            for base in FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
+            for base in FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
                 target, site.namespace.name
             ).get_superclasses()
-            if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(base)
+            if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base)
             and base.get_name() == child.name
         ]
         if len(destinations) != 1:
@@ -1632,7 +1632,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 outside the editable inventory, or is already occupied.
 
         """
-        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(destination):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(destination):
             msg = "namespace declaration owner has no source scope"
             raise ValueError(msg)
         module = destination.get_module()
@@ -1936,7 +1936,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                     path.relative_to(Path(project.root.real_path)).as_posix()
                 ),
             )
-            if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
                 continue
             rewrites = cls._model_namespace_declaration_plan(project, module, sources)
             if rewrites is None:
@@ -2034,7 +2034,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 scope = pending.pop()
                 pending.extend(scope.get_scopes())
                 owner = scope.pyobject
-                if not FlextInfraUtilitiesTypesRopeRuntime.py_class(owner) or (
+                if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(owner) or (
                     owner is target
                     or target
                     not in FlextInfraUtilitiesDeclarationPayload.class_ancestry(owner)
@@ -2139,7 +2139,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             path: cls._nesting_declaration_destinations(
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                         project.get_resource(
                             path.relative_to(Path(project.root.real_path)).as_posix()
                         ),

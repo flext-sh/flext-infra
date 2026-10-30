@@ -708,7 +708,7 @@ runtime-evaluated-base-classes = [
   "flext_infra.m.Infra.NamespaceSelectionMixin",
   "flext_infra.m.Infra.ReleaseOptions",
   "flext_infra.m.Value",
-  "flext_infra.maintenance.FlextInfraSonarcloudClient",
+  "flext_infra.maintenance.FlextInfraMaintenanceSonarcloudClient",
   "flext_infra.refactor.FlextInfraRefactorCensusCollectHelpers",
   "flext_infra.refactor.FlextInfraRefactorCensusCollect",
   "flext_infra.refactor.FlextInfraRefactorCensusRemoval",

@@ -221,7 +221,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
-            code=FlextInfraSmellsGate.gate_id,
+            code=FlextInfraGatesSmells.gate_id,
             message=message or "qlty returned no parseable SARIF output",
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )
@@ -337,4 +337,4 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return f"{sarif_text}. Fix: {fix}"
 
 
-__all__: list[str] = ["FlextInfraSmellsGate"]
+__all__: list[str] = ["FlextInfraGatesSmells"]
