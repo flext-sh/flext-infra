@@ -14,6 +14,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Self, cast, overload, override
 
+from rope.base import exceptions as rope_exceptions
+from rope.base import libutils
 from rope.base.builtins import BuiltinModule
 from rope.base.project import NoProject, Project
 from rope.base.resources import File, Folder, Resource
@@ -114,7 +116,22 @@ class FlextInfraRopeNativeProject(Project):
                 spec.loader, importlib.machinery.ExtensionFileLoader
             ):
                 return BuiltinModule(name, self.pycore)
-        return native.get_module(name, self._native_folder(folder))
+        try:
+            return native.get_module(name, self._native_folder(folder))
+        except rope_exceptions.ModuleSyntaxError:
+            # Conteúdo candidate inválido no overlay (staging do
+            # quoted-move troca conteúdos no mesmo path): parse one-shot
+            # do disco físico, registrado no cache do pycore para
+            # identidade estável entre consumers.
+            found = self.find_module(name, folder)
+            if found is None or found.is_folder():
+                raise
+            real_path = Path(self.root.real_path) / str(found.path).lstrip('/')
+            result = libutils.get_string_module(
+                self, real_path.read_text(), resource=found
+            )
+            self.pycore.module_cache.module_map[found] = result
+            return result
 
     @override
     def get_relative_module(

@@ -354,9 +354,12 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             plan for plan in self._candidate_files if original.get(plan.path) != plan
         )
         if outcome.exception is not None:
+            # f-string única: a tupla de duas strings viola o contrato
+            # str do CodegenRepositoryPlanOutcome.error_type (regressão
+            # recorrente de merge; ver handoff 20261029 update 4).
             outcome.error_type = (
-                f"{type(outcome.exception).__module__}.",
-                f"{type(outcome.exception).__qualname__}",
+                f"{type(outcome.exception).__module__}."
+                f"{type(outcome.exception).__qualname__}"
             )
         return outcome
 

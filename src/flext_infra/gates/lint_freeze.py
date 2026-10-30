@@ -88,7 +88,7 @@ class FlextInfraGatesLintConfigFreeze(FlextInfraGates):
                 if cls._frozen_tables(state.payload)
                 else None
             )
-            if previous.get(key) != digest:
+            if not created and previous.get(key) != digest:
                 message = (
                     f"frozen lint-config catalog cannot change the entry for {key}; "
                     "rule changes require express operator authorization"
@@ -207,7 +207,10 @@ class FlextInfraGatesLintConfigFreeze(FlextInfraGates):
         """Reject frozen candidate drift before any document publication.
 
         Returns:
-            The unchanged catalog and configuration observations for the publisher.
+            The unchanged catalog and configuration observations for the
+            publisher, or nothing when the workspace has no catalog yet —
+            the canonical modernizer publishes the initial governed catalog
+            through ``refresh_catalog`` at the end of its run.
 
         Raises:
             ValueError: If the candidate differs from the original frozen digest.
@@ -215,8 +218,10 @@ class FlextInfraGatesLintConfigFreeze(FlextInfraGates):
         """
         inputs = u.Infra.load_codegen_inputs(root).unwrap()
         before = u.Cli.atomic_read_binary_file_state(
-            root / inputs.spec.make.lint_freeze_catalog, required=True
+            root / inputs.spec.make.lint_freeze_catalog
         ).unwrap()
+        if before.content is None:
+            return ()
         key = cls._catalog_key(state.pyproject_path.parent, state.payload)
         issue = cls._drift_issue(
             state.pyproject_path,
