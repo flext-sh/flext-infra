@@ -609,7 +609,10 @@ class FlextInfraUtilitiesFacadeMembers:
         """
         resolver_factory = (
             FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
-                source_project, sources={}
+                source_project,
+                sources=FlextInfraUtilitiesWorkspaceSnapshot.project_captured_sources(
+                    source_project
+                ),
             )
         )
         module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
@@ -953,7 +956,10 @@ class FlextInfraUtilitiesFacadeMembers:
         """
         resolver_factory = (
             FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
-                source_project, sources={}
+                source_project,
+                sources=FlextInfraUtilitiesWorkspaceSnapshot.project_captured_sources(
+                    source_project
+                ),
             )
         )
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
@@ -1265,7 +1271,10 @@ class FlextInfraUtilitiesFacadeMembers:
         """
         resolver_factory = (
             FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
-                source_project, sources={}
+                source_project,
+                sources=FlextInfraUtilitiesWorkspaceSnapshot.project_captured_sources(
+                    source_project
+                ),
             )
         )
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))

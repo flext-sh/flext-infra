@@ -20,7 +20,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import FlextInfra, c, m, u
 from flext_infra.gates import (
     FlextInfraGates,
     FlextInfraMarkdownCodeSources,

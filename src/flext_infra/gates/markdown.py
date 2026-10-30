@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import FlextInfra, c, m
 from flext_infra.gates import FlextInfraMarkdownGateBase
 
 if TYPE_CHECKING:

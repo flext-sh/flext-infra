@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import m, u
+from flext_infra import FlextInfra, m, u
 
 if TYPE_CHECKING:
     from flext_infra import t

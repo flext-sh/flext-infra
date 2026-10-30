@@ -81,6 +81,35 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
 
     @classmethod
     @contextmanager
+    @staticmethod
+    def project_captured_sources(
+        project: p.Infra.RopeProject,
+    ) -> dict[str, tuple[Path, str]]:
+        """Capture the live candidate view as module-name to source entries.
+
+        Ownership and identity elections resolve through the same captured
+        view the run stages; an empty source set would blind their resolver
+        to staged move destinations.
+
+        Returns:
+            The qualified module name to path and source text.
+
+        """
+        sources: dict[str, tuple[Path, str]] = {}
+        root = Path(project.root.real_path)
+        for resource in project.get_python_files():
+            path = Path(resource.real_path).resolve()
+            name = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                path,
+                project_root=root,
+                source_project=project,
+            )
+            if name:
+                sources[name] = (path, project.source_text(path))
+        return sources
+
+    @classmethod
+    @contextmanager
     def facade_source_project(
         cls,
         root: Path,

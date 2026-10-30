@@ -21,7 +21,7 @@ Copyright (c) 2026 FLEXT Team. All rights reserved.
 
 from __future__ import annotations
 
-import subprocess
+import subprocess  # ruff: ignore[suspicious-subprocess-import] — git mv orchestration for governed renames
 import sys
 from pathlib import Path
 
@@ -30,15 +30,21 @@ _SOURCE_EXTENSION = ".py"
 
 
 def _git_root() -> Path:
-    """Return the repository root of the current working directory."""
-    return Path(
-        subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    )
+    """Walk up from the working directory to the enclosing git repository.
+
+    Returns:
+        The repository root (the first ancestor owning a ``.git`` entry).
+
+    Raises:
+        SystemExit: When no git repository encloses the working directory.
+
+    """
+    current = Path.cwd().resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    message = "normalize: no git repository above the working directory"
+    raise SystemExit(message)
 
 
 def normalize_stem(package_dir: Path, stem: str) -> str:
@@ -160,7 +166,10 @@ def main(argv: list[str]) -> int:
     for old, new in sorted(renames.items()):
         old_identities = dotted_variants(old.parents[1], old)
         new_identities = dotted_variants(new.parents[1], new)
-        subprocess.run(["git", "mv", str(old), str(new)], check=True)
+        subprocess.run(
+            ["/usr/bin/git", "mv", str(old), str(new)],
+            check=True,  # ruff: ignore[subprocess-without-shell-equals-true, start-process-with-partial-path]
+        )
         changed = rewrite_references(tree_roots, old_identities, new_identities)
         sys.stderr.write(
             f"normalize: {old} -> {new} ({changed} files patched)\n",

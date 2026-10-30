@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import FlextInfra, c, m
 from flext_infra.codegen import FlextInfraCodegenLayout
 
 
