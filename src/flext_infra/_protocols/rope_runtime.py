@@ -557,6 +557,10 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self, scope: FlextInfraProtocolsRopeRuntime.RopeScope
         ) -> FlextInfraProtocolsRopeRuntime.RopeSourceClassLayout: ...
 
+        def decorator_bindings(
+            self, scope: FlextInfraProtocolsRopeRuntime.RopeScope
+        ) -> tuple[FlextInfraProtocolsRopeRuntime.RopePyName | None, ...]: ...
+
         def assignment_layouts(
             self,
             scope: FlextInfraProtocolsRopeRuntime.RopeScope | None = None,
@@ -686,6 +690,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Native preference updates required by project source election."""
 
         def add(self, key: str, value: str) -> None: ...
+
+        def set(self, key: str, value: bool | Sequence[str]) -> None: ...
 
     @runtime_checkable
     class RopeSourceAccess(Protocol):

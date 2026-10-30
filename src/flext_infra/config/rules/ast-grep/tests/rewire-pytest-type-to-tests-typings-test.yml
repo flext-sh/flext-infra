@@ -1,7 +1,0 @@
-id: rewire-pytest-type-to-tests-typings
-valid:
-  - |
-    def test_env(monkeypatch: t.Tests.MonkeyPatch) -> None: ...
-invalid:
-  - |
-    def test_env(monkeypatch: pytest.MonkeyPatch) -> None: ...

@@ -61,10 +61,9 @@ class FlextInfraCodegenConform:
         return executor.execute_managed(
             admitted,
             after_publication=(
-                lambda written: cls.conform_workspace_beads_routes(
-                    executor, admitted
-                ).flat_map(lambda _: cls._allow_direnv_after_apply(written)),
+                lambda _written: cls.conform_workspace_beads_routes(executor, admitted),
             ),
+            after_cohort_publication=(cls._allow_direnv_after_apply,),
         )
 
     @classmethod

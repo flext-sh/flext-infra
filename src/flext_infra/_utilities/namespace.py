@@ -51,26 +51,20 @@ class FlextInfraUtilitiesCodegenNamespace:
         *,
         project: p.Infra.RopeProject | None = None,
         sources: Mapping[Path, str] | None = None,
-    ) -> Path | None:
+    ) -> p.Result[Path] | None:
         """Elect the immediate module publishing the requested native facade.
 
         Returns:
             The declared owner, or absence when this package declares no facade.
 
-        Raises:
-            ValueError: Source provenance or the publication identity is ambiguous.
-
         """
-        if project is None or sources is None:
-            if project is not None or sources is not None:
-                message = "Facade election requires its project and source epoch"
-                raise ValueError(message)
+        if project is None or sources is not None:
             with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-                pkg_dir.parent
-            ) as (captured, contents):
-                return cls.facade_module_path(
-                    pkg_dir, family, project=captured, sources=contents
-                )
+                Path(project.root.real_path) if project is not None else pkg_dir.parent,
+                planned_sources=sources,
+                source_project=project,
+            ) as (captured, _contents):
+                return cls.facade_module_path(pkg_dir, family, project=captured)
         owners = tuple(
             path
             for path in project.source_children(pkg_dir)
@@ -90,8 +84,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         if len(owners) > 1:
             message = f"Competing facade publications: {pkg_dir}:{family}: {owners}"
-            raise ValueError(message)
-        return owners[0] if owners else None
+            return r[Path].fail(message)
+        return r[Path].ok(owners[0]) if owners else None
 
     @staticmethod
     def isort_member_key(name: str) -> tuple[int, str]:
@@ -286,33 +280,6 @@ class FlextInfraUtilitiesCodegenNamespace:
                 if file_name == f"{module}.py"
             ),
             None,
-        )
-
-    @classmethod
-    def matches_project_namespace_package(cls, package_name: str) -> bool:
-        """Return whether a package behaves like a project namespace root.
-
-        Project package roots under ``src/`` qualify, as do namespace packages under
-        governed wrapper surfaces like ``tests/``, ``examples/``, and ``scripts/``.
-        Ordinary nested runtime subpackages such as ``<pkg>.services`` do not.
-
-        Returns:
-            Whether a package behaves like a project namespace root.
-
-        """
-        parts = tuple(part for part in package_name.split(".") if part)
-        if not parts:
-            return False
-        if len(parts) == 1:
-            return True
-        # A governed wrapper surface is not itself an importable package: its
-        # namespace root is the directory under it, so `tests.unit` is what
-        # `flext_demo` is under `src/`. Requiring a single part made every such
-        # package publish the inherited test aliases and none of its own
-        # declarations, which is the opposite of the contract above.
-        return (
-            len(parts) == c.Infra.WRAPPER_NAMESPACE_DEPTH
-            and parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS
         )
 
     @staticmethod

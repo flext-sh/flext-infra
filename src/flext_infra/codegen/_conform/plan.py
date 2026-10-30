@@ -34,10 +34,23 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[m.Infra.CodegenPlan]``.
 
         """
+        self._begin_planning()
+        return self._plan_request(request)
+
+    def _plan_request(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Plan the active invocation without resetting its retained diagnostics.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenPlan]``.
+
+        """
         inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
         if inputs.failure:
             return r[m.Infra.CodegenPlan].from_failure(inputs)
-        return self.plan_repositories(request, inputs.value)
+        return self._plan_repositories(request, inputs.value)
 
     def _plan_single_surface(
         self,
@@ -69,6 +82,20 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         Returns:
             The complete repository plan or its first planning failure.
+
+        """
+        self._begin_planning()
+        return self._plan_repositories(request, inputs)
+
+    def _plan_repositories(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Compose repository phases within the active planning invocation.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenPlan]``.
 
         """
         if request.what in c.Infra.FILE_ONLY_SURFACES:
@@ -284,33 +311,24 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         if family == "t":
-            sources = {
-                path: u.Infra.require_file_resource(
-                    project.get_resource(
-                        path.relative_to(Path(project.root.real_path)).as_posix()
-                    ),
-                    path,
-                ).read()
-                for path in sources
-            }
-            return r[str].ok(
-                u.Infra.render_type_facade(
-                    destination.parent, destination, sources, project=project
-                ),
+            return u.Infra.render_type_facade(
+                destination.parent, destination, sources, project=project
             )
-        if (
-            u.Infra.facade_module_path(
-                destination.parent, family, project=project, sources=sources
-            )
-            != destination
-        ):
+        elected = u.Infra.facade_module_path(
+            destination.parent, family, project=project, sources=sources
+        )
+        if elected is None:
+            return r[str].fail("selected facade has no declaring module")
+        if elected.failure:
+            return r[str].from_failure(elected)
+        if elected.value != destination:
             return r[str].fail("selected facade differs from its declaring module")
         rendered = u.Infra.render_utility_facade(
             destination.parent, family=family, project=project, sources=sources
         )
         if rendered is None:
             return r[str].fail(f"selected facade has no private {family} owners")
-        return r[str].ok(rendered)
+        return rendered
 
     def _plan_lazy_init(
         self,
@@ -873,16 +891,20 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if native is not None:
             managed.error_type = (
                 f"{type(native.exception).__module__}.{type(native.exception).__qualname__}"
-                if native.exception is not None else ""
+                if native.exception is not None
+                else ""
             )
             managed.error_traceback = (
                 "".join(traceback.format_exception(native.exception))
-                if native.exception is not None else ""
+                if native.exception is not None
+                else ""
             )
         else:
             managed.error_type = lazy.error_type or managed.error_type
             managed.error_traceback = "\n".join(
-                value for value in (lazy.error_traceback, managed.error_traceback) if value
+                value
+                for value in (lazy.error_traceback, managed.error_traceback)
+                if value
             )
         managed.elapsed += lazy.elapsed
         return managed
@@ -1276,7 +1298,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         try:
             outcome = cls._plan_repository_task(task, snapshot)
-        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+        except Exception as exc:
             outcome = cls._failed_outcome(
                 task.repository.name, exc, time.monotonic() - started
             )
@@ -1343,9 +1365,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 repository=repository.name,
                 native_failure=native,
                 files=() if planned.failure else tuple(planned.value),
-                error=(
-                    native.error or "" if native is not None else ""
-                ),
+                error=(native.error or "" if native is not None else ""),
                 exception=(
                     native.exception
                     if native is not None

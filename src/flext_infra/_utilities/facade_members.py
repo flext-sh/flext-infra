@@ -19,6 +19,8 @@ import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from rope.base import exceptions as rope_exceptions
+
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
@@ -746,28 +748,25 @@ class FlextInfraUtilitiesFacadeMembers:
             ValueError: A receiver is a module or lacks a proven publication.
 
         """
-        source_project, package, module, parsed, routes, exports = view
+        source_project, package, module, _parsed, routes, _exports = view
         route = routes.get(letter)
         if route is not None and not route.attributes:
             message = f"specialization facade publishes a module: {package}.{letter}"
             raise ValueError(message)
-        binding = (
-            FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-                source_project,
-                ".".join(route.attributes),
-                module_name=route.target,
+        try:
+            binding = (
+                FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                    source_project,
+                    ".".join(route.attributes),
+                    module_name=route.target,
+                )
+                if route is not None
+                else module.get_attributes().get(letter)
             )
-            if route is not None
-            else module.get_attributes().get(letter)
-        )
-        if binding is None:
-            unpublished = (
-                letter not in exports
-                and letter not in routes
-                and "__getattr__" not in parsed.get_attributes()
-            )
-            if unpublished:
-                return None
+        except rope_exceptions.AttributeNotFoundError:
+            # A rota aponta para um destino stageado cuja publicação ainda
+            # não existe na fonte: a letra segue não publicada nesta vista.
+            return None
         target = None if binding is None else binding.get_object()
         if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(target):
             message = f"unresolved specialization facade: {package}.{letter}"

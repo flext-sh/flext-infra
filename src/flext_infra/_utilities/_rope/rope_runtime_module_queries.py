@@ -169,12 +169,15 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         ropefolder: str,
         save_objectdb: bool,
         filter_lists: tuple[Sequence[str], Sequence[str]],
+        fscommands: p.Infra.RopeProjectFiles | None = None,
     ) -> t.Infra.RopeProject:
         """Create one Rope project.
 
         ``filter_lists`` carries the Rope filter sequences in order:
         ignored resources, source folders. The project itself declares the
-        interpreter's sourceless stdlib modules.
+        interpreter's sourceless stdlib modules. An injected filesystem owns
+        the first constructor reads; otherwise native file commands remain the
+        default, with FLEXT retaining publication ownership.
 
         Returns:
             The resulting ``t.Infra.RopeProject``.
@@ -195,7 +198,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         )
         project = project_factory(
             root,
-            fscommands=fscommands_factory(),
+            fscommands=(fscommands if fscommands is not None else fscommands_factory()),
             ropefolder=ropefolder,
             save_objectdb=save_objectdb,
             save_history=False,

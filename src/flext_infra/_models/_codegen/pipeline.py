@@ -237,6 +237,13 @@ class FlextInfraModelsCodegenPipeline:
     class CodegenConformState(m.ArbitraryTypesModel):
         """Mutable request-local data owned by one projection invocation."""
 
+        control_outcomes: tuple[
+            FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
+        ] = m.Field(
+            default=(),
+            exclude=True,
+            description="Original file-only control outcomes of this invocation",
+        )
         request: t.Port[p.Infra.CodegenGenerateRequest] | None = m.Field(
             default=None,
             exclude=True,

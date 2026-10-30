@@ -80,9 +80,10 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
                 )
         reports: list[m.Infra.AccessorMigrationFile] = []
         plans: list[m.Infra.SemanticFilePlan] = []
-        resolver = FlextInfraRefactorAccessorOrigin(
-            rope_project, namespace=params.namespace, module=params.module
-        )
+        resolver = FlextInfraRefactorAccessorOrigin(rope_project)
+        selected = resolver.select_origin(params)
+        if selected.failure:
+            return result_type.from_failure(selected)
         for py_file in py_files:
             state = states[py_file.resolve()]
             if state.content is None:

@@ -16,7 +16,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesLazyInitRender,
@@ -42,14 +42,16 @@ class FlextInfraUtilitiesModelsProtocol:
     @classmethod
     def protocol_model_sources(
         cls, workspace: p.Infra.RopeWorkspaceDsl
-    ) -> Mapping[Path, str]:
+    ) -> p.Result[Mapping[Path, str]]:
         """Return protocol sources without importing or publishing the target.
 
         Returns:
-            Relative generated paths and their source-owned structural declarations.
+            Relative generated declarations, or the inventory's original failure.
+            An absent declared facade/layout has no applicable projection.
 
         """
-        return cls._ModelProtocolProjection(workspace).render()
+        projection = cls._ModelProtocolProjection(workspace)
+        return projection._inventory().flat_map(lambda _: projection.render())
 
     class _ModelProtocolProjection(
         FlextInfraUtilitiesSemanticCutover,
@@ -72,19 +74,16 @@ class FlextInfraUtilitiesModelsProtocol:
             self.dependencies: set[str] = set()
             self.member_cache: dict[str, p.Infra.RopePyName | None] = {}
 
-        def render(self) -> Mapping[Path, str]:
-            """Close consumed model identities and render their native namespaces.
+        def render(self) -> p.Result[Mapping[Path, str]]:
+            """Render the admitted native model inventory without publishing it.
 
             Returns:
-                Generated data contracts grouped by their published namespace.
-
-            Raises:
-                ValueError: If native models compete for one protocol destination.
+                Generated data contracts, or a competing-destination failure.
 
             """
-            self._inventory()
+            result_type = r[Mapping[Path, str]]
             if self.package is None or not {"m", "p"}.issubset(self.facades):
-                return {}
+                return result_type.ok({})
             self.selected.update(self._consumed())
             declarations: dict[str, list[t.Infra.AstStatement]] = {}
             imports: dict[str, dict[str, str]] = {}
@@ -109,9 +108,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
                 previous = rendered.setdefault(path, source)
                 if previous != source:
-                    message = f"competing native model protocol destinations: {path}"
-                    raise ValueError(message)
-            return rendered
+                    return result_type.fail(
+                        f"competing native model protocol destinations: {path}"
+                    )
+            return result_type.ok(rendered)
 
         def _render_route(
             self,
@@ -202,20 +202,28 @@ class FlextInfraUtilitiesModelsProtocol:
                 content,
             )
 
-        def _inventory(self) -> None:
-            """Elect explicit facade exports and retain native model identities."""
+        def _inventory(self) -> p.Result[bool]:
+            """Admit native identities before deriving their protocol references.
+
+            Returns:
+                Applicability when admitted, or the model inventory's failure.
+
+            """
+            result_type = r[bool]
             layout = FlextInfraUtilitiesCodegenNamespace.layout(
                 self.workspace.repository_root, rope_project=self.project
             )
             if layout is None:
-                return
+                return result_type.ok(value=False)
             self.package_name = layout.package_name
             self.class_stem = layout.class_stem
             self.package = layout.package_dir
             self._inventory_facades()
             if not {"m", "p"}.issubset(self.facades):
-                return
-            self._inventory_models()
+                return result_type.ok(value=False)
+            inventoried = self._inventory_models()
+            if inventoried.failure:
+                return result_type.from_failure(inventoried)
             for route in self.models:
                 namespace, _, leaf = route.rpartition(".")
                 owner = (
@@ -223,6 +231,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     f"ProtocolsGeneratedModels{leaf}"
                 )
                 self.references[route] = f"{owner}.{leaf}"
+            return result_type.ok(value=True)
 
         def _inventory_facades(self) -> None:
             """Elect the native model and protocol exports in this package.
@@ -261,13 +270,21 @@ class FlextInfraUtilitiesModelsProtocol:
                     self.facades[owner[0]] = module.get_attribute(owner[1])
                     self.package = entry.package_dir
 
-        def _inventory_models(self) -> None:
+        def _inventory_models(self) -> p.Result[bool]:
             """Close native model identities through their published namespaces.
 
-            Raises:
-                ValueError: If a route names competing model identities.
+            Read native attribute bindings without resolving their names again
+            through a lexical scope. Class aliases retain the same canonical
+            binding used by annotation resolution. An ancestry failure retains
+            its cause at the existing operation boundary; it never removes a
+            model from the inventory silently.
+
+            Returns:
+                Admission, or a contextual ambiguous/competing identity failure.
+                Native ancestry exceptions retain their existing causal boundary.
 
             """
+            result_type = r[bool]
             model_base = self.qualified_name(
                 self.project, "BaseModel", module_name="pydantic"
             ).get_object()
@@ -283,28 +300,32 @@ class FlextInfraUtilitiesModelsProtocol:
                 value = binding.get_object()
                 if not self.py_class(value) or value in ancestors:
                     continue
-                for name in sorted(value.get_attributes()):
+                for name, member in sorted(value.get_attributes().items()):
                     if name.startswith("_"):
                         continue
-                    member = self._member(binding, name)
-                    if member is None or not self.py_class(member.get_object()):
-                        continue
                     child = member.get_object()
-                    route = f"{prefix}{name}"
-                    try:
-                        ancestry = self.class_ancestry(child)
-                    except ValueError:
-                        # The candidate view may not linearize a base chain
-                        # that bottoms out outside the indexed packages; the
-                        # model is skipped here and the base project's own
-                        # pass owns its true ancestry.
+                    if not self.py_class(child):
                         continue
+                    route = f"{prefix}{name}"
+                    canonical = self.class_assignment_binding(member)
+                    if canonical is None:
+                        return result_type.fail(
+                            f"model class alias has no canonical identity: m.{route}"
+                        )
+                    if canonical is not member:
+                        member = canonical
+                        child = member.get_object()
+                        if not self.py_class(child):
+                            continue
+                    ancestry = self.class_ancestry(child)
                     if model_base in ancestry:
                         previous = self.models.setdefault(route, member)
                         if not self.same_name(previous, member):
-                            message = f"competing model identities for p.{route}"
-                            raise ValueError(message)
+                            return result_type.fail(
+                                f"competing model identities for p.{route}"
+                            )
                     pending.append((f"{route}.", member, (*ancestors, value)))
+            return result_type.ok(value=True)
 
         def _consumed(self) -> set[str]:
             """Read protocol primaries through native scope identities, not names.

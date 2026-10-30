@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, m, r, t
+from flext_infra import c, config, m, r, t
 from flext_infra._utilities import FlextInfraUtilitiesMiseBinary
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
         *,
         path: Path,
         toolchain_root: Path,
-        taplo_version: str,
+        taplo_version: str | None = None,
         process_timeout_seconds: int = c.Infra.TIMEOUT_DEFAULT,
     ) -> p.Result[str]:
         """Format TOML through the configured workspace Taplo toolchain.
@@ -43,6 +43,9 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
             The resulting ``p.Result[str]``.
 
         """
+        taplo_version = (
+            taplo_version or config.Infra.codegen.toolchain.tool_versions["taplo"]
+        )
         config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
         config_content = config_path.read_bytes() if config_path.is_file() else b""
         resolved_path = path.resolve()

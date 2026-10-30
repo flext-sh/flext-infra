@@ -1266,23 +1266,6 @@ class FlextInfraWorkspaceDetector(
         return r[str].ok(repository.name)
 
     @classmethod
-    def _canonical_project_name(cls, resolved_root: Path) -> p.Result[str]:
-        """Resolve the canonical project name from its manifest or scaffold.
-
-        Returns:
-            The canonical project name, or the original metadata failure.
-
-        """
-        metadata_path = resolved_root / c.PYPROJECT_FILENAME
-        if metadata_path.exists() or metadata_path.is_symlink():
-            return u.Infra.read_project_metadata_result(resolved_root).map(
-                lambda metadata: metadata.project.name
-            )
-        return cls._declared_scaffold_project(resolved_root).map(
-            lambda scaffold: scaffold.constant_name
-        )
-
-    @classmethod
     def conform_target(
         cls,
         repository_root: Path,
@@ -1291,7 +1274,11 @@ class FlextInfraWorkspaceDetector(
         project_metadata: p.ProjectMetadata | None = None,
         inputs: m.Infra.CodegenInputs | None = None,
     ) -> p.Result[m.Infra.RepositoryConformTarget]:
-        """Resolve a target exclusively from the requested checkout.
+        """Reuse the requested checkout's authenticated workspace identity.
+
+        The original topology witness binds the supplied workspace to this
+        checkout. Verify its local identity inputs without reparsing metadata;
+        a scaffold whose manifest appeared must be elected again.
 
         Returns:
             The resulting ``p.Result[m.Infra.RepositoryConformTarget]``.
@@ -1309,15 +1296,33 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 "local workspace repository path must be '.'",
             )
-        canonical = cls._canonical_project_name(resolved_root)
-        if canonical.failure:
-            return r[m.Infra.RepositoryConformTarget].from_failure(canonical)
-        canonical_project_name = canonical.value
-        if canonical_project_name != workspace.repository.distribution:
+        topology = tuple(
+            state
+            for state in workspace.inputs
+            if state.path == resolved_root / c.Infra.GITMODULES
+        )
+        if not topology:
             return r[m.Infra.RepositoryConformTarget].fail(
-                "project metadata and repository identity differ: "
-                f"{canonical_project_name} != {workspace.repository.distribution}",
+                f"workspace has no checkout identity observation: {resolved_root}",
             )
+        metadata_path = resolved_root / c.PYPROJECT_FILENAME
+        if not any(
+            state.path == metadata_path for state in workspace.repository.inputs
+        ) and (
+            workspace.project is None
+            or metadata_path.exists()
+            or metadata_path.is_symlink()
+        ):
+            return r[m.Infra.RepositoryConformTarget].fail(
+                f"workspace has no admitted project metadata: {metadata_path}",
+            )
+        verified = u.Cli.atomic_verify_binary_file_states((
+            *topology,
+            *workspace.repository.inputs,
+        ))
+        if verified.failure:
+            return r[m.Infra.RepositoryConformTarget].from_failure(verified)
+        canonical_project_name = workspace.repository.distribution
         if inputs is None:
             captured = u.Infra.load_codegen_inputs(resolved_root)
             if captured.failure:

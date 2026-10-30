@@ -1002,7 +1002,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             message = f"retiring base has a non-class owner: {path}:{node.name}"
             raise TypeError(message)
         class_scope = value.get_scope()
-        located = cls._header_argument_span(value, class_scope, module)
+        located = cls._header_argument_span(class_scope, module)
         if located is None:
             message = f"retiring base has no native class header: {path}:{node.name}"
             raise ValueError(message)

@@ -267,6 +267,11 @@ class FlextInfra(
     ) -> p.Result[t.Cli.ResultValue]:
         """Compose repository codemod runs in the declared dependency order.
 
+        Convert exceptions once at each complete repository-operation boundary,
+        retaining their original cause and traceback in the failed Result.
+        Cancellation propagates. A failed prerequisite stops this invocation;
+        later repositories are not reported as executed.
+
         Returns:
             The first repository failure, or acceptance of every governed run.
 
@@ -274,9 +279,10 @@ class FlextInfra(
         root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
             request.repository_root
         )
+        guarded_mod = r.safe(FlextInfraModHandlers.mod, exceptions=(Exception,))
         governed = frozenset(flext_infra.u.Infra.governed_project_roots(root))
         if governed == {root}:
-            return FlextInfraModHandlers.mod(self, request, progress)
+            return guarded_mod(self, request, progress).flat_map(r.from_result)
         inputs = flext_infra.u.Infra.load_codegen_inputs(root)
         if inputs.failure:
             return r[t.Cli.ResultValue].from_failure(inputs)
@@ -321,7 +327,9 @@ class FlextInfra(
                     consumer_roots=request.consumer_roots,
                 )
             )
-            completed = FlextInfraModHandlers.mod(self, child_request, progress)
+            completed = guarded_mod(self, child_request, progress).flat_map(
+                r.from_result
+            )
             if completed.failure:
                 return completed
         return r[t.Cli.ResultValue].ok(value=True)

@@ -282,6 +282,47 @@ class FlextInfraUtilitiesRopeModulePatch:
                     item.import_info = before
             return r[str].ok(imports.get_changed_source())
 
+    @staticmethod
+    def _apply_alias_rename(
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        candidate: p.Infra.RopeSourceModule,
+        words: p.Infra.RopeWorder,
+        fragment: p.Infra.RopeFragment,
+        source: str,
+        *,
+        alias: str,
+        original: str,
+    ) -> p.Result[str]:
+        """Rename one aliased own-package import to its original binding.
+
+        Returns:
+            The renamed candidate text, or the typed occupation or no-change
+            refusal.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        context = candidate.get_source_binding_index().context_at(fragment.start)
+        existing = context.environment.lookup(original)
+        imported = context.environment.lookup(alias)
+        if existing is not None and not runtime.same_name(existing, imported):
+            return r[str].fail(f"import alias destination is occupied: {original}")
+        offset = words.get_word_range(fragment.end - 1)[0]
+        changes = refactors.rename_changes(
+            project,
+            resource,
+            offset,
+            original,
+            options=m.Infra.RopeRenameOptions(resources=(resource,), docs=False),
+        )
+        rewritten = FlextInfraUtilitiesRopeModulePatch._changed_source(
+            candidate, changes
+        )
+        if rewritten == source:
+            return r[str].fail(f"native import alias rename made no change: {alias}")
+        return r[str].ok(value=rewritten)
+
     @classmethod
     def unalias_own_package_imports(
         cls, module: p.Infra.RopeSourceModule, *, package: str
@@ -338,31 +379,19 @@ class FlextInfraUtilitiesRopeModulePatch:
                         ),
                     ).new_contents
                     continue
-                context = candidate.get_source_binding_index().context_at(
-                    fragment.start
-                )
-                existing = context.environment.lookup(original)
-                imported = context.environment.lookup(alias)
-                if existing is not None and not runtime.same_name(existing, imported):
-                    return r[str].fail(
-                        f"import alias destination is occupied: {original}"
-                    )
-                offset = words.get_word_range(fragment.end - 1)[0]
-                changes = refactors.rename_changes(
+                renamed = cls._apply_alias_rename(
                     project,
                     resource,
-                    offset,
-                    original,
-                    options=m.Infra.RopeRenameOptions(
-                        resources=(resource,), docs=False
-                    ),
+                    candidate,
+                    words,
+                    fragment,
+                    source,
+                    alias=alias,
+                    original=original,
                 )
-                rewritten = cls._changed_source(candidate, changes)
-                if rewritten == source:
-                    return r[str].fail(
-                        f"native import alias rename made no change: {alias}"
-                    )
-                source = rewritten
+                if renamed.failure:
+                    return renamed
+                source = renamed.value
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeModulePatch"]

@@ -10,7 +10,7 @@ from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, config, t
+from flext_infra import c, config, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
@@ -73,6 +73,7 @@ class FlextInfraUtilitiesRopeCore(
         *,
         project_roots: Sequence[Path],
         consumer_root: Path | None = None,
+        fscommands: p.Infra.RopeProjectFiles | None = None,
     ) -> t.Infra.RopeProject:
         """Create one Rope project from validated source roots.
 
@@ -116,6 +117,7 @@ class FlextInfraUtilitiesRopeCore(
                 }),
                 source_folders,
             ),
+            fscommands=fscommands,
         )
         for owner in project_roots:
             if consumer_root is not None and owner != consumer_root:
@@ -203,6 +205,7 @@ class FlextInfraUtilitiesRopeCore(
         *,
         project_roots: Sequence[Path] | None = None,
         consumer_root: Path | None = None,
+        fscommands: p.Infra.RopeProjectFiles | None = None,
     ) -> Generator[t.Infra.RopeProject]:
         """Open one Rope project and always close it through the core boundary.
 
@@ -230,6 +233,7 @@ class FlextInfraUtilitiesRopeCore(
             resolved,
             project_roots=roots,
             consumer_root=consumer_root,
+            fscommands=fscommands,
         )
         try:
             yield rope_project

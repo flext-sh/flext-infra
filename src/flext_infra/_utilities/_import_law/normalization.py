@@ -386,17 +386,73 @@ class FlextInfraUtilitiesImportLawNormalization(
             the first typed classification failure of the normalization pass.
 
         """
+        prepared = cls._import_law_initial_pass_state(
+            location, source, inputs, member_resolver=member_resolver
+        )
+        if prepared.failure:
+            return r[str].from_failure(prepared)
+        state, current = prepared.value
+        if state is None:
+            return r[str].ok(value=source)
+        for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
+            updated = cls._import_law_one_pass(
+                state,
+                current,
+                sources=inputs[1],
+                rope_project=inputs[2],
+                member_resolver=member_resolver,
+            )
+            if updated.failure:
+                return updated
+            if updated.value == current:
+                break
+            current = updated.value
+        else:
+            return r[str].fail(
+                f"{state.scope.file_path}: import normalization has no "
+                "validated fixed point",
+            )
+        if runtime_diagnostics is not None:
+            runtime_diagnostics[state.scope.module] = (
+                cls._import_law_runtime_diagnostics(state)
+            )
+        return r[str].ok(value=current)
+
+    @classmethod
+    def _import_law_initial_pass_state(
+        cls,
+        location: tuple[Path, Path],
+        source: str,
+        inputs: tuple[
+            Mapping[str, frozenset[str]] | None,
+            Mapping[Path, str] | None,
+            p.Infra.RopeProject | None,
+        ],
+        *,
+        member_resolver: p.Infra.RopeSourceMemberResolver | None,
+    ) -> p.Result[tuple[m.Infra.ImportLawPass | None, str]]:
+        """Elect the namespace, authenticate the candidate and build one pass.
+
+        Returns:
+            The initial pass state with its cleaned current text, an empty
+            state for an out-of-scope source, or the typed failure of an
+            unauthenticated or unroutable candidate.
+
+        """
         project_root, file_path = location
         import_graph = inputs[0]
         sources = inputs[1]
-        if file_path.name == c.Infra.INIT_PY:
-            return r[str].ok(value=source)
-        if (
-            located := cls.import_namespace(
+        located = (
+            None
+            if file_path.name == c.Infra.INIT_PY
+            else cls.import_namespace(
                 project_root, file_path, sources=sources, source_project=inputs[2]
             )
-        ) is None:
-            return r[str].ok(value=source)
+        )
+        if located is None:
+            return r[tuple[m.Infra.ImportLawPass | None, str]].ok(
+                value=(None, source),
+            )
         namespace_dir, module = located
         namespace = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
             namespace_dir, project_root=project_root, source_project=inputs[2]
@@ -405,23 +461,78 @@ class FlextInfraUtilitiesImportLawNormalization(
             project_root, namespace, sources=sources, source_project=inputs[2]
         )
         if root_exports is None:
-            return r[str].fail(
+            return r[tuple[m.Infra.ImportLawPass | None, str]].fail(
                 f"{namespace_dir} is a namespace without an owned package init",
             )
         if import_graph is None:
-            return r[str].fail(
+            return r[tuple[m.Infra.ImportLawPass | None, str]].fail(
                 "import normalization requires its captured runtime graph",
             )
+        project = inputs[2]
+        if project is None:
+            return r[tuple[m.Infra.ImportLawPass | None, str]].fail(
+                "Import normalization requires its bound native source project",
+            )
+        candidate = cls._import_law_candidate_module(
+            project, file_path, source, namespace
+        )
+        if candidate.failure:
+            return r[tuple[m.Infra.ImportLawPass | None, str]].from_failure(candidate)
+        current = candidate.value
         facade_dependencies = cls.import_facade_dependencies(
             module,
             root_exports,
             import_graph,
         )
-        project = inputs[2]
-        if project is None:
-            return r[str].fail(
-                "Import normalization requires its bound native source project",
-            )
+        tree = ast.parse(current, filename=str(file_path))
+        parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
+        state = m.Infra.ImportLawPass(
+            scope=m.Infra.ImportLawScope(
+                project_root=project_root.resolve(),
+                file_path=file_path,
+                namespace_dir=namespace_dir,
+                module=module,
+                layer=cls.module_import_layer(module, namespace=namespace),
+                own_exports=cls._import_law_declared_exports(tree),
+                facade_dependencies=facade_dependencies,
+                family_letter=cls.family_letter(namespace_dir, file_path),
+                direct_imports=cls.import_direct_module(
+                    namespace_dir,
+                    file_path,
+                    namespace=namespace,
+                )
+                or cls.import_bootstrap_dependency(namespace, module, import_graph),
+                bootstrap_dependency=cls.import_bootstrap_dependency(
+                    namespace, module, import_graph
+                ),
+            ),
+            tree=tree,
+            parents=parents,
+            bindings=cls._module_bindings(tree),
+            root_exports=root_exports,
+            sources=sources,
+            source_project=project,
+            deferred_class_lines=cls._import_law_deferred_class_lines(
+                tree, parents, module, member_resolver
+            ),
+        )
+        return r[tuple[m.Infra.ImportLawPass | None, str]].ok(value=(state, current))
+
+    @staticmethod
+    def _import_law_candidate_module(
+        project: p.Infra.RopeProject,
+        file_path: Path,
+        source: str,
+        namespace: str,
+    ) -> p.Result[str]:
+        """Authenticate the candidate against its native module and clean it.
+
+        Returns:
+            The candidate text with its own-package imports unaliased and its
+            TYPE_CHECKING scaffold stripped, or the typed authentication
+            failure.
+
+        """
         resource = FlextInfraUtilitiesRopeRuntime.file_resource_at(project, file_path)
         native = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         if native.source_code != source:
@@ -433,75 +544,18 @@ class FlextInfraUtilitiesImportLawNormalization(
         )
         if unaliased.failure:
             return unaliased
-        current = unaliased.value
         declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(project.root.real_path),
             (),
-            {file_path: current},
+            {file_path: unaliased.value},
             source_project=project,
         )
         with project.source_view(
             declared_files=declared, additional_source_folders=None
         ):
-            cleaned = FlextInfraUtilitiesRopeModulePatch.strip_type_checking_scaffold(
+            return FlextInfraUtilitiesRopeModulePatch.strip_type_checking_scaffold(
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             )
-        if cleaned.failure:
-            return cleaned
-        current = cleaned.value
-        state: m.Infra.ImportLawPass | None = None
-        for _ in range(c.Infra.IMPORT_NORMALIZATION_MAX_PASSES):
-            tree = ast.parse(current, filename=str(file_path))
-            parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
-            state = m.Infra.ImportLawPass(
-                scope=m.Infra.ImportLawScope(
-                    project_root=project_root.resolve(),
-                    file_path=file_path,
-                    namespace_dir=namespace_dir,
-                    module=module,
-                    layer=cls.module_import_layer(module, namespace=namespace),
-                    own_exports=cls._import_law_declared_exports(tree),
-                    facade_dependencies=facade_dependencies,
-                    family_letter=cls.family_letter(namespace_dir, file_path),
-                    direct_imports=cls.import_direct_module(
-                        namespace_dir,
-                        file_path,
-                        namespace=namespace,
-                    )
-                    or cls.import_bootstrap_dependency(namespace, module, import_graph),
-                    bootstrap_dependency=cls.import_bootstrap_dependency(
-                        namespace, module, import_graph
-                    ),
-                ),
-                tree=tree,
-                parents=parents,
-                bindings=cls._module_bindings(tree),
-                root_exports=root_exports,
-                sources=sources,
-                source_project=inputs[2],
-                deferred_class_lines=cls._import_law_deferred_class_lines(
-                    tree, parents, module, member_resolver
-                ),
-            )
-            updated = cls._import_law_one_pass(
-                state,
-                current,
-                sources=sources,
-                rope_project=inputs[2],
-                member_resolver=member_resolver,
-            )
-            if updated.failure:
-                return updated
-            if updated.value == current:
-                break
-            current = updated.value
-        else:
-            return r[str].fail(
-                f"{file_path}: import normalization has no validated fixed point",
-            )
-        if runtime_diagnostics is not None and state is not None:
-            runtime_diagnostics[module] = cls._import_law_runtime_diagnostics(state)
-        return r[str].ok(value=current)
 
     @classmethod
     def _import_law_deferred_class_lines(
@@ -620,13 +674,45 @@ class FlextInfraUtilitiesImportLawNormalization(
         repaired = cls._import_law_own_family_candidate(
             state, source, member_resolver=member_resolver
         )
-        if repaired.failure:
-            return repaired
-        if repaired.value != source:
+        if repaired.failure or repaired.value != source:
             return repaired
         boundary = cls._import_law_validate_import_boundary(state)
         if boundary.failure:
             return r[str].from_failure(boundary)
+        return cls._import_law_first_rewrite(
+            state,
+            source,
+            lines,
+            sources=sources,
+            rope_project=rope_project,
+            member_resolver=member_resolver,
+        )
+
+    @classmethod
+    def _import_law_first_rewrite(
+        cls,
+        state: m.Infra.ImportLawPass,
+        source: str,
+        lines: Sequence[str],
+        *,
+        sources: Mapping[Path, str] | None,
+        rope_project: p.Infra.RopeProject | None,
+        member_resolver: p.Infra.RopeSourceMemberResolver | None,
+    ) -> p.Result[str]:
+        """Apply the first rewrite category that plans a change.
+
+        Every category's edits are computed against the text they mutate, so
+        categories never share a pass; the caller re-parses between passes.
+
+        Returns:
+            The rewritten source, the unchanged source at the pass's fixed
+            point, or the first typed classification failure of the attempted
+            categories.
+
+        Raises:
+            ValueError: If one category plans overlapping edits.
+
+        """
         builders: tuple[
             Callable[[], p.Result[tuple[tuple[int, int, Sequence[str]], ...]]], ...
         ] = (

@@ -15,7 +15,7 @@ from __future__ import annotations
 import ast
 import hashlib
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
-from contextlib import ExitStack, closing, contextmanager
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
 from flext_cli import u
@@ -286,9 +286,11 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         if any(not project.is_relative_to(root) for project in project_roots):
             msg = "Rope declared project root is outside the original authority"
             raise ValueError(msg)
+        files = FlextInfraRopeProject.OverlayFiles((), source_roots=(root,))
         with FlextInfraUtilitiesRopeCore.open_project(
             next(path for path in (root, *root.parents) if path.is_dir()),
             project_roots=project_roots or None,
+            fscommands=files,
         ) as live:
             election = m.Infra.RopeProjectElection(
                 ignored_resources=tuple(
@@ -306,20 +308,13 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                     if folder.is_folder()
                 ),
             )
-            with (
-                closing(
-                    FlextInfraRopeProject.from_atomic_reads(
-                        live,
-                        election=election,
-                        declared_files=declared_files,
-                        additional_source_folders=additional_source_folders,
-                    ),
-                ) as project,
-                project.frozen_layout(),
-            ):
-                if not isinstance(project, p.Infra.RopeProject):
-                    msg = "overlay project has no native source engine capabilities"
-                    raise TypeError(msg)
+            project = FlextInfraRopeProject.from_atomic_reads(
+                live,
+                election=election,
+                declared_files=declared_files,
+                additional_source_folders=additional_source_folders,
+            )
+            with project.frozen_layout():
                 yield project
 
     @classmethod

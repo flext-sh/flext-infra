@@ -477,6 +477,29 @@ do not freeze and copy their whole state on every failure or phase. A distinct
 cohort plan composes the original request, workspace and immutable file witnesses
 directly. Expected negative outcomes use typed result branches before effects.
 
+Each new public generation or planning invocation clears only its prior
+diagnostics, preserving source sessions, dependencies and authenticated witnesses.
+Internal phases use the active invocation's diagnostics without resetting them.
+Semantic API-alias rewrites return their original typed normalization failure;
+the common checked-edit boundary traverses these results before creating edits.
+An incomplete alias cohort never becomes a warning followed by successful output.
+The injected cohort-publication callbacks run after each admitted publication;
+their original failed Result retains the publication receipt. Global follow-ups
+run once only after every cohort succeeds. Control owners retain their mutable
+outcome by reference and mark a failed hook before dependent source analysis.
+The private publisher accepts an already composed, authenticated file-plan cohort
+for pre-Python controls. Supplying that cohort changes no request selector and
+retains normal admission, normalization, input verification and guarded publishing;
+it does not derive documentation or Python projections for the control operation.
+Failure metadata names the actual failed repository cohorts directly, allowing
+control outcomes to be updated without inferring ownership from written paths.
+
+The existing per-repository execution boundary contains unexpected `Exception`
+values as native outcomes with their original object and traceback. Native SDK
+exception inheritance need not be replicated in a catch catalog. Cancellation
+and signal exceptions outside `Exception` propagate; expected domain outcomes
+continue through their explicit typed Result branches.
+
 Incremental workspace indexing accepts its prior typed index and changed paths
 as one refresh request. Module evolution and package assembly remain in the
 existing workspace-index owner; equal package records retain their prior identity.
@@ -861,6 +884,14 @@ execution and malformed-report failures stay separate from diagnostic occurrence
 neither a repeated failure nor an unchanged finding count proves validation success.
 
 ### Facade Projection and Model-to-Protocol Generation
+
+The existing model projection producer admits its native inventory through
+`FlextResult` before rendering or retiring generated files. An ambiguous class
+alias or competing route returns a scoped failure; class bindings are normalized
+once through the same native identity owner used by annotation resolution.
+An absent declared facade/layout remains non-applicable. Native failures retain
+their original cause at the existing operation boundary; they never become a
+silently omitted model or an empty successful inventory.
 
 Facade projection composes constants, utilities and models from the exports and
 base order declared in their configured private family. Authored dependency ports
@@ -3615,6 +3646,16 @@ policy. A consumer placed in an owner's named directory remains a consumer. Miss
 malformed project metadata blocks the gate and preserves the metadata reader's
 diagnostic; directory names are never identity fallbacks.
 
+Conformance target election reuses the identity already admitted by workspace
+discovery. The original `.gitmodules` observation, including an absent file,
+binds that workspace to the requested checkout; the repository's original
+metadata and declaration observations are verified before its distribution name
+is reused. A stale or foreign workspace is rejected rather than reparsed into a
+new authority. An explicitly declared scaffold retains its admitted identity
+while no manifest exists; a manifest appearing afterward requires the existing
+workspace election to run again. Member observations are not reread to elect the
+local target. This reuse still requires qualification through the public command.
+
 ## Service foundation
 
 The project service foundation must preserve the local service and its canonical
@@ -4001,6 +4042,13 @@ and WIP. A local failure must neither crash unrelated independent work nor
 become a silent skip or fake success. Unexpected exceptions are not broadly
 captured and normalized; no second error framework is introduced. This is the
 current target under ADR-018, not proof that the executor implements it.
+Facade source rendering returns its existing typed Result; a package without
+that family retains explicit absence outside Result. Facade-path election
+likewise returns a successful native path, a typed ownership failure, or
+legitimate absence. Accessor selector binding consumes that Result at its
+existing planning boundary, rather than throwing during resolver construction.
+Borrowed source projects already supply their source epoch; a separate text
+mapping is an optional planned overlay, not a second mandatory input.
 
 Recursive component facades use the existing family declaration renderer and
 native C3 ordering. Each private component domain publishes through its sibling
@@ -4142,6 +4190,14 @@ projects to the native multi-project refactoring capability rather than building
 parallel cross-repository model. Only the `u.Infra` snapshot and adapter owners name the
 underlying implementation; orchestrators, models, protocols and external consumers see
 the generic `p.Infra` capability.
+
+The snapshot supplies its authenticated filesystem to that project's first native
+constructor, before preference or source-root election can read a file. Binding the
+elected roots and candidate completes that same instance; it does not construct a
+second project from the election. The original native core, resource observers and
+first-read witnesses survive this initialization, and the lifecycle owner closes the
+project once. Independent callers retain the native filesystem default unless they
+explicitly inject a source view through the same factory.
 
 The native project's identity remains stable across candidate bindings; identity
 alone therefore does not authenticate a derived memo. Derived facade census and

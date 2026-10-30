@@ -10,8 +10,6 @@ import ast
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_cli import u
-
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCompatibilityAliasValidation,
@@ -386,7 +384,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         specs_by_file, specs_by_module = specs.value
         service_projects = cls._service_alias_projects(service_aliases)
 
-        def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
+        def rewrite(path: Path, source: str) -> p.Result[t.Infra.TransformResult]:
             local_aliases = specs_by_file.get(path, {})
             tree = ast.parse(source, filename=str(path))
             consumer_project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
@@ -401,7 +399,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 path, source, tree, local_aliases, active_modules
             )
             if plan is None:
-                return source, ()
+                return r[t.Infra.TransformResult].ok((source, ()))
             rewritten = cls._rewrite_compatibility_alias_source(
                 source,
                 plan,
@@ -415,7 +413,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                         "service alias consumer requires its project owner "
                         f"and import normalizer: {path}"
                     )
-                    raise ValueError(message)
+                    return r[t.Infra.TransformResult].fail(message)
                 normalized = import_normalizer(
                     file_path=path,
                     source=rewritten,
@@ -424,25 +422,23 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                     sources={**sources, path: rewritten},
                 )
                 if normalized.failure:
-                    u.Cli.warning(
-                        f"import normalization degraded {path}: {normalized.error}"
-                    )
-                else:
-                    rewritten = normalized.value
+                    return r[t.Infra.TransformResult].from_failure(normalized)
+                rewritten = normalized.value
             FlextInfraUtilitiesCompatibilityAliasValidation.require_zero_compatibility_alias_residue(
                 rewritten,
                 path,
                 qualified_aliases=plan.qualified_aliases,
                 exported_aliases=frozenset(local_aliases),
             )
-            return rewritten, tuple(
-                f"rewired {alias} to {target}"
-                for alias, target in sorted(plan.qualified_aliases.items())
-            )
+            return r[t.Infra.TransformResult].ok((
+                rewritten,
+                tuple(
+                    f"rewired {alias} to {target}"
+                    for alias, target in sorted(plan.qualified_aliases.items())
+                ),
+            ))
 
         source_project = workspace.rope_project
-        if service_aliases:
-            return cls._semantic_edits(cls._editable_sources(sources), rewrite)
         return cls._semantic_checked_edits(cls._editable_sources(sources), rewrite)
 
     @classmethod

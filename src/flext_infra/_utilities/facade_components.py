@@ -18,6 +18,8 @@ from collections.abc import Mapping, Sequence
 from importlib.metadata import packages_distributions
 from pathlib import Path
 
+from flext_cli import u
+
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
@@ -178,13 +180,19 @@ class FlextInfraUtilitiesFacadeComponents:
             Source preserving the full declared type owner's body and identity.
 
         """
-        return cls.facade_component_source(
-            project,
-            facade_path,
-            pkg_dir
-            / FlextInfraUtilitiesCodegenNamespace.facade_families()["t"].directory,
-            family=c.Infra.FacadeFamily.T,
+        planned = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+            Path(project.root.real_path), (), sources, source_project=project
         )
+        with project.source_view(
+            declared_files=planned, additional_source_folders=None
+        ):
+            return cls.facade_component_source(
+                project,
+                facade_path,
+                pkg_dir
+                / FlextInfraUtilitiesCodegenNamespace.facade_families()["t"].directory,
+                family=c.Infra.FacadeFamily.T,
+            )
 
     @classmethod
     def render_utility_facade(
@@ -200,19 +208,15 @@ class FlextInfraUtilitiesFacadeComponents:
         Returns:
             Source, or absence when this package has no family declarations.
 
-        Raises:
-            ValueError: The source epoch or the public family owner is ambiguous.
-
         """
-        if project is None or sources is None:
-            if project is not None or sources is not None:
-                message = "Facade rendering requires its project and source epoch"
-                return r[str].fail(message)
+        if project is None or sources is not None:
             with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-                pkg_dir.parent
-            ) as (captured, contents):
+                Path(project.root.real_path) if project is not None else pkg_dir.parent,
+                planned_sources=sources,
+                source_project=project,
+            ) as (captured, _contents):
                 return cls.render_utility_facade(
-                    pkg_dir, family=family, project=captured, sources=contents
+                    pkg_dir, family=family, project=captured
                 )
         selected = c.Infra.FacadeFamily(family)
         directory = (
@@ -221,15 +225,19 @@ class FlextInfraUtilitiesFacadeComponents:
         )
         if not project.source_query(directory, "isdir"):
             return None
-        path = FlextInfraUtilitiesCodegenNamespace.facade_module_path(
-            pkg_dir, selected, project=project, sources=sources
+        elected = FlextInfraUtilitiesCodegenNamespace.facade_module_path(
+            pkg_dir, selected, project=project
         )
-        if path is None:
+        if elected is None:
             if not cls.facade_component_declarations(project, directory):
                 return None
             message = f"Family declarations have no public facade: {directory}"
             return r[str].fail(message)
-        return cls.facade_component_source(project, path, directory, family=selected)
+        if elected.failure:
+            return r[str].from_failure(elected)
+        return cls.facade_component_source(
+            project, elected.value, directory, family=selected
+        )
 
     @classmethod
     def facade_component_source(
@@ -248,9 +256,6 @@ class FlextInfraUtilitiesFacadeComponents:
 
         Returns:
             The complete unchanged-body source candidate, never a published effect.
-
-        Raises:
-            ValueError: A provider, namespace or declared base has no proven owner.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -419,6 +424,11 @@ class FlextInfraUtilitiesFacadeComponents:
             if layout.bases:
                 first, last = layout.bases[0][0], layout.bases[-1][1]
                 replacement = ", ".join(expression for expression, _ in retained)
+            elif layout.arguments_region is not None:
+                first = last = layout.arguments_region[0]
+                replacement = ", ".join(expression for expression, _ in retained)
+                if layout.keywords:
+                    replacement += ", "
             else:
                 first = last = layout.bases_insertion_offset
                 replacement = (
@@ -433,6 +443,23 @@ class FlextInfraUtilitiesFacadeComponents:
         if missing:
             body_line = module.lines.get_line_number(layout.body[0])
             indent = source[module.lines.get_line_start(body_line) : layout.body[0]]
+            if indent.strip():
+                class_line = namespace.get_scope().get_start()
+                prefix = source[
+                    module.lines.get_line_start(class_line) : layout.region[0]
+                ]
+                step = u.type_adapter(int).validate_python(
+                    runtime.runtime_callable("rope.refactor.sourceutils", "get_indent")(
+                        project
+                    ),
+                    strict=True,
+                )
+                indent = prefix + " " * step
+                rewrites.append(
+                    m.Infra.SourceRewrite(
+                        start=layout.body[0], end=layout.body[0], text="\n" + indent
+                    )
+                )
             publications: list[str] = []
             for provider in missing:
                 published_name = provider.get_name()
@@ -453,10 +480,13 @@ class FlextInfraUtilitiesFacadeComponents:
                     f"{indent}{published_name}: TypeAlias = {published_name}"
                 )
             imports.add_import(runtime.from_import("typing", 0, (("TypeAlias", None),)))
+            insertion = module.lines.get_line_end(
+                module.lines.get_line_number(layout.body[1])
+            )
             rewrites.append(
                 m.Infra.SourceRewrite(
-                    start=layout.body[1],
-                    end=layout.body[1],
+                    start=insertion,
+                    end=insertion,
                     text="\n" + "\n".join(publications),
                 )
             )
@@ -1009,7 +1039,15 @@ class FlextInfraUtilitiesFacadeComponents:
                 imports=False,
                 in_hierarchy=True,
             )
-            for occurrence in finder.find_occurrences(pymodule=module):
+            try:
+                occurrences = finder.find_occurrences(pymodule=module)
+            except TypeError:
+                # A inferência de um subscrito do consumidor pode atravessar
+                # um alias genérico cujos parâmetros não são TypeVar
+                # (contrato do typing): sem ocorrências provadas por este
+                # método, o caminho segue vazio — não é falha do consumo.
+                continue
+            for occurrence in occurrences:
                 first, last = occurrence.get_primary_range()
                 prefix, name, offset = words.get_splitted_primary_before(last)
                 context = index.context_at(offset)

@@ -710,6 +710,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _declared_dependency_facts(
         repository_root: Path,
         project: m.Infra.ProjectSpec,
+        *,
+        manifest_source: str | None = None,
     ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Read the declared dependency facts of one render project.
 
@@ -720,6 +722,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         Args:
             repository_root: Project root whose pyproject declares the facts.
             project: Resolved render project used before the pyproject exists.
+            manifest_source: Original captured TOML; when provided, no file is read.
 
         Returns:
             The non-empty declared dependency names with their declared
@@ -727,16 +730,38 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
         """
         result_type = r[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]
-        if (repository_root / c.PYPROJECT_FILENAME).is_file():
-            metadata = u.Infra.read_project_metadata_result(repository_root)
-            if metadata.failure:
-                return result_type.from_failure(metadata)
-            payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
+        if (
+            manifest_source is not None
+            or (repository_root / c.PYPROJECT_FILENAME).is_file()
+        ):
+            if manifest_source is None:
+                metadata = u.Infra.read_project_metadata_result(repository_root)
+                if metadata.failure:
+                    return result_type.from_failure(metadata)
+                requirements = metadata.value.project.dependencies
+                payload = u.Infra.pyproject_payload(
+                    repository_root / c.PYPROJECT_FILENAME
+                )
+            else:
+                recovered = u.Infra.recover_live_pyproject_text(manifest_source)
+                if recovered.failure:
+                    return result_type.from_failure(recovered)
+                payload = u.Cli.toml_mapping_from_text(recovered.value)
+                if payload is None:
+                    return result_type.fail(
+                        f"captured project metadata is invalid: {repository_root}"
+                    )
+                declared = r[m.Infra.DependencyManifestSpec].create_from_callable(
+                    lambda: m.Infra.DependencyManifestSpec.model_validate(payload)
+                )
+                if declared.failure:
+                    return result_type.from_failure(declared)
+                requirements = declared.value.dependencies
             groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
             runtime = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
                 partial(
                     t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
-                    metadata.value.project.dependencies,
+                    requirements,
                 ),
             )
             if runtime.failure:

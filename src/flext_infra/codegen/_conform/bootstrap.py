@@ -28,6 +28,12 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         ),
     ] = m.Field(default_factory=m.Infra.CodegenConformState, validate_default=True)
 
+    def _begin_planning(self) -> None:
+        """Begin one public invocation without replacing its borrowed resources."""
+        self.state.planning_failure = None
+        self.state.planning_exception = None
+        self.state.planning_issues.clear()
+
     def retain_diagnostics(
         self,
         *exceptions: BaseException | None,

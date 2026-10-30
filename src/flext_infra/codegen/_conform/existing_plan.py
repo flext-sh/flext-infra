@@ -605,7 +605,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         """Restore model data projection inside the existing source candidate.
 
         Returns:
-            Ordinary file plans consumed by facade/export convergence and publication.
+            File plans for admitted protocol sources, or the producer's failure.
+            Failed inventory never reaches generated-file retirement.
 
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
@@ -624,8 +625,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ) as workspace,
         ):
             rendered = u.Infra.protocol_model_sources(workspace)
+            if rendered.failure:
+                return result_type.from_failure(rendered)
+            rendered_sources = rendered.value
             plans: list[m.Infra.CodegenFilePlan] = []
-            for path, content in rendered.items():
+            for path, content in rendered_sources.items():
                 planned = self.file_plan(root, path.as_posix(), content)
                 if planned.failure:
                     return result_type.from_failure(planned)
@@ -638,7 +642,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     and path.parent == layout.package_dir / family_directory
                     and path.name.startswith("generated_models")
                     and content.startswith(c.Infra.AUTOGEN_HEADER)
-                    and path.relative_to(root) not in rendered
+                    and path.relative_to(root) not in rendered_sources
                 ):
                     retired = self._absent_file_plan(root, path)
                     if retired.failure:
@@ -823,7 +827,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 planners=(self._projected_exports, self._source_view),
                 selection=selection,
             )
-        self.retain_diagnostics(outcome.exception, issues=outcome.issues)
+        self.retain_diagnostics(
+            outcome.exception, issues=outcome.issues, failure=outcome.native_failure
+        )
         if outcome.failed:
             if not outcome.issues:
                 self._record_file_failure(
@@ -843,6 +849,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 (*(self.state.completed_source_plans or ()), *outcome.files),
                 ordered=True,
             )
+            if outcome.native_failure is not None:
+                return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(
+                    outcome.native_failure
+                )
             return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
                 outcome.error or f"Facade source planning failed: {root}",
                 exception=outcome.exception,
@@ -1182,6 +1192,240 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     path.as_posix() for path in target.external_dependency_paths
                 ),
             ),
+        )
+
+    def _plan_existing_control(
+        self,
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[m.Infra.CodegenRepositoryPlanOutcome]:
+        """Plan metadata and its bootstrap closure before Python source analysis.
+
+        Returns:
+            The existing repository outcome, or the original planning failure.
+
+        """
+        result_type = r[m.Infra.CodegenRepositoryPlanOutcome]
+        root, codegen = target.root, inputs.spec
+        manifest = next(
+            (
+                state
+                for state in workspace.inputs
+                if state.path == root / c.PYPROJECT_FILENAME
+            ),
+            None,
+        )
+        if manifest is None or manifest.content is None:
+            if workspace.flext_source is not None:
+                return self._plan_scaffold_control(target, workspace, inputs)
+            return result_type.fail(
+                f"control requires original project metadata: {root}"
+            )
+        managed = u.Infra.snapshot_committed_project_managed_artifacts(
+            root, read_committed_directory=u.Infra.git_committed_directory_blobs
+        )
+        if managed.failure:
+            return result_type.from_failure(managed)
+        render_inputs = self.resolve_render_inputs(
+            target=target,
+            workspace=workspace,
+            codegen=codegen,
+            tooling_runtime=None,
+            managed_artifacts=managed.value,
+        )
+        original_source = manifest.content.decode(c.DEFAULT_ENCODING)
+        recovered = u.Infra.recover_live_pyproject_text(original_source)
+        if recovered.failure:
+            return result_type.from_failure(recovered)
+        source = recovered.value
+        project = workspace.project
+        if project is not None and project.runtime_dependency_overlay:
+            dependencies = self._declared_dependency_facts(
+                root, project, manifest_source=original_source
+            )
+            if dependencies.failure:
+                return result_type.from_failure(dependencies)
+            document = u.Cli.toml_parse_text(source)
+            if document is None:
+                return result_type.fail(
+                    f"control project metadata is invalid: {manifest.path}"
+                )
+            project_table = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+            if project_table is None:
+                return result_type.fail(
+                    f"control project table is absent: {manifest.path}"
+                )
+            u.Cli.toml_sync_string_list(
+                project_table, c.Infra.DEPENDENCIES, dependencies.value[0]
+            )
+            source = u.Cli.toml_dumps(document)
+        conformed = self.conformed_pyproject_source(source, render_inputs)
+        if conformed.failure:
+            return result_type.from_failure(conformed)
+        formatted = u.Infra.format_toml_source(
+            conformed.value, path=manifest.path, toolchain_root=target.toolchain_root
+        )
+        if formatted.failure:
+            return result_type.from_failure(formatted)
+        binding = self._bootstrap_template_binding(
+            target, codegen, c.PYPROJECT_FILENAME
+        )
+        if binding.failure:
+            return result_type.from_failure(binding)
+        metadata = self.file_plan(
+            root,
+            c.PYPROJECT_FILENAME,
+            formatted.value,
+            ownership=binding.value[1],
+            mode=binding.value[1].mode,
+            inputs=(*workspace.inputs, *inputs.sources),
+        )
+        if metadata.failure:
+            return result_type.from_failure(metadata)
+        return self._control_bootstrap_outcome(
+            target, workspace, inputs, metadata.value
+        )
+
+    def _plan_scaffold_control(
+        self,
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[m.Infra.CodegenRepositoryPlanOutcome]:
+        """Use the native scaffold metadata context without a Python snapshot.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenRepositoryPlanOutcome]``.
+
+        """
+        result_type = r[m.Infra.CodegenRepositoryPlanOutcome]
+        root, codegen, project = target.root, inputs.spec, workspace.project
+        if project is None:
+            return result_type.fail(f"scaffold control has no declared project: {root}")
+        absent = u.Cli.atomic_read_binary_file_state(
+            root / c.PYPROJECT_FILENAME, required=False
+        )
+        if absent.failure:
+            return result_type.from_failure(absent)
+        if absent.value.content is not None:
+            return result_type.fail(f"scaffold metadata changed after election: {root}")
+        managed = u.Infra.snapshot_committed_project_managed_artifacts(
+            root, read_committed_directory=u.Infra.git_committed_directory_blobs
+        )
+        if managed.failure:
+            return result_type.from_failure(managed)
+        tooling = dependency_services.FlextInfraPyprojectModernizer(
+            repository_root=root,
+            skip_check=True,
+            managed_artifacts=managed.value.resolution,
+        ).resolve_tooling_context(
+            m.Infra.ToolingContextRequest(
+                environment_dir=u.Infra.runtime_environment_dir(
+                    root, runtime_root=root
+                ),
+                planned_sources={},
+                project_name=target.repository.distribution,
+                package_name=project.package_name,
+                path=root / c.PYPROJECT_FILENAME,
+                codegen=codegen,
+                runtime_dependency_overlay=project.runtime_dependency_overlay,
+                declared_project_dependencies=(),
+                topology=m.Infra.PyprojectDeclaredTopology(
+                    root_modules=project.root_modules,
+                    root_packages=project.root_packages,
+                    repository_namespace_packages=project.repository_namespace_packages,
+                    packaged_data_paths=project.packaged_data_paths,
+                    declared_python_dirs=tuple(
+                        self._scaffold_python_dirs(
+                            codegen.templates.entries,
+                            target.make_profile,
+                            package=target.repository.package,
+                        )
+                    ),
+                    declared_python_dirs_are_complete=(
+                        target.make_profile is not c.Infra.MakeProfile.WORKSPACE
+                    ),
+                ),
+            ),
+            derive_runtime=False,
+        )
+        if tooling.failure:
+            return result_type.from_failure(tooling)
+        render_inputs = self.resolve_render_inputs(
+            target=target,
+            workspace=workspace,
+            codegen=codegen,
+            tooling_runtime=tooling.value,
+            managed_artifacts=managed.value,
+        )
+        binding = self._bootstrap_template_binding(
+            target, codegen, c.PYPROJECT_FILENAME
+        )
+        if binding.failure:
+            return result_type.from_failure(binding)
+        metadata = self._rendered_managed_plan(
+            render_inputs,
+            binding.value[1],
+            binding.value[0],
+            root / c.PYPROJECT_FILENAME,
+            inputs=(
+                absent.value,
+                *workspace.inputs,
+                *inputs.sources,
+                *tooling.value.sources,
+            ),
+        )
+        if metadata.failure:
+            return result_type.from_failure(metadata)
+        return self._control_bootstrap_outcome(
+            target, workspace, inputs, metadata.value
+        )
+
+    def _control_bootstrap_outcome(
+        self,
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        inputs: m.Infra.CodegenInputs,
+        metadata: m.Infra.CodegenFilePlan,
+    ) -> p.Result[m.Infra.CodegenRepositoryPlanOutcome]:
+        """Close bootstrap artifacts over the authenticated metadata candidate.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenRepositoryPlanOutcome]``.
+
+        """
+        result_type = r[m.Infra.CodegenRepositoryPlanOutcome]
+        codegen = inputs.spec
+        bootstrap_entry = codegen.templates.bootstrap_entry
+        destinations = frozenset((
+            *c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
+            c.Infra.ENVRC_FILENAME,
+            *(
+                (bootstrap_entry.destination,)
+                if u.Infra.codegen_bootstrap_provider_available(
+                    bootstrap_entry, workspace
+                )
+                else ()
+            ),
+        ))
+        previous = self.state.provider_plans
+        self.state.provider_plans = u.Infra.codegen_compose_file_plans(
+            (*(previous or ()), metadata), ordered=True
+        )
+        try:
+            bootstrap = self._plan_existing_bootstrap(
+                target, workspace, codegen, destinations=destinations
+            )
+        finally:
+            self.state.provider_plans = previous
+        if bootstrap.failure:
+            return result_type.from_failure(bootstrap)
+        return result_type.ok(
+            m.Infra.CodegenRepositoryPlanOutcome(
+                repository=target.repository.name,
+                files=u.Infra.codegen_compose_file_plans((metadata, *bootstrap.value)),
+            )
         )
 
     def _plan_existing_bootstrap(
@@ -1652,6 +1896,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         path: Path,
         *,
         planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Render, compose, record, and plan one managed artifact.
 
@@ -1717,6 +1962,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             mode=managed.mode,
             ownership=managed,
             inputs=(
+                *inputs,
                 *rendered.value.source_states,
                 *(
                     ()

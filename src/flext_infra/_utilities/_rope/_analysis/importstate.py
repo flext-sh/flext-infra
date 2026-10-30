@@ -38,14 +38,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
 
         Args:
             root: The root path of the source project.
-            rows: A mapping from file paths to the set of line numbers to check for publications.
+            rows: A mapping from file paths to candidate publication line numbers.
             source_project: The Rope project representing the source code.
 
         Returns:
             The exact source, row and column of each native PEP 613 publication.
 
         Raises:
-            ValueError: If the publication query belongs to another native source project.
+            ValueError: The query belongs to another native source project.
 
         """
         selected = {path.resolve(): wanted for path, wanted in rows.items() if wanted}
@@ -70,47 +70,71 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 owner = module.get_attributes()[published[1]].get_object()
                 if not from_view.py_class(owner):
                     continue
-                index = module.get_source_binding_index()
-                for scope in (owner.get_scope(), *owner.get_scope().get_scopes()):
-                    if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
-                        continue
-                    for metadata in index.assignment_layouts(scope):
-                        if metadata.annotation is None or not metadata.targets:
-                            continue
-                        line = module.lines.get_line_number(metadata.region[0])
-                        if line not in wanted:
-                            continue
-                        (declaration,) = tuple(
-                            declaration
-                            for declaration in index.assignment_layouts(
-                                scope, name=metadata.targets[0][0], resolve_values=True
-                            )
-                            if declaration.region == metadata.region
-                        )
-                        if (
-                            declaration.value_binding is None
-                            or not from_view.abstract_class(
-                                declaration.value_binding.get_object()
-                            )
-                        ):
-                            continue
-                        begin, end = declaration.annotation
-                        annotation = from_view.expression_name(
-                            index.context_at(begin).environment,
-                            module.source_code[begin:end],
-                        )
-                        if annotation is None or not from_view.same_name(
-                            declared_alias, annotation
-                        ):
-                            continue
-                        publications.add((
-                            path,
-                            line,
-                            declaration.region[0]
-                            - module.lines.get_line_start(line)
-                            + 1,
-                        ))
+                publications.update(
+                    cls._type_alias_publications(
+                        path,
+                        module,
+                        owner,
+                        wanted,
+                        declared_alias=declared_alias,
+                    )
+                )
         return frozenset(publications)
+
+    @classmethod
+    def _type_alias_publications(
+        cls,
+        path: Path,
+        module: p.Infra.RopeSourceModule,
+        owner: p.Infra.RopePyObject,
+        wanted: frozenset[int],
+        *,
+        declared_alias: p.Infra.RopePyObject,
+    ) -> set[tuple[Path, int, int]]:
+        """Collect one owner's native PEP 613 publications on wanted lines.
+
+        Returns:
+            The path, line and column of each wanted type-alias publication.
+
+        """
+        from_view = FlextInfraUtilitiesRopeRuntime
+        found: set[tuple[Path, int, int]] = set()
+        index = module.get_source_binding_index()
+        for scope in (owner.get_scope(), *owner.get_scope().get_scopes()):
+            if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
+                continue
+            for metadata in index.assignment_layouts(scope):
+                if metadata.annotation is None or not metadata.targets:
+                    continue
+                line = module.lines.get_line_number(metadata.region[0])
+                if line not in wanted:
+                    continue
+                (declaration,) = tuple(
+                    layout
+                    for layout in index.assignment_layouts(
+                        scope, name=metadata.targets[0][0], resolve_values=True
+                    )
+                    if layout.region == metadata.region
+                )
+                if declaration.value_binding is None or not from_view.abstract_class(
+                    declaration.value_binding.get_object()
+                ):
+                    continue
+                begin, end = declaration.annotation
+                annotation = from_view.expression_name(
+                    index.context_at(begin).environment,
+                    module.source_code[begin:end],
+                )
+                if annotation is None or not from_view.same_name(
+                    declared_alias, annotation
+                ):
+                    continue
+                found.add((
+                    path,
+                    line,
+                    declaration.region[0] - module.lines.get_line_start(line) + 1,
+                ))
+        return found
 
     _SEMANTIC_STATE_CACHE: ClassVar[
         MutableMapping[tuple[str, str, str], m.Infra.ModuleSemanticState]
@@ -708,6 +732,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def _declared_class_aliases(target: p.Infra.RopeClassObject) -> frozenset[str]:
         """Return explicitly exported names bound to this exact class object.
 
+        Rope's module attribute table resolves a shadowed letter (``from
+        flext_api import c`` followed by ``c = Facade``) to the imported name,
+        so the alias election reads the module's own assignments instead and
+        verifies identity through the class binding.
+
         Returns:
             Explicitly exported names bound to this exact class object.
 
@@ -716,7 +745,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
 
         """
         module = target.get_module()
-        if module is None or (resource := module.get_resource()) is None:
+        if module is None or module.get_resource() is None:
             return frozenset()
         if not FlextInfraUtilitiesRopeRuntime.source_module(module):
             message = "Facade alias exports require their native source module"
@@ -724,16 +753,34 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
             module,
         )
-        return frozenset(
-            name
-            for name, binding in module.get_attributes().items()
-            if name in exports
-            and name != target.get_name()
-            and name.islower()
-            and not name.startswith("_")
-            and FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(binding, resource)
-            and binding.get_object() is target
-        )
+        attributes = module.get_attributes()
+        aliases: set[str] = set()
+        for statement in module.get_ast().body:
+            if not isinstance(statement, ast.Assign) or isinstance(
+                statement.value, ast.Tuple | ast.List
+            ):
+                continue
+            names = FlextInfraUtilitiesRopeAnalysisAstHelpers.statement_target_names(
+                statement,
+            )
+            value = statement.value
+            if not isinstance(value, ast.Name) or not isinstance(value.ctx, ast.Load):
+                continue
+            binding = attributes.get(value.id)
+            if (
+                binding is None
+                or binding.get_object() is not target
+                or any(
+                    alias not in exports
+                    or alias == target.get_name()
+                    or not alias.islower()
+                    or alias.startswith("_")
+                    for alias in names
+                )
+            ):
+                continue
+            aliases.update(names)
+        return frozenset(aliases)
 
     @staticmethod
     def inherited_facade_namespaces(

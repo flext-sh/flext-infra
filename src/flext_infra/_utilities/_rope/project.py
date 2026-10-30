@@ -13,7 +13,7 @@ from os import PathLike
 from os.path import realpath
 from pathlib import Path
 from threading import RLock
-from typing import Literal, Protocol, Self, cast, override
+from typing import Literal, Self, cast, override
 
 from flext_cli import u
 from rope.base.exceptions import ResourceNotFoundError
@@ -872,44 +872,67 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
         additional_source_folders: tuple[str, ...] = (),
     ) -> Self:
-        """Build a read-only project over ``live``'s tree with planned sources.
+        """Bind authenticated reads to the existing native analysis project.
 
         ``additional_source_folders`` elect live or virtual import roots inside
         the project. Live roots retain their native directory identity; a
         virtual root must hold declared planned content.
         ``observations`` retain read authority independently of publication
         policy; observing a stub does not declare a stub file effect.
+        The caller injects this class's overlay before native initialization,
+        so preference election and candidate reads share their first witnesses.
 
         Returns:
-            The project reading planned sources before the live tree.
+            The same project, core and observers reading the bound candidate.
+
+        Raises:
+            TypeError: Native initialization did not retain its source owner.
 
         """
+        if not isinstance(live, cls) or not isinstance(
+            live.fscommands, cls.OverlayFiles
+        ):
+            message = "atomic source binding requires its original overlaid project"
+            raise TypeError(message)
         root = Path(live.root.real_path)
         cls._validate_source_folders(root, additional_source_folders, declared_files)
-        files = cls.OverlayFiles(
-            declared_files,
-            observations=observations,
-            source_roots=(
-                root,
-                *(root / folder for folder in election.source_folders),
-                *(root / folder for folder in additional_source_folders),
-            ),
-            dependency_roots=tuple(
-                Path(folder) for folder in election.python_path_folders
-            ),
+        files = live.fscommands
+        if observations is not None:
+            for state in observations:
+                files._record_observation(state)
+            files._closed_observations = True
+        files._dependency_roots = tuple(
+            files._resolved(folder) for folder in election.python_path_folders
         )
-        return cls._from_files(
-            str(root),
-            files,
-            m.Infra.RopeProjectElection(
-                source_folders=tuple(
-                    sorted({*election.source_folders, *additional_source_folders})
-                ),
-                ignored_resources=tuple(election.ignored_resources),
-                extension_modules=tuple(election.extension_modules),
-                python_path_folders=tuple(election.python_path_folders),
+        selected = m.Infra.RopeProjectElection(
+            source_folders=tuple(
+                sorted({*election.source_folders, *additional_source_folders})
             ),
+            ignored_resources=tuple(election.ignored_resources),
+            extension_modules=tuple(election.extension_modules),
+            python_path_folders=tuple(election.python_path_folders),
         )
+        external = NoProject(fscommands=files)
+        external.prefs.extension_modules = list(selected.extension_modules)
+        if not isinstance(external, p.Infra.RopeExternalResourceOwner):
+            message = "native external resolver lost its resource factory contract"
+            raise TypeError(message)
+        live.external_project = external
+        live._snapshot_python_path_folders = [
+            live._native_folder(external.get_folder(path))
+            for path in selected.python_path_folders
+        ]
+        preferences = live.get_prefs()
+        if not isinstance(preferences, p.Infra.RopePreferences):
+            message = "native source project lost its preference update contract"
+            raise TypeError(message)
+        preferences.set("ignored_resources", list(selected.ignored_resources))
+        preferences.set("extension_modules", list(selected.extension_modules))
+        preferences.set("source_folders", list(selected.source_folders))
+        live._ropefolder_name = None
+        live._source_election = selected
+        live._set_source_view(declared_files, ())
+        return live
 
     @staticmethod
     def _validate_source_folders(
@@ -942,53 +965,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             ):
                 msg = f"Rope virtual source root lacks a planned file: {folder}"
                 raise ValueError(msg)
-
-    @classmethod
-    def _from_files(
-        cls,
-        root: str,
-        files: FlextInfraRopeProject.OverlayFiles,
-        election: p.Infra.RopeProjectElection,
-    ) -> Self:
-        """Compose the native project and external resolver over one view.
-
-        Returns:
-            The project sharing one view for local and external reads.
-
-        """
-        external = NoProject(fscommands=files)
-        external.prefs.extension_modules = list(election.extension_modules)
-
-        class _NativeExternalFolders(Protocol):
-            """Typed view of the external resolver's native folder factory."""
-
-            def get_folder(self, path: str) -> Folder: ...
-
-        project = cls(
-            root,
-            fscommands=files,
-            external_project=external,
-            ropefolder=None,
-            save_objectdb=False,
-            save_history=False,
-            ignored_resources=list(election.ignored_resources),
-            extension_modules=list(election.extension_modules),
-            source_folders=list(election.source_folders),
-        )
-        external_folders = cast("_NativeExternalFolders", external)
-        project._snapshot_python_path_folders = [
-            external_folders.get_folder(path) for path in election.python_path_folders
-        ]
-        project._custom_source_folders = [
-            project.get_resource(path) for path in election.source_folders
-        ]
-        project._source_election = m.Infra.RopeProjectElection(
-            source_folders=tuple(election.source_folders),
-            ignored_resources=tuple(election.ignored_resources),
-            extension_modules=tuple(election.extension_modules),
-            python_path_folders=tuple(election.python_path_folders),
-        )
-        return project
 
     @override
     def _init_other_parts(self) -> None:
