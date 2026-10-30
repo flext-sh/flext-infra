@@ -1,8 +1,3 @@
-# @flext-generated: continuous
-# @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/pyproject.toml.j2
-# @flext-adjust: MANAGED=conflict_sections + overwrite_project_keys. CUSTOM=preserve_project_keys and [tool.*] outside conflict_sections. Never edit this projection.
-# @flext-regenerate: make gen
-# @flext-rendered-by: flext-infra 0.12.0
 [build-system]
 build-backend = "hatchling.build"
 requires = ["hatchling"]
@@ -24,7 +19,6 @@ dependencies = [
   "defusedxml>=0.7.1",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
-  "tomlkit>=0.13,<1",
   "gitdb>=4.0.12",
   "GitPython>=3.2.1",
   "jinja2>=3.1.6",
@@ -33,10 +27,12 @@ dependencies = [
   "mkdocs>=1.6.1",
   "mypy>=2.3.1",
   "packaging>=26.3",
+  "pip",
   "pymdown-extensions>=11.0.1",
   "pytest>=9.1.1",
   "pytest-markdown-docs>=0.9.2",
   "rope @ git+https://github.com/marlon-costa-dc/rope.git@becece05c27c3189b12a06f3fbfa28ad62a98a96",
+  "tomlkit>=0.13,<1",
   "typing-extensions>=4.16.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
@@ -772,7 +768,12 @@ constraint-dependencies = [
 ]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 link-mode = "copy"
-override-dependencies = ["flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev", "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev", "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev", "rope @ git+https://github.com/marlon-costa-dc/rope.git@becece05c27c3189b12a06f3fbfa28ad62a98a96"]
+override-dependencies = [
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@becece05c27c3189b12a06f3fbfa28ad62a98a96",
+  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
+  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+]
 
 [[tool.uv.exclude-dependencies]]
 dependencies = ["flext-infra"]
