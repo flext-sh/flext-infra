@@ -12,13 +12,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraSmellsGate(FlextInfraGate):
+class FlextInfraSmellsGate(FlextInfraGates):
     """Report qlty smells for one project from a scan of its check directories.
 
     Every repository evaluates only itself, locally exactly as in CI: qlty

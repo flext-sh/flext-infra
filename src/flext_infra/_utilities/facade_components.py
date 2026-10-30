@@ -626,7 +626,28 @@ class FlextInfraUtilitiesFacadeComponents:
             declared_files=planned, additional_source_folders=None
         ):
             current = runtime.require_source_object(project.get_pymodule(resource))
-            actual = current.get_attributes()[owner.get_name()].get_object()
+            attributes = current.get_attributes()
+            if owner.get_name() not in attributes:
+                # Fachada lazy-init: a publicação é rota do mapa
+                # ``install_lazy_exports`` no __init__, não atributo nativo.
+                # Resolve pelo contrato lazy (mesma SSOT) antes de falhar.
+                route = FlextInfraUtilitiesRopeRuntimeModules._lazy_route(
+                    project,
+                    current.get_module().get_name(),
+                    owner.get_name(),
+                )
+                if route is None:
+                    return r[str].fail(
+                        f"Projected facade lost its native declaration: {path}"
+                    )
+                module_name = current.get_module().get_name()
+                owner_module = f"{module_name}{route}"
+                owner_resource = project.get_module(owner_module).get_resource()
+                current = runtime.require_source_object(
+                    project.get_pymodule(owner_resource)
+                )
+                attributes = current.get_attributes()
+            actual = attributes[owner.get_name()].get_object()
             if not types.py_class(actual):
                 return r[str].fail(
                     f"Projected facade lost its native declaration: {path}"
