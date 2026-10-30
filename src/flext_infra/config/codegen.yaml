@@ -1493,7 +1493,7 @@ Infra:
       # the CodegenConfigSpec.gitignore_sections projection (deduplicated, SSOT
       # wins); declare here only what the SSOT cannot express (file globs,
       # secrets, editor/OS noise).
-      gitignore_sections:
+      ignore_sections:
       - name: "BLOCK EVERYTHING BY DEFAULT"
         profiles: [ workspace ]
         patterns:
@@ -2014,7 +2014,7 @@ Infra:
         requirements-infra.txt:
           source: base/requirements-infra.txt.j2
           bootstrap_distribution: flext-infra
-          profiles: [ workspace, standalone ]
+          profiles: [ workspace ]
           ownership:
             owner: codegen
             policy: full
