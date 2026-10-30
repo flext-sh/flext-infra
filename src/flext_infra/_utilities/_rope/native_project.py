@@ -14,8 +14,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Self, cast, overload, override
 
-from rope.base import exceptions as rope_exceptions
-from rope.base import libutils
+from rope.base import exceptions as rope_exceptions, libutils
 from rope.base.builtins import BuiltinModule
 from rope.base.project import NoProject, Project
 from rope.base.resources import File, Folder, Resource
@@ -126,7 +125,7 @@ class FlextInfraRopeNativeProject(Project):
             found = self.find_module(name, folder)
             if found is None or found.is_folder():
                 raise
-            real_path = Path(self.root.real_path) / str(found.path).lstrip('/')
+            real_path = Path(self.root.real_path) / str(found.path).lstrip("/")
             result = libutils.get_string_module(
                 self, real_path.read_text(), resource=found
             )

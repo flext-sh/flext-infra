@@ -407,6 +407,11 @@ class FlextInfraUtilitiesImportLawNormalization(
             if updated.value == current:
                 break
             current = updated.value
+            state = cls._import_law_refreshed_tree(
+                state,
+                current,
+                member_resolver=member_resolver,
+            )
         else:
             return r[str].fail(
                 f"{state.scope.file_path}: import normalization has no "
@@ -517,6 +522,42 @@ class FlextInfraUtilitiesImportLawNormalization(
             ),
         )
         return r[tuple[m.Infra.ImportLawPass | None, str]].ok(value=(state, current))
+
+    @classmethod
+    def _import_law_refreshed_tree(
+        cls,
+        state: m.Infra.ImportLawPass,
+        current: str,
+        *,
+        member_resolver: p.Infra.RopeSourceMemberResolver | None,
+    ) -> m.Infra.ImportLawPass:
+        """Re-parse the evolved candidate so the next pass owns its live lines.
+
+        The pass state's tree, parent map and bindings describe the source
+        this normalization started from; every accepted rewrite invalidates
+        the line numbers the next pass plans against. The loop therefore
+        refreshes exactly the tree-derived fields between passes, keeping
+        namespace-level facts (scope identity, root exports) as elected.
+
+        Returns:
+            The pass state bound to the refreshed module.
+
+        """
+        tree = ast.parse(current, filename=str(state.scope.file_path))
+        parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
+        return state.model_copy(
+            update={
+                "tree": tree,
+                "parents": parents,
+                "bindings": cls._module_bindings(tree),
+                "scope": state.scope.model_copy(
+                    update={"own_exports": cls._import_law_declared_exports(tree)},
+                ),
+                "deferred_class_lines": cls._import_law_deferred_class_lines(
+                    tree, parents, state.scope.module, member_resolver
+                ),
+            },
+        )
 
     @staticmethod
     def _import_law_candidate_module(
