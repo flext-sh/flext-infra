@@ -12,6 +12,8 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
+from rope.base import exceptions
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
@@ -659,7 +661,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             Only an existing class alias suitable for publication.
 
         """
-        return cls._facade_owner(rope_project, resource, infer_missing=False)
+        try:
+            return cls._facade_owner(rope_project, resource, infer_missing=False)
+        except exceptions.ModuleSyntaxError:
+            # Conteúdo candidate inválido no overlay (staging do
+            # quoted-move troca conteúdos no mesmo path): sem publicação
+            # provável por este arquivo neste ponto fixo — o rerun
+            # replaneja quando o staging assentar.
+            return None
 
     @classmethod
     def _facade_owner(

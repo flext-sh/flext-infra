@@ -779,9 +779,15 @@ class FlextInfraUtilitiesFacadeComponents:
         ] = {}
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for path in paths:
-            module = runtime.require_source_object(
-                project.get_pymodule(runtime.file_resource_at(project, path))
-            )
+            try:
+                module = runtime.require_source_object(
+                    project.get_pymodule(runtime.file_resource_at(project, path))
+                )
+            except rope.base.exceptions.ModuleSyntaxError:
+                # Conteúdo candidate inválido no overlay (staging do
+                # quoted-move): falha por arquivo — o rerun replaneja este
+                # path quando o staging assentar.
+                continue
             if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
                 continue
             index = module.get_source_binding_index()

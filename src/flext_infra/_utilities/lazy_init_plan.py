@@ -16,6 +16,7 @@ from keyword import iskeyword
 from pathlib import Path
 
 from flext_cli import p, r, t, u
+from rope.base import exceptions
 
 from flext_infra import c, config
 from flext_infra._models._codegen import (
@@ -514,12 +515,19 @@ class FlextInfraUtilitiesLazyInitPlan:
                 # stale. Skip it — the fixed-point rerun plans the moved
                 # module under its destination name.
                 continue
-            names = (
-                python.python_model_exports(
-                    python.python_model_module_at(run.model, path, module_name)
+            try:
+                names = (
+                    python.python_model_exports(
+                        python.python_model_module_at(run.model, path, module_name)
+                    )
+                    or ()
                 )
-                or ()
-            )
+            except exceptions.ModuleSyntaxError:
+                # Conteúdo candidate inválido no overlay (staging do
+                # quoted-move troca conteúdos no mesmo path): falha por
+                # arquivo, nunca do run — o fixed-point rerun replaneia o
+                # módulo quando o staging assentar.
+                continue
             shadow = run.index.packages_by_dir.get(str(path.with_suffix("")))
             if names and shadow is not None and shadow.package_name:
                 msg = (

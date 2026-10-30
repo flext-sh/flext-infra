@@ -280,12 +280,19 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     ) -> p.Infra.RopePyName:
         """Resolve the same qualified identity grammar as Rope wildcards.
 
+        Args:
+            project: The Rope project instance.
+            expression: The dotted expression representing the attribute path.
+            module_name: Optional explicit module name to resolve the expression against.
+
         Returns:
             The declaration reached through the native module object graph.
 
         Raises:
             ValueError: When the identity does not name an attribute.
             TypeError: The fetched provider violates its native semantic contract.
+            AttributeNotFoundError: When the requested attribute is not found on the module.
+            ModuleSyntaxError: When the module has invalid syntax.
 
         """
         attributes = expression.split(".")
@@ -300,6 +307,26 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         except TypeError as error:
             error.add_note(f"Rope identity {expression!r} in module {module!r}")
             raise
+        except rope_exceptions.ModuleSyntaxError:
+            # Conteúdo candidate inválido no overlay (staging do
+            # quoted-move troca conteúdos no mesmo path): resolve pela
+            # rota lazy do pacote publicador quando existe; sem rota, a
+            # identidade é ilegível neste ponto fixo — propaga limpa.
+            target = (
+                FlextInfraUtilitiesRopeRuntimeModules._lazy_route(
+                    project, module.rpartition(".")[0], attributes[0]
+                )
+                if "." in module
+                else None
+            )
+            if target is None:
+                raise
+            owner = f"{module.rpartition('.')[0]}{target}"
+            return FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                project,
+                ".".join(attributes),
+                module_name=owner,
+            )
         try:
             identity = value.get_attribute(attributes[0])
         except rope_exceptions.AttributeNotFoundError:

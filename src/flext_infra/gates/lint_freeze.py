@@ -53,14 +53,16 @@ class FlextInfraGatesLintConfigFreeze(FlextInfraGates):
 
         Raises:
             ValueError: If the frozen lint-config catalog cannot be updated due to
-              unauthorized changes.
+              unauthorized changes, or if the catalog does not exist yet and the
+              run is not one complete governed scan of every managed project.
 
         """
         inputs = u.Infra.load_codegen_inputs(root).unwrap()
         before = u.Cli.atomic_read_binary_file_state(
-            root / inputs.spec.make.lint_freeze_catalog, required=True
+            root / inputs.spec.make.lint_freeze_catalog
         ).unwrap()
-        previous = cls._catalog_values(before)
+        created = before.content is None
+        previous = {} if created else cls._catalog_values(before)
         observed = {state.pyproject_path.parent.resolve() for state in states}
         declared = u.Infra.repository_operation_targets(
             root, c.Infra.CodegenConformScope.ALL
@@ -68,6 +70,14 @@ class FlextInfraGatesLintConfigFreeze(FlextInfraGates):
         expected = {
             target.root.resolve() for target in declared if target.managed is not False
         }
+        if created and (invalid_paths or observed != expected):
+            message = (
+                "initial lint-config catalog requires one complete governed scan: "
+                f"invalid_documents={len(invalid_paths)}, "
+                f"missing_projects={sorted(expected - observed)}, "
+                f"unexpected_projects={sorted(observed - expected)}"
+            )
+            raise ValueError(message)
         digests: dict[str, t.JsonValue] = (
             dict(previous) if invalid_paths or observed != expected else {}
         )
@@ -155,16 +165,23 @@ class FlextInfraGatesLintConfigFreeze(FlextInfraGates):
     def _catalog_digests(cls, root: Path) -> dict[str, str]:
         """Read the complete original catalog at the declared policy path.
 
-        Missing bytes and malformed data retain their native failures.
-
         Returns:
             The per-project frozen-table digests.
+
+        Raises:
+            ValueError: If the catalog has not been generated yet.
 
         """
         inputs = u.Infra.load_codegen_inputs(root).unwrap()
         before = u.Cli.atomic_read_binary_file_state(
-            root / inputs.spec.make.lint_freeze_catalog, required=True
+            root / inputs.spec.make.lint_freeze_catalog
         ).unwrap()
+        if before.content is None:
+            message = (
+                "lint-config catalog has not been generated yet; run the "
+                "canonical modernizer to publish the initial governed catalog"
+            )
+            raise ValueError(message)
         return cls._catalog_values(before)
 
     @staticmethod
@@ -247,7 +264,9 @@ class FlextInfraGatesLintConfigFreeze(FlextInfraGates):
                     path=observed.path,
                     before=observed,
                     desired_content=desired,
-                    desired_mode=observed.mode,
+                    desired_mode=(
+                        observed.mode if observed.mode is not None else 0o644
+                    ),
                     owner=c.Infra.LINT_CONFIG_FREEZE,
                 )
             )
