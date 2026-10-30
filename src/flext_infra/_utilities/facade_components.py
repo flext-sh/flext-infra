@@ -18,7 +18,7 @@ from collections.abc import Mapping, Sequence
 from importlib.metadata import packages_distributions
 from pathlib import Path
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
@@ -171,7 +171,7 @@ class FlextInfraUtilitiesFacadeComponents:
         sources: Mapping[Path, str],
         *,
         project: p.Infra.RopeProject,
-    ) -> str:
+    ) -> p.Result[str]:
         """Project the type family through the same native declaration operation.
 
         Returns:
@@ -194,7 +194,7 @@ class FlextInfraUtilitiesFacadeComponents:
         family: str | c.Infra.FacadeFamily = c.Infra.FacadeFamily.U,
         project: p.Infra.RopeProject | None = None,
         sources: Mapping[Path, str] | None = None,
-    ) -> str | None:
+    ) -> p.Result[str] | None:
         """Project one declared family against its sole authenticated native view.
 
         Returns:
@@ -207,7 +207,7 @@ class FlextInfraUtilitiesFacadeComponents:
         if project is None or sources is None:
             if project is not None or sources is not None:
                 message = "Facade rendering requires its project and source epoch"
-                raise ValueError(message)
+                return r[str].fail(message)
             with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
                 pkg_dir.parent
             ) as (captured, contents):
@@ -228,7 +228,7 @@ class FlextInfraUtilitiesFacadeComponents:
             if not cls.facade_component_declarations(project, directory):
                 return None
             message = f"Family declarations have no public facade: {directory}"
-            raise ValueError(message)
+            return r[str].fail(message)
         return cls.facade_component_source(project, path, directory, family=selected)
 
     @classmethod
@@ -240,7 +240,7 @@ class FlextInfraUtilitiesFacadeComponents:
         *,
         family: c.Infra.FacadeFamily,
         owner_name: str | None = None,
-    ) -> str:
+    ) -> p.Result[str]:
         """Compose declared native providers while retaining authored source bodies.
 
         Native layouts supply every span and lexical environment. Import operations
@@ -269,11 +269,11 @@ class FlextInfraUtilitiesFacadeComponents:
         )
         if name is None or name not in module.get_attributes():
             message = f"Facade has no native published class: {path}"
-            raise ValueError(message)
+            return r[str].fail(message)
         owner = module.get_attributes()[name].get_object()
         if not types.py_class(owner):
             message = f"Facade publication is not a source class: {path}:{name}"
-            raise ValueError(message)
+            return r[str].fail(message)
         nested = tuple(
             scope.pyobject
             for scope in owner.get_scope().get_scopes()
@@ -306,7 +306,7 @@ class FlextInfraUtilitiesFacadeComponents:
         )
         if len(namespaces) > 1:
             message = f"Competing inherited facade namespaces: {path}"
-            raise ValueError(message)
+            return r[str].fail(message)
         namespace = namespaces[0] if namespaces else owner
         index = module.get_source_binding_index()
         layout = index.class_layout(namespace.get_scope())
@@ -315,7 +315,7 @@ class FlextInfraUtilitiesFacadeComponents:
         for (start, end), binding in layout.base_bindings:
             if binding is None:
                 message = f"Unresolved facade base: {path}:{source[start:end]}"
-                raise ValueError(message)
+                return r[str].fail(message)
             bases.append((source[start:end], binding.get_object()))
         assignments = tuple(
             assignment
@@ -383,7 +383,7 @@ class FlextInfraUtilitiesFacadeComponents:
                         "Utility provider has an unresolved namespace storage role: "
                         f"{provider_path}:{provider.get_name()}"
                     )
-                    raise ValueError(message)
+                    return r[str].fail(message)
             admitted.append((provider_path, provider))
         maximal = tuple(
             (provider_path, provider)
@@ -409,7 +409,7 @@ class FlextInfraUtilitiesFacadeComponents:
             occupied = module.get_scope().get_names().get(binding)
             if occupied is not None and occupied.get_object() is not provider:
                 message = f"Occupied facade provider binding: {path}:{binding}"
-                raise ValueError(message)
+                return r[str].fail(message)
             imports.add_import(runtime.from_import(package, 0, ((binding, None),)))
             retained.append((binding, provider))
         rewrites: list[m.Infra.SourceRewrite] = []
@@ -441,11 +441,11 @@ class FlextInfraUtilitiesFacadeComponents:
                     message = (
                         f"Occupied nominal facade publication: {path}:{published_name}"
                     )
-                    raise ValueError(message)
+                    return r[str].fail(message)
                 imported = module.get_scope().get_names().get(published_name)
                 if imported is not None and imported.get_object() is not provider:
                     message = f"Occupied nominal facade import: {path}:{published_name}"
-                    raise ValueError(message)
+                    return r[str].fail(message)
                 imports.add_import(
                     runtime.from_import(package, 0, ((published_name, None),))
                 )
@@ -506,7 +506,7 @@ class FlextInfraUtilitiesFacadeComponents:
             changes.remove_duplicates()
             changes.sort_imports()
             source = changes.get_changed_source()
-        return (
+        return r[str].ok(
             source
             if source.startswith(c.Infra.AUTOGEN_HEADER)
             else (f"{c.Infra.AUTOGEN_HEADER}\n{source}")
