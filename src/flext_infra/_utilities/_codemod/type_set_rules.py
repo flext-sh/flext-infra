@@ -46,7 +46,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
     """Render the inline-type-set rewire rule of the constants facade."""
 
     @classmethod
-    def type_set_rules(
+    def codemod_type_set_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> Mapping[str, t.JsonMapping]:
         """Render the type-set rule of the project's constants facade.

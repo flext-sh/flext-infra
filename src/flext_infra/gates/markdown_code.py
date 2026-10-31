@@ -443,4 +443,4 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         )
 
 
-__all__: list[str] = ["FlextInfraMarkdownCodeGate"]
+__all__: list[str] = ["FlextInfraGatesMarkdownCode"]

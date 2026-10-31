@@ -330,9 +330,10 @@ class FlextInfraTransformersSemanticPublication:
                 ).plan_files(source_project=source_project)
             if generated.failure:
                 return result_type.from_failure(generated)
+            prior, staged = combined, generated.value
             composed = result_type.create_from_callable(
-                lambda: u.Infra.codegen_compose_file_plans(
-                    (*combined, *generated.value), ordered=True, inputs=inputs
+                lambda prior=prior, staged=staged: u.Infra.codegen_compose_file_plans(
+                    (*prior, *staged), ordered=True, inputs=inputs
                 )
             )
             if composed.failure:

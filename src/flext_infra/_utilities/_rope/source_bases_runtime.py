@@ -18,6 +18,7 @@ from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesInventory,
 )
@@ -77,16 +78,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             The operation-local factory; construction failures escape unchanged.
 
         """
-        entry = sources.get("flext_core._protocols._logging")
-        if entry is not None:
-            import sys as _sys
-
-            print(
-                f"FACTORY-DBG len={len(entry[1])} "
-                f"has03={'FlextProtocolsLoggingPart03' in entry[1]}",
-                file=_sys.stderr,
-                flush=True,
-            )
         return cache(
             partial(
                 cls.source_member_resolver,
@@ -1632,16 +1623,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if resource is None:
                 return {}
             source = declaring.source_code
-            if "_logging" in str(resource.real_path):
-                import sys as _sys
-
-                print(
-                    f"LAZY-DBG path={resource.real_path} "
-                    f"len={len(source)} has03={'Part03' in source} "
-                    f"captured={'flext_core._protocols._logging' in self._sources}",
-                    file=_sys.stderr,
-                    flush=True,
-                )
             used_disk = False
             if "install_lazy_exports" not in source and resource.exists():
                 # A cached candidate view can trail the latest projection:

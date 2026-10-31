@@ -37,4 +37,4 @@ class FlextInfraGatesRuffGate(FlextInfraGates):
         }
 
 
-__all__: list[str] = ["FlextInfraGatesRuff"]
+__all__: list[str] = ["FlextInfraGatesRuffGate"]

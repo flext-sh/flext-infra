@@ -68,9 +68,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ] = tuple(sorted(c.Infra.PROMOTED_ENV_ENABLED_VALUES))
         flext_editable_selection_relative_path: Annotated[
             Path,
-            m.Field(
-                description="Repository-relative FLEXT editable selection receipt"
-            ),
+            m.Field(description="Repository-relative FLEXT editable selection receipt"),
         ] = c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH
 
     class BootstrapRequirementsRenderSpec(
@@ -110,9 +108,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ]
         flext_editable_selection_relative_path: Annotated[
             Path,
-            m.Field(
-                description="Repository-relative FLEXT editable selection receipt"
-            ),
+            m.Field(description="Repository-relative FLEXT editable selection receipt"),
         ]
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[

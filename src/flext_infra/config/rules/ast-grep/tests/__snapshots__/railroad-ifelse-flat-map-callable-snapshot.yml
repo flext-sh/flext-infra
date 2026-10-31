@@ -13,6 +13,14 @@ snapshots:
       style: primary
       start: 40
       end: 156
+    - source: p.Result[str]
+      style: secondary
+      start: 21
+      end: 34
+    - source: p.Result[str]
+      style: secondary
+      start: 21
+      end: 34
     - source: |-
         def process(self) -> p.Result[str]:
             if result.failure:
@@ -35,6 +43,18 @@ snapshots:
       style: primary
       start: 41
       end: 146
+    - source: r
+      style: secondary
+      start: 29
+      end: 30
+    - source: r[int]
+      style: secondary
+      start: 29
+      end: 35
+    - source: r[int]
+      style: secondary
+      start: 29
+      end: 35
     - source: |-
         def process_success(self) -> r[int]:
             if result.success:

@@ -79,8 +79,6 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             for path, source in cls.facade_original_sources(scope, states).items()
         }
 
-    @classmethod
-    @contextmanager
     @staticmethod
     def project_captured_sources(
         project: p.Infra.RopeProject,

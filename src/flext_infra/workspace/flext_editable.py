@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -104,18 +105,56 @@ class FlextInfraWorkspaceFlextEditable:
                 for repository in spec.value.subprojects
             ),
         )
+        # Every distribution the consumer DECLARES and the workspace PROVIDES is
+        # an editable candidate — not only the currently-installed ones. A prior
+        # plain setup (lock-only sync) may have removed a member entirely (or
+        # the receipt's sync exclusions kept it out); electing from installed
+        # state alone then never restores it and the consumer's pin check fails
+        # forever. The declared-deps intersection keeps workspace members the
+        # consumer does not use (e.g. the umbrella meta-distribution) out of the
+        # receipt — the provenance gate needs an installed distribution per
+        # receipt member.
+        declared = cls._declared_dependency_names(runtime_root)
         distributions = {
             repository.distribution: source.resolve()
             for repository, source in provided
-            if repository.package
-            and u.installed_distributions(
-                name=repository.distribution,
-                path=metadata_paths,
-            )
+            if repository.package and repository.distribution in declared
         }
         return r[tuple[dict[str, Path], tuple[str, ...]]].ok(
             (distributions, metadata_paths),
         )
+
+    @staticmethod
+    def _declared_dependency_names(runtime_root: Path) -> set[str]:
+        """Distribution names the consumer's pyproject declares (all groups).
+
+        Returns:
+            The canonicalized names across runtime dependencies and every
+            dependency group, markers and extras stripped.
+
+        """
+        from packaging.requirements import InvalidRequirement, Requirement
+        from packaging.utils import canonicalize_name
+
+        manifest = runtime_root / c.PYPROJECT_FILENAME
+        if not manifest.is_file():
+            return set()
+        try:
+            import tomllib
+
+            payload = tomllib.loads(manifest.read_text())
+        except (OSError, ValueError):
+            return set()
+        raw: list[str] = list(payload.get("project", {}).get("dependencies", []))
+        for group in (payload.get("dependency-groups") or {}).values():
+            raw.extend(group)
+        names: set[str] = set()
+        for declaration in raw:
+            try:
+                names.add(canonicalize_name(Requirement(declaration).name))
+            except (InvalidRequirement, ValueError):
+                continue
+        return names
 
     @classmethod
     def _execute_pip_install(
@@ -186,7 +225,16 @@ class FlextInfraWorkspaceFlextEditable:
             timeout=c.Infra.TIMEOUT_LONG,
         )
         if checked.failure:
-            return r[bool].from_failure(checked)
+            # Receipt-bound editables satisfy direct-URL pins by SOURCE, not by
+            # direct_url metadata — uv pip check cannot see the receipt and
+            # reports "<dist> @ git+..., but it's not installed" for exactly
+            # the distributions this flow binds. Tolerate a failure only when
+            # every distribution it names is receipt-bound (their editable
+            # origins are verified below); anything else stays a hard failure.
+            named = set(re.findall(r"package `([^`]+)` requires", checked.error or ""))
+            receipt_bound = set(selection.distributions)
+            if not named or not named <= receipt_bound:
+                return r[bool].from_failure(checked)
         verified = cls._pending_sources(runtime_root, selection)
         if verified.failure:
             return r[bool].from_failure(verified)

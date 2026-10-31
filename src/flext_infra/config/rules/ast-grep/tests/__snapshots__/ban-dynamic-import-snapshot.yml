@@ -6,12 +6,32 @@ snapshots:
       style: primary
       start: 45
       end: 66
+    - source: from importlib import import_module
+      style: secondary
+      start: 0
+      end: 35
+    - source: |
+        from importlib import import_module
+        module = import_module("json")
+      style: secondary
+      start: 0
+      end: 67
   "import importlib as loader\nmodule = loader.import_module(\"json\")\n":
     labels:
     - source: loader.import_module("json")
       style: primary
       start: 36
       end: 64
+    - source: import importlib as loader
+      style: secondary
+      start: 0
+      end: 26
+    - source: |
+        import importlib as loader
+        module = loader.import_module("json")
+      style: secondary
+      start: 0
+      end: 65
   "module = importlib.import_module(\"json\")\n":
     labels:
     - source: importlib.import_module("json")
