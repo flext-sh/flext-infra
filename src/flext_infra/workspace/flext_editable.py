@@ -142,10 +142,11 @@ class FlextInfraWorkspaceFlextEditable:
         if pending.value:
             installed = u.Cli.run_live(
                 (
-                    python,
-                    "-m",
+                    str(uv),
                     "pip",
                     "install",
+                    "--python",
+                    python,
                     "--no-deps",
                     *(
                         argument
