@@ -66,6 +66,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             tuple[t.NonEmptyStr, ...],
             m.Field(description="OPTIONS or HELP values that display a verb contract"),
         ] = tuple(sorted(c.Infra.PROMOTED_ENV_ENABLED_VALUES))
+        flext_editable_selection_relative_path: Annotated[
+            Path,
+            m.Field(
+                description="Repository-relative FLEXT editable selection receipt"
+            ),
+        ] = c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH
 
     class BootstrapRequirementsRenderSpec(
         FlextInfraModelsConfigContract.ConfigContract
