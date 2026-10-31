@@ -69,6 +69,7 @@ class TestsFlextInfraModRuleExpectedReceipt:
                 "mod",
                 "--repository-root",
                 str(mod_workspace),
+                "--check",
             ])
 
     def test_a_matching_receipt_does_not_block_the_scan(
@@ -84,6 +85,7 @@ class TestsFlextInfraModRuleExpectedReceipt:
             "mod",
             "--repository-root",
             str(mod_workspace),
+            "--check",
         ])
         capture = capsys.readouterr()
 

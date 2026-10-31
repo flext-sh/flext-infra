@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, codegen, deps, infra, m, p, settings, u
+from flext_infra import c, codegen, deps, infra, m, p, u
 from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
@@ -15,18 +15,13 @@ class FlextInfraCodegenRoutes:
 
     @staticmethod
     def execute_upgrade_lock(request: p.Infra.WorkspaceRequest) -> p.Result[bool]:
-        """Compose the lock upgrade with the shared native command runner.
+        """Compose lock verification and the Mise upgrade with the native runner.
 
         Returns:
-            The lock upgrade result, or its first native failure.
+            The verification and Mise upgrade result, or its first native failure.
 
         """
-        return deps.FlextInfraLockIntegrityVerifier.upgrade_lock(
-            request,
-            u.Cli,
-            file_publisher=u.Infra,
-            packages=settings.Infra.upgrade_packages,
-        )
+        return deps.FlextInfraLockIntegrityVerifier.upgrade_lock(request, u.Cli)
 
     @staticmethod
     def check_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
@@ -191,7 +186,7 @@ class FlextInfraCodegenRoutes:
         return FlextInfraUtilitiesBase.result_routes((
             (
                 "upgrade-lock",
-                "Upgrade the elected native UV and Mise locks without installing",
+                "Verify the native UV lock and upgrade the Mise locks",
                 m.Infra.WorkspaceRequest,
                 FlextInfraCodegenRoutes.execute_upgrade_lock,
                 "native dependency resolution and lock verification completed",

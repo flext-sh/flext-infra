@@ -122,83 +122,33 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
 
     @staticmethod
-    def kind_declaration_projection(
-        repository_root: Path, kind: c.Infra.ProjectKind
-    ) -> m.Infra.CodegenLayerProjection:
-        """Project an explicitly requested kind onto the repository's own layer.
-
-        Kind bootstrap is the one flow that reads a repository before its own
-        layer declares a kind; the operator-requested value is projected, never
-        assumed, and the own layer's raw bytes still guard against a conflict.
-
-        Returns:
-            The projection declaring ``kind`` in the repository's own layer.
-
-        """
-        layers = FlextInfraConfig.config_layer_paths_for_repository(
-            repository_root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        return m.Infra.CodegenLayerProjection(
-            path=layers[1],
-            values={"Infra": {"codegen": {"repository": {"kind": kind.value}}}},
-        )
-
-    @staticmethod
-    def require_declared_kind(repository: t.JsonValue, repository_root: Path) -> bool:
-        """Fail closed when a repository document does not declare its kind.
+    def require_declared_kind(
+        repository: t.JsonValue, repository_root: Path
+    ) -> c.Infra.ProjectKind:
+        """Read the governance kind a repository declares, failing closed.
 
         The kind decides whether any generator may rewrite the repository, so
         it is read from the repository's own declaration and never assumed.
 
         Returns:
-            True when the composed repository section declares a kind.
+            The repository's own declared governance kind.
 
         Raises:
-            ValueError: The composed declaration carries no
+            ValueError: The repository declaration carries no
                 ``Infra.codegen.repository.kind``; the message names the
                 repository and the file that must declare it.
 
         """
-        if isinstance(repository, Mapping) and repository.get("kind") is not None:
-            return True
-        raise FlextInfraUtilitiesProjectManagedArtifacts._undeclared_kind(
-            repository_root
-        )
-
-    @staticmethod
-    def declared_kind(
-        declaration: m.Infra.RepositoryDeltaSpec, repository_root: Path
-    ) -> c.Infra.ProjectKind:
-        """Return the kind a validated repository declaration carries.
-
-        Returns:
-            The repository's own declared governance kind.
-
-        Raises:
-            ValueError: The declaration carries no kind.
-
-        """
-        if declaration.kind is None:
-            raise FlextInfraUtilitiesProjectManagedArtifacts._undeclared_kind(
-                repository_root
-            )
-        return declaration.kind
-
-    @staticmethod
-    def _undeclared_kind(repository_root: Path) -> ValueError:
-        """Name the repository and the file that must declare its kind.
-
-        Returns:
-            The fail-closed error for an undeclared governance kind.
-
-        """
+        declared = repository.get("kind") if isinstance(repository, Mapping) else None
+        if declared is not None:
+            return c.Infra.ProjectKind(str(declared))
         root = repository_root.resolve()
         own = root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_CONFIG_FILENAME
-        return ValueError(
+        msg = (
             f"repository governance kind is not declared: {root}"
             f" (declare Infra.codegen.repository.kind in {own})"
         )
+        raise ValueError(msg)
 
     @classmethod
     def contained_write_targets(
@@ -346,7 +296,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         if section.failure:
             return result_type.from_failure(section)
         repository = section.value.get("repository", {})
-        declared = r[bool].create_from_callable(
+        declared = r[c.Infra.ProjectKind].create_from_callable(
             partial(cls.require_declared_kind, repository, repository_root)
         )
         if declared.failure:

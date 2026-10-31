@@ -666,6 +666,13 @@ Infra:
       # parent directory is the superproject checkout, so a scratch "beside the
       # checkout" landed inside another repository and Git refused every test
       # fixture repository created there.
+      # Native creator identity of the runtime environment (pyvenv.cfg, written
+      # by uv). Setup recreates an environment created by another uv or Python
+      # than the declared toolchain; `uv sync` alone keeps it.
+      environment_identity:
+        marker_file: pyvenv.cfg
+        uv_key: uv
+        python_key: version_info
       pytest_scratch:
         user_home_environment_variable: HOME
         home_relative_directory: .local/state

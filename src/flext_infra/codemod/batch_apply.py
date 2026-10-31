@@ -252,24 +252,53 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             The complete all-root candidate with target-only syntax effects,
             or the first staging, scan or replacement failure.
 
+        The wave loop refuses native residue and repeated states loudly
+        (``_require_wave_progress``).
+
         Raises:
-            RuntimeError: If the syntax cascade repeats a source state, or a
-                native-eligible rule still reports an actionable finding
-                after the native cascade.
             ValueError: If native syntax planning requires its original scan rule plan.
 
         """
-        outcome = r[m.Infra.StageSourcePlan]
-        plans: dict[Path, m.Infra.SemanticFilePlan] = {}
         rule_plan = current.rule_plan
         if rule_plan is None:
             msg = "native syntax planning requires its original scan rule plan"
             raise ValueError(msg)
+        plans = self._native_plans(root, rule_plan, inputs, seed)
+        start = (
+            self._preview_ast_candidate(root, plans, inputs, seed)
+            if seed.updates or plans
+            else r[m.Infra.ModScanReport].ok(current)
+        )
+        if start.failure:
+            return r[m.Infra.StageSourcePlan].from_failure(start)
         native_ids = frozenset(
             rule.id for rule in rule_plan.rules if u.Infra.codemod_native_eligible(rule)
         )
-        for path, content in self._native_cascade(rule_plan, inputs, seed).items():
-            plans[path] = m.Infra.SemanticFilePlan(
+        converged = self._syntax_waves(
+            root,
+            FlextInfraModGateEngine.authored(start.value),
+            native_ids,
+            (plans, inputs, seed),
+        )
+        if converged.failure:
+            return r[m.Infra.StageSourcePlan].from_failure(converged)
+        return self._admitted_syntax(root, plans, inputs, seed)
+
+    def _native_plans(
+        self,
+        root: Path,
+        rule_plan: m.Infra.CodemodRulePlan,
+        inputs: Mapping[Path, m.Cli.AtomicFileState],
+        seed: m.Infra.StageSourcePlan,
+    ) -> dict[Path, m.Infra.SemanticFilePlan]:
+        """Bind every native-cascade rewrite to its captured input state.
+
+        Returns:
+            One syntax plan per source the native cascade changed.
+
+        """
+        return {
+            path: m.Infra.SemanticFilePlan(
                 project=u.Infra.project_root(path) or root,
                 path=path,
                 before=inputs[path],
@@ -277,67 +306,118 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 desired_mode=inputs[path].mode,
                 changes=(c.Infra.MOD_NATIVE_CASCADE_CHANGE,),
             )
-        if seed.updates or plans:
-            previewed = self._preview_ast_candidate(root, plans, inputs, seed)
-            if previewed.failure:
-                return outcome.from_failure(previewed)
-            after_ast = FlextInfraModGateEngine.authored(previewed.value)
-        else:
-            after_ast = FlextInfraModGateEngine.authored(current)
+            for path, content in self._native_cascade(rule_plan, inputs, seed).items()
+        }
+
+    def _syntax_waves(
+        self,
+        root: Path,
+        after_ast: m.Infra.ModScanReport,
+        native_ids: frozenset[str],
+        state: tuple[
+            dict[Path, m.Infra.SemanticFilePlan],
+            MutableMapping[Path, m.Cli.AtomicFileState],
+            m.Infra.StageSourcePlan,
+        ],
+    ) -> p.Result[bool]:
+        """Compose engine replacement waves until no actionable finding remains.
+
+        Returns:
+            ``True`` at the syntax fixed point, or the first wave failure.
+
+        """
+        plans, inputs, seed = state
         seen: set[tuple[tuple[str, str], ...]] = set()
         while after_ast.actionable:
-            residue = sorted({
-                entry.rule_id
-                for entry in after_ast.entries
-                if entry.actionable and entry.rule_id in native_ids
-            })
-            if residue:
-                msg = (
-                    "native cascade left actionable findings of native rules: "
-                    f"{', '.join(residue)}"
-                )
-                raise RuntimeError(msg)
-            state = tuple(
-                sorted(
-                    (str(path), plan.desired_content.hex())
-                    for path, plan in plans.items()
-                    if plan.desired_content is not None
-                )
-            )
-            if state in seen:
-                msg = "mod syntax cascade cycle before semantic publication"
-                raise RuntimeError(msg)
-            seen.add(state)
-            before_ast = after_ast
+            self._require_wave_progress(after_ast, native_ids, plans, seen)
             wave = FlextInfraModReplacements.compose(root, after_ast)
             if wave.failure:
-                return outcome.from_failure(wave)
-            for plan in wave.value:
-                original = plans.get(plan.path)
-                if plan.path not in plans:
-                    inputs.setdefault(plan.path, plan.before)
-                plans[plan.path] = plan.model_copy(
-                    update={
-                        "before": (
-                            inputs[plan.path] if original is None else original.before
-                        ),
-                        "changes": (
-                            plan.changes
-                            if original is None
-                            else (*original.changes, *plan.changes)
-                        ),
-                    }
-                )
+                return r[bool].from_failure(wave)
+            self._merge_wave(plans, inputs, wave.value)
             previewed = self._preview_ast_candidate(root, plans, inputs, seed)
             if previewed.failure:
-                return outcome.from_failure(previewed)
+                return r[bool].from_failure(previewed)
+            before_ast = after_ast
             after_ast = FlextInfraModGateEngine.authored(previewed.value)
             FlextInfraCodemodBatchApply.validate_fix_match(before_ast, after_ast)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _require_wave_progress(
+        after_ast: m.Infra.ModScanReport,
+        native_ids: frozenset[str],
+        plans: Mapping[Path, m.Infra.SemanticFilePlan],
+        seen: set[tuple[tuple[str, str], ...]],
+    ) -> None:
+        """Refuse native residue and a repeated syntax candidate state.
+
+        Raises:
+            RuntimeError: If a native-eligible rule still reports an actionable
+                finding, or the syntax cascade repeats a source state.
+
+        """
+        residue = sorted({
+            entry.rule_id
+            for entry in after_ast.entries
+            if entry.actionable and entry.rule_id in native_ids
+        })
+        if residue:
+            msg = (
+                "native cascade left actionable findings of native rules: "
+                f"{', '.join(residue)}"
+            )
+            raise RuntimeError(msg)
+        state = tuple(
+            sorted(
+                (str(path), plan.desired_content.hex())
+                for path, plan in plans.items()
+                if plan.desired_content is not None
+            )
+        )
+        if state in seen:
+            msg = "mod syntax cascade cycle before semantic publication"
+            raise RuntimeError(msg)
+        seen.add(state)
+
+    @staticmethod
+    def _merge_wave(
+        plans: dict[Path, m.Infra.SemanticFilePlan],
+        inputs: MutableMapping[Path, m.Cli.AtomicFileState],
+        wave: Sequence[m.Infra.SemanticFilePlan],
+    ) -> None:
+        """Fold one wave into the plans, keeping each file's first witness."""
+        for plan in wave:
+            original = plans.get(plan.path)
+            if original is None:
+                inputs.setdefault(plan.path, plan.before)
+                plans[plan.path] = plan.model_copy(update={"before": inputs[plan.path]})
+                continue
+            plans[plan.path] = plan.model_copy(
+                update={
+                    "before": original.before,
+                    "changes": (*original.changes, *plan.changes),
+                }
+            )
+
+    @staticmethod
+    def _admitted_syntax(
+        root: Path,
+        plans: Mapping[Path, m.Infra.SemanticFilePlan],
+        inputs: Mapping[Path, m.Cli.AtomicFileState],
+        seed: m.Infra.StageSourcePlan,
+    ) -> p.Result[m.Infra.StageSourcePlan]:
+        """Stage the admitted syntax fixes over the seed candidate.
+
+        Returns:
+            The seed when no syntax plan exists, else the staged candidate, or
+            the admission or staging failure.
+
+        """
         if not plans:
-            return outcome.ok(seed)
+            return r[m.Infra.StageSourcePlan].ok(seed)
         accepted = FlextInfraModReplacements.admit(root, tuple(plans.values()))
         if accepted.failure:
-            return outcome.from_failure(accepted)
+            return r[m.Infra.StageSourcePlan].from_failure(accepted)
         return FlextInfraStagedPackage.plan_sources(
             seed.workspace,
             {
@@ -584,11 +664,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             or quarantine, or the first unattributed failure.
 
         """
-        outcome = r[m.Infra.ModPhaseAdvance]
         fingerprint = FlextInfraCodemodSemanticApply.source_fingerprint
-        phase_states = [fingerprint(root, current)]
         voided = m.Infra.ModPhaseAdvance(
-            report=current, phase_states=tuple(phase_states)
+            report=current, phase_states=(fingerprint(root, current),)
         )
         seeded = self._phase_seed(root, rope_workspace)
         if seeded.failure:
@@ -596,45 +674,99 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         inputs = {state.path: state for state in seeded.value.candidate.inputs}
         drifted = self._capture_ast_inputs(root, inputs)
         if drifted:
-            return outcome.ok(voided.model_copy(update={"drifted": drifted}))
-        captured = tuple(inputs.values())
+            return r[m.Infra.ModPhaseAdvance].ok(
+                voided.model_copy(update={"drifted": drifted})
+            )
+        planned = self._plan_iteration(
+            root,
+            current,
+            (seeded.value, inputs),
+            text_precondition_pending=text_precondition_pending,
+        )
+        if planned.failure:
+            return self._attributed(planned, voided, tuple(inputs.values()))
+        return self._publish_iteration(
+            root,
+            rope_workspace,
+            (planned.value, (*inputs.values(), *planned.value.candidate.inputs)),
+            voided,
+            publish=publish,
+        )
+
+    def _plan_iteration(
+        self,
+        root: Path,
+        current: m.Infra.ModScanReport,
+        captured: tuple[
+            m.Infra.SemanticSourcePlan,
+            MutableMapping[Path, m.Cli.AtomicFileState],
+        ],
+        *,
+        text_precondition_pending: bool,
+    ) -> p.Result[m.Infra.SemanticSourcePlan]:
+        """Compose every phase's effects inside one fresh planning graph.
+
+        Returns:
+            The publication candidate without quarantined effects, or the
+            first planning failure.
+
+        """
+        seed, _inputs = captured
         with FlextInfraCodemodSemanticApply.planning_workspace(
-            root, seeded.value, self._candidate_sources(seeded.value.candidate)
+            root, seed, self._candidate_sources(seed.candidate)
         ) as graph:
             prepared = self._prepare_phase_seed(
                 root,
                 current,
-                (seeded.value, inputs),
+                captured,
                 graph,
                 text_precondition_pending=text_precondition_pending,
             )
             if prepared.failure:
-                return self._attributed(prepared, voided, captured)
+                return prepared
             semantic = self._plan_semantic_phase(root, prepared.value, graph)
             if semantic.failure:
-                return self._attributed(semantic, voided, captured)
+                return semantic
             publication = self._plan_publication_candidate(root, semantic.value, graph)
-            if publication.failure:
-                return self._attributed(publication, voided, captured)
-        candidate = self._without_quarantined(publication.value)
-        if candidate.failure:
-            return outcome.from_failure(candidate)
-        captured = (*captured, *candidate.value.candidate.inputs)
+        return publication.flat_map(self._without_quarantined)
+
+    def _publish_iteration(
+        self,
+        root: Path,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        planned: tuple[m.Infra.SemanticSourcePlan, Sequence[m.Cli.AtomicFileState]],
+        voided: m.Infra.ModPhaseAdvance,
+        *,
+        publish: bool,
+    ) -> p.Result[m.Infra.ModPhaseAdvance]:
+        """Publish one unchanged-input candidate, or void it on external drift.
+
+        Returns:
+            The finished iteration, the voided iteration naming its drift or
+            quarantine, or the first unattributed publication failure.
+
+        """
+        candidate, captured = planned
         drifted = self._drifted(captured)
         if drifted:
-            return outcome.ok(voided.model_copy(update={"drifted": drifted}))
+            return r[m.Infra.ModPhaseAdvance].ok(
+                voided.model_copy(update={"drifted": drifted})
+            )
         accepted = FlextInfraCodemodSemanticApply.publish_candidate(
-            root, candidate.value, publish=publish
+            root, candidate, publish=publish
         )
         if accepted.failure:
             # The publisher's compare-and-swap rejects the whole batch; only an
             # observed external change makes that rejection new input. A
             # failure after its own writes is never drift.
             if (accepted.error_data or {}).get(c.Infra.MOD_WRITTEN_FILES_KEY):
-                return outcome.from_failure(accepted)
+                return r[m.Infra.ModPhaseAdvance].from_failure(accepted)
             return self._attributed(accepted, voided, captured)
         return self._finish_phases(
-            root, rope_workspace, current, (publish, accepted.value, phase_states)
+            root,
+            rope_workspace,
+            voided.report,
+            (publish, accepted.value, list(voided.phase_states)),
         )
 
     def _attributed(
@@ -796,17 +928,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
         """
         if self.rename_plan is None:
-            built = FlextInfraCodemodSemanticApply.build_source_plan(
-                root, self.consumer_roots
-            )
-            if built.failure:
-                return built
-            named = FlextInfraCodemodSemanticApply.plan_module_names(root, built.value)
-            if named.success and not self._coherent(
-                "module-naming", named.value.candidate.updates
-            ):
-                return built
-            return named
+            return self._campaign_seed(root)
         loaded = FlextInfraCodemodSemanticApply.load_rename_artifact(
             root,
             m.Infra.ModCommand(repository_root=root, rename_plan=self.rename_plan),
@@ -819,6 +941,39 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         )
         if current.failure:
             return r[m.Infra.SemanticSourcePlan].from_failure(current)
+        return self._admitted_rename_seed(seed)
+
+    def _campaign_seed(self, root: Path) -> p.Result[m.Infra.SemanticSourcePlan]:
+        """Capture the source campaign and its module-naming rename candidate.
+
+        A rename spanning a quarantined module is dropped whole, leaving the
+        captured campaign without it.
+
+        Returns:
+            The named or plain campaign, or the first capture failure.
+
+        """
+        built = FlextInfraCodemodSemanticApply.build_source_plan(
+            root, self.consumer_roots
+        )
+        if built.failure:
+            return built
+        named = FlextInfraCodemodSemanticApply.plan_module_names(root, built.value)
+        if named.success and not self._coherent(
+            "module-naming", named.value.candidate.updates
+        ):
+            return built
+        return named
+
+    def _admitted_rename_seed(
+        self, seed: m.Infra.SemanticSourcePlan
+    ) -> p.Result[m.Infra.SemanticSourcePlan]:
+        """Admit an authenticated rename artifact for this run's scope.
+
+        Returns:
+            The artifact seed, or the scope or quarantine refusal.
+
+        """
         if self.consumer_roots and set(self.consumer_roots) != set(seed.consumer_roots):
             return r[m.Infra.SemanticSourcePlan].fail(
                 "run consumer roots differ from the native rename artifact"

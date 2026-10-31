@@ -241,6 +241,17 @@ Infra:
         # rumdl exits 1 on any violation and 2 on an error: a repair verb
         # completes with findings under this status; any other fails it.
         findings-exit-codes: [ 1 ]
+        # Projected blocks written by a foreign writer between its own marker
+        # lines (rule generators-not-projections): the markdown lint reads
+        # their inner lines masked, so a finding there is corrected only by
+        # that writer, never by hand. Marker lines stay visible, line numbers
+        # are preserved, and every finding outside a block is still reported.
+        # An unbalanced or unclosed marker fails the gate. FLEXT-owned blocks
+        # are never declared here.
+        projected-blocks:
+        - writer: beads
+          begin: '<!-- BEGIN BEADS (?P<block>[A-Z]+(?: [A-Z]+)*)(?:[: ].*)? -->'
+          end: '<!-- END BEADS (?P<block>[A-Z]+(?: [A-Z]+)*) -->'
         rules:
         - [default, true]
         - [MD001, false]

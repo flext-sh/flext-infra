@@ -36,14 +36,34 @@ class FlextInfraGatesMarkdown(FlextInfraMarkdownGateBase):
         ctx: m.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
-        """Lint the collected Markdown files read-only.
+        """Lint the collected Markdown files read-only, through their lint view.
+
+        rumdl has no configuration that excludes a region of a file, so the
+        check reads every target from ``--stdin-batch`` (see ``_check_input``)
+        under its own path, with declared foreign projected blocks masked.
 
         Returns:
             The rumdl check invocation.
 
         """
+        del ctx, check_dirs
+        return self._rumdl_command(project_dir, "check", (), "--stdin-batch")
+
+    @override
+    def _check_input(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        targets: Sequence[str],
+    ) -> str:
+        """Supply every target's projected-block lint view on stdin.
+
+        Returns:
+            The rumdl ``--stdin-batch`` payload.
+
+        """
         del ctx
-        return self._rumdl_command(project_dir, "check", check_dirs)
+        return self.projected_block_stdin_batch(project_dir, targets)
 
     @override
     def _build_fix_command(

@@ -649,6 +649,29 @@ class FlextInfraModelsConfigMake(
                     raise ValueError(msg)
                 return self
 
+        class EnvironmentIdentitySpec(FlextInfraModelsConfigContract.ConfigContract):
+            """Creator identity recorded by the native environment creator.
+
+            Setup reads these keys from the runtime environment's marker file
+            and compares them with the Mise-resolved uv and Python. A divergent
+            creator is recreated by native ``uv venv --clear`` before the frozen
+            installation, because ``uv sync`` keeps an environment whose
+            interpreter still satisfies the request.
+            """
+
+            marker_file: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Environment-relative creator marker file"),
+            ]
+            uv_key: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Marker key holding the creating uv version"),
+            ]
+            python_key: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Marker key holding the interpreter version"),
+            ]
+
         class PytestScratchSpec(FlextInfraModelsConfigContract.ConfigContract):
             """Scratch root every pytest-running verb declares (storage law).
 
@@ -800,6 +823,15 @@ class FlextInfraModelsConfigMake(
         pytest_scratch: Annotated[
             PytestScratchSpec,
             m.Field(description="Scratch root declared by every pytest verb"),
+        ]
+        environment_identity: Annotated[
+            EnvironmentIdentitySpec,
+            m.Field(
+                description=(
+                    "Native creator identity setup compares with the declared "
+                    "toolchain before installing into the runtime environment"
+                )
+            ),
         ]
         gate_acceptance_policy: Annotated[
             FlextInfraConstantsConfig.GateAcceptancePolicy,

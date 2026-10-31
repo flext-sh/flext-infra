@@ -63,8 +63,8 @@ class _ExternalWriterPhase:
             _ = self.target.write_text(self.content, encoding="utf-8")
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
 
+    @staticmethod
     def apply(
-        self,
         root: Path,
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
@@ -135,8 +135,8 @@ class _OneModuleFailsPhase:
             )
         )
 
+    @staticmethod
     def apply(
-        self,
         root: Path,
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
@@ -181,8 +181,8 @@ class _IndependentFixPhase:
             return result.ok(())
         return result.ok((_rewrite(self.target, self.desired),))
 
+    @staticmethod
     def apply(
-        self,
         root: Path,
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,

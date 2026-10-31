@@ -52,11 +52,21 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
             source_roots: tuple[Path, ...] = (),
             dependency_roots: tuple[Path, ...] = (),
+            captures: tuple[
+                dict[str, Path],
+                dict[Path, m.Cli.AtomicFileState],
+                dict[Path, set[str]],
+                set[Path],
+                bool,
+            ]
+            | None = None,
         ) -> None:
             """Pin captured reads before admitting declared source effects.
 
             ``None`` selects native first-read observation. An explicit tuple,
             including an empty tuple, selects a closed source observation.
+            ``captures`` shares another view's first-read witnesses (see
+            ``derive``); ``None`` starts an independent capture.
 
             """
             self._physical: dict[str, Path] = {}
@@ -75,9 +85,42 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self._closed_observations = observations is not None
             self.plans: tuple[m.Infra.CodegenFilePlan, ...] = ()
             self.analysis: Mapping[Path, bytes] = {}
+            if captures is not None:
+                (
+                    self._physical,
+                    self._states,
+                    self._observed_children,
+                    self._observed_directories,
+                    self._closed_observations,
+                ) = captures
             for state in observations if observations is not None else ():
                 self._record_observation(state)
             self.replace(plans)
+
+        @property
+        def captures(
+            self,
+        ) -> tuple[
+            dict[str, Path],
+            dict[Path, m.Cli.AtomicFileState],
+            dict[Path, set[str]],
+            set[Path],
+            bool,
+        ]:
+            """The first-read witnesses a derived view shares by reference.
+
+            Returns:
+                Physical identities, captured states, observed membership and
+                whether the observation is closed.
+
+            """
+            return (
+                self._physical,
+                self._states,
+                self._observed_children,
+                self._observed_directories,
+                self._closed_observations,
+            )
 
         def _record_observation(self, state: m.Cli.AtomicFileState) -> None:
             """Retain one witness and its original filesystem membership.
@@ -137,17 +180,12 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 A distinct view without planned effects.
 
             """
-            view = type(self)(
+            return type(self)(
                 (),
                 source_roots=self._source_roots,
                 dependency_roots=self._dependency_roots,
+                captures=self.captures,
             )
-            view._physical = self._physical
-            view._states = self._states
-            view._observed_children = self._observed_children
-            view._observed_directories = self._observed_directories
-            view._closed_observations = self._closed_observations
-            return view
 
         def select_source_roots(self, roots: tuple[Path, ...]) -> None:
             """Use the native election's current source roots for captured reads."""
@@ -261,10 +299,73 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             Returns:
                 Changed source paths and their preceding/following existence.
 
+            """
+            views = self._analysis_views(analysis)
+            selected = self._selected_plans(plans, views)
+            for plan in selected.values():
+                self._record_observation(plan.before)
+            changed: list[tuple[Path, bool, bool]] = []
+            for path in sorted(
+                self._files.keys() | self._hidden | selected.keys() | views.keys()
+            ):
+                previous = (
+                    self._files[path]
+                    if path in self._files
+                    else None
+                    if path in self._hidden
+                    else self._states[path].content
+                )
+                plan = selected.get(path)
+                following = (
+                    views[path]
+                    if path in views
+                    else self._states[path].content
+                    if plan is None
+                    else plan.desired_content
+                )
+                if previous != following:
+                    changed.append((path, previous is not None, following is not None))
+                self._overlay_path(
+                    path,
+                    following,
+                    overlaid=plan is not None or path in views,
+                    hidden=plan is not None and following is None,
+                )
+            self.plans = plans
+            self.analysis = views
+            return tuple(changed)
+
+        def _overlay_path(
+            self,
+            path: Path,
+            following: bytes | None,
+            *,
+            overlaid: bool,
+            hidden: bool,
+        ) -> None:
+            """Apply one path's following bytes, membership and hidden state."""
+            if path in self._files and (not overlaid or following is None):
+                del self._files[path]
+                self._remove_membership(path)
+            if overlaid and following is not None:
+                if path not in self._files:
+                    self._add_membership(path)
+                self._files[path] = following
+            if hidden:
+                self._hidden.add(path)
+            else:
+                self._hidden.discard(path)
+
+        def _analysis_views(
+            self, analysis: Mapping[Path, bytes] | None
+        ) -> dict[Path, bytes]:
+            """Admit read-only analysis bytes that shadow no owned source.
+
+            Returns:
+                The resolved analysis view of each supplied path.
+
             Raises:
-                ValueError: A candidate disagrees with a retained witness,
-                    contains conflicting declarations for one physical path,
-                    or an analysis view shadows an owned source or a plan.
+                ValueError: An analysis view shadows an owned source.
 
             """
             views: dict[Path, bytes] = {}
@@ -275,6 +376,23 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     raise ValueError(msg)
                 self.source_state(path)
                 views[path] = content
+            return views
+
+        def _selected_plans(
+            self,
+            plans: tuple[m.Infra.CodegenFilePlan, ...],
+            views: Mapping[Path, bytes],
+        ) -> dict[Path, m.Infra.CodegenFilePlan]:
+            """Select one consistent candidate plan per physical path.
+
+            Returns:
+                Each resolved path with its single declared plan.
+
+            Raises:
+                ValueError: A plan disagrees with a retained witness or another
+                    plan for the same path, or an analysis view shadows it.
+
+            """
             selected: dict[Path, m.Infra.CodegenFilePlan] = {}
             for plan in plans:
                 path = self._resolved(str(plan.path))
@@ -294,44 +412,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     msg = f"analysis view shadows a declared plan: {path}"
                     raise ValueError(msg)
                 selected[path] = plan
-            for plan in selected.values():
-                self._record_observation(plan.before)
-            changed: list[tuple[Path, bool, bool]] = []
-            for path in sorted(
-                self._files.keys() | self._hidden | selected.keys() | views.keys()
-            ):
-                previous = (
-                    self._files[path]
-                    if path in self._files
-                    else None
-                    if path in self._hidden
-                    else self._states[path].content
-                )
-                plan = selected.get(path)
-                overlaid = plan is not None or path in views
-                following = (
-                    views[path]
-                    if path in views
-                    else self._states[path].content
-                    if plan is None
-                    else plan.desired_content
-                )
-                if previous != following:
-                    changed.append((path, previous is not None, following is not None))
-                if path in self._files and (not overlaid or following is None):
-                    del self._files[path]
-                    self._remove_membership(path)
-                if overlaid and following is not None:
-                    if path not in self._files:
-                        self._add_membership(path)
-                    self._files[path] = following
-                if plan is not None and following is None:
-                    self._hidden.add(path)
-                else:
-                    self._hidden.discard(path)
-            self.plans = plans
-            self.analysis = views
-            return tuple(changed)
+            return selected
 
         def _add_membership(self, path: Path) -> None:
             """Add only the candidate path's ancestor membership."""

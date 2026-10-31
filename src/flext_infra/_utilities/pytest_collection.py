@@ -405,7 +405,7 @@ class FlextInfraUtilitiesPytestCollection:
     def collection_node_down(
         cls,
         node: t.Infra.Pytest.WorkerController,
-        error: object | None,
+        error: t.Infra.Pytest.WorkerDownError,
     ) -> None:
         """Publish one manifest after every admitted worker supplies its facts.
 

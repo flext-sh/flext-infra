@@ -418,6 +418,10 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     )
     MARKDOWN_FIXED_SUFFIX: ClassVar[str] = "[fixed]"
     "rumdl text-output suffix marking a finding its mutating pass repaired."
+    MARKDOWN_PROJECTED_BLOCK_MASK: ClassVar[str] = "<!-- -->"
+    "Lint-neutral line replacing each inner line of a foreign projected block."
+    MARKDOWN_STDIN_BATCH_SEPARATOR: ClassVar[str] = "\0"
+    "rumdl ``--stdin-batch`` delimiter after each path and after each content."
     MARKDOWN_FORMAT_DIFF_HEADERS: ClassVar[tuple[str, str]] = ("--- ", "+++ ")
     MARKDOWN_FORMAT_RE: ClassVar[t.RegexPattern] = re.compile(
         # Prettier applies terminal SGR styling to the warning label in CI.

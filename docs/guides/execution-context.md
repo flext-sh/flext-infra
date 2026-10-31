@@ -195,6 +195,18 @@ lock drift (operator order 2026-10-24): `uv sync --frozen` installs the committe
 `uv.lock` without re-resolving or rewriting it, and plain `mise install` honors
 every `mise.lock` entry and records only missing ones. Check reports drift through
 `uv lock --check`; upgrade alone advances versions and writes the native locks.
+Upgrade always cures, even from a stale lock or a broken environment (tracker
+memories `operator-ruling-2026-10-02-repair-never-deadlocks` and
+`operator-ruling-2026-10-09-setup-always-upg-cures`). The executor imports its
+FLEXT suppliers from the runtime environment, so generated `make upg` first runs
+native `uv lock --upgrade` with the Mise-resolved Python and no FLEXT Python,
+then the setup installation provisions exactly that lock, and only then invokes
+`deps upgrade-lock`. Before every frozen installation, setup compares the
+creator identity recorded in the environment (`make.environment_identity`) with
+the Mise-resolved uv and Python and recreates a divergent environment with native
+`uv venv --clear`; `uv sync` alone keeps an environment whose interpreter still
+satisfies the request. Direnv exports no `UV_PROJECT` or
+`UV_PROJECT_ENVIRONMENT`.
 `deps upgrade-lock` also owns the Mise half, in the same single pass over the
 runtime root and every declared member: each governed repository renders its own
 `.mise.toml` and commits its own `mise.lock`, and Mise resolves a member's tools

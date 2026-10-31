@@ -613,8 +613,43 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
 
+    class MarkdownProjectedBlock(m.ArbitraryTypesModel):
+        """One foreign writer's projected block that Markdown gates do not lint.
+
+        A projected block belongs to the writer that emits it between its own
+        begin and end marker lines; it is corrected only through that writer.
+        Each pattern must match a whole marker line (stripped of surrounding
+        whitespace). Named groups present in both patterns pair a begin with
+        its end: the end closes the block only when every shared group
+        captures the same text.
+        """
+
+        writer: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Foreign writer that owns the projected block."),
+        ]
+        begin: Annotated[
+            t.RegexPattern,
+            m.Field(description="Full-line pattern of the block's begin marker."),
+        ]
+        end: Annotated[
+            t.RegexPattern,
+            m.Field(description="Full-line pattern of the block's end marker."),
+        ]
+
     class MarkdownConfig(m.ArbitraryTypesModel):
         """Markdown rules; artifact and exclusion declarations own file scope."""
+
+        projected_blocks: Annotated[
+            tuple[FlextInfraModelsDepsToolConfig.MarkdownProjectedBlock, ...],
+            m.Field(
+                alias="projected-blocks",
+                description=(
+                    "Foreign writers whose marker-delimited blocks the Markdown "
+                    "lint reads as masked lines; FLEXT-owned blocks never appear."
+                ),
+            ),
+        ]
 
         findings_exit_codes: Annotated[
             tuple[int, ...],

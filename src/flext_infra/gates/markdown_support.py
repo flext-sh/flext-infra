@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -94,6 +94,125 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
                 inputs.spec.markdown_exclude_globs,
             )
         )
+
+    @staticmethod
+    def projected_block_view(path: Path, text: str) -> str:
+        """Mask the inner lines of every declared foreign projected block.
+
+        Marker lines stay verbatim and each inner line becomes the lint-neutral
+        mask with its original ending, so line numbers and every line outside a
+        block are unchanged. Only writers declared in
+        ``tooling.tools.markdown.projected-blocks`` are masked.
+
+        Returns:
+            The lint view of ``text``.
+
+        Raises:
+            ValueError: If a marker is unbalanced, mismatched, nested, or
+                left unclosed.
+
+        """
+        blocks = config.Infra.tooling.tools.markdown.projected_blocks
+        view: list[str] = []
+        opened: tuple[m.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None
+        opened = None
+        for number, line in enumerate(text.splitlines(keepends=True), start=1):
+            marker = line.strip()
+            if opened is None:
+                opened = FlextInfraMarkdownGateBase._projected_block_open(
+                    path, number, marker, blocks
+                )
+                view.append(line)
+                continue
+            block, captured, opened_at = opened
+            closing = block.end.fullmatch(marker)
+            if closing is not None and all(
+                closing.group(name) == value for name, value in captured.items()
+            ):
+                opened = None
+                view.append(line)
+                continue
+            if closing is not None or any(
+                other.begin.fullmatch(marker) or other.end.fullmatch(marker)
+                for other in blocks
+            ):
+                msg = (
+                    f"{path}:{number}: marker {marker!r} inside the open "
+                    f"{block.writer} projected block opened at line {opened_at}"
+                )
+                raise ValueError(msg)
+            body = line.rstrip("\r\n")
+            view.append(c.Infra.MARKDOWN_PROJECTED_BLOCK_MASK + line[len(body) :])
+        if opened is not None:
+            msg = (
+                f"{path}:{opened[2]}: {opened[0].writer} projected block "
+                "is never closed"
+            )
+            raise ValueError(msg)
+        return "".join(view)
+
+    @staticmethod
+    def _projected_block_open(
+        path: Path,
+        number: int,
+        marker: str,
+        blocks: Sequence[m.Infra.MarkdownProjectedBlock],
+    ) -> tuple[m.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None:
+        """Open the declared block whose begin marker is ``marker``.
+
+        Returns:
+            The opened block, its pairing captures, and its line, or ``None``.
+
+        Raises:
+            ValueError: If ``marker`` ends a block that was never opened.
+
+        """
+        for block in blocks:
+            beginning = block.begin.fullmatch(marker)
+            if beginning is not None:
+                captured: Mapping[str, str] = {
+                    name: value
+                    for name, value in beginning.groupdict().items()
+                    if name in block.end.groupindex and value is not None
+                }
+                return block, captured, number
+        for block in blocks:
+            if block.end.fullmatch(marker):
+                msg = (
+                    f"{path}:{number}: {block.writer} end marker {marker!r} "
+                    "closes no open projected block"
+                )
+                raise ValueError(msg)
+        return None
+
+    @staticmethod
+    def projected_block_stdin_batch(
+        project_dir: Path,
+        targets: Sequence[str],
+    ) -> str:
+        """Encode every target's lint view as rumdl ``--stdin-batch`` input.
+
+        Each target keeps its own path, so diagnostics name the real file and
+        line; its content is the projected-block view of the file on disk.
+
+        Returns:
+            NUL-delimited path/content pairs for every target.
+
+        Raises:
+            ValueError: If a target's content carries the batch delimiter.
+
+        """
+        separator = c.Infra.MARKDOWN_STDIN_BATCH_SEPARATOR
+        pairs: list[str] = []
+        for target in targets:
+            path = project_dir / target
+            text = path.read_text(c.DEFAULT_ENCODING)
+            if separator in text:
+                msg = f"{path}: content carries the rumdl stdin-batch delimiter"
+                raise ValueError(msg)
+            view = FlextInfraMarkdownGateBase.projected_block_view(path, text)
+            pairs.extend((target, separator, view, separator))
+        return "".join(pairs)
 
     @staticmethod
     @override

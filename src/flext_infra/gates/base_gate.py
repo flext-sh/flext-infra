@@ -187,6 +187,7 @@ class FlextInfraGates:
             cmd,
             project_dir,
             ctx,
+            input_data=self._check_input(project_dir, ctx, targets),
         )
         if u.Cli.process_succeeded(result.outcome):
             self._validate_check_report(result, project_dir, ctx, targets)
@@ -694,6 +695,24 @@ class FlextInfraGates:
             *self.check_module_command_suffix,
         )
 
+    def _check_input(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        targets: Sequence[str],
+    ) -> str | None:
+        """Return the payload the check command reads from its stdin.
+
+        Default: none, so the check tool reads its targets from disk. A gate
+        whose tool lints a supplied view of its targets returns that view.
+
+        Returns:
+            The child's stdin payload, or ``None`` for the null device.
+
+        """
+        _ = project_dir, ctx, targets
+        return None
+
     def _parse_check_output(
         self,
         result: p.Cli.CommandOutput,
@@ -1065,13 +1084,16 @@ class FlextInfraGates:
         cmd: Sequence[str],
         cwd: Path,
         ctx: m.Infra.GateContext,
+        *,
+        input_data: str | None = None,
     ) -> p.Cli.CommandOutput:
         """Run one native tool of this gate under the invocation's context.
 
         The gate's own timeout and environment readers decide the limits
         and child environment for ``cwd``; the context supplies the signal
         wave of a concurrent stage, so the child process group subscribes to
-        the main thread's forwarding.
+        the main thread's forwarding. ``input_data``, when given, is the
+        child's stdin payload.
 
         Returns:
             The resulting ``p.Cli.CommandOutput``.
@@ -1090,6 +1112,7 @@ class FlextInfraGates:
                 remove_env_keys=self._check_remove_env_keys(cwd, ctx),
                 deadline=deadline,
                 signal_wave=ctx.signal_wave,
+                input_data=input_data,
             ),
         )
         if result.failure:

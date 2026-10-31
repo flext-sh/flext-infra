@@ -17,6 +17,7 @@ import hashlib
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, closing, contextmanager
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
 
@@ -38,6 +39,16 @@ from flext_infra._utilities._rope.source_bases_runtime import (
 
 class FlextInfraUtilitiesWorkspaceSnapshot:
     """Build the one snapshot of a workspace run and answer its queries."""
+
+    MOD_MODULE_FAILURE_TYPES: ClassVar[tuple[type[Exception], ...]] = (
+        e.OperationError,
+        e.ValidationError,
+    )
+    (
+        "Typed FLEXT failures a mod phase boundary converts into its failed"
+        " result; born for one module, their context carries"
+        " ``c.Infra.MOD_FAILURE_MODULE_KEY``. Every other exception escapes."
+    )
 
     @staticmethod
     def facade_original_sources(

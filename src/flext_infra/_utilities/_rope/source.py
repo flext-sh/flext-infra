@@ -572,7 +572,6 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
 
         Raises:
             TypeError: If the resource is not a Rope file resource.
-            ValueError: If the written file is outside the project's root.
 
         """
         if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):

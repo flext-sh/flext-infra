@@ -12,7 +12,17 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Self, override
 
-from flext_infra import c, m, p, r, settings, t, u, workspace as workspace_services
+from flext_infra import (
+    c,
+    config,
+    m,
+    p,
+    r,
+    settings,
+    t,
+    u,
+    workspace as workspace_services,
+)
 from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
 
@@ -135,12 +145,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         """Plan the request's projections and publish them once.
 
         ``after_publication`` runs with the written paths after a successful
-        publication; its first failure fails the request.
+        publication; its first failure fails the request. Every cohort
+        publication also authorizes each ``.envrc`` it wrote.
 
         Returns:
             The plan and written paths, or the first failure.
 
         """
+        after_cohort_publication = (
+            *after_cohort_publication,
+            self.authorize_published_envrc,
+        )
         self._begin_planning()
         self.state.control_outcomes = ()
         u.Cli.info(
@@ -169,6 +184,45 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             after_publication=after_publication,
             after_cohort_publication=after_cohort_publication,
         )
+
+    @staticmethod
+    def authorize_published_envrc(
+        written_files: tuple[Path, ...],
+    ) -> p.Result[bool]:
+        """Authorize with native direnv every ``.envrc`` this publication wrote.
+
+        The generator owns the activation file it renders. Rewriting one
+        changes its content hash, and direnv then blocks every later command
+        in that checkout, including a workspace member's ``make check`` and
+        its commit hook. The publisher therefore authorizes each published
+        ``.envrc`` (root and members alike) in the same operation, outside CI.
+
+        Returns:
+            Whether any file was authorized, or the first native failure.
+
+        """
+        ci = config.Infra.codegen.make.ci
+        if (u.Infra.env_lookup(ci.variable) or "").strip() == ci.value:
+            return r[bool].ok(value=False)
+        roots = {
+            path.expanduser().resolve().parent
+            for path in written_files
+            if path.name == c.Infra.ENVRC_FILENAME
+        }
+        for root in sorted(roots):
+            result = u.Cli.run_raw(
+                (c.Infra.CLI_DIRENV, "allow", str(root)),
+                cwd=root,
+                timeout=c.Infra.TIMEOUT_SHORT,
+            )
+            if result.failure:
+                return r[bool].from_failure(result)
+            if not u.Cli.process_succeeded(result.value.outcome):
+                return r[bool].fail(
+                    f"direnv allow failed for {root}: "
+                    f"{result.value.stderr.strip() or result.value.stdout.strip()}",
+                )
+        return r[bool].ok(value=bool(roots))
 
     def _execute_all_surfaces(
         self,

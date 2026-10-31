@@ -103,10 +103,10 @@ class FlextInfraUtilitiesImportLawNormalization(
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan import rewrites at this phase's declared result boundary.
 
-        A typed failure of ``c.Infra.MOD_MODULE_FAILURE_TYPES`` born for one
-        module (its context names ``c.Infra.MOD_FAILURE_MODULE_KEY``) becomes the phase's failed result,
-        so its ``error_data`` attributes the module. Every engine exception
-        escapes unchanged.
+        A typed failure of ``u.Infra.MOD_MODULE_FAILURE_TYPES`` born for
+        one module (its context names ``c.Infra.MOD_FAILURE_MODULE_KEY``)
+        becomes the phase's failed result, so its ``error_data`` attributes
+        the module. Every engine exception escapes unchanged.
 
         Returns:
             One plan per rewritten file, or the first planning failure.
@@ -114,7 +114,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         """
         attempt = r.safe(
             cls._plan_import_normalization_phase,
-            exceptions=c.Infra.MOD_MODULE_FAILURE_TYPES,
+            exceptions=FlextInfraUtilitiesWorkspaceSnapshot.MOD_MODULE_FAILURE_TYPES,
         )(
             project_root,
             files,

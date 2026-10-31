@@ -100,10 +100,6 @@ class FlextInfraRopeNativeProject(Project):
         Returns:
             The original native builtin, package, or source module.
 
-        Raises:
-            ModuleSyntaxError: The candidate source of the requested module is
-                invalid; it propagates unchanged from the native lookup.
-
         """
         native = cast("p.Infra.RopeProject", super())
         if self.find_module(name, folder) is None and (

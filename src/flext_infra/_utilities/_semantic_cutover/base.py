@@ -11,7 +11,10 @@ from contextlib import closing
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r
-from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticConstantConsumers,
@@ -59,10 +62,10 @@ class FlextInfraUtilitiesSemanticCutoverBase(
     ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan one phase without effects at its declared result boundary.
 
-        A typed failure of ``c.Infra.MOD_MODULE_FAILURE_TYPES`` born for one
-        module (its context names ``c.Infra.MOD_FAILURE_MODULE_KEY``) becomes this phase's failed result,
-        so its ``error_data`` attributes the module. Every engine exception
-        escapes unchanged.
+        A typed failure of ``u.Infra.MOD_MODULE_FAILURE_TYPES`` born for
+        one module (its context names ``c.Infra.MOD_FAILURE_MODULE_KEY``)
+        becomes the phase's failed result, so its ``error_data`` attributes
+        the module. Every engine exception escapes unchanged.
 
         Returns:
             The immutable result view of the selected phase's source edits.
@@ -70,7 +73,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         """
         attempt = r.safe(
             cls._plan_semantic_cutover_phase,
-            exceptions=c.Infra.MOD_MODULE_FAILURE_TYPES,
+            exceptions=FlextInfraUtilitiesWorkspaceSnapshot.MOD_MODULE_FAILURE_TYPES,
         )(
             phase,
             rope_workspace=rope_workspace,

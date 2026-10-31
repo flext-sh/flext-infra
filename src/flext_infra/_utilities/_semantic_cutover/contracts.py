@@ -194,6 +194,44 @@ class FlextInfraUtilitiesSemanticContracts(
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan native changes for the selected contract rules.
 
+        The supplied ``sources`` are the phase's authority: every source whose
+        bytes differ from the bound native view is bound before any native
+        selection, so a re-plan over applied edits reads those edits.
+
+        Returns:
+            Edits for the selected native contract rules.
+
+        """
+        project = workspace.rope_project
+        with project.source_view(
+            declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                Path(project.root.real_path),
+                (),
+                {
+                    path: source
+                    for path, source in sources.items()
+                    if not project.source_query(path, "isfile")
+                    or project.source_text(path) != source
+                },
+                source_project=project,
+            ),
+            additional_source_folders=None,
+        ):
+            return cls._plan_contract_rules_in_view(
+                workspace, sources, rules, options=options
+            )
+
+    @classmethod
+    def _plan_contract_rules_in_view(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: Mapping[t.Infra.RopeSourcePath, str],
+        rules: Sequence[p.Infra.RopeContractRule],
+        *,
+        options: m.Infra.ContractAdmissionOptions | None,
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
+        """Plan the selected contract rules over the bound phase sources.
+
         Returns:
             Edits for the selected native contract rules.
 
@@ -719,7 +757,9 @@ class FlextInfraUtilitiesSemanticContracts(
                 imports={member: f"from {module_name} import {member}"}
                 if module_name is not None
                 else {},
-                bindings={member: identity},
+                # A builtin origin is proven by its unshadowed lexical name;
+                # only an imported origin carries a module-qualified binding.
+                bindings={member: identity} if module_name is not None else {},
                 unshadowed_builtins=(member,) if module_name is None else (),
             ),
         )

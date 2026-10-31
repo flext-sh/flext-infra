@@ -710,20 +710,6 @@ class FlextInfraUtilitiesFacadeComponents:
                 ]
             ].from_failure(framed)
         layout, bases = framed.value
-        bound = cls._facade_namespace_bindings(module, index, namespace, path)
-        if bound.failure:
-            return r[
-                tuple[
-                    p.Infra.RopeSourceModule,
-                    p.Infra.RopeSourceClass,
-                    p.Infra.RopeSourceClass,
-                    p.Infra.RopeSourceClassLayout,
-                    list[tuple[str, p.Infra.RopePyObject]],
-                    dict[str, str],
-                    list[t.Infra.RopeFromImport],
-                    frozenset[str],
-                ]
-            ].from_failure(bound)
         aliases, alias_names = cls._facade_namespace_aliases(index, namespace)
         providers = cls._facade_admitted_providers(
             project, resolved.value, family=family, aliases=aliases, bases=bases
@@ -741,16 +727,6 @@ class FlextInfraUtilitiesFacadeComponents:
                     frozenset[str],
                 ]
             ].from_failure(providers)
-        packages = {
-            declaration.get_name(): (
-                FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
-                    origin.parent,
-                    project_root=Path(project.root.real_path),
-                    source_project=project,
-                )
-            )
-            for origin, declaration in resolved.value[2]
-        }
         composed = cls._facade_retained_providers(
             module, path, providers.value[0], bases
         )
@@ -806,7 +782,7 @@ class FlextInfraUtilitiesFacadeComponents:
             composed.value[0],
             published.value,
             cls._facade_planned_imports(
-                packages,
+                cls._facade_declaring_packages(project, resolved.value[2]),
                 (*composed.value[1], *published.value),
                 type_alias=bool(published.value or alias_names),
             ),
@@ -970,16 +946,18 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         path, directory, module, owner = facade
-        types = FlextInfraUtilitiesRopeRuntimeTypes
         result_type = r[tuple[t.StrTuple, ...]]
-        index = module.get_source_binding_index()
         barrel = directory / c.Infra.INIT_PY
         generated = project.source_query(barrel, "isfile") and project.source_text(
             barrel
         ).startswith(c.Infra.AUTOGEN_HEADER)
-        family = {directory.resolve(), barrel.resolve()}
-        declared = {declaration.get_name() for _origin, declaration in declarations}
-        root = Path(project.root.real_path).resolve()
+        admitted = (
+            frozenset({directory.resolve(), barrel.resolve()}),
+            frozenset(declaration.get_name() for _origin, declaration in declarations)
+            if generated
+            else frozenset(),
+            Path(project.root.real_path).resolve(),
+        )
         proven: list[tuple[m.Infra.SourceClassReference]] = []
         for reference, holder in cls._facade_class_references(
             FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
@@ -987,40 +965,12 @@ class FlextInfraUtilitiesFacadeComponents:
             ),
             owner,
         ):
-            deferred = False
-            layout = index.class_layout(holder.get_scope())
-            for (start, end), binding in layout.base_bindings:
-                expression = module.source_code[start:end]
-                if binding is None:
-                    return result_type.fail(
-                        f"Unresolved facade base: {path}:{expression}"
-                    )
-                if not types.imported_name(binding):
-                    continue
-                if binding.get_definition_location()[0] is not None:
-                    continue
-                provider = r[Path].create_from_callable(
-                    partial(
-                        FlextInfraUtilitiesRopeRuntimeModules.imported_module_path,
-                        project,
-                        binding,
-                    )
-                )
-                if provider.failure:
-                    return result_type.fail(
-                        f"Unresolved facade base: {path}:{expression}: "
-                        f"{provider.error}",
-                        exception=provider.exception,
-                    )
-                if provider.value in family and (
-                    generated and binding.imported_name in declared
-                ):
-                    deferred = True
-                    continue
-                if not provider.value.is_relative_to(root):
-                    continue
-                return result_type.fail(f"Unresolved facade base: {path}:{expression}")
-            if not deferred:
+            deferred = cls._facade_class_deferred(
+                project, (path, module, holder), admitted
+            )
+            if deferred.failure:
+                return result_type.from_failure(deferred)
+            if not deferred.value:
                 proven.append((reference,))
         return result_type.create_from_callable(
             partial(
@@ -1030,6 +980,53 @@ class FlextInfraUtilitiesFacadeComponents:
                 tuple(proven),
             )
         )
+
+    @staticmethod
+    def _facade_class_deferred(
+        project: p.Infra.RopeProject,
+        facade: tuple[Path, p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
+        admitted: tuple[frozenset[Path], frozenset[str], Path],
+    ) -> p.Result[bool]:
+        """Classify one facade class by the provenance of its unresolved bases.
+
+        ``admitted`` holds the family barrel identities, the family names a
+        generated barrel republishes, and the project root.
+
+        Returns:
+            Whether a base awaits its generated barrel republication, or the
+            first base whose import names no admissible owner.
+
+        """
+        path, module, holder = facade
+        family, declared, root = admitted
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        deferred = False
+        layout = module.get_source_binding_index().class_layout(holder.get_scope())
+        for (start, end), binding in layout.base_bindings:
+            expression = module.source_code[start:end]
+            if binding is None:
+                return r[bool].fail(f"Unresolved facade base: {path}:{expression}")
+            if not types.imported_name(binding):
+                continue
+            if binding.get_definition_location()[0] is not None:
+                continue
+            provider = r[Path].create_from_callable(
+                partial(
+                    FlextInfraUtilitiesRopeRuntimeModules.imported_module_path,
+                    project,
+                    binding,
+                )
+            )
+            if provider.failure:
+                return r[bool].fail(
+                    f"Unresolved facade base: {path}:{expression}: {provider.error}",
+                    exception=provider.exception,
+                )
+            if provider.value in family and binding.imported_name in declared:
+                deferred = True
+            elif provider.value.is_relative_to(root):
+                return r[bool].fail(f"Unresolved facade base: {path}:{expression}")
+        return r[bool].ok(value=deferred)
 
     @staticmethod
     def _facade_class_references(
@@ -1119,10 +1116,11 @@ class FlextInfraUtilitiesFacadeComponents:
             list[tuple[str, p.Infra.RopePyObject]],
         ]
     ]:
-        """Resolve every authored namespace base through its native binding.
+        """Resolve every authored namespace base and binding through Rope.
 
         Returns:
-            The namespace class layout with its base expressions and identities.
+            The namespace class layout with its base expressions and identities,
+            or the first base or namespace binding the facade cannot publish.
 
         """
         layout = index.class_layout(namespace.get_scope())
@@ -1138,12 +1136,9 @@ class FlextInfraUtilitiesFacadeComponents:
                     ]
                 ].fail(message)
             bases.append((source[start:end], binding.get_object()))
-        return r[
-            tuple[
-                p.Infra.RopeSourceClassLayout,
-                list[tuple[str, p.Infra.RopePyObject]],
-            ]
-        ].ok((layout, bases))
+        return FlextInfraUtilitiesFacadeComponents._facade_namespace_bindings(
+            module, index, namespace, path
+        ).map(lambda _bound: (layout, bases))
 
     @staticmethod
     def _facade_resolved_assignments(
@@ -1458,6 +1453,28 @@ class FlextInfraUtilitiesFacadeComponents:
         return r[dict[str, str]].ok(publications)
 
     @staticmethod
+    def _facade_declaring_packages(
+        project: p.Infra.RopeProject,
+        declarations: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
+    ) -> dict[str, str]:
+        """Map every family declaration to the import package that declares it.
+
+        Returns:
+            Each declaration name with its declaring package.
+
+        """
+        return {
+            declaration.get_name(): (
+                FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+                    origin.parent,
+                    project_root=Path(project.root.real_path),
+                    source_project=project,
+                )
+            )
+            for origin, declaration in declarations
+        }
+
+    @staticmethod
     def _facade_planned_imports(
         packages: Mapping[str, str],
         bindings: Sequence[str],
@@ -1642,33 +1659,18 @@ class FlextInfraUtilitiesFacadeComponents:
         # texts here produced interleaved corruption (epoch mismatch of the
         # same path) — fail the cohort instead of rendering it.
         if current.source_code != source:
+            resource = current.get_module().get_resource()
             return r[str].fail(
                 "facade layout epoch mismatch: layout text and composed text"
-                f" differ for {current.get_module().get_resource().path if current.get_module().get_resource() else '<virtual>'}"
+                f" differ for {resource.path if resource else '<virtual>'}"
             )
-        index = current.get_source_binding_index()
-        layout = index.class_layout(scope)
+        layout = current.get_source_binding_index().class_layout(scope)
         end = current.lines.get_line_end(
             current.lines.get_line_number(layout.region[1])
         )
-        retired = (
-            cls._facade_retired_bindings(index, actual, source)
-            if source.startswith(c.Infra.AUTOGEN_HEADER)
-            else frozenset()
+        body_source = cls._facade_body_source(
+            (current, actual), source, (layout, end), (alias_names, step)
         )
-        body_source = cls._facade_alias_body_parts(
-            index, scope, source, (layout.header_end, end), (alias_names, retired)
-        )
-        if (
-            retired
-            and not "".join(
-                part for part in body_source if isinstance(part, str)
-            ).strip()
-        ):
-            class_indent = source[
-                current.lines.get_line_start(scope.get_start()) : layout.region[0]
-            ]
-            body_source = (f"\n{class_indent}{' ' * step}pass",)
         class_line = scope.get_start()
         desired_bases = tuple(expression for expression, _base in retained)
         unchanged_header = desired_bases == tuple(
@@ -1704,6 +1706,48 @@ class FlextInfraUtilitiesFacadeComponents:
         return cls.generate_module_skeleton(context=context)
 
     @classmethod
+    def _facade_body_source(
+        cls,
+        projected: tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
+        source: str,
+        frame: tuple[p.Infra.RopeSourceClassLayout, int],
+        rendering: tuple[frozenset[str], int],
+    ) -> tuple[str | tuple[str, str], ...]:
+        """Split the namespace body, retiring obsolete generated bindings.
+
+        A managed body whose every statement retired keeps a ``pass`` so the
+        namespace stays a valid class body.
+
+        Returns:
+            Verbatim body text interleaved with ``(alias, value source)`` pairs.
+
+        """
+        current, actual = projected
+        layout, end = frame
+        alias_names, step = rendering
+        scope = actual.get_scope()
+        index = current.get_source_binding_index()
+        retired = (
+            cls._facade_retired_bindings(index, actual, source)
+            if source.startswith(c.Infra.AUTOGEN_HEADER)
+            else frozenset()
+        )
+        body_source = cls._facade_alias_body_parts(
+            index, scope, source, (layout.header_end, end), (alias_names, retired)
+        )
+        if (
+            retired
+            and not "".join(
+                part for part in body_source if isinstance(part, str)
+            ).strip()
+        ):
+            class_indent = source[
+                current.lines.get_line_start(scope.get_start()) : layout.region[0]
+            ]
+            return (f"\n{class_indent}{' ' * step}pass",)
+        return body_source
+
+    @classmethod
     def _facade_retired_bindings(
         cls,
         index: p.Infra.RopeSourceBindingIndex,
@@ -1731,12 +1775,9 @@ class FlextInfraUtilitiesFacadeComponents:
         retired: set[tuple[int, int]] = set()
         for assignment in cls._facade_resolved_assignments(index, namespace):
             if (
-                assignment.kind not in {"Assign", "AnnAssign"}
-                or assignment.value is None
-                or len(assignment.targets) != 1
-                or assignment.root_binding is None
+                assignment.root_binding is None
                 or assignment.value_binding is None
-                or "." not in source[assignment.value[0] : assignment.value[1]]
+                or not cls._facade_attribute_binding(assignment, source)
             ):
                 continue
             owner = assignment.root_binding.get_object()
@@ -1749,6 +1790,23 @@ class FlextInfraUtilitiesFacadeComponents:
             ):
                 retired.add(assignment.region)
         return frozenset(retired)
+
+    @staticmethod
+    def _facade_attribute_binding(
+        assignment: p.Infra.RopeSourceAssignmentLayout, source: str
+    ) -> bool:
+        """Whether one assignment binds a single name to an attribute read.
+
+        Returns:
+            Whether the statement is ``Name = Owner.Member`` (annotated or not).
+
+        """
+        return (
+            assignment.kind in {"Assign", "AnnAssign"}
+            and assignment.value is not None
+            and len(assignment.targets) == 1
+            and "." in source[assignment.value[0] : assignment.value[1]]
+        )
 
     @staticmethod
     def _facade_alias_body_parts(
@@ -2345,6 +2403,14 @@ class FlextInfraUtilitiesFacadeComponents:
         the cohort only in load context. Writes, deletions, augmented assignments
         and class-base declarations never change their mutation or declaration owner.
 
+        The lexical proof runs first: only a read of ``Receiver.method`` whose
+        receiver is a dotted name reaches native resolution, and the receiver,
+        never the occurrence, is resolved. ``_component_destination`` then
+        proves the receiver is the claimed component class and that its
+        ``method`` is the claimed callable, which is exactly the identity the
+        hierarchy occurrence filter proved, without inferring every unrelated
+        textual occurrence of the same method name.
+
         Returns:
             Native source changes, original references and public destinations.
 
@@ -2360,28 +2426,11 @@ class FlextInfraUtilitiesFacadeComponents:
             raise TypeError(message)
         index = module.get_source_binding_index()
         references: dict[tuple[int, int], tuple[m.Infra.SourceRewrite, str, str]] = {}
-        queried: set[tuple[str, p.Infra.RopePyObject]] = set()
-        for component, method in claims:
-            original = component.get_attributes()[method]
-            if (method, original.get_object()) in queried:
-                continue
-            queried.add((method, original.get_object()))
-            finder = FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
-                module.pycore.project,
-                method,
-                original,
-                imports=False,
-                in_hierarchy=True,
+        for method in sorted({method for _component, method in claims}):
+            finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
+                module.pycore.project, method
             )
-            try:
-                occurrences = finder.find_occurrences(pymodule=module)
-            except TypeError:
-                # A inferência de um subscrito do consumidor pode atravessar
-                # um alias genérico cujos parâmetros não são TypeVar
-                # (contrato do typing): sem ocorrências provadas por este
-                # método, o caminho segue vazio — não é falha do consumo.
-                continue
-            for occurrence in occurrences:
+            for occurrence in finder.find_occurrences(pymodule=module):
                 first, last = occurrence.get_primary_range()
                 prefix, name, offset = words.get_splitted_primary_before(last)
                 context = index.context_at(offset)
@@ -2390,6 +2439,9 @@ class FlextInfraUtilitiesFacadeComponents:
                     or name != method
                     or context.access != "read"
                     or context.role == "class-base"
+                    or not cls._component_receiver_candidate(
+                        context.environment, prefix
+                    )
                 ):
                     continue
                 destination = cls._component_destination(
@@ -2402,6 +2454,34 @@ class FlextInfraUtilitiesFacadeComponents:
                         destination,
                     )
         return tuple(value for _region, value in sorted(references.items()))
+
+    @staticmethod
+    def _component_receiver_candidate(scope: p.Infra.RopeScope, reference: str) -> bool:
+        """Whether a dotted receiver can lexically name a component class.
+
+        The receiver is a dotted name, never a call, subscript or literal. A
+        component call reads its receiver through an import, a declaration,
+        a parameter or a bare class alias. A root assigned from any other value
+        (a call result, a literal) is no class reference; resolving it would
+        only infer that value's object graph.
+
+        Returns:
+            Whether the receiver root is a lexical class reference candidate.
+
+        """
+        if not all(part.isidentifier() for part in reference.split(".")):
+            return False
+        root = reference.partition(".")[0]
+        lexical = FlextInfraUtilitiesRopeRuntimeModules.lexical_scope(scope, root)
+        if lexical is None:
+            return False
+        binding = lexical.get_names().get(root)
+        if not isinstance(binding, p.Infra.RopeAssignedName):
+            return True
+        return all(
+            isinstance(assignment.ast_node, c.Infra.AST_NAME_REFERENCE_TYPES)
+            for assignment in binding.assignments
+        )
 
     @classmethod
     def _component_destination(

@@ -183,6 +183,7 @@ class TestsFlextInfraModCliRoute:
             "mod",
             "--repository-root",
             str(mod_workspace),
+            "--check",
         ])
         capture = capsys.readouterr()
         state = tm.ok(u.Cli.atomic_read_binary_file_state(report_path, required=True))
@@ -308,7 +309,6 @@ class TestsFlextInfraModCliRoute:
             "mod",
             "--repository-root",
             str(mod_workspace),
-            "--apply",
         ])
         console_capture = capsys.readouterr()
         console = console_capture.out + console_capture.err
@@ -362,7 +362,6 @@ class TestsFlextInfraModCliRoute:
             "mod",
             "--repository-root",
             str(mod_workspace),
-            "--apply",
         ])
         captured = capsys.readouterr()
         console = captured.out + captured.err
@@ -457,6 +456,7 @@ class TestsFlextInfraModCliRoute:
             "mod",
             "--repository-root",
             str(mod_workspace),
+            "--check",
         ])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
@@ -528,6 +528,7 @@ class TestsFlextInfraModCliRoute:
             "mod",
             "--repository-root",
             str(mod_workspace),
+            "--check",
         ])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
@@ -592,6 +593,7 @@ class TestsFlextInfraModCliRoute:
             "mod",
             "--repository-root",
             str(mod_workspace),
+            "--check",
         ])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
@@ -645,6 +647,7 @@ class TestsFlextInfraModCliRoute:
             "mod",
             "--repository-root",
             str(mod_workspace),
+            "--check",
         ])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
@@ -711,6 +714,7 @@ class TestsFlextInfraModCliRoute:
                 "mod",
                 "--repository-root",
                 str(root),
+                "--check",
             ])
             state = tm.ok(
                 u.Cli.atomic_read_binary_file_state(

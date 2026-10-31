@@ -369,7 +369,8 @@ class FlextInfraModelsScan:
         """Outcome of one joint mod iteration over the current source state."""
 
         report: Annotated[
-            ModScanReport, m.Field(description="Scan of the post-iteration sources")
+            FlextInfraModelsScan.ModScanReport,
+            m.Field(description="Scan of the post-iteration sources"),
         ]
         phase_states: Annotated[
             tuple[tuple[tuple[str, str], ...], ...],
@@ -380,7 +381,7 @@ class FlextInfraModelsScan:
             m.Field(description="Captured inputs another actor changed on disk"),
         ] = ()
         quarantined: Annotated[
-            ModModuleQuarantine | None,
+            FlextInfraModelsScan.ModModuleQuarantine | None,
             m.Field(description="Module whose attributed failure voided the plan"),
         ] = None
 

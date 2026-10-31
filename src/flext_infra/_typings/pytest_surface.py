@@ -51,6 +51,13 @@ class FlextInfraTypesPytest:
         type TempPathFactory = pytest.TempPathFactory
         type TestReport = pytest.TestReport
         type WorkerController = xdist.workermanage.WorkerController
+        # What xdist hands ``pytest_testnodedown``: None (clean finish), a
+        # str (lost connection / keyboard interrupt), the execnet remote error
+        # (``BaseException``) or the captured ``ExceptionInfo`` of a crash
+        # (xdist workermanage.py / dsession.py).
+        type WorkerDownError = (
+            str | BaseException | pytest.ExceptionInfo[BaseException] | None
+        )
         FenceSyntax = FenceSyntax
         MarkdownInlinePythonItem = MarkdownInlinePythonItem
         MarkdownTextFile = MarkdownTextFile

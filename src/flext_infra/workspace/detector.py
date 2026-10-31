@@ -333,7 +333,6 @@ class FlextInfraWorkspaceDetector(
         path: Path = Path(),
         composed: bool = False,
         declared_url: str | None = None,
-        native_metadata: m.Infra.ProjectMetadataState | None = None,
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Build identity from validated checkout metadata and native Git inputs.
 
@@ -345,9 +344,8 @@ class FlextInfraWorkspaceDetector(
 
         """
         metadata_path = repository_root / c.PYPROJECT_FILENAME
-        if native_metadata is None and (
-            metadata_path.exists() or metadata_path.is_symlink()
-        ):
+        native_metadata: m.Infra.ProjectMetadataState | None = None
+        if metadata_path.exists() or metadata_path.is_symlink():
             metadata = u.Infra.read_project_metadata_state(repository_root)
             if metadata.failure:
                 return r[m.Infra.RepositoryRef].from_failure(metadata)
@@ -764,7 +762,9 @@ class FlextInfraWorkspaceDetector(
             return result_type.from_failure(inputs)
         repository = cls._local_repository_ref(
             subproject_root,
-            kind=u.Infra.declared_kind(inputs.value.spec, subproject_root),
+            kind=u.Infra.require_declared_kind(
+                inputs.value.spec.model_dump(mode="json"), subproject_root
+            ),
             path=path,
             composed=True,
             declared_url=declared_url,
@@ -1219,7 +1219,9 @@ class FlextInfraWorkspaceDetector(
         ]
         repository = cls._local_repository_ref(
             resolved_root,
-            kind=u.Infra.declared_kind(inputs.spec.repository, resolved_root),
+            kind=u.Infra.require_declared_kind(
+                inputs.spec.repository.model_dump(mode="json"), resolved_root
+            ),
             composed=composed,
         )
         if repository.failure:

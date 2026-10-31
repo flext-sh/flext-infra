@@ -313,7 +313,6 @@ class TestsFlextInfraBatchReplacements:
             "--repository-root",
             str(mod_workspace),
             "--apply",
-            *(["--rules", rule_id] if selected else []),
         ])
         capture = capsys.readouterr()
         tm.that(exit_code, ne=0, msg=capture.out + capture.err)

@@ -306,7 +306,8 @@ class FlextInfraUtilitiesGitignore:
                 continue
             if len(begins) != 1 or len(ends) != 1 or begins[0] >= ends[0]:
                 return r[tuple[tuple[int, int, str], ...]].fail(
-                    f"ambiguous gitignore preserved block {block.begin!r}: {destination}",
+                    f"ambiguous gitignore preserved block "
+                    f"{block.begin!r}: {destination}",
                 )
             sections.append((
                 begins[0],
