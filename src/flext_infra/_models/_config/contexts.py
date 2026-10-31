@@ -102,6 +102,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 description="Repository-relative early bootstrap evidence destination"
             ),
         ]
+        flext_editable_selection_relative_path: Annotated[
+            Path,
+            m.Field(
+                description="Repository-relative FLEXT editable selection receipt"
+            ),
+        ]
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             c.Infra.MakeProfile,

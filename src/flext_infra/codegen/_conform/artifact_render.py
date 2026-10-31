@@ -1148,6 +1148,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 bootstrap_report_relative_path=(
                     c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
                 ),
+                flext_editable_selection_relative_path=(
+                    c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH
+                ),
                 pytest=pytest,
                 release_verbs=self._release_product_verbs(target.repository),
                 dist=target.repository.distribution,
