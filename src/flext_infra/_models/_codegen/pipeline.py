@@ -18,10 +18,7 @@ from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsMixins,
 )
-from flext_infra._models._config import (
-    FlextInfraModelsConfig,
-    FlextInfraModelsConfigContract,
-)
+from flext_infra._models._config import FlextInfraModelsConfig
 
 
 class FlextInfraModelsCodegenPipeline:
@@ -64,7 +61,7 @@ class FlextInfraModelsCodegenPipeline:
             m.Field(description="Apply the complete candidate campaign"),
         ] = True
 
-    class CodegenRepositoryPlanOutcome(FlextInfraModelsConfigContract.ConfigContract):
+    class CodegenRepositoryPlanOutcome(m.ArbitraryTypesModel):
         """One repository's planned files and environment, or its failure."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
@@ -74,6 +71,12 @@ class FlextInfraModelsCodegenPipeline:
             default=None,
             exclude=True,
             description="First native target planning cause",
+        )
+        native_failure: t.Port[p.FailureLike] | None = m.Field(
+            default=None,
+            exclude=True,
+            description="Original failed Result retained by reference, without copying "
+            "metadata",
         )
         repository: Annotated[
             t.NonEmptyStr,
@@ -118,10 +121,11 @@ class FlextInfraModelsCodegenPipeline:
                 or self.error_traceback
                 or self.issues
                 or self.exception is not None
+                or self.native_failure is not None
             )
 
-    class CodegenPlan(FlextInfraModelsConfigContract.ConfigContract):
-        """Fully validated plan produced before any managed-file write."""
+    class CodegenPlan(m.ArbitraryTypesModel):
+        """Candidate effects retaining their native repository failure boundaries."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
@@ -155,6 +159,13 @@ class FlextInfraModelsCodegenPipeline:
             tuple[FlextInfraModelsCheck.Issue, ...],
             m.Field(description="Planning failures retained alongside valid outputs"),
         ] = ()
+        outcomes: tuple[
+            FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
+        ] = m.Field(
+            default=(),
+            exclude=True,
+            description="Original repository outcomes retained for coherent admission",
+        )
 
     class CodegenResult(FlextInfraModelsBase.FrozenArbitrary):
         """The generation plan and the files its publication changed."""
@@ -226,6 +237,13 @@ class FlextInfraModelsCodegenPipeline:
     class CodegenConformState(m.ArbitraryTypesModel):
         """Mutable request-local data owned by one projection invocation."""
 
+        control_outcomes: tuple[
+            FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
+        ] = m.Field(
+            default=(),
+            exclude=True,
+            description="Original file-only control outcomes of this invocation",
+        )
         request: t.Port[p.Infra.CodegenGenerateRequest] | None = m.Field(
             default=None,
             exclude=True,
@@ -271,6 +289,11 @@ class FlextInfraModelsCodegenPipeline:
             default=None,
             exclude=True,
             description="First native file planning cause",
+        )
+        planning_failure: t.Port[p.FailureLike] | None = m.Field(
+            default=None,
+            exclude=True,
+            description="First failed Result from the native planning boundary",
         )
         docs_planner: t.Port[p.Infra.DocsArtifactPlanner] | None = m.Field(
             default=None,

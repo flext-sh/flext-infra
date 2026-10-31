@@ -17,13 +17,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -66,7 +64,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                     or path.parent / c.Infra.INIT_PY not in sources
                 ):
                     continue
-                module = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     source_project.get_pymodule(
                         FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
                             source_project, path
@@ -113,7 +111,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 .get_attribute("s")
                 .get_object()
             )
-            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(kernel):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(kernel):
                 message = "upstream service alias has no native class declaration"
                 raise ValueError(message)
             for path, declaration in candidates.items():
@@ -206,7 +204,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             ),
         )
         value = module.get_attribute(declaration.name).get_object()
-        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
             return None
         provider, scope = value.get_module(), value.get_scope()
         origin = provider.get_resource()
@@ -384,7 +382,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         specs_by_file, specs_by_module = specs.value
         service_projects = cls._service_alias_projects(service_aliases)
 
-        def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
+        def rewrite(path: Path, source: str) -> p.Result[t.Infra.TransformResult]:
             local_aliases = specs_by_file.get(path, {})
             tree = ast.parse(source, filename=str(path))
             consumer_project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
@@ -399,7 +397,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 path, source, tree, local_aliases, active_modules
             )
             if plan is None:
-                return source, ()
+                return r[t.Infra.TransformResult].ok((source, ()))
             rewritten = cls._rewrite_compatibility_alias_source(
                 source,
                 plan,
@@ -413,7 +411,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                         "service alias consumer requires its project owner "
                         f"and import normalizer: {path}"
                     )
-                    raise ValueError(message)
+                    return r[t.Infra.TransformResult].fail(message)
                 normalized = import_normalizer(
                     file_path=path,
                     source=rewritten,
@@ -421,21 +419,24 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                     import_graph=service_graph,
                     sources={**sources, path: rewritten},
                 )
-                rewritten = rewritten if normalized is None else normalized
+                if normalized.failure:
+                    return r[t.Infra.TransformResult].from_failure(normalized)
+                rewritten = normalized.value
             FlextInfraUtilitiesCompatibilityAliasValidation.require_zero_compatibility_alias_residue(
                 rewritten,
                 path,
                 qualified_aliases=plan.qualified_aliases,
                 exported_aliases=frozenset(local_aliases),
             )
-            return rewritten, tuple(
-                f"rewired {alias} to {target}"
-                for alias, target in sorted(plan.qualified_aliases.items())
-            )
+            return r[t.Infra.TransformResult].ok((
+                rewritten,
+                tuple(
+                    f"rewired {alias} to {target}"
+                    for alias, target in sorted(plan.qualified_aliases.items())
+                ),
+            ))
 
         source_project = workspace.rope_project
-        if service_aliases:
-            return cls._semantic_edits(cls._editable_sources(sources), rewrite)
         return cls._semantic_checked_edits(cls._editable_sources(sources), rewrite)
 
     @classmethod

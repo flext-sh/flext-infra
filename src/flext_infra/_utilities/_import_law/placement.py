@@ -11,7 +11,7 @@ import sys
 import textwrap
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
-from flext_infra import c, m
+from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
 
@@ -228,19 +228,21 @@ class FlextInfraUtilitiesImportLawPlacement(
         cls,
         state: m.Infra.ImportLawPass,
         lines: Sequence[str],
-    ) -> Sequence[tuple[int, int, Sequence[str]]]:
+    ) -> p.Result[Sequence[tuple[int, int, Sequence[str]]]]:
         """Hoist inline imports and move typing-only reverse imports.
 
         Returns:
-            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
-
-        Raises:
-            ValueError: If distinct inline providers would share one global binding.
+            The planned edits, the empty no-op sequence, or the first typed
+            classification failure of the hoisting pass.
 
         """
         promoted = cls._import_law_typing_runtime_edits(state, lines)
-        if promoted:
+        if promoted.failure:
             return promoted
+        if promoted.value:
+            return r[tuple[tuple[int, int, Sequence[str]], ...]].ok(
+                value=promoted.value,
+            )
         placed: MutableMapping[c.Infra.ImportPlacement, list[str]] = {
             placement: [] for placement in c.Infra.ImportPlacement
         }
@@ -281,18 +283,17 @@ class FlextInfraUtilitiesImportLawPlacement(
                         and not shared_package
                         and not cls._import_law_binds_same(existing, node, alias)
                     ):
-                        msg = (
+                        return r[tuple[tuple[int, int, Sequence[str]], ...]].fail(
                             f"{state.scope.file_path}: conflicting inline import "
                             f"providers for {bound}: {ast.unparse(existing)} "
                             f"(line {existing.lineno}) and {ast.unparse(node)} "
-                            f"(line {node.lineno}); semantic receiver repair required"
+                            f"(line {node.lineno}); semantic receiver repair required",
                         )
-                        raise ValueError(msg)
             edit = cls._import_law_statement_edit(state, node, lines, placed)
             if edit is not None:
                 edits.append(edit)
         if not edits:
-            return ()
+            return r[tuple[tuple[int, int, Sequence[str]], ...]].ok(value=())
         edits.extend(
             cls._import_law_insertion_edits(
                 state,
@@ -300,18 +301,18 @@ class FlextInfraUtilitiesImportLawPlacement(
                 tuple(dict.fromkeys(placed[c.Infra.ImportPlacement.TYPING])),
             ),
         )
-        return edits
+        return r[tuple[tuple[int, int, Sequence[str]], ...]].ok(value=tuple(edits))
 
     @classmethod
     def _import_law_typing_runtime_edits(
         cls,
         state: m.Infra.ImportLawPass,
         lines: Sequence[str],
-    ) -> Sequence[tuple[int, int, Sequence[str]]]:
+    ) -> p.Result[Sequence[tuple[int, int, Sequence[str]]]]:
         """Promote allowed runtime reads using the existing definition-time analysis.
 
         Returns:
-            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
+            The planned edits, or the typed guard or reverse-import failure.
 
         """
         edits: list[tuple[int, int, Sequence[str]]] = []
@@ -322,11 +323,12 @@ class FlextInfraUtilitiesImportLawPlacement(
                 and cls._import_law_is_type_checking_test(guard.test)
             ):
                 continue
-            guard_edits, removed, guard_promoted = cls._import_law_promote_guard_body(
-                state,
-                lines,
-                guard,
-            )
+            guard_plan = cls._import_law_promote_guard_body(state, lines, guard)
+            if guard_plan.failure:
+                return r[tuple[tuple[int, int, Sequence[str]], ...]].from_failure(
+                    guard_plan
+                )
+            guard_edits, removed, guard_promoted = guard_plan.value
             promoted.extend(guard_promoted)
             if guard_edits:
                 edits.extend(
@@ -336,7 +338,7 @@ class FlextInfraUtilitiesImportLawPlacement(
                 )
         if promoted:
             edits.extend(cls._import_law_insertion_edits(state, tuple(promoted), ()))
-        return edits
+        return r[tuple[tuple[int, int, Sequence[str]], ...]].ok(value=tuple(edits))
 
     @classmethod
     def _import_law_promote_guard_body(
@@ -344,19 +346,18 @@ class FlextInfraUtilitiesImportLawPlacement(
         state: m.Infra.ImportLawPass,
         lines: Sequence[str],
         guard: ast.If,
-    ) -> tuple[
-        list[tuple[int, int, Sequence[str]]],
-        set[int],
-        list[str],
+    ) -> p.Result[
+        tuple[
+            list[tuple[int, int, Sequence[str]]],
+            set[int],
+            list[str],
+        ]
     ]:
         """Select runtime-read aliases of one TYPE_CHECKING guard for promotion.
 
         Returns:
             The per-statement edits, the removed statement ids, and the
-            promoted renderings.
-
-        Raises:
-            ValueError: If the guard is ambiguous or forces a reverse import.
+            promoted renderings, or the typed guard or reverse-import failure.
 
         """
         guard_edits: list[tuple[int, int, Sequence[str]]] = []
@@ -366,16 +367,21 @@ class FlextInfraUtilitiesImportLawPlacement(
             if not isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 continue
             selected = cls._import_law_runtime_selected_aliases(state, node)
-            if not selected:
+            if selected.failure:
+                return r[
+                    tuple[list[tuple[int, int, Sequence[str]]], set[int], list[str]]
+                ].from_failure(selected)
+            if not selected.value:
                 continue
             if guard.orelse:
-                msg = (
+                return r[
+                    tuple[list[tuple[int, int, Sequence[str]]], set[int], list[str]]
+                ].fail(
                     f"{state.scope.file_path}: runtime import promotion "
-                    "requires an unambiguous TYPE_CHECKING guard"
+                    "requires an unambiguous TYPE_CHECKING guard",
                 )
-                raise ValueError(msg)
-            kept = [alias for alias in node.names if alias not in selected]
-            promoted.append(cls._import_law_render(node, selected))
+            kept = [alias for alias in node.names if alias not in selected.value]
+            promoted.append(cls._import_law_render(node, selected.value))
             if not kept:
                 removed.add(id(node))
             indent = cls._import_law_line_indent(lines[node.lineno - 1])
@@ -384,21 +390,21 @@ class FlextInfraUtilitiesImportLawPlacement(
                 cls._import_law_end_line(node),
                 (f"{indent}{cls._import_law_render(node, kept)}",) if kept else (),
             ))
-        return guard_edits, removed, promoted
+        return r[tuple[list[tuple[int, int, Sequence[str]]], set[int], list[str]]].ok(
+            value=(guard_edits, removed, promoted)
+        )
 
     @classmethod
     def _import_law_runtime_selected_aliases(
         cls,
         state: m.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
-    ) -> list[ast.alias]:
+    ) -> p.Result[list[ast.alias]]:
         """Select the aliases a runtime read requires, rejecting reverse edges.
 
         Returns:
-            The aliases whose binding is read at runtime.
-
-        Raises:
-            ValueError: If a runtime binding requires a forbidden reverse import.
+            The aliases whose binding is read at runtime, or the typed failure
+            of a forbidden reverse namespace import.
 
         """
         selected: list[ast.alias] = []
@@ -411,13 +417,12 @@ class FlextInfraUtilitiesImportLawPlacement(
                 positions = ", ".join(
                     f"{read.lineno}:{read.col_offset + 1}" for read in reads
                 )
-                msg = (
+                return r[list[ast.alias]].fail(
                     f"{state.scope.file_path}: runtime binding {bound} "
-                    f"requires a forbidden reverse namespace import at {positions}"
+                    f"requires a forbidden reverse namespace import at {positions}",
                 )
-                raise ValueError(msg)
             selected.append(alias)
-        return selected
+        return r[list[ast.alias]].ok(value=selected)
 
     @classmethod
     def _import_law_statement_edit(

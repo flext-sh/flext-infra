@@ -101,14 +101,12 @@ class TestsFlextInfraConformSupport:
         ignored_directories = tuple(
             artifact.name
             for artifact in config.Infra.codegen.artifacts
-            if artifact.gitignore and not artifact.generated_source and artifact.is_dir
+            if artifact.ignore and not artifact.generated_source and artifact.is_dir
         )
         ignored_files = tuple(
             artifact.name
             for artifact in config.Infra.codegen.artifacts
-            if artifact.gitignore
-            and not artifact.generated_source
-            and not artifact.is_dir
+            if artifact.ignore and not artifact.generated_source and not artifact.is_dir
         )
         return tuple(
             sorted(

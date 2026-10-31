@@ -13,7 +13,7 @@ from defusedxml import ElementTree as DefusedET
 
 from flext_infra import t
 from flext_infra.validate import FlextInfraPytestDiagExtractor
-from tests import c, m, tm
+from tests import c, e, m, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -413,7 +413,7 @@ class TestsFlextInfraPytestDiag:
         junit.write_text('<testsuites><testsuite name="t"/></testsuites>')
         log = tmp_path / "pytest.log"
         log.write_text("1 warning")
-        category = c.FlextSmellViolationError.__name__
+        category = e.SmellViolation.__name__
         extractor = self._extractor(
             junit,
             log,
@@ -424,14 +424,14 @@ class TestsFlextInfraPytestDiag:
                 identities=self._identity(
                     category,
                     "enforcement evidence",
-                    module=c.FlextSmellViolationError.__module__,
+                    module=e.SmellViolation.__module__,
                 ),
             ),
         )
         report = tm.ok(extractor.extract(junit, log, report_log=extractor.report_log))
         tm.that(report.warning_count, eq=1)
         tm.that(report.warning_lines[0], contains="enforcement evidence")
-        tm.that(report.warning_lines[0], contains=c.FlextSmellViolationError.__module__)
+        tm.that(report.warning_lines[0], contains=e.SmellViolation.__module__)
 
     @pytest.mark.parametrize(
         "events",

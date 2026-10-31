@@ -17,7 +17,7 @@ from flext_infra._utilities import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import c, p
 
 
 class FlextInfraConformWiring:
@@ -50,7 +50,7 @@ class FlextInfraConformWiring:
             The resulting ``p.Infra.MarkdownFormatGate``.
 
         """
-        return gates.FlextInfraMarkdownFormatGate(repository_root)
+        return gates.FlextInfraGatesMarkdownFormat(repository_root)
 
     def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts:
         """Bind planning and guarded publication at the public composition root.
@@ -65,7 +65,27 @@ class FlextInfraConformWiring:
             source_preview=codegen.FlextInfraStagedPackage(),
             candidate_validator=self.validate_codegen_candidate,
             imports_planner=u.Infra.plan_import_normalization,
-            component_planner=u.Infra.plan_component_facades,
+            component_planner=self.facade_component_planner,
+        )
+
+    @staticmethod
+    def facade_component_planner(
+        workspace: p.Infra.RopeWorkspaceDsl,
+        *,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        planners: tuple[p.Infra.SourceInitializerPlanner, p.Infra.SourceViewProvider],
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Close facade cohorts through the session's own projection DSL.
+
+        Returns:
+            The outcome the opened Rope workspace session plans.
+
+        """
+        return workspace.facade_projection(
+            declared_files=declared_files,
+            planners=planners,
+            selection=selection,
         )
 
     @staticmethod

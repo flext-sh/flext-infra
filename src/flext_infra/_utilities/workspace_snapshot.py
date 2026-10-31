@@ -17,24 +17,105 @@ import hashlib
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, closing, contextmanager
 from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra import c, config, e, m, p, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesIterationDirectory,
+    FlextInfraUtilitiesProjectDiscovery,
+)
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.project import FlextInfraRopeProject
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 
 
 class FlextInfraUtilitiesWorkspaceSnapshot:
     """Build the one snapshot of a workspace run and answer its queries."""
+
+    MOD_MODULE_FAILURE_TYPES: ClassVar[tuple[type[Exception], ...]] = (
+        e.OperationError,
+        e.ValidationError,
+    )
+    (
+        "Typed FLEXT failures a mod phase boundary converts into its failed"
+        " result; born for one module, their context carries"
+        " ``c.Infra.MOD_FAILURE_MODULE_KEY``. Every other exception escapes."
+    )
+
+    @staticmethod
+    def facade_original_sources(
+        root: Path,
+        states: tuple[m.Cli.AtomicFileState, ...],
+    ) -> Mapping[Path, str]:
+        """Select owned Python observations without another read or discovery.
+
+        Returns:
+            Captured Python text keyed by its authenticated source path.
+
+        """
+        return {
+            state.path: state.content.decode(c.DEFAULT_ENCODING)
+            for state in states
+            if state.content is not None
+            and state.path.is_relative_to(root)
+            and state.path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            and not FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                root, state.path
+            )
+        }
+
+    @classmethod
+    def candidate_python_sources(
+        cls,
+        candidate: m.Infra.StageSourcePlan,
+        states: tuple[m.Cli.AtomicFileState, ...],
+    ) -> MutableMapping[Path, str]:
+        """Project source observations over the candidate's declared scopes.
+
+        Returns:
+            Python observations retained by reference until their decode boundary.
+
+        """
+        return {
+            path: source
+            for scope in candidate.workspaces or (candidate.workspace,)
+            for path, source in cls.facade_original_sources(scope, states).items()
+        }
+
+    @staticmethod
+    def project_captured_sources(
+        project: p.Infra.RopeProject,
+    ) -> dict[str, tuple[Path, str]]:
+        """Capture the live candidate view as module-name to source entries.
+
+        Ownership and identity elections resolve through the same captured
+        view the run stages; an empty source set would blind their resolver
+        to staged move destinations.
+
+        Returns:
+            The qualified module name to path and source text.
+
+        """
+        sources: dict[str, tuple[Path, str]] = {}
+        root = Path(project.root.real_path)
+        for resource in project.get_python_files():
+            path = Path(resource.real_path).resolve()
+            name = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                path,
+                project_root=root,
+                source_project=project,
+            )
+            if name:
+                sources[name] = (path, project.source_text(path))
+        return sources
 
     @classmethod
     @contextmanager
@@ -168,7 +249,10 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             Declared plans including authenticated source overrides.
 
         Raises:
-            ValueError: If planned bytes conflict with a declared plan.
+            e.OperationError: If planned bytes conflict with a declared plan;
+                its context names the one module concerned.
+            e.ValidationError: If a planned source escapes its owning project;
+                its context names the one module concerned.
 
         """
         inherited = (
@@ -181,7 +265,10 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             previous = declarations.get(plan.path)
             if previous is not None and previous != plan:
                 message = f"Rope source has competing declarations: {plan.path}"
-                raise ValueError(message)
+                raise e.OperationError(
+                    message,
+                    context={c.Infra.MOD_FAILURE_MODULE_KEY: str(plan.path)},
+                )
             declarations[plan.path] = plan
         for supplied_path, source in planned_sources.items():
             path = supplied_path.resolve()
@@ -190,9 +277,17 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             if declared is not None:
                 if declared.desired_content != content:
                     message = f"Rope planned source has competing declarations: {path}"
-                    raise ValueError(message)
+                    raise e.OperationError(
+                        message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                    )
                 continue
             prior = inherited.get(path)
+            owner = prior.project if prior is not None else root
+            if not path.is_relative_to(owner):
+                message = f"codegen path escapes owning project: {path}"
+                raise e.ValidationError(
+                    message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                )
             before = (
                 prior.before
                 if prior is not None
@@ -208,7 +303,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             if mode is None:
                 mode = config.Infra.codegen.modes.file_default
             declarations[path] = m.Infra.CodegenFilePlan(
-                project=prior.project if prior is not None else root,
+                project=owner,
                 path=path,
                 before=before,
                 desired_content=content,
@@ -236,16 +331,17 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
 
         Raises:
             ValueError: If a declared project root lies outside ``root``.
-            TypeError: If the native project lacks the required capabilities.
 
         """
         root = root.resolve()
         if any(not project.is_relative_to(root) for project in project_roots):
             msg = "Rope declared project root is outside the original authority"
             raise ValueError(msg)
+        files = FlextInfraRopeProject.OverlayFiles((), source_roots=(root,))
         with FlextInfraUtilitiesRopeCore.open_project(
             next(path for path in (root, *root.parents) if path.is_dir()),
             project_roots=project_roots or None,
+            fscommands=files,
         ) as live:
             election = m.Infra.RopeProjectElection(
                 ignored_resources=tuple(
@@ -270,13 +366,10 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                         election=election,
                         declared_files=declared_files,
                         additional_source_folders=additional_source_folders,
-                    ),
+                    )
                 ) as project,
                 project.frozen_layout(),
             ):
-                if not isinstance(project, p.Infra.RopeProject):
-                    msg = "overlay project has no native source engine capabilities"
-                    raise TypeError(msg)
                 yield project
 
     @classmethod

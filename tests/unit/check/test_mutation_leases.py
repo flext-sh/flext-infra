@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.gates import FlextInfraRuffFormatGate
+from flext_infra.gates import FlextInfraGatesRuffFormat
 from tests import c, m, tm, u
 
 
@@ -57,7 +57,7 @@ class TestsFlextInfraMutationLeases:
         target = source / "sample.py"
         before = "import os\n\nvalue=[1,2,3]\n"
         target.write_text(before, encoding="utf-8")
-        gate = FlextInfraRuffFormatGate(root)
+        gate = FlextInfraGatesRuffFormat(root)
         context = m.Infra.GateContext(
             repository_root=root,
             reports_dir=root / "reports",

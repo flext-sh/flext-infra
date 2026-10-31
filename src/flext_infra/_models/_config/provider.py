@@ -11,7 +11,7 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models._config.contract import FlextInfraModelsConfigContract
 
 
@@ -48,6 +48,15 @@ class FlextInfraModelsConfigProvider:
         provider: Annotated[
             t.NonEmptyStr,
             m.Field(description="Provider key owning URL and branch"),
+        ]
+        kind: Annotated[
+            c.Infra.ProjectKind,
+            m.Field(
+                description=(
+                    "Governance kind declared for this repository; never "
+                    "assumed by a consumer of the identity"
+                ),
+            ),
         ]
 
         @m.computed_field

@@ -464,7 +464,10 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 runtime_root=context.value.runtime_root,
             ),
             packages=tuple(
-                u.Infra.project_package_name(root / repository.path)
+                # The binding probe resolves through importlib (module names:
+                # dash-free), while the pyproject declares the distribution
+                # name — "dc-recon" imports as "dc_recon".
+                u.Infra.project_package_name(root / repository.path).replace("-", "_")
                 for repository in repositories
             ),
         )
@@ -484,7 +487,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         """
         if observation is None:
             return r[bool].ok(value=True)
-        package_name = u.Infra.project_package_name(expected_root)
+        package_name = u.Infra.project_package_name(expected_root).replace("-", "_")
         directories = observation.package_directories.get(package_name, ())
         if (
             len(directories) != 1
@@ -563,10 +566,14 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         exported by these module namespaces.
 
         """
-        package_name = u.Infra.project_package_name(expected_root)
+        package_name = u.Infra.project_package_name(expected_root).replace("-", "_")
         package = u.Infra.declared_package_dir(
             package_name,
-            search_paths=(str(expected_root / c.Infra.DEFAULT_SRC_DIR),),
+            # src/ layout e flat layout: o pacote pode morar em qualquer um.
+            search_paths=(
+                str(expected_root / c.Infra.DEFAULT_SRC_DIR),
+                str(expected_root),
+            ),
         )
         if (
             package is None
@@ -667,7 +674,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                             (
                                 context.value.resolution_root / item.source.editable
                             ).resolve(),
-                        )
+                        ).replace("-", "_")
                         for item in locked.package
                         if item.source.editable is not None
                     }),
@@ -677,6 +684,9 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 return r[int].from_failure(native)
             observation = native.value
             metadata_paths = tuple(str(path) for path in observation.metadata_paths)
+        hooks = cls._validate_path_hooks(metadata_paths)
+        if hooks.failure:
+            return r[int].from_failure(hooks)
         return cls._validate_required(
             members,
             locked,
@@ -1189,6 +1199,48 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             return r[bool].fail(
                 f"registry dependency has a foreign direct origin: {name}"
             )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _validate_path_hooks(metadata_paths: Sequence[str]) -> p.Result[bool]:
+        """Prove every site ``.pth`` hook is recorded by an installed artifact.
+
+        A ``.pth`` in an install directory runs at interpreter start and can
+        put any path on ``sys.path``. Only a hook an installed distribution
+        lists in its RECORD is environment-owned; that covers the editable
+        hooks the setup selection receipt admits, because their reinstall
+        records them. Any other hook is a borrowed environment and fails.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        owned: set[Path] = set()
+        for distribution in u.installed_distributions(path=metadata_paths):
+            files = distribution.files
+            if files is None:
+                return r[bool].fail(
+                    "installed artifact has no file inventory: "
+                    f"{distribution.metadata['Name']}",
+                )
+            owned.update(
+                Path(str(distribution.locate_file(file))).resolve()
+                for file in files
+                if file.suffix == ".pth"
+            )
+        for directory in sorted({Path(path).resolve() for path in metadata_paths}):
+            for hook in sorted(directory.glob("*.pth")):
+                if hook.resolve() in owned:
+                    continue
+                injected = tuple(
+                    line
+                    for line in hook.read_text(encoding="utf-8").splitlines()
+                    if line.strip() and not line.startswith("#")
+                )
+                return r[bool].fail(
+                    "environment path hook has no installed owner: "
+                    f"file={hook} injects={injected}",
+                )
         return r[bool].ok(value=True)
 
     @staticmethod

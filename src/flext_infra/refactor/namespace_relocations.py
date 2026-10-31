@@ -274,11 +274,13 @@ class FlextInfraNamespaceRelocationCascade:
                     target_module=target_module,
                     aliases=tuple(sorted(aliases)),
                 )
-                if updated is None:
+                if updated.failure:
+                    return r[bool].from_failure(updated)
+                if updated.value == working[file_path]:
                     return r[bool].fail(
                         f"native import relocation did not plan: {file_path}"
                     )
-                working[file_path] = updated
+                working[file_path] = updated.value
         return r[bool].ok(value=True)
 
     @staticmethod

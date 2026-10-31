@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.smells import FlextInfraSmellsGate
+from flext_infra.gates.smells import FlextInfraGatesSmells
 from tests import c, m, t, tm, u
 
 
@@ -224,7 +224,7 @@ class TestsFlextInfraSmellsGate:
     def test_registry_exposes_the_canonical_gate() -> None:
         """Test registry exposes the canonical gate."""
         gate = FlextInfraGateRegistry.default().get("smells")
-        tm.ok(gate is FlextInfraSmellsGate)
+        tm.ok(gate is FlextInfraGatesSmells)
 
     def test_missing_project_configuration_is_a_blocking_failure(
         self,
@@ -232,7 +232,7 @@ class TestsFlextInfraSmellsGate:
         smells_project: Path,
     ) -> None:
         """Test missing project configuration is a blocking failure."""
-        execution = FlextInfraSmellsGate(tmp_path).check(
+        execution = FlextInfraGatesSmells(tmp_path).check(
             smells_project,
             self._ctx(tmp_path),
         )
@@ -268,7 +268,7 @@ class TestsFlextInfraSmellsGate:
         """Test zero findings scan is a pass."""
         self._configure(tmp_path)
 
-        execution = FlextInfraSmellsGate(tmp_path).check(
+        execution = FlextInfraGatesSmells(tmp_path).check(
             smells_project,
             self._ctx(tmp_path),
         )
@@ -291,7 +291,7 @@ class TestsFlextInfraSmellsGate:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        execution = FlextInfraSmellsGate(tmp_path).check(
+        execution = FlextInfraGatesSmells(tmp_path).check(
             smells_project,
             self._ctx(tmp_path),
         )
@@ -311,7 +311,7 @@ class TestsFlextInfraSmellsGate:
         self._configure(tmp_path)
         (smells_project / c.PYPROJECT_FILENAME).unlink()
 
-        execution = FlextInfraSmellsGate(tmp_path).check(
+        execution = FlextInfraGatesSmells(tmp_path).check(
             smells_project,
             self._ctx(tmp_path),
         )

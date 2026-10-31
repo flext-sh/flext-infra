@@ -555,7 +555,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         render_inputs: m.Infra.CodegenRenderInputs,
         *,
         planned_data_files: Sequence[str] = (),
-        scaffold_sources: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates.
 
@@ -670,16 +669,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 alias=project.alias,
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
-                # Scaffolded facades extend the class each upstream letter names
-                # in the __all__ that declares it, never the letter itself.
-                upstream_facades=(
-                    u.Infra.facade_classes(
-                        project.upstream,
-                        source_root=repository_root,
-                    )
-                    if scaffold_sources
-                    else {}
-                ),
                 inherited_facets=project.inherited_facets,
                 root_packages=project.root_packages,
                 repository_namespace_packages=project.repository_namespace_packages,
@@ -710,6 +699,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _declared_dependency_facts(
         repository_root: Path,
         project: m.Infra.ProjectSpec,
+        *,
+        manifest_source: str | None = None,
     ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Read the declared dependency facts of one render project.
 
@@ -720,6 +711,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         Args:
             repository_root: Project root whose pyproject declares the facts.
             project: Resolved render project used before the pyproject exists.
+            manifest_source: Original captured TOML; when provided, no file is read.
 
         Returns:
             The non-empty declared dependency names with their declared
@@ -727,43 +719,87 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
         """
         result_type = r[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]
-        if (repository_root / c.PYPROJECT_FILENAME).is_file():
+        if (
+            manifest_source is None
+            and not (repository_root / c.PYPROJECT_FILENAME).is_file()
+        ):
+            return result_type.ok((project.runtime_dependency_overlay, ()))
+        declared = FlextInfraCodegenConformContextRender._declared_runtime_requirements(
+            repository_root, manifest_source=manifest_source
+        )
+        if declared.failure:
+            return result_type.from_failure(declared)
+        payload, runtime = declared.value
+        groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        declared_dev = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
+            partial(
+                t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
+                (
+                    *t.Infra.STR_SEQ_ADAPTER.validate_python(
+                        groups.get(c.Infra.DEV, ()),
+                    ),
+                    *u.Infra.canonical_dev_dependencies_from_payload(payload),
+                ),
+            ),
+        )
+        if declared_dev.failure:
+            return result_type.from_failure(declared_dev)
+        return result_type.ok((
+            tuple(
+                dict.fromkeys((
+                    *runtime,
+                    *project.runtime_dependency_overlay,
+                ))
+            ),
+            declared_dev.value,
+        ))
+
+    @staticmethod
+    def _declared_runtime_requirements(
+        repository_root: Path,
+        *,
+        manifest_source: str | None,
+    ) -> p.Result[tuple[t.JsonMapping, tuple[t.NonEmptyStr, ...]]]:
+        """Read one existing manifest's payload and declared runtime requirements.
+
+        Args:
+            repository_root: Project root whose pyproject declares the facts.
+            manifest_source: Original captured TOML; when provided, no file is read.
+
+        Returns:
+            The manifest payload with its non-empty runtime requirement names,
+            or the first metadata failure.
+
+        """
+        result_type = r[tuple[t.JsonMapping, tuple[t.NonEmptyStr, ...]]]
+        if manifest_source is None:
             metadata = u.Infra.read_project_metadata_result(repository_root)
             if metadata.failure:
                 return result_type.from_failure(metadata)
+            requirements = metadata.value.project.dependencies
             payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
-            groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
-            runtime = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
-                partial(
-                    t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
-                    metadata.value.project.dependencies,
-                ),
+        else:
+            recovered = u.Infra.recover_live_pyproject_text(manifest_source)
+            if recovered.failure:
+                return result_type.from_failure(recovered)
+            parsed = u.Cli.toml_mapping_from_text(recovered.value)
+            if parsed is None:
+                return result_type.fail(
+                    f"captured project metadata is invalid: {repository_root}"
+                )
+            declared = r[m.Infra.DependencyManifestSpec].create_from_callable(
+                lambda: m.Infra.DependencyManifestSpec.model_validate(parsed)
             )
-            if runtime.failure:
-                return result_type.from_failure(runtime)
-            declared_dev = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
-                partial(
-                    t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
-                    (
-                        *t.Infra.STR_SEQ_ADAPTER.validate_python(
-                            groups.get(c.Infra.DEV, ()),
-                        ),
-                        *u.Infra.canonical_dev_dependencies_from_payload(payload),
-                    ),
-                ),
-            )
-            if declared_dev.failure:
-                return result_type.from_failure(declared_dev)
-            return result_type.ok((
-                tuple(
-                    dict.fromkeys((
-                        *runtime.value,
-                        *project.runtime_dependency_overlay,
-                    ))
-                ),
-                declared_dev.value,
-            ))
-        return result_type.ok((project.runtime_dependency_overlay, ()))
+            if declared.failure:
+                return result_type.from_failure(declared)
+            requirements = declared.value.dependencies
+            payload = parsed
+        runtime = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
+            partial(t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python, requirements),
+        )
+        if runtime.failure:
+            return result_type.from_failure(runtime)
+        return result_type.ok((payload, runtime.value))
 
     def _validated_render_project(
         self,

@@ -24,6 +24,7 @@ from types import CodeType, ModuleType, SimpleNamespace
 from typing import ClassVar, TypeIs
 from warnings import WarningMessage
 
+import pytest
 from flext_cli import u
 from pytest_markdown_docs import plugin as markdown_plugin
 from pytest_markdown_docs.plugin import extract_fence_tests
@@ -37,16 +38,14 @@ class FlextInfraUtilitiesPytestCollection:
 
     markdown_state: ClassVar[
         t.Infra.Pytest.StashKey[m.Infra.PytestMarkdownCollection]
-    ] = t.Infra.Pytest.StashKey()
-    collection_workers: ClassVar[t.Infra.Pytest.StashKey[set[str]]] = (
-        t.Infra.Pytest.StashKey()
-    )
+    ] = pytest.StashKey()
+    collection_workers: ClassVar[t.Infra.Pytest.StashKey[set[str]]] = pytest.StashKey()
     collection_worker_ids: ClassVar[
         t.Infra.Pytest.StashKey[dict[str, tuple[str, ...]]]
-    ] = t.Infra.Pytest.StashKey()
+    ] = pytest.StashKey()
     collection_worker_manifests: ClassVar[
         t.Infra.Pytest.StashKey[dict[str, m.Infra.PytestCollectionManifest]]
-    ] = t.Infra.Pytest.StashKey()
+    ] = pytest.StashKey()
 
     @staticmethod
     def markdown_item(
@@ -406,7 +405,7 @@ class FlextInfraUtilitiesPytestCollection:
     def collection_node_down(
         cls,
         node: t.Infra.Pytest.WorkerController,
-        error: object | None,
+        error: t.Infra.Pytest.WorkerDownError,
     ) -> None:
         """Publish one manifest after every admitted worker supplies its facts.
 

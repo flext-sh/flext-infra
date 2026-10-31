@@ -1,9 +1,19 @@
+# Fixture owner sets: fixture-utils/library-member-owner-pytest-{c,t,u}.yml.
+# Class members only; lower-case members belong to the constant document.
 id: rewire-pytest-class-constant-to-tests-constants
 valid:
   - |
+    @pytest.mark.slow
+    def test_value() -> None: ...
+  - |
     code = c.Tests.ExitCode.OK
   - |
-    marker = pytest.mark
+    def probe(monkeypatch: pytest.MonkeyPatch) -> None: ...
 invalid:
   - |
     code = pytest.ExitCode.OK
+  - |
+    try:
+        run()
+    except pytest.UsageError:
+        raise

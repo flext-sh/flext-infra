@@ -7,18 +7,17 @@ valid:
       pass
   __all__ = ["FlextMeltanoModels"]
 - |
-  class Payload(m.ArbitraryTypesModel):
+  class Payload(m.ManagedModel):
       pass
 # A class the module does not declare is no facade.
 - |
   class FlextMeltanoModels(FlextResult):
       pass
+# __all__ string-form membership is semantic (rope: public_export_names_source owns it; bead flext-wjxd7) — not expressible as ast-grep textual equality.
 invalid:
+# The generated tuple form publishes the class through a module literal.
 - |
   class FlextMeltanoModels(FlextResult):
       pass
-  __all__ = ["FlextMeltanoModels"]
-- |
-  class FlextMeltanoModels(FlextCliModels):
-      pass
-  __all__ = ["FlextMeltanoModels"]
+  _PUBLIC = ["FlextMeltanoModels"]
+  __all__ = tuple(_PUBLIC)

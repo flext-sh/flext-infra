@@ -12,9 +12,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import m
-from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+from flext_infra.gates.pyright import FlextInfraGatesPyright
+from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
+from flext_infra.gates.ruff_lint import FlextInfraGatesRuffLint
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ class TestsFlextInfraRealGateRunners:
         project_dir = u.Tests.mk_project(tmp_path, "lint-project", with_src=True)
         (project_dir / "src" / "demo.py").write_text("import os\n", encoding="utf-8")
 
-        result = FlextInfraRuffLintGate(tmp_path).check(
+        result = FlextInfraGatesRuffLint(tmp_path).check(
             project_dir,
             self.make_ctx(tmp_path),
         )
@@ -56,7 +56,7 @@ class TestsFlextInfraRealGateRunners:
             encoding="utf-8",
         )
 
-        result = FlextInfraRuffLintGate(tmp_path).check(
+        result = FlextInfraGatesRuffLint(tmp_path).check(
             project_dir,
             m.Infra.GateContext(
                 repository_root=tmp_path,
@@ -98,7 +98,7 @@ class TestsFlextInfraRealGateRunners:
             'print(json.dumps({"failed": True}), file=sys.stderr)\n',
             encoding="utf-8",
         )
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = FlextInfraGatesRuffLint(tmp_path)
 
         before = gate.check(project_dir, self.make_ctx(tmp_path))
         _ = gate.fix(
@@ -147,7 +147,7 @@ class TestsFlextInfraRealGateRunners:
             f'    return json.dumps({{"message": "{long_words}"}})\n',
             encoding="utf-8",
         )
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = FlextInfraGatesRuffLint(tmp_path)
 
         _ = gate.fix(
             project_dir,
@@ -200,7 +200,7 @@ class TestsFlextInfraRealGateRunners:
         )
         (nested / "bad.py").write_text("import os\n", encoding="utf-8")
 
-        gate = FlextInfraRuffLintGate(tmp_path)
+        gate = FlextInfraGatesRuffLint(tmp_path)
         check_dirs = gate.check(project_dir, self.make_ctx(tmp_path))
 
         tm.ok(check_dirs.result.passed)
@@ -214,7 +214,7 @@ class TestsFlextInfraRealGateRunners:
             encoding="utf-8",
         )
 
-        result = FlextInfraRuffFormatGate(tmp_path).check(
+        result = FlextInfraGatesRuffFormat(tmp_path).check(
             project_dir,
             self.make_ctx(tmp_path),
         )
@@ -235,7 +235,7 @@ class TestsFlextInfraRealGateRunners:
             tmp_path / "external-owner" / "INSTRUCTION_SURFACE.md",
         )
 
-        result = FlextInfraRuffFormatGate(tmp_path).fix(
+        result = FlextInfraGatesRuffFormat(tmp_path).fix(
             project_dir,
             m.Infra.GateContext(
                 repository_root=tmp_path,
@@ -263,7 +263,7 @@ class TestsFlextInfraRealGateRunners:
             encoding="utf-8",
         )
 
-        result = FlextInfraPyrightGate(tmp_path).check(
+        result = FlextInfraGatesPyright(tmp_path).check(
             project_dir,
             self.make_ctx(tmp_path),
         )

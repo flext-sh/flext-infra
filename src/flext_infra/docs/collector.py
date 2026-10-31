@@ -36,11 +36,15 @@ class FlextInfraDocCollector:
         if request.check:
             return r[bool].ok(
                 u.Infra.docs_verify_plan_collection(
-                    root, configuration.value, inputs=tuple(inputs.values()),
+                    root,
+                    configuration.value,
+                    inputs=tuple(inputs.values()),
                 ),
             )
         bundle = u.Infra.docs_collect_plan_files(
-            root, configuration.value, inputs=tuple(inputs.values()),
+            root,
+            configuration.value,
+            inputs=tuple(inputs.values()),
         )
         incomplete = tuple(
             item for item in bundle.coverage if item.adapter == "private-inventory"
@@ -98,10 +102,12 @@ class FlextInfraDocCollector:
         parsed = u.Cli.yaml_parse(captured.value.content.decode("utf-8"))
         if parsed.failure:
             return result_type.from_failure(parsed)
-        return u.validate_value(
-            m.Infra.PlanCollectionConfig,
-            parsed.value,
-            strict=False,
+        return result_type.ok(
+            u.Cli.config_decode(
+                parsed.value,
+                m.Infra.PlanCollectionConfig,
+                source_path=configuration_path,
+            ),
         )
 
     @staticmethod

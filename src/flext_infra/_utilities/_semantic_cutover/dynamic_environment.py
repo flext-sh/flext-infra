@@ -17,20 +17,14 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeModulePatch,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
-)
-from flext_infra._utilities._rope.rope_module_patch import (
-    FlextInfraUtilitiesRopeModulePatch,
-)
-from flext_infra._utilities._rope.rope_runtime_modules import (
-    FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_refactors import (
-    FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
@@ -335,11 +329,12 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
                 source,
                 tuple(planner.edits),
             ).new_contents
-            updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
-                updated,
-                module=package,
-                name="settings",
-            )
+            with FlextInfraUtilitiesRopeModulePatch.candidate_module(
+                module, updated
+            ) as candidate:
+                updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
+                    candidate, module=package, name="settings"
+                )
             return updated, ("routed config-owned environment keys through settings",)
 
         return cls._semantic_edits(

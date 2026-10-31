@@ -14,6 +14,7 @@ from flext_cli import m
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsMiseToolchain
+from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInit
 from flext_infra._models._config import (
     FlextInfraModelsConfigContexts,
     FlextInfraModelsConfigContract,
@@ -23,7 +24,7 @@ from flext_infra._models._config import (
 )
 
 
-class FlextInfraModelsCodegenRender:
+class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     """Typed render contexts for generated codegen artifacts."""
 
     class ModelProtocolRenderContext(m.ContractModel):
@@ -413,19 +414,115 @@ class FlextInfraModelsCodegenRender:
         )
 
     # Keep the module-skeleton template boundary model-backed and immutable.
-    class ModuleSkeletonRenderContext(m.ContractModel):
-        """Validated context for one generated module skeleton."""
+    class ModuleSkeletonRenderContext(m.ArbitraryTypesModel):
+        """Native module inventory filling the canonical template's owned slots."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid",
-            frozen=True,
             str_strip_whitespace=False,
         )
 
         class_name: t.NonEmptyStr = m.Field(description="Generated class name.")
-        base_class: t.NonEmptyStr = m.Field(description="Generated base class name.")
-        base_module: t.NonEmptyStr = m.Field(description="Module owning base_class.")
-        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
+        base_class: t.NonEmptyStr | None = m.Field(
+            description="Declared base class, absent for an uncomposed namespace."
+        )
+        base_module: t.NonEmptyStr | None = m.Field(
+            description="Module owning the declared base, paired with base_class."
+        )
+        docstring: str | None = m.Field(
+            default=None,
+            description=(
+                "Owned documentation for a new skeleton; existing source"
+                " retains its own text."
+            ),
+        )
+        module_prefix: str | None = m.Field(
+            default=None,
+            description=(
+                "Authored module prelude and native import output, when refactoring."
+            ),
+        )
+        module_suffix: str = m.Field(
+            default="",
+            description="Preserved source following the selected native class.",
+        )
+        class_bases: tuple[str, ...] = m.Field(
+            default=(), description="Ordered, identity-proven native base expressions."
+        )
+        class_keywords: tuple[str, ...] = m.Field(
+            default=(), description="Unchanged native class keyword expressions."
+        )
+        type_parameters_source: str = m.Field(
+            default="", description="Exact native generic parameter declaration."
+        )
+        header_source: str | None = m.Field(
+            default=None,
+            description=(
+                "Unchanged native class header when its structural"
+                " arguments are unchanged."
+            ),
+        )
+        header_comments: tuple[str, ...] = m.Field(
+            default=(),
+            description=(
+                "Native lexical comment fragments retained while"
+                " recomposing a changed header."
+            ),
+        )
+        class_indent: str = m.Field(
+            default="", description="Native indentation of the selected class."
+        )
+        indentation: str = m.Field(
+            default="    ",
+            min_length=1,
+            description=(
+                "Template indentation; native refactors supply their project policy."
+            ),
+        )
+        body_source: tuple[str | tuple[str, str], ...] | None = m.Field(
+            default=None,
+            description=(
+                "Ordered authored source and native class-publication"
+                " slots, retaining declaration order and trivia."
+            ),
+        )
+        publications: Mapping[str, str] = m.Field(
+            default_factory=dict[str, str],
+            description=(
+                "Native class-publication targets and their authenticated expressions."
+            ),
+        )
+        exports: tuple[str, ...] | None = m.Field(
+            default=None,
+            description=(
+                "Declared module exports; absent only for a new class skeleton."
+            ),
+        )
+        managed_header: str | None = m.Field(
+            default=None,
+            description="Canonical ownership marker selected by the projection owner.",
+        )
+
+        @m.model_validator(mode="after")
+        def validate_declared_base(self) -> Self:
+            """Keep the optional class and module as one declaration contract.
+
+            Returns:
+                This validated source context.
+
+            Raises:
+                ValueError: Only one half of an imported base was supplied.
+
+            """
+            if (self.base_class is None) != (self.base_module is None):
+                message = (
+                    "A module skeleton declares its base class and module together"
+                )
+                raise ValueError(message)
+            if self.module_prefix is None and not self.docstring:
+                message = "A new module skeleton requires its owned documentation"
+                raise ValueError(message)
+            return self
 
     class TestModuleSkeletonRenderContext(m.ContractModel):
         """Validated context for one generated test facade skeleton."""
@@ -524,35 +621,6 @@ class FlextInfraModelsCodegenRender:
         """Validated MkDocs context with a project edit scope."""
 
         scope_name: t.NonEmptyStr = m.Field(description="Workspace project scope.")
-
-    class LazyInitRootRender(m.ArbitraryTypesModel):
-        """Template context for one lazy public root ``__init__.py``."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-        runtime_import_lines: t.NonEmptyStr = m.Field(
-            description="Isort-ordered runtime imports of the lazy helpers.",
-        )
-        eager_binding_lines: str = m.Field(
-            default_factory=str,
-            description=(
-                "Runtime-only eager dunder bindings emitted after the lazy "
-                "installer, so the bound submodule may consume the package's "
-                "own facades while its static contract stays in TYPE_CHECKING."
-            ),
-        )
-        type_checking_lines: str = m.Field(
-            default_factory=str,
-            description="Static declarations for public lazy exports.",
-        )
-        exports_tuple: t.NonEmptyStr = m.Field(
-            description="Canonical rendered root ``__all__`` tuple.",
-        )
-        lazy_export_mapping: t.NonEmptyStr = m.Field(
-            description="Immutable elected export-to-target installer argument.",
-        )
 
 
 __all__: list[str] = ["FlextInfraModelsCodegenRender"]

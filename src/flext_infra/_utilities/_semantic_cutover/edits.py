@@ -80,20 +80,22 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
     def _semantic_checked_edits(
         cls,
         items: Sequence[tuple[Path, str]],
-        rewrite: Callable[[Path, str], t.Infra.TransformResult],
+        rewrite: Callable[[Path, str], p.Result[t.Infra.TransformResult]],
     ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
-        """Keep declarative validation failures on their typed result boundary.
+        """Admit typed rewrites before constructing the complete coherent edits.
 
         Returns:
-            Complete edits or the first original validation exception.
+            Complete edits or the unchanged first failed Result.
 
         """
-        try:
-            return cls._semantic_edits(items, rewrite)
-        except ValueError as exc:
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(
-                str(exc), exception=exc
-            )
+
+        def planned(
+            values: Sequence[t.Infra.TransformResult],
+        ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+            ordered = iter(values)
+            return cls._semantic_edits(items, lambda _path, _source: next(ordered))
+
+        return r.traverse(items, lambda item: rewrite(*item)).flat_map(planned)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverEdits"]

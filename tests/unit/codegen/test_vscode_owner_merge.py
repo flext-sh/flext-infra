@@ -531,7 +531,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         )
         (root / c.Infra.GITIGNORE).write_text(
             tm.ok(
-                u.Infra.render_project_gitignore(
+                u.Infra.render_project_ignore(
                     config.Infra.codegen,
                     profile=c.Infra.MakeProfile.STANDALONE,
                     project_name=root.name,
@@ -571,7 +571,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             update={"managed_files": (artifact,)},
         )
         rendered = tm.ok(
-            u.Infra.render_project_gitignore(
+            u.Infra.render_project_ignore(
                 codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,

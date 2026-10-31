@@ -60,7 +60,11 @@ class FlextInfraModelsConfigMakeDocs:
 
         contract_guide: Annotated[
             Path | None,
-            m.Field(description="Canonical guide with the generated Make contract section"),
+            m.Field(
+                description=(
+                    "Canonical guide with the generated Make contract section"
+                ),
+            ),
         ] = None
         actions: Annotated[
             tuple[t.NonEmptyStr, ...],

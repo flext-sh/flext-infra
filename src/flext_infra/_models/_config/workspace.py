@@ -159,6 +159,13 @@ class FlextInfraModelsConfigWorkspace:
             use_enum_values=False, extra="forbid"
         )
 
+        docs_audit: Annotated[
+            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
+            m.Field(
+                default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
+                description="Universal documentation-audit declarations",
+            ),
+        ]
         project: Annotated[
             FlextInfraModelsConfigContexts.ProjectSpec | None,
             m.Field(description="Explicit metadata for a new project scaffold"),
@@ -167,12 +174,6 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
             m.Field(description="Explicit repository integration contract"),
         ] = None
-        docs_audit: Annotated[
-            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
-            m.Field(description="Own documentation audit declarations"),
-        ] = m.Field(
-            default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
-        )
         namespace_scan_dirs: Annotated[
             Sequence[str],
             m.Field(description="Own namespace analysis roots"),
@@ -215,9 +216,16 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Own canonical generation policy"),
         ] = FlextInfraConstantsConfig.CodegenKind.CONFORM
         kind: Annotated[
-            FlextInfraConstantsConfig.ProjectKind,
-            m.Field(description="Own governance profile and architecture boundary"),
-        ] = FlextInfraConstantsConfig.ProjectKind.INTERNAL_FLEXT
+            FlextInfraConstantsConfig.ProjectKind | None,
+            m.Field(
+                description=(
+                    "Own governance profile and architecture boundary. The "
+                    "package base bundle declares no project and so no kind; "
+                    "every project declares it in its own layer, and the "
+                    "project-boundary read fails closed when it is absent"
+                ),
+            ),
+        ] = None
         state: Annotated[
             FlextInfraConstantsConfig.RepositoryState,
             m.Field(description="Own lifecycle participation policy"),

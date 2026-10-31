@@ -154,6 +154,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         *,
         module: Path | None = None,
         source_project: p.Infra.RopeProject | None = None,
+        declaration_inputs: m.Infra.RepositoryDeclarationInputs | None = None,
     ) -> str:
         """Render the copyright notice of the project that owns ``pkg_dir``.
 
@@ -164,6 +165,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         shares, is the line between the copyright sentence and the SPDX line:
         the sentence and the license stay legal, and the notice is not one
         stamp.
+        ``declaration_inputs`` reuses an already validated declaration of that
+        owning root, including its original source observations.
 
         Returns:
             The copyright sentence, that module identity when ``module`` is
@@ -189,7 +192,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                 root,
                 filename=c.Infra.CODEGEN_CONFIG_FILENAME,
             )
-            if source_project is None:
+            if source_project is None and declaration_inputs is None:
                 notice = cls._declared_notice_identity(
                     root,
                     tuple(
@@ -200,11 +203,13 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                     ),
                 )
             else:
-                artifacts = FlextInfraUtilitiesProjectManagedArtifacts
-                declaration = artifacts.load_repository_declaration_inputs(
-                    root,
-                    source_project=source_project,
-                ).unwrap()
+                declaration = declaration_inputs
+                if declaration is None:
+                    artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+                    declaration = artifacts.load_repository_declaration_inputs(
+                        root,
+                        source_project=source_project,
+                    ).unwrap()
                 notice = cls.project_notice_identity(
                     root,
                     declaration.spec.project,

@@ -62,12 +62,15 @@ Infra:
     # now derive from the codegen artifact SSOT (config/codegen.yaml artifacts
     # with source_scan_ignore=true) via CodegenConfigSpec.source_scan_ignored.
   # CSV-driven rename campaigns applied by the mod verb's rename phase
-  # through the apply-renames engine. Each entry: csv (path to an old,new
-  # list, relative to this config directory, which ships inside the
-  # package so every consumer's `make mod` reads the same list) and
+  # through the apply-renames engine. A campaign is declared by the
+  # repository that owns the renamed definition, in ITS OWN
+  # config/infra.yaml; this packaged layer declares none. Each entry: csv
+  # (path to an old,new list, relative to the declaring repository's
+  # config/ directory: services/mod.py resolves `<root>/config/<csv>`) and
   # optional roots (repository-root-relative scan directories; empty
-  # selects the whole repository root). A campaign is declared here only
-  # once every `new` name already exists in the released definer, so each
-  # repository can apply it independently in any order.
+  # selects the whole repository root). `bindings` expand the scan to every
+  # native consumer of the bound owners, so one declaration in the definer
+  # reaches all consumers. A campaign is declared only once every `new` name
+  # already exists in the released definer.
   refactor_csv_campaigns:
     campaigns: []

@@ -40,18 +40,18 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+from flext_infra._utilities._rope.runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
+from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
@@ -427,7 +427,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 continue
             tree = ast.parse(source)
             exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     source_project.get_module(module)
                 )
             )
@@ -1119,7 +1119,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         qualified = f"{imported_module}.{imported_name}"
         binding = runtime.qualified_name(project, qualified)
         receiver = binding.get_object()
-        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(receiver) or not (
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(receiver) or not (
             runtime.same_name(
                 binding,
                 runtime.resolve_symbol(
@@ -1139,7 +1139,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             owner = scope.pyobject
             if (
                 scope.get_kind() != c.Infra.RopeScopeKind.CLASS
-                or not FlextInfraUtilitiesTypesRopeRuntime.py_class(owner)
+                or not FlextInfraUtilitiesRopeRuntimeTypes.py_class(owner)
                 or receiver not in owner.get_superclasses()
             ):
                 continue

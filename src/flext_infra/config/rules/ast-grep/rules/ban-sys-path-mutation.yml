@@ -6,12 +6,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
 rule:
   any:
     - kind: call

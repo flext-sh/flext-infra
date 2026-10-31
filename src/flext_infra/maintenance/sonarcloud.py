@@ -15,13 +15,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, t, u
-from flext_infra.maintenance import FlextInfraSonarcloudClient
+from flext_infra.maintenance import FlextInfraMaintenanceSonarcloudClient
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
+class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool]):
     """Converge one project's SonarCloud issue exclusions onto the SSOT.
 
     Every input — token, project key, SSOT exclusions — is validated before
@@ -320,4 +320,4 @@ class FlextInfraSonarcloudSettingsSync(FlextInfraSonarcloudClient[bool]):
         return self._converge(planned.value, token)
 
 
-__all__: list[str] = ["FlextInfraSonarcloudSettingsSync"]
+__all__: list[str] = ["FlextInfraMaintenanceSonarcloud"]

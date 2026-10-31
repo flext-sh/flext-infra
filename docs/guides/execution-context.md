@@ -60,6 +60,16 @@
 
 ## Runtime is the authority
 
+For the active complete facade-generator rewrite, resume from the branch-matched
+root plan, section `Handoff de retomada — 2026-10-30, chat 01a18a11`, at
+`.kilo/plans/2026-10-28-gen-mod-parametrization-performance/plan.md`, and Bead
+`flext-u9h2i`. It records the shared owners and failed/partial Make receipts;
+source implementation is not runtime acceptance. ADR-018 owns the template
+clarification: existing templates are the base of existing-module refactoring,
+filled from the current Infra Rope semantic inventory via typed contexts.
+Never substitute physical source after a candidate parse failure or repair a
+generated initializer manually. Preserve the first cause and fix its producer.
+
 Generation must remain importable before repairing projections. Authored component
 facades that share ancestors must impose compatible C3 precedence; reordering a
 generated outer facade cannot repair contradictory component hierarchies. Repair
@@ -174,13 +184,29 @@ configuration root with locked mode retained. It must not turn the resolved acti
 version into `--tool <selector>@<version>`: that is a new command-line request,
 not the original configured request and its lock binding. In particular, a tool
 declared `latest` and already installed from its lock must remain discoverable
-before upgrade advances that lock. Make, its shared runtime reader, setup and
+before upgrade advances that lock. Direnv's `mise env --shell bash` invocation
+must retain `MISE_LOCKED=1`, just as discovery does, and consume that same locked
+selection without requesting newer tools. The setting stays local to the activation
+command so explicit upgrade operations retain their declared resolution behavior.
+Make, its shared runtime reader, setup and
 direnv consume the same configured native selection without a host-PATH fallback,
 custom lock parser or second resolver. Setup always bootstraps and never fails on
 lock drift (operator order 2026-10-24): `uv sync --frozen` installs the committed
 `uv.lock` without re-resolving or rewriting it, and plain `mise install` honors
 every `mise.lock` entry and records only missing ones. Check reports drift through
 `uv lock --check`; upgrade alone advances versions and writes the native locks.
+Upgrade always cures, even from a stale lock or a broken environment (tracker
+memories `operator-ruling-2026-10-02-repair-never-deadlocks` and
+`operator-ruling-2026-10-09-setup-always-upg-cures`). The executor imports its
+FLEXT suppliers from the runtime environment, so generated `make upg` first runs
+native `uv lock --upgrade` with the Mise-resolved Python and no FLEXT Python,
+then the setup installation provisions exactly that lock, and only then invokes
+`deps upgrade-lock`. Before every frozen installation, setup compares the
+creator identity recorded in the environment (`make.environment_identity`) with
+the Mise-resolved uv and Python and recreates a divergent environment with native
+`uv venv --clear`; `uv sync` alone keeps an environment whose interpreter still
+satisfies the request. Direnv exports no `UV_PROJECT` or
+`UV_PROJECT_ENVIRONMENT`.
 `deps upgrade-lock` also owns the Mise half, in the same single pass over the
 runtime root and every declared member: each governed repository renders its own
 `.mise.toml` and commits its own `mise.lock`, and Mise resolves a member's tools
@@ -193,10 +219,18 @@ upgrade fetches nothing beyond version resolution. Plain `mise lock` with no too
 arguments would refresh every locked entry and re-download each provenance
 artifact, so it is never used. Neither command installs tools; setup consumes
 the resulting lock.
-An owning facade composes a declared component from its source module, not a stale
-generated package export that prevents the generator itself from importing. Keep
-the public facade and component behavior unchanged; regenerate package exports
-through their owner rather than hand-editing a generated initializer.
+The [projector bootstrap dependency cut](../../../docs/architecture/adr/018-generator-declarations.md#projector-bootstrap-dependency-cut)
+owns cold import repair. Elect the same projector and original planning models
+before the aggregate they repair, retaining public package imports. The former
+defining-module workaround is superseded; generated initializers remain owned by
+the existing projector and are never repaired manually.
+
+The dated [2026-10-30 consolidation handoff][make-consolidation-handoff]
+records the bootstrap source cursor, owners and unqualified command receipts
+under `flext-9t6gn`. Read the latest Bead updates before resuming; this contract
+does not attest that the CLI is repaired.
+
+[make-consolidation-handoff]: ../../../docs/ways-of-working/make-consolidation-handoff.md
 
 The root has one native uv workspace and composes member locks per
 [ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md).
@@ -453,6 +487,53 @@ The Rope DSL import organizer constructs the installed native
 `ImportOrganizer(project)` once per selected cohort and obtains each resource's
 change through `organize_imports(resource)`. File writes narrow native resources
 through the existing typed file-resource owner before publication.
+
+Generation retains the shared writer's actual completed-path receipt through
+index retirement, directory pruning and callback failures. A failed result never
+implies zero effects: the final failure preserves its original cause and metadata
+and reports all proven written paths. Receipt propagation alone does not qualify
+batch atomicity, crash recovery or transaction compensation.
+
+Repository outcomes and request-local diagnostics retain the original failed
+Result by reference, excluded from serialization. Admission propagates that same
+failure contract, keeping its exception, error code and error data together.
+Additional documentation failures become further issues and cannot replace an
+earlier native failure. No-op destinations retain read-input dependency edges to
+pending writers, while unchanged providers do not become write dependencies.
+
+Planning outcomes, conform state and plan coordination are operational mutable
+models. Reuse the existing mutable preset and update these objects by reference;
+do not freeze and copy their whole state on every failure or phase. A distinct
+cohort plan composes the original request, workspace and immutable file witnesses
+directly. Expected negative outcomes use typed result branches before effects.
+
+Each new public generation or planning invocation clears only its prior
+diagnostics, preserving source sessions, dependencies and authenticated witnesses.
+Internal phases use the active invocation's diagnostics without resetting them.
+Semantic API-alias rewrites return their original typed normalization failure;
+the common checked-edit boundary traverses these results before creating edits.
+An incomplete alias cohort never becomes a warning followed by successful output.
+The injected cohort-publication callbacks run after each admitted publication;
+their original failed Result retains the publication receipt. Global follow-ups
+run once only after every cohort succeeds. Control owners retain their mutable
+outcome by reference and mark a failed hook before dependent source analysis.
+The private publisher accepts an already composed, authenticated file-plan cohort
+for pre-Python controls. Supplying that cohort changes no request selector and
+retains normal admission, normalization, input verification and guarded publishing;
+it does not derive documentation or Python projections for the control operation.
+Failure metadata names the actual failed repository cohorts directly, allowing
+control outcomes to be updated without inferring ownership from written paths.
+Before source snapshots are opened, failed control outcomes block their producer
+and actual dependent closure through the existing workspace dependency graph.
+Every declared target retains an explicit source-planning outcome; independent
+targets continue. A failed publication or hook stores that original failed Result
+on its shared cohort outcomes only when no earlier native failure was retained.
+
+The existing per-repository execution boundary contains unexpected `Exception`
+values as native outcomes with their original object and traceback. Native SDK
+exception inheritance need not be replicated in a catch catalog. Cancellation
+and signal exceptions outside `Exception` propagate; expected domain outcomes
+continue through their explicit typed Result branches.
 
 Incremental workspace indexing accepts its prior typed index and changed paths
 as one refresh request. Module evolution and package assembly remain in the
@@ -838,6 +919,14 @@ execution and malformed-report failures stay separate from diagnostic occurrence
 neither a repeated failure nor an unchanged finding count proves validation success.
 
 ### Facade Projection and Model-to-Protocol Generation
+
+The existing model projection producer admits its native inventory through
+`FlextResult` before rendering or retiring generated files. An ambiguous class
+alias or competing route returns a scoped failure; class bindings are normalized
+once through the same native identity owner used by annotation resolution.
+An absent declared facade/layout remains non-applicable. Native failures retain
+their original cause at the existing operation boundary; they never become a
+silently omitted model or an empty successful inventory.
 
 Facade projection composes constants, utilities and models from the exports and
 base order declared in their configured private family. Authored dependency ports
@@ -2272,35 +2361,6 @@ consumer. Preserve valid WIP and establish which side violates its contract
 before extending either side. This development installation is distinct from
 the final locked-package, CI and integrated-runtime proofs.
 
-The lint-freeze catalog retains entries outside a modernizer invocation's
-observed project scope. It may replace the complete inventory only when the
-observed project roots equal the declared operation roots, retaining missing
-managed checkouts in that comparison, and the scan has no invalid paths. An existing digest
-must not be changed or removed merely because the scanned document differs;
-that drift requires the operator's rule-change authorization. Existing catalog bytes are
-validated before use and retained as the original publication preimage; the
-shared codegen publisher owns the update. This does not authorize changing any
-frozen rule, scope, severity or tool setting. Missing or malformed evidence
-remains a failure, and a partial refresh never proves fleet coverage.
-The catalog location is declared by `make.lint_freeze_catalog`; the checker
-uses its explicit repository execution root, never a search through neighboring
-catalog files. The modernizer validates each rendered candidate against that
-original catalog before writing the document. It cannot initialize a missing
-baseline or admit a new entry from the current working tree. Initial baseline
-materialization belongs to the generator's explicitly declared project inputs;
-that bootstrap path still requires implementation and runtime verification.
-Live document reads retain their original atomic file state by reference.
-Publication includes the unchanged catalog observation in the same existing
-publisher call as the candidate document, so both preimages are verified before
-effects. Pure in-memory rendering has no physical witness and cannot publish.
-Publication reuses the existing ordered multi-owner leases for the operation
-root and every physical project owner in its plans. The catalog and consulted
-configuration inputs remain unchanged observations in that same publication.
-This protects the cooperating writers of the cohort; it does not establish a
-global reader barrier or authorize replacing the frozen catalog.
-Catalog keys use the manifest's declared project identity, not the checkout's
-directory name; an independent clone or linked worktree preserves that identity.
-
 The default `make gen` handler invokes the generation engine at `PROJECT_ROOT`,
 with `all` scope locally and `self` scope in its declared CI context. A local
 workspace invocation covers its root and declared members, while a standalone
@@ -2683,6 +2743,8 @@ Diagnostics do not admit unknown objects, skip ancestors or widen the class
 contract without evidence from the real consumer.
 Component composition uses that same admission: a rejected base stops the whole
 query and retains its original exception, never a partial ancestry result.
+Native identifier resolution likewise preserves hierarchy and integrity errors;
+only an absent binding or attribute produces an absent result.
 Native startup imports Core utilities before planning. A syntax error in an
 authored declaration means generation has not run. Repair its minimal bootstrap
 declaration without changing tuple arity or parameter separators, then repair the
@@ -2694,6 +2756,17 @@ own provider moved outside that family leaves its MRO and unused imports.
 Unresolved providers fail before publication. Class-move previews and immutable
 plans leave absent destination directories absent; only an authorized apply
 creates them after source and identifier validation.
+Module-move publication edits use the same candidate module's native binding
+index. Literal installer arguments retain their lexical provider and token spans;
+unsupported or ambiguous publications return a typed refusal before file plans
+are published. Executable imports remain native Rope move effects. Existing
+initializer templates own generated structure; these edits preserve the authored
+body, comments and all unrelated literals.
+Scoped alias relocation stays in the existing Rope imports owner. It consumes
+native import layouts and original scope identities, uses native ImportInfo for
+new import declarations and ChangeCollector for indexed alias/provider spans.
+Mixed imports keep comments and their original guard or local suite. Refusals
+remain typed before any resource write; callers propagate the same failure.
 Snapshot resources derive existence, children and observer indicators from the
 authenticated source inventory. External providers keep their native Rope
 identity through a snapshot-owned external project and read the captured bytes.
@@ -3592,6 +3665,16 @@ policy. A consumer placed in an owner's named directory remains a consumer. Miss
 malformed project metadata blocks the gate and preserves the metadata reader's
 diagnostic; directory names are never identity fallbacks.
 
+Conformance target election reuses the identity already admitted by workspace
+discovery. The original `.gitmodules` observation, including an absent file,
+binds that workspace to the requested checkout; the repository's original
+metadata and declaration observations are verified before its distribution name
+is reused. A stale or foreign workspace is rejected rather than reparsed into a
+new authority. An explicitly declared scaffold retains its admitted identity
+while no manifest exists; a manifest appearing afterward requires the existing
+workspace election to run again. Member observations are not reread to elect the
+local target. This reuse still requires qualification through the public command.
+
 ## Service foundation
 
 The project service foundation must preserve the local service and its canonical
@@ -3956,12 +4039,53 @@ the performance result without reducing scope or raising deadlines.
 
 ## Workspace snapshot and analysis engine
 
+**Approved facade-planner cutover, 2026-10-29; implementation and runtime proof
+pending.** [ADR-018's nested projection contract](../../../docs/architecture/adr/018-generator-declarations.md#nested-facade-projection)
+requires a total rewrite of `codegen_facades.py` into a few declarative
+composition lines, extending the existing workspace DSL with facade planning.
+Reuse its native session, source bindings, queries and the existing utility
+operations through `c/t/p/m/u`. Retire `CodegenFacadeSyntax` and the authored
+CST/AST routes with their consumers; neither a moved monolith, a wrapper nor
+visitors over native syntax nodes satisfies this cutover. Existing typed
+candidate, initializer planner, injected ports and publisher remain the sole
+owners of their responsibilities. Preserve all features and establish net code
+reduction across the complete change. The mechanism descriptions below retain
+their behavioral requirements, not permission to preserve superseded analysis.
+
+Scope failures through the existing typed result/model and publication owners,
+at the smallest coherent transaction or cohort. Retain cause, traceback and
+context in diagnostics, and account for failed and unreached units. Continue
+only proven independent work; an integrity failure blocks unsafe dependents.
+The final command remains nonzero if errors occurred, preserving valid effects
+and WIP. A local failure must neither crash unrelated independent work nor
+become a silent skip or fake success. Unexpected exceptions are not broadly
+captured and normalized; no second error framework is introduced. This is the
+current target under ADR-018, not proof that the executor implements it.
+Facade source rendering returns its existing typed Result; a package without
+that family retains explicit absence outside Result. Facade-path election
+likewise returns a successful native path, a typed ownership failure, or
+legitimate absence. Accessor selector binding consumes that Result at its
+existing planning boundary, rather than throwing during resolver construction.
+Borrowed source projects already supply their source epoch; a separate text
+mapping is an optional planned overlay, not a second mandatory input.
+
 Recursive component facades use the existing family declaration renderer and
 native C3 ordering. Each private component domain publishes through its sibling
 module and the child package's generated initializer. Discovery follows the
 declared facade family and source ownership, including nested domains; it does
 not maintain a separate directory or class catalog. Existing authored
 declarations retain their identity and behavior.
+The existing module-skeleton context and template are the structural base for
+both missing declarations and refactoring existing modules. The same native
+session inventories declarations, imports, bases/MRO, aliases, authored bodies,
+exports and ownership, and fills that typed context by reference. Its generated
+slots own class structure and publications; Rope preserves and repositions
+authored source through authenticated regions and native refactorings. No
+parallel Python string emitter, parser, registry or rendering engine replaces
+those slots. The optional base module and class remain paired for ordinary
+skeleton consumers. Missing domains start without an invented first provider;
+their initializer owns the required documentation. Existing authored regions
+remain actual source inputs, never placeholder Config/Settings/Ping content.
 An owning composition's base order is part of that semantic contract. Two
 individually valid domains can impose opposite precedence on shared ancestors,
 making their generated aggregate impossible to import. Repair the contradictory
@@ -3985,9 +4109,11 @@ native resolution state, not cached declaration kinds. Exception, enum and proto
 classification still precede that query; unresolved contracts, empty contracts and
 invalid ancestry retain their failures. The factory is discarded when its operation
 or captured source view ends, never retained across publication or source changes.
-The method admission predicate reads the class's cached native AST, including
-conditional definitions and excluding methods owned by nested classes. Native
-member bindings are evaluated only when superclass suppliers do not elect it.
+Method admission must use the existing DSL's native declaration, callable and
+descriptor queries, retaining conditional definitions and excluding methods
+owned by nested classes. The former predicate over cached native AST is a
+superseded implementation path, not a permitted replacement for LibCST.
+Native member bindings are evaluated only when superclass suppliers do not elect it.
 Domains at one depth stage their seeds together before one dependent initializer
 pass; shallower domains then consume the completed child publications.
 An unchanged module owner retains its captured native view while seeding.
@@ -4088,6 +4214,14 @@ projects to the native multi-project refactoring capability rather than building
 parallel cross-repository model. Only the `u.Infra` snapshot and adapter owners name the
 underlying implementation; orchestrators, models, protocols and external consumers see
 the generic `p.Infra` capability.
+
+The snapshot supplies its authenticated filesystem to that project's first native
+constructor, before preference or source-root election can read a file. Binding the
+elected roots and candidate completes that same instance; it does not construct a
+second project from the election. The original native core, resource observers and
+first-read witnesses survive this initialization, and the lifecycle owner closes the
+project once. Independent callers retain the native filesystem default unless they
+explicitly inject a source view through the same factory.
 
 The native project's identity remains stable across candidate bindings; identity
 alone therefore does not authenticate a derived memo. Derived facade census and
@@ -4408,13 +4542,14 @@ identity fails explicitly; no AST interpretation, physical `rglob` census,
 name-keyed ancestry reconstruction or fallback authorizes a composition result.
 Required declaration names filter native class scopes before binding inference:
 the selected namespace elects only its own name, and family modules elect only
-their explicit exports. Collect those final declaration identities before asking
-for ancestry. A known replacement does not retain the former class declaration;
-an unresolved final binding fails instead of silently emptying the required set.
-When the family exports no owned class, a unique valid namespace
-satisfies the composition contract without an MRO query; otherwise every native
-MRO witness must be valid before comparing the complete required set. This uses
-the same snapshot and adds no separate semantic index or cache. The native Make
+their explicit exports. Admit required identities incrementally per module.
+Compute the facade's complete native MRO once, only after the first nonempty
+required set, and return false at the first missing required identity. Errors in
+visited bindings or ancestry remain failures; they are never treated as empty sets.
+A known replacement does not retain the former class declaration. When the family
+exports no owned class, a unique valid namespace satisfies the composition contract
+without an MRO query. This uses the same snapshot and adds no separate semantic
+index or cache. The native Make
 profile measured composition in the hot path; source changes alone do not prove
 an improvement or complete the public command.
 This is the active Rope-only cutover contract under ADR-028 Decision 17. At the

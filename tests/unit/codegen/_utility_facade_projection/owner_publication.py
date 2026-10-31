@@ -34,7 +34,7 @@ class UtilityFacadeOwnerPublication:
         *,
         model: bool,
     ) -> None:
-        """Preserve native owner configuration without admitting ambiguous aliases."""
+        """Preserve native owner configuration and retain authored metadata bodies."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         directory = u.Infra.facade_families()["u"].directory
         self._write(package / "__init__.py", "")
@@ -68,16 +68,18 @@ class UtilityFacadeOwnerPublication:
             "__all__ = ['Utilities', 'u']\n",
         )
         if binding != "canonical":
-            with pytest.raises(
-                ValueError, match="Ambiguous explicit facade class binding"
-            ):
-                u.Infra.render_utility_facade(package)
+            # Authored source bodies are retained verbatim; only class
+            # publications are projected.
+            tm.that(
+                tm.ok(tm.not_none(u.Infra.render_utility_facade(package))),
+                has=metadata,
+            )
             return
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         # The bare class binding is published as the PEP 613 alias mypy types.
         tm.that(rendered, has="Cli: TypeAlias = Owner")
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name}.utilities import u\n"
@@ -129,9 +131,10 @@ class UtilityFacadeOwnerPublication:
         self._write(facade, source)
         self._write(authored, source)
         rows = frozenset({4, 5, 7})
-        published = u.Infra.facade_class_publications(
-            root, {facade: rows, authored: rows}
-        )
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            published = u.Infra.facade_class_publications(
+                root, {facade: rows, authored: rows}, source_project=project
+            )
         tm.that(
             published,
             eq=(
@@ -256,7 +259,7 @@ class UtilityFacadeOwnerPublication:
             + f"__all__ = ['PublicFacade', {family!r}]\n",
         )
         with u.Infra.facade_source_project(root) as (project, sources):
-            rendered = (
+            rendered = tm.ok(
                 u.Infra.render_type_facade(package, facade, sources, project=project)
                 if family == "t"
                 else tm.not_none(
@@ -288,11 +291,13 @@ class UtilityFacadeOwnerPublication:
         if publication[0] == "barrel":
             self._write(package / definition.directory / "__init__.py", "")
         with u.Infra.facade_source_project(root) as (project, sources):
-            repeated = (
+            repeated = tm.ok(
                 u.Infra.render_type_facade(package, facade, sources, project=project)
                 if family == "t"
-                else u.Infra.render_utility_facade(
-                    package, family=family, project=project, sources=sources
+                else tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, family=family, project=project, sources=sources
+                    )
                 )
             )
         tm.that(repeated, eq=rendered)
@@ -368,10 +373,15 @@ class UtilityFacadeOwnerPublication:
             f"{family} = SampleFacade\n"
             f"__all__ = ['SampleFacade', '{family}']\n",
         )
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        )
         tm.that(rendered, has="Contracts: TypeAlias = SampleFacadeContracts")
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package, family=family), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family=family)),
+            eq=rendered,
+        )
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -418,7 +428,13 @@ class UtilityFacadeOwnerPublication:
         family: Literal["c", "t", "p", "m", "u"],
         invalid: str,
     ) -> None:
-        """Invalid publications fail through the public boundary for every family."""
+        """Invalid publications fail loud; authored annotations are never rewritten.
+
+        An alias to an unresolved name fails naming that name, a non-class
+        binding and a duplicated binding fail loud, a contradictory annotation
+        and a native ``type`` alias survive projection, and the type family
+        neither duplicates the owner import nor injects the owner as a base.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         spec = u.Infra.facade_families()[family]
         self._write(package / "__init__.py", "")
@@ -437,16 +453,30 @@ class UtilityFacadeOwnerPublication:
             f"__all__ = ['PublicFacade', '{family}']\n",
         )
         with u.Infra.facade_source_project(root) as (project, sources):
-            if family == "t":
-                with pytest.raises(ValueError, match=r"[Aa]mbiguous|Non-class binding"):
-                    u.Infra.render_type_facade(
-                        package, facade, sources, project=project
-                    )
-            else:
-                with pytest.raises(ValueError, match=r"[Aa]mbiguous|Non-class binding"):
+            rendered = (
+                u.Infra.render_type_facade(package, facade, sources, project=project)
+                if family == "t"
+                else tm.not_none(
                     u.Infra.render_utility_facade(
                         package, family=family, project=project, sources=sources
                     )
+                )
+            )
+        failures = {
+            # An alias to an unresolved name fails loud, naming that name.
+            "Other = missing": "missing",
+            "Other = Owner.value": "Non-class binding",
+            "Base = Owner\n    Base = Owner": "Ambiguous",
+        }
+        if invalid in failures:
+            tm.fail(rendered, has=failures[invalid])
+            return
+        projected = tm.ok(rendered)
+        # The authored annotation and native alias are never rewritten away.
+        tm.that(projected, has=invalid)
+        if family == "t":
+            tm.that(projected.count(" import Owner\n"), eq=1)
+            tm.that(projected, has="class PublicFacade:\n", lacks="class PublicFacade(")
 
     @pytest.mark.parametrize("family", ["c", "t", "m", "p", "u"])
     def test_unselected_inherited_sdk_contract_keeps_real_mro(
@@ -475,7 +505,7 @@ class UtilityFacadeOwnerPublication:
             f"{family} = PublicFacade\n__all__ = ['PublicFacade', '{family}']\n",
         )
         with u.Infra.facade_source_project(root) as (project, sources):
-            rendered = (
+            rendered = tm.ok(
                 u.Infra.render_type_facade(package, facade, sources, project=project)
                 if family == "t"
                 else tm.not_none(
@@ -486,11 +516,13 @@ class UtilityFacadeOwnerPublication:
             )
         self._write(facade, rendered)
         with u.Infra.facade_source_project(root) as (project, sources):
-            repeated = (
+            repeated = tm.ok(
                 u.Infra.render_type_facade(package, facade, sources, project=project)
                 if family == "t"
-                else u.Infra.render_utility_facade(
-                    package, family=family, project=project, sources=sources
+                else tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, family=family, project=project, sources=sources
+                    )
                 )
             )
         tm.that(repeated, eq=rendered)
@@ -563,7 +595,9 @@ class UtilityFacadeOwnerPublication:
             + "".join(aliases)
             + "\np = SampleProtocols\n__all__ = ['SampleProtocols', 'p']\n",
         )
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        )
         tm.that(max(map(len, rendered.splitlines())), lte=width)
         for name in names:
             tm.that(rendered, has=f"        {name},\n")
@@ -571,7 +605,9 @@ class UtilityFacadeOwnerPublication:
             tm.that(rendered, has="# Preserve opening")
             tm.that(rendered, has="# Preserve existing owner")
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p")), eq=rendered
+        )
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -660,7 +696,7 @@ class UtilityFacadeOwnerPublication:
             "class Receiver(before):\n    marker = 'facade'\n"
             "tm.that(before.read(), eq='owner')\n"
             "tm.that(Receiver.read(), eq='facade')\n"
-            "rendered = tm.not_none(u.Infra.render_utility_facade(package))\n"
+            "rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))\n"
             "tm.ok(u.Cli.atomic_write_text_file(facade, rendered))\n"
             "from runpy import run_path\n"
             "projected = run_path(str(facade))['u']\n"
@@ -669,14 +705,14 @@ class UtilityFacadeOwnerPublication:
             "tm.that(ProjectedReceiver.read(), eq='facade')\n"
             "service = u.Tests.create_lazy_init_service(root)\n"
             "tm.ok(test_u.Tests.materialize_lazy_init(service))\n"
-            "tm.that(u.Infra.render_utility_facade(package), eq=rendered)\n"
+            "tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)\n"
             "initializer = package / '__init__.py'\n"
             "published = tm.ok(u.Cli.atomic_read_binary_file_state(\n"
             "    initializer, required=True))\n"
             "tm.ok(test_u.Tests.materialize_lazy_init(service))\n"
             "tm.that(tm.ok(u.Cli.atomic_read_binary_file_state(\n"
             "    initializer, required=True)), eq=published)\n"
-            "tm.that(u.Infra.render_utility_facade(package), eq=rendered)\n"
+            "tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)\n"
             "with u.Infra.facade_source_project(root) as binding:\n"
             f"    barrel = binding[0].get_module({barrel_name!r})\n"
             f"    leaf = binding[0].get_module({owner_module!r})\n"

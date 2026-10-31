@@ -111,12 +111,15 @@ class FlextInfraRefactorRoutes:
                         states,
                     ),
                 )
-                if any(not plan.path.is_relative_to(root) for plan in plans):
-                    msg = "exact module move effects escape the declared repository"
-                    raise ValueError(msg)
+                if plans.failure:
+                    return r[t.Cli.ResultValue].from_failure(plans)
+                if any(not plan.path.is_relative_to(root) for plan in plans.value):
+                    return r[t.Cli.ResultValue].fail(
+                        "exact module move effects escape the declared repository"
+                    )
                 publication = FlextInfraTransformersSemanticPublication
                 published = publication.publish_semantic_artifact_plans(
-                    plans,
+                    plans.value,
                     repository_root=root,
                     options=m.Infra.SemanticPublicationOptions(
                         projection_roots=(root,),
@@ -284,9 +287,8 @@ class FlextInfraRefactorRoutes:
             name="ast",
             help_text=(
                 "Run the ast engine standalone: ast-grep cascade plus "
-                "sed-by-list cascade (scan report; --apply reaches the "
-                "mechanical fixed point); --rules selects exact CSV AST IDs "
-                "only, over the complete governed corpus"
+                "sed-by-list cascade over the complete governed catalog "
+                "(scan report; --apply reaches the mechanical fixed point)"
             ),
             model_cls=FlextInfraCodemodAstScan,
             handler=FlextInfraCodemodAstScan.execute_command,

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from flext_infra import m, p
 
 
-class FlextInfraCleanService(s[int]):
+class FlextInfraMaintenanceClean(s[int]):
     """Remove declared disposables without crossing source or runtime ownership."""
 
     @override
@@ -273,4 +273,4 @@ class FlextInfraCleanService(s[int]):
             raise ValueError(msg)
 
 
-__all__: list[str] = ["FlextInfraCleanService"]
+__all__: list[str] = ["FlextInfraMaintenanceClean"]

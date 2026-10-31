@@ -127,13 +127,35 @@ class TestsFlextInfraUtilitiesformatting:
     @staticmethod
     def test_generate_module_skeleton_is_static_on_public_instance() -> None:
         # flext-i6nq.10: Guard the public instance binding lost during consolidation.
-        source = u.Infra().generate_module_skeleton(
-            class_name="FlextModelsDemo",
-            base_class="FlextModels",
-            base_module="flext_core",
-            docstring="Models for demo.",
+        source = tm.ok(
+            u.Infra().generate_module_skeleton(
+                context=m.Infra.ModuleSkeletonRenderContext(
+                    class_name="FlextModelsDemo",
+                    base_class="FlextModels",
+                    base_module="flext_core",
+                    docstring="Models for demo.",
+                ),
+            )
         )
 
         compile(source, "models.py", "exec")
-        tm.that(source, has="class FlextModelsDemo(FlextModels):")
+        tm.that(source, has="class FlextModelsDemo(\n    FlextModels,\n):")
         tm.that(source, has="from flext_core import FlextModels")
+
+    @staticmethod
+    def test_generate_module_skeleton_renders_uncomposed_domain() -> None:
+        # g95/g96: seed() renders domain skeletons with no base class; the JSON
+        # context dump delivers lists, so the template must never build tuples.
+        rendered = u.Infra.generate_module_skeleton(
+            context=m.Infra.ModuleSkeletonRenderContext(
+                class_name="FlextUtilitiesDemoDomain",
+                base_class=None,
+                base_module=None,
+                docstring="Native domain namespace.",
+            ),
+        )
+
+        source = tm.ok(rendered)
+        compile(source, "domain.py", "exec")
+        tm.that(source, has="class FlextUtilitiesDemoDomain:")
+        tm.that(source, has="Native domain namespace.")

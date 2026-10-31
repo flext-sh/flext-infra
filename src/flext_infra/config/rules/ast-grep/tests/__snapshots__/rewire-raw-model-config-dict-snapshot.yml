@@ -1,5 +1,22 @@
 id: rewire-raw-model-config-dict
 snapshots:
+  "class Spec:\n    model_config = {\"frozen\": True}\n":
+    fixed: |
+      class Spec:
+          model_config = m.ConfigDict(frozen=True)
+    labels:
+    - source: "model_config = {\"frozen\": True}"
+      style: primary
+      start: 16
+      end: 47
+    - source: model_config
+      style: secondary
+      start: 16
+      end: 28
+    - source: "{\"frozen\": True}"
+      style: secondary
+      start: 31
+      end: 47
   "from flext_core import m\nclass Spec(m.FrozenModel):\n    model_config = {\"frozen\": False}\n":
     fixed: |
       from flext_core import m
@@ -18,17 +35,6 @@ snapshots:
       style: secondary
       start: 71
       end: 88
-    - source: from flext_core import m
-      style: secondary
-      start: 0
-      end: 24
-    - source: |
-        from flext_core import m
-        class Spec(m.FrozenModel):
-            model_config = {"frozen": False}
-      style: secondary
-      start: 0
-      end: 89
   "from flext_core import m\nclass Spec(m.FrozenModel):\n    model_config: ClassVar = {\"populate_by_name\": True, \"extra\": \"forbid\"}\n":
     fixed: |
       from flext_core import m
@@ -47,14 +53,3 @@ snapshots:
       style: secondary
       start: 81
       end: 126
-    - source: from flext_core import m
-      style: secondary
-      start: 0
-      end: 24
-    - source: |
-        from flext_core import m
-        class Spec(m.FrozenModel):
-            model_config: ClassVar = {"populate_by_name": True, "extra": "forbid"}
-      style: secondary
-      start: 0
-      end: 127

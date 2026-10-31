@@ -20,7 +20,7 @@ from flext_infra.check import FlextInfraWorkspaceCheckUnion
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
-    from flext_infra.gates import FlextInfraGate
+    from flext_infra.gates import FlextInfraGates
 
 
 class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
@@ -335,7 +335,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         gates: Sequence[str],
         *,
         mutating: bool,
-    ) -> Sequence[FlextInfraGate]:
+    ) -> Sequence[FlextInfraGates]:
         """Create every requested gate before any of them runs.
 
         Returns:
@@ -345,7 +345,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             ValueError: If a gate is unregistered or a selected repair is unsupported.
 
         """
-        instances: MutableSequence[FlextInfraGate] = []
+        instances: MutableSequence[FlextInfraGates] = []
         for gate_id in gates:
             gate_instance = self._registry.create(gate_id, self._repository_root)
             if gate_instance is None:
@@ -359,7 +359,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     def _run_concurrent_stages(
         self,
-        instances: Sequence[FlextInfraGate],
+        instances: Sequence[FlextInfraGates],
         project_dir: Path,
         ctx: m.Infra.GateContext,
         executions: MutableMapping[str, m.Infra.GateExecution],
@@ -413,7 +413,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     def _run_gate_stage(
         self,
-        gate_instance: FlextInfraGate,
+        gate_instance: FlextInfraGates,
         project_dir: Path,
         ctx: m.Infra.GateContext,
         executions: MutableMapping[str, m.Infra.GateExecution],
@@ -445,7 +445,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     def _make_gate_handler(
         self,
-        gate_instance: FlextInfraGate,
+        gate_instance: FlextInfraGates,
         project_dir: Path,
         ctx: m.Infra.GateContext,
         gates_sink: MutableMapping[str, m.Infra.GateExecution],
@@ -500,7 +500,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     @staticmethod
     def _execute_gate(
-        gate_instance: FlextInfraGate,
+        gate_instance: FlextInfraGates,
         project_dir: Path,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:

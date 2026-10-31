@@ -47,7 +47,7 @@ class TestsFlextInfraCodegenDocumentationLanguage:
         )
         return u.Tests.codegen_file_text(file)
 
-    def test_nondefault_projection_roundtrips_to_strict_docs_scope(
+    def test_nondefault_projection_roundtrips_to_strict_scope(
         self, tmp_path: Path
     ) -> None:
         """The local authorial value reaches docs through its generated projection."""
@@ -58,7 +58,7 @@ class TestsFlextInfraCodegenDocumentationLanguage:
         root.mkdir(parents=True, exist_ok=True)
         pyproject = root / c.PYPROJECT_FILENAME
         pyproject.write_text(rendered, encoding=c.DEFAULT_ENCODING)
-        scope = u.Infra.docs_scope_from_sources(
+        scope = u.Infra.scope_from_sources(
             m.Infra.DocScope(name="project", path=root, report_dir=root / "reports"),
         )
         tm.that(scope.documentation_language, eq="pt-BR")

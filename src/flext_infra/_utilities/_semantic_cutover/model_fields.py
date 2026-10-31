@@ -12,17 +12,11 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
-from flext_infra._utilities._rope.rope_module_patch import (
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeModulePatch,
-)
-from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -368,7 +362,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             return False
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         builtin = (
-            FlextInfraUtilitiesTypesRopeRuntime
+            FlextInfraUtilitiesRopeRuntimeTypes
             .require_semantic_module(project.get_module("__builtin__"))
             .get_attributes()
             .get(keyword.value.id)
@@ -402,6 +396,8 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
     def _plan_model_fields(
         cls,
         sources: Mapping[Path, str],
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Inspect all sources, including direct access emitted by older rules.
 
@@ -409,10 +405,17 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
 
         """
-        return cls._semantic_edits(cls._editable_sources(sources), cls._rewrite_fields)
+        return cls._semantic_edits(
+            cls._editable_sources(sources),
+            lambda path, source: cls._rewrite_fields(
+                path, source, source_project=source_project
+            ),
+        )
 
     @classmethod
-    def _rewrite_fields(cls, path: Path, source: str) -> t.Infra.TransformResult:
+    def _rewrite_fields(
+        cls, path: Path, source: str, *, source_project: p.Infra.RopeProject
+    ) -> t.Infra.TransformResult:
         tree = ast.parse(source, filename=str(path))
         replacements: list[tuple[int, int, str]] = []
         lines = source.splitlines(keepends=True)
@@ -427,11 +430,19 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         cls._require_unshadowed_guard(tree)
         for start, end, replacement in sorted(replacements, reverse=True):
             lines[start:end] = [replacement]
-        updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
-            "".join(lines),
-            module="flext_core",
-            name="u",
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            source_project.get_pymodule(
+                FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                    source_project, path
+                )
+            )
         )
+        with FlextInfraUtilitiesRopeModulePatch.candidate_module(
+            module, "".join(lines)
+        ) as candidate:
+            updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
+                candidate, module="flext_core", name="u"
+            )
         return updated, ("narrowed untrusted model-class boundaries",)
 
     @classmethod

@@ -34,6 +34,39 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
         for tool, receipt in snapshot.items():
             totals[tool] = totals.get(tool, 0) + len(receipt.errors)
 
+    @staticmethod
+    def _captured_source_states(
+        py_files: Sequence[Path],
+        inputs: tuple[m.Cli.AtomicFileState, ...],
+    ) -> p.Result[Mapping[Path, m.Cli.AtomicFileState]]:
+        """Authenticate preflight snapshots against the sources read now.
+
+        Returns:
+            One agreed state per resolved path, or the first disagreement.
+
+        """
+        result_type = r[Mapping[Path, m.Cli.AtomicFileState]]
+        states: dict[Path, m.Cli.AtomicFileState] = {}
+        for state in inputs:
+            if states.setdefault(state.path, state) != state:
+                return result_type.fail(
+                    f"accessor input snapshots disagree: {state.path}"
+                )
+        for py_file in py_files:
+            observed = u.Cli.atomic_read_binary_file_state(py_file, required=True)
+            if observed.failure:
+                return result_type.from_failure(observed)
+            state = observed.value
+            if state.content is None or state.mode is None:
+                return result_type.fail(
+                    f"accessor source has no bytes or mode: {py_file}"
+                )
+            if states.setdefault(state.path, state) != state:
+                return result_type.fail(
+                    f"accessor source changed since preflight: {py_file}"
+                )
+        return result_type.ok(states)
+
     def _plan_files(
         self,
         rope_project: t.Infra.RopeProject,
@@ -59,30 +92,16 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
                 Sequence[m.Infra.AccessorMigrationFile],
             ]
         ]
-        states: dict[Path, m.Cli.AtomicFileState] = {}
-        for state in inputs:
-            if states.setdefault(state.path, state) != state:
-                return result_type.fail(
-                    f"accessor input snapshots disagree: {state.path}"
-                )
-        for py_file in py_files:
-            observed = u.Cli.atomic_read_binary_file_state(py_file, required=True)
-            if observed.failure:
-                return result_type.from_failure(observed)
-            state = observed.value
-            if state.content is None or state.mode is None:
-                return result_type.fail(
-                    f"accessor source has no bytes or mode: {py_file}"
-                )
-            if states.setdefault(state.path, state) != state:
-                return result_type.fail(
-                    f"accessor source changed since preflight: {py_file}"
-                )
+        captured = self._captured_source_states(py_files, inputs)
+        if captured.failure:
+            return result_type.from_failure(captured)
+        states = captured.value
         reports: list[m.Infra.AccessorMigrationFile] = []
         plans: list[m.Infra.SemanticFilePlan] = []
-        resolver = FlextInfraRefactorAccessorOrigin(
-            rope_project, namespace=params.namespace, module=params.module
-        )
+        resolver = FlextInfraRefactorAccessorOrigin(rope_project)
+        selected = resolver.select_origin(params)
+        if selected.failure:
+            return result_type.from_failure(selected)
         for py_file in py_files:
             state = states[py_file.resolve()]
             if state.content is None:

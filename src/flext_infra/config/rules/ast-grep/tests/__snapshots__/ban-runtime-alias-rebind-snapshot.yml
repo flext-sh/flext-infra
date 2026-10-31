@@ -26,8 +26,8 @@ snapshots:
     labels:
     - source: c = FlextFooConstants
       style: primary
-      start: 56
-      end: 77
+      start: 34
+      end: 55
     - source: |
         class FlextFooConstants:
             pass
@@ -39,20 +39,8 @@ snapshots:
       end: 115
     - source: c
       style: secondary
-      start: 56
-      end: 57
-    - source: c = FlextFooConstants
-      style: secondary
-      start: 56
-      end: 77
-    - source: c
-      style: secondary
       start: 34
       end: 35
-    - source: c = FlextFooConstants
-      style: secondary
-      start: 34
-      end: 55
     - source: c = FlextFooConstants
       style: secondary
       start: 34
@@ -109,14 +97,33 @@ snapshots:
       style: secondary
       start: 38
       end: 39
-    - source: FlextConstants
-      style: secondary
-      start: 42
-      end: 56
     - source: c = FlextConstants
       style: secondary
       start: 38
       end: 56
+  "from flext_core import FlextModels, m\nclass AiHubModels(FlextModels):\n    pass\nm = AiHubModels\n__all__ = [\"AiHubModels\", \"m\"]\n":
+    labels:
+    - source: m = AiHubModels
+      style: primary
+      start: 79
+      end: 94
+    - source: |
+        from flext_core import FlextModels, m
+        class AiHubModels(FlextModels):
+            pass
+        m = AiHubModels
+        __all__ = ["AiHubModels", "m"]
+      style: secondary
+      start: 0
+      end: 126
+    - source: m
+      style: secondary
+      start: 79
+      end: 80
+    - source: m = AiHubModels
+      style: secondary
+      start: 79
+      end: 94
   "from flext_core import FlextService as s\nclass FlextFooServiceBase(s):\n    pass\ns = FlextFooServiceBase\n__all__ = [\"FlextFooServiceBase\", \"s\"]\n":
     labels:
     - source: s = FlextFooServiceBase

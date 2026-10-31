@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.gates.duplication import FlextInfraDuplicationGate
+from flext_infra.gates.duplication import FlextInfraGatesDuplication
 from flext_infra.refactor import FlextInfraRefactorCensus
 from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
@@ -838,14 +838,14 @@ class FlextInfraCodemodDuplicateApply(
                 target_module=owner_module,
                 aliases=(name,),
             )
-            if planned is None:
-                return f"consumer import did not plan: {consumer}"
+            if planned.failure:
+                return f"consumer import did not plan: {consumer}: {planned.error}"
             detail = (f"rebound {name} from {copy_module} to owner {owner_module}",)
             edits.append(
                 m.Infra.SemanticMigrationEdit(
                     file_path=consumer,
                     original_source=consumer_resource.read(),
-                    updated_source=planned,
+                    updated_source=planned.value,
                     changes=detail,
                 ),
             )
@@ -1186,13 +1186,13 @@ class FlextInfraCodemodDuplicateApply(
         sides = (
             (
                 first,
-                FlextInfraDuplicationGate.report_file_name(first),
-                FlextInfraDuplicationGate.side_span_key(first),
+                FlextInfraGatesDuplication.report_file_name(first),
+                FlextInfraGatesDuplication.side_span_key(first),
             ),
             (
                 second,
-                FlextInfraDuplicationGate.report_file_name(second),
-                FlextInfraDuplicationGate.side_span_key(second),
+                FlextInfraGatesDuplication.report_file_name(second),
+                FlextInfraGatesDuplication.side_span_key(second),
             ),
         )
         if sides[0][2] == sides[1][2]:

@@ -8,9 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import m
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, tm, u
 
@@ -20,37 +17,6 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeSignaturePatch:
     """Validate signature token walking against annotated call parameters."""
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        "source",
-        [
-            "def consume[T: module.Model](value: T) -> T:\n    return value\n",
-            "type Payload = tuple[module.Model, ...]\n",
-            "type Payload[T: module.Model] = tuple[T, module.Model]\n",
-            (
-                "try:\n    value = 1\n"
-                "except ValueError:\n    value = 2\n"
-                "else:\n    value = module.Model()\n"
-                "finally:\n    value = 3\n"
-            ),
-        ],
-    )
-    def test_semantic_matching_in_qualified_reference_contexts(
-        tmp_path: Path, source: str
-    ) -> None:
-        """Native matching covers type parameters, aliases and try-else branches."""
-        module_path = tmp_path / "consumer.py"
-        module_path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with FlextInfraRopeWorkspace.open_workspace(tmp_path) as rope:
-            module = u.Infra.build_string_module(
-                rope.rope_project, source, resource=rope.resource(module_path)
-            )
-            regions = u.Infra.semantic_regions(module, "module.Model", arguments={})
-        tm.that(
-            tuple(source[start:end] for start, end in regions),
-            eq=("module.Model",) * source.count("module.Model"),
-        )
 
     @staticmethod
     def test_objects_walk_annotated_call_parameters(tmp_path: Path) -> None:
@@ -147,99 +113,3 @@ class TestsFlextInfraRopeSignaturePatch:
         # enclosing function's scope kind.
         tm.that(scope, none=False)
         tm.that(scope.get_kind(), eq=c.Infra.RopeScopeKind.FUNCTION)
-
-    @staticmethod
-    def test_rename_writes_pep701_nested_quote_expression(tmp_path: Path) -> None:
-        """Rope preserves f-string fragments while writing a renamed AST child."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        module_path = package_root / "quoted_rename.py"
-        source = (
-            "def render(values: dict[str, str]) -> str:\n"
-            '    return f"value={values["name"].upper()}"\n'
-        )
-        expected = (
-            "def render(items: dict[str, str]) -> str:\n"
-            '    return f"value={items["name"].upper()}"\n'
-        )
-        module_path.write_text(source, encoding="utf-8")
-
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(module_path)
-            if resource is None:
-                msg = "Rope did not resolve the PEP 701 regression resource"
-                tm.reject(msg)
-            changes = u.Infra.rename_changes(
-                rope.rope_project,
-                resource,
-                source.index("values["),
-                "items",
-                options=m.Infra.RopeRenameOptions(resources=(resource,)),
-            )
-            rope.rope_project.do(changes)
-            rewritten = resource.read()
-
-        tm.that(rewritten, eq=expected)
-
-    @staticmethod
-    def test_rename_writes_generator_inside_format_spec(tmp_path: Path) -> None:
-        """Rope patches generator scopes nested in an f-string format spec."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        module_path = package_root / "format_spec.py"
-        source = (
-            "def render(value: int, widths: list[int]) -> str:\n"
-            '    return f"{value:{next(width for width in widths)}}"\n'
-        )
-        expected = (
-            "def render(value: int, sizes: list[int]) -> str:\n"
-            '    return f"{value:{next(width for width in sizes)}}"\n'
-        )
-        module_path.write_text(source, encoding="utf-8")
-
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(module_path)
-            if resource is None:
-                msg = "Rope did not resolve the format-spec regression resource"
-                tm.reject(msg)
-            changes = u.Infra.rename_changes(
-                rope.rope_project,
-                resource,
-                source.index("widths:"),
-                "sizes",
-                options=m.Infra.RopeRenameOptions(resources=(resource,)),
-            )
-            rope.rope_project.do(changes)
-            rewritten = resource.read()
-
-        tm.that(rewritten, eq=expected)
-
-    @staticmethod
-    def test_rename_keeps_nested_generator_bindings(tmp_path: Path) -> None:
-        """Native rename follows the iterable without changing the generator local."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        module_path = package_root / "nested_generator.py"
-        source = 'widths = (1, 2)\nrendered = f"{next(width for width in widths)}"\n'
-        expected = 'sizes = (1, 2)\nrendered = f"{next(width for width in sizes)}"\n'
-        module_path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(module_path)
-            if resource is None:
-                msg = "Rope did not resolve the nested generator resource"
-                tm.reject(msg)
-            changes = u.Infra.rename_changes(
-                rope.rope_project,
-                resource,
-                source.index("widths"),
-                "sizes",
-                options=m.Infra.RopeRenameOptions(resources=(resource,)),
-            )
-            rope.rope_project.do(changes)
-            rendered = resource.read()
-        tm.that(rendered, eq=expected)

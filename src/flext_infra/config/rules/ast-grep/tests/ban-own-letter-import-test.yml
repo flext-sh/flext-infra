@@ -1,0 +1,42 @@
+# The fixture project is `ai_hub` (fixture-utils/own-package.yml): only an
+# import whose root is that own package matches. Fixtures carry no file scope,
+# so the per-letter narrowing of the `facade-family-<letter>` partition is not
+# applied here: every own-root binding a family would ban matches.
+id: ban-own-letter-import
+valid:
+  # Another package's letter is a cross-package facade binding.
+  - |
+    from flext_core import c
+  - |
+    from c import unrelated
+  # The canonical producer form: the sibling through its family package.
+  - |
+    from ai_hub._constants.base import AiHubConstantsBase
+  - |
+    from ai_hub._utilities import AiHubUtilitiesPytest
+  # A root binding without a letter component reaches no family facade.
+  - |
+    import ai_hub
+  - |
+    import os.path
+invalid:
+  - |
+    from ai_hub import c
+  - |
+    from ai_hub import config
+  - |
+    from ai_hub import c, t
+  - |
+    from ai_hub import u as aliased
+  - |
+    def load() -> None:
+        from ai_hub import m
+  - |
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from ai_hub import p
+  # The plain-import form reaches the letter as a submodule of the root.
+  - |
+    import ai_hub.c
+  - |
+    import ai_hub.settings as settings_module

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
+from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
 from flext_infra.release import FlextInfraReleaseReleaseBuild
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
@@ -80,7 +80,7 @@ class TestsFlextInfraReleaseHelpers:
                 encoding="utf-8",
             )
             checked = u.Tests.run_gate_check(
-                FlextInfraMarkdownFormatGate,
+                FlextInfraGatesMarkdownFormat,
                 tmp_path,
                 release_dir,
             )

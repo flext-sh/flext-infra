@@ -1137,8 +1137,6 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         report: m.Infra.ModOccurrenceReport[m.Infra.ModScanFinding],
-        *,
-        exact_replacements: bool = False,
     ) -> p.Result[bool]:
         """Publish the admitted native report only under its original input CAS.
 
@@ -1165,9 +1163,7 @@ class FlextInfraModGateEngine:
         )
         if verified.failure:
             return r[bool].from_failure(verified)
-        return FlextInfraModReplacements.publish(
-            root, cls.authored(report), exact_replacements=exact_replacements
-        )
+        return FlextInfraModReplacements.publish(root, cls.authored(report))
 
     @classmethod
     def _native_scan_report(
@@ -1204,7 +1200,7 @@ class FlextInfraModGateEngine:
         ) as directory:
             entries: list[m.Infra.ModScanFinding] = []
             artifacts: list[m.Cli.AtomicFileReceipt] = []
-            for project, project_targets in u.Infra.codemod_project_targets(
+            for project, project_targets in u.Infra.project_targets(
                 plan, native_targets
             ):
                 resolved_project = (
@@ -1219,7 +1215,7 @@ class FlextInfraModGateEngine:
                     )
                 stage = Path(directory) / str(len(artifacts))
                 ruleset = u.Infra.codemod_stage_scan_ruleset(
-                    u.Infra.codemod_project_plan(plan, project), stage
+                    u.Infra.project_plan(plan, project), stage
                 )
                 sys.stderr.write(
                     f"mod: ast-grep project={project.name} "

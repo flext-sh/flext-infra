@@ -143,7 +143,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
             path: title
             for path, content in guide_contents.items()
             if scope.documentation_language == "pt-BR"
-            and (title := FlextInfraUtilitiesDocsContract.docs_contract_title(content))
+            and (title := FlextInfraUtilitiesDocsContract.contract_title(content))
         }
         analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path,
@@ -178,7 +178,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
             ),
             (
                 scope.path / "docs/api-reference/README.md",
-                FlextInfraUtilitiesDocsRender.docs_api_readme(
+                FlextInfraUtilitiesDocsRender.api_readme(
                     scope, contract, module_names, width=width
                 ),
             ),

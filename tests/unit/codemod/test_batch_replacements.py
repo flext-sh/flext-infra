@@ -29,7 +29,7 @@ class TestsFlextInfraBatchReplacements:
 
         """
         rule_name = "publish-consumer-value"
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             root,
             {
                 rule_name: (
@@ -238,7 +238,7 @@ class TestsFlextInfraBatchReplacements:
         """Generated findings block acceptance without blocking authored progress."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))
         rule_id = "mixed-generator-boundary"
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {
                 rule_id: (
@@ -313,7 +313,6 @@ class TestsFlextInfraBatchReplacements:
             "--repository-root",
             str(mod_workspace),
             "--apply",
-            *(["--rules", rule_id] if selected else []),
         ])
         capture = capsys.readouterr()
         tm.that(exit_code, ne=0, msg=capture.out + capture.err)

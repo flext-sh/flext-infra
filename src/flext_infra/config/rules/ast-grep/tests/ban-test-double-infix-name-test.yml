@@ -1,0 +1,32 @@
+# Prefix and suffix double names (`FakeClient`, `ClientFake`) belong to
+# ban-test-fakes; pytest classes (`Test...`) are not doubles by name.
+id: ban-test-double-infix-name
+valid:
+  - |
+    class AlgarOudMigLdapClient:
+        pass
+  - |
+    class FakeClient:
+        pass
+  - |
+    class TestServiceMockBehavior:
+        pass
+  - |
+    class LdapClientSpyglass:
+        pass
+  - |
+    class Mockingbird:
+        pass
+invalid:
+  - |
+    class AlgarOudMigFakeLdapClient:
+        pass
+  - |
+    class ProjectStubWriter:
+        pass
+  - |
+    class OudSpy:
+        pass
+  - |
+    class Writer_Dummy:
+        pass

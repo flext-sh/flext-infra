@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraGate:
+class FlextInfraGates:
     """Abstract template implementing common check/fix execution flow for gates."""
 
     gate_id: ClassVar[str] = ""
@@ -49,6 +49,9 @@ class FlextInfraGate:
     check_env: ClassVar[Mapping[str, str] | None] = None
     check_remove_env_keys: ClassVar[Sequence[str]] = (c.Infra.ENV_VAR_FORCE_COLOR,)
     check_report_evidence: ClassVar[Sequence[str]] = ()
+    # stdin payload of the check command; None = the null device (the tool
+    # reads its targets from disk)
+    check_input: ClassVar[str | None] = None
 
     def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
         """Whether this project's detected content selects the gate at all.
@@ -187,6 +190,7 @@ class FlextInfraGate:
             cmd,
             project_dir,
             ctx,
+            input_data=self._check_input(project_dir, ctx, targets),
         )
         if u.Cli.process_succeeded(result.outcome):
             self._validate_check_report(result, project_dir, ctx, targets)
@@ -379,7 +383,9 @@ class FlextInfraGate:
             The resulting ``m.Infra.GateExecution``.
 
         """
-        evidence = self._publish_raw_receipt(ctx, self._raw_output(result))
+        evidence = self._publish_raw_receipt(
+            ctx, self._evidence_output(project_dir, ctx, result)
+        )
         process = m.Cli.ProcessOutcome.model_validate(
             result.outcome, from_attributes=True
         )
@@ -691,6 +697,24 @@ class FlextInfraGate:
             *check_dirs,
             *self.check_module_command_suffix,
         )
+
+    def _check_input(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        targets: Sequence[str],
+    ) -> str | None:
+        """Return the payload the check command reads from its stdin.
+
+        Default: none, so the check tool reads its targets from disk. A gate
+        whose tool lints a supplied view of its targets returns that view.
+
+        Returns:
+            The child's stdin payload, or ``None`` for the null device.
+
+        """
+        _ = project_dir, ctx, targets
+        return self.check_input
 
     def _parse_check_output(
         self,
@@ -1024,6 +1048,25 @@ class FlextInfraGate:
         """
         return "\n".join(output for output in (result.stdout, result.stderr) if output)
 
+    def _evidence_output(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        result: p.Cli.CommandOutput,
+    ) -> str:
+        """Return the native output this gate publishes as its raw receipt.
+
+        Stream-bound gates keep the combined tool streams. A gate whose tool
+        writes its findings to a native report file instead of a stream
+        overrides this so the receipt carries the report the tool produced.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        _ = project_dir, ctx
+        return self._raw_output(result)
+
     @staticmethod
     def _runner_limits(
         timeout: int,
@@ -1044,13 +1087,16 @@ class FlextInfraGate:
         cmd: Sequence[str],
         cwd: Path,
         ctx: m.Infra.GateContext,
+        *,
+        input_data: str | None = None,
     ) -> p.Cli.CommandOutput:
         """Run one native tool of this gate under the invocation's context.
 
         The gate's own timeout and environment readers decide the limits
         and child environment for ``cwd``; the context supplies the signal
         wave of a concurrent stage, so the child process group subscribes to
-        the main thread's forwarding.
+        the main thread's forwarding. ``input_data``, when given, is the
+        child's stdin payload.
 
         Returns:
             The resulting ``p.Cli.CommandOutput``.
@@ -1069,6 +1115,7 @@ class FlextInfraGate:
                 remove_env_keys=self._check_remove_env_keys(cwd, ctx),
                 deadline=deadline,
                 signal_wave=ctx.signal_wave,
+                input_data=input_data,
             ),
         )
         if result.failure:
@@ -1152,4 +1199,4 @@ class FlextInfraGate:
         )
 
 
-__all__: list[str] = ["FlextInfraGate"]
+__all__: list[str] = ["FlextInfraGates"]

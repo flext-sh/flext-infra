@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraDirenvGate(FlextInfraGate):
+class FlextInfraGatesDirenv(FlextInfraGates):
     """Enforce direnv file contracts, then prove real activation."""
 
     gate_id: ClassVar[str] = "direnv"
@@ -102,7 +102,7 @@ class FlextInfraDirenvGate(FlextInfraGate):
             root=project_dir,
         )
         issues = tuple(
-            FlextInfraDirenvGate._contract_issue(c.Infra.ENVRC_FILENAME, violation)
+            FlextInfraGatesDirenv._contract_issue(c.Infra.ENVRC_FILENAME, violation)
             for violation in violations
         )
         local = project_dir / c.Infra.ENVRC_LOCAL_RELPATH
@@ -124,7 +124,7 @@ class FlextInfraDirenvGate(FlextInfraGate):
                 issues = (
                     *issues,
                     *(
-                        FlextInfraDirenvGate._contract_issue(
+                        FlextInfraGatesDirenv._contract_issue(
                             c.Infra.ENVRC_LOCAL_RELPATH,
                             violation,
                         )
@@ -215,4 +215,4 @@ class FlextInfraDirenvGate(FlextInfraGate):
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraDirenvGate",)
+__all__: tuple[str, ...] = ("FlextInfraGatesDirenv",)

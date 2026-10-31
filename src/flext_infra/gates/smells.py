@@ -12,13 +12,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, r, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraSmellsGate(FlextInfraGate):
+class FlextInfraGatesSmells(FlextInfraGates):
     """Report qlty smells for one project from a scan of its check directories.
 
     Every repository evaluates only itself, locally exactly as in CI: qlty
@@ -221,7 +221,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
-            code=FlextInfraSmellsGate.gate_id,
+            code=FlextInfraGatesSmells.gate_id,
             message=message or "qlty returned no parseable SARIF output",
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )
@@ -337,4 +337,4 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return f"{sarif_text}. Fix: {fix}"
 
 
-__all__: list[str] = ["FlextInfraSmellsGate"]
+__all__: list[str] = ["FlextInfraGatesSmells"]

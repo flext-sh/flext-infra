@@ -17,7 +17,7 @@ from tests import c, m, p, t, tm
 
 
 class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
-    """Workspace profile, gitignore, and process-environment helpers."""
+    """Workspace profile, ignore, and process-environment helpers."""
 
     @staticmethod
     def restore_env(name: str, original: str | None) -> None:
@@ -55,12 +55,12 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             Every SSOT ignore pattern whose section targets *profile*.
 
         """
-        gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
-            config.Infra.codegen.gitignore_sections
+        ignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
+            config.Infra.codegen.ignore_sections
         )
         return tuple(
             pattern
-            for section in gitignore_sections
+            for section in ignore_sections
             if not section.profiles or profile in section.profiles
             for pattern in section.patterns
         )
@@ -92,7 +92,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
         with tempfile.TemporaryDirectory() as raw_root:
             probe_root = Path(raw_root)
             tm.ok(u.Cli.run_checked(["git", "init", "-q", str(probe_root)]))
-            (probe_root / ".gitignore").write_text(rendered, encoding="utf-8")
+            (probe_root / ".ignore").write_text(rendered, encoding="utf-8")
             target = probe_root / relative_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text("", encoding="utf-8")

@@ -404,7 +404,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         destination: str,
         render_inputs: m.Infra.CodegenRenderInputs,
         context: m.Infra.ProjectRenderContext,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+        planned_manifests: tuple[m.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Render one scaffold entry into its file plan.
 
@@ -436,12 +436,12 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         if rendered.failure:
             return result_type.from_failure(rendered)
         rendered_content = (
-            rendered
+            rendered.map(lambda payload: payload.rendered)
             if entry.source_kind == "resource"
             else self.compose_project_artifact(
                 root,
                 destination,
-                rendered.value,
+                rendered.value.rendered,
                 render_inputs=render_inputs,
             )
         )
@@ -455,17 +455,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
             if names.failure:
                 return result_type.from_failure(names)
-        planned = self.file_plan(
-            root,
-            destination,
-            rendered_content.value,
-            mode=(
-                entry.ownership.mode
-                if entry.ownership is not None
-                else render_inputs.codegen.modes.file_default
-            ),
-            ownership=entry.ownership,
-            inputs=(
+        inputs = (
+            *rendered.value.source_states,
+            *(
                 ()
                 if entry.bootstrap_distribution is None
                 else (
@@ -477,6 +469,23 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                     ),
                 )
             ),
+        )
+        planned = (
+            self.file_plan(
+                root,
+                destination,
+                rendered_content.value,
+                mode=render_inputs.codegen.modes.file_default,
+                inputs=inputs,
+            )
+            if entry.ownership is None
+            else self.owned_file_plan(
+                root,
+                destination,
+                rendered_content.value,
+                ownership=entry.ownership,
+                inputs=inputs,
+            )
         )
         if planned.success and names is not None:
             render_inputs.planned_direct_sources = names.value

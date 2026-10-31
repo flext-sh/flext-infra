@@ -9,6 +9,30 @@ snapshots:
       style: primary
       start: 0
       end: 47
+    - source: dataclass
+      style: secondary
+      start: 1
+      end: 10
+    - source: frozen
+      style: secondary
+      start: 11
+      end: 17
+    - source: "True"
+      style: secondary
+      start: 18
+      end: 22
+    - source: frozen=True
+      style: secondary
+      start: 11
+      end: 22
+    - source: (frozen=True)
+      style: secondary
+      start: 10
+      end: 23
+    - source: dataclass(frozen=True)
+      style: secondary
+      start: 1
+      end: 23
     - source: "@dataclass(frozen=True)"
       style: secondary
       start: 0
@@ -33,6 +57,30 @@ snapshots:
       style: primary
       start: 26
       end: 80
+    - source: dataclass
+      style: secondary
+      start: 34
+      end: 43
+    - source: frozen
+      style: secondary
+      start: 44
+      end: 50
+    - source: "True"
+      style: secondary
+      start: 51
+      end: 55
+    - source: frozen=True
+      style: secondary
+      start: 44
+      end: 55
+    - source: (frozen=True)
+      style: secondary
+      start: 43
+      end: 56
+    - source: dataclass(frozen=True)
+      style: secondary
+      start: 34
+      end: 56
     - source: "@dataclass(frozen=True)"
       style: secondary
       start: 33

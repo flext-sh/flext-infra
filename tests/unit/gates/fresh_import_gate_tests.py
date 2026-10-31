@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import m
-from flext_infra.gates.fresh_import import FlextInfraFreshImportGate
+from flext_infra.gates.fresh_import import FlextInfraGatesFreshImport
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ class TestsFlextInfraFreshImportGate:
             repository_root=project,
             reports_dir=project / ".reports",
         )
-        return FlextInfraFreshImportGate(repository_root=project).check(
+        return FlextInfraGatesFreshImport(repository_root=project).check(
             project,
             context,
         )
@@ -51,7 +51,7 @@ class TestsFlextInfraFreshImportGate:
     def test_a_checkout_without_its_runtime_fails_loud(self, tmp_path: Path) -> None:
         """Check, not generation, reports the missing runtime setup provisions."""
         project = self._project(tmp_path)
-        gate = FlextInfraFreshImportGate(repository_root=project)
+        gate = FlextInfraGatesFreshImport(repository_root=project)
 
         tm.ok(gate.selected_for(project, u.Tests.gate_context(project)))
         result = self._execution(project).result
@@ -81,7 +81,7 @@ class TestsFlextInfraFreshImportGate:
             reports_dir=project / ".reports",
         )
         result = (
-            FlextInfraFreshImportGate(repository_root=project)
+            FlextInfraGatesFreshImport(repository_root=project)
             .check_files((project / c.PYPROJECT_FILENAME,), project, context)
             .result
         )
@@ -114,7 +114,7 @@ class TestsFlextInfraFreshImportGate:
         )
 
         tm.that(
-            FlextInfraFreshImportGate(repository_root=project).selected_for(
+            FlextInfraGatesFreshImport(repository_root=project).selected_for(
                 project, u.Tests.gate_context(project)
             ),
             eq=False,

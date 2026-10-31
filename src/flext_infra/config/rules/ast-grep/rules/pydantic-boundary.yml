@@ -1,54 +1,38 @@
 # ``model_construct`` builds an instance without running validation, moving the
-# failure from the boundary to a downstream AttributeError or bad state. The
-# removal catalog allows it only behind a documented owner justification, and
-# the framework owner (flext-core) is the only authorized tree.
+# failure from the boundary to a downstream AttributeError or bad state. No
+# tree is exempt in the universal layer.
 id: ban-model-construct
 language: python
 severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
-  - "**/flext_core/**"
 rule:
   pattern: $RECEIVER.model_construct($$$ARGS)
 message: >-
-  `model_construct()` skips validation; the removal catalog allows it only with
-  a documented owner justification at flext-core. Build through
+  `model_construct()` skips validation in every tree. Build through
   `Model.model_validate(...)` (or the constructor) so the boundary stays loud.
 ---
 # `SkipValidation[...]` and `PlainValidator(...)` switch validation off for
-# their target. The removal catalog permits them only behind a documented owner
-# justification; real constraints (or a missing `t`/`m` alias to close at the
-# owner) are the conforming replacement.
+# their target. No tree is exempt; real constraints (or a missing `t`/`m` alias
+# to close at the owner) are the conforming replacement.
 id: ban-skip-validation
 language: python
 severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
-  - "**/flext_core/**"
 rule:
   any:
     - pattern: SkipValidation[$T]
     - pattern: "$$$N: SkipValidation[$T]"
     - pattern: PlainValidator($$$ARGS)
 message: >-
-  `SkipValidation`/`PlainValidator` remove real validation; the removal catalog
-  allows them only behind a documented owner justification at flext-core.
+  `SkipValidation`/`PlainValidator` remove real validation in every tree.
   Declare the real constraint as a `t` alias or close the missing member at its
   facade owner.
 ---
@@ -61,14 +45,8 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
-  - "**/flext_core/**"
 rule:
   pattern: TypeAdapter($$$ARGS)
   inside:
@@ -81,24 +59,17 @@ message: >-
 ---
 # A caught ValidationError must not vanish into a sentinel: the handler either
 # converts through the canonical typed-failure factories (`e.fail_validation`,
-# `r.fail*`) or re-raises. Conversion helpers owned by the framework keep their
-# explicit documented defaults (flext-core is exempt by ownership). Handlers
-# that return None, a literal fallback, or just `pass` erase the boundary
-# failure and are the violation this rule reports.
+# `e.fail_operation`, `r.fail*`) or re-raises, in every tree. Handlers that return None, a literal
+# fallback, or just `pass` erase the boundary failure and are the violation
+# this rule reports.
 id: ban-validation-error-catch
 language: python
 severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
-  - "**/flext_core/**"
 rule:
   all:
     - kind: except_clause
@@ -110,7 +81,7 @@ rule:
         has:
           stopBy: end
           kind: identifier
-          regex: "^(?:fail_validation|fail|fail_op)$"
+          regex: "^(?:fail_validation|fail_operation|fail|fail_op)$"
     - not:
         has:
           stopBy: end
@@ -131,11 +102,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:
@@ -165,11 +131,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:

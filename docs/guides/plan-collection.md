@@ -63,10 +63,24 @@ read/write aliases; it must not relax path-escape validation.
 
 Immutable revisions live below each canonical plan's `incoming/` directory. The
 documentation renderer excludes every `incoming` subtree so formatting, TOC generation,
-and link rewriting cannot mutate digest-attested evidence. If an unintegrated collection
-is interrupted after publication, rebuilding its generated manifest and incoming
-artifacts requires explicit operator approval; never repair those files manually or
-accept a changed digest.
+and link rewriting cannot mutate digest-attested evidence. Canonical display documents
+and the index use the existing Markdown renderer with captured tooling inputs before
+their artifact digests and publication plans are built. Source revision digests still
+attest the original bytes; a rendered-output change is not a new source revision.
+Verification uses the same representation and authenticates its tooling inputs.
+Rendering applies only to the Markdown body. The existing documentation contract
+admits its boundary and preserves the frontmatter prefix, including BOM and CRLF,
+byte for byte. An opened YAML header without a closing delimiter fails before
+publication; wrapping never repairs or reinterprets configuration fields.
+The strict collection renderer propagates admission and UTF-8 failures as Results to
+the public collector. Existing optional TOC discovery retains its prior body-offset
+meaning; it neither qualifies a document for collection nor converts a failed Result
+into a default offset.
+
+After an interrupted publication, preserve confirmed effects and reconcile forward
+through the existing owner and its original receipts. Missing ownership or source
+evidence blocks dependent publication; never patch the manifest or immutable incoming
+bytes manually, silently accept a changed digest, or discard history to restart.
 
 The post-publication verifier checks every declared output against its planned bytes and
 mode, while retaining exact snapshots for unrelated inputs. Manifest, receipt and
@@ -97,3 +111,34 @@ configuration and source observations to the existing publication guards. The ma
 stores a digest of the typed associations and their collection coverage, not private
 provider roots or execution status. Semantic reconciliation and Beads closure remain
 separate operations.
+
+Coverage records each source-relative plan locator and the content revision digest
+actually observed in that run. Its count, uniqueness and selector confinement must
+agree with those references, and each locator/digest must resolve to one authenticated
+revision and its incoming content. Historical revisions of removed plans remain
+evidence; their presence or order alone never establishes current coverage. An empty
+source carries an explicit empty reference sequence and zero count. Reobserving A
+after B selects A as current without changing A's original provenance timestamp,
+reordering history or duplicating its immutable evidence.
+
+The local collection owner may admit a typed legacy manifest only as the original
+ownership before-image. All configured sources must still be collected and every
+publication must emit the current association and coverage proof. Malformed or partly
+upgraded manifests are rejected. Verification never admits this before-image;
+migration neither patches evidence by hand nor exposes a second successful format.
+
+## Failure boundary
+
+The collector preserves failed Results from configuration reads/parsing, publication,
+locking and pruning through `from_failure`. The exception, error code and structured
+data remain available to the existing CLI failure renderer; a failed prerequisite
+blocks its dependent effects. Already published independent effects are not reverted.
+
+Native configuration decoding and evidence validation retain their exception contract.
+`config_decode` adds the document source to the original validation exception and
+rethrows it. Collection helpers use the selected Result owner's causal `unwrap`
+contract: a stored exception is rethrown with its Result context, while a logical
+failure without an exception raises explicitly. The collector does not introduce a
+catch-all conversion, default, retry or successful empty collection. Its CLI boundary
+owns rendering and the nonzero exit; migration never changes invalid input into
+qualified evidence.

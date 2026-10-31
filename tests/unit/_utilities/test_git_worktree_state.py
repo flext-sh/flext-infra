@@ -143,8 +143,8 @@ class TestsFlextInfraGitWorktreeState:
 
     def test_ignored_destination_collision_is_rejected(self, tmp_path: Path) -> None:
         source = u.Tests.git_repository(tmp_path)
-        (source / ".gitignore").write_text("hidden.txt\n", encoding="utf-8")
-        u.Tests.git_run(source, "add", ".gitignore")
+        (source / ".ignore").write_text("hidden.txt\n", encoding="utf-8")
+        u.Tests.git_run(source, "add", ".ignore")
         u.Tests.git_run(source, "commit", "-m", "ignore fixture")
         lane = self._lane(tmp_path, source)
         (source / "hidden.txt").write_text("source\n", encoding="utf-8")

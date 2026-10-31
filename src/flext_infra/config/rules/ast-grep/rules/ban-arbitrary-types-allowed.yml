@@ -16,9 +16,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/flext_core/_models/_base/**"
   - "**/config/rules/ast-grep/tests/**"
 rule:
   any:

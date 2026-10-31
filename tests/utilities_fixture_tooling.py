@@ -623,7 +623,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         path.chmod(0o755)
 
     @staticmethod
-    def declare_codemod_rules(root: Path, rules: Mapping[str, str]) -> None:
+    def declare_rules(root: Path, rules: Mapping[str, str]) -> None:
         """Point ``root`` at a local ast-grep catalog holding exactly ``rules``.
 
         Each key names one rule file and each value is its YAML body.

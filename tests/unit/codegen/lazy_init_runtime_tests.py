@@ -566,7 +566,9 @@ class TestsFlextInfraLazyInitRuntime:
             with pytest.raises(ValueError, match="Module used as a class base"):
                 u.Infra.render_utility_facade(package, family="m")
             return
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        )
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that(
@@ -592,7 +594,9 @@ class TestsFlextInfraLazyInitRuntime:
             ),
             eq=["True"] * (3 if ownership in {"entities", "standalone"} else 2),
         )
-        tm.that(u.Infra.render_utility_facade(package, family="m"), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m")), eq=rendered
+        )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
 
     @staticmethod
@@ -619,7 +623,9 @@ class TestsFlextInfraLazyInitRuntime:
         for path, content in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, content))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        )
         tm.that(rendered, has="FlextTestsModels.Tests")
 
     @staticmethod
@@ -642,13 +648,12 @@ class TestsFlextInfraLazyInitRuntime:
         for path, content in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, content))
-        with pytest.raises(
-            ValueError, match="Competing declared facade owner names"
-        ) as failure:
-            u.Infra.render_utility_facade(package, family=family)
+        error = tm.fail(
+            tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        )
         for module in ("first", "second"):
             tm.that(
-                str(failure.value),
+                error,
                 has=f"{package.name}.{declaration.directory}.{module}:PublishedOwner",
             )
 

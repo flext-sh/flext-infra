@@ -343,7 +343,6 @@ class TestsFlextInfraSemanticPublication:
             infra.mod(
                 m.Infra.ModCommand(
                     repository_root=root,
-                    apply=True,
                     rename_plan=driver.path,
                     consumer_roots=artifact.consumer_roots,
                 ),
@@ -380,7 +379,6 @@ class TestsFlextInfraSemanticPublication:
             infra.mod(
                 m.Infra.ModCommand(
                     repository_root=root,
-                    apply=True,
                     consumer_roots=artifact.consumer_roots,
                 ),
                 mod_progress,
@@ -422,7 +420,6 @@ class TestsFlextInfraSemanticPublication:
             infra.mod(
                 m.Infra.ModCommand(
                     repository_root=root,
-                    apply=True,
                     rename_plan=driver.path,
                     consumer_roots=artifact.consumer_roots,
                 ),
@@ -458,7 +455,7 @@ class TestsFlextInfraSemanticPublication:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.provision_checkout(root)
         u.Tests.provision_runtime_environment(root)
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             root,
             {
                 "source-campaign": (
@@ -481,7 +478,7 @@ class TestsFlextInfraSemanticPublication:
         )
         before = tm.ok(codemod.FlextInfraModGateEngine.scan(root, fix=False))
         tm.that(bool(before.actionable), eq=needs_ast)
-        request = m.Infra.ModCommand(repository_root=root, apply=True)
+        request = m.Infra.ModCommand(repository_root=root)
         tm.ok(infra.mod(request, mod_progress))
         tm.that(
             u.Tests.run_lazy_init_probe(
@@ -640,7 +637,6 @@ class TestsFlextInfraSemanticPublication:
                 m.Infra.ModCommand(
                     repository_root=root,
                     consumer_roots=(receiver,),
-                    apply=True,
                 ),
                 mod_progress,
             )
@@ -712,7 +708,6 @@ class TestsFlextInfraSemanticPublication:
                     repository_root=root,
                     consumer_roots=roots,
                     rename_plan=driver.path,
-                    apply=True,
                 ),
                 mod_progress,
             )
@@ -735,9 +730,7 @@ class TestsFlextInfraSemanticPublication:
             tmp_path, kind=kind
         )
         root = artifact.candidate.workspace
-        request = m.Infra.ModCommand(
-            repository_root=root, rename_plan=driver.path, apply=True
-        )
+        request = m.Infra.ModCommand(repository_root=root, rename_plan=driver.path)
         with infra.rope_workspace(root) as workspace:
             tm.that(
                 tm.ok(
@@ -842,9 +835,7 @@ class TestsFlextInfraSemanticPublication:
             consumer.write_bytes(changed)
             tm.fail(
                 codemod.FlextInfraCodemodSemanticApply.consume_rename_plan(
-                    m.Infra.ModCommand(
-                        repository_root=producer, rename_plan=driver, apply=True
-                    ),
+                    m.Infra.ModCommand(repository_root=producer, rename_plan=driver),
                     workspace,
                 )
             )

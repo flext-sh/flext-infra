@@ -79,7 +79,7 @@ class FlextInfraPreviewWiring:
             The resulting ``p.Result[bool]``.
 
         """
-        return codegen.FlextInfraCodegenQualityGate(
+        return codegen.FlextInfraGatesCodegenQuality(
             workspace_factory=self.rope_workspace,
             repository_root=request.repository_root,
             source_preview=self.source_preview(request.repository_root),

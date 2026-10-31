@@ -1,4 +1,4 @@
-"""Tests that this repository's ``.gitignore`` is reproducible from config.
+"""Tests that this repository's ``.ignore`` is reproducible from config.
 
 The generator filters the shared policy by the repository profile. Workspace
 roots receive the ordered whitelist while standalone projects receive only
@@ -65,12 +65,12 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
     def test_vendored_package_directory_is_trackable() -> None:
         """A vendored tree inside the package stays tracked and therefore packaged.
 
-        Why (flext-f6gqq): hatchling honours .gitignore, so an unanchored
+        Why (flext-f6gqq): hatchling honours .ignore, so an unanchored
         ``vendor/`` rule silently dropped ``src/<pkg>/vendor`` from the wheel
         while still ignoring the root-level vendor tree it was meant for.
         """
         rendered = tm.ok(
-            u.Infra.render_project_gitignore(
+            u.Infra.render_project_ignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name="probe-project",
@@ -110,7 +110,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         )
 
         rendered = tm.ok(
-            u.Infra.render_project_gitignore(
+            u.Infra.render_project_ignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.WORKSPACE,
                 project_name="probe-root",

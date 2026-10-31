@@ -15,10 +15,10 @@ from typing import ClassVar, override
 from uuid import uuid4
 
 from flext_infra import c, config, m, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 
-class FlextInfraDepsGate(FlextInfraGate):
+class FlextInfraGatesDeps(FlextInfraGates):
     """Fail every import the project's declared dependencies never declare.
 
     Why (aihub-l42it.11): undeclared runtime imports surface today only deep
@@ -107,21 +107,25 @@ class FlextInfraDepsGate(FlextInfraGate):
         project_dir: Path,
         document: t.Cli.TomlDocument,
     ) -> Sequence[str]:
-        """Move internal requirement references onto the integration line.
+        """Move internal requirement references onto the FLEXT line.
 
-        Mutates only the given parsed document through the existing Git-ref
-        migration owner; the manifest keeps the URL and the lock alone pins
-        the exact commit.
+        The line is the FLEXT line the checkout consumes
+        (``u.Infra.flext_integration_line``), never the consumer's own
+        ``branch_policy.integration_branch``: a consumer integrating on its own
+        branch keeps its FLEXT dependencies on the FLEXT line. Mutates only the
+        given parsed document through the existing Git-ref migration owner; the
+        manifest keeps the URL and the lock alone pins the exact commit.
 
         Returns:
             The change notes of every reference moved onto the line.
 
         """
+        inputs = u.Infra.load_codegen_inputs(project_dir).unwrap()
         integration = (
             u.Infra
-            .load_codegen_inputs(project_dir)
+            .flext_integration_line(codegen=inputs.spec, repository_root=project_dir)
             .unwrap()
-            .spec.branch_policy.integration_branch
+            .branch
         )
         migrations = u.Infra.internal_reference_migrations(
             document, target_ref=integration
@@ -339,4 +343,4 @@ class FlextInfraDepsGate(FlextInfraGate):
         ), scan
 
 
-__all__: list[str] = ["FlextInfraDepsGate"]
+__all__: list[str] = ["FlextInfraGatesDeps"]

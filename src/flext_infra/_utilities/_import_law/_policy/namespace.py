@@ -553,7 +553,12 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                     path, project_root=root, source_project=project
                 )
                 if path.is_relative_to(root)
-                else provider.get_name()
+                else (
+                    FlextInfraUtilitiesProjectDiscovery.installed_module_name_for_file(
+                        path
+                    )
+                    or provider.get_name()
+                )
             )
             identity = module_name, alias_name
             if identity in visited:

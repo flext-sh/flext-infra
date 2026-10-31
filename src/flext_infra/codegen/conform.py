@@ -11,7 +11,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u, workspace as workspace_services
+from flext_infra import (
+    FlextInfraConfig,
+    c,
+    m,
+    p,
+    r,
+    t,
+    u,
+    workspace as workspace_services,
+)
 from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
 
 
@@ -61,9 +70,7 @@ class FlextInfraCodegenConform:
         return executor.execute_managed(
             admitted,
             after_publication=(
-                lambda written: cls.conform_workspace_beads_routes(
-                    executor, admitted
-                ).flat_map(lambda _: cls._allow_direnv_after_apply(written)),
+                lambda _written: cls.conform_workspace_beads_routes(executor, admitted),
             ),
         )
 
@@ -80,7 +87,10 @@ class FlextInfraCodegenConform:
             planning issue, otherwise the migration failure.
 
         """
-        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        root = request.root.expanduser().resolve()
+        inputs = u.Infra.load_codegen_inputs(
+            root, projections=cls._kind_projections(root, request.declaration_kind)
+        )
         if inputs.failure:
             return r[bool].from_failure(inputs)
         contract = executor.surface_contract(request.what, codegen=inputs.value.spec)
@@ -114,7 +124,9 @@ class FlextInfraCodegenConform:
                 )
             ):
                 continue
-            inputs = u.Infra.load_codegen_inputs(target.root)
+            inputs = u.Infra.load_codegen_inputs(
+                target.root, projections=cls._kind_projections(target.root, kind)
+            )
             if inputs.failure:
                 return r[bool].from_failure(inputs)
             planned = (
@@ -138,6 +150,32 @@ class FlextInfraCodegenConform:
 
         return ports.file_publisher.publish_codegen_plans(request.root, files).map(
             published
+        )
+
+    @staticmethod
+    def _kind_projections(
+        root: Path, kind: c.Infra.ProjectKind | None
+    ) -> tuple[m.Infra.CodegenLayerProjection, ...]:
+        """Project an explicitly requested kind onto the target's own layer.
+
+        Kind bootstrap is the one flow that reads a repository before its own
+        layer declares a kind; the operator-requested value is projected, never
+        assumed, and the own layer's raw bytes still guard against a conflict.
+
+        Returns:
+            The own-layer kind projection, or none without a requested kind.
+
+        """
+        if kind is None:
+            return ()
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+        )
+        return (
+            m.Infra.CodegenLayerProjection(
+                path=layers[1],
+                values={"Infra": {"codegen": {"repository": {"kind": kind.value}}}},
+            ),
         )
 
     @staticmethod
@@ -289,45 +327,6 @@ class FlextInfraCodegenConform:
                 + ", ".join(unexpected),
             )
         route.chmod(c.Infra.BEADS_DIRECTORY_MODE)
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def _allow_direnv_after_apply(
-        written_files: tuple[Path, ...],
-    ) -> p.Result[bool]:
-        """Heal the direnv allow for every ``.envrc`` this apply published.
-
-        ``make setup`` authorizes the rendered ``.envrc`` once; a later conform
-        apply legitimately rewrites it (content-hash changes) and every
-        subsequent command blocks on direnv's stale-allow warning. The
-        generator owns the file it renders, so apply heals the allow itself
-        instead of leaving every environment stale until the operator re-runs
-        setup.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        roots = {
-            path.expanduser().resolve().parent
-            for path in written_files
-            if path.name == c.Infra.ENVRC_FILENAME
-        }
-        if not roots:
-            return r[bool].ok(value=False)
-        for root in sorted(roots):
-            result = u.Cli.run_raw(
-                (c.Infra.CLI_DIRENV, "allow", str(root)),
-                cwd=root,
-                timeout=c.Infra.TIMEOUT_SHORT,
-            )
-            if result.failure:
-                return r[bool].from_failure(result)
-            if not u.Cli.process_succeeded(result.value.outcome):
-                return r[bool].fail(
-                    f"direnv allow failed for {root}: "
-                    f"{result.value.stderr.strip() or result.value.stdout.strip()}",
-                )
         return r[bool].ok(value=True)
 
 

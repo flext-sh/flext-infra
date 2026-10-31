@@ -22,7 +22,6 @@ ignores:
   - "**/__init__.py"
   - "**/__main__.py"
   - "**/__version__.py"
-  - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-005]
   relocation: protocol

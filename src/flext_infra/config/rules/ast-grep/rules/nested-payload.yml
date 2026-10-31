@@ -8,7 +8,6 @@ files:
   - "**/_protocols/**/*.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
 metadata:
   # The family modules whose nested class is a payload declaration.
   scope:

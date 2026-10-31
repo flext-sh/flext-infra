@@ -86,10 +86,10 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
         }
         for path, source in sources.items():
             self._write(path, source)
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -461,7 +461,7 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
         }
         for path, source in sources.items():
             self._write(path, source)
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         self._write(facade, rendered)
         sources[facade] = rendered
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
@@ -474,10 +474,10 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
             )
         for path, source in proposed.items():
             self._write(path, source)
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -555,10 +555,10 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
         )
         for path, source in sources.items():
             self._write(path, source)
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -641,10 +641,10 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
         )
         for path, source in sources.items():
             self._write(path, source)
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         output = tm.ok(
             u.Cli.run_raw(
                 (

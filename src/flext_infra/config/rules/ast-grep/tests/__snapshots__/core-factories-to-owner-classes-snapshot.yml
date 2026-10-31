@@ -1,0 +1,30 @@
+id: core-factories-to-owner-classes
+snapshots:
+  dispatcher = u.build_dispatcher():
+    fixed: dispatcher = FlextDispatcher()
+    labels:
+    - source: u.build_dispatcher
+      style: primary
+      start: 13
+      end: 31
+  "registry = u.build_registry(dispatcher, discovery_module=support)":
+    fixed: registry = FlextRegistry.create(dispatcher, discovery_module=support)
+    labels:
+    - source: u.build_registry
+      style: primary
+      start: 11
+      end: 27
+  "registry: p.Registry = Field(default_factory=u.build_registry)":
+    fixed: "registry: p.Registry = Field(default_factory=FlextRegistry.create)"
+    labels:
+    - source: u.build_registry
+      style: primary
+      start: 45
+      end: 61
+  runtime = u.build_service_runtime(service):
+    fixed: runtime = FlextContainer.build_service_runtime(service)
+    labels:
+    - source: u.build_service_runtime
+      style: primary
+      start: 10
+      end: 33

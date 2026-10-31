@@ -12,13 +12,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraScannerGate(FlextInfraGate):
+class FlextInfraGatesScanner(FlextInfraGates):
     """Mixin for gates that detect per-file issues via a rope-backed scanner.
 
     Subclasses provide ``scan_error_message`` and implement
@@ -90,4 +90,4 @@ class FlextInfraScannerGate(FlextInfraGate):
         return ()
 
 
-__all__: list[str] = ["FlextInfraScannerGate"]
+__all__: list[str] = ["FlextInfraGatesScanner"]

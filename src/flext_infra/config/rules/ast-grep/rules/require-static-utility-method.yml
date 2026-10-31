@@ -14,15 +14,6 @@ files:
   - "**/utilities.py"
   - "**/_utilities.py"
   - "**/_utilities/**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/tests/unit/**"
-  - "**/tests/integration/**"
-  - "**/tests/e2e/**"
 rule:
   matches: class-body-method
   has:

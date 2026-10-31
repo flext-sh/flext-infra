@@ -26,6 +26,7 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraDepsGate:
     """Undeclared imports fail at check time, never deep inside generation."""
 
+    _INFRA_SOURCE: ClassVar[str] = "https://github.com/fixture-org/flext-infra.git"
     _SHIPPED_INFRA: ClassVar[str] = (
         "\n[tool.hatch.build.targets.wheel]\n"
         'only-include = ["src/fixturepkg", "infra"]\n'
@@ -502,23 +503,62 @@ class TestsFlextInfraDepsGate:
         tm.that(plan.dependencies, eq=(name,) if loaded else ())
 
     @staticmethod
+    def _flext_line_project(
+        tmp_path: Path,
+        pinned: str,
+        consumer_branch: str | None = None,
+    ) -> tuple[Path, str]:
+        """Write a consumer declaring the infra source on the fleet FLEXT line.
+
+        ``consumer_branch`` overrides the consumer's own integration branch in
+        its ``config/codegen.yaml``; the FLEXT line stays the fleet line.
+
+        Returns:
+            The project root and the FLEXT line it consumes.
+
+        """
+        line = config.Infra.codegen.branch_policy.integration_branch
+        infra = f"flext-infra @ git+{TestsFlextInfraDepsGate._INFRA_SOURCE}@{line}"
+        root = TestsFlextInfraDepsGate._project(
+            tmp_path, f"{dumps(pinned)}, {dumps(infra)}", ""
+        )
+        policy = (
+            ""
+            if consumer_branch is None
+            else f"    branch_policy:\n      integration_branch: {consumer_branch}\n"
+        )
+        (root / "config").mkdir()
+        (root / "config" / "codegen.yaml").write_text(
+            "Infra:\n  codegen:\n    repository:\n"
+            f"      kind: {c.Infra.ProjectKind.INTERNAL_FLEXT.value}\n{policy}",
+            encoding="utf-8",
+        )
+        flext_line = (
+            u.Infra
+            .flext_integration_line(
+                codegen=u.Infra.load_codegen_inputs(root).unwrap().spec,
+                repository_root=root,
+            )
+            .unwrap()
+            .branch
+        )
+        return root, flext_line
+
+    @staticmethod
     def test_internal_reference_off_the_line_is_flagged_and_fixed(
         tmp_path: Path,
     ) -> None:
-        """Check flags an internal ref off the integration line; fix moves it.
+        """Check flags an internal ref off the FLEXT line; fix moves it.
 
         The manifest keeps the Git URL and moves only its reference onto the
-        declared integration line; the lock alone pins exact commits.
+        FLEXT line the checkout consumes; the lock alone pins exact commits.
         """
         source = "https://github.com/fixture-org/flext-fixture.git"
         pinned = f"flext-fixture @ git+{source}@{'a' * 40}"
-        root = TestsFlextInfraDepsGate._project(tmp_path, dumps(pinned), "")
-        integration = (
-            u.Infra
-            .load_codegen_inputs(root)
-            .unwrap()
-            .spec.branch_policy.integration_branch
+        root, integration = TestsFlextInfraDepsGate._flext_line_project(
+            tmp_path, pinned
         )
+        infra_source = TestsFlextInfraDepsGate._INFRA_SOURCE
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
         checked = gate.check(
             root,
@@ -545,7 +585,53 @@ class TestsFlextInfraDepsGate:
                 "project",
                 "dependencies",
             ),
-            eq=(f"flext-fixture @ git+{source}@{integration}",),
+            eq=(
+                f"flext-fixture @ git+{source}@{integration}",
+                f"flext-infra @ git+{infra_source}@{integration}",
+            ),
+        )
+
+    @staticmethod
+    def test_consumer_branch_never_becomes_the_flext_line(tmp_path: Path) -> None:
+        """A consumer integrating on its own branch keeps the FLEXT line.
+
+        The consumer's ``branch_policy.integration_branch`` names the
+        consumer's repository line only; internal FLEXT references stay on the
+        FLEXT line the checkout consumes, in check and in fix alike.
+        """
+        source = "https://github.com/fixture-org/flext-fixture.git"
+        consumer_branch = "consumer-own-line"
+        root, flext_line = TestsFlextInfraDepsGate._flext_line_project(
+            tmp_path, f"flext-fixture @ git+{source}@{'b' * 40}", consumer_branch
+        )
+        tm.that(flext_line, ne=consumer_branch)
+        gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
+        gate.fix(
+            root,
+            m.Infra.GateContext(
+                repository_root=root,
+                reports_dir=tmp_path / "fix",
+                apply_fixes=True,
+            ),
+        )
+        declared = u.Tests.toml_strings_at(
+            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+            "project",
+            "dependencies",
+        )
+        tm.that(all(item.endswith(f"@{flext_line}") for item in declared), truth=True)
+        tm.that(
+            any(item.endswith(f"@{consumer_branch}") for item in declared), truth=False
+        )
+        checked = gate.check(
+            root,
+            m.Infra.GateContext(repository_root=root, reports_dir=tmp_path / "check"),
+        )
+        tm.that(
+            any(
+                issue.code == f"{c.Infra.DEPS}-internal-ref" for issue in checked.issues
+            ),
+            truth=False,
         )
 
     @staticmethod

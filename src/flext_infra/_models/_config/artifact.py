@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 import flext_core
-from flext_cli import m
+from flext_cli import m, t
 
-from flext_infra import c, p, t
+from flext_infra import c
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
@@ -23,6 +23,7 @@ from flext_infra._models import (
     FlextInfraModelsLayout,
     FlextInfraModelsMiseToolchain,
 )
+from flext_infra._models._codegen import FlextInfraModelsCodegenTransaction
 from flext_infra._models._config import (
     FlextInfraModelsConfigContexts,
     FlextInfraModelsConfigContract,
@@ -34,10 +35,14 @@ from flext_infra._models._config import (
     FlextInfraModelsConfigTemplates,
     FlextInfraModelsConfigWorkspace,
 )
-from flext_infra._models._git import FlextInfraModelsGitWorktreeState
+from flext_infra._protocols import FlextInfraProtocolsBase
+from flext_infra._typings import FlextInfraTypesAdapters
 
 
-class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
+class FlextInfraModelsConfigArtifact(
+    FlextInfraModelsConfigRefactorCampaigns,
+    FlextInfraModelsCodegenTransaction,
+):
     """Codegen artifact, conform, and plan result models."""
 
     class CodegenArtifactSpec(FlextInfraModelsConfigContract.ConfigContract):
@@ -544,8 +549,10 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
 
             """
             for project, roles in value.items():
-                if project != t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
-                    project
+                if project != (
+                    FlextInfraTypesAdapters.DISTRIBUTION_NAME_ADAPTER.validate_python(
+                        project
+                    )
                 ):
                     msg = f"runtime module project identity is not canonical: {project}"
                     raise ValueError(msg)
@@ -570,7 +577,7 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             m.Field(
                 description="This repository's self-owned declaration differences",
             ),
-        ] = m.Field(default_factory=FlextInfraModelsConfigWorkspace.RepositoryDeltaSpec)
+        ]
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
         retired_projections: Annotated[
             tuple[str | FlextInfraModelsConfigArtifact.RetiredProjectionSpec, ...],
@@ -1342,82 +1349,11 @@ class FlextInfraModelsConfigArtifact(FlextInfraModelsConfigRefactorCampaigns):
             ),
         )
 
-    class CodegenFilePlan(m.Cli.FileChange):
-        """One managed file change plus its governed ownership metadata."""
-
-        inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
-            m.Field(
-                exclude=True,
-                description="Original read-only observations consumed by this effect",
-            ),
-        ] = ()
-        project: Annotated[Path, m.Field(description="Physical owning project root")]
-        owner: Annotated[
-            str,
-            m.Field(description="Canonical artifact owner, empty for scaffold files"),
-        ] = ""
-        policy: Annotated[
-            Literal["full", "merge"] | None,
-            m.Field(description="Governed root artifact policy"),
-        ] = None
-        tracking: Annotated[
-            Literal["versioned", "runtime-local"],
-            m.Field(description="Declared persistence policy of this artifact"),
-        ] = "versioned"
-        index_before: Annotated[
-            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
-            m.Field(description="Captured index entry scheduled for retirement"),
-        ] = None
-        tracking_dependencies: Annotated[
-            tuple[Path, ...],
-            m.Field(
-                description=(
-                    "Portable declaration destinations required before retirement"
-                ),
-            ),
-        ] = ()
-
-        @m.model_validator(mode="after")
-        def validate_publication_identity(self) -> Self:
-            """Keep every plan inside its project and its retirement consistent.
-
-            Returns:
-                The validated plan.
-
-            Raises:
-                ValueError: If the plan escapes its project, publishes a
-                    first-party stub, or declares an inconsistent retirement.
-
-            """
-            if not self.project.is_absolute() or not self.path.is_relative_to(
-                self.project
-            ):
-                msg = f"codegen path escapes owning project: {self.path}"
-                raise ValueError(msg)
-            if self.path.suffix == ".pyi" and self.desired_content is not None:
-                msg = f"first-party .pyi publication is forbidden: {self.path}"
-                raise ValueError(msg)
-            if self.index_before is not None and (
-                self.tracking != "runtime-local"
-                or self.index_before.path.is_absolute()
-                or self.project / self.index_before.path != self.path
-            ):
-                msg = "index retirement must match its runtime-local artifact"
-                raise ValueError(msg)
-            if any(
-                not path.is_relative_to(self.project)
-                for path in self.tracking_dependencies
-            ):
-                msg = "tracking declaration escapes the owning project"
-                raise ValueError(msg)
-            return self
-
     class CodegenRepositoryPlanTask(FlextInfraModelsConfigContract.ConfigContract):
         """One repository's read-only planning inputs sent to a fleet worker."""
 
         ports: Annotated[
-            t.Port[p.Infra.CodegenConformPorts] | None,
+            t.Port[FlextInfraProtocolsBase.CodegenConformPorts] | None,
             m.Field(
                 exclude=True,
                 description="Caller-bound capabilities shared by repository phases",

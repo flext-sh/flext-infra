@@ -19,7 +19,7 @@ class TestsFlextInfraModScanSelection:
     def test_native_selection_respects_binding_and_collision(
         mod_workspace: Path,
     ) -> None:
-        """Admit each project's actual stable owner from one native capture."""
+        """Report each project's competing selection from one native capture."""
         cases = [
             (
                 (
@@ -27,7 +27,6 @@ class TestsFlextInfraModScanSelection:
                     "FlextInfraModGateEngine as Engine\n"
                     "Engine.scan(root, fix=False, rule_ids=rules)\n"
                 ),
-                1,
                 0,
             ),
             (
@@ -35,7 +34,6 @@ class TestsFlextInfraModScanSelection:
                     "import flext_infra.codemod.batch_gates as native\n"
                     "native.FlextInfraModGateEngine.scan(root, fix=False, plan=plan)\n"
                 ),
-                1,
                 0,
             ),
             (
@@ -45,7 +43,6 @@ class TestsFlextInfraModScanSelection:
                     "def use(Engine):\n"
                     "    Engine.scan(root, fix=False, rule_ids=rules)\n"
                 ),
-                0,
                 0,
             ),
             (
@@ -57,7 +54,6 @@ class TestsFlextInfraModScanSelection:
                     "Engine = original\n"
                 ),
                 0,
-                0,
             ),
             (
                 (
@@ -66,7 +62,6 @@ class TestsFlextInfraModScanSelection:
                     "Engine.scan(root, fix=False, selection=other(rule_ids=rules))\n"
                 ),
                 0,
-                0,
             ),
             (
                 (
@@ -74,7 +69,6 @@ class TestsFlextInfraModScanSelection:
                     "FlextInfraModGateEngine as Engine\n"
                     "Engine.scan(root, fix=False, rule_ids=rules, plan=plan)\n"
                 ),
-                0,
                 1,
             ),
             (
@@ -83,7 +77,6 @@ class TestsFlextInfraModScanSelection:
                     "FlextInfraModGateEngine as Engine\n"
                     "Engine.scan(root, fix=False, plan=plan, selection=plan)\n"
                 ),
-                0,
                 1,
             ),
         ]
@@ -99,24 +92,20 @@ class TestsFlextInfraModScanSelection:
             )
             for index in range(len(cases))
         )
-        for project, (source, _actionable, _conflicts) in zip(
-            projects, cases, strict=True
-        ):
+        for project, (source, _conflicts) in zip(projects, cases, strict=True):
             u.Tests.initialize_git_repo(project)
             (project / "consumer.py").write_text(source, encoding="utf-8")
         u.Tests.declare_workspace_projects(
             mod_workspace, tuple(project.name for project in projects)
         )
-        rules = ("rewire-mod-scan-selection", "mod-scan-selection-conflict")
+        rules = ("mod-scan-selection-conflict",)
         report = tm.ok(
             FlextInfraModGateEngine.scan(mod_workspace, fix=False, selection=rules)
         )
-        for project, (_source, actionable, conflicts) in zip(
-            projects, cases, strict=True
-        ):
+        for project, (_source, conflicts) in zip(projects, cases, strict=True):
             entries = tuple(
                 entry for entry in report.entries if entry.repository == project.name
             )
-            tm.that(sum(entry.actionable for entry in entries), eq=actionable)
-            tm.that(sum(entry.rule_id == rules[1] for entry in entries), eq=conflicts)
-            tm.that(len(entries), eq=actionable + conflicts)
+            tm.that(sum(entry.actionable for entry in entries), eq=0)
+            tm.that(sum(entry.rule_id == rules[0] for entry in entries), eq=conflicts)
+            tm.that(len(entries), eq=conflicts)

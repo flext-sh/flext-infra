@@ -4,8 +4,11 @@
 # `@runtime_checkable`.
 #
 # In a module that binds `runtime_checkable` from typing, `make mod` adds the
-# decorator. The companion rule reports modules without that binding: a blind
-# fix would emit an undefined name.
+# decorator. In a module without that binding the companion rule first adds
+# `from typing import runtime_checkable` after the module's future import
+# (every FLEXT module starts with it; `require-future-annotations` adds it
+# where missing), the formatter merges it with the module's typing import, and
+# the decorator rule applies on the next pass.
 id: require-runtime-checkable-protocol
 language: python
 severity: error
@@ -13,15 +16,6 @@ files:
   - "**/protocols.py"
   - "**/_protocols.py"
   - "**/_protocols/**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/tests/unit/**"
-  - "**/tests/integration/**"
-  - "**/tests/e2e/**"
 utils:
   undecorated-protocol:
     kind: class_definition
@@ -68,15 +62,6 @@ files:
   - "**/protocols.py"
   - "**/_protocols.py"
   - "**/_protocols/**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/tests/unit/**"
-  - "**/tests/integration/**"
-  - "**/tests/e2e/**"
 utils:
   undecorated-protocol:
     kind: class_definition
@@ -92,27 +77,34 @@ utils:
               kind: decorator
               regex: "^@(?:typing\\.)?runtime_checkable$"
 rule:
-  matches: undecorated-protocol
-  has:
-    field: name
-    pattern: $NAME
+  kind: future_import_statement
   inside:
     kind: module
-    stopBy: end
-    not:
-      has:
-        kind: import_from_statement
-        stopBy: end
-        all:
-          - has:
-              field: module_name
-              regex: "^typing(?:_extensions)?$"
-          - has:
-              kind: dotted_name
-              regex: "^runtime_checkable$"
+    all:
+      - has:
+          stopBy: end
+          matches: undecorated-protocol
+          has:
+            field: name
+            pattern: $NAME
+      - not:
+          has:
+            kind: import_from_statement
+            stopBy: end
+            all:
+              - has:
+                  field: module_name
+                  regex: "^typing(?:_extensions)?$"
+              - has:
+                  kind: dotted_name
+                  regex: "^runtime_checkable$"
+fix: |-
+  from __future__ import annotations
+
+  from typing import runtime_checkable
 message: >-
-  Protocol `$NAME` is not runtime-checkable. Detection only: the module does
-  not import `runtime_checkable` from typing, so the decorator would name an
-  undefined symbol; import it and `make mod` adds the decorator.
+  Protocol `$NAME` is not runtime-checkable and the module does not bind
+  `runtime_checkable`: `make mod` imports it from typing, then decorates the
+  protocol.
 metadata:
   enforce: [ENFORCE-111]

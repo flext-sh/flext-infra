@@ -14,8 +14,6 @@ from hashlib import sha256
 from pathlib import Path
 
 from flext_infra import c, m, p, t, u
-from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraCodemodRenameSymbols:
@@ -523,9 +521,7 @@ class FlextInfraCodemodRenameSymbols:
             module = candidate
         attributes = parts[len(module.split(".")) :]
         value: p.Infra.RopeSemanticModule | p.Infra.RopePyObject = (
-            FlextInfraUtilitiesRopeRuntime.require_semantic_module(
-                project.get_module(module)
-            )
+            u.Infra.require_semantic_module(project.get_module(module))
         )
         binding: p.Infra.RopePyName | None = None
         for attribute in attributes:
@@ -922,7 +918,7 @@ class FlextInfraCodemodRenameSymbols:
         resources: MutableMapping[Path, t.Infra.RopeFile] = {}
         for path in ordered_paths:
             resource = project.get_resource(path.relative_to(root).as_posix())
-            if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
+            if not u.Infra.file_resource(resource):
                 msg = f"expected a Rope file resource: {path}"
                 raise TypeError(msg)
             observed = resource.read()
@@ -1075,7 +1071,7 @@ class FlextInfraCodemodRenameSymbols:
             current = u.Infra.content_change(
                 inventory[1][path], source, planned.get(path, ())
             ).new_contents
-            updated = FlextInfraUtilitiesQualifiedNames.retarget_imported_names(
+            updated = u.Infra.retarget_imported_names(
                 current,
                 owner,
                 (old, new),

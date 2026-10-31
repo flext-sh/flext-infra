@@ -303,7 +303,7 @@ class FlextInfraUtilitiesRepository(
                 path=Path(distribution),
                 role=c.Infra.MakeProfile.STANDALONE,
                 provider=source.provider,
-                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+                kind=source.kind,
                 codegen=c.Infra.CodegenKind.CONFORM,
                 package=True,
                 editable=True,

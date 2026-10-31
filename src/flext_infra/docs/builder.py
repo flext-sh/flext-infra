@@ -69,7 +69,7 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
         report: m.Infra.DocsPhaseReport = u.Infra.docs_run_mkdocs(scope)
         u.Infra.docs_write_build_reports(scope, report)
         self.logger.info(
-            "docs_build_scope_completed",
+            "build_scope_completed",
             project=scope.name,
             phase=c.Infra.DIR_BUILD,
             result=report.result,

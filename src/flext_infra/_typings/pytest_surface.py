@@ -47,13 +47,20 @@ class FlextInfraTypesPytest:
         type Pytester = pytest.Pytester
         type RunResult = pytest.RunResult
         type Session = pytest.Session
+        type StashKey[V] = pytest.StashKey[V]
         type TempPathFactory = pytest.TempPathFactory
         type TestReport = pytest.TestReport
         type WorkerController = xdist.workermanage.WorkerController
+        # What xdist hands ``pytest_testnodedown``: None (clean finish), a
+        # str (lost connection / keyboard interrupt), the execnet remote error
+        # (``BaseException``) or the captured ``ExceptionInfo`` of a crash
+        # (xdist workermanage.py / dsession.py).
+        type WorkerDownError = (
+            str | BaseException | pytest.ExceptionInfo[BaseException] | None
+        )
         FenceSyntax = FenceSyntax
         MarkdownInlinePythonItem = MarkdownInlinePythonItem
         MarkdownTextFile = MarkdownTextFile
-        StashKey = pytest.StashKey
         failed = pytest.fail.Exception
 
 

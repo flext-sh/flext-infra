@@ -89,12 +89,12 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         )
         # The integration baseline uses the same ignore contract as its release
         # lane, so local resolver state never becomes an untracked source file.
-        gitignore = u.Infra.render_project_gitignore(
+        ignore = u.Infra.render_project_ignore(
             config.Infra.codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name=workspace.name,
         ).unwrap()
-        (workspace / ".gitignore").write_text(gitignore, encoding="utf-8")
+        (workspace / ".ignore").write_text(ignore, encoding="utf-8")
         # Gitleaks is a codegen projection; build constraints render from the
         # typed config SSOT at release time and have no repository projection.
         gitleaks_source = (

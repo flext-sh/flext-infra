@@ -27,12 +27,12 @@ from libcst.metadata import (
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+from flext_infra._utilities._rope.runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverNestingModuleAliases,
@@ -95,7 +95,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 tuple[p.Infra.RopePyName, p.Infra.RopeSemanticModule, str]
             ] = []
             for module, bindings in bindings_by_module.items():
-                provider = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                     FlextInfraUtilitiesRopeCore.resolve_pymodule(
                         self.project,
                         providers_by_module[module],
@@ -245,11 +245,11 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
                 if receiver_name is None:
                     msg = f"unresolved native nesting receiver: {expression}"
                     raise ValueError(msg)
-                provider = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                     receiver_name.get_object(),
                 )
             elif isinstance(actual, p.Infra.RopeImportedName):
-                provider = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                     actual.imported_module.get_object(),
                 )
             module, prefix = self.import_route(
@@ -393,7 +393,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             match actual:
                 case p.Infra.RopeImportedName():
                     provider = (
-                        FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+                        FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                             actual.imported_module.get_object(),
                         )
                     )

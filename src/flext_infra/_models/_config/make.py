@@ -649,6 +649,29 @@ class FlextInfraModelsConfigMake(
                     raise ValueError(msg)
                 return self
 
+        class EnvironmentIdentitySpec(FlextInfraModelsConfigContract.ConfigContract):
+            """Creator identity recorded by the native environment creator.
+
+            Setup reads these keys from the runtime environment's marker file
+            and compares them with the Mise-resolved uv and Python. A divergent
+            creator is recreated by native ``uv venv --clear`` before the frozen
+            installation, because ``uv sync`` keeps an environment whose
+            interpreter still satisfies the request.
+            """
+
+            marker_file: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Environment-relative creator marker file"),
+            ]
+            uv_key: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Marker key holding the creating uv version"),
+            ]
+            python_key: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Marker key holding the interpreter version"),
+            ]
+
         class PytestScratchSpec(FlextInfraModelsConfigContract.ConfigContract):
             """Scratch root every pytest-running verb declares (storage law).
 
@@ -801,6 +824,15 @@ class FlextInfraModelsConfigMake(
             PytestScratchSpec,
             m.Field(description="Scratch root declared by every pytest verb"),
         ]
+        environment_identity: Annotated[
+            EnvironmentIdentitySpec,
+            m.Field(
+                description=(
+                    "Native creator identity setup compares with the declared "
+                    "toolchain before installing into the runtime environment"
+                )
+            ),
+        ]
         gate_acceptance_policy: Annotated[
             FlextInfraConstantsConfig.GateAcceptancePolicy,
             m.Field(description="Policy recorded by original gate execution receipts"),
@@ -809,10 +841,6 @@ class FlextInfraModelsConfigMake(
             Path,
             m.Field(description="Repository-relative immutable execution receipts"),
         ] = Path(".reports/gates")
-        lint_freeze_catalog: Annotated[
-            Path,
-            m.Field(description="Repository-relative frozen lint-policy catalog"),
-        ]
         generation_profile_path: Annotated[
             Path,
             m.Field(description="Repository-relative canonical generation profile"),
@@ -1214,7 +1242,6 @@ class FlextInfraModelsConfigMake(
                 raise ValueError(msg)
             for name, path in (
                 ("docs.reports_dir", self.docs.reports_dir),
-                ("lint_freeze_catalog", self.lint_freeze_catalog),
                 ("generation_profile_path", self.generation_profile_path),
                 ("modification_profile_path", self.modification_profile_path),
                 ("check_profile_path", self.check_profile_path),

@@ -75,7 +75,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
-        checker = gates.FlextInfraPyreflyGate(tmp_path)
+        checker = gates.FlextInfraGatesPyrefly(tmp_path)
         accepted = checker.check_files((proof,), project, context)
         tm.that(accepted.result.passed, eq=True, msg=accepted.raw_output)
         proof.write_text(
@@ -108,7 +108,7 @@ class TestsFlextInfraReadonlyNamespaceContract:
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path / "reports"
         )
-        checked = gates.FlextInfraRuffLintGate(tmp_path).check_files(
+        checked = gates.FlextInfraGatesRuffLint(tmp_path).check_files(
             (contracts,), project, context
         )
         tm.that(checked.result.passed, eq=False)

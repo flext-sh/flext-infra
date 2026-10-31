@@ -19,7 +19,7 @@ from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.refactor import FlextInfraRefactorCensus
 
 
-class FlextInfraCodegenQualityGate(s[bool]):
+class FlextInfraGatesCodegenQuality(s[bool]):
     """Run final constants migration checks with before/after comparison."""
 
     source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
@@ -492,4 +492,4 @@ class FlextInfraCodegenQualityGate(s[bool]):
         return verdict == "PASS"
 
 
-__all__: list[str] = ["FlextInfraCodegenQualityGate"]
+__all__: list[str] = ["FlextInfraGatesCodegenQuality"]

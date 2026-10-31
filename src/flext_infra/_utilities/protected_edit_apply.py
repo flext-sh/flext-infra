@@ -14,7 +14,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r, settings, t
-from flext_infra._utilities import FlextInfraUtilitiesProtectedEditPreview
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesProtectedEditPreview,
+)
 
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):
@@ -314,6 +317,9 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
         normalized_updates = (
             FlextInfraUtilitiesProtectedEditApply._normalized_source_updates(updates)
+        )
+        FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
+            request.workspace, tuple(updates)
         )
         expected_sources = {
             path.resolve(): content

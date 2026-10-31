@@ -12,6 +12,8 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
+from rope.base import exceptions
+
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
@@ -19,12 +21,126 @@ from flext_infra._utilities._rope._analysis.asthelpers import (
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisImportState:
     """Rope semantic import state, class discovery, and project-backed probes."""
+
+    @classmethod
+    def facade_class_publications(
+        cls,
+        root: Path,
+        rows: Mapping[Path, frozenset[int]],
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> frozenset[tuple[Path, int, int]]:
+        """Authenticate direct class publications using the native binding index.
+
+        Args:
+            root: The root path of the source project.
+            rows: A mapping from file paths to candidate publication line numbers.
+            source_project: The Rope project representing the source code.
+
+        Returns:
+            The exact source, row and column of each native PEP 613 publication.
+
+        Raises:
+            ValueError: The query belongs to another native source project.
+
+        """
+        selected = {path.resolve(): wanted for path, wanted in rows.items() if wanted}
+        if not selected:
+            return frozenset()
+        from_view = FlextInfraUtilitiesRopeRuntime
+        publications: set[tuple[Path, int, int]] = set()
+        project = source_project
+        if Path(project.root.real_path) != root.resolve():
+            message = "Publication query belongs to another native source project"
+            raise ValueError(message)
+        if selected:
+            declared_alias = from_view.qualified_name(
+                project, "TypeAlias", module_name="typing"
+            )
+            for path, wanted in selected.items():
+                resource = from_view.file_resource_at(project, path)
+                published = cls.published_facade_owner(project, resource)
+                if published is None:
+                    continue
+                module = from_view.require_source_module(project.get_pymodule(resource))
+                owner = module.get_attributes()[published[1]].get_object()
+                if not from_view.py_class(owner):
+                    continue
+                publications.update(
+                    cls._type_alias_publications(
+                        path,
+                        module,
+                        owner,
+                        wanted,
+                        declared_alias=declared_alias,
+                    )
+                )
+        return frozenset(publications)
+
+    @classmethod
+    def _type_alias_publications(
+        cls,
+        path: Path,
+        module: p.Infra.RopeSourceModule,
+        owner: p.Infra.RopeSourceClass,
+        wanted: frozenset[int],
+        *,
+        declared_alias: p.Infra.RopePyName,
+    ) -> set[tuple[Path, int, int]]:
+        """Collect one owner's native PEP 613 publications on wanted lines.
+
+        Returns:
+            The path, line and column of each wanted type-alias publication.
+
+        """
+        from_view = FlextInfraUtilitiesRopeRuntime
+        found: set[tuple[Path, int, int]] = set()
+        index = module.get_source_binding_index()
+        for scope in (owner.get_scope(), *owner.get_scope().get_scopes()):
+            if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
+                continue
+            for metadata in index.assignment_layouts(scope):
+                if metadata.annotation is None or not metadata.targets:
+                    continue
+                line = module.lines.get_line_number(metadata.region[0])
+                if line not in wanted:
+                    continue
+                (declaration,) = tuple(
+                    layout
+                    for layout in index.assignment_layouts(
+                        scope, name=metadata.targets[0][0], resolve_values=True
+                    )
+                    if layout.region == metadata.region
+                )
+                if (
+                    declaration.annotation is None
+                    or declaration.value_binding is None
+                    or not from_view.abstract_class(
+                        declaration.value_binding.get_object()
+                    )
+                ):
+                    continue
+                begin, end = declaration.annotation
+                annotation = from_view.expression_name(
+                    index.context_at(begin).environment,
+                    module.source_code[begin:end],
+                )
+                if annotation is None or not from_view.same_name(
+                    declared_alias, annotation
+                ):
+                    continue
+                found.add((
+                    path,
+                    line,
+                    declaration.region[0] - module.lines.get_line_start(line) + 1,
+                ))
+        return found
 
     _SEMANTIC_STATE_CACHE: ClassVar[
         MutableMapping[tuple[str, str, str], m.Infra.ModuleSemanticState]
@@ -549,7 +665,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             Only an existing class alias suitable for publication.
 
         """
-        return cls._facade_owner(rope_project, resource, infer_missing=False)
+        try:
+            return cls._facade_owner(rope_project, resource, infer_missing=False)
+        except exceptions.ModuleSyntaxError:
+            # Conteúdo candidate inválido no overlay (staging do
+            # quoted-move troca conteúdos no mesmo path): sem publicação
+            # provável por este arquivo neste ponto fixo — o rerun
+            # replaneja quando o staging assentar.
+            return None
 
     @classmethod
     def _facade_owner(
@@ -622,6 +745,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def _declared_class_aliases(target: p.Infra.RopeClassObject) -> frozenset[str]:
         """Return explicitly exported names bound to this exact class object.
 
+        Rope's module attribute table resolves a shadowed letter (``from
+        flext_api import c`` followed by ``c = Facade``) to the imported name,
+        so the alias election reads the module's own assignments instead and
+        verifies identity through the class binding.
+
         Returns:
             Explicitly exported names bound to this exact class object.
 
@@ -630,7 +758,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
 
         """
         module = target.get_module()
-        if module is None or (resource := module.get_resource()) is None:
+        if module is None or module.get_resource() is None:
             return frozenset()
         if not FlextInfraUtilitiesRopeRuntime.source_module(module):
             message = "Facade alias exports require their native source module"
@@ -638,16 +766,34 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
             module,
         )
-        return frozenset(
-            name
-            for name, binding in module.get_attributes().items()
-            if name in exports
-            and name != target.get_name()
-            and name.islower()
-            and not name.startswith("_")
-            and FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(binding, resource)
-            and binding.get_object() is target
-        )
+        attributes = module.get_attributes()
+        aliases: set[str] = set()
+        for statement in module.get_ast().body:
+            if not isinstance(statement, ast.Assign) or isinstance(
+                statement.value, ast.Tuple | ast.List
+            ):
+                continue
+            names = FlextInfraUtilitiesRopeAnalysisAstHelpers.statement_target_names(
+                statement,
+            )
+            value = statement.value
+            if not isinstance(value, ast.Name) or not isinstance(value.ctx, ast.Load):
+                continue
+            binding = attributes.get(value.id)
+            if (
+                binding is None
+                or binding.get_object() is not target
+                or any(
+                    alias not in exports
+                    or alias == target.get_name()
+                    or not alias.islower()
+                    or alias.startswith("_")
+                    for alias in names
+                )
+            ):
+                continue
+            aliases.update(names)
+        return frozenset(aliases)
 
     @staticmethod
     def inherited_facade_namespaces(

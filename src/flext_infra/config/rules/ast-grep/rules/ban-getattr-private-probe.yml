@@ -5,7 +5,7 @@
 # owner decision (declare the attribute publicly or use the facade surface).
 id: ban-getattr-private-probe
 language: python
-severity: warning
+severity: error
 files:
   - "src/**/*.py"
   - "tests/**/*.py"

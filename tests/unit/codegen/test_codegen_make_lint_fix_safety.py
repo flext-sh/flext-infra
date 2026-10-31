@@ -17,7 +17,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.gates import FlextInfraRuffLintGate
+from flext_infra.gates import FlextInfraGatesRuffLint
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -161,7 +161,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
             "    def __basse__(self) -> type | None: ...\n",
             encoding="utf-8",
         )
-        checked = FlextInfraRuffLintGate(root).check(
+        checked = FlextInfraGatesRuffLint(root).check(
             root,
             m.Infra.GateContext(
                 repository_root=root,

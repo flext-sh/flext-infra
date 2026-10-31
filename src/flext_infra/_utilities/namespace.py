@@ -23,14 +23,15 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -41,6 +42,50 @@ class FlextInfraUtilitiesCodegenNamespace:
     _declared_exports_cache: ClassVar[
         MutableMapping[str, tuple[str, Sequence[str]]]
     ] = {}
+
+    @classmethod
+    def facade_module_path(
+        cls,
+        pkg_dir: Path,
+        family: str,
+        *,
+        project: p.Infra.RopeProject | None = None,
+        sources: Mapping[Path, str] | None = None,
+    ) -> p.Result[Path] | None:
+        """Elect the immediate module publishing the requested native facade.
+
+        Returns:
+            The declared owner, or absence when this package declares no facade.
+
+        """
+        if project is None or sources is not None:
+            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+                Path(project.root.real_path) if project is not None else pkg_dir.parent,
+                planned_sources=sources,
+                source_project=project,
+            ) as (captured, _contents):
+                return cls.facade_module_path(pkg_dir, family, project=captured)
+        owners = tuple(
+            path
+            for path in project.source_children(pkg_dir)
+            if path.name != c.Infra.INIT_PY
+            and path.suffix == c.Infra.EXT_PYTHON
+            and project.source_query(path, "isfile")
+            and (
+                owner := FlextInfraUtilitiesRopeAnalysis.published_facade_owner(
+                    project,
+                    project.get_file(
+                        path.relative_to(Path(project.root.real_path)).as_posix()
+                    ),
+                )
+            )
+            is not None
+            and owner[0] == family
+        )
+        if len(owners) > 1:
+            message = f"Competing facade publications: {pkg_dir}:{family}: {owners}"
+            return r[Path].fail(message)
+        return r[Path].ok(owners[0]) if owners else None
 
     @staticmethod
     def isort_member_key(name: str) -> tuple[int, str]:
@@ -237,33 +282,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             None,
         )
 
-    @classmethod
-    def matches_project_namespace_package(cls, package_name: str) -> bool:
-        """Return whether a package behaves like a project namespace root.
-
-        Project package roots under ``src/`` qualify, as do namespace packages under
-        governed wrapper surfaces like ``tests/``, ``examples/``, and ``scripts/``.
-        Ordinary nested runtime subpackages such as ``<pkg>.services`` do not.
-
-        Returns:
-            Whether a package behaves like a project namespace root.
-
-        """
-        parts = tuple(part for part in package_name.split(".") if part)
-        if not parts:
-            return False
-        if len(parts) == 1:
-            return True
-        # A governed wrapper surface is not itself an importable package: its
-        # namespace root is the directory under it, so `tests.unit` is what
-        # `flext_demo` is under `src/`. Requiring a single part made every such
-        # package publish the inherited test aliases and none of its own
-        # declarations, which is the opposite of the contract above.
-        return (
-            len(parts) == c.Infra.WRAPPER_NAMESPACE_DEPTH
-            and parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS
-        )
-
     @staticmethod
     def ordered_namespace_exports(
         *,
@@ -424,7 +442,17 @@ class FlextInfraUtilitiesCodegenNamespace:
         cached = cls._declared_exports_cache.get(cache_key)
         if cached is not None and cached[0] == source:
             return cached[1]
-        tree = ast.parse(source, filename=str(file_path))
+        try:
+            tree = ast.parse(source, filename=str(file_path))
+        except SyntaxError:
+            # Conteúdo candidate do staging pode chegar sintaticamente
+            # inválido (quoted-move associa conteúdos no mesmo path); um
+            # candidato inválido nunca é entrada válida para a varredura
+            # de exportações: re-leitura pelo disco físico.
+            tree = ast.parse(
+                resolved.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+                filename=str(file_path),
+            )
         result: Sequence[str] = ()
         for node in FlextInfraUtilitiesRopeAnalysisSourceScan.export_declaration_body(
             tree
@@ -501,6 +529,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         class_name_source = package_name.split(".", maxsplit=1)[0].replace("_", "-")
         src_dir = resolved_root / c.Infra.DEFAULT_SRC_DIR
         package_dir = src_dir / Path(*package_name.split("."))
+        # Flat members publish the package at the checkout root (hatch
+        # ``packages``); the layout owner reads the physical truth instead of
+        # assuming the src prefix for every repository shape.
+        if (
+            not package_dir.is_dir()
+            and (resolved_root / Path(*package_name.split("."))).is_dir()
+        ):
+            src_dir = resolved_root
+            package_dir = resolved_root / Path(*package_name.split("."))
         return m.Infra.RopeProjectLayout(
             project_root=resolved_root,
             project_name=project_name,

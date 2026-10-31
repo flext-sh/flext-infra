@@ -14,8 +14,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
+import tomllib
 from collections.abc import Mapping
 from pathlib import Path
+
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import (
@@ -104,18 +109,106 @@ class FlextInfraWorkspaceFlextEditable:
                 for repository in spec.value.subprojects
             ),
         )
+        # Every distribution the consumer DECLARES and the workspace PROVIDES is
+        # an editable candidate — not only the currently-installed ones. The
+        # frozen sync before this step may have removed a member entirely;
+        # electing from installed
+        # state alone then never restores it and the consumer's pin check fails
+        # forever. The declared-deps intersection keeps workspace members the
+        # consumer does not use (e.g. the umbrella meta-distribution) out of the
+        # receipt — the provenance gate needs an installed distribution per
+        # receipt member.
+        declared = cls._declared_dependency_names(runtime_root)
         distributions = {
             repository.distribution: source.resolve()
             for repository, source in provided
-            if repository.package
-            and u.installed_distributions(
-                name=repository.distribution,
-                path=metadata_paths,
-            )
+            if repository.package and repository.distribution in declared
         }
         return r[tuple[dict[str, Path], tuple[str, ...]]].ok(
             (distributions, metadata_paths),
         )
+
+    @staticmethod
+    def _declared_dependency_names(runtime_root: Path) -> set[str]:
+        """Distribution names the consumer's pyproject declares (all groups).
+
+        Returns:
+            The canonicalized names across runtime dependencies and every
+            dependency group, markers and extras stripped.
+
+        """
+        manifest = runtime_root / c.PYPROJECT_FILENAME
+        if not manifest.is_file():
+            return set()
+        payload = tomllib.loads(manifest.read_text())
+        raw: list[str] = list(payload.get("project", {}).get("dependencies", []))
+        for group in (payload.get("dependency-groups") or {}).values():
+            raw.extend(group)
+        return {canonicalize_name(Requirement(declaration).name) for declaration in raw}
+
+    @staticmethod
+    def _bind_editables(
+        runtime_root: Path,
+        sources: Mapping[str, Path],
+        *,
+        python: str,
+        uv: Path,
+    ) -> p.Result[bool]:
+        """Replace locked distributions with editable bindings of their sources.
+
+        A locked install leaves its package directory behind (uv renames only
+        the dist-info), and that stale directory shadows the editable source on
+        sys.path, so the locked distributions are removed first. The binding
+        never discovers project configuration (``--no-config``): any
+        ``[tool.uv] override-dependencies``, including the FLEXT workspace's
+        own, would replace these explicit editable requests with the
+        overridden git source. The binding is path-based
+        (``c.Infra.FLEXT_EDITABLE_BUILD_SETTING``) so static resolvers see the
+        source, never an import-hook finder only the interpreter follows.
+
+        Returns:
+            Success once both native commands succeed; the first failure
+            otherwise.
+
+        """
+        uninstalled = u.Cli.run_live(
+            (
+                str(uv),
+                "pip",
+                "uninstall",
+                "--no-config",
+                "--python",
+                python,
+                *sources,
+            ),
+            cwd=runtime_root,
+            timeout=c.Infra.TIMEOUT_LONG,
+        )
+        if uninstalled.failure:
+            return r[bool].from_failure(uninstalled)
+        installed = u.Cli.run_live(
+            (
+                str(uv),
+                "pip",
+                "install",
+                "--no-config",
+                "--python",
+                python,
+                "--no-deps",
+                "--config-setting",
+                c.Infra.FLEXT_EDITABLE_BUILD_SETTING,
+                *(
+                    argument
+                    for source in sources.values()
+                    for argument in ("--editable", str(source))
+                ),
+            ),
+            cwd=runtime_root,
+            timeout=c.Infra.TIMEOUT_LONG,
+        )
+        if installed.failure:
+            return r[bool].from_failure(installed)
+        return r[bool].ok(value=True)
 
     @classmethod
     def _execute_pip_install(
@@ -140,32 +233,27 @@ class FlextInfraWorkspaceFlextEditable:
         if pending.failure:
             return r[bool].from_failure(pending)
         if pending.value:
-            installed = u.Cli.run_live(
-                (
-                    str(uv),
-                    "pip",
-                    "install",
-                    "--python",
-                    python,
-                    "--no-deps",
-                    *(
-                        argument
-                        for source in pending.value.values()
-                        for argument in ("--editable", str(source))
-                    ),
-                ),
-                cwd=runtime_root,
-                timeout=c.Infra.TIMEOUT_LONG,
+            bound = cls._bind_editables(
+                runtime_root, pending.value, python=python, uv=uv
             )
-            if installed.failure:
-                return r[bool].from_failure(installed)
+            if bound.failure:
+                return bound
         checked = u.Cli.run_live(
             (str(uv), "pip", "check", "--python", python),
             cwd=runtime_root,
             timeout=c.Infra.TIMEOUT_LONG,
         )
         if checked.failure:
-            return r[bool].from_failure(checked)
+            # Receipt-bound editables satisfy direct-URL pins by SOURCE, not by
+            # direct_url metadata — uv pip check cannot see the receipt and
+            # reports "<dist> @ git+..., but it's not installed" for exactly
+            # the distributions this flow binds. Tolerate a failure only when
+            # every distribution it names is receipt-bound (their editable
+            # origins are verified below); anything else stays a hard failure.
+            named = set(re.findall(r"package `([^`]+)` requires", checked.error or ""))
+            receipt_bound = set(selection.distributions)
+            if not named or not named <= receipt_bound:
+                return r[bool].from_failure(checked)
         verified = cls._pending_sources(runtime_root, selection)
         if verified.failure:
             return r[bool].from_failure(verified)
@@ -318,6 +406,13 @@ class FlextInfraWorkspaceFlextEditable:
                 environment_root=observed.value.prefix,
             )
             if installed.failure:
+                # A selected distribution with no installed metadata at all is
+                # simply pending (uv sync may have removed it between setups);
+                # only ambiguous or out-of-environment states are hard
+                # failures.
+                if "needs one installed distribution" in str(installed.error):
+                    pending[name] = source
+                    continue
                 return r.from_failure(installed)
             _distribution, _raw, receipt = installed.value
             if (

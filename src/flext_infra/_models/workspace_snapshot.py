@@ -50,7 +50,7 @@ class FlextInfraModelsWorkspaceSnapshot:
 
         namespace: Annotated[str, m.Field(description="Publishing namespace")]
         modules: Annotated[
-            t.Port[tuple[t.Infra.RopeNativeParsedModule, ...]],
+            t.Port[tuple[t.Infra.RopeSourceModule, ...]],
             m.Field(exclude=True, description="Native modules of the source epoch"),
         ]
         source_folders: Annotated[

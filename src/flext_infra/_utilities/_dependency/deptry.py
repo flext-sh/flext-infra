@@ -163,10 +163,13 @@ class FlextInfraUtilitiesDependencyDeptry:
     ) -> p.Result[t.StrTuple]:
         """Elect deptry's roots from the wheel target the settings declare.
 
-        Every directory the wheel ships, through its ``only-include`` entries or
-        its ``sources`` prefixes, contributes its import base; a root nested in
-        another root is already covered. A wheel target declaring neither keeps
-        the native src layout root.
+        Every directory the wheel ships — through its ``packages`` entries, its
+        ``only-include`` entries, or its ``sources`` prefixes — contributes its
+        import base; a root nested in another root is already covered. Hatch
+        ships a ``packages`` entry at its trailing components (``src/pkg`` lands
+        as ``pkg``), so a flat entry roots at itself and a ``src/``-prefixed one
+        at its remaining prefix. A wheel target declaring none of the three
+        keeps the native src layout root.
 
         Returns:
             The sorted roots, or the first declaration failure.
@@ -190,8 +193,22 @@ class FlextInfraUtilitiesDependencyDeptry:
         )
         if sources.failure:
             return result_type.from_failure(sources)
+        packages: p.Result[Sequence[str]] = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            wheel.value.get("packages", ()),
+            strict=True,
+        )
+        if packages.failure:
+            return result_type.from_failure(packages)
         roots: set[PurePosixPath] = set()
-        for declaration in (*shipped.value, *sources.value):
+        declarations: tuple[tuple[str, str | None], ...] = (
+            *((declaration, None) for declaration in packages.value),
+            *(
+                (declaration, sources.value.get(declaration, declaration))
+                for declaration in (*shipped.value, *sources.value)
+            ),
+        )
+        for declaration, target in declarations:
             path = PurePosixPath(declaration)
             if path.is_absolute() or not path.parts or ".." in path.parts:
                 return result_type.fail(
@@ -201,7 +218,7 @@ class FlextInfraUtilitiesDependencyDeptry:
             roots.add(
                 cls._shipped_import_base(
                     path,
-                    PurePosixPath(sources.value.get(declaration, declaration)),
+                    PurePosixPath(path.parts[-1] if target is None else target),
                 ),
             )
         return result_type.ok(

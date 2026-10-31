@@ -81,7 +81,7 @@ class FlextInfraPytestCollection:
     @u.Infra.Pytest.hookimpl(optionalhook=True)
     def pytest_testnodedown(
         node: t.Infra.Pytest.WorkerController,
-        error: object | None,
+        error: t.Infra.Pytest.WorkerDownError,
     ) -> None:
         """Publish one manifest after every admitted worker supplies its facts."""
         u.Infra.collection_node_down(node, error)

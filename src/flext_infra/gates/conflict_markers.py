@@ -12,10 +12,10 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 
-class FlextInfraConflictMarkersGate(FlextInfraGate):
+class FlextInfraGatesConflictMarkers(FlextInfraGates):
     """Detect unresolved merge controls without following source symlinks."""
 
     gate_id: ClassVar[str] = c.Infra.CONFLICT_MARKERS
@@ -132,4 +132,4 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraConflictMarkersGate"]
+__all__: list[str] = ["FlextInfraGatesConflictMarkers"]

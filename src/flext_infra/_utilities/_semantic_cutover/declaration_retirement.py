@@ -15,25 +15,16 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
-from flext_infra._utilities._rope._analysis.asthelpers import (
-    FlextInfraUtilitiesRopeAnalysisAstHelpers,
-)
-from flext_infra._utilities._rope._analysis.exports import (
-    FlextInfraUtilitiesRopeAnalysisExports,
-)
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_module_patch import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeModulePatch,
-)
-from flext_infra._utilities._rope.rope_runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+from flext_infra._utilities._rope._analysis import (
+    FlextInfraUtilitiesRopeAnalysisAstHelpers,
+    FlextInfraUtilitiesRopeAnalysisExports,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
@@ -64,7 +55,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         path = owned_modules.get(provider)
         if path is None:
             return None
-        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix()
             ),
@@ -204,7 +195,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             ValueError: If the scope, module or governed source is missing.
 
         """
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         value = binding.get_object()
         if not (types.py_function(value) or types.py_class(value)):
             message = "ownership transfer requires a native class or function"
@@ -297,7 +288,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesTypesRopeRuntime
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         value = binding.get_object()
         if types.py_function(value):
             if cls._native_contract_signature(
@@ -331,7 +322,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     ) -> None:
         """Remove newly orphaned imports from every changed governed module."""
         for changed, after in tuple(proposed.items()):
-            resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 project.get_resource(
                     changed.relative_to(Path(project.root.real_path)).as_posix()
                 ),
@@ -417,6 +408,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        analysis_exports = FlextInfraUtilitiesRopeAnalysisExports
         module, (path, source) = cls._authenticated_retirement_owner(binding, proposed)
         definition = binding.get_object()
         if not isinstance(definition, p.Infra.RopeSourceDefinition):
@@ -459,36 +451,18 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         source = refactors.content_change(
             resource=resource, source=source, rewrites=edits
         ).new_contents
-        if (
-            container is not None
-            and FlextInfraUtilitiesRopeModulePatch.runtime_alias_bindings(
-                source, alias="__all__"
-            )
-        ):
-            with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-                Path(project.root.real_path),
-                planned_sources={**proposed, path: source},
-                source_project=project,
-            ) as (bound_project, _captured):
-                export_module = (
-                    FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
-                        bound_project.get_pymodule(
-                            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
-                                bound_project, path
-                            ),
-                            force_errors=True,
-                        )
+        if container is not None:
+            with FlextInfraUtilitiesRopeModulePatch.candidate_module(
+                module, source
+            ) as export_module:
+                if FlextInfraUtilitiesRopeModulePatch.runtime_alias_bindings(
+                    export_module, alias="__all__"
+                ):
+                    exports = analysis_exports.public_export_names_source(export_module)
+                    source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
+                        export_module,
+                        names=[name for name in exports if name != target.name],
                     )
-                )
-                exports = (
-                    FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                        export_module
-                    )
-                )
-            source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
-                source,
-                names=[name for name in exports if name != target.name],
-            )
         proposed[path] = source
         cls._drop_changed_orphaned_imports(project, proposed)
         empty = cls._prove_retired_module_emptiness(
@@ -554,7 +528,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         """
         value = binding.get_object()
-        if not FlextInfraUtilitiesTypesRopeRuntime.py_function(value):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(value):
             message = (
                 "ownership transfer changes a callable into a different native kind"
             )
@@ -631,7 +605,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             return
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         binding, container = owners
-        resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix()
             ),
@@ -723,7 +697,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                     carries,
                     (
                         *callees,
-                        FlextInfraUtilitiesTypesRopeRuntime.require_named_object(
+                        FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
                             binding.get_object(), str(path)
                         ).get_name(),
                         path,
@@ -771,7 +745,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                     .get_object()
                     .get_attributes()
                     .get(
-                        FlextInfraUtilitiesTypesRopeRuntime.require_named_object(
+                        FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
                             binding.get_object(), "retirement owner"
                         ).get_name()
                     ),
@@ -793,7 +767,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         path, _source = entry
         binding, container = owners
         for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module)
+            FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(module)
         ):
             exported = module.get_attributes().get(name)
             if path != owner_path and (
@@ -933,7 +907,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         for path, source in tuple(sources.items()):
-            resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 project.get_resource(
                     path.relative_to(Path(project.root.real_path)).as_posix()
                 ),
@@ -1015,11 +989,11 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             message = f"retiring base has no native declaring class: {path}:{node.name}"
             raise ValueError(message)
         value = owner.get_object()
-        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
             message = f"retiring base has a non-class owner: {path}:{node.name}"
             raise TypeError(message)
         class_scope = value.get_scope()
-        located = cls._header_argument_span(value, class_scope, module)
+        located = cls._header_argument_span(class_scope, module)
         if located is None:
             message = f"retiring base has no native class header: {path}:{node.name}"
             raise ValueError(message)

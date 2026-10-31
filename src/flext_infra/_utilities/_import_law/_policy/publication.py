@@ -30,8 +30,8 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+from flext_infra._utilities._rope.runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 
 
@@ -204,7 +204,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                     additional_source_folders=None,
                 )
             ) as bound_project:
-                native = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                native = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     bound_project.get_pymodule(
                         FlextInfraUtilitiesRopeRuntime.file_resource_at(
                             bound_project, source_path
@@ -619,7 +619,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         ).partition(".")
         if not separator or owner not in (
             FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(provider)
+                FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(provider)
             )
         ):
             return None

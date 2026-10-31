@@ -314,7 +314,7 @@ class FlextInfraDocsGeneratorBundle:
             if plan.path.name == c.PYPROJECT_FILENAME
         }
         selected = tuple(
-            u.Infra.docs_scope_from_sources(
+            u.Infra.scope_from_sources(
                 scope,
                 metadata_projection=projections.get(scope.path),
                 governance_source=governance_source,
@@ -324,7 +324,7 @@ class FlextInfraDocsGeneratorBundle:
         )
         if any(scope.name == c.Infra.RK_ROOT for scope in selected):
             aggregate = tuple(
-                u.Infra.docs_scope_from_sources(
+                u.Infra.scope_from_sources(
                     scope,
                     governance_source=governance_source,
                     declared_files=declared_files,
@@ -341,7 +341,7 @@ class FlextInfraDocsGeneratorBundle:
                 rendered.append((scope, ()))
                 continue
             try:
-                artifacts = u.Infra.docs_scope_artifacts(
+                artifacts = u.Infra.scope_artifacts(
                     scope,
                     repository_root=repository_root,
                     aggregate_scopes=aggregate,
@@ -394,7 +394,7 @@ class FlextInfraDocsGeneratorBundle:
                         normalized_content,
                         "{}",
                     )[0]
-                    normalized_content = u.Infra.docs_contract_update_toc(
+                    normalized_content = u.Infra.contract_update_toc(
                         normalized_content,
                     )[0]
                 normalized_artifacts.append(

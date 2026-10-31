@@ -69,6 +69,8 @@ class FlextInfraRopeNativeProject(Project):
     ) -> t.Infra.RopeNativeParsedModule:
         """Resolve a native resource while preserving the SDK return classes.
 
+        Candidate syntax failures propagate unchanged from the native lookup.
+
         Returns:
             The original native module or package.
 
@@ -92,6 +94,8 @@ class FlextInfraRopeNativeProject(Project):
         folder: Folder | p.Infra.RopeRoot | None = None,
     ) -> t.Infra.RopeNativeSemanticModule:
         """Resolve the native semantic module elected by the SDK.
+
+        Candidate syntax failures propagate unchanged from the native lookup.
 
         Returns:
             The original native builtin, package, or source module.

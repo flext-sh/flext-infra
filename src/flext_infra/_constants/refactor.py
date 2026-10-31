@@ -53,6 +53,16 @@ class FlextInfraConstantsRefactor:
     "Exact structured mod evidence schema version."
     MOD_SCAN_SOURCE_DRIFT_ERROR_CODE: ClassVar[str] = "MOD_SCAN_SOURCE_DRIFT"
     "Typed failure code: one finding's source bytes changed during scanning."
+    MOD_FAILURE_MODULE_KEY: ClassVar[str] = "module_path"
+    (
+        "``error_data`` key a mod planner sets to attribute its failure to one"
+        " source module; the loop quarantines that module and continues."
+    )
+    MOD_WRITTEN_FILES_KEY: ClassVar[str] = "written_files"
+    (
+        "``error_data`` key the shared publisher sets when its failure follows"
+        " files it already wrote; such a failure is never external drift."
+    )
     MOD_SCAN_REPORT_MODE: ClassVar[int] = 0o644
     "Canonical permission bits for structured mod evidence."
     ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH: ClassVar[Path] = (

@@ -16,9 +16,6 @@ if TYPE_CHECKING:
     from flext_infra._utilities.base import FlextInfraUtilitiesBase
     from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
     from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
-    from flext_infra._utilities.codegen_facade_syntax import (
-        FlextInfraUtilitiesCodegenFacadeSyntax,
-    )
     from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
     from flext_infra._utilities.codegen_file_plan import (
         FlextInfraUtilitiesCodegenFilePlan,
@@ -159,7 +156,6 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
-    "FlextInfraUtilitiesCodegenFacadeSyntax",
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
@@ -236,7 +232,6 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraUtilitiesBase": ".base",
         "FlextInfraUtilitiesCodegen": ".codegen",
-        "FlextInfraUtilitiesCodegenFacadeSyntax": ".codegen_facade_syntax",
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
         "FlextInfraUtilitiesCodegenFilePlan": ".codegen_file_plan",
         "FlextInfraUtilitiesCodegenNamespace": ".namespace",

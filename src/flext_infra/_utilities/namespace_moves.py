@@ -23,11 +23,11 @@ from flext_infra._utilities import (
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:
@@ -835,7 +835,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """Plan consumers before declaration removal.
 
         Raises:
-            RuntimeError: If the destination imports its moved declarations.
+            RuntimeError: If a consumer import refuses its plan, or the
+                destination imports its moved declarations.
 
         """
         target_file = next(path for path in writes if path != source_file)
@@ -872,7 +873,13 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     target_module=target_module,
                     aliases=sorted(alias_names),
                 )
-                if prepared is None:
+                if prepared.failure:
+                    msg = (
+                        "typing alias consumer import did not plan: "
+                        f"{path}: {prepared.error}"
+                    )
+                    raise RuntimeError(msg)
+                if prepared.value == original:
                     continue
                 if path == target_file.resolve():
                     msg = (
@@ -881,7 +888,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     )
                     raise RuntimeError(msg)
                 expected_sources[path] = original
-                writes[path] = prepared
+                writes[path] = prepared.value
 
     @staticmethod
     def _declaration_source_imports(

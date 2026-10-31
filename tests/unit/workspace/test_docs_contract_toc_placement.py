@@ -28,7 +28,7 @@ class TestsFlextInfraDocsContractTocPlacement:
             "## Usage\n"
         )
 
-        updated, changed = u.Infra.docs_contract_update_toc(content)
+        updated, changed = u.Infra.contract_update_toc(content)
 
         first_meaningful = next(line for line in updated.splitlines() if line.strip())
         tm.ok(first_meaningful.startswith("<!-- AUTO-GENERATED"))
@@ -44,7 +44,7 @@ class TestsFlextInfraDocsContractTocPlacement:
         """MD041: invent an H1 before TOC when the body has no level-1 heading."""
         content = "<!-- AUTO-GENERATED -->\n\n## Usage\n"
 
-        updated, changed = u.Infra.docs_contract_update_toc(content)
+        updated, changed = u.Infra.contract_update_toc(content)
 
         lines = [line for line in updated.splitlines() if line.strip()]
         tm.that(lines[0], eq="# Documentation")

@@ -1,0 +1,15 @@
+id: rewire-raw-model-config-dict-in-foundation
+# Fixtures carry no file scope: in a native stage only the models family and
+# layer zero are in scope.
+valid:
+  - |
+    from pydantic import BaseModel, ConfigDict
+    class Spec(BaseModel):
+        model_config = ConfigDict(frozen=True)
+  - |
+    settings = {"frozen": True}
+invalid:
+  - |
+    from pydantic import BaseModel
+    class Spec(BaseModel):
+        model_config = {"arbitrary_types_allowed": True, "extra": "forbid"}

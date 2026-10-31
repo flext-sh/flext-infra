@@ -15,9 +15,13 @@ ruleDirs:
 # utilDirs: global utility rules referenced by rules via `matches: <util-id>`.
 # One audited guard (e.g. tm-imported-from-flext) shared by the whole family,
 # instead of duplicating the block in every rule (SSOT for codemod guards).
+# `fixture-utils/` holds the fixture values of the generated utilities
+# (own-package, facade-package, ...). It is never declared here: a native stage
+# projects every declared utility directory, and a declared fixture value would
+# shadow the scanned project's generated utility. The rule-fixture gate adds it
+# to its staged copy only.
 utilDirs:
   - utils
-  - fixture-utils
 
 # testConfigs: directories containing test YAML files
 # Test files follow naming convention: {rule-id}-test.yml

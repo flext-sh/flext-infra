@@ -16,6 +16,14 @@ snapshots:
       style: secondary
       start: 12
       end: 29
+    - source: typing.Protocol
+      style: secondary
+      start: 13
+      end: 28
+    - source: typing.Protocol
+      style: secondary
+      start: 13
+      end: 28
   "from typing import Protocol\nclass Reader(Protocol):\n    def read(self) -> str: ...\n":
     labels:
     - source: |-
@@ -32,6 +40,33 @@ snapshots:
       style: secondary
       start: 40
       end: 50
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: Protocol
+      style: secondary
+      start: 19
+      end: 27
+    - source: from typing import Protocol
+      style: secondary
+      start: 0
+      end: 27
+    - source: |
+        from typing import Protocol
+        class Reader(Protocol):
+            def read(self) -> str: ...
+      style: secondary
+      start: 0
+      end: 83
+    - source: Protocol
+      style: secondary
+      start: 41
+      end: 49
+    - source: Protocol
+      style: secondary
+      start: 41
+      end: 49
   "from typing import Protocol as Contract\nclass Reader(Contract):\n    def read(self) -> str: ...\n":
     labels:
     - source: |-
@@ -48,6 +83,37 @@ snapshots:
       style: secondary
       start: 52
       end: 62
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: Contract
+      style: secondary
+      start: 31
+      end: 39
+    - source: Protocol as Contract
+      style: secondary
+      start: 19
+      end: 39
+    - source: from typing import Protocol as Contract
+      style: secondary
+      start: 0
+      end: 39
+    - source: |
+        from typing import Protocol as Contract
+        class Reader(Contract):
+            def read(self) -> str: ...
+      style: secondary
+      start: 0
+      end: 95
+    - source: Contract
+      style: secondary
+      start: 53
+      end: 61
+    - source: Contract
+      style: secondary
+      start: 53
+      end: 61
   "from typing import Protocol as Contract\nclass Root:\n    class Input(Contract):\n        @property\n        def value(self) -> str: ...\n":
     labels:
     - source: |-
@@ -65,6 +131,39 @@ snapshots:
       style: secondary
       start: 67
       end: 77
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: Contract
+      style: secondary
+      start: 31
+      end: 39
+    - source: Protocol as Contract
+      style: secondary
+      start: 19
+      end: 39
+    - source: from typing import Protocol as Contract
+      style: secondary
+      start: 0
+      end: 39
+    - source: |
+        from typing import Protocol as Contract
+        class Root:
+            class Input(Contract):
+                @property
+                def value(self) -> str: ...
+      style: secondary
+      start: 0
+      end: 133
+    - source: Contract
+      style: secondary
+      start: 68
+      end: 76
+    - source: Contract
+      style: secondary
+      start: 68
+      end: 76
   "from typing import Protocol, TypeVar\nclass Box(Protocol[T]):\n    def get(self) -> T: ...\n":
     labels:
     - source: |-
@@ -81,3 +180,34 @@ snapshots:
       style: secondary
       start: 46
       end: 59
+    - source: Protocol
+      style: secondary
+      start: 47
+      end: 55
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: Protocol
+      style: secondary
+      start: 19
+      end: 27
+    - source: from typing import Protocol, TypeVar
+      style: secondary
+      start: 0
+      end: 36
+    - source: |
+        from typing import Protocol, TypeVar
+        class Box(Protocol[T]):
+            def get(self) -> T: ...
+      style: secondary
+      start: 0
+      end: 89
+    - source: Protocol[T]
+      style: secondary
+      start: 47
+      end: 58
+    - source: Protocol[T]
+      style: secondary
+      start: 47
+      end: 58

@@ -60,7 +60,7 @@ invalid:
           m.Field(description="Initial configuration values."),
       ] = None
 - |
-  class Runner(FlextModelsBase.ArbitraryTypesModel):
+  class Runner(FlextModelsBase.ManagedModel):
       writer: p.Writer
 - |
   class Runner(m.Value):

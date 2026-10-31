@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.gates import FlextInfraPyrightGate
+from flext_infra.gates import FlextInfraGatesPyright
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -74,9 +74,11 @@ class TestsFlextInfraPyrightPublicContract:
             encoding=c.DEFAULT_ENCODING,
         )
         with u.Infra.facade_source_project(root) as (project, sources):
-            generated = tm.not_none(
-                u.Infra.render_utility_facade(
-                    package, family="p", project=project, sources=sources
+            generated = tm.ok(
+                tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, family="p", project=project, sources=sources
+                    )
                 )
             )
         facade.write_text(generated, encoding=c.DEFAULT_ENCODING)
@@ -103,7 +105,7 @@ class TestsFlextInfraPyrightPublicContract:
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
             encoding=c.DEFAULT_ENCODING,
         )
-        result = FlextInfraPyrightGate(root).check(
+        result = FlextInfraGatesPyright(root).check(
             root,
             m.Infra.GateContext(repository_root=root, reports_dir=root / ".reports"),
         )
@@ -111,8 +113,12 @@ class TestsFlextInfraPyrightPublicContract:
         tm.that(result.issues, eq=(), msg=result.raw_output)
         with u.Infra.facade_source_project(root) as (project, sources):
             tm.that(
-                u.Infra.render_utility_facade(
-                    package, family="p", project=project, sources=sources
+                tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, family="p", project=project, sources=sources
+                        )
+                    )
                 ),
                 eq=generated,
             )
@@ -200,7 +206,7 @@ class TestsFlextInfraPyrightPublicContract:
             repository_root=project,
             reports_dir=project / ".reports",
         )
-        result = FlextInfraPyrightGate(project).check(project, context)
+        result = FlextInfraGatesPyright(project).check(project, context)
 
         tm.that(result.result.passed, eq=True, msg=result.raw_output)
         tm.that(result.issues, eq=(), msg=result.raw_output)
@@ -289,7 +295,7 @@ class TestsFlextInfraPyrightPublicContract:
             repository_root=tmp_path,
             reports_dir=tmp_path / ".reports",
         )
-        result = FlextInfraPyrightGate(tmp_path).check(tmp_path, context)
+        result = FlextInfraGatesPyright(tmp_path).check(tmp_path, context)
 
         private_issues = tuple(
             issue for issue in result.issues if issue.code == "reportPrivateUsage"

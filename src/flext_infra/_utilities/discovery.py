@@ -17,7 +17,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from flext_infra import p

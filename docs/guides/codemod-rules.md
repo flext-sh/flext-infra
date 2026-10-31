@@ -46,7 +46,7 @@ its owned snapshot operation in `flext-infra/config/codegen.yaml`
 
 | Surface | Effect |
 |---|---|
-| `make mod` | Apply ast-grep, semantic and text rules to a proven fixed point; committed snapshots are verified, never rewritten. |
+| `make mod` | Apply ast-grep, semantic and text rules to a proven fixed point through `flext-infra refactor mod`, which writes directly (no apply mode, no rule selector); committed snapshots are verified, never rewritten. |
 | `flext-infra refactor mod-text` | Replay only the authenticated declarative text rules. |
 | `flext-infra refactor ast` | Scan report of the ast-grep and sed cascades over the governed corpus; `--apply` reaches the mechanical fixed point. |
 | `make mod-snapshots` (Infra root) | Regenerate every owned rule-test snapshot through the existing native refresh owner, for a reviewed commit. |

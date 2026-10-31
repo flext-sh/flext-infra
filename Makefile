@@ -107,6 +107,7 @@ WORKSPACE_SUBPROJECTS :=
 # The Makefile validates no caller input. Every verb
 # always applies; a mistyped variable fails where the verb consumes it, and an
 # unconsumed variable is ignored.
+export CHECK_PHASE
 PYTEST_REPORTS_DIR := .reports/tests
 PYTEST_CACHE_HOME = $(if $(strip $(XDG_CACHE_HOME)),$(XDG_CACHE_HOME),$(if $(strip $(HOME)),$(HOME)/.cache,))
 # One persistent testmon database per project, shared by every checkout and
@@ -120,7 +121,7 @@ override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $(HOME)),$(HOME)/.local/state/
 override PYTEST_RUN_TIMEOUT_SECONDS := 60
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
-override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
+override PYTEST_ENFORCEMENT_PLUGIN := flext_tests.enforcement_plugin
 override PYTEST_PROGRESS_ARGS := --verbose --failed-first
 override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
@@ -332,7 +333,7 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := setup upg gen mod fix fmt check tests help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
+PUBLIC_VERBS := setup upg gen gen-scope mod fix fmt check tests tests-full help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
 SCRIPT_VERBS := mod-snapshots
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -346,7 +347,7 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(APPROVAL_CONTEXT),Y)
-ifneq ($(filter setup check tests,$(CUSTOM_DECLARED_TARGETS)),)
+ifneq ($(filter setup check tests check tests,$(CUSTOM_DECLARED_TARGETS)),)
 $(error Approval stages cannot be replaced by custom targets)
 endif
 
@@ -357,6 +358,26 @@ $(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-setup must chain _builtin-setup (wrapper parity; replacements are forbidden))
+endif
+endif
+
+ifneq ($(filter _custom-check,$(CUSTOM_DECLARED_TARGETS)),)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-check" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
+$(error Approval stage _custom-check must chain _builtin-check (wrapper parity; replacements are forbidden))
+endif
+endif
+
+ifneq ($(filter _custom-tests,$(CUSTOM_DECLARED_TARGETS)),)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-tests" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
+$(error Approval stage _custom-tests must chain _builtin-tests (wrapper parity; replacements are forbidden))
 endif
 endif
 
@@ -576,15 +597,39 @@ GATE_SCOPE := self
 # uv.lock without re-resolving or rewriting it, so manifest drift never blocks
 # provisioning. Check reports drift through `uv lock --check`; only `make upg`
 # writes the lock.
-INSTALL_RUNTIME_RECIPE = set -eu; \
-	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
-	desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which python)"; \
+RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which python)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then desired_python="$$(cygpath --unix "$$desired_python")"; fi; \
 	if [ ! -x "$$desired_python" ]; then \
 		printf 'ERROR[setup] Mise-resolved Python is not executable: %s\n' "$$desired_python" >&2; \
 		exit 2; \
+	fi
+# `uv sync` keeps an environment whose interpreter still satisfies the request,
+# so one created by an older uv (or another Python) survives every setup. Setup
+# owns the runtime environment: it compares the creator identity uv recorded
+# (make.environment_identity) with the Mise-resolved uv and Python and, on any
+# divergence, recreates it through native `uv venv --clear` before the frozen
+# installation. A current environment is left untouched.
+RECREATE_DIVERGENT_RUNTIME = identity_file="$(RUNTIME_VENV)/pyvenv.cfg"; \
+	if [ -f "$$identity_file" ]; then \
+		declared_uv="$$($(UV) self version --short)"; \
+		declared_python="$$("$$desired_python" --version)"; declared_python="$${declared_python\#Python }"; \
+		created_uv="$$(sed -n 's/^uv[[:space:]]*=[[:space:]]*//p' "$$identity_file")"; \
+		created_python="$$(sed -n 's/^version_info[[:space:]]*=[[:space:]]*//p' "$$identity_file")"; \
+		if [ "$$created_uv" != "$$declared_uv" ] || [ "$$created_python" != "$$declared_python" ]; then \
+			printf 'setup: recreating %s: created by uv %s / Python %s, declared uv %s / Python %s\n' "$(RUNTIME_VENV)" "$${created_uv:-<none>}" "$${created_python:-<none>}" "$$declared_uv" "$$declared_python"; \
+			$(UV) venv --clear --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$(RUNTIME_VENV)"; \
+		fi; \
+	fi
+INSTALL_RUNTIME_RECIPE = set -eu; \
+	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
+	$(RESOLVE_DESIRED_PYTHON); \
+	$(RECREATE_DIVERGENT_RUNTIME); \
+	sync_args="$(SETUP_SYNC_ARGS)"; \
+	UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
+	if [ -n "$(strip $(FLEXT))" ]; then \
+		if [ "$(CI)" = "Y" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
+		(cd "$(FLEXT)"; $(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --requirement "requirements-infra.txt"); \
 	fi; \
-	UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $(SETUP_SYNC_ARGS); \
 	$(FLEXT_EDITABLE_RECIPE)
 
 # `make setup FLEXT=<path>` (operator ruling 2026-10-24, tracker memory
@@ -645,6 +690,11 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 	for checkout in $$checkouts; do \
 		hooks_dir="$$(git -C "$$root/$$checkout" rev-parse --path-format=absolute --git-path hooks)"; \
 		mkdir -p "$$hooks_dir"; \
+		validator_path="$$(git -C "$$root/$$checkout" rev-parse --show-toplevel)/.github/scripts/validate-git-hook.sh"; \
+		if [ ! -x "$$validator_path" ]; then \
+			printf 'setup: hooks skipped (no validator) checkout=%s\n' "$$checkout"; \
+			continue; \
+		fi; \
 		for stage in pre-commit pre-push; do \
 			hook="$$hooks_dir/$$stage"; \
 			others=""; \
@@ -652,7 +702,7 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 				others="$$(sed -e '/^\# BEGIN FLEXT-INFRA SETUP/,/^\# END FLEXT-INFRA SETUP/d' -e '1{/^\#!/d;}' "$$hook")"; \
 				if printf '%s\n' "$$others" | grep -q 'Generated by make setup (flext-infra)'; then others=""; fi; \
 			fi; \
-			validator='"$$(git rev-parse --show-toplevel)/.github/scripts/validate-git-hook.sh"'; \
+			validator="$$validator_path"; \
 			{ \
 				printf '%s\n' '\#!/bin/sh' "\# BEGIN FLEXT-INFRA SETUP: Generated by make setup (flext-infra); rerun make setup to refresh."; \
 				if [ "$$stage" = pre-push ]; then \
@@ -749,6 +799,9 @@ VERB_ARGUMENTS_upg :=
 VERB_DESCRIPTION_gen := Materialize explicitly declared new projects and publish every applicable generated projection.
 VERB_ARGUMENTS_gen :=
 
+VERB_DESCRIPTION_gen-scope := Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
+VERB_ARGUMENTS_gen-scope := WHAT MODULE SCOPE
+
 VERB_DESCRIPTION_mod := Transform declared source structure and publish the complete coherent semantic change through the shared engines.
 VERB_ARGUMENTS_mod :=
 
@@ -759,10 +812,13 @@ VERB_DESCRIPTION_fmt := Format authored content through the configured formatter
 VERB_ARGUMENTS_fmt :=
 
 VERB_DESCRIPTION_check := Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
-VERB_ARGUMENTS_check :=
+VERB_ARGUMENTS_check := CHECK_PHASE
 
-VERB_DESCRIPTION_tests := Execute the complete applicable suite once with the persistent testmon database.
+VERB_DESCRIPTION_tests := Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database.
 VERB_ARGUMENTS_tests :=
+
+VERB_DESCRIPTION_tests-full := Execute the complete applicable population once without Testmon or a preliminary incremental run, preserving the existing database untouched.
+VERB_ARGUMENTS_tests-full :=
 
 VERB_DESCRIPTION_help := Discover the declared public interface without effects.
 VERB_ARGUMENTS_help :=
@@ -795,9 +851,9 @@ VERB_HELP_LINE = printf '  %-16s %s\n' '$(1)' '$(VERB_DESCRIPTION_$(1))'$(if $(s
 # OPTIONS=Y (or HELP=Y) displays every public verb's catalog contract without
 # running its prerequisites, hooks, handler or product dispatcher.
 ifeq ($(VERB_CONTRACT),)
-PROFILE_VERBS_PLAIN := gen
+PROFILE_VERBS_PLAIN := gen gen-scope
 PROFILE_VERBS_DISPATCH := help clean
-PROFILE_VERBS_ACTIVATED := mod fix fmt check tests build release-plan release-version release-tag release-build release-publish
+PROFILE_VERBS_ACTIVATED := mod fix fmt check tests tests-full build release-plan release-version release-tag release-build release-publish
 PROFILE_VERBS_INTERPRETER :=
 PROFILE_VERBS_HOOKED := $(foreach v,$(filter-out $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED)),$(if $(filter pre-$(v) _custom-$(v) post-$(v),$(CUSTOM_DECLARED_TARGETS)),$(v)))
 PROFILE_VERBS_DIRECT := $(filter-out $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER),$(PROFILE_VERBS_ACTIVATED))
@@ -843,9 +899,10 @@ setup: _builtin_require_workspace
 	@$(if $(filter Y,$(CI)),:,direnv allow "$(PROJECT_ROOT)")
 endif
 
-# Upgrade only resolves dependencies and writes locks. Provisioning belongs
-# to setup and projections belong to gen. Attached members delegate the same
-# operation to their physical workspace owner before resolving anything.
+# Upgrade resolves dependencies and writes locks; projections belong to gen.
+# Its Python half runs only over the fresh lock it installed (_upg_lifecycle).
+# Attached members delegate the same operation to their physical workspace
+# owner before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 upg: _builtin_require_workspace _builtin_require_github_credential
 	+@$(SELF_MAKE) _upg_lifecycle
@@ -1062,8 +1119,14 @@ _builtin_require_environment: _builtin_require_interpreter
 # private installer or alternative source-selection pipeline.
 # End SECTION: setup environment
 
-# Upgrade consumes the native declarations without installing packages,
-# generating projections, or auditing the running environment.
+# Upgrade always cures, even when the environment or locks are broken
+# (tracker memories operator-ruling-2026-10-02-repair-never-deadlocks and
+# operator-ruling-2026-10-09-setup-always-upg-cures). The flext_infra executor
+# imports its FLEXT dependencies from this environment, so a stale lock (or a
+# project whose own source needs newer suppliers) cannot run it. Native uv
+# therefore writes the upgraded lock first, with no Python of ours, and the
+# setup installation provisions exactly that lock; only then does the executor
+# run its verified UV and Mise half. It generates no projection.
 .PHONY: _upg_lifecycle
 _upg_lifecycle:
 	+@set -eu; \
@@ -1081,10 +1144,14 @@ _upg_lifecycle:
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac; \
+	$(RESOLVE_DESIRED_PYTHON); \
+	$(UV) lock --upgrade --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	$(INSTALL_RUNTIME_RECIPE); \
 	$(PROJECT_FLEXT_INFRA) deps upgrade-lock --repository-root "$(RUNTIME_ROOT)"; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
-	esac
+	esac; \
+	$(if $(filter Y,$(CI)),:,direnv allow "$(PROJECT_ROOT)")
 
 # Gate, fix and build verbs act on this repository only, with one body per verb
 # in every profile: a workspace root evaluates itself exactly as CI does.
@@ -1100,26 +1167,13 @@ _builtin_build_artifacts:
 # make.pre_commit_check_gates, CI=N runs
 # make.check_gates_local, and an absent CI token runs every active gate.
 _builtin_check_all: _builtin_require_environment
-	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(PROJECT_ROOT)"
+	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/check/route.pstats" $(PROJECT_FLEXT_INFRA) workspace check --repository-root "$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 
 _builtin_tests_all: _builtin_require_environment
-	@set -eu; \
-database="$(FLEXT_PYTEST_TESTMON_DATABASE)"; \
-case "$$database" in /*) ;; *) printf 'ERROR: persistent testmon database requires XDG_CACHE_HOME or HOME\n' >&2; exit 2 ;; esac; \
-case "$$database" in "$(PROJECT_ROOT)"/*) printf 'ERROR: persistent testmon database must be outside the checkout: %s\n' "$$database" >&2; exit 2 ;; esac; \
-case "$$database" in "$${TMPDIR:-/tmp}"/*|/tmp/*) printf 'ERROR: persistent testmon database must not live under the temporary directory: %s\n' "$$database" >&2; exit 2 ;; esac; \
-mkdir -p "$$(dirname "$$database")"; \
-scratch_root="$(FLEXT_PYTEST_SCRATCH_ROOT)"; \
-case "$$scratch_root" in /*) ;; *) printf 'ERROR: pytest scratch root requires HOME: %s\n' "$$scratch_root" >&2; exit 2 ;; esac; \
-mkdir -p "$$scratch_root"; \
-scratch="$$(mktemp -d "$$scratch_root/pytest.XXXXXX")"; \
-trap 'find "$$scratch" -depth -delete' EXIT; \
-mkdir -p "$$scratch/tmp"; \
-scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
-TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
-export TMPDIR TMP TEMP; \
-unset FLEXT_PYTEST_TARGET_FILE; \
-TESTMON_DATAFILE="$$database" $(PROJECT_INFRA_RUN) -m flext_infra._pytest_entry full
+	@$(PROJECT_FLEXT_INFRA) workspace tests --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
+
+_builtin_tests_full_all: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace tests-full --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
 
 # fmt is format-only (single-pass verb law): ruff formats Python, the
 # fmt_gates formatters run once through the checker's apply mode, and every
@@ -1135,15 +1189,40 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
+# Generation is a fenced, budgeted operation: one codegen per tree (flock),
+# terminated inside the declared budget with its kill reserve (the profile
+# checkpoint survives a budget kill), never mutating the tree unannounced.
+GEN_BUDGET_SECONDS ?= 900
+GEN_KILL_RESERVE_SECONDS ?= 30
+GEN_LOCK_FILE := $(PROJECT_ROOT)/$(dir .reports/codegen/gen.pstats)gen.lock
+GEN_PROFILE ?=
+
 _builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
 	scope=all; \
 	if [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
-	FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/codegen/gen.pstats" $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"
+	mkdir -p "$(dir $(GEN_LOCK_FILE))"; \
+	exec 9>"$(GEN_LOCK_FILE)"; \
+	flock --exclusive --wait 0 9 || { echo "gen: another codegen generation holds the tree ($(GEN_LOCK_FILE))" >&2; exit 1; }; \
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/codegen/gen.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"; \
+	$(if $(filter Y,$(CI)),:,direnv allow "$(PROJECT_ROOT)")
 
-# Structural rewrites use the target's existing semantic operation.
+# Focal generation is the bounded diagnosis vehicle: one surface (and, for
+# facades, one module) through the identical engine, lock and budget.
+_builtin_gen_scope_all: _builtin_require_interpreter
+	@set -eu; \
+	scope="$(or $(strip $(SCOPE)),self)"; \
+	module_args=""; \
+	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
+	mkdir -p "$(dir $(GEN_LOCK_FILE))"; \
+	exec 9>"$(GEN_LOCK_FILE)"; \
+	flock --exclusive --wait 0 9 || { echo "gen-scope: another codegen generation holds the tree ($(GEN_LOCK_FILE))" >&2; exit 1; }; \
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(basename $(PROJECT_ROOT)/.reports/codegen/gen.pstats)-scope.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
+
+# Structural rewrites use the target's existing semantic operation; the
+# operation performs the transformation directly (no apply mode, no rule selector).
 _builtin_mod_apply: _builtin_require_environment
-	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/refactor/mod.pstats" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)" --apply
+	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/refactor/mod.pstats" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"
 
 # Public operations invoke only their own canonical implementation.
 _builtin-build: _builtin_build_artifacts
@@ -1152,10 +1231,12 @@ _builtin-build: _builtin_build_artifacts
 _builtin-check: _builtin_check_all
 
 _builtin-tests: _builtin_tests_all
+_builtin-tests-full: _builtin_tests_full_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-clean: _builtin_clean_generated
 _builtin-gen: _builtin_gen_all
+_builtin-gen-scope: _builtin_gen_scope_all
 _builtin-mod: _builtin_mod_apply
 # The repository's release capability elects these product operations.
 # Operator values cross the shell boundary as environment data.

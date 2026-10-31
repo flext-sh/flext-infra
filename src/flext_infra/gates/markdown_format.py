@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
+class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
     """Markdown formatting gate."""
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN_FORMAT
@@ -155,4 +155,4 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
         )
 
 
-__all__: list[str] = ["FlextInfraMarkdownFormatGate"]
+__all__: list[str] = ["FlextInfraGatesMarkdownFormat"]

@@ -1,13 +1,16 @@
 id: ban-typeform-alias-call
+# `valid` MUST NOT match: the typing_extensions spelling, a module-qualified
+# typing_extensions reference, and a distinct facade member.
 valid:
   - |
-    def read(target: t.TypeForm[TValue]) -> TValue: ...
-  - |
-    adapter = u.type_adapter(t.TypeForm(t.JsonDict))
-  - |
-    factory = u.empty(contract_factory=lambda: TypeForm(Sequence[Item]))
+    from typing_extensions import TypeForm
+
+    adapter = TypeAdapter(TypeForm(t.JsonMapping))
+  - "contract: TypeForm[int]"
+  - adapter = typing_extensions.TypeForm(t.JsonMapping)
+  - "spec: t.TypeFormSpecifier"
+# `invalid` MUST match: every `t.TypeForm` call, subscript and adapter argument.
 invalid:
-  - |
-    adapter = u.type_adapter(t.TypeForm(t.JsonDict))
-  - |
-    factory = u.empty(contract_factory=lambda: t.TypeForm(Sequence[Item]))
+  - t.TypeForm(Mapping[str, int])
+  - TypeAdapter(t.TypeForm(t.JsonMapping))
+  - "x: t.TypeForm[int]"

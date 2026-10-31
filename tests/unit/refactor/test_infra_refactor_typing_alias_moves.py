@@ -404,15 +404,17 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         self._write_file(consumer, consumer_source)
 
         with FlextInfraRopeWorkspace.open_workspace(root) as rope:
-            prepared = u.Infra.plan_from_import_aliases(
-                rope.rope_project,
-                tm.not_none(rope.resource(consumer)),
-                source_module="demo_pkg.service",
-                target_module="demo_pkg.typings",
-                aliases=("Alias",),
+            prepared = tm.ok(
+                u.Infra.plan_from_import_aliases(
+                    rope.rope_project,
+                    tm.not_none(rope.resource(consumer)),
+                    source_module="demo_pkg.service",
+                    target_module="demo_pkg.typings",
+                    aliases=("Alias",),
+                )
             )
 
-        tm.ok(prepared is None)
+        tm.that(prepared, eq=consumer_source)
         tm.that(consumer.read_text(encoding="utf-8"), eq=consumer_source)
         tm.fail(package.joinpath("typings.py").exists())
 
@@ -438,16 +440,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         with FlextInfraRopeWorkspace.open_workspace(root) as rope:
             resource = tm.not_none(rope.resource(consumer))
             if exposes_alias:
-                with pytest.raises(RuntimeError, match="unsupported Rope module/star"):
-                    u.Infra.plan_from_import_aliases(
-                        rope.rope_project,
-                        resource,
-                        source_module="demo_pkg.service",
-                        target_module="demo_pkg.typings",
-                        aliases=("Alias",),
-                    )
-            else:
-                tm.that(
+                tm.fail(
                     u.Infra.plan_from_import_aliases(
                         rope.rope_project,
                         resource,
@@ -455,7 +448,18 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
                         target_module="demo_pkg.typings",
                         aliases=("Alias",),
                     ),
-                    eq=None,
+                    has="unsupported Rope module/star consumer",
+                )
+            else:
+                tm.ok(
+                    u.Infra.plan_from_import_aliases(
+                        rope.rope_project,
+                        resource,
+                        source_module="demo_pkg.service",
+                        target_module="demo_pkg.typings",
+                        aliases=("Alias",),
+                    ),
+                    eq=original,
                 )
 
         tm.that(consumer.read_text(encoding="utf-8"), eq=original)
@@ -483,7 +487,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         self._write_file(consumer, original)
 
         with FlextInfraRopeWorkspace.open_workspace(root) as rope:
-            prepared = tm.not_none(
+            prepared = tm.ok(
                 u.Infra.plan_from_import_aliases(
                     rope.rope_project,
                     tm.not_none(rope.resource(consumer)),
@@ -535,16 +539,18 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         with FlextInfraRopeWorkspace.open_workspace(root) as rope:
             resource = tm.not_none(rope.resource(consumer))
             if mixed:
-                with pytest.raises(RuntimeError, match="unsupported Rope inline mixed"):
+                tm.fail(
                     u.Infra.plan_from_import_aliases(
                         rope.rope_project,
                         resource,
                         source_module="demo_pkg.service",
                         target_module="demo_pkg.typings",
                         aliases=("Alias",),
-                    )
+                    ),
+                    has="cannot split an inline mixed import",
+                )
             else:
-                prepared = tm.not_none(
+                prepared = tm.ok(
                     u.Infra.plan_from_import_aliases(
                         rope.rope_project,
                         resource,

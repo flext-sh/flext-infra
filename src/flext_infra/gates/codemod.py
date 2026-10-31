@@ -18,13 +18,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, settings, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraCodemodGate(FlextInfraGate):
+class FlextInfraGatesCodemod(FlextInfraGates):
     """Report codemod rule findings for the selected repository."""
 
     gate_id: ClassVar[str] = "codemod"
@@ -144,10 +144,10 @@ class FlextInfraCodemodGate(FlextInfraGate):
             prefix="check-codemod-", dir=settings.work_dir
         ) as directory:
             for index, (project, project_targets) in enumerate(
-                u.Infra.codemod_project_targets(planned.value, native_targets)
+                u.Infra.project_targets(planned.value, native_targets)
             ):
                 ruleset = u.Infra.codemod_stage_scan_ruleset(
-                    u.Infra.codemod_project_plan(planned.value, project),
+                    u.Infra.project_plan(planned.value, project),
                     Path(directory) / str(index),
                 )
                 if not self._scan_ruleset(
@@ -388,4 +388,4 @@ class FlextInfraCodemodGate(FlextInfraGate):
         ]
 
 
-__all__: list[str] = ["FlextInfraCodemodGate"]
+__all__: list[str] = ["FlextInfraGatesCodemod"]

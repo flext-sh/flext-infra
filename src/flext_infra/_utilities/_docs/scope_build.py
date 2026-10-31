@@ -98,7 +98,7 @@ class FlextInfraUtilitiesDocsScopeBuild(
         """
         resolved_root = repository_root.resolve()
         project_state = FlextInfraUtilitiesDocsScope.project_state(resolved_root)
-        is_enabled = FlextInfraUtilitiesDocsScope.docs_scope_enabled(
+        is_enabled = FlextInfraUtilitiesDocsScope.scope_enabled(
             project_state.docs_meta,
         )
         discovered = FlextInfraUtilitiesDocsScopeBuild._discover_projects(

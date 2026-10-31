@@ -279,9 +279,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/tests/**"
-  - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-002]
   relocation: package-root-import
@@ -354,9 +351,6 @@ ignores:
   - "**/_base.py"
   - "**/settings.py"
   - "**/_settings.py"
-  # Test files legitimately import from flext-tests (tests) facade
-  - "**/tests/**"
-  - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-003]
   relocation: own-package-import
@@ -419,9 +413,6 @@ ignores:
   - "**/_base.py"
   - "**/settings.py"
   - "**/_settings.py"
-  # Test files legitimately import from flext-tests (tests) facade
-  - "**/tests/**"
-  - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-080]
   relocation: own-package-import
@@ -499,8 +490,6 @@ ignores:
   - "**/_base.py"
   - "**/settings.py"
   - "**/_settings.py"
-  - "**/tests/**"
-  - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-003]
   relocation: own-package-import
@@ -566,10 +555,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  # Test files legitimately import from flext-tests (tests) submodules
-  - "**/tests/**"
-  - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-015]
 constraints:
@@ -817,8 +802,6 @@ files:
   - "**/*.py"
 ignores:
   - "**/__init__.py"
-  - "**/conftest.py"
-  - "**/tests/**"
 metadata:
   enforce: [ENFORCE-011, ENFORCE-022]
   relocation: facade-class

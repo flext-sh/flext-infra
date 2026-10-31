@@ -10,7 +10,6 @@ from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, p, u
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraReadonlyNamespace:
@@ -102,7 +101,7 @@ class FlextInfraReadonlyNamespace:
         )
         if not selected:
             return ()
-        runtime = FlextInfraUtilitiesRopeRuntime
+        runtime = u.Infra
         typing_module = runtime.require_semantic_module(
             source_project.get_module("typing")
         )
@@ -154,7 +153,7 @@ class FlextInfraReadonlyNamespace:
         if scope.get_kind() != "Function" or scope.get_start() != line:
             return None
         if (
-            not FlextInfraUtilitiesRopeRuntime.py_function(function)
+            not u.Infra.py_function(function)
             or owner is None
             or owner.get_kind() != "Class"
         ):
@@ -186,7 +185,7 @@ class FlextInfraReadonlyNamespace:
             if id(ancestor) in visited:
                 continue
             visited.add(id(ancestor))
-            if FlextInfraUtilitiesRopeRuntime.abstract_class(ancestor):
+            if u.Infra.abstract_class(ancestor):
                 pending.extend(ancestor.get_superclasses())
         return False
 
@@ -207,7 +206,7 @@ class FlextInfraReadonlyNamespace:
             TypeError: If Protocol property requires the native word finder contract.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntime
+        runtime = u.Infra
         elected = cls._protocol_member_scope(
             module, module.lines.get_line_start(line) + column - 1, line
         )

@@ -263,7 +263,7 @@ Infra:
       # The selected fork preserves region coverage and resolves opaque source
       # bindings lazily; stale transitive metadata must not select an older source.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@becece05c27c3189b12a06f3fbfa28ad62a98a96
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@41dd74bf11b11f874bac008cc82bea71e5f4b863
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -585,6 +585,7 @@ Infra:
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
+      kind: internal_flext
 
     profiles:
     - name: workspace
@@ -603,7 +604,6 @@ Infra:
       # findings. The receipt never converts the native command status to green.
       gate_acceptance_policy: complete_execution
       gate_receipts_directory: .reports/gates
-      lint_freeze_catalog: config/lint_freeze_catalog.json
       check_report_output_environment_variable: FLEXT_CHECK_REPORT_OUTPUT
       generation_profile_path: .reports/codegen/gen.pstats
       modification_profile_path: .reports/refactor/mod.pstats
@@ -666,6 +666,13 @@ Infra:
       # parent directory is the superproject checkout, so a scratch "beside the
       # checkout" landed inside another repository and Git refused every test
       # fixture repository created there.
+      # Native creator identity of the runtime environment (pyvenv.cfg, written
+      # by uv). Setup recreates an environment created by another uv or Python
+      # than the declared toolchain; `uv sync` alone keeps it.
+      environment_identity:
+        marker_file: pyvenv.cfg
+        uv_key: uv
+        python_key: version_info
       pytest_scratch:
         user_home_environment_variable: HOME
         home_relative_directory: .local/state
@@ -870,6 +877,10 @@ Infra:
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
       - name: gen
         description: Materialize explicitly declared new projects and publish every applicable generated projection.
+        requires_activation: false
+      - name: gen-scope
+        arguments: [WHAT, MODULE, SCOPE]
+        description: Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
         requires_activation: false
       - name: mod
         description: Transform declared source structure and publish the complete coherent semantic change through the shared engines.
@@ -2013,6 +2024,7 @@ Infra:
       entries:
         requirements-infra.txt:
           source: base/requirements-infra.txt.j2
+          source_kind: template
           bootstrap_distribution: flext-infra
           profiles: [ workspace ]
           ownership:

@@ -8,15 +8,6 @@ files:
   - "**/models.py"
   - "**/_models.py"
   - "**/_models/**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/tests/unit/**"
-  - "**/tests/integration/**"
-  - "**/tests/e2e/**"
 rule:
   matches: model-field-assignment
   all:

@@ -46,18 +46,20 @@ class TestsFlextInfraRefactorImportNormalization(
             "if TYPE_CHECKING:\n"
             "    from demo_pkg._utilities.inspection import inspect_value\n"
         )
-        normalized = u.Infra.normalize_import_source(
-            project_root=project, file_path=target, source=before
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=target, source=before
+            )
         )
         if consumer:
             tm.that(normalized, has="from demo_pkg._utilities import inspect_value")
         else:
-            tm.that(normalized, eq=None)
-            tm.that(
+            tm.that(normalized, eq=before)
+            tm.ok(
                 u.Infra.normalize_import_source(
                     project_root=project, file_path=target, source=before
                 ),
-                eq=None,
+                eq=before,
             )
 
     @classmethod
@@ -157,13 +159,13 @@ class TestsFlextInfraRefactorImportNormalization(
             )
         )
         tm.ok(u.Cli.process_succeeded(result.outcome))
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=normalized,
             ),
-            eq=None,
+            eq=normalized,
         )
 
     @classmethod
@@ -176,12 +178,14 @@ class TestsFlextInfraRefactorImportNormalization(
             "def consumer(DemoHelper: str) -> str:\n    return files.marker\n"
         )
         target.write_text(source, encoding="utf-8")
-        with pytest.raises(ValueError, match="destination is occupied"):
+        tm.fail(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=source,
-            )
+            ),
+            has="destination is occupied",
+        )
         tm.that(target.read_text(encoding="utf-8"), eq=source)
 
     @classmethod
@@ -248,11 +252,11 @@ class TestsFlextInfraRefactorImportNormalization(
             )
         )
         tm.ok(u.Cli.process_succeeded(result.outcome))
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=normalized
             ),
-            eq=None,
+            eq=normalized,
         )
 
     @classmethod
@@ -285,23 +289,23 @@ class TestsFlextInfraRefactorImportNormalization(
         target = package / "bootstrap.py"
         target.write_text(source, encoding="utf-8")
         if own_provider:
-            with pytest.raises(
-                ValueError, match="layer-zero module imports its own namespace"
-            ):
+            tm.fail(
                 u.Infra.normalize_import_source(
                     project_root=project,
                     file_path=target,
                     source=source,
-                )
+                ),
+                has="layer-zero module imports its own namespace",
+            )
             tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
             return
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=source,
             ),
-            eq=None,
+            eq=source,
         )
 
     @classmethod
@@ -345,14 +349,14 @@ class TestsFlextInfraRefactorImportNormalization(
                     eq=(),
                 )
         else:
-            tm.that(
+            tm.ok(
                 u.Infra.normalize_import_source(
                     project_root=project,
                     file_path=target,
                     source=source,
                     sources={target: source},
                 ),
-                eq=None,
+                eq=source,
             )
         tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
@@ -439,15 +443,14 @@ class TestsFlextInfraRefactorImportNormalization(
             "class LocalTypes:\n    type JsonPayload = str\n\nt = LocalTypes\n",
             encoding="utf-8",
         )
-        normalized = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=module,
+                source=source,
+            )
         )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
+        module.write_text(normalized, encoding="utf-8")
         result = tm.ok(
             u.Cli.run(
                 (
@@ -487,15 +490,14 @@ class TestsFlextInfraRefactorImportNormalization(
             "__all__ = ['u']\n",
             encoding="utf-8",
         )
-        normalized = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=module,
+                source=source,
+            )
         )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
+        module.write_text(normalized, encoding="utf-8")
         result = tm.ok(
             u.Cli.run(
                 (
@@ -533,14 +535,14 @@ class TestsFlextInfraRefactorImportNormalization(
             "from flext_cli import m, u\n\n"
             "ADAPTER: u.type_adapter[str] = u.type_adapter(str)\n"
         )
-        normalized = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=module,
+                source=source,
+            )
         )
-        module.write_text(
-            normalized if normalized is not None else source, encoding="utf-8"
-        )
+        module.write_text(normalized, encoding="utf-8")
         result = tm.ok(
             u.Cli.run(
                 (
@@ -625,21 +627,22 @@ class TestsFlextInfraRefactorImportNormalization(
     def test_reverse_runtime_import_keeps_its_place(cls, tmp_path: Path) -> None:
         """A lower layer reading a higher layer at runtime keeps the import inline."""
         project, package = cls._project(tmp_path)
+        source = (
+            "from __future__ import annotations\n"
+            "\n"
+            "\n"
+            "def run() -> object:\n"
+            "    from demo_pkg import DemoApi\n"
+            "\n"
+            "    return DemoApi()\n"
+        )
         result = u.Infra.normalize_import_source(
             project_root=project,
             file_path=package / "_utilities" / "bridge.py",
-            source=(
-                "from __future__ import annotations\n"
-                "\n"
-                "\n"
-                "def run() -> object:\n"
-                "    from demo_pkg import DemoApi\n"
-                "\n"
-                "    return DemoApi()\n"
-            ),
+            source=source,
         )
 
-        tm.that(result, eq=None)
+        tm.ok(result, eq=source)
 
     @classmethod
     def test_reverse_typing_import_moves_under_type_checking(

@@ -79,7 +79,7 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         + "m = Public\n__all__ = ['Public', 'm']\n",
         encoding=c.Infra.ENCODING_DEFAULT,
     )
-    first = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+    first = tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="m")))
     facade.write_text(first, encoding=c.Infra.ENCODING_DEFAULT)
     native_consumer(
         f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -120,9 +120,11 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         "assert restored.model_dump_json() == envelope.model_dump_json()\n",
         cwd=root,
     )
-    second = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+    second = tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="m")))
     tm.that(second, eq=first)
-    tm.that(
-        u.Infra.render_utility_facade(package, family=c.Infra.FacadeFamily.M),
+    tm.ok(
+        tm.not_none(
+            u.Infra.render_utility_facade(package, family=c.Infra.FacadeFamily.M)
+        ),
         eq=second,
     )

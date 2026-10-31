@@ -35,7 +35,7 @@ class TestsFlextInfraGateHookDefaults:
     _MARKER_VALUE = "from-override"
     _REPORT_NAME = "probe.json"
 
-    class _Probe(gates.FlextInfraGate):
+    class _Probe(gates.FlextInfraGates):
         """Run one environment probe without replacing the five hook defaults."""
 
         gate_id: ClassVar[str] = "probe"
@@ -79,7 +79,7 @@ class TestsFlextInfraGateHookDefaults:
         check_report_filename: ClassVar[str] = "probe.json"
         check_timeout: ClassVar[int] = 1
         check_remove_env_keys: ClassVar[Sequence[str]] = (
-            *gates.FlextInfraGate.check_remove_env_keys,
+            *gates.FlextInfraGates.check_remove_env_keys,
             "FLEXT_GATE_PROBE_KEPT",
         )
 
@@ -127,7 +127,7 @@ class TestsFlextInfraGateHookDefaults:
                 f"print({self.gate_id!r} + '-FAILED'); raise SystemExit(2)",
             )
 
-    class _MissingParser(gates.FlextInfraGate):
+    class _MissingParser(gates.FlextInfraGates):
         """Exercise the instance parsing hook without implementing it."""
 
         gate_id: ClassVar[str] = "missing-parser"
@@ -293,7 +293,7 @@ class TestsFlextInfraGateHookDefaults:
 
     def _check_with_replaced_reports(
         self,
-        gate_class: type[gates.FlextInfraGate],
+        gate_class: type[gates.FlextInfraGates],
         tmp_path: Path,
     ) -> tuple[m.Infra.GateExecution, Path, Path]:
         """Run one gate over a project holding a stale and a kept report.
@@ -459,15 +459,15 @@ class TestsFlextInfraGateHookDefaults:
     @staticmethod
     def test_production_gates_keep_their_declared_defaults() -> None:
         """Pyright and Pyrefly keep the deadlines and removals they declared."""
-        tm.that(gates.FlextInfraPyrightGate.check_timeout, eq=c.Infra.TIMEOUT_LONG)
+        tm.that(gates.FlextInfraGatesPyright.check_timeout, eq=c.Infra.TIMEOUT_LONG)
         tm.that(
-            tuple(gates.FlextInfraPyreflyGate.check_remove_env_keys),
+            tuple(gates.FlextInfraGatesPyrefly.check_remove_env_keys),
             eq=(
-                *tuple(gates.FlextInfraGate.check_remove_env_keys),
+                *tuple(gates.FlextInfraGates.check_remove_env_keys),
                 c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,
             ),
         )
         tm.that(
-            gates.FlextInfraPyreflyGate.check_report_filename,
+            gates.FlextInfraGatesPyrefly.check_report_filename,
             eq="pyrefly.json",
         )

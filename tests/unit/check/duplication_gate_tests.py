@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.gates import FlextInfraDuplicationGate
+from flext_infra.gates import FlextInfraGatesDuplication
 from tests import c, m, tm, u
 
 
@@ -53,14 +53,14 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
     def test_registry_exposes_the_canonical_gate() -> None:
         """Test registry exposes the canonical gate."""
         gate = FlextInfraGateRegistry.default().create("duplication", Path.cwd())
-        tm.ok(isinstance(gate, FlextInfraDuplicationGate))
+        tm.ok(isinstance(gate, FlextInfraGatesDuplication))
 
     def test_empty_workspace_scope_is_a_blocking_failure(self, tmp_path: Path) -> None:
         """Test empty workspace scope is a blocking failure."""
         project = tmp_path / "missing-project"
         project.mkdir()
 
-        execution = FlextInfraDuplicationGate(tmp_path).check(
+        execution = FlextInfraGatesDuplication(tmp_path).check(
             project,
             self._ctx(tmp_path),
         )
@@ -151,7 +151,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """A declared project tree joins the scan and its clones are findings."""
         root = self._governed_with_declared_trees(tmp_path, declare_trees=True)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.that(
@@ -163,7 +163,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """Without a declaration the canonical Python discovery owns the scope."""
         root = self._governed_with_declared_trees(tmp_path, declare_trees=False)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.ok(execution.result.passed)
         tm.that(execution.issues, eq=())
@@ -222,7 +222,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         root = self._sibling_prefix_workspace(tmp_path)
         own = root / "fixture-dup"
 
-        execution = FlextInfraDuplicationGate(root).check(own, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(own, self._ctx(root))
 
         tm.ok(execution.result.passed)
         tm.that(execution.issues, eq=())
@@ -292,7 +292,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             encoding="utf-8",
         )
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.that(execution.issues, empty=False)
@@ -313,7 +313,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """A cross-file clone blocks; CI runs similarity, semantic NOT EXECUTED."""
         root = self._governed_with_python_clone(tmp_path, same_file=False)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.ok(len(execution.issues) >= 1)
@@ -343,7 +343,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """
         root = self._governed_with_python_clone(tmp_path, same_file=True)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.that(
@@ -410,7 +410,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """Two declared members sharing a block are one cross-project finding."""
         root = self._governed_with_fleet_members(tmp_path, enable_fleet=True)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
@@ -421,7 +421,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """An explicit fleet=false keeps member projects out of scope."""
         root = self._governed_with_fleet_members(tmp_path, enable_fleet=False)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.that(
             execution.result.passed,
@@ -434,7 +434,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         root = self._governed_with_fleet_members(tmp_path, enable_fleet=None)
         fleet = m.Infra.ProjectDuplicationOverrides().fleet
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.that(execution.result.passed, eq=not fleet)
         text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
@@ -490,7 +490,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             tmp_path, declare_root=True, existing=True
         )
 
-        execution = FlextInfraDuplicationGate(project).check(
+        execution = FlextInfraGatesDuplication(project).check(
             project, self._ctx(project)
         )
 
@@ -516,7 +516,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             tmp_path, declare_root=True, existing=False
         )
 
-        execution = FlextInfraDuplicationGate(project).check(
+        execution = FlextInfraGatesDuplication(project).check(
             project, self._ctx(project)
         )
 
@@ -535,7 +535,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             tmp_path, declare_root=False, existing=True
         )
 
-        execution = FlextInfraDuplicationGate(project).check(
+        execution = FlextInfraGatesDuplication(project).check(
             project, self._ctx(project)
         )
 
@@ -558,7 +558,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             encoding="utf-8",
         )
 
-        execution = FlextInfraDuplicationGate(project).check(
+        execution = FlextInfraGatesDuplication(project).check(
             project, self._ctx(project)
         )
 

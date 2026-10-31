@@ -348,11 +348,11 @@ class TestsFlextInfraAuditorScope:
         tm.that(auditor.forbidden_term_issues(scope), eq=[])
         (docs / "guide.md").write_text(f"{marker}\n")
         tm.that(len(auditor.placeholder_issues(scope)), eq=1)
-        policy = u.Infra.docs_audit_policy(scope)
-        tm.that(policy.stale_symbols, eq=workspace.docs_audit.stale_symbols)
+        policy = u.Infra.audit_policy(scope)
+        tm.that(policy.stale_symbols, eq=workspace.audit.stale_symbols)
         tm.that(
             policy.historical_evidence_files,
-            eq=workspace.docs_audit.historical_evidence_files,
+            eq=workspace.audit.historical_evidence_files,
         )
 
     @staticmethod

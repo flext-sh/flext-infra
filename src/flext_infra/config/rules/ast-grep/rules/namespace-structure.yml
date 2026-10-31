@@ -200,7 +200,6 @@ ignores:
   - "**/__init__.py"
   - "**/__main__.py"
   - "**/__version__.py"
-  - "**/conftest.py"
 metadata:
   scope:
     partition:
@@ -377,10 +376,7 @@ message: >-
 # Names inside a call (a field factory such as `default_factory=dict`) are
 # values, not annotations.
 #
-# Named owners declare the vocabulary itself and are out of scope: the typings
-# SSOT files define the canonical alias spellings (`type JsonDict =
-# dict[str, ...]`) every consumer must reference — flagging the definition
-# site would ban the vocabulary. Dunder comparison/equality methods keep
+# No path is exempt in the universal layer. Dunder comparison/equality methods keep
 # their LSP-required `object` parameter (mypy rejects the narrowed @override
 # signature), so parameter annotations of those dunders are exempt too.
 id: ban-broad-annotation
@@ -388,9 +384,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/flext_core/_typings/base.py"
-  - "**/flext_core/typings.py"
 rule:
   kind: identifier
   regex: "^(?:Any|Optional|object|dict)$"

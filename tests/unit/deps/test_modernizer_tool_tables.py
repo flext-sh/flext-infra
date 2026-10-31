@@ -19,7 +19,7 @@ from flext_infra.deps import (
     FlextInfraPyprojectModernizer,
     FlextInfraToolTablesPhase,
 )
-from flext_infra.gates import FlextInfraMypyGate
+from flext_infra.gates import FlextInfraGatesMypy
 from tests import c, e, m, t, tm, u
 
 
@@ -228,7 +228,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             repository_root=project,
             reports_dir=project / ".reports",
         )
-        gate = FlextInfraMypyGate(project)
+        gate = FlextInfraGatesMypy(project)
         initial = gate.check(project, context)
         tm.fail(initial.result.passed)
         tm.that([issue.code for issue in initial.issues], has="call-arg")

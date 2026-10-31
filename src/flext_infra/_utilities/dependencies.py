@@ -21,6 +21,7 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependency,
     FlextInfraUtilitiesDependencyRequirements,
+    FlextInfraUtilitiesManagedConflicts,
 )
 
 
@@ -539,7 +540,7 @@ class FlextInfraUtilitiesDependencies(
             planned_manifests=planned_manifests,
             inputs=workspace.inputs,
         )
-        by_name = {
+        by_name: Mapping[str, m.Infra.RepositoryRef] = {
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
@@ -617,8 +618,9 @@ class FlextInfraUtilitiesDependencies(
             for name, repository in by_name.items()
         }
 
-    @staticmethod
+    @classmethod
     def _workspace_manifest_payload(
+        cls,
         project: Path,
         manifests: Mapping[Path, m.Infra.CodegenFilePlan],
         *,
@@ -643,32 +645,69 @@ class FlextInfraUtilitiesDependencies(
         path = project / c.PYPROJECT_FILENAME
         plan = manifests.get(path)
         if plan is None:
-            if observations is not None:
-                observed = observations.get(path)
-                if observed is None or observed.content is None:
-                    msg = f"workspace manifest has no captured input: {path}"
-                    raise ValueError(msg)
-                payload = u.Cli.toml_mapping_from_text(
-                    observed.content.decode(c.DEFAULT_ENCODING)
+            content = cls._workspace_manifest_unplanned_content(
+                path, observations=observations
+            )
+        else:
+            if plan.project.resolve() != project or plan.desired_content is None:
+                msg = f"planned manifest has no owning payload: {path}"
+                raise ValueError(msg)
+            content = plan.desired_content
+        recovered = (
+            FlextInfraUtilitiesManagedConflicts.pyproject_managed_file().flat_map(
+                lambda spec: FlextInfraUtilitiesManagedConflicts.recover_managed_toml(
+                    content.decode(c.DEFAULT_ENCODING),
+                    conflict_sections=spec.conflict_sections,
                 )
-                if payload is None:
-                    msg = f"invalid captured manifest: {path}"
-                    raise ValueError(msg)
-                return payload
-            physical = u.Cli.toml_read_json(path)
-            if physical.failure:
-                raise ValueError(physical.error) from physical.exception
-            return physical.value
-        if plan.project.resolve() != project or plan.desired_content is None:
-            msg = f"planned manifest has no owning payload: {path}"
-            raise ValueError(msg)
-        payload = u.Cli.toml_mapping_from_text(
-            plan.desired_content.decode(c.DEFAULT_ENCODING),
+            )
         )
+        if recovered.failure:
+            if recovered.exception is not None:
+                raise recovered.exception
+            raise ValueError(recovered.error)
+        payload = u.Cli.toml_mapping_from_text(recovered.value)
         if payload is None:
-            msg = f"invalid planned manifest: {path}"
+            msg = f"invalid workspace manifest: {path}"
             raise ValueError(msg)
         return payload
+
+    @staticmethod
+    def _workspace_manifest_unplanned_content(
+        path: Path,
+        *,
+        observations: Mapping[Path, m.Cli.AtomicFileState] | None,
+    ) -> bytes:
+        """Read an unplanned manifest from its captured input or from disk.
+
+        Args:
+            path: The resolved manifest path.
+            observations: Authenticated source states already captured, keyed
+                by resolved path.
+
+        Returns:
+            The captured bytes when observations exist, else the physical bytes.
+
+        Raises:
+            ValueError: If the manifest has no captured input, cannot be read,
+                or is absent.
+
+        """
+        if observations is not None:
+            observed = observations.get(path)
+            if observed is None or observed.content is None:
+                msg = f"workspace manifest has no captured input: {path}"
+                raise ValueError(msg)
+            return observed.content
+        physical = u.Cli.atomic_read_binary_file_state(path, required=True)
+        if physical.failure:
+            if physical.exception is not None:
+                raise physical.exception
+            raise ValueError(physical.error)
+        content = physical.value.content
+        if content is None:
+            msg = f"workspace manifest is absent: {path}"
+            raise ValueError(msg)
+        return content
 
     @staticmethod
     def constraint_specifier(version: str) -> str:

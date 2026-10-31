@@ -14,7 +14,7 @@ import pytest
 from flext_infra import config
 from flext_infra.__version__ import FlextInfraVersion
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
+from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -96,7 +96,7 @@ class TestsFlextInfraGateErrorReporting:
                 encoding="utf-8",
             )
 
-        result = u.Tests.run_gate_check(FlextInfraRuffFormatGate, tmp_path, proj_dir)
+        result = u.Tests.run_gate_check(FlextInfraGatesRuffFormat, tmp_path, proj_dir)
 
         tm.fail(result.result.passed)
         tm.that(

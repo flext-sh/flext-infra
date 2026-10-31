@@ -228,7 +228,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         raise ValueError(msg)
 
     @staticmethod
-    def docs_scope_enabled(docs_meta: t.JsonMapping) -> bool:
+    def scope_enabled(docs_meta: t.JsonMapping) -> bool:
         """Return the ``enabled`` docs-scope flag for pre-loaded metadata.
 
         The flag defaults to ``True`` only when the key is absent. A present
@@ -247,44 +247,6 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
             msg = f"[tool.flext.docs].enabled must be a bool, got {enabled!r}"
             raise TypeError(msg)
         return enabled
-
-    @staticmethod
-    def package_name_from_payload(
-        project_root: Path,
-        payload: t.JsonMapping,
-        docs_meta: t.JsonMapping,
-    ) -> str:
-        """Return the primary package name using pre-loaded payload.
-
-        Resolution order (no silent fallbacks for flext projects):
-          1. Explicit ``[tool.flext.docs].package_name`` override.
-          2. ``[tool.hatch.build.targets.wheel.packages]`` first entry.
-          3. First ``src/<pkg>/__init__.py`` directory.
-          4. Empty string for non-flext projects (roots).
-
-        Raises ``ValueError`` only for flext- projects unable to resolve.
-
-        Returns:
-            The primary package name using pre-loaded payload.
-
-        """
-        return FlextInfraUtilitiesPyprojectConform.package_name_from_payload(
-            project_root,
-            payload,
-            docs_meta,
-        )
-
-    @staticmethod
-    def project_package_name(project_root: Path) -> str:
-        """Return the primary Python package name for a project.
-
-        Returns:
-            The primary Python package name for a project.
-
-        """
-        return FlextInfraUtilitiesDocsScopeState.project_state(
-            project_root,
-        ).package_name
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsScopeState"]

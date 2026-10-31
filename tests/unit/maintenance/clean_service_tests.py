@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.maintenance import FlextInfraCleanService
+from flext_infra.maintenance import FlextInfraMaintenanceClean
 from tests import c, tm
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class TestsFlextInfraCleanService:
         broken = worktrees / "broken-lane"
         broken.symlink_to(tmp_path / "missing-lane", target_is_directory=True)
 
-        result = FlextInfraCleanService(
+        result = FlextInfraMaintenanceClean(
             repository_root=tmp_path,
             apply_changes=True,
         ).execute()

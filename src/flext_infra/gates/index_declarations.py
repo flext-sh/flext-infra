@@ -32,13 +32,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import m, r, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraIndexDeclarationsGate(FlextInfraGate):
+class FlextInfraGatesIndexDeclarations(FlextInfraGates):
     """Prove every indexed gitlink is declared by the repository itself."""
 
     gate_id: ClassVar[str] = "index-declarations"
@@ -99,4 +99,4 @@ class FlextInfraIndexDeclarationsGate(FlextInfraGate):
         return r[Sequence[str]].ok(defects)
 
 
-__all__: list[str] = ["FlextInfraIndexDeclarationsGate"]
+__all__: list[str] = ["FlextInfraGatesIndexDeclarations"]

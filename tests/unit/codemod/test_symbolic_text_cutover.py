@@ -35,10 +35,7 @@ class TestsFlextInfraSymbolicTextCutover:
             "from unavailable_second import second\n",
             encoding="utf-8",
         )
-        with (
-            u.Infra.open_project(tmp_path) as project,
-            u.Infra.semantic_matching_context(),
-        ):
+        with u.Infra.open_project(tmp_path) as project:
             module = u.Infra.resolve_pymodule(
                 project, project.get_resource(consumer.name)
             )
@@ -77,10 +74,7 @@ class TestsFlextInfraSymbolicTextCutover:
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout.strip(), eq=runtime_output)
-        with (
-            u.Infra.open_project(root) as project,
-            u.Infra.semantic_matching_context(),
-        ):
+        with u.Infra.open_project(root) as project:
             module = u.Infra.resolve_pymodule(
                 project, project.get_resource(consumer.name)
             )

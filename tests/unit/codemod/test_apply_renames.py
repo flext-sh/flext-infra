@@ -343,7 +343,7 @@ class TestsFlextInfraApplyRenames:
                             m.Infra.ModCommand(
                                 repository_root=selected,
                                 rename_plan=driver,
-                                apply=apply,
+                                check=not apply,
                             ),
                             workspace,
                         )

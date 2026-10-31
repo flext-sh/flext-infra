@@ -296,7 +296,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 else "missing_candidate_binding"
             )
         )
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             mod_workspace,
             {
                 "first-wave": (

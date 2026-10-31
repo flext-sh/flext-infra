@@ -78,7 +78,7 @@ class TestsFlextInfraRefactorViolationsSweepSupport:
             Fixture members with native project metadata and executable audits.
 
         """
-        distribution, _dependencies = tm.ok(u.Infra.codemod_project_requirements(root))
+        distribution, _dependencies = tm.ok(u.Infra.project_requirements(root))
         document = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
         members = tuple(root / name for name in names)
         for member in members:

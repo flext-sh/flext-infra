@@ -17,6 +17,7 @@ from collections.abc import (
     MutableSequence,
     Sequence,
 )
+from contextlib import AbstractContextManager
 from pathlib import Path
 
 from flext_cli import cli, u
@@ -24,41 +25,33 @@ from flext_cli import cli, u
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeImports,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
+)
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities._rope.rope_runtime_modules import (
-    FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_refactors import (
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
-)
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticConstantSources,
     FlextInfraUtilitiesSemanticCutoverClassScope,
     FlextInfraUtilitiesSemanticCutoverModelFields,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticDeclarationRetirement,
     FlextInfraUtilitiesSemanticDelegations,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
-)
-from flext_infra._utilities._semantic_cutover.constant_sources import (
-    FlextInfraUtilitiesSemanticConstantSources,
-)
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.workspace_snapshot import (
-    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 
 
@@ -201,12 +194,51 @@ class FlextInfraUtilitiesSemanticContracts(
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan native changes for the selected contract rules.
 
+        The supplied ``sources`` are the phase's authority: every source whose
+        bytes differ from the bound native view is bound before any native
+        selection, so a re-plan over applied edits reads those edits.
+
+        Returns:
+            Edits for the selected native contract rules.
+
+        """
+        project = workspace.rope_project
+        with project.source_view(
+            declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                Path(project.root.real_path),
+                (),
+                {
+                    path: source
+                    for path, source in sources.items()
+                    if not project.source_query(path, "isfile")
+                    or project.source_text(path) != source
+                },
+                source_project=project,
+            ),
+            additional_source_folders=None,
+        ):
+            return cls._plan_contract_rules_in_view(
+                workspace, sources, rules, options=options
+            )
+
+    @classmethod
+    def _plan_contract_rules_in_view(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        sources: Mapping[t.Infra.RopeSourcePath, str],
+        rules: Sequence[p.Infra.RopeContractRule],
+        *,
+        options: m.Infra.ContractAdmissionOptions | None,
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
+        """Plan the selected contract rules over the bound phase sources.
+
         Returns:
             Edits for the selected native contract rules.
 
         """
         analysis_sources: dict[Path, str] = {}
         inserted: dict[Path, tuple[str, ...]] = {}
+        dependency_views: dict[Path, str] = {}
         for selection in rules:
             revision = selection.source_revision
             if (
@@ -217,8 +249,15 @@ class FlextInfraUtilitiesSemanticContracts(
                 path, candidate, names = cls._generic_collection_history(
                     workspace.rope_project, selection, revision=revision
                 )
-                analysis_sources[path] = candidate
-                inserted[path] = names
+                # An owned provider is an editable candidate whose historical
+                # declarations are withdrawn before publication. A Python-path
+                # dependency only lends its historical names to consumer
+                # selection through a read-only analysis view.
+                if workspace.rope_project.source_owned(path):
+                    analysis_sources[path] = candidate
+                    inserted[path] = names
+                else:
+                    dependency_views[path] = candidate
         plans = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(workspace.rope_project.root.real_path),
             (),
@@ -226,7 +265,9 @@ class FlextInfraUtilitiesSemanticContracts(
             source_project=workspace.rope_project,
         )
         with workspace.rope_project.source_view(
-            declared_files=plans, additional_source_folders=None
+            declared_files=plans,
+            additional_source_folders=None,
+            analysis_files=dependency_views,
         ):
             return cls._plan_bound_contract_rules(
                 workspace, sources, rules, options, (analysis_sources, inserted)
@@ -289,7 +330,7 @@ class FlextInfraUtilitiesSemanticContracts(
             ) as project:
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                         project.get_resource(
                             path.relative_to(Path(project.root.real_path)).as_posix()
                         ),
@@ -320,7 +361,7 @@ class FlextInfraUtilitiesSemanticContracts(
                         "analysis-only generic declarations lost their native ownership"
                     )
                     raise ValueError(msg)
-                resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                     module.get_resource(), path
                 )
                 stripped = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
@@ -366,14 +407,8 @@ class FlextInfraUtilitiesSemanticContracts(
         anchor, indentation = cls._generic_history_anchor(
             current, module.get_source_binding_index().fragments, provider
         )
-        with project.source_view(
-            declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
-                Path(project.root.real_path),
-                (),
-                {path: cls._generic_history_source(path, revision)},
-                source_project=project,
-            ),
-            additional_source_folders=None,
+        with cls._generic_history_view(
+            project, path, cls._generic_history_source(path, revision)
         ):
             _identity, provider, module, _resource = cls._generic_history_provider(
                 project, selection
@@ -395,21 +430,45 @@ class FlextInfraUtilitiesSemanticContracts(
             else (),
         ).new_contents
         for import_module, members in imports.items():
-            with project.source_view(
-                declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
-                    Path(project.root.real_path),
-                    (),
-                    {path: candidate},
-                    source_project=project,
-                ),
-                additional_source_folders=None,
-            ):
+            with cls._generic_history_view(project, path, candidate):
                 imported = FlextInfraUtilitiesRopeImports.add_import(
                     project, resource, import_module, tuple(members), apply=False
                 )
                 if imported is not None:
                     candidate = imported
         return path, candidate, tuple(names)
+
+    @staticmethod
+    def _generic_history_view(
+        project: p.Infra.RopeProject,
+        path: Path,
+        source: str,
+    ) -> AbstractContextManager[p.Infra.RopeProject]:
+        """Bind one provider source for analysis by its project ownership.
+
+        An owned provider is a declared candidate of this project. A
+        Python-path dependency is bound read-only: native resolution reads it
+        while publication never sees it.
+
+        Returns:
+            The native source view reading the supplied provider source.
+
+        """
+        if project.source_owned(path):
+            return project.source_view(
+                declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                    Path(project.root.real_path),
+                    (),
+                    {path: source},
+                    source_project=project,
+                ),
+                additional_source_folders=None,
+            )
+        return project.source_view(
+            declared_files=None,
+            additional_source_folders=None,
+            analysis_files={path: source},
+        )
 
     @classmethod
     def _generic_history_provider(
@@ -451,7 +510,7 @@ class FlextInfraUtilitiesSemanticContracts(
             identity,
             provider,
             module,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource, identity
             ),
         )
@@ -698,7 +757,9 @@ class FlextInfraUtilitiesSemanticContracts(
                 imports={member: f"from {module_name} import {member}"}
                 if module_name is not None
                 else {},
-                bindings={member: identity},
+                # A builtin origin is proven by its unshadowed lexical name;
+                # only an imported origin carries a module-qualified binding.
+                bindings={member: identity} if module_name is not None else {},
                 unshadowed_builtins=(member,) if module_name is None else (),
             ),
         )
@@ -900,7 +961,7 @@ class FlextInfraUtilitiesSemanticContracts(
             owned_modules = {
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(
                     project,
-                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                         project.get_resource(
                             path.relative_to(Path(project.root.real_path)).as_posix()
                         ),
@@ -1134,7 +1195,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 admit,
             )
             self.modules = {
-                path: FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                path: FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     FlextInfraUtilitiesRopeCore.resolve_pymodule(
                         project,
                         project.get_resource(
@@ -1253,7 +1314,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 return ()
             provider, line = runtime.definition_location(binding)
             if (
-                not FlextInfraUtilitiesTypesRopeRuntime.source_module(provider)
+                not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider)
                 or line is None
             ):
                 return ()
@@ -1502,7 +1563,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 )
             ):
                 return {}
-            module = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                 owner.get_module()
             )
             refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -1584,7 +1645,7 @@ class FlextInfraUtilitiesSemanticContracts(
                     continue
                 provider, line = runtime.definition_location(terminal)
                 if (
-                    not FlextInfraUtilitiesTypesRopeRuntime.source_module(provider)
+                    not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider)
                     or line is None
                 ):
                     continue
@@ -1800,7 +1861,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 return None
             refactors = FlextInfraUtilitiesRopeRuntimeRefactors
             if region in self._strings(module):
-                provider = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     owner.get_module()
                 )
                 selected = refactors.source_declaration_region(
@@ -2058,7 +2119,7 @@ class FlextInfraUtilitiesSemanticContracts(
 
             """
             refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-            resource = FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 module.get_resource(), path
             )
             updated = refactors.content_change(
@@ -2422,7 +2483,7 @@ class FlextInfraUtilitiesSemanticContracts(
                     )
                     raise ValueError(message)
                 return False
-            unknown = FlextInfraUtilitiesTypesRopeRuntime.runtime_callable(
+            unknown = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
                 "rope.base.pyobjects", "get_unknown"
             )()
             if actual is None or actual.get_object() == unknown:
@@ -2474,7 +2535,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 message = f"{rule.id}: read-only contract has no native expression"
                 raise ValueError(message)
             origin = runtime.annotation_origin(project, contract, scope)
-            unknown = FlextInfraUtilitiesTypesRopeRuntime.runtime_callable(
+            unknown = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
                 "rope.base.pyobjects", "get_unknown"
             )()
             if (
@@ -2706,7 +2767,7 @@ class FlextInfraUtilitiesSemanticContracts(
         unknown = u.type_adapter(
             t.TypeForm(t.Port[t.Infra.RopeNativeObject])
         ).validate_python(
-            FlextInfraUtilitiesTypesRopeRuntime.runtime_callable(
+            FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
                 c.Infra.ROPE_PYOBJECTS_MODULE, "get_unknown"
             )(),
             strict=True,
@@ -2749,7 +2810,7 @@ class FlextInfraUtilitiesSemanticContracts(
         if closure is None:
             raise ValueError(context[1])
         holder = lexical.pyobject.get_module()
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(holder):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
             raise ValueError(context[1])
         source = ast.unparse(expression[0])
         tree = ast.parse(source, mode="eval")
@@ -2946,7 +3007,7 @@ class FlextInfraUtilitiesSemanticContracts(
     ) -> bool:
         if not isinstance(
             value,
-            FlextInfraUtilitiesTypesRopeRuntime.runtime_type(
+            FlextInfraUtilitiesRopeRuntimeTypes.runtime_type(
                 c.Infra.ROPE_PYOBJECTS_MODULE, "PyObject"
             ),
         ):
@@ -2986,7 +3047,7 @@ class FlextInfraUtilitiesSemanticContracts(
             project, "pydantic.fields.FieldInfo.metadata_lookup"
         )
         owner, line = runtime.definition_location(lookup)
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(owner):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(owner):
             raise ValueError(failure)
         owner_tree = owner.get_ast()
         if not isinstance(owner_tree, ast.AST):
@@ -3031,7 +3092,7 @@ class FlextInfraUtilitiesSemanticContracts(
     ) -> bool:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         origin, location = runtime.definition_location(binding)
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(origin):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(origin):
             raise ValueError(failure)
         origin_tree = origin.get_ast()
         if not isinstance(origin_tree, ast.AST):
@@ -3139,7 +3200,7 @@ class FlextInfraUtilitiesSemanticContracts(
             raise ValueError(failure)
         holder = lexical.pyobject.get_module()
         callee = ast.unparse(node.func)
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(holder) or not all(
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder) or not all(
             FlextInfraUtilitiesCodemodProject.single_reaching_binding(
                 holder, lexical, candidate, len(holder.source_code)
             )
@@ -3163,7 +3224,7 @@ class FlextInfraUtilitiesSemanticContracts(
         if binding is None:
             raise ValueError(failure)
         module = lexical.pyobject.get_module()
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module) or not (
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module) or not (
             FlextInfraUtilitiesCodemodProject.stable_binding_chain(
                 (project, module, lexical),
                 ast.unparse(node),
@@ -3173,7 +3234,7 @@ class FlextInfraUtilitiesSemanticContracts(
         ):
             raise ValueError(failure)
         holder, location = runtime.definition_location(binding)
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(holder):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(holder):
             raise ValueError(failure)
         if location is None:
             raise ValueError(failure)

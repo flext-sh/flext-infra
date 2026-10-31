@@ -5,12 +5,6 @@ id: ban-runtime-alias-rebind
 valid:
 # ENFORCE-046 Pattern-A: an imported letter rebound to the consumer-named
 # class the module defines and declares.
-- |
-  from flext_core import FlextModels, m
-  class AiHubModels(FlextModels):
-      pass
-  m = AiHubModels
-  __all__ = ["AiHubModels", "m"]
 # A name that is no runtime alias of the project is out of scope.
 - |
   class FlextFooConstants:
@@ -22,7 +16,16 @@ valid:
 - |
   class FlextFooConstants:
       LIMIT = 3
+# Shape-level rule: string-form __all__ membership is the rope engine's
+# semantic admission (public_export_names_source) — the raw rule reports here
+# and the engine filters (bead flext-wjxd7).
 invalid:
+- |
+  from flext_core import FlextModels, m
+  class AiHubModels(FlextModels):
+      pass
+  m = AiHubModels
+  __all__ = ["AiHubModels", "m"]
 - |
   class FlextFooConstants:
       pass

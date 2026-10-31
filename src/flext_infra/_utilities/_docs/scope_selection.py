@@ -11,6 +11,7 @@ from pathlib import Path
 
 from flext_infra import m
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 
 class FlextInfraUtilitiesDocsScopeSelection:
@@ -217,7 +218,7 @@ class FlextInfraUtilitiesDocsScopeSelection:
                 project_name,
                 docs_meta,
             ),
-            package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
+            package_name=FlextInfraUtilitiesPyprojectConform.package_name_from_payload(
                 project_root,
                 payload,
                 docs_meta,

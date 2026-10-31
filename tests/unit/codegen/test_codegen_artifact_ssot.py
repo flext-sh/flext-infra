@@ -116,16 +116,16 @@ class TestsFlextInfraCodegenArtifactSsot:
         tm.that(len(expected), eq=len(set(expected)))
 
     @staticmethod
-    def test_gitignore_artifacts_are_exact_projection(
+    def test_ignore_artifacts_are_exact_projection(
         codegen: m.Infra.CodegenConfigSpec,
     ) -> None:
         """Preserve configured order while rendering directory suffixes."""
         expected = tuple(
             f"{artifact.name}/" if artifact.is_dir else artifact.name
             for artifact in codegen.artifacts
-            if artifact.gitignore and not artifact.generated_source
+            if artifact.ignore and not artifact.generated_source
         )
-        tm.that(codegen.gitignore_artifact_patterns, eq=expected)
+        tm.that(codegen.ignore_artifact_patterns, eq=expected)
         tm.that(len(expected), eq=len(set(expected)))
 
     @staticmethod
@@ -139,9 +139,9 @@ class TestsFlextInfraCodegenArtifactSsot:
     ) -> None:
         """One generated_source key keeps a tree tracked yet outside analysis.
 
-        Premise (flext-gknfx): a generated tree that ``.gitignore`` hides while
+        Premise (flext-gknfx): a generated tree that ``.ignore`` hides while
         Git tracks it loses every module a regeneration adds, and analyzers
-        that ignore ``.gitignore`` still check it. The key must therefore keep
+        that ignore ``.ignore`` still check it. The key must therefore keep
         the tree trackable while every scan and analyzer exclusion derives it.
         """
         name = "wire_contracts"
@@ -154,7 +154,7 @@ class TestsFlextInfraCodegenArtifactSsot:
             },
         )
         rendered = tm.ok(
-            u.Infra.render_project_gitignore(
+            u.Infra.render_project_ignore(
                 declared,
                 profile=profile,
                 project_name="fixture-project",
@@ -164,7 +164,7 @@ class TestsFlextInfraCodegenArtifactSsot:
         tm.that(declared.generated_sources, has=name)
         tm.that(declared.source_scan_ignored, has=name)
         tm.that(declared.generated_source_globs, has=f"**/{name}/**")
-        tm.that(declared.gitignore_artifact_patterns, lacks=f"{name}/")
+        tm.that(declared.ignore_artifact_patterns, lacks=f"{name}/")
         tm.that(
             u.Tests.is_tracked_under(rendered, f"src/fixture/{name}/wire_pb2.py"),
             eq=True,
@@ -181,23 +181,23 @@ class TestsFlextInfraCodegenArtifactSsot:
             )
 
     @staticmethod
-    def test_gitignore_sections_account_for_every_artifact(
+    def test_ignore_sections_account_for_every_artifact(
         codegen: m.Infra.CodegenConfigSpec,
     ) -> None:
         """Require every derived pattern to be governed or appended."""
         emitted = {
             pattern
-            for section in codegen.gitignore_sections
+            for section in codegen.ignore_sections
             for pattern in section.patterns
         }
         governed = {
             pattern.lstrip("!")
-            for section in codegen.scaffold.gitignore_sections
+            for section in codegen.scaffold.ignore_sections
             for pattern in section.patterns
         }
         unaccounted = tuple(
             pattern
-            for pattern in codegen.gitignore_artifact_patterns
+            for pattern in codegen.ignore_artifact_patterns
             if pattern not in emitted and pattern not in governed
         )
         tm.that(unaccounted, eq=())
@@ -207,13 +207,13 @@ class TestsFlextInfraCodegenArtifactSsot:
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
-    def test_gitignore_tracks_governed_provider_projections(
+    def test_ignore_tracks_governed_provider_projections(
         codegen: m.Infra.CodegenConfigSpec,
         profile: c.Infra.MakeProfile,
     ) -> None:
         """Track portable governance and exclude machine-owned provider settings."""
         rendered = tm.ok(
-            u.Infra.render_project_gitignore(
+            u.Infra.render_project_ignore(
                 codegen,
                 profile=profile,
                 project_name="fixture-project",

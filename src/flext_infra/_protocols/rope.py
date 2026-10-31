@@ -294,6 +294,19 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeWorkspaceDsl(RopeSessionLifecycleDsl, Protocol):
         """Public DSL contract for one shared Rope workspace session."""
 
+        def facade_projection(
+            self,
+            *,
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+            planners: tuple[
+                FlextInfraProtocolsBase.SourceInitializerPlanner,
+                FlextInfraProtocolsBase.SourceViewProvider,
+            ],
+            selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+        ) -> m.Infra.CodegenRepositoryPlanOutcome:
+            """Plan coherent family, consumer and export effects in this session."""
+            ...
+
         @property
         def snapshot(self) -> FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot:
             """The generic source epoch already owned by this session."""

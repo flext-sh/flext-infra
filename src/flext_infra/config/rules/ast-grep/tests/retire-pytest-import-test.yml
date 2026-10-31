@@ -1,22 +1,22 @@
 id: retire-pytest-import
 valid:
-  # a bare pytest reference keeps the import
   - |
     import pytest
-    plugins = [pytest]
+
+    value = pytest.approx(1.0)
   - |
     from tests import u
+
+    value = u.Tests.approx(1.0)
   - |
     import pytest
-    @pytest.mark.slow
-    def test_value() -> None: ...
-  - |
-    import pytest
-    with pytest.raises(ValueError):
-        build()
+
+    @pytest.fixture
+    def workspace() -> None: ...
 invalid:
   - |
     import pytest
-    from tests import c
-    @c.Tests.MARK.slow
-    def test_value() -> None: ...
+  - |
+    import pytest
+
+    value = u.Tests.approx(1.0)

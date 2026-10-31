@@ -849,8 +849,13 @@ class FlextInfraModelsRefactor(
 
     # -- CSV-driven Rename Models ---------------------------------------------
 
-    class ModCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
-        """CLI request for the shared AST, semantic, and text codemod cascade."""
+    class ModCommand(FlextInfraModelsMixins.ScopeMixin, m.ContractModel):
+        """CLI request for the shared AST, semantic, and text codemod cascade.
+
+        ``refactor mod`` performs the transformation directly: it carries no
+        apply mode and no rule selector. ``check`` and ``dry-run`` are the
+        only inspection modes; without them the invocation writes.
+        """
 
         check: Annotated[bool, m.Field(description="Validate without writing")] = False
         dry_run_mode: Annotated[
@@ -865,6 +870,16 @@ class FlextInfraModelsRefactor(
             default=(),
             description="Explicit external consumer checkout roots for this run",
         )
+
+        @property
+        def apply(self) -> bool:
+            """Whether this invocation writes: neither check nor dry-run.
+
+            Returns:
+                ``True`` unless ``check`` or ``dry_run_mode`` was requested.
+
+            """
+            return not self.check and not self.dry_run_mode
 
     class SemanticRenamePlanCommand(m.ContractModel):
         """Produce an inventory-derived rename artifact without applying changes."""

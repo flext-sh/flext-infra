@@ -20,6 +20,511 @@ from flext_infra.workspace import FlextInfraWorkspaceRopeQuery
 class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     """Open one shared Rope workspace with cached public DSL methods."""
 
+    def facade_projection(
+        self,
+        *,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        planners: tuple[p.Infra.SourceInitializerPlanner, p.Infra.SourceViewProvider],
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Plan dependency-closed facade cohorts through this native session.
+
+        Returns:
+            Complete source effects and native failures retained by reference.
+
+        """
+        root, project = self.repository_root, self.rope_project
+        initializer, _source_view = planners
+        layout = self.layout(root)
+        outcome = m.Infra.CodegenRepositoryPlanOutcome(
+            repository=layout.project_name if layout is not None else root.as_posix()
+        )
+        self.bind_candidate(declared_files=declared_files)
+        original = {plan.path: plan for plan in declared_files}
+        sources = {
+            Path(resource.real_path): project.source_text(Path(resource.real_path))
+            for resource in project.get_python_files()
+            if Path(resource.real_path).is_relative_to(root)
+        }
+        packages = sorted({
+            path.parent
+            for path in sources
+            if path.name == c.Infra.INIT_PY
+            and (selection is None or path.parent.is_relative_to(selection[0].parent))
+        })
+        for package in packages:
+            for letter, family in u.Infra.facade_families().items():
+                self._projection_family(
+                    outcome,
+                    (package, letter, family),
+                    initializer=initializer,
+                    selection=selection,
+                    sources=sources,
+                )
+        outcome.files = tuple(
+            plan for plan in self._candidate_files if original.get(plan.path) != plan
+        )
+        if outcome.exception is not None:
+            # f-string única: a tupla de duas strings viola o contrato
+            # str do CodegenRepositoryPlanOutcome.error_type (regressão
+            # recorrente de merge; ver handoff 20261029 update 4).
+            outcome.error_type = (
+                f"{type(outcome.exception).__module__}."
+                f"{type(outcome.exception).__qualname__}"
+            )
+        return outcome
+
+    def _projection_family(
+        self,
+        outcome: m.Infra.CodegenRepositoryPlanOutcome,
+        item: tuple[Path, str, m.Infra.FacadeFamily],
+        *,
+        initializer: p.Infra.SourceInitializerPlanner,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+        sources: Mapping[Path, str],
+    ) -> None:
+        """Plan one facade family of one package, isolating its native failure."""
+        package, letter, family = item
+        selected = c.Infra.FacadeFamily(letter)
+        if (
+            selection is not None
+            and selection[1] is not None
+            and (package != selection[0].parent or selected is not selection[1])
+        ):
+            return
+        directory = package / family.directory
+        if not self.rope_project.source_query(directory, "isdir"):
+            return
+        baseline = self._candidate_files
+        try:
+            self._projection_directory(
+                outcome,
+                (package, directory, letter, family),
+                initializer=initializer,
+                selection=selection,
+                sources=sources,
+            )
+        except (OSError, *u.Infra.rope_hierarchy_errors()) as exception:
+            exception.add_note(
+                f"facade cohort={directory}; repository={self.repository_root}"
+            )
+            if outcome.exception is None and outcome.native_failure is None:
+                outcome.exception = exception
+                outcome.error = str(exception)
+            outcome.issues = (
+                *outcome.issues,
+                m.Infra.Issue(
+                    file=str(directory),
+                    line=0,
+                    column=0,
+                    code=c.Infra.ToolOutcome.ERROR.value,
+                    message=str(exception),
+                ),
+            )
+            self.bind_candidate(declared_files=baseline)
+
+    def _projection_directory(
+        self,
+        outcome: m.Infra.CodegenRepositoryPlanOutcome,
+        item: tuple[Path, Path, str, m.Infra.FacadeFamily],
+        *,
+        initializer: p.Infra.SourceInitializerPlanner,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+        sources: Mapping[Path, str],
+    ) -> None:
+        """Plan one family directory; restore the baseline when any cohort fails."""
+        package, directory, letter, family = item
+        project = self.rope_project
+        baseline = self._candidate_files
+        selected = c.Infra.FacadeFamily(letter)
+        elected = u.Infra.facade_module_path(package, letter, project=project)
+        if elected is None:
+            if u.Infra.facade_component_declarations(project, directory):
+                self._projection_reject(
+                    directory,
+                    r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                        f"Family declarations have no facade: {directory}"
+                    ),
+                    outcome=outcome,
+                )
+            return
+        if elected.failure:
+            self._projection_reject(directory, elected, outcome=outcome)
+            return
+        domains = {
+            parent
+            for path in sources
+            if path.is_relative_to(directory)
+            for parent in path.parents
+            if parent != directory
+            and parent.is_relative_to(directory)
+            and all(
+                part.startswith("_") for part in parent.relative_to(directory).parts
+            )
+        }
+        with project.source_view(declared_files=(), additional_source_folders=None):
+            observed = {
+                domain: u.Infra.family_subfacade_owners(project, domain)
+                if project.source_query(domain, "isdir")
+                else []
+                for domain in domains
+            }
+        failed = self._projection_domains(
+            outcome,
+            (directory, family, selected),
+            observed,
+            initializer=initializer,
+            selection=selection,
+        ) or self._projection_finish(
+            outcome,
+            (directory, elected.value, selected),
+            baseline,
+            initializer=initializer,
+            selection=selection,
+        )
+        if failed:
+            self.bind_candidate(declared_files=baseline)
+
+    def _projection_domains(
+        self,
+        outcome: m.Infra.CodegenRepositoryPlanOutcome,
+        item: tuple[Path, m.Infra.FacadeFamily, c.Infra.FacadeFamily],
+        observed: Mapping[Path, Sequence[tuple[Path, str]]],
+        *,
+        initializer: p.Infra.SourceInitializerPlanner,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> bool:
+        """Seed and render domain cohorts from the deepest level upward.
+
+        Returns:
+            Whether a cohort failed and was attributed to the outcome.
+
+        """
+        directory, family, selected = item
+        for depth in sorted({len(domain.parts) for domain in observed}, reverse=True):
+            cohort = tuple(
+                (domain, directory, family, observed[domain])
+                for domain in sorted(observed)
+                if len(domain.parts) == depth
+                and u.Infra.facade_component_declarations(self.rope_project, domain)
+            )
+            if cohort and self._projection_depth(
+                outcome,
+                cohort,
+                selected,
+                initializer=initializer,
+                selection=selection,
+            ):
+                return True
+        return False
+
+    def _projection_depth(
+        self,
+        outcome: m.Infra.CodegenRepositoryPlanOutcome,
+        cohort: tuple[
+            tuple[Path, Path, m.Infra.FacadeFamily, Sequence[tuple[Path, str]]], ...
+        ],
+        selected: c.Infra.FacadeFamily,
+        *,
+        initializer: p.Infra.SourceInitializerPlanner,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> bool:
+        """Seed one same-depth cohort, refresh exports, then render its domains.
+
+        Returns:
+            Whether the cohort failed and was attributed to the outcome.
+
+        """
+        directory = cohort[0][1]
+        seeded = r.traverse(cohort, self._projection_seed)
+        if seeded.failure:
+            self._projection_reject(directory, seeded, outcome=outcome)
+            return True
+        if self._projection_exports(
+            outcome, directory, initializer=initializer, selection=selection
+        ):
+            return True
+        for domain, target, name in seeded.value:
+            rendered = u.Infra.facade_component_source(
+                self.rope_project,
+                target,
+                domain,
+                family=selected,
+                owner_name=name,
+            )
+            if rendered.failure:
+                self._projection_reject(domain, rendered, outcome=outcome)
+                return True
+            self._projection_source(target, rendered.value)
+        return False
+
+    def _projection_finish(
+        self,
+        outcome: m.Infra.CodegenRepositoryPlanOutcome,
+        item: tuple[Path, Path, c.Infra.FacadeFamily],
+        baseline: tuple[m.Infra.CodegenFilePlan, ...],
+        *,
+        initializer: p.Infra.SourceInitializerPlanner,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> bool:
+        """Render the family facade, rewire consumers and refresh exports.
+
+        Returns:
+            Whether the family failed and was attributed to the outcome.
+
+        """
+        directory, destination, selected = item
+        project = self.rope_project
+        rendered = u.Infra.facade_component_source(
+            project, destination, directory, family=selected
+        )
+        if rendered.failure:
+            self._projection_reject(destination, rendered, outcome=outcome)
+            return True
+        self._projection_source(destination, rendered.value)
+        self._projection_stage(
+            u.Infra.plan_component_consumers(
+                self.repository_root,
+                source_project=project,
+                declared_files=self._candidate_files,
+            )
+        )
+        if selected is c.Infra.FacadeFamily.U:
+            before = {plan.path: plan for plan in baseline}
+            self._projection_stage(
+                u.Infra.facade_component_retirements(
+                    project,
+                    tuple(
+                        plan.path
+                        for plan in self._candidate_files
+                        if before.get(plan.path) != plan
+                    ),
+                    declared_files=self._candidate_files,
+                )
+            )
+        return self._projection_exports(
+            outcome, directory, initializer=initializer, selection=selection
+        )
+
+    def _projection_exports(
+        self,
+        outcome: m.Infra.CodegenRepositoryPlanOutcome,
+        scope: Path,
+        *,
+        initializer: p.Infra.SourceInitializerPlanner,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+    ) -> bool:
+        """Stage the initializer exports of the current candidate.
+
+        Returns:
+            Whether the initializer failed and was attributed to the outcome.
+
+        """
+        exports = initializer(
+            self.repository_root,
+            declared_files=self._candidate_files,
+            snapshot=self.snapshot,
+            selection=selection,
+        )
+        if exports.failure:
+            self._projection_reject(scope, exports, outcome=outcome)
+            return True
+        self._projection_stage(exports.value)
+        return False
+
+    @staticmethod
+    def _projection_reject(
+        scope: Path,
+        result: p.FailureLike,
+        *,
+        outcome: m.Infra.CodegenRepositoryPlanOutcome,
+    ) -> None:
+        """Attribute an expected failure without throwing or discarding its data."""
+        if outcome.native_failure is None and outcome.exception is None:
+            outcome.native_failure = result
+            outcome.exception = result.exception
+            outcome.error = result.error or ""
+        outcome.issues = (
+            *outcome.issues,
+            m.Infra.Issue(
+                file=str(scope),
+                line=0,
+                column=0,
+                code=result.error_code or c.Infra.ToolOutcome.ERROR.value,
+                message=result.error or "Source cohort planning failed",
+            ),
+        )
+
+    def _projection_stage(self, plans: Sequence[m.Infra.CodegenFilePlan]) -> None:
+        """Advance the existing candidate while preserving physical witnesses."""
+        self.bind_candidate(
+            declared_files=u.Infra.codegen_compose_file_plans(
+                (*self._candidate_files, *plans), ordered=True
+            )
+        )
+
+    def _projection_source(self, path: Path, text: str) -> None:
+        """Compose a source through the existing authenticated plan owner."""
+        project = self.rope_project
+        plans = u.Infra.workspace_declared_sources(
+            Path(project.root.real_path),
+            (),
+            {path: text},
+            source_project=project,
+        )
+        self._projection_stage(tuple(plan for plan in plans if plan.path == path))
+
+    def _projection_seed(
+        self,
+        item: tuple[Path, Path, m.Infra.FacadeFamily, Sequence[tuple[Path, str]]],
+    ) -> p.Result[tuple[Path, Path, str]]:
+        """Preserve observed ownership while following authenticated source moves.
+
+        Returns:
+            The seeded domain, its destination module and its owner class name.
+
+        """
+        domain, directory, family, observed = item
+        target = domain.parent / f"{domain.name.lstrip('_')}.py"
+        owners = self._projection_seed_owners(domain, target, observed)
+        if owners.failure:
+            return r[tuple[Path, Path, str]].from_failure(owners)
+        named = (
+            self._projection_seed_move(domain, directory, target, owners.value[0])
+            if owners.value
+            else self._projection_seed_create(domain, directory, family, target)
+        )
+        if named.failure:
+            return r[tuple[Path, Path, str]].from_failure(named)
+        return r[tuple[Path, Path, str]].ok((domain, target, named.value))
+
+    def _projection_seed_owners(
+        self,
+        domain: Path,
+        target: Path,
+        observed: Sequence[tuple[Path, str]],
+    ) -> p.Result[Sequence[tuple[Path, str]]]:
+        """Elect the native owner of a domain whose destination the candidate created.
+
+        Returns:
+            The observed owners, or the elected owner of a created destination.
+
+        """
+        result_type = r[Sequence[tuple[Path, str]]]
+        if len(observed) > 1:
+            return result_type.fail(
+                f"Competing native domain owners: {domain}: {observed}"
+            )
+        candidate = {plan.path: plan for plan in self._candidate_files}
+        created = candidate.get(target)
+        if created is None or created.before.content is not None:
+            return result_type.ok(observed)
+        origin = candidate.get(observed[0][0]) if observed else None
+        if observed and (origin is None or origin.desired_content is not None):
+            return result_type.ok(observed)
+        elected = u.Infra.family_subfacade_owners(self.rope_project, domain)
+        if (
+            len(elected) != 1
+            or elected[0][0] != target
+            or (observed and elected[0][1] != observed[0][1])
+        ):
+            return result_type.fail(
+                f"Recorded domain destination has no native ownership: {target}"
+            )
+        return result_type.ok(elected)
+
+    def _projection_seed_move(
+        self,
+        domain: Path,
+        directory: Path,
+        target: Path,
+        owner: tuple[Path, str],
+    ) -> p.Result[str]:
+        """Follow an owned domain to its destination through a native module move.
+
+        Returns:
+            The preserved owner class name.
+
+        """
+        previous, name = owner
+        if (
+            previous == directory / c.Infra.IMPORT_LAW_FAMILY_BASE_FILE
+            and previous != target
+        ):
+            return r[str].fail(f"Root family base cannot move to a domain: {domain}")
+        if previous != target:
+            project = self.rope_project
+            captured = {
+                Path(resource.real_path): project.source_text(Path(resource.real_path))
+                for resource in project.get_python_files()
+            }
+            moved = u.Infra.plan_module_move(
+                project,
+                previous,
+                destination_file=target,
+                inputs=u.Infra.NativeSourceView(
+                    captured,
+                    tuple(
+                        project.source_state(path, required=False) for path in captured
+                    ),
+                    declared_files=self._candidate_files,
+                ),
+            )
+            if moved.failure:
+                return r[str].from_failure(moved)
+            self._projection_stage(moved.value)
+        return r[str].ok(name)
+
+    def _projection_seed_create(
+        self,
+        domain: Path,
+        directory: Path,
+        family: m.Infra.FacadeFamily,
+        target: Path,
+    ) -> p.Result[str]:
+        """Render the owner skeleton of an unowned domain destination.
+
+        Returns:
+            The derived owner class name.
+
+        """
+        project = self.rope_project
+        if project.source_query(target, "exists"):
+            return r[str].fail(f"Domain destination has unrelated ownership: {target}")
+        prefix = u.Infra.project_prefix(target, source_project=project)
+        if not prefix:
+            return r[str].fail(f"Domain has no native project identity: {domain}")
+        module = project.get_pymodule(
+            project.get_folder(
+                domain.relative_to(Path(project.root.real_path)).as_posix()
+            )
+        )
+        documentation = module.get_doc()
+        if not documentation:
+            return r[str].fail(f"Domain has no declared documentation: {domain}")
+        name = (
+            prefix
+            + family.suffix
+            + u.derive_class_stem(
+                "-".join(
+                    part.lstrip("_").replace("_", "-")
+                    for part in domain.relative_to(directory).parts
+                )
+            )
+        )
+        rendered = u.Infra.generate_module_skeleton(
+            context=m.Infra.ModuleSkeletonRenderContext(
+                class_name=name,
+                base_class=None,
+                base_module=None,
+                docstring=documentation,
+            )
+        )
+        if rendered.failure:
+            return r[str].from_failure(rendered)
+        self._projection_source(target, rendered.value)
+        return r[str].ok(name)
+
     rope_repository_root_override: Annotated[
         Path | None,
         m.Field(description="Optional Rope project root; defaults to repository_root"),

@@ -12,9 +12,7 @@ from pathlib import Path
 from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_cli import p
-
-from flext_infra import t
+from flext_cli import p, t
 
 if TYPE_CHECKING:
     from flext_infra import c, m
@@ -284,16 +282,15 @@ class FlextInfraProtocolsBase(Protocol):
 
         def __call__(
             self,
-            root: Path,
+            workspace: FlextInfraProtocolsRope.RopeWorkspaceDsl,
             *,
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-            snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
             planners: tuple[
                 FlextInfraProtocolsBase.SourceInitializerPlanner,
                 FlextInfraProtocolsBase.SourceViewProvider,
             ],
             selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-        ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]: ...
+        ) -> m.Infra.CodegenRepositoryPlanOutcome: ...
 
     @runtime_checkable
     class SourceImportNormalizer(Protocol):
@@ -307,8 +304,8 @@ class FlextInfraProtocolsBase(Protocol):
             source: str,
             import_graph: Mapping[str, frozenset[str]],
             sources: Mapping[Path, str],
-        ) -> str | None:
-            """Return normalized source, or None when no import changes are needed."""
+        ) -> p.Result[str]:
+            """Return the canonical source, the unchanged source, or the failure."""
             ...
 
     @runtime_checkable
@@ -857,7 +854,9 @@ class FlextInfraProtocolsBase(Protocol):
         """Validated inputs consumed by the public codemod handler."""
 
         @property
-        def apply(self) -> bool: ...
+        def apply(self) -> bool:
+            """Whether the run writes; derived, never a caller-selected mode."""
+            ...
 
         @property
         def check(self) -> bool: ...

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -472,15 +472,6 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         upstream: Annotated[
             t.NonEmptyStr,
             m.Field(description="Upstream FLEXT facade module"),
-        ]
-        upstream_facades: Annotated[
-            Mapping[t.NonEmptyStr, t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Facade class the upstream declares for each letter in the "
-                    "__all__ that binds it; scaffolded facades extend that class"
-                ),
-            ),
         ]
         inherited_facets: Annotated[
             tuple[t.NonEmptyStr, ...],
