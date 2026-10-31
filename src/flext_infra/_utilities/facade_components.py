@@ -591,44 +591,26 @@ class FlextInfraUtilitiesFacadeComponents:
             The complete unchanged-body source candidate, never a published effect.
 
         """
-        for initializer in dict.fromkeys((
-            path.parent / c.Infra.INIT_PY,
-            directory / c.Infra.INIT_PY,
-        )):
-            if not project.source_query(initializer, "isfile"):
-                continue
-            marker = FlextInfraUtilitiesBase.first_merge_conflict_marker(
-                project.source_text(initializer)
-            )
-            if marker is not None:
-                return r[str].fail(
-                    "Unresolved merge conflict in facade initializer: "
-                    f"{initializer}: {marker}"
-                )
+        settled = cls._facade_settled_initializers(project, (path, directory))
+        if settled.failure:
+            return r[str].from_failure(settled)
         resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
         planned = cls._facade_component_plan(
             project, path, directory, family=family, owner_name=owner_name
         )
         if planned.failure:
             return r[str].from_failure(planned)
-        (
-            module,
-            owner,
-            namespace,
-            layout,
-            retained,
-            publications,
-            added_imports,
-            alias_names,
-        ) = planned.value
+        module, owner, namespace, layout = planned.value[:4]
+        composition = (planned.value[4], planned.value[5], planned.value[7])
         step = cls._facade_indent_step(project)
-        source = (
-            cls._facade_body_opening(resource, module, namespace, layout, step)
-            if publications
-            else module.source_code
-        )
         source = cls._facade_sorted_imports(
-            project, path, resource, source, added_imports
+            project,
+            path,
+            resource,
+            cls._facade_body_opening(resource, module, namespace, layout, step)
+            if composition[1]
+            else module.source_code,
+            planned.value[6],
         )
         declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(project.root.real_path), (), {path: source}, source_project=project
@@ -641,9 +623,165 @@ class FlextInfraUtilitiesFacadeComponents:
             )
             if projected.failure:
                 return r[str].from_failure(projected)
-            return cls._facade_rendered_class(
-                projected.value, source, (retained, publications, alias_names), step
+            rendered = cls._facade_rendered_class(
+                projected.value, source, composition, step
             )
+        return rendered.flat_map(
+            lambda text: cls._facade_rendered_order(
+                project, (path, directory), owner, (text, owner_name is not None)
+            )
+        )
+
+    @staticmethod
+    def _facade_settled_initializers(
+        project: p.Infra.RopeProject, location: tuple[Path, Path]
+    ) -> p.Result[bool]:
+        """Refuse a facade whose package or family initializer holds a conflict.
+
+        Returns:
+            True, or the first initializer carrying a Git merge-control line.
+
+        """
+        path, directory = location
+        for initializer in dict.fromkeys((
+            path.parent / c.Infra.INIT_PY,
+            directory / c.Infra.INIT_PY,
+        )):
+            if not project.source_query(initializer, "isfile"):
+                continue
+            marker = FlextInfraUtilitiesBase.first_merge_conflict_marker(
+                project.source_text(initializer)
+            )
+            if marker is not None:
+                return r[bool].fail(
+                    "Unresolved merge conflict in facade initializer: "
+                    f"{initializer}: {marker}"
+                )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _facade_rendered_order(
+        cls,
+        project: p.Infra.RopeProject,
+        location: tuple[Path, Path],
+        owner: p.Infra.RopeSourceClass,
+        rendering: tuple[str, bool],
+    ) -> p.Result[str]:
+        """Linearize every class of the rendered facade before it is planned.
+
+        The rendered text is proved by the same base owner as the authored
+        source (``_facade_class_bases``) over the same candidate view, so a
+        composition whose planned C3 order is inconsistent (one provider
+        reached through two facade paths) fails here, before any plan can
+        publish it.
+
+        A recomposed domain owner (``rendering[1]``) also proves every
+        enclosing declaration's ancestry (``_facade_consumer_orders``).
+
+        Returns:
+            The rendered text, or the owner's linearization failure.
+
+        """
+        path, directory = location
+        text, recomposed = rendering
+        declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+            Path(project.root.real_path), (), {path: text}, source_project=project
+        )
+        with project.source_view(
+            declared_files=declared, additional_source_folders=None
+        ):
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+                project.get_pymodule(
+                    FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                        project, path
+                    )
+                )
+            )
+            rendered = module.get_attributes()[owner.get_name()].get_object()
+            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(rendered):
+                return r[str].fail(
+                    f"Rendered facade lost its owner class: {path}:{owner.get_name()}"
+                )
+            ordered = cls._facade_class_bases(
+                project,
+                (path, directory, module, rendered),
+                cls.facade_component_declarations(project, directory),
+                {
+                    FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                        module, source_project=project
+                    ): (path, text)
+                },
+            )
+            if ordered.success and recomposed:
+                ordered = cls._facade_consumer_orders(project, (path, text), rendered)
+        return ordered.map(lambda _orders: text)
+
+    @classmethod
+    def _facade_consumer_orders(
+        cls,
+        project: p.Infra.RopeProject,
+        rendered: tuple[Path, str],
+        owner: p.Infra.RopeSourceClass,
+    ) -> p.Result[tuple[t.StrTuple, ...]]:
+        """Prove the recomposed owner keeps every enclosing declaration's C3.
+
+        A recomposed owner gains providers that existing classes of the
+        enclosing packages (below the top-level package) may already list
+        explicitly, in an order the old
+        ancestry permitted. Linearizing every declaration of the owner's
+        enclosing packages over the candidate proves the existing ancestry
+        still holds; a contradiction refuses the recomposition and names the
+        owner, before any plan can publish it.
+
+        Returns:
+            The C3 order of every enclosing declaration, or the contradiction.
+
+        """
+        path, text = rendered
+        discovery = FlextInfraUtilitiesProjectDiscovery
+        enclosing: list[Path] = []
+        current = path.parent
+        while project.source_query(current.parent / c.Infra.INIT_PY, "isfile"):
+            enclosing.append(current)
+            current = current.parent
+        references = tuple(
+            (
+                m.Infra.SourceClassReference(
+                    target=module_name,
+                    attributes=(declaration.get_name(),),
+                    qualified_base=f"{module_name}.{declaration.get_name()}",
+                ),
+            )
+            for directory in enclosing
+            for _origin, declaration in cls.facade_component_declarations(
+                project, directory
+            )
+            if declaration.get_name() != owner.get_name()
+            for module_name in (
+                discovery.module_name_for_provider(
+                    declaration.get_module(), source_project=project
+                ),
+            )
+        )
+        ordered = r[tuple[t.StrTuple, ...]].create_from_callable(
+            partial(
+                FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_orders,
+                project,
+                {
+                    discovery.module_name_for_provider(
+                        owner.get_module(), source_project=project
+                    ): (path, text)
+                },
+                references,
+            )
+        )
+        if ordered.failure:
+            return r[tuple[t.StrTuple, ...]].fail(
+                f"Recomposed owner {owner.get_name()} contradicts an existing "
+                f"ancestry: {ordered.error}",
+                exception=ordered.exception,
+            )
+        return ordered
 
     @classmethod
     def _facade_component_plan(
@@ -1278,11 +1416,15 @@ class FlextInfraUtilitiesFacadeComponents:
             first utility provider without a resolved namespace storage role.
 
         """
-        _owner, _namespace, declarations, resolver_factory = elected
+        _owner, namespace, declarations, resolver_factory = elected
         payload = FlextInfraUtilitiesDeclarationPayload
         admitted: list[tuple[Path, p.Infra.RopeSourceClass]] = []
         nominal: list[p.Infra.RopeSourceClass] = []
         for provider_path, provider in declarations:
+            # A declaration that already descends from the namespace extends
+            # it; composing it back would make the namespace its own ancestor.
+            if provider is namespace or namespace in provider.get_mro()[1:]:
+                continue
             if (
                 FlextInfraUtilitiesFacadeMembers.class_kind(
                     provider, resolver_factory=resolver_factory, source_project=project
@@ -2426,7 +2568,7 @@ class FlextInfraUtilitiesFacadeComponents:
             raise TypeError(message)
         index = module.get_source_binding_index()
         references: dict[tuple[int, int], tuple[m.Infra.SourceRewrite, str, str]] = {}
-        for method in sorted({method for _component, method in claims}):
+        for method in cls._component_candidate_methods(module.source_code, claims):
             finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
                 module.pycore.project, method
             )
@@ -2454,6 +2596,37 @@ class FlextInfraUtilitiesFacadeComponents:
                         destination,
                     )
         return tuple(value for _region, value in sorted(references.items()))
+
+    @staticmethod
+    def _component_candidate_methods(
+        source: str,
+        claims: Mapping[
+            tuple[p.Infra.RopeClassObject, str],
+            Sequence[tuple[str, str, p.Infra.RopeClassObject]],
+        ],
+    ) -> tuple[str, ...]:
+        """Select the claimed methods whose component this module names.
+
+        A lexical receiver names its component class in the module itself:
+        through the import, the declaration or the bare alias the receiver
+        proof accepts. A module that never spells a component's name holds no
+        receiver of it, so its methods need no occurrence search there.
+
+        Returns:
+            The sorted methods of every component the source names.
+
+        """
+        methods: dict[str, set[str]] = {}
+        for component, method in claims:
+            methods.setdefault(component.get_name(), set()).add(method)
+        return tuple(
+            sorted({
+                method
+                for name, owned in methods.items()
+                if name in source
+                for method in owned
+            })
+        )
 
     @staticmethod
     def _component_receiver_candidate(scope: p.Infra.RopeScope, reference: str) -> bool:
