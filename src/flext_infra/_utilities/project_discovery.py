@@ -545,6 +545,32 @@ class FlextInfraUtilitiesProjectDiscovery(
             else ""
         )
 
+    @staticmethod
+    def installed_module_name_for_file(file_path: Path) -> str:
+        """Return the absolute module name of a file outside the project root.
+
+        Installed distributions (site-packages) carry no Rope package identity:
+        ``provider.get_name()`` may come back empty, which collapses distinct
+        providers onto one identity. The name is derived from the filesystem —
+        the chain of directories that own an ``__init__.py`` above the file —
+        which is exactly the Python import identity of an installed module.
+
+        Returns:
+            The dotted module name, or "" when no package chain declares it.
+
+        """
+        parts: list[str] = []
+        current = file_path
+        if current.name not in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
+            parts.append(current.stem)
+            current = current.parent
+        while (current / c.Infra.INIT_PY).is_file() or (
+            current / c.Infra.INIT_PYI
+        ).is_file():
+            parts.append(current.name)
+            current = current.parent
+        return ".".join(reversed(parts))
+
     @classmethod
     def package_name_for_dir(
         cls,

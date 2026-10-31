@@ -26,6 +26,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodNative
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform

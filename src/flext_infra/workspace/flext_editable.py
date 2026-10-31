@@ -140,6 +140,22 @@ class FlextInfraWorkspaceFlextEditable:
         if pending.failure:
             return r[bool].from_failure(pending)
         if pending.value:
+            # A locked install leaves its package directory behind (uv renames
+            # only the dist-info), and that stale directory shadows the
+            # editable source on sys.path. Remove the locked distributions
+            # first; the check and origin verification below own the verdict.
+            _ = u.Cli.run_live(
+                (
+                    str(uv),
+                    "pip",
+                    "uninstall",
+                    "--python",
+                    python,
+                    *pending.value,
+                ),
+                cwd=runtime_root,
+                timeout=c.Infra.TIMEOUT_LONG,
+            )
             installed = u.Cli.run_live(
                 (
                     str(uv),
