@@ -2173,7 +2173,15 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     ):
                         module = submodule
                         continue
-                    if self._project.find_module(submodule) is not None:
+                    native = self._project.find_module(submodule)
+                    if native is not None and native.is_folder():
+                        # A governed namespace package is one more layer of
+                        # the planned namespace, not an external module:
+                        # descend into it and let the package initializer's
+                        # lazy SSOT elect the remaining name.
+                        module = submodule
+                        continue
+                    if native is not None:
                         try:
                             external = self._external_reference(
                                 submodule, tuple(remaining), visiting, depth + 1

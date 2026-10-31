@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import keyword
+import re
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from types import MappingProxyType
@@ -506,7 +507,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source, target = paths
         expected = id(cls._elected_move_module(project, root, source, role="source"))
         for path, text in consumers.items():
-            if path == source or source.stem not in text:
+            if path == source or not cls._binds_name(text, source.stem):
                 continue
             module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 project, cls._resource(project, root, path)
@@ -680,8 +681,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 # A quoted prefix resolves to the moved module object only through
                 # a binding that names it (an import, a package attribute or an
                 # export), and every such binding spells the module's stem; a
-                # source without the stem holds no reference to rewrite or check.
-                if path == source or source.stem not in consumer_text:
+                # source without the stem inside a literal holds no quoted type
+                # or export to rewrite or check.
+                if path == source or not cls._quoted_stem_reference(
+                    consumer_text, source.stem
+                ):
                     continue
                 # Module and PyObject protocols expose the same native identities.
                 rewritten, required = cls._module_quoted_consumer(
@@ -711,6 +715,93 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         finally:
             verified.close()
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _binds_name(text: str, name: str) -> bool:
+        """Whether a consumer declares any binding site for one name.
+
+        A scope lookup can only return a binding the source declares: an
+        unaliased import of the name, a star import, an assignment, loop,
+        ``with``, ``except`` or ``match`` target, a parameter, or a function or
+        class of that name. A consumer without such a site cannot bind the module.
+
+        Returns:
+            Whether any binding site of the name exists in the source.
+
+        """
+        return name in text and any(
+            not FlextInfraUtilitiesRopeClassMove._bound_names(node).isdisjoint({
+                name,
+                "*",
+            })
+            for node in ast.walk(ast.parse(text))
+        )
+
+    @staticmethod
+    def _bound_names(node: ast.AST) -> frozenset[str]:
+        """Name every binding one syntax node declares.
+
+        Returns:
+            The bound names, with ``*`` for a star import.
+
+        """
+        match node:
+            case ast.Import(names=aliases) | ast.ImportFrom(names=aliases):
+                names = frozenset(
+                    alias.asname or alias.name.partition(".")[0] for alias in aliases
+                )
+            case ast.Name(id=identifier, ctx=ast.Store()) | ast.arg(arg=identifier):
+                names = frozenset({identifier})
+            case (
+                ast.FunctionDef(name=identifier)
+                | ast.AsyncFunctionDef(name=identifier)
+                | ast.ClassDef(name=identifier)
+            ):
+                names = frozenset({identifier})
+            case (
+                ast.ExceptHandler(name=str() as identifier)
+                | ast.MatchAs(name=str() as identifier)
+                | ast.MatchStar(name=str() as identifier)
+                | ast.MatchMapping(rest=str() as identifier)
+            ):
+                names = frozenset({identifier})
+            case _:
+                names = frozenset()
+        return names
+
+    @staticmethod
+    def _quoted_stem_reference(text: str, stem: str) -> bool:
+        """Whether a source literal can reference the moved module by its stem.
+
+        Quoted type expressions and ``__all__`` exports are string literals;
+        Rope's native lexer delimits them, so a stem spelled only in code or
+        comments can never be a quoted reference. Inside a literal, a quoted
+        type reaches the module through an attribute read (``stem.Name``) and
+        an export spells the stem as the whole literal; prose such as
+        ``at runtime.`` names no module. An import alias of the module
+        (``import pkg.runtime as rt``) is a reference name too.
+
+        Returns:
+            Whether any string literal holds a quoted or exported stem.
+
+        """
+        stem_word = re.escape(stem)
+        names = "|".join(
+            re.escape(name)
+            for name in (
+                stem,
+                *re.findall(rf"(?<![A-Za-z0-9_]){stem_word}\s+as\s+(\w+)", text),
+            )
+        )
+        reference = re.compile(
+            rf"(?<![A-Za-z0-9_])(?:{names})\.[A-Za-z_]"
+            rf"|^[rRbBuU]?(['\"]){stem_word}\1$"
+        )
+        regions = FlextInfraUtilitiesRopeRuntime.ignored_regions(text)
+        return any(
+            text[first] != "#" and reference.search(text[first:last]) is not None
+            for first, last, _metadata in regions
+        )
 
     @staticmethod
     def _module_scopes(
