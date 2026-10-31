@@ -448,66 +448,6 @@ class FlextInfraUtilitiesCodemodNative:
         )
 
     @staticmethod
-    def codemod_facade_alias_base_rules(
-        snapshot: p.Infra.WorkspaceSnapshot,
-        project: Path,
-    ) -> Mapping[str, t.JsonMapping]:
-        """Render the rule dropping a bare runtime facade alias used as a base.
-
-        Facade members are reached through the alias, never by inheriting it;
-        a bare alias base outside the facade families and the package
-        ``api.py`` composes the facade's own layout into an unrelated class.
-        The aliases are the core package's runtime aliases and the family
-        locations come from the declared facade families.
-
-        Returns:
-            The single native rule document keyed by its rule id.
-
-        """
-        del snapshot
-        package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
-        aliases = sorted(u.runtime_alias_names(c.Infra.PKG_CORE_UNDERSCORE))
-        families = FlextInfraUtilitiesCodegenNamespace.facade_families().values()
-        rule_id = (
-            f"{c.Infra.CODEMOD_FACADE_ALIAS_BASE_SHAPE}"
-            f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
-        )
-        alternatives = "|".join(re.escape(alias) for alias in aliases)
-        return {
-            rule_id: {
-                "id": rule_id,
-                "language": "python",
-                "severity": "error",
-                "files": ["**/*.py"],
-                "ignores": [
-                    *(
-                        glob
-                        for family in families
-                        for glob in (
-                            f"**/{family.module}{c.Infra.EXT_PYTHON}",
-                            f"**/_{family.module}/**",
-                        )
-                    ),
-                    f"**/{c.Infra.API_PY}",
-                ],
-                "rule": {
-                    "kind": "identifier",
-                    "pattern": "$ALIAS",
-                    "regex": f"^(?:{alternatives})$",
-                    "inside": {
-                        "kind": "argument_list",
-                        "inside": {"kind": "class_definition"},
-                    },
-                },
-                "fix": {"template": "", "expandEnd": {"regex": "^,$"}},
-                "message": (
-                    "Bare facade alias `$ALIAS` used as a class base: reach facade "
-                    "members through the alias instead of inheriting it."
-                ),
-            }
-        }
-
-    @staticmethod
     def codemod_fixture_resources(
         plan: m.Infra.CodemodRulePlan,
     ) -> tuple[Path, ...]:

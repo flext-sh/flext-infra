@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraBuilder:
     """Core build invocation tests."""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def builder() -> FlextInfraDocBuilder:
         """Provide the public documentation builder service.
 

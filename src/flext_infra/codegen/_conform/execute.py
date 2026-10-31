@@ -856,7 +856,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     break
         if failures:
             first = failures[0]
-            failed_names: list[t.JsonValue] = sorted(failed_repositories)
             return result_type.fail(
                 "\n".join(failure.error or "generation failed" for failure in failures),
                 error_code=first.error_code,
@@ -866,7 +865,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     "errors": [
                         failure.error or "generation failed" for failure in failures
                     ],
-                    "failed_repositories": failed_names,
+                    "failed_repositories": [
+                        name for name in sorted(failed_repositories)
+                    ],
                 },
                 exception=first.exception,
             )

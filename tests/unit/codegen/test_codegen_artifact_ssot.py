@@ -24,8 +24,8 @@ class TestsFlextInfraCodegenArtifactSsot:
         with pytest.raises(c.ValidationError):
             m.Infra.TestmonCachePolicySpec.model_validate({})
 
-    @staticmethod
     @pytest.fixture(scope="module")
+    @staticmethod
     def codegen() -> m.Infra.CodegenConfigSpec:
         """Return the production configuration consumed by every projection.
 

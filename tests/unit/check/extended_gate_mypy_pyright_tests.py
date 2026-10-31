@@ -102,8 +102,8 @@ class TestsFlextInfraTypeGates:
                 eq={"fixture-alpha", "fixture-beta"},
             )
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def checker_context(
         tmp_path: Path,
     ) -> m.Infra.GateContext:

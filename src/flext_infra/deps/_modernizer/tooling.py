@@ -273,14 +273,15 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
                 ],
             },
             c.Infra.DEPENDENCY_GROUPS: {
-                c.Infra.DEV: list(
-                    u.Infra.project_development_requirements(
+                c.Infra.DEV: [
+                    requirement
+                    for requirement in u.Infra.project_development_requirements(
                         request.codegen.scaffold.project,
                         distribution=request.project_name,
-                        kind=declaration.value.spec.kind,
+                        kind=declaration.value.kind,
                         declared=live_dev,
                     )
-                ),
+                ],
             },
             c.Infra.TOOL: {"flext": {"docs": {"package_name": request.package_name}}},
         }

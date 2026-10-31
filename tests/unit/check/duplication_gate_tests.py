@@ -25,8 +25,8 @@ class TestsFlextInfraDuplicationGate:
     host a unit test never reaches, so it is typed NOT EXECUTED there.
     """
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def _ci_context() -> Generator[None]:
         ci = config.Infra.codegen.make.ci
         with u.Tests.env_vars_context({ci.variable: ci.value}):
@@ -127,7 +127,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
                 "  path: .\n"
                 "  role: standalone\n"
                 "  state: active\n"
-                "  kind: internal_flext\n"
+                f"  kind: {c.Infra.ProjectKind.INTERNAL_FLEXT.value}\n"
                 "  checkout: root\n"
                 "  codegen: none\n"
                 "  package: true\n"
@@ -142,6 +142,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
                 "      duplication_trees: [charts]\n",
                 encoding="utf-8",
             )
+            u.Tests.declare_governed_kind(root)
         return root
 
     def test_declared_trees_enter_the_scan_and_fail_on_clones(

@@ -19,8 +19,8 @@ from tests import c, m, tm, u
 class TestsFlextInfraDiscoveryInfraDiscovery:
     """Tests for ``FlextInfraDiscoveryInfraDiscovery``."""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def service() -> u.Infra:
         """Provide ``service``.
 
@@ -30,8 +30,8 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         """
         return u.Infra()
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def workspace_with_projects(
         tmp_path: Path,
     ) -> Path:

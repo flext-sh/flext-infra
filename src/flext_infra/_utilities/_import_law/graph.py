@@ -97,7 +97,7 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
 
     @staticmethod
     def _bootstrap_inputs_unchanged(
-        previous: m.Infra.WorkspaceBootstrapDependencies,
+        previous: p.Infra.WorkspaceBootstrapDependencies,
         current: tuple[str, tuple[str, ...], tuple[str, ...], tuple[str, ...]],
         modules: Sequence[t.Infra.RopeSourceModule],
     ) -> bool:

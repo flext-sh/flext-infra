@@ -434,10 +434,6 @@ class FlextInfraConstantsRefactor:
     # the project's layer-zero and isolated-execution files:
     # 'ban-ambient-environ-read--<package>'.
     CODEMOD_AMBIENT_ENVIRON_SHAPE: ClassVar[str] = "ban-ambient-environ-read"
-    # Generated rule shape that drops a bare runtime facade alias used as a
-    # class base outside the facade families and api.py:
-    # 'ban-facade-alias-base--<package>'.
-    CODEMOD_FACADE_ALIAS_BASE_SHAPE: ClassVar[str] = "ban-facade-alias-base"
     # Issue code of a module the project's runtime import graph places in a
     # cycle (ENFORCE-006); the graph, not a syntax rule, decides it.
     CODEMOD_IMPORT_CYCLE_CODE: ClassVar[str] = "ban-cyclic-import"

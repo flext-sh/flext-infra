@@ -59,8 +59,8 @@ class TestsFlextInfraApplyRenames:
                 ("models.FlextInfraModels", "m"),
             )
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def campaign_runtime(
         tmp_path: Path,
     ) -> None:
@@ -201,6 +201,7 @@ class TestsFlextInfraApplyRenames:
                     + "\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
+                u.Tests.declare_governed_kind(root)
         provider = package / "owner.py"
         provider.write_text(
             '"""Public provider identity."""\n'

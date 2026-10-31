@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraAuditorCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def command_contract_scope(
         tmp_path: Path,
     ) -> m.Infra.DocScope:
