@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -45,8 +46,11 @@ class TestsFlextInfraUtilitiesformatting:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 pyproject,
-                pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
-                    "[tool.ruff]\n", f"[tool.ruff]\nline-length = {width}\n", 1
+                re.sub(
+                    r"(?m)^line-length = \d+$",
+                    f"line-length = {width}",
+                    pyproject.read_text(encoding=c.DEFAULT_ENCODING),
+                    count=1,
                 ),
             )
         )
@@ -90,8 +94,11 @@ class TestsFlextInfraUtilitiesformatting:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 pyproject,
-                pyproject.read_text(encoding=c.DEFAULT_ENCODING).replace(
-                    "[tool.ruff]\n", "[tool.ruff]\nline-length = 1\n", 1
+                re.sub(
+                    r"(?m)^line-length = \d+$",
+                    "line-length = 1",
+                    pyproject.read_text(encoding=c.DEFAULT_ENCODING),
+                    count=1,
                 ),
             )
         )

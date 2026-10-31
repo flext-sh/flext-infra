@@ -61,10 +61,52 @@ class FlextInfraUtilitiesProtectedEditLinting:
         Returns:
             Normalized source, or the original configured repair failure.
 
+        Raises:
+            SyntaxError: If the candidate is not parseable Python; a broken
+                candidate is a caller defect, not a repair condition.
+
         """
         del repository_root
+        try:
+            ast.parse(source)
+        except SyntaxError as syntax_error:
+            raise syntax_error from None
         if before_source is None:
-            return cls.normalize_python_text(path, source, settings=settings)
+            normalized = cls.normalize_python_text(path, source, settings=settings)
+        else:
+            normalized = cls._normalize_edited_source(
+                path, source, before_source, settings=settings
+            )
+        if normalized.failure:
+            return normalized
+        # A protected edit never publishes bytes the destination's own format
+        # policy rejects: the width is the one constraint the formatter must
+        # satisfy, so a surviving E501 means the policy is unsatisfiable and
+        # the live source stays untouched. Lint findings the repair set does
+        # not own belong to ``make check``.
+        remaining = cls._ruff_stdin_codes(path, normalized.value, settings=settings)
+        if remaining.failure:
+            return r[str].from_failure(remaining)
+        width = c.Infra.FORMATTER_UNSATISFIED_CODE
+        if width in remaining.value:
+            return r[str].fail(f"ruff check failed for {path}: {width}")
+        return normalized
+
+    @classmethod
+    def _normalize_edited_source(
+        cls,
+        path: Path,
+        source: str,
+        before_source: str,
+        *,
+        settings: Sequence[str] = (),
+    ) -> p.Result[str]:
+        """Repair only the findings the edit introduced, then format.
+
+        Returns:
+            The repaired and formatted source, or the repair failure.
+
+        """
         source = cls.remove_orphaned_text_imports(before_source, source)
         before_codes = cls._ruff_stdin_codes(path, before_source, settings=settings)
         if before_codes.failure:

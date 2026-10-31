@@ -27,6 +27,9 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     AST_GREP_DOCS_URL: ClassVar[str] = "https://ast-grep.github.io/"
     LINT: ClassVar[str] = "lint"
     FORMAT: ClassVar[str] = "format"
+    # The one finding the formatter itself must satisfy: a surviving E501
+    # after the format pass means the destination's width is unsatisfiable.
+    FORMATTER_UNSATISFIED_CODE: ClassVar[str] = "E501"
     MARKDOWN: ClassVar[str] = "markdown"
     MARKDOWN_FORMAT: ClassVar[str] = "markdown-format"
     MARKDOWN_CODE: ClassVar[str] = "markdown-code"
