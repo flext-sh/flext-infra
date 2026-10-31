@@ -529,6 +529,12 @@ class FlextInfraUtilitiesCodegenNamespace:
         class_name_source = package_name.split(".", maxsplit=1)[0].replace("_", "-")
         src_dir = resolved_root / c.Infra.DEFAULT_SRC_DIR
         package_dir = src_dir / Path(*package_name.split("."))
+        # Flat members publish the package at the checkout root (hatch
+        # ``packages``); the layout owner reads the physical truth instead of
+        # assuming the src prefix for every repository shape.
+        if not package_dir.is_dir() and (resolved_root / Path(*package_name.split("."))).is_dir():
+            src_dir = resolved_root
+            package_dir = resolved_root / Path(*package_name.split("."))
         return m.Infra.RopeProjectLayout(
             project_root=resolved_root,
             project_name=project_name,
