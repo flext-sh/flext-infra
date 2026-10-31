@@ -79,7 +79,13 @@ class FlextInfraCodegenConform:
             planning issue, otherwise the migration failure.
 
         """
-        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        root = request.root.expanduser().resolve()
+        inputs = u.Infra.load_codegen_inputs(
+            root,
+            projections=()
+            if request.declaration_kind is None
+            else (u.Infra.kind_declaration_projection(root, request.declaration_kind),),
+        )
         if inputs.failure:
             return r[bool].from_failure(inputs)
         contract = executor.surface_contract(request.what, codegen=inputs.value.spec)
@@ -113,7 +119,12 @@ class FlextInfraCodegenConform:
                 )
             ):
                 continue
-            inputs = u.Infra.load_codegen_inputs(target.root)
+            inputs = u.Infra.load_codegen_inputs(
+                target.root,
+                projections=()
+                if kind is None
+                else (u.Infra.kind_declaration_projection(target.root, kind),),
+            )
             if inputs.failure:
                 return r[bool].from_failure(inputs)
             planned = (

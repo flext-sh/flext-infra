@@ -430,7 +430,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         cls._require_unshadowed_guard(tree)
         for start, end, replacement in sorted(replacements, reverse=True):
             lines[start:end] = [replacement]
-        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
             source_project.get_pymodule(
                 FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
                     source_project, path

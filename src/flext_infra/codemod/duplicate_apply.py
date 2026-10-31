@@ -838,14 +838,14 @@ class FlextInfraCodemodDuplicateApply(
                 target_module=owner_module,
                 aliases=(name,),
             )
-            if planned is None:
-                return f"consumer import did not plan: {consumer}"
+            if planned.failure:
+                return f"consumer import did not plan: {consumer}: {planned.error}"
             detail = (f"rebound {name} from {copy_module} to owner {owner_module}",)
             edits.append(
                 m.Infra.SemanticMigrationEdit(
                     file_path=consumer,
                     original_source=consumer_resource.read(),
-                    updated_source=planned,
+                    updated_source=planned.value,
                     changes=detail,
                 ),
             )

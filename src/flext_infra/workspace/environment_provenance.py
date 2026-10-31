@@ -464,7 +464,10 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 runtime_root=context.value.runtime_root,
             ),
             packages=tuple(
-                u.Infra.project_package_name(root / repository.path)
+                # The binding probe resolves through importlib (module names:
+                # dash-free), while the pyproject declares the distribution
+                # name — "dc-recon" imports as "dc_recon".
+                u.Infra.project_package_name(root / repository.path).replace("-", "_")
                 for repository in repositories
             ),
         )
@@ -484,7 +487,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         """
         if observation is None:
             return r[bool].ok(value=True)
-        package_name = u.Infra.project_package_name(expected_root)
+        package_name = u.Infra.project_package_name(expected_root).replace("-", "_")
         directories = observation.package_directories.get(package_name, ())
         if (
             len(directories) != 1
@@ -563,10 +566,14 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         exported by these module namespaces.
 
         """
-        package_name = u.Infra.project_package_name(expected_root)
+        package_name = u.Infra.project_package_name(expected_root).replace("-", "_")
         package = u.Infra.declared_package_dir(
             package_name,
-            search_paths=(str(expected_root / c.Infra.DEFAULT_SRC_DIR),),
+            # src/ layout e flat layout: o pacote pode morar em qualquer um.
+            search_paths=(
+                str(expected_root / c.Infra.DEFAULT_SRC_DIR),
+                str(expected_root),
+            ),
         )
         if (
             package is None
@@ -667,7 +674,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                             (
                                 context.value.resolution_root / item.source.editable
                             ).resolve(),
-                        )
+                        ).replace("-", "_")
                         for item in locked.package
                         if item.source.editable is not None
                     }),

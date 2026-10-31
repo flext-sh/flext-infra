@@ -216,11 +216,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         tm.that(original_references, eq=["True", "True", "7", "11"])
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                destination_file=target,
-                inputs=(sources, states),
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    inputs=(sources, states),
+                )
             )
         tm.fail(target.exists())
         if nested:
@@ -349,23 +351,42 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         tm.fail(target.exists())
 
     @classmethod
-    @pytest.mark.parametrize("occupied_package", [False, True])
-    def test_exact_module_destination_rejects_occupied_native_owner(
-        cls, tmp_path: Path, *, occupied_package: bool
+    def test_exact_module_destination_rejects_occupied_package_owner(
+        cls, tmp_path: Path
     ) -> None:
-        """File and package collisions leave all captured owners untouched."""
+        """A package collision is refused and leaves captured owners untouched."""
         root, package, source, _ = cls._module_move_workspace(tmp_path)
         target = package / "elements.py"
-        if occupied_package:
-            occupied = target.with_suffix("")
-            occupied.mkdir()
-            occupied /= c.Infra.INIT_PY
-        else:
-            occupied = target
-        occupied.write_text("VALUE = 'occupied'\n", encoding=c.DEFAULT_ENCODING)
+        occupied = target.with_suffix("")
+        occupied.mkdir()
+        (occupied / c.Infra.INIT_PY).write_text(
+            "VALUE = 'occupied'\n", encoding=c.DEFAULT_ENCODING
+        )
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(FileExistsError):
+            tm.fail(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    inputs=(sources, states),
+                ),
+                has="module destination is occupied",
+            )
+        for state in states:
+            tm.that(state.path.read_bytes(), eq=state.content)
+
+    @classmethod
+    def test_exact_module_destination_rejects_occupied_file_owner(
+        cls, tmp_path: Path
+    ) -> None:
+        """A file collision raises and leaves captured owners untouched."""
+        root, package, source, _ = cls._module_move_workspace(tmp_path)
+        target = package / "elements.py"
+        target.write_text("VALUE = 'occupied'\n", encoding=c.DEFAULT_ENCODING)
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            with pytest.raises(FileExistsError, match=r"elements\.py$"):
                 u.Infra.plan_module_move(
                     workspace.rope_project,
                     source,
@@ -387,13 +408,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         target = package / "_schema" / destination
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(ValueError, match="requires"):
+            tm.fail(
                 u.Infra.plan_module_move(
                     workspace.rope_project,
                     source,
                     destination_file=target,
                     inputs=(sources, states),
-                )
+                ),
+                has="requires",
+            )
         tm.fail(target.parent.exists())
         for state in states:
             tm.that(state.path.read_bytes(), eq=state.content)
@@ -407,13 +430,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         target = package / "_schema" / "elements.py"
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(ValueError, match="complete source inventory"):
+            tm.fail(
                 u.Infra.plan_module_move(
                     workspace.rope_project,
                     source,
                     destination_file=target,
                     inputs=({source: sources[source]}, states),
-                )
+                ),
+                has="complete source inventory",
+            )
         tm.fail(target.parent.exists())
         for state in states:
             tm.that(state.path.read_bytes(), eq=state.content)
@@ -427,11 +452,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         target = package / "elements.py"
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                destination_file=target,
-                inputs=(sources, states),
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    inputs=(sources, states),
+                )
             )
         occupied = target.with_suffix("")
         occupied.mkdir()
@@ -540,11 +567,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         root, package, source, target = cls._module_move_workspace(tmp_path)
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                target.parent,
-                inputs=(sources, states),
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    target.parent,
+                    inputs=(sources, states),
+                )
             )
         tm.fail(target.parent.exists())
         for state in states:
@@ -591,11 +620,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         before = u.Tests.run_lazy_init_probe(probe, python_paths=(str(package.parent),))
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             inputs = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                destination_file=target,
-                inputs=inputs,
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    inputs=inputs,
+                )
             )
         tm.ok(u.Infra.publish_codegen_plans(root, plans))
         tm.fail(source.exists())
@@ -614,11 +645,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         root, _package, source, target = cls._module_move_workspace(tmp_path)
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                target.parent,
-                inputs=(sources, states),
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    target.parent,
+                    inputs=(sources, states),
+                )
             )
         newer = source.read_bytes() + b"\n# Newer authored work.\n"
         tm.ok(

@@ -408,6 +408,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        analysis_exports = FlextInfraUtilitiesRopeAnalysisExports
         module, (path, source) = cls._authenticated_retirement_owner(binding, proposed)
         definition = binding.get_object()
         if not isinstance(definition, p.Infra.RopeSourceDefinition):
@@ -457,9 +458,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 if FlextInfraUtilitiesRopeModulePatch.runtime_alias_bindings(
                     export_module, alias="__all__"
                 ):
-                    exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                        export_module
-                    )
+                    exports = analysis_exports.public_export_names_source(export_module)
                     source = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
                         export_module,
                         names=[name for name in exports if name != target.name],
@@ -768,7 +767,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         path, _source = entry
         binding, container = owners
         for name in FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-            FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(module)
+            FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(module)
         ):
             exported = module.get_attributes().get(name)
             if path != owner_path and (

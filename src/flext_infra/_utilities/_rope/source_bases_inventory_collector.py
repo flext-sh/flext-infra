@@ -16,6 +16,8 @@ import builtins
 from collections.abc import Mapping, MutableMapping, Sequence
 
 from rope.base import ast
+from rope.base.pynames import ImportedModule
+from rope.base.pyobjectsdef import PyModule, PyPackage
 
 from flext_infra import c, m, p
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
@@ -872,13 +874,13 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         if reference is not None:
             if reference.target in spec.definitions:
                 return None, False
-            module = (
+            # Rope's own import name owns resolution: an import of a module
+            # absent from this environment (an ImportError-guarded
+            # alternative) is Rope's unknown object, not a lookup failure.
+            resolved = (
                 spec.provider
                 if reference.target == spec.module
-                else spec.provider.pycore.project.get_module(reference.target)
-            )
-            resolved: p.Infra.RopePyObject = (
-                FlextInfraUtilitiesRopeRuntime.require_semantic_module(module)
+                else cls._imported_module_object(spec, reference.target)
             )
             for attribute in reference.attributes:
                 binding = resolved.get_attributes().get(attribute)
@@ -887,6 +889,32 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 resolved = binding.get_object()
             return resolved, False
         return None, False
+
+    @staticmethod
+    def _imported_module_object(
+        spec: m.Infra.SourceBindingCollectorSpec,
+        target: str,
+    ) -> p.Infra.RopePyObject:
+        """Resolve one imported module the way Rope's own import name does.
+
+        Returns:
+            The imported module, or Rope's unknown object when the module is
+            absent from the analysed environment.
+
+        Raises:
+            TypeError: If the provider is not a native Rope module or the
+                import name does not resolve to a native object.
+
+        """
+        importing = spec.provider
+        if not isinstance(importing, PyModule | PyPackage):
+            message = f"import resolution requires a native Rope module: {spec.module}"
+            raise TypeError(message)
+        imported = ImportedModule(importing, target).get_object()
+        if not isinstance(imported, p.Infra.RopePyObject):
+            message = f"Rope import name resolved to a non-object: {target}"
+            raise TypeError(message)
+        return imported
 
     @staticmethod
     def _exception_binding_expression(

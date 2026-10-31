@@ -1,0 +1,16 @@
+id: ban-typeform-alias-call
+# `valid` MUST NOT match: the typing_extensions spelling, a module-qualified
+# typing_extensions reference, and a distinct facade member.
+valid:
+  - |
+    from typing_extensions import TypeForm
+
+    adapter = TypeAdapter(TypeForm(t.JsonMapping))
+  - "contract: TypeForm[int]"
+  - adapter = typing_extensions.TypeForm(t.JsonMapping)
+  - "spec: t.TypeFormSpecifier"
+# `invalid` MUST match: every `t.TypeForm` call, subscript and adapter argument.
+invalid:
+  - t.TypeForm(Mapping[str, int])
+  - TypeAdapter(t.TypeForm(t.JsonMapping))
+  - "x: t.TypeForm[int]"

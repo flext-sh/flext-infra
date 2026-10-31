@@ -1,0 +1,21 @@
+# Fixture owner sets: fixture-utils/library-member-owner-pytest-{c,t,u}.yml.
+id: rewire-pytest-function-to-tests-utilities
+valid:
+  - |
+    with u.Tests.raises(ValueError):
+        run()
+  - |
+    def probe(monkeypatch: pytest.MonkeyPatch) -> None: ...
+  - |
+    value = other.approx(1.0)
+  - |
+    value = pytest_helpers.raises
+invalid:
+  - |
+    with pytest.raises(ValueError):
+        run()
+  - |
+    value = pytest.approx(1.0)
+  - |
+    @pytest.fixture
+    def workspace() -> None: ...

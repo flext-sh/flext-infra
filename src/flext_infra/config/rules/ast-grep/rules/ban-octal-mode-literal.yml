@@ -4,7 +4,6 @@ severity: error
 files:
   - "src/flext_infra/**"
 ignores:
-  - "**/tests/**"
   - "**/_constants/**"
   - "**/_models/**"
   - "**/bootstrap.py"

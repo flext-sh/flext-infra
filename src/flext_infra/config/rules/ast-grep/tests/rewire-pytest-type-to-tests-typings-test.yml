@@ -1,0 +1,14 @@
+# Fixture owner sets: fixture-utils/library-member-owner-pytest-{c,t,u}.yml.
+id: rewire-pytest-type-to-tests-typings
+valid:
+  - |
+    def probe(monkeypatch: t.Tests.MonkeyPatch) -> None: ...
+  - |
+    value = pytest.approx(1.0)
+  - |
+    def probe(request: other.FixtureRequest) -> None: ...
+invalid:
+  - |
+    def probe(monkeypatch: pytest.MonkeyPatch) -> None: ...
+  - |
+    def probe(request: pytest.FixtureRequest) -> None: ...

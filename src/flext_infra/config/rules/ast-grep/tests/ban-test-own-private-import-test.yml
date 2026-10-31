@@ -1,0 +1,12 @@
+id: ban-test-own-private-import
+valid:
+  - from ai_hub import c, m, u
+  - from ai_hub.models import AiHubModels
+  - from tests import u
+  - from tests._utilities.base import TestsAiHubUtilitiesBase
+  - from __future__ import annotations
+  - import ai_hub
+invalid:
+  - from ai_hub.services._clean_search import AiHubCleanSearchMixin
+  - from ai_hub._models.base import AiHubModelsBase
+  - from ._helpers import build_plan

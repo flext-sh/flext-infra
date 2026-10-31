@@ -10,12 +10,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
 constraints:
   NAME:
     not:

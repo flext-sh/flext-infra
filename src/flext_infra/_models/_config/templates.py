@@ -550,7 +550,7 @@ class FlextInfraModelsConfigTemplates:
     class GitignoreRenderContext(FlextInfraModelsConfigContract.ConfigContract):
         """Profile-filtered input consumed by the Git ignore template."""
 
-        ignore_sections: Annotated[
+        gitignore_sections: Annotated[
             tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
@@ -558,7 +558,7 @@ class FlextInfraModelsConfigTemplates:
     class GitignoreRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed, profile-filtered input for the generated Git ignore file."""
 
-        ignore_sections: Annotated[
+        gitignore_sections: Annotated[
             tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(
                 min_length=1,

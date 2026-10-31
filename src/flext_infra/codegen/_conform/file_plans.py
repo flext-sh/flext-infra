@@ -418,10 +418,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         rendered: str,
         *,
         mode: int = 0o644,
-        ownership: m.Infra.ManagedFileOwnership | None = None,
         inputs: tuple[m.Cli.AtomicFileState, ...] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
-        """Snapshot one target and bind it to exact desired bytes and ownership.
+        """Snapshot one unowned target and bind it to exact desired bytes.
 
         ``inputs`` retains the original read-only observations by reference;
         the shared publisher verifies them before applying the desired effect.
@@ -442,11 +441,38 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
                 before=before.value,
                 desired_content=rendered.encode(c.DEFAULT_ENCODING),
                 desired_mode=mode,
-                owner="" if ownership is None else ownership.owner,
-                policy=None if ownership is None else ownership.policy,
-                tracking="versioned" if ownership is None else ownership.tracking,
                 inputs=inputs,
             ),
+        )
+
+    @staticmethod
+    def owned_file_plan(
+        root: Path,
+        relative_path: str,
+        rendered: str,
+        *,
+        ownership: m.Infra.ManagedFileOwnership,
+        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        """Snapshot one governed target bound to its declared ownership.
+
+        The declared ownership supplies the exact permission bits, owner,
+        policy and tracking of the planned effect.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
+
+        """
+        return FlextInfraCodegenConformFilePlans.file_plan(
+            root, relative_path, rendered, mode=ownership.mode, inputs=inputs
+        ).map(
+            lambda plan: plan.model_copy(
+                update={
+                    "owner": ownership.owner,
+                    "policy": ownership.policy,
+                    "tracking": ownership.tracking,
+                }
+            )
         )
 
     @staticmethod

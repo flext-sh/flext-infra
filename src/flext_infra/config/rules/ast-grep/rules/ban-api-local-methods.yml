@@ -5,6 +5,7 @@ language: Python
 severity: error
 files:
   - "**/src/**/api.py"
+  - "**/tests/**/api.py"
 rule:
   kind: function_definition
   inside:

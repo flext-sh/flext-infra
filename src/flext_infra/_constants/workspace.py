@@ -66,8 +66,8 @@ class FlextInfraConstantsWorkspace:
     PERSISTENT_STATE_ARTIFACT_NAMES: ClassVar[frozenset[str]] = frozenset({".serena"})
     "Persistent-state artifact basenames owned by the local repository."
 
-    # NOTE: the .ignore body is derived from the artifact SSOT
-    # (config/codegen.yaml artifacts -> CodegenConfigSpec.ignore_sections)
+    # NOTE: the .gitignore body is derived from the artifact SSOT
+    # (config/codegen.yaml artifacts -> CodegenConfigSpec.gitignore_sections)
     # and written only by codegen conform; the old REQUIRED_GITIGNORE_ENTRIES,
     # GITIGNORE_REMOVE_EXACT and GITIGNORE_MANAGED_HEADER append-paths were
     # removed with the migrator/sync parallel writers.
@@ -217,6 +217,11 @@ print(json.dumps({
     "Runtime-owned receipt of `make setup FLEXT=<path>`; plain setup removes it."
     FLEXT_EDITABLE_ROUTE_NAME: ClassVar[str] = "flext-editable"
     "Workspace CLI verb setup runs to elect, install and record FLEXT editables."
+    FLEXT_EDITABLE_BUILD_SETTING: ClassVar[str] = "editable_mode=strict"
+    (
+        "PEP 517 setting for editable bindings: a path-based install that static"
+        " resolvers (Rope, pyrefly, pyright) see, never an import-hook finder."
+    )
     CODEGEN_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-plan.json"
     )

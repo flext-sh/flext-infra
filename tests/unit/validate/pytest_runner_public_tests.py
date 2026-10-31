@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, e, m, tm, u
 
 
 class TestsFlextInfraPytestRunner:
@@ -579,12 +579,12 @@ class TestsFlextInfraPytestRunner:
             if finding == "mro-warning":
                 category = "ConsumerNotice"
                 declaration = (
-                    "from flext_core import c\n\n"
-                    f"class {category}(c.FlextSmellViolationError):\n    pass\n"
+                    "from flext_core import e\n\n"
+                    f"class {category}(e.SmellViolation):\n    pass\n"
                 )
             else:
                 category = (
-                    c.FlextSmellViolationError.__name__
+                    e.SmellViolation.__name__
                     if finding == "homonymous-warning"
                     else "DomainNotice"
                 )

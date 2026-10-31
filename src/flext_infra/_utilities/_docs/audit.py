@@ -56,7 +56,7 @@ class FlextInfraUtilitiesDocsAudit(
         return looks_like_prose and ("," in raw or " " in raw)
 
     @staticmethod
-    def audit_policy(scope: m.Infra.DocScope) -> m.Infra.DocsAuditPolicySpec:
+    def docs_audit_policy(scope: m.Infra.DocScope) -> m.Infra.DocsAuditPolicySpec:
         """Parse the scope's authenticated audit declaration once into its contract.
 
         Returns:
@@ -208,7 +208,7 @@ class FlextInfraUtilitiesDocsAudit(
             The resulting ``Sequence[m.Infra.AuditIssue]``.
 
         """
-        policy = FlextInfraUtilitiesDocsAudit.audit_policy(scope)
+        policy = FlextInfraUtilitiesDocsAudit.docs_audit_policy(scope)
         tokens = policy.stale_symbols
         exempt_paths = set(policy.stale_symbol_exempt_paths)
         issues: MutableSequence[m.Infra.AuditIssue] = []
@@ -244,7 +244,7 @@ class FlextInfraUtilitiesDocsAudit(
         return issues
 
     @staticmethod
-    def audit_markdown(
+    def docs_audit_markdown(
         scope: m.Infra.DocScope,
         issues: Sequence[m.Infra.AuditIssue],
         docstring_coverage: m.Infra.DocstringCoverage | None = None,

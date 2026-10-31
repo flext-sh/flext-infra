@@ -15,7 +15,7 @@ from __future__ import annotations
 import ast
 import hashlib
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack, closing, contextmanager
 from pathlib import Path
 
 from flext_cli import u
@@ -306,7 +306,6 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
 
         Raises:
             ValueError: If a declared project root lies outside ``root``.
-            TypeError: If the native project lacks the required capabilities.
 
         """
         root = root.resolve()
@@ -335,13 +334,17 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                     if folder.is_folder()
                 ),
             )
-            project = FlextInfraRopeProject.from_atomic_reads(
-                live,
-                election=election,
-                declared_files=declared_files,
-                additional_source_folders=additional_source_folders,
-            )
-            with project.frozen_layout():
+            with (
+                closing(
+                    FlextInfraRopeProject.from_atomic_reads(
+                        live,
+                        election=election,
+                        declared_files=declared_files,
+                        additional_source_folders=additional_source_folders,
+                    )
+                ) as project,
+                project.frozen_layout(),
+            ):
                 yield project
 
     @classmethod

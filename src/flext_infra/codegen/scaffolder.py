@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, m, r, u
@@ -96,114 +97,97 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
 
         """
         project_path = project.path
-        if not (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir():
-            return r[m.Infra.ScaffoldResult].ok(
-                m.Infra.ScaffoldResult(
-                    project=project_path.name,
-                    files_created=[],
-                    files_skipped=[],
-                )
-            )
-        project_layout = u.Infra.layout(project_path)
-        if project_layout is None or not project_layout.class_stem:
-            return r[m.Infra.ScaffoldResult].ok(
-                m.Infra.ScaffoldResult(
-                    project=project_path.name,
-                    files_created=[],
-                    files_skipped=[],
-                )
-            )
         files_created: MutableSequence[str] = []
         files_skipped: MutableSequence[str] = []
-        if project_layout.init_path.is_file():
-            planned = self._scaffold_dir(
-                m.Infra.ScaffoldDirRequest(
-                    target_dir=project_layout.package_dir,
-                    prefix=project_layout.class_stem,
-                    modules=c.Infra.SRC_MODULES,
-                    test_prefix="",
-                    base_module=c.Infra.PKG_CORE_UNDERSCORE,
-                    project_module=project_layout.package_name,
-                    test_module=False,
-                    dry_run=dry_run,
-                    files_created=[],
-                    files_skipped=[],
-                ),
-            )
-            if planned.failure:
-                return r[m.Infra.ScaffoldResult].from_failure(planned)
-            created, skipped = planned.value
-            files_created.extend(created)
-            files_skipped.extend(skipped)
-        tests_dir = project_path / c.Infra.DIR_TESTS
-        if tests_dir.is_dir():
-            planned = self._scaffold_dir(
-                m.Infra.ScaffoldDirRequest(
-                    target_dir=tests_dir,
-                    prefix=project_layout.class_stem,
-                    modules=c.Infra.TESTS_MODULES,
-                    test_prefix="Tests",
-                    base_module=c.Infra.PKG_TESTS_UNDERSCORE,
-                    project_module=project_layout.package_name,
-                    test_module=True,
-                    dry_run=dry_run,
-                    files_created=[],
-                    files_skipped=[],
-                ),
-            )
-            if planned.failure:
-                return r[m.Infra.ScaffoldResult].from_failure(planned)
-            created, skipped = planned.value
-            files_created.extend(created)
-            files_skipped.extend(skipped)
-        examples_dir = project_path / c.Infra.DIR_EXAMPLES
-        if examples_dir.is_dir():
-            planned = self._scaffold_dir(
-                m.Infra.ScaffoldDirRequest(
-                    target_dir=examples_dir,
-                    prefix=project_layout.class_stem,
-                    modules=c.Infra.SRC_MODULES,
-                    test_prefix="Examples",
-                    base_module=project_layout.package_name,
-                    project_module=project_layout.package_name,
-                    test_module=False,
-                    dry_run=dry_run,
-                    files_created=[],
-                    files_skipped=[],
-                ),
-            )
-            if planned.failure:
-                return r[m.Infra.ScaffoldResult].from_failure(planned)
-            created, skipped = planned.value
-            files_created.extend(created)
-            files_skipped.extend(skipped)
-        scripts_dir = project_path / c.Infra.DIR_SCRIPTS
-        if scripts_dir.is_dir():
-            planned = self._scaffold_dir(
-                m.Infra.ScaffoldDirRequest(
-                    target_dir=scripts_dir,
-                    prefix=project_layout.class_stem,
-                    modules=c.Infra.SRC_MODULES,
-                    test_prefix="Scripts",
-                    base_module=project_layout.package_name,
-                    project_module=project_layout.package_name,
-                    test_module=False,
-                    dry_run=dry_run,
-                    files_created=[],
-                    files_skipped=[],
-                ),
-            )
-            if planned.failure:
-                return r[m.Infra.ScaffoldResult].from_failure(planned)
-            created, skipped = planned.value
-            files_created.extend(created)
-            files_skipped.extend(skipped)
+        project_layout = (
+            u.Infra.layout(project_path)
+            if (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir()
+            else None
+        )
+        if project_layout is not None and project_layout.class_stem:
+            for request in self._scaffold_dir_requests(
+                project_path, project_layout, dry_run=dry_run
+            ):
+                planned = self._scaffold_dir(request)
+                if planned.failure:
+                    return r[m.Infra.ScaffoldResult].from_failure(planned)
+                created, skipped = planned.value
+                files_created.extend(created)
+                files_skipped.extend(skipped)
         return r[m.Infra.ScaffoldResult].ok(
             m.Infra.ScaffoldResult(
                 project=project_path.name,
                 files_created=files_created,
                 files_skipped=files_skipped,
             )
+        )
+
+    @staticmethod
+    def _scaffold_dir_requests(
+        project_path: Path,
+        project_layout: m.Infra.RopeProjectLayout,
+        *,
+        dry_run: bool,
+    ) -> tuple[m.Infra.ScaffoldDirRequest, ...]:
+        """Declare the scaffold request of every present project namespace.
+
+        Returns:
+            The ordered requests for the package, tests, examples and scripts
+            directories that exist in the project.
+
+        """
+        package = project_layout.package_name
+        namespaces = (
+            (
+                project_layout.init_path.is_file(),
+                project_layout.package_dir,
+                c.Infra.SRC_MODULES,
+                "",
+                c.Infra.PKG_CORE_UNDERSCORE,
+                False,
+            ),
+            (
+                (project_path / c.Infra.DIR_TESTS).is_dir(),
+                project_path / c.Infra.DIR_TESTS,
+                c.Infra.TESTS_MODULES,
+                "Tests",
+                c.Infra.PKG_TESTS_UNDERSCORE,
+                True,
+            ),
+            (
+                (project_path / c.Infra.DIR_EXAMPLES).is_dir(),
+                project_path / c.Infra.DIR_EXAMPLES,
+                c.Infra.SRC_MODULES,
+                "Examples",
+                package,
+                False,
+            ),
+            (
+                (project_path / c.Infra.DIR_SCRIPTS).is_dir(),
+                project_path / c.Infra.DIR_SCRIPTS,
+                c.Infra.SRC_MODULES,
+                "Scripts",
+                package,
+                False,
+            ),
+        )
+        return tuple(
+            m.Infra.ScaffoldDirRequest(
+                target_dir=target_dir,
+                prefix=project_layout.class_stem,
+                modules=modules,
+                test_prefix=test_prefix,
+                base_module=base_module,
+                project_module=package,
+                test_module=test_module,
+                dry_run=dry_run,
+                files_created=[],
+                files_skipped=[],
+            )
+            for present, target_dir, modules, test_prefix, base_module, test_module in (
+                namespaces
+            )
+            if present
         )
 
     @staticmethod
@@ -215,9 +199,6 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
         Returns:
             The resulting ``tuple[MutableSequence[str],
                 MutableSequence[str]]``.
-
-        Raises:
-            OSError: If writing scaffold.
 
         """
         files_created: MutableSequence[str] = []
@@ -274,6 +255,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
                 desired_mode=config.Infra.codegen.modes.file_default,
                 owner="codegen",
             )
+            u.Infra.contained_write_targets(planned.project, (planned.path,))
             lock = u.Infra.mutation_lock_path(planned.project)
             if lock.failure:
                 return r[

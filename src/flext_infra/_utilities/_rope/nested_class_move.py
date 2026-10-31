@@ -206,7 +206,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
         ) - frozenset(dir(builtins))
 
     @staticmethod
-    def _import_statements(
+    def _cst_import_statements(
         module: t.Infra.Cst.Module,
     ) -> tuple[t.Infra.Cst.SimpleStatementLine, ...]:
         return tuple(
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
             Class, function and assignment names plus conditional imports.
 
         """
-        imports = cls._import_statements(module)
+        imports = cls._cst_import_statements(module)
         bound: set[str] = set()
         for statement in module.body:
             if statement in imports:
@@ -259,7 +259,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
 
         """
         imports: list[t.Infra.Cst.SimpleStatementLine] = []
-        for statement in cls._import_statements(module):
+        for statement in cls._cst_import_statements(module):
             kept = tuple(
                 item
                 for item in (cls._kept_import(raw, used) for raw in statement.body)
@@ -362,7 +362,7 @@ class FlextInfraUtilitiesRopeNestedClassMove:
 
         """
         statement = cst.parse_statement(f"from {target_module} import {name}\n")
-        imports = cls._import_statements(module)
+        imports = cls._cst_import_statements(module)
         position = (
             max(module.body.index(item) for item in imports) + 1 if imports else 0
         )

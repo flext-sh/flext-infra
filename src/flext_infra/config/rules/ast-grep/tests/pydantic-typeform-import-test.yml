@@ -1,0 +1,30 @@
+id: pydantic-typeform-import
+# `valid` MUST NOT match: the binding is present, no bare TypeForm is used, or
+# only the facade attribute is used (rewritten first by ban-typeform-alias-call).
+valid:
+  - |
+    from __future__ import annotations
+
+    from typing_extensions import TypeForm
+
+    adapter = TypeAdapter(TypeForm(t.JsonMapping))
+  - |
+    from __future__ import annotations
+
+    from typing_extensions import TypeForm, override
+
+    contract: TypeForm[int]
+  - |
+    from __future__ import annotations
+
+    adapter = TypeAdapter(int)
+# `invalid` MUST match: a bare TypeForm call or subscript without the binding.
+invalid:
+  - |
+    from __future__ import annotations
+
+    adapter = TypeAdapter(TypeForm(t.JsonMapping))
+  - |
+    from __future__ import annotations
+
+    contract: TypeForm[int]

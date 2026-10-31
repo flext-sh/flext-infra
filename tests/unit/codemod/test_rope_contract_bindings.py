@@ -6,8 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import io
 import runpy
 import sys
+import tokenize
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
@@ -529,6 +531,20 @@ class TestsFlextInfraRopeContractBindings:
         tm.that(after, eq=before)
 
     @staticmethod
+    def _comments(source: str) -> tuple[str, ...]:
+        """Read every comment token of one module in source order.
+
+        Returns:
+            The comment texts the Python tokenizer reads from the source.
+
+        """
+        return tuple(
+            token.string
+            for token in tokenize.generate_tokens(io.StringIO(source).readline)
+            if token.type == tokenize.COMMENT
+        )
+
+    @staticmethod
     def _assertion_rules() -> Sequence[p.Infra.RopeContractRule]:
         """Declare the Python statement contract consumed by the native writer.
 
@@ -630,16 +646,8 @@ class TestsFlextInfraRopeContractBindings:
             eq=repr(before),
         )
         tm.that(
-            tuple(
-                updated[start:end]
-                for start, end, _metadata in u.Infra.ignored_regions(updated)
-                if updated[start:end].startswith("#")
-            ),
-            eq=tuple(
-                source[start:end]
-                for start, end, _metadata in u.Infra.ignored_regions(source)
-                if source[start:end].startswith("#")
-            ),
+            TestsFlextInfraRopeContractBindings._comments(updated),
+            eq=TestsFlextInfraRopeContractBindings._comments(source),
         )
         tm.that(
             tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, rules)),

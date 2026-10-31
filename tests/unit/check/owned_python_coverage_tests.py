@@ -10,18 +10,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m
+from flext_infra import gates, m
 from tests import c, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra.gates.base_gate import (
-        FlextInfraGates,
-        FlextInfraGatesMypy,
-        FlextInfraGatesPyrefly,
-        FlextInfraGatesRuffLint,
-    )
 
 
 class TestsFlextInfraOwnedPythonCoverage:
@@ -34,12 +27,16 @@ class TestsFlextInfraOwnedPythonCoverage:
     )
     @pytest.mark.parametrize(
         "gate_class",
-        [FlextInfraGatesRuffLint, FlextInfraGatesMypy, FlextInfraGatesPyrefly],
+        [
+            gates.FlextInfraGatesRuffLint,
+            gates.FlextInfraGatesMypy,
+            gates.FlextInfraGatesPyrefly,
+        ],
     )
     def test_nonstandard_python_targets_report_real_findings(
         real_python_package: Path,
         relative_path: str,
-        gate_class: type[FlextInfraGates],
+        gate_class: type[gates.FlextInfraGates],
     ) -> None:
         """A clean conventional root cannot hide a defect in another owned target."""
         project = real_python_package

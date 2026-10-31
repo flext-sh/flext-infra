@@ -490,7 +490,7 @@ class TestsFlextInfraTypeGates:
     @staticmethod
     @pytest.mark.parametrize(
         "gate_class",
-        [gates.FlextInfraGatesPyrightGate, gates.FlextInfraPyrefly],
+        [gates.FlextInfraGatesPyright, gates.FlextInfraGatesPyrefly],
     )
     def test_python_analysis_gates_follow_detected_content(
         tmp_path: Path,

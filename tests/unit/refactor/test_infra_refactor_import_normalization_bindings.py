@@ -43,11 +43,11 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         tm.that(
             u.Infra.import_module_role("demo_pkg._models._config.base"), eq="family"
         )
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=source
             ),
-            eq=None,
+            eq=source,
         )
 
     @classmethod
@@ -85,11 +85,11 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
                 normalized,
                 has=f"if TYPE_CHECKING:\n    from demo_pkg import {name}\n",
             )
-            tm.that(
+            tm.ok(
                 u.Infra.normalize_import_source(
                     project_root=project, file_path=module, source=normalized
                 ),
-                eq=None,
+                eq=normalized,
             )
 
     @classmethod
@@ -153,13 +153,13 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="lazy-value")
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=normalized,
             ),
-            eq=None,
+            eq=normalized,
         )
 
     @classmethod
@@ -203,13 +203,14 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "    return r.ok(DemoRecord)\n",
         )
 
-        second = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=target,
-            source=first,
+        tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=target,
+                source=first,
+            ),
+            eq=first,
         )
-
-        tm.that(second, eq=None)
 
     @classmethod
     def test_unbound_tier_letters_bind_through_tier_root(
@@ -234,13 +235,13 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
 
         tm.that(normalized, has="from tests import c, r, u\n")
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=normalized,
             ),
-            eq=None,
+            eq=normalized,
         )
 
     @classmethod
@@ -249,19 +250,20 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         project, _ = cls._project(tmp_path)
         tier = project / "tests"
         cls._lazy_init(tier, {"c": ".constants"})
+        source = (
+            "from __future__ import annotations\n"
+            "\n"
+            "\n"
+            "def test_demo(c: int) -> None:\n"
+            "    assert c\n"
+        )
         result = u.Infra.normalize_import_source(
             project_root=project,
             file_path=tier / "unit" / "test_demo.py",
-            source=(
-                "from __future__ import annotations\n"
-                "\n"
-                "\n"
-                "def test_demo(c: int) -> None:\n"
-                "    assert c\n"
-            ),
+            source=source,
         )
 
-        tm.that(result, eq=None)
+        tm.ok(result, eq=source)
 
     @classmethod
     def test_tier_owner_drops_import_of_its_own_definition(
@@ -298,13 +300,13 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="tier-value")
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=target,
                 source=normalized,
             ),
-            eq=None,
+            eq=normalized,
         )
 
     @classmethod
@@ -349,7 +351,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         before = tm.ok(u.Cli.run(command, cwd=project, options=options))
         tm.that(u.Cli.process_succeeded(before.outcome), eq=True, msg=before.stderr)
         tm.that(before.stdout.strip(), eq="first provider second provider")
-        with pytest.raises(ValueError, match="conflicting inline import providers"):
+        with pytest.raises(RuntimeError, match="conflicting inline import providers"):
             FlextInfraCodemodLoopPhaseImportNormalization.apply_files(
                 project, (consumer,)
             )
@@ -404,15 +406,14 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             {"e": ".unavailable_provider", "s": ".unavailable_provider"},
         )
         module = package / "handler.py"
-        normalized = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=module,
+                source=source,
+            )
         )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
+        module.write_text(normalized, encoding="utf-8")
         result = tm.ok(
             u.Cli.run(
                 (sys.executable, str(module)),
@@ -421,13 +422,13 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
         tm.ok(u.Cli.process_succeeded(result.outcome))
         tm.that(result.stdout.strip(), eq=expected)
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=module,
                 source=module.read_text(encoding="utf-8"),
             ),
-            eq=None,
+            eq=module.read_text(encoding="utf-8"),
         )
 
     @classmethod
@@ -449,15 +450,14 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "    value: str\n\n"
             "print(DemoConfig(value='validated-value').value)\n"
         )
-        normalized = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=module,
+                source=source,
+            )
         )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
+        module.write_text(normalized, encoding="utf-8")
         outcome = tm.ok(
             u.Cli.run(
                 (sys.executable, str(module)),
@@ -467,13 +467,13 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
         tm.ok(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout.strip(), eq="validated-value")
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=module,
                 source=module.read_text(encoding="utf-8"),
             ),
-            eq=None,
+            eq=module.read_text(encoding="utf-8"),
         )
 
     @classmethod
@@ -521,15 +521,14 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             f"{consumer}\n"
             "print(capture())\nprint(consume())\n"
         )
-        normalized = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=module,
+                source=source,
+            )
         )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
+        module.write_text(normalized, encoding="utf-8")
         outcome = tm.ok(
             u.Cli.run(
                 (sys.executable, str(module)),
@@ -539,13 +538,13 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
         tm.ok(u.Cli.process_succeeded(outcome.outcome))
         tm.that(outcome.stdout.splitlines(), eq=["local-value", "provider-value"])
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=module,
                 source=module.read_text(encoding="utf-8"),
             ),
-            eq=None,
+            eq=module.read_text(encoding="utf-8"),
         )
 
 
@@ -684,11 +683,11 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
             )
         )
         tm.ok(u.Cli.process_succeeded(process.outcome))
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=target, source=normalized
             ),
-            eq=None,
+            eq=normalized,
         )
 
     @classmethod
@@ -764,11 +763,11 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
         desired = tm.not_none(plans[0].desired_content).decode(c.DEFAULT_ENCODING)
         tm.that(desired, has="from demo_pkg import m")
         target.write_text(desired, encoding=c.DEFAULT_ENCODING)
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=target, source=desired
             ),
-            eq=None,
+            eq=desired,
         )
         process = tm.ok(
             u.Cli.run(

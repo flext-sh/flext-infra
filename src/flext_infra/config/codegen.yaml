@@ -263,7 +263,7 @@ Infra:
       # The selected fork preserves region coverage and resolves opaque source
       # bindings lazily; stale transitive metadata must not select an older source.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@becece05c27c3189b12a06f3fbfa28ad62a98a96
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@41dd74bf11b11f874bac008cc82bea71e5f4b863
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -585,6 +585,7 @@ Infra:
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
+      kind: internal_flext
 
     profiles:
     - name: workspace
@@ -603,7 +604,6 @@ Infra:
       # findings. The receipt never converts the native command status to green.
       gate_acceptance_policy: complete_execution
       gate_receipts_directory: .reports/gates
-      lint_freeze_catalog: config/lint_freeze_catalog.json
       check_report_output_environment_variable: FLEXT_CHECK_REPORT_OUTPUT
       generation_profile_path: .reports/codegen/gen.pstats
       modification_profile_path: .reports/refactor/mod.pstats
@@ -1497,7 +1497,7 @@ Infra:
       # the CodegenConfigSpec.gitignore_sections projection (deduplicated, SSOT
       # wins); declare here only what the SSOT cannot express (file globs,
       # secrets, editor/OS noise).
-      ignore_sections:
+      gitignore_sections:
       - name: "BLOCK EVERYTHING BY DEFAULT"
         profiles: [ workspace ]
         patterns:

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -66,10 +66,6 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             tuple[t.NonEmptyStr, ...],
             m.Field(description="OPTIONS or HELP values that display a verb contract"),
         ] = tuple(sorted(c.Infra.PROMOTED_ENV_ENABLED_VALUES))
-        flext_editable_selection_relative_path: Annotated[
-            Path,
-            m.Field(description="Repository-relative FLEXT editable selection receipt"),
-        ] = c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH
 
     class BootstrapRequirementsRenderSpec(
         FlextInfraModelsConfigContract.ConfigContract
@@ -105,10 +101,6 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(
                 description="Repository-relative early bootstrap evidence destination"
             ),
-        ]
-        flext_editable_selection_relative_path: Annotated[
-            Path,
-            m.Field(description="Repository-relative FLEXT editable selection receipt"),
         ]
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
@@ -305,7 +297,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             Sequence[str],
             m.Field(description="Derived uv editable-build cache-key files"),
         ] = ()
-        audit: Annotated[
+        docs_audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(
                 description="Repository-owned documentation audit declarations",
@@ -400,12 +392,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             FlextInfraModelsConfigScaffold.ScaffoldSpec,
             m.Field(description="New-project scaffold policy"),
         ]
-        ignore_sections: Annotated[
+        gitignore_sections: Annotated[
             tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(
                 min_length=1,
                 description=(
-                    "Canonical .ignore sections derived from the artifact SSOT"
+                    "Canonical .gitignore sections derived from the artifact SSOT"
                 ),
             ),
         ]
@@ -480,15 +472,6 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         upstream: Annotated[
             t.NonEmptyStr,
             m.Field(description="Upstream FLEXT facade module"),
-        ]
-        upstream_facades: Annotated[
-            Mapping[t.NonEmptyStr, t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Facade class the upstream declares for each letter in the "
-                    "__all__ that binds it; scaffolded facades extend that class"
-                ),
-            ),
         ]
         inherited_facets: Annotated[
             tuple[t.NonEmptyStr, ...],

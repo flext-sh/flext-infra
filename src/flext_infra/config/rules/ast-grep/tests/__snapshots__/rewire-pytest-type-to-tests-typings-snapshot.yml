@@ -1,0 +1,34 @@
+id: rewire-pytest-type-to-tests-typings
+snapshots:
+  "def probe(monkeypatch: pytest.MonkeyPatch) -> None: ...\n":
+    fixed: |
+      def probe(monkeypatch: t.Tests.MonkeyPatch) -> None: ...
+    labels:
+    - source: pytest.MonkeyPatch
+      style: primary
+      start: 23
+      end: 41
+    - source: pytest
+      style: secondary
+      start: 23
+      end: 29
+    - source: MonkeyPatch
+      style: secondary
+      start: 30
+      end: 41
+  "def probe(request: pytest.FixtureRequest) -> None: ...\n":
+    fixed: |
+      def probe(request: t.Tests.FixtureRequest) -> None: ...
+    labels:
+    - source: pytest.FixtureRequest
+      style: primary
+      start: 19
+      end: 40
+    - source: pytest
+      style: secondary
+      start: 19
+      end: 25
+    - source: FixtureRequest
+      style: secondary
+      start: 26
+      end: 40

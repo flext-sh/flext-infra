@@ -174,12 +174,6 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
             m.Field(description="Explicit repository integration contract"),
         ] = None
-        audit: Annotated[
-            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
-            m.Field(description="Own documentation audit declarations"),
-        ] = m.Field(
-            default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
-        )
         namespace_scan_dirs: Annotated[
             Sequence[str],
             m.Field(description="Own namespace analysis roots"),
@@ -222,9 +216,16 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Own canonical generation policy"),
         ] = FlextInfraConstantsConfig.CodegenKind.CONFORM
         kind: Annotated[
-            FlextInfraConstantsConfig.ProjectKind,
-            m.Field(description="Own governance profile and architecture boundary"),
-        ] = FlextInfraConstantsConfig.ProjectKind.INTERNAL_FLEXT
+            FlextInfraConstantsConfig.ProjectKind | None,
+            m.Field(
+                description=(
+                    "Own governance profile and architecture boundary. The "
+                    "package base bundle declares no project and so no kind; "
+                    "every project declares it in its own layer, and the "
+                    "project-boundary read fails closed when it is absent"
+                ),
+            ),
+        ] = None
         state: Annotated[
             FlextInfraConstantsConfig.RepositoryState,
             m.Field(description="Own lifecycle participation policy"),
@@ -554,7 +555,7 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        audit: Annotated[
+        docs_audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(
                 description="Repository-owned documentation audit declarations",
@@ -771,7 +772,7 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = ()
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        audit: Annotated[
+        docs_audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(
                 description="Validated local documentation audit declarations",

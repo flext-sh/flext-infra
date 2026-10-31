@@ -23,7 +23,9 @@ class TestsFlextInfraConstantsInfraExtra:
         """The real source artifact executes with its public contracts intact."""
         package = Path(inspect.getfile(c)).parent
         staged = tmp_path / package.name
-        projected = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        projected = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        )
         for path in package.rglob("*.py"):
             tm.ok(
                 u.Cli.atomic_write_text_file(
@@ -101,7 +103,9 @@ class TestsFlextInfraConstantsInfraExtra:
         }
         for path, source in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(path, source))
-        projected = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        projected = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        )
         tm.ok(u.Cli.atomic_write_text_file(package / "constants.py", projected))
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -132,7 +136,10 @@ class TestsFlextInfraConstantsInfraExtra:
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout.strip(), eq=f"{package.name}.constants")
-        tm.that(u.Infra.render_utility_facade(package, family="c"), eq=projected)
+        tm.that(
+            tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="c"))),
+            eq=projected,
+        )
 
     @staticmethod
     def test_github_constants_are_strings() -> None:

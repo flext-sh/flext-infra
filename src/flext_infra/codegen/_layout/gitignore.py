@@ -19,14 +19,14 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenLayoutGitignore:
-    """Ensure the layout ignore patterns for one project directory."""
+    """Ensure the layout gitignore patterns for one project directory."""
 
-    def _apply_ignore(
+    def _apply_gitignore(
         self,
         project_dir: Path,
         patterns: Sequence[str],
     ) -> p.Result[t.Infra.LayoutStatus]:
-        """Ensure ignore patterns via the canonical render or appending.
+        """Ensure gitignore patterns via the canonical render or appending.
 
         Returns:
             The resulting ``p.Result[t.Infra.LayoutStatus]``.
@@ -55,9 +55,9 @@ class FlextInfraCodegenLayoutGitignore:
             else before.value.content.decode(c.DEFAULT_ENCODING)
         )
         if managed.value is None:
-            desired = self._ignore_append_content(current, patterns)
+            desired = self._gitignore_append_content(current, patterns)
         else:
-            rendered = u.Infra.render_project_ignore(
+            rendered = u.Infra.render_project_gitignore(
                 inputs.spec,
                 profile=managed.value,
                 project_name=FlextInfraCodegenLayoutPlan.layout_project_name(
@@ -88,11 +88,11 @@ class FlextInfraCodegenLayoutGitignore:
         return r[t.Infra.LayoutStatus].ok(applied_status)
 
     @staticmethod
-    def _ignore_append_content(
+    def _gitignore_append_content(
         current: str,
         patterns: Sequence[str],
     ) -> str:
-        """Derive missing layout patterns from the captured ignore text.
+        """Derive missing layout patterns from the captured gitignore text.
 
         Returns:
             The original text or its extension with the missing patterns.

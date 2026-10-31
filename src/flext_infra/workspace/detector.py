@@ -329,12 +329,16 @@ class FlextInfraWorkspaceDetector(
         cls,
         repository_root: Path,
         *,
+        kind: c.Infra.ProjectKind,
         path: Path = Path(),
         composed: bool = False,
         declared_url: str | None = None,
         native_metadata: m.Infra.ProjectMetadataState | None = None,
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Build identity from validated checkout metadata and native Git inputs.
+
+        ``kind`` is the repository's own declared governance kind, read before
+        the reference exists; the reference never carries an assumed kind.
 
         Returns:
             The resulting ``p.Result[m.Infra.RepositoryRef]``.
@@ -397,7 +401,7 @@ class FlextInfraWorkspaceDetector(
                 path=path,
                 role=role,
                 provider=provider_name,
-                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+                kind=kind,
                 codegen=c.Infra.CodegenKind.CONFORM,
                 package=package,
                 # The checkout's own root package is its environment's
@@ -755,19 +759,19 @@ class FlextInfraWorkspaceDetector(
         routed = cls._beads_route_gate(subproject_root, context.workspace_beads)
         if routed.failure:
             return result_type.from_failure(routed)
+        inputs = u.Infra.load_repository_declaration_inputs(subproject_root)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
         repository = cls._local_repository_ref(
             subproject_root,
+            kind=u.Infra.declared_kind(inputs.value.spec, subproject_root),
             path=path,
             composed=True,
             declared_url=declared_url,
         )
         if repository.failure:
             return result_type.from_failure(repository)
-        return cls._member_commands_ref(
-            subproject_root,
-            repository.value,
-            workspace_beads=context.workspace_beads,
-        )
+        return cls._member_commands_ref(repository.value, inputs.value)
 
     @classmethod
     def _beads_route_gate(
@@ -803,27 +807,23 @@ class FlextInfraWorkspaceDetector(
     @classmethod
     def _member_commands_ref(
         cls,
-        subproject_root: Path,
         repository: m.Infra.RepositoryRef,
-        *,
-        workspace_beads: m.Infra.BeadsProjectSpec | None,
+        inputs: m.Infra.RepositoryDeclarationInputs,
     ) -> p.Result[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]:
         """Attach the commands a member declares in its own manifest.
+
+        ``inputs`` is the member declaration the reference was built from, read
+        once before the reference existed.
 
         Returns:
             The member reference with its declared commands.
 
         """
         result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
-        del workspace_beads
-        inputs = u.Infra.load_repository_declaration_inputs(subproject_root)
-        if inputs.failure:
-            return result_type.from_failure(inputs)
-        declaration = inputs.value.spec
         configured = cls._configured_repository_ref(
-            declaration,
+            inputs.spec,
             observed=repository,
-            sources=inputs.value.sources,
+            sources=inputs.sources,
         )
         if configured.failure:
             return result_type.from_failure(configured)
@@ -890,7 +890,7 @@ class FlextInfraWorkspaceDetector(
     def _assembled_workspace_spec(
         cls,
         resolved_root: Path,
-        identity: str,
+        identity: m.Infra.GitIdentityReport,
         inputs_value: m.Infra.CodegenInputs,
         *,
         allow_unprovisioned_members: bool,
@@ -901,7 +901,7 @@ class FlextInfraWorkspaceDetector(
             The resulting ``p.Result[m.Infra.WorkspaceSpec]``.
 
         """
-        declaration = inputs_value.spec.repository or m.Infra.RepositoryDeltaSpec()
+        declaration = inputs_value.spec.repository
         topology = u.Cli.atomic_read_binary_file_state(
             resolved_root / c.Infra.GITMODULES, required=False
         )
@@ -951,7 +951,7 @@ class FlextInfraWorkspaceDetector(
                 integration=declaration.integration,
                 candidate_dependencies=declaration.candidate_dependencies,
                 candidate_bootstrap_targets=declaration.candidate_bootstrap_targets,
-                audit=declaration.audit,
+                docs_audit=declaration.docs_audit,
                 subprojects=tuple(resolved_refs[1][0]),
                 pending_subprojects=tuple(resolved_refs[1][2]),
                 external_dependency_paths=tuple(resolved_refs[1][1]),
@@ -1217,7 +1217,11 @@ class FlextInfraWorkspaceDetector(
                 ],
             ]
         ]
-        repository = cls._local_repository_ref(resolved_root, composed=composed)
+        repository = cls._local_repository_ref(
+            resolved_root,
+            kind=u.Infra.declared_kind(inputs.spec.repository, resolved_root),
+            composed=composed,
+        )
         if repository.failure:
             return result_type.from_failure(repository)
         topology = cls._load_subprojects(
@@ -1238,7 +1242,7 @@ class FlextInfraWorkspaceDetector(
                 ),
             },
         )
-        declaration = inputs.spec.repository or m.Infra.RepositoryDeltaSpec()
+        declaration = inputs.spec.repository
         declared_repository = cls._configured_repository_ref(
             declaration,
             observed=observed_repository,
@@ -1292,32 +1296,11 @@ class FlextInfraWorkspaceDetector(
             if loaded.failure:
                 return r[m.Infra.RepositoryConformTarget].from_failure(loaded)
             workspace = loaded.value
-        if workspace.repository.path != Path():
-            return r[m.Infra.RepositoryConformTarget].fail(
-                "local workspace repository path must be '.'",
-            )
-        topology = tuple(
-            state
-            for state in workspace.inputs
-            if state.path == resolved_root / c.Infra.GITMODULES
-        )
-        if not topology:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                f"workspace has no checkout identity observation: {resolved_root}",
-            )
-        metadata_path = resolved_root / c.PYPROJECT_FILENAME
-        if not any(
-            state.path == metadata_path for state in workspace.repository.inputs
-        ) and (
-            workspace.project is None
-            or metadata_path.exists()
-            or metadata_path.is_symlink()
-        ):
-            return r[m.Infra.RepositoryConformTarget].fail(
-                f"workspace has no admitted project metadata: {metadata_path}",
-            )
+        topology = cls._conform_topology(workspace, resolved_root)
+        if topology.failure:
+            return r[m.Infra.RepositoryConformTarget].from_failure(topology)
         verified = u.Cli.atomic_verify_binary_file_states((
-            *topology,
+            *topology.value,
             *workspace.repository.inputs,
         ))
         if verified.failure:
@@ -1328,7 +1311,7 @@ class FlextInfraWorkspaceDetector(
             if captured.failure:
                 return r[m.Infra.RepositoryConformTarget].from_failure(captured)
             inputs = captured.value
-        declaration = inputs.spec.repository or m.Infra.RepositoryDeltaSpec()
+        declaration = inputs.spec.repository
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=workspace.repository,
@@ -1344,6 +1327,44 @@ class FlextInfraWorkspaceDetector(
                 external_dependency_paths=workspace.external_dependency_paths,
             ),
         )
+
+    @staticmethod
+    def _conform_topology(
+        workspace: m.Infra.WorkspaceSpec,
+        resolved_root: Path,
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+        """Elect the checkout identity observations a conform target verifies.
+
+        Returns:
+            The ``.gitmodules`` observations binding the workspace to the checkout.
+
+        """
+        result_type = r[tuple[m.Cli.AtomicFileState, ...]]
+        if workspace.repository.path != Path():
+            return result_type.fail(
+                "local workspace repository path must be '.'",
+            )
+        topology = tuple(
+            state
+            for state in workspace.inputs
+            if state.path == resolved_root / c.Infra.GITMODULES
+        )
+        if not topology:
+            return result_type.fail(
+                f"workspace has no checkout identity observation: {resolved_root}",
+            )
+        metadata_path = resolved_root / c.PYPROJECT_FILENAME
+        if not any(
+            state.path == metadata_path for state in workspace.repository.inputs
+        ) and (
+            workspace.project is None
+            or metadata_path.exists()
+            or metadata_path.is_symlink()
+        ):
+            return result_type.fail(
+                f"workspace has no admitted project metadata: {metadata_path}",
+            )
+        return result_type.ok(topology)
 
     @staticmethod
     def resolve_repository_root(repository_root: Path) -> p.Result[Path]:

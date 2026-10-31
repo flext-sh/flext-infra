@@ -222,7 +222,7 @@ class FlextInfraModelsConfigScaffold:
             FlextInfraModelsConfigScaffold.ScaffoldPingExampleSpec,
             m.Field(description="Functional scaffold example"),
         ]
-        ignore_sections: Annotated[
+        gitignore_sections: Annotated[
             tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
             m.Field(min_length=1, description="Generated Git ignore sections"),
         ]

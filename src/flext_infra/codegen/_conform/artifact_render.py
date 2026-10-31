@@ -20,9 +20,8 @@ from flext_infra.deps.phases import FlextInfraToolTablesPhase
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
     """Governed artifact rendering and project overlay composition."""
 
-    _project_contexts: dict[bool, m.Infra.ProjectRenderContext] | None = m.PrivateAttr(
-        default=None
-    )
+    _project_scope_active: bool = m.PrivateAttr(default=False)
+    _project_context: m.Infra.ProjectRenderContext | None = m.PrivateAttr(default=None)
 
     @contextmanager
     def project_render_scope(self) -> Generator[None]:
@@ -36,10 +35,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         try:
-            self._project_contexts = {}
+            self._project_scope_active = True
             yield
         finally:
-            self._project_contexts = None
+            self._project_scope_active = False
+            self._project_context = None
 
     @staticmethod
     def render_artifact_source(
@@ -263,7 +263,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         if destination == c.Infra.GITIGNORE:
-            overlay = cls._composed_ignore_overlay(
+            overlay = cls._composed_gitignore_overlay(
                 repository_root,
                 rendered,
                 render_inputs,
@@ -281,13 +281,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         return composer(repository_root, rendered, render_inputs)
 
     @classmethod
-    def _composed_ignore_overlay(
+    def _composed_gitignore_overlay(
         cls,
         repository_root: Path,
         rendered: str,
         render_inputs: m.Infra.CodegenRenderInputs | None,
     ) -> p.Result[str]:
-        """Preserve the live ignore's owned blocks in the render.
+        """Preserve the live gitignore's owned blocks in the render.
 
         Returns:
             The resulting ``p.Result[str]``.
@@ -300,10 +300,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             artifacts = resolved.value.artifacts
         else:
             artifacts = render_inputs.managed_artifacts.resolution.artifacts
-        suffix = u.Infra.ignore_runtime_suffix(config.Infra.codegen)
+        suffix = u.Infra.gitignore_runtime_suffix(config.Infra.codegen)
         if suffix.failure:
             return r[str].from_failure(suffix)
-        return u.Infra.preserve_project_ignore_blocks(
+        return u.Infra.preserve_project_gitignore_blocks(
             rendered,
             repository_root,
             artifacts.Gitignore.preserved_blocks,
@@ -710,18 +710,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             context = resolver(render_inputs, destination)
             if context is not None:
                 return context
-        return self._project_or_pass_context(
-            render_inputs,
-            project_context,
-            destination=destination,
-        )
+        return self._project_or_pass_context(render_inputs, project_context)
 
     def _repo_config_context(
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
         destination: str,
     ) -> p.Result[p.Model] | None:
-        """Resolve the repository-shaped config specs (ignore/sonar/qlty/envrc).
+        """Resolve the repository-shaped config specs (gitignore/sonar/qlty/envrc).
 
         Returns:
             The resulting ``p.Result[p.Model] | None`` where None marks a
@@ -738,7 +734,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
             return r[p.Model].ok(
                 m.Infra.GitignoreRenderSpec(
-                    ignore_sections=u.Infra.ignore_sections(
+                    gitignore_sections=u.Infra.gitignore_sections(
                         codegen,
                         profile=target.make_profile,
                         # The declared distribution is the project identity; a
@@ -1093,8 +1089,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
         project_context: m.Infra.ProjectRenderContext | None,
-        *,
-        destination: str,
     ) -> p.Result[p.Model]:
         """Pass a supplied project context through, or derive one on demand.
 
@@ -1104,19 +1098,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         if project_context is not None:
             return r[p.Model].ok(project_context)
-        scaffold_sources = destination != c.PYPROJECT_FILENAME
-        contexts = self._project_contexts
-        derived = None if contexts is None else contexts.get(scaffold_sources)
-        if derived is not None:
-            return r[p.Model].ok(derived)
-        context_result = self._project_render_context(
-            render_inputs,
-            scaffold_sources=scaffold_sources,
-        )
+        if self._project_context is not None:
+            return r[p.Model].ok(self._project_context)
+        context_result = self._project_render_context(render_inputs)
         if context_result.failure:
             return r[p.Model].from_failure(context_result)
-        if contexts is not None:
-            contexts[scaffold_sources] = context_result.value
+        if self._project_scope_active:
+            self._project_context = context_result.value
         return r[p.Model].ok(context_result.value)
 
     def _makefile_render_spec(
@@ -1147,9 +1135,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 ),
                 bootstrap_report_relative_path=(
                     c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
-                ),
-                flext_editable_selection_relative_path=(
-                    c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH
                 ),
                 pytest=pytest,
                 release_verbs=self._release_product_verbs(target.repository),

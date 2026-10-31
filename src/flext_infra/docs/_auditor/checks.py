@@ -32,7 +32,7 @@ class FlextInfraDocsAuditorChecks:
         """
         return u.Infra.docs_text_token_issues(
             scope,
-            tokens=u.Infra.audit_policy(scope).forbidden_terms,
+            tokens=u.Infra.docs_audit_policy(scope).forbidden_terms,
             issue_type="forbidden_term",
         )
 
@@ -46,7 +46,7 @@ class FlextInfraDocsAuditorChecks:
         """
         return u.Infra.docs_placeholder_issues(
             scope,
-            patterns=u.Infra.audit_policy(scope).placeholder_patterns,
+            patterns=u.Infra.docs_audit_policy(scope).placeholder_patterns,
         )
 
     @staticmethod
@@ -59,7 +59,7 @@ class FlextInfraDocsAuditorChecks:
             Machine-local paths outside exact historical evidence files.
 
         """
-        policy = u.Infra.audit_policy(scope)
+        policy = u.Infra.docs_audit_policy(scope)
         return u.Infra.docs_machine_path_issues(
             scope,
             historical_evidence_files=policy.historical_evidence_files,

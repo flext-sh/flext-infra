@@ -99,8 +99,8 @@ class TestsFlextInfraDeclarationRelocationSupport:
             path.write_text(source, encoding="utf-8")
         if "uncomposed" not in variants:
             facade_path = package / c.Infra.MODELS_PY
-            rendered = tm.not_none(
-                u.Infra.render_utility_facade(package, family="m"),
+            rendered = tm.ok(
+                tm.not_none(u.Infra.render_utility_facade(package, family="m")),
             )
             sources[facade_path] = rendered
             facade_path.write_text(rendered, encoding="utf-8")

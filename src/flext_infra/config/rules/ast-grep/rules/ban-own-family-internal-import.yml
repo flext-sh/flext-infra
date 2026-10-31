@@ -26,9 +26,7 @@ files:
   - "**/*.py"
 ignores:
   - "**/__init__.py"
-  - "**/tests/**"
   - "**/examples/**"
-  - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-068]
   ruling: operator-ruling-20261022-module-facade-config-layout

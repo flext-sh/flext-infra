@@ -64,7 +64,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                     or path.parent / c.Infra.INIT_PY not in sources
                 ):
                     continue
-                module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+                module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     source_project.get_pymodule(
                         FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
                             source_project, path

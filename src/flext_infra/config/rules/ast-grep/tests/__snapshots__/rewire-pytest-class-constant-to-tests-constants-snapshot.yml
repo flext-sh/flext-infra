@@ -1,0 +1,37 @@
+id: rewire-pytest-class-constant-to-tests-constants
+snapshots:
+  "code = pytest.ExitCode.OK\n":
+    fixed: |
+      code = c.Tests.ExitCode.OK
+    labels:
+    - source: pytest.ExitCode
+      style: primary
+      start: 7
+      end: 22
+    - source: pytest
+      style: secondary
+      start: 7
+      end: 13
+    - source: ExitCode
+      style: secondary
+      start: 14
+      end: 22
+  "try:\n    run()\nexcept pytest.UsageError:\n    raise\n":
+    fixed: |
+      try:
+          run()
+      except c.Tests.UsageError:
+          raise
+    labels:
+    - source: pytest.UsageError
+      style: primary
+      start: 22
+      end: 39
+    - source: pytest
+      style: secondary
+      start: 22
+      end: 28
+    - source: UsageError
+      style: secondary
+      start: 29
+      end: 39

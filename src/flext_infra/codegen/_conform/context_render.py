@@ -555,7 +555,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         render_inputs: m.Infra.CodegenRenderInputs,
         *,
         planned_data_files: Sequence[str] = (),
-        scaffold_sources: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates.
 
@@ -605,13 +604,13 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.ProjectRenderContext].from_failure(version)
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
-                audit=workspace.audit,
+                docs_audit=workspace.docs_audit,
                 dist=repository.distribution,
                 make_profile=profile,
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 tooling_runtime=tooling_runtime,
                 scaffold=codegen.scaffold,
-                ignore_sections=u.Infra.ignore_sections(
+                gitignore_sections=u.Infra.gitignore_sections(
                     codegen,
                     profile=profile,
                     # The declared distribution is the project identity: a
@@ -670,16 +669,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 alias=project.alias,
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
-                # Scaffolded facades extend the class each upstream letter names
-                # in the __all__ that declares it, never the letter itself.
-                upstream_facades=(
-                    u.Infra.facade_classes(
-                        project.upstream,
-                        source_root=repository_root,
-                    )
-                    if scaffold_sources
-                    else {}
-                ),
                 inherited_facets=project.inherited_facets,
                 root_packages=project.root_packages,
                 repository_namespace_packages=project.repository_namespace_packages,
@@ -731,64 +720,86 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """
         result_type = r[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]
         if (
-            manifest_source is not None
-            or (repository_root / c.PYPROJECT_FILENAME).is_file()
+            manifest_source is None
+            and not (repository_root / c.PYPROJECT_FILENAME).is_file()
         ):
-            if manifest_source is None:
-                metadata = u.Infra.read_project_metadata_result(repository_root)
-                if metadata.failure:
-                    return result_type.from_failure(metadata)
-                requirements = metadata.value.project.dependencies
-                payload = u.Infra.pyproject_payload(
-                    repository_root / c.PYPROJECT_FILENAME
-                )
-            else:
-                recovered = u.Infra.recover_live_pyproject_text(manifest_source)
-                if recovered.failure:
-                    return result_type.from_failure(recovered)
-                payload = u.Cli.toml_mapping_from_text(recovered.value)
-                if payload is None:
-                    return result_type.fail(
-                        f"captured project metadata is invalid: {repository_root}"
-                    )
-                declared = r[m.Infra.DependencyManifestSpec].create_from_callable(
-                    lambda: m.Infra.DependencyManifestSpec.model_validate(payload)
-                )
-                if declared.failure:
-                    return result_type.from_failure(declared)
-                requirements = declared.value.dependencies
-            groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
-            runtime = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
-                partial(
-                    t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
-                    requirements,
-                ),
-            )
-            if runtime.failure:
-                return result_type.from_failure(runtime)
-            declared_dev = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
-                partial(
-                    t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
-                    (
-                        *t.Infra.STR_SEQ_ADAPTER.validate_python(
-                            groups.get(c.Infra.DEV, ()),
-                        ),
-                        *u.Infra.canonical_dev_dependencies_from_payload(payload),
+            return result_type.ok((project.runtime_dependency_overlay, ()))
+        declared = FlextInfraCodegenConformContextRender._declared_runtime_requirements(
+            repository_root, manifest_source=manifest_source
+        )
+        if declared.failure:
+            return result_type.from_failure(declared)
+        payload, runtime = declared.value
+        groups = u.Cli.toml_mapping_child(payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        declared_dev = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
+            partial(
+                t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python,
+                (
+                    *t.Infra.STR_SEQ_ADAPTER.validate_python(
+                        groups.get(c.Infra.DEV, ()),
                     ),
+                    *u.Infra.canonical_dev_dependencies_from_payload(payload),
                 ),
+            ),
+        )
+        if declared_dev.failure:
+            return result_type.from_failure(declared_dev)
+        return result_type.ok((
+            tuple(
+                dict.fromkeys((
+                    *runtime,
+                    *project.runtime_dependency_overlay,
+                ))
+            ),
+            declared_dev.value,
+        ))
+
+    @staticmethod
+    def _declared_runtime_requirements(
+        repository_root: Path,
+        *,
+        manifest_source: str | None,
+    ) -> p.Result[tuple[t.JsonMapping, tuple[t.NonEmptyStr, ...]]]:
+        """Read one existing manifest's payload and declared runtime requirements.
+
+        Args:
+            repository_root: Project root whose pyproject declares the facts.
+            manifest_source: Original captured TOML; when provided, no file is read.
+
+        Returns:
+            The manifest payload with its non-empty runtime requirement names,
+            or the first metadata failure.
+
+        """
+        result_type = r[tuple[t.JsonMapping, tuple[t.NonEmptyStr, ...]]]
+        if manifest_source is None:
+            metadata = u.Infra.read_project_metadata_result(repository_root)
+            if metadata.failure:
+                return result_type.from_failure(metadata)
+            requirements = metadata.value.project.dependencies
+            payload = u.Infra.pyproject_payload(repository_root / c.PYPROJECT_FILENAME)
+        else:
+            recovered = u.Infra.recover_live_pyproject_text(manifest_source)
+            if recovered.failure:
+                return result_type.from_failure(recovered)
+            parsed = u.Cli.toml_mapping_from_text(recovered.value)
+            if parsed is None:
+                return result_type.fail(
+                    f"captured project metadata is invalid: {repository_root}"
+                )
+            declared = r[m.Infra.DependencyManifestSpec].create_from_callable(
+                lambda: m.Infra.DependencyManifestSpec.model_validate(parsed)
             )
-            if declared_dev.failure:
-                return result_type.from_failure(declared_dev)
-            return result_type.ok((
-                tuple(
-                    dict.fromkeys((
-                        *runtime.value,
-                        *project.runtime_dependency_overlay,
-                    ))
-                ),
-                declared_dev.value,
-            ))
-        return result_type.ok((project.runtime_dependency_overlay, ()))
+            if declared.failure:
+                return result_type.from_failure(declared)
+            requirements = declared.value.dependencies
+            payload = parsed
+        runtime = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
+            partial(t.Infra.NON_EMPTY_STR_SEQ_ADAPTER.validate_python, requirements),
+        )
+        if runtime.failure:
+            return result_type.from_failure(runtime)
+        return result_type.ok((payload, runtime.value))
 
     def _validated_render_project(
         self,
@@ -867,7 +878,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         generated marker is its projection. An absent file is not a failure —
         it means Beads has not minted an identity for this checkout yet.
 
-        Why the marker read-back: identity.toml is a ignored per-checkout
+        Why the marker read-back: identity.toml is a gitignored per-checkout
         file, so CI clones and fresh runners run unminted while the TRACKED
         marker still carries the ledger identity the repository was cloned
         with. Rendering ``project_id: null`` over it dirties the tree (the

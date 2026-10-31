@@ -562,7 +562,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         states: MutableMapping[Path, m.Cli.AtomicFileState] = {
             state.path: state for state in inputs
         }
-        manifest, excluded_outputs = cls.collection_manifest(
+        manifest, excluded_outputs = cls.docs_collection_manifest(
             canonical,
             projection,
             states,

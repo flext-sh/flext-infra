@@ -50,8 +50,7 @@ class FlextInfraUtilitiesModelsProtocol:
             An absent declared facade/layout has no applicable projection.
 
         """
-        projection = cls._ModelProtocolProjection(workspace)
-        return projection._inventory().flat_map(lambda _: projection.render())
+        return cls._ModelProtocolProjection(workspace).sources()
 
     class _ModelProtocolProjection(
         FlextInfraUtilitiesSemanticCutover,
@@ -73,6 +72,15 @@ class FlextInfraUtilitiesModelsProtocol:
             self.type_parameters: dict[str, list[t.Infra.AstTypeParameter]] = {}
             self.dependencies: set[str] = set()
             self.member_cache: dict[str, p.Infra.RopePyName | None] = {}
+
+        def sources(self) -> p.Result[Mapping[Path, str]]:
+            """Admit the native inventory, then render its protocol sources.
+
+            Returns:
+                Generated data contracts, or the inventory or render failure.
+
+            """
+            return self._inventory().flat_map(lambda _: self.render())
 
         def render(self) -> p.Result[Mapping[Path, str]]:
             """Render the admitted native model inventory without publishing it.
@@ -312,19 +320,35 @@ class FlextInfraUtilitiesModelsProtocol:
                         return result_type.fail(
                             f"model class alias has no canonical identity: m.{route}"
                         )
-                    if canonical is not member:
-                        member = canonical
-                        child = member.get_object()
-                        if not self.py_class(child):
-                            continue
-                    ancestry = self.class_ancestry(child)
-                    if model_base in ancestry:
-                        previous = self.models.setdefault(route, member)
-                        if not self.same_name(previous, member):
-                            return result_type.fail(
-                                f"competing model identities for p.{route}"
-                            )
-                    pending.append((f"{route}.", member, (*ancestors, value)))
+                    canonical_class = canonical.get_object()
+                    if not self.py_class(canonical_class):
+                        continue
+                    registered = self._register_model(
+                        route, canonical, canonical_class, model_base
+                    )
+                    if registered.failure:
+                        return result_type.from_failure(registered)
+                    pending.append((f"{route}.", canonical, (*ancestors, value)))
+            return result_type.ok(value=True)
+
+        def _register_model(
+            self,
+            route: str,
+            binding: p.Infra.RopePyName,
+            model_class: p.Infra.RopeSourceClass,
+            model_base: p.Infra.RopePyObject,
+        ) -> p.Result[bool]:
+            """Record one canonical model identity under its published route.
+
+            Returns:
+                Admission, or a competing identity failure for the route.
+
+            """
+            result_type = r[bool]
+            if model_base in self.class_ancestry(model_class):
+                previous = self.models.setdefault(route, binding)
+                if not self.same_name(previous, binding):
+                    return result_type.fail(f"competing model identities for p.{route}")
             return result_type.ok(value=True)
 
         def _consumed(self) -> set[str]:

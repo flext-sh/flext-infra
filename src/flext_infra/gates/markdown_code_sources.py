@@ -96,6 +96,8 @@ class FlextInfraMarkdownCodeSources:
 
         """
         for md_path in markdown_files:
+            if not md_path.is_file():
+                continue
             relative_posix = md_path.relative_to(project_dir).as_posix()
             content = md_path.read_text(c.DEFAULT_ENCODING)
             for index, fence in FlextInfraMarkdownCodeSources.formattable_fences(
@@ -129,6 +131,10 @@ class FlextInfraMarkdownCodeSources:
         """
         parser = DocTestParser()
         for py_path in u.Infra.governed_scope_files(project_dir, ["*.py"], scope_facts):
+            # The shared worktree mutates between the tracked listing and this
+            # read; a source that vanished holds no doctest examples to yield.
+            if not py_path.is_file():
+                continue
             text = py_path.read_text(c.DEFAULT_ENCODING)
             if c.Infra.MARKDOWN_CODE_DOCTEST_PROMPT in text:
                 yield from FlextInfraMarkdownCodeSources._module_doctest_sources(

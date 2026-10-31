@@ -3,25 +3,25 @@
 # presets. Every rule here carries a fix or a zero-occurrence detection so
 # `make mod` stays at a green fixed point.
 #
-# `model_config` is a `ConfigDict`; a raw dict bypasses the typed key set. In a
-# module that binds the models facade `m`, the dict literal is rewritten to the
-# equivalent `m.ConfigDict(key=value, ...)` call (each string-keyed pair becomes a
-# keyword argument). The existing pydantic-model-config-*-classvar rules then add
-# the `ClassVar[...]` annotation in the same `make mod` fixed point. Modules that
-# do not bind `m` are reported by the companion rule below.
+# `model_config` is a `ConfigDict`; a raw dict bypasses the typed key set. The
+# dict literal is rewritten to the equivalent `m.ConfigDict(key=value, ...)`
+# call (each string-keyed pair becomes a keyword argument). A module that does
+# not bind `m` yet receives it from the generated import-header rule of its
+# declaring package in the same `make mod` fixed point, and the
+# pydantic-model-config-*-classvar rules add the `ClassVar[...]` annotation.
+# The models family itself (still assembling `m`) and layer zero (which imports
+# no own-namespace object) are scoped out and reported by the companion rule.
 id: rewire-raw-model-config-dict
 language: python
 severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
+metadata:
+  scope:
+    not-in: [ facade-family-m, layer-zero ]
 rule:
   all:
     - kind: assignment
@@ -32,12 +32,6 @@ rule:
         field: right
         kind: dictionary
         pattern: $DICT
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          stopBy: end
-          matches: m-imported-from-flext
 rewriters:
   - id: string-pair-to-keyword
     rule:
@@ -73,21 +67,21 @@ message: >-
   `m.ConfigDict(...)`. Prefer inheriting the `m.*` preset that already encodes
   this configuration.
 ---
-# Detection-only companion: a raw `model_config` dict in a module that does not
-# bind `m`. A blind fix would emit an undefined name.
-id: rewire-raw-model-config-dict-missing-m-import
+# Detection-only companion: a raw `model_config` dict inside the models family
+# or layer zero, where the `m` facade is not yet available. The typed form there
+# is pydantic's own `ConfigDict` bound by the family's foundation owner, or the
+# inherited `m.*` preset; which one applies is the owner's decision.
+id: rewire-raw-model-config-dict-in-foundation
 language: python
 severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
+metadata:
+  scope:
+    in: [ facade-family-m, layer-zero ]
 rule:
   all:
     - kind: assignment
@@ -97,18 +91,11 @@ rule:
     - has:
         field: right
         kind: dictionary
-    - inside:
-        kind: module
-        stopBy: end
-        not:
-          has:
-            stopBy: end
-            matches: m-imported-from-flext
 message: >-
-  where: this `model_config` is a raw dict. why: the typed `ConfigDict` contract
-  owns model configuration. fix: bind the models facade `m` (or, inside a
-  flext-core preset owner, import pydantic's `ConfigDict`) so the rewrite to
-  `ConfigDict(...)` applies, or inherit the `m.*` preset that encodes it.
+  where: this `model_config` is a raw dict inside the models family or layer
+  zero. why: the typed `ConfigDict` contract owns model configuration and `m`
+  is not available here. fix: declare `ConfigDict(...)` through the foundation
+  owner's binding, or inherit the `m.*` preset that encodes it.
 ---
 # `t.Port[P]` validates the value with `isinstance` (pydantic `InstanceOf`), which
 # needs one class. An optional port keeps `None` outside the port so each union
@@ -119,11 +106,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:

@@ -141,7 +141,7 @@ class FlextInfraModHandlers:
                 csv=str(config_dir / declared.csv),
                 roots=tuple(str((root / value).resolve()) for value in declared.roots)
                 or (str(root),),
-                apply=request.apply and not request.check and not request.dry_run_mode,
+                apply=request.apply,
                 bindings=declared.bindings,
                 rename_definitions=declared.rename_definitions,
                 text_globs=declared.text_globs,

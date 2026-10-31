@@ -14,10 +14,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  # Test trees import flext-tests fixtures from their submodules on purpose.
-  - "**/tests/**"
-  - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-015, ENFORCE-099]
 rule:

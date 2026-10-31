@@ -129,6 +129,8 @@ class FlextInfraConstantsSourceCode:
     "Header for shell auto-generated content."
     FUTURE_ANNOTATIONS: ClassVar[str] = "from __future__ import annotations"
     "Standard future annotations import line."
+    FUTURE_MODULE: ClassVar[str] = "__future__"
+    "Compiler-directive module whose imported names never shadow a submodule."
     RUNTIME_MODEL_BASES: ClassVar[frozenset[str]] = frozenset({
         "BaseModel",
         "BaseSettings",

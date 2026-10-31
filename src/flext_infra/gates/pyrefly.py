@@ -111,6 +111,28 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
         )
 
     @override
+    def _evidence_output(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        result: p.Cli.CommandOutput,
+    ) -> str:
+        """Publish the tool streams plus the native JSON report this gate owns.
+
+        The JSON-mode invocation writes nothing to stdout or stderr, so the
+        raw receipt carries the report the tool itself produced.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        parts = [self._raw_output(result)]
+        report_path = self._native_report_path(project_dir, ctx)
+        if report_path.exists():
+            parts.append(report_path.read_text(encoding="utf-8"))
+        return "\n".join(part for part in parts if part)
+
+    @override
     def _parse_check_output(
         self,
         result: p.Cli.CommandOutput,

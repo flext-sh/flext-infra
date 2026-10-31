@@ -7,11 +7,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 metadata:
@@ -35,11 +30,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:
@@ -62,11 +52,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:
@@ -96,11 +81,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:
@@ -142,11 +122,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:
@@ -172,11 +147,9 @@ message: >-
 # Literal exports already infer their immutable string tuple. An annotation
 # must not be the only reason a facade depends on its own typing namespace.
 #
-# Scope is the fleet-wide facade family (src/<package>/constants.py, models.py,
-# protocols.py, typings.py and utilities.py), expressed with the same
-# **/src/**/<module>.py globs ban-concrete-flext-cli-import uses, so every
-# family distribution and workspace layout runs the same export hygiene
-# instead of only the flext package itself.
+# Scope is the fleet-wide facade family (constants.py, models.py,
+# protocols.py, typings.py and utilities.py) of the src and tests tiers alike:
+# test-suite facades follow the same publication law as src.
 id: infer-literal-facade-exports
 language: python
 severity: error
@@ -186,6 +159,11 @@ files:
   - "**/src/**/protocols.py"
   - "**/src/**/typings.py"
   - "**/src/**/utilities.py"
+  - "**/tests/**/constants.py"
+  - "**/tests/**/models.py"
+  - "**/tests/**/protocols.py"
+  - "**/tests/**/typings.py"
+  - "**/tests/**/utilities.py"
 rule:
   pattern:
     context: "__all__: tuple[str, ...] = $VALUE"

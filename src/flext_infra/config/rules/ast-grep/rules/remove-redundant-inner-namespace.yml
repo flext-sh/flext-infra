@@ -38,6 +38,8 @@ severity: error
 files:
   - "**/src/**/*.py"
   - "src/**/*.py"
+  - "**/tests/**/*.py"
+  - "tests/**/*.py"
 message: >-
   Inner namespace class `$INNER` declares nothing and re-inherits its enclosing
   class `$OUTER`; the parent already exposes the namespace through its MRO.

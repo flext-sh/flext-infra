@@ -201,17 +201,14 @@ class FlextInfraUtilitiesDependencyDeptry:
         if packages.failure:
             return result_type.from_failure(packages)
         roots: set[PurePosixPath] = set()
-        for declaration in packages.value:
-            path = PurePosixPath(declaration)
-            if path.is_absolute() or not path.parts or ".." in path.parts:
-                return result_type.fail(
-                    "deptry root is outside the declared wheel boundary: "
-                    f"{declaration!r} in {settings.path}",
-                )
-            roots.add(
-                cls._shipped_import_base(path, PurePosixPath(path.parts[-1])),
-            )
-        for declaration in (*shipped.value, *sources.value):
+        declarations: tuple[tuple[str, str | None], ...] = (
+            *((declaration, None) for declaration in packages.value),
+            *(
+                (declaration, sources.value.get(declaration, declaration))
+                for declaration in (*shipped.value, *sources.value)
+            ),
+        )
+        for declaration, target in declarations:
             path = PurePosixPath(declaration)
             if path.is_absolute() or not path.parts or ".." in path.parts:
                 return result_type.fail(
@@ -221,7 +218,7 @@ class FlextInfraUtilitiesDependencyDeptry:
             roots.add(
                 cls._shipped_import_base(
                     path,
-                    PurePosixPath(sources.value.get(declaration, declaration)),
+                    PurePosixPath(path.parts[-1] if target is None else target),
                 ),
             )
         return result_type.ok(

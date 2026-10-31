@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, runtime_checkable
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 
 if TYPE_CHECKING:
+    import ast
+
     from flext_core import p
 
     from flext_infra import m, t
@@ -631,7 +633,7 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
             self,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
-        def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
+        def get_ast(self) -> ast.Module: ...
 
         def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeModuleScope: ...
 
@@ -817,12 +819,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     @runtime_checkable
     class RopeDefaultWildcard(RopeWildcard[str], Protocol):
         """Native default wildcard consuming Rope's string constraint grammar."""
-
-    @runtime_checkable
-    class RopeChangeComputer(Protocol):
-        """Native source computation consumed by the restructuring planner."""
-
-        def get_changed(self) -> str | None: ...
 
     @runtime_checkable
     class RopeRestructure(Protocol):

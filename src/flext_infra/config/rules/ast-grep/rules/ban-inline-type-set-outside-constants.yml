@@ -3,8 +3,8 @@
 # no letter declares another letter's objects. An `isinstance`/`issubclass`
 # operand written as a union (`A | B`) or a tuple literal (`(A, B)`) is an
 # implicit runtime type-set constant: ENFORCE-079 places every such set on the
-# constants family under the `*_TYPES` convention (FlextConstantsGuards), and
-# `rewire-typing-type-tuples-to-constants` already routes reads to `c.<NAME>`.
+# constants family under the `*_TYPES` convention (FlextConstantsGuards), read
+# as `c.<NAME>`; the generated `type-set` rule rewrites a declared set to it.
 #
 # Scope is every module except the constants family itself, which is the one
 # owner allowed to spell the set. No token fix: the constant needs a name and a

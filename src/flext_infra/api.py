@@ -321,7 +321,6 @@ class FlextInfra(
                 if repository_root == root
                 else m.Infra.ModCommand(
                     repository_root=repository_root,
-                    apply=request.apply,
                     check=request.check,
                     dry_run_mode=request.dry_run_mode,
                     consumer_roots=request.consumer_roots,

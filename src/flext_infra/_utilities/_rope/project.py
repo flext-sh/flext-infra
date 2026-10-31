@@ -103,9 +103,58 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                             child.name
                         )
 
+        def bind_reads(
+            self,
+            *,
+            observations: tuple[m.Cli.AtomicFileState, ...] | None,
+            dependency_roots: tuple[str, ...],
+        ) -> None:
+            """Close captured reads, then pin the elected dependency roots.
+
+            ``None`` keeps native first-read observation open; an explicit
+            tuple, including an empty tuple, closes the source observation.
+
+            """
+            if observations is not None:
+                for state in observations:
+                    self._record_observation(state)
+                self._closed_observations = True
+            self._dependency_roots = tuple(
+                self._resolved(folder) for folder in dependency_roots
+            )
+            self._elect_root_owners()
+
+        def derive(self) -> FlextInfraRopeProject.OverlayFiles:
+            """Open a plan-free view over this view's physical witnesses.
+
+            The derived view shares the first-read captures, their directory
+            membership and path identities, so every view of one authority
+            reads the same bytes and a later disk edit remains a conflict in
+            all of them. Planned effects stay private to each view.
+
+            Returns:
+                A distinct view without planned effects.
+
+            """
+            view = type(self)(
+                (),
+                source_roots=self._source_roots,
+                dependency_roots=self._dependency_roots,
+            )
+            view._physical = self._physical
+            view._states = self._states
+            view._observed_children = self._observed_children
+            view._observed_directories = self._observed_directories
+            view._closed_observations = self._closed_observations
+            return view
+
         def select_source_roots(self, roots: tuple[Path, ...]) -> None:
             """Use the native election's current source roots for captured reads."""
             self._source_roots = tuple(self._resolved(str(path)) for path in roots)
+            self._elect_root_owners()
+
+        def _elect_root_owners(self) -> None:
+            """Elect the most specific source or dependency root per lookup."""
             owners = dict.fromkeys(self._dependency_roots, False)
             owners.update(dict.fromkeys(self._source_roots, True))
             self._root_owners = tuple(
@@ -164,6 +213,30 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             """
             if not self._closed_observations:
                 return False
+            return self._elected_source_owner(path)
+
+        def source_owned(self, path: Path) -> bool:
+            """Answer whether the project's elected source roots own a path.
+
+            Dependency roots elected from the Python path are lookup roots
+            only: a module they own is never an edit target of this project.
+
+            Returns:
+                Whether the most specific elected root is a source root.
+
+            """
+            return self._elected_source_owner(self._resolved(str(path)))
+
+        def _elected_source_owner(self, path: Path) -> bool:
+            """Elect the most specific source or dependency root for a physical path.
+
+            Source ownership wins a tie, including editable paths also present
+            on the Python path.
+
+            Returns:
+                Whether the electing root is a source root.
+
+            """
             return next(
                 (
                     source
@@ -487,6 +560,23 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             msg = "source plans require an authenticated source overlay"
             raise TypeError(msg)
         return files.plans
+
+    def source_owned(self, path: Path) -> bool:
+        """Separate this project's own sources from its dependency lookup roots.
+
+        Returns:
+            Whether an elected source root, not a Python-path dependency
+            root, owns the physical path.
+
+        Raises:
+            TypeError: The project does not own an authenticated overlay.
+
+        """
+        files = self.fscommands
+        if not isinstance(files, self.OverlayFiles):
+            msg = "source ownership requires an authenticated source overlay"
+            raise TypeError(msg)
+        return files.source_owned(path)
 
     @contextmanager
     def source_view(
@@ -874,37 +964,85 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
         additional_source_folders: tuple[str, ...] = (),
     ) -> Self:
-        """Bind authenticated reads to the existing native analysis project.
+        """Bind authenticated reads to an overlaid view of ``live``'s tree.
 
         ``additional_source_folders`` elect live or virtual import roots inside
         the project. Live roots retain their native directory identity; a
         virtual root must hold declared planned content.
         ``observations`` retain read authority independently of publication
         policy; observing a stub does not declare a stub file effect.
-        The caller injects this class's overlay before native initialization,
-        so preference election and candidate reads share their first witnesses.
+        Every call opens a distinct project, so two snapshots of one ``live``
+        project are independent views and closing one never closes ``live``.
+        A ``live`` project initialized over this class's overlay lends the
+        snapshot its captured physical witnesses, so preference election and
+        candidate reads share their first reads; a ``live`` project reading
+        the native tree contributes only its root and election.
 
         Returns:
-            The same project, core and observers reading the bound candidate.
+            A new overlaid project reading the bound candidate; the caller owns
+            closing it.
+
+        """
+        root = Path(live.root.real_path)
+        cls._validate_source_folders(root, additional_source_folders, declared_files)
+        files = (
+            live.fscommands.derive()
+            if isinstance(live.fscommands, cls.OverlayFiles)
+            else cls.OverlayFiles(
+                (),
+                source_roots=(
+                    root,
+                    *(root / folder for folder in election.source_folders),
+                    *(root / folder for folder in additional_source_folders),
+                ),
+                dependency_roots=tuple(
+                    Path(folder) for folder in election.python_path_folders
+                ),
+            )
+        )
+        snapshot = cls(
+            root,
+            fscommands=files,
+            ropefolder=None,
+            save_objectdb=False,
+            save_history=False,
+            ignored_resources=list(election.ignored_resources),
+            extension_modules=list(election.extension_modules),
+            source_folders=list(election.source_folders),
+        )
+        return snapshot.bind_atomic_reads(
+            election=election,
+            declared_files=declared_files,
+            observations=observations,
+            additional_source_folders=additional_source_folders,
+        )
+
+    def bind_atomic_reads(
+        self,
+        *,
+        election: p.Infra.RopeProjectElection,
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
+        additional_source_folders: tuple[str, ...] = (),
+    ) -> Self:
+        """Bind authenticated reads to this overlaid native analysis project.
+
+        Returns:
+            This project, core and observers reading the bound candidate.
 
         Raises:
             TypeError: Native initialization did not retain its source owner.
 
         """
-        if not isinstance(live, cls) or not isinstance(
-            live.fscommands, cls.OverlayFiles
-        ):
+        files = self.fscommands
+        if not isinstance(files, self.OverlayFiles):
             message = "atomic source binding requires its original overlaid project"
             raise TypeError(message)
-        root = Path(live.root.real_path)
-        cls._validate_source_folders(root, additional_source_folders, declared_files)
-        files = live.fscommands
-        if observations is not None:
-            for state in observations:
-                files._record_observation(state)
-            files._closed_observations = True
-        files._dependency_roots = tuple(
-            files._resolved(folder) for folder in election.python_path_folders
+        root = Path(self.root.real_path)
+        self._validate_source_folders(root, additional_source_folders, declared_files)
+        files.bind_reads(
+            observations=observations,
+            dependency_roots=tuple(election.python_path_folders),
         )
         selected = m.Infra.RopeProjectElection(
             source_folders=tuple(
@@ -919,22 +1057,22 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         if not isinstance(external, p.Infra.RopeExternalResourceOwner):
             message = "native external resolver lost its resource factory contract"
             raise TypeError(message)
-        live.external_project = external
-        live._snapshot_python_path_folders = [
-            live._native_folder(external.get_folder(path))
+        self.external_project = external
+        self._snapshot_python_path_folders = [
+            self._native_folder(external.get_folder(path))
             for path in selected.python_path_folders
         ]
-        preferences = live.get_prefs()
+        preferences = self.get_prefs()
         if not isinstance(preferences, p.Infra.RopePreferences):
             message = "native source project lost its preference update contract"
             raise TypeError(message)
-        preferences.set("ignored_resources", list(selected.ignored_resources))
-        preferences.set("extension_modules", list(selected.extension_modules))
-        preferences.set("source_folders", list(selected.source_folders))
-        live._ropefolder_name = None
-        live._source_election = selected
-        live._set_source_view(declared_files, ())
-        return live
+        preferences.set("ignored_resources", value=list(selected.ignored_resources))
+        preferences.set("extension_modules", value=list(selected.extension_modules))
+        preferences.set("source_folders", value=list(selected.source_folders))
+        self._ropefolder_name = None
+        self._source_election = selected
+        self._set_source_view(declared_files, ())
+        return self
 
     @staticmethod
     def _validate_source_folders(

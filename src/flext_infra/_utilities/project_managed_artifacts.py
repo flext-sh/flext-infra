@@ -58,25 +58,203 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         """
         result_type = r[m.Infra.CodegenInputs]
-        document = cls.load_config_document_inputs(
-            repository_root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-            projections=projections,
-            source_project=source_project,
-        )
-        if document.failure:
-            return result_type.from_failure(document)
-        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
-            partial(cls._repository_codegen_spec, document.value.values),
-        )
+        if projections or source_project is not None:
+            document = cls.load_config_document_inputs(
+                repository_root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+                projections=projections,
+                source_project=source_project,
+            )
+            if document.failure:
+                return result_type.from_failure(document)
+            loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+                partial(
+                    cls._repository_codegen_spec,
+                    document.value.values,
+                    repository_root,
+                ),
+            )
+            sources = document.value.sources
+        else:
+            captured = cls._captured_config_layers(
+                repository_root,
+                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+                projections=(),
+                source_project=None,
+            )
+            if captured.failure:
+                return result_type.from_failure(captured)
+            loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+                partial(
+                    cls._layered_codegen_spec,
+                    repository_root.resolve(),
+                    *captured.value,
+                ),
+            )
+            sources = captured.value[1]
         if loaded.failure:
             return result_type.from_failure(loaded)
         return result_type.ok(
-            m.Infra.CodegenInputs(
-                spec=loaded.value,
-                sources=document.value.sources,
-            ),
+            m.Infra.CodegenInputs(spec=loaded.value, sources=sources),
         )
+
+    @classmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _layered_codegen_spec(
+        cls,
+        repository_root: Path,
+        selected: tuple[Path, ...],
+        snapshots: tuple[m.Cli.AtomicFileState, ...],
+    ) -> m.Infra.CodegenConfigSpec:
+        """Memoize the validated policy of exact captured layer bytes.
+
+        The key is the captured layers themselves, so a changed byte is a new
+        key and never a stale answer; exceptions are never cached. The frozen
+        spec is shared, as the parsed-content memo shares its documents.
+
+        Returns:
+            The validated full repository codegen policy of these layers.
+
+        """
+        return cls._repository_codegen_spec(
+            cls._repository_config_document(selected, snapshots, ()),
+            repository_root,
+        )
+
+    @staticmethod
+    def kind_declaration_projection(
+        repository_root: Path, kind: c.Infra.ProjectKind
+    ) -> m.Infra.CodegenLayerProjection:
+        """Project an explicitly requested kind onto the repository's own layer.
+
+        Kind bootstrap is the one flow that reads a repository before its own
+        layer declares a kind; the operator-requested value is projected, never
+        assumed, and the own layer's raw bytes still guard against a conflict.
+
+        Returns:
+            The projection declaring ``kind`` in the repository's own layer.
+
+        """
+        layers = FlextInfraConfig.config_layer_paths_for_repository(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+        )
+        return m.Infra.CodegenLayerProjection(
+            path=layers[1],
+            values={"Infra": {"codegen": {"repository": {"kind": kind.value}}}},
+        )
+
+    @staticmethod
+    def require_declared_kind(repository: t.JsonValue, repository_root: Path) -> bool:
+        """Fail closed when a repository document does not declare its kind.
+
+        The kind decides whether any generator may rewrite the repository, so
+        it is read from the repository's own declaration and never assumed.
+
+        Returns:
+            True when the composed repository section declares a kind.
+
+        Raises:
+            ValueError: The composed declaration carries no
+                ``Infra.codegen.repository.kind``; the message names the
+                repository and the file that must declare it.
+
+        """
+        if isinstance(repository, Mapping) and repository.get("kind") is not None:
+            return True
+        raise FlextInfraUtilitiesProjectManagedArtifacts._undeclared_kind(
+            repository_root
+        )
+
+    @staticmethod
+    def declared_kind(
+        declaration: m.Infra.RepositoryDeltaSpec, repository_root: Path
+    ) -> c.Infra.ProjectKind:
+        """Return the kind a validated repository declaration carries.
+
+        Returns:
+            The repository's own declared governance kind.
+
+        Raises:
+            ValueError: The declaration carries no kind.
+
+        """
+        if declaration.kind is None:
+            raise FlextInfraUtilitiesProjectManagedArtifacts._undeclared_kind(
+                repository_root
+            )
+        return declaration.kind
+
+    @staticmethod
+    def _undeclared_kind(repository_root: Path) -> ValueError:
+        """Name the repository and the file that must declare its kind.
+
+        Returns:
+            The fail-closed error for an undeclared governance kind.
+
+        """
+        root = repository_root.resolve()
+        own = root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_CONFIG_FILENAME
+        return ValueError(
+            f"repository governance kind is not declared: {root}"
+            f" (declare Infra.codegen.repository.kind in {own})"
+        )
+
+    @classmethod
+    def contained_write_targets(
+        cls,
+        project_root: Path,
+        targets: Sequence[Path],
+        *,
+        authority: Path | None = None,
+    ) -> tuple[Path, ...]:
+        """Admit write targets only inside one declared FLEXT-writable project.
+
+        Every target resolves with its symbolic links, so a path that merely
+        reaches a file through a link (an editable install's link tree, a
+        Python-path entry) is judged by the file it would write. The project
+        is read through its own codegen declaration: a third-party fork is
+        never a FLEXT write target. A project outside ``authority`` (the root
+        a verb runs on) is admitted only when it carries its own FLEXT
+        declaration; a dependency checkout discovered from a module path
+        carries none.
+
+        Returns:
+            The resolved targets, in the given order.
+
+        Raises:
+            ValueError: A target escapes the project, the project is a
+                third-party fork, or a foreign project declares no FLEXT
+                governance of its own.
+
+        """
+        project = project_root.resolve()
+        inputs = cls.load_codegen_inputs(project).unwrap()
+        if inputs.spec.repository.kind is c.Infra.ProjectKind.THIRD_PARTY_FORK:
+            msg = f"third-party fork is never a FLEXT write target: {project}"
+            raise ValueError(msg)
+        if authority is not None and not project.is_relative_to(authority.resolve()):
+            declaration = (
+                project / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_CONFIG_FILENAME
+            )
+            if not any(
+                state.path == declaration and state.content is not None
+                for state in inputs.sources
+            ):
+                msg = (
+                    f"write project {project} is outside the declared root "
+                    f"{authority.resolve()} and declares no FLEXT governance"
+                )
+                raise ValueError(msg)
+        resolved = tuple(target.resolve() for target in targets)
+        for target, physical in zip(targets, resolved, strict=True):
+            if not physical.is_relative_to(project):
+                msg = (
+                    f"write target escapes its declared project root {project}: "
+                    f"{target} -> {physical}"
+                )
+                raise ValueError(msg)
+        return resolved
 
     @classmethod
     def load_tooling_inputs(
@@ -167,10 +345,13 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
         if section.failure:
             return result_type.from_failure(section)
-        loaded = u.validate_value(
-            m.Infra.RepositoryDeltaSpec,
-            section.value.get("repository", {}),
+        repository = section.value.get("repository", {})
+        declared = r[bool].create_from_callable(
+            partial(cls.require_declared_kind, repository, repository_root)
         )
+        if declared.failure:
+            return result_type.from_failure(declared)
+        loaded = u.validate_value(m.Infra.RepositoryDeltaSpec, repository)
         if loaded.failure:
             return result_type.from_failure(loaded)
         return result_type.ok(
@@ -196,6 +377,48 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         """
         result_type = r[m.Infra.ConfigDocumentInputs]
+        captured = cls._captured_config_layers(
+            repository_root,
+            filename=filename,
+            projections=projections,
+            source_project=source_project,
+        )
+        if captured.failure:
+            return result_type.from_failure(captured)
+        selected, snapshots = captured.value
+        loaded = r[t.JsonMapping].create_from_callable(
+            partial(
+                cls._repository_config_document,
+                selected,
+                snapshots,
+                projections,
+                source_project=source_project,
+            ),
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        return result_type.ok(
+            m.Infra.ConfigDocumentInputs(
+                values=loaded.value,
+                sources=snapshots,
+            ),
+        )
+
+    @staticmethod
+    def _captured_config_layers(
+        repository_root: Path,
+        *,
+        filename: str,
+        projections: tuple[m.Infra.CodegenLayerProjection, ...],
+        source_project: p.Infra.RopeProject | None,
+    ) -> p.Result[tuple[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]]]:
+        """Elect one F.yaml's ordered layers and capture each layer's bytes once.
+
+        Returns:
+            The elected layer paths and their exact captured states.
+
+        """
+        result_type = r[tuple[tuple[Path, ...], tuple[m.Cli.AtomicFileState, ...]]]
         elected = (
             r[tuple[Path, ...]].create_from_callable(
                 partial(
@@ -233,23 +456,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             if observed.failure:
                 return result_type.from_failure(observed)
             snapshots.append(observed.value)
-        loaded = r[t.JsonMapping].create_from_callable(
-            partial(
-                cls._repository_config_document,
-                selected,
-                tuple(snapshots),
-                projections,
-                source_project=source_project,
-            ),
-        )
-        if loaded.failure:
-            return result_type.from_failure(loaded)
-        return result_type.ok(
-            m.Infra.ConfigDocumentInputs(
-                values=loaded.value,
-                sources=tuple(snapshots),
-            ),
-        )
+        return result_type.ok((selected, tuple(snapshots)))
 
     @classmethod
     def load_refactor_csv_campaigns(
@@ -319,6 +526,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 cls._repository_config_document(
                     selected, captured.sources, projections
                 ),
+                repository_root,
             ),
         )
 
@@ -376,6 +584,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @staticmethod
     def _repository_codegen_spec(
         document: t.JsonMapping,
+        repository_root: Path,
     ) -> m.Infra.CodegenConfigSpec:
         """Validate composed policy with its model's already-compiled schema.
 
@@ -383,11 +592,16 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             The validated full repository codegen policy.
 
         Raises:
-            ValueError: If the composed declaration violates the codegen
+            ValueError: If the repository declares no governance kind, or the
+                composed declaration violates the codegen
                 configuration schema; third-party validation detail travels
                 as the cause.
 
         """
+        FlextInfraUtilitiesProjectManagedArtifacts.require_declared_kind(
+            u.Cli.json_walk_path(document, ("Infra", "codegen", "repository")),
+            repository_root,
+        )
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         try:
             return m.Infra.CodegenConfigSpec.model_validate(codegen)
@@ -925,29 +1139,29 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         return None
 
     @staticmethod
-    def _merge_ignore(
+    def _merge_gitignore(
         source: Path,
-        ignore: m.Infra.ProjectGitignoreConfig | None,
+        gitignore: m.Infra.ProjectGitignoreConfig | None,
         patterns: list[str],
         blocks: list[m.Infra.ProjectGitignorePreservedBlock],
         markers: MutableMapping[str, Path],
     ) -> str | None:
-        """Merge one source's ignore patterns and uniquely owned blocks.
+        """Merge one source's gitignore patterns and uniquely owned blocks.
 
         Returns:
             The duplicate-marker failure message, or ``None`` when all merged.
 
         """
-        if ignore is None:
+        if gitignore is None:
             return None
         patterns.extend(
             pattern
-            for pattern in dict.fromkeys(ignore.patterns)
+            for pattern in dict.fromkeys(gitignore.patterns)
             if pattern not in patterns
         )
-        for block in ignore.preserved_blocks:
+        for block in gitignore.preserved_blocks:
             failure = FlextInfraUtilitiesProjectManagedArtifacts._merge_unique_keys(
-                "ignore preserved marker",
+                "gitignore preserved marker",
                 source,
                 dict.fromkeys((block.begin, block.end), source),
                 markers,
@@ -971,16 +1185,16 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         """
         mise_tools: MutableMapping[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: MutableMapping[str, Path] = {}
-        ignore_patterns: list[str] = []
-        ignore_blocks: list[m.Infra.ProjectGitignorePreservedBlock] = []
-        ignore_markers: MutableMapping[str, Path] = {}
+        gitignore_patterns: list[str] = []
+        gitignore_blocks: list[m.Infra.ProjectGitignorePreservedBlock] = []
+        gitignore_markers: MutableMapping[str, Path] = {}
         for source, fragment in fragments:
-            failure = cls._merge_ignore(
+            failure = cls._merge_gitignore(
                 source,
                 fragment.Gitignore,
-                ignore_patterns,
-                ignore_blocks,
-                ignore_markers,
+                gitignore_patterns,
+                gitignore_blocks,
+                gitignore_markers,
             ) or cls._merge_unique_keys(
                 "Mise selector",
                 source,
@@ -993,8 +1207,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         artifacts = m.Infra.ProjectManagedArtifactsConfig(
             Mise=m.Infra.ProjectMiseConfig(tools=dict(sorted(mise_tools.items()))),
             Gitignore=m.Infra.ProjectGitignoreConfig(
-                patterns=tuple(ignore_patterns),
-                preserved_blocks=tuple(ignore_blocks),
+                patterns=tuple(gitignore_patterns),
+                preserved_blocks=tuple(gitignore_blocks),
             ),
         )
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(

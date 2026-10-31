@@ -1,117 +1,56 @@
-# Canonical test-facade rewiring for every FLEXT consumer.
+# Tests tier facade law (generator law p.5, ADR-018): the `tests` package is an
+# internal tier whose `u` extends the project root `u` by class inheritance, so
+# one binding reaches both the production namespaces (`u.Infra`, `u.Cli`) and
+# `u.Tests`. A test module therefore binds `u` from `tests` only; a production
+# `u` import beside it is a second, shadowed binding and an alias such as
+# `u as test_u` is never needed.
 #
-# Production and test packages both expose the short ``u`` facade.  A test that
-# needs both must keep production ``u`` and bind the public test facade as
-# ``test_u``.  These rules form one staged, idempotent cutover:
-#
-# 1. promote the shared WorktreeFixture through the public ``tests`` facade;
-# 2. add the unambiguous ``test_u`` binding when production ``u`` is present;
-# 3. move ``u.Tests`` calls to ``test_u.Tests``.
-#
-# FlextInfraCodemodBatchApply owns the fixed-point iteration, so consumers never
-# need file lists or hand-written wiring.
-id: test-worktree-fixture-public-import
+# The fix removes the production `u` name from its import. The generated
+# `import-header--<package>` rule of the deepest declaring package (`tests`)
+# then inserts the binding the module uses and no longer binds, so the cascade
+# reaches the fixed point without this rule emitting a name of its own. The tier facade modules themselves compose the root class
+# and stay outside the scope.
+id: test-utilities-tier-facade
 language: Python
-severity: warning
+severity: error
 files:
   - "**/tests/**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/__pycache__/**"
-message: Import WorktreeFixture through the public tests facade.
+  - "**/tests/__init__.py"
+  - "**/tests/utilities.py"
+  - "**/tests/_utilities/**"
+  - "**/tests/fixtures/**"
+message: >-
+  where: this test module imports `u` from the production package `$MODULE`.
+  why: the tests tier `u` inherits the root `u` through its MRO and adds
+  `u.Tests`, so it is the module's single utilities binding. fix: drop `u`
+  from this import; the generated import header binds `from tests import u`.
 rule:
-  pattern: from tests.unit.workspace.worktree_fixture import WorktreeFixture
-fix: from tests import WorktreeFixture
----
-id: test-utilities-unambiguous-alias
-language: Python
-severity: warning
-files:
-  - "**/tests/**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/__pycache__/**"
-message: Bind the public tests utilities facade as test_u beside production u.
-rule:
+  kind: import_from_statement
+  pattern: $STATEMENT
   all:
-    - pattern: from tests import $$$NAMES
-    - not:
-        inside:
-          kind: if_statement
-          stopBy: end
-    - not:
-        regex: '^from\s+tests\s+import\s+(?:[^,\n]+,\s*)*u(?:\s*,[^,\n]+)*$'
     - inside:
         kind: module
-        has:
-          kind: import_from_statement
-          regex: '^from\s+flext_[a-z_]+\s+import\s+(?:[^,\n]+,\s*)*u(?:\s*,[^,\n]+)*$'
-          stopBy: end
-        stopBy: end
-    - inside:
-        kind: module
-        has:
-          pattern: u.Tests.$METHOD($$$ARGS)
-          stopBy: end
-        stopBy: end
-    - not:
-        regex: '\bu\s+as\s+test_u\b'
-fix: from tests import $$$NAMES, u as test_u
----
-id: test-utilities-production-receiver-rewire
-language: Python
-severity: warning
-files:
-  - "**/tests/**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/__pycache__/**"
-message: Route test helpers through the public test_u.Tests facade.
-rule:
-  all:
-    - pattern: u.Tests.$METHOD($$$ARGS)
-    - inside:
-        kind: module
-        has:
-          kind: import_from_statement
-          regex: '^from\s+flext_[a-z_]+\s+import\s+(?:[^,\n]+,\s*)*u(?:\s*,[^,\n]+)*$'
-          stopBy: end
-        stopBy: end
-    - inside:
-        kind: module
-        has:
-          kind: import_from_statement
-          regex: '^from\s+tests\s+import\s+[^\n]*\bu\s+as\s+test_u\b'
-          stopBy: end
-        stopBy: end
-fix: test_u.Tests.$METHOD($$$ARGS)
----
-id: test-utilities-redundant-receiver-collapse
-language: Python
-severity: warning
-files:
-  - "**/tests/**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/__pycache__/**"
-message: Collapse a redundant test_u receiver when tests.u already owns u.
-rule:
-  all:
-    - pattern: test_u.Tests.$METHOD($$$ARGS)
-    - inside:
-        kind: module
-        has:
-          all:
-            - kind: import_from_statement
-            - regex: '^from\s+tests\s+import\s+(?:[^,\n]+,\s*)*u(?:\s*,[^,\n]+)*$'
-            - not:
-                inside:
-                  kind: function_definition
-                  stopBy: end
-          stopBy: end
-        stopBy: end
-fix: u.Tests.$METHOD($$$ARGS)
+    - has:
+        field: module_name
+        pattern: $MODULE
+    - has:
+        kind: dotted_name
+        regex: "^u$"
+        not:
+          inside:
+            kind: import_from_statement
+            field: module_name
+constraints:
+  MODULE:
+    all:
+      - matches: facade-package
+      - not:
+          regex: "^tests(?:\\.|$)"
+transform:
+  STRIPPED:
+    replace:
+      source: $STATEMENT
+      replace: "^from\\s+[\\w.]+\\s+import\\s+\\(?\\s*u\\s*,?\\s*\\)?$|,\\s*\\bu\\b|\\bu\\b\\s*,\\s*"
+      by: ""
+fix: $STRIPPED

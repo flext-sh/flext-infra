@@ -379,7 +379,9 @@ class FlextInfraGates:
             The resulting ``m.Infra.GateExecution``.
 
         """
-        evidence = self._publish_raw_receipt(ctx, self._raw_output(result))
+        evidence = self._publish_raw_receipt(
+            ctx, self._evidence_output(project_dir, ctx, result)
+        )
         process = m.Cli.ProcessOutcome.model_validate(
             result.outcome, from_attributes=True
         )
@@ -1023,6 +1025,25 @@ class FlextInfraGates:
 
         """
         return "\n".join(output for output in (result.stdout, result.stderr) if output)
+
+    def _evidence_output(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        result: p.Cli.CommandOutput,
+    ) -> str:
+        """Return the native output this gate publishes as its raw receipt.
+
+        Stream-bound gates keep the combined tool streams. A gate whose tool
+        writes its findings to a native report file instead of a stream
+        overrides this so the receipt carries the report the tool produced.
+
+        Returns:
+            The resulting ``str``.
+
+        """
+        _ = project_dir, ctx
+        return self._raw_output(result)
 
     @staticmethod
     def _runner_limits(

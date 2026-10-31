@@ -68,7 +68,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 published = cls.published_facade_owner(project, resource)
                 if published is None:
                     continue
-                module = from_view.require_source_object(project.get_pymodule(resource))
+                module = from_view.require_source_module(project.get_pymodule(resource))
                 owner = module.get_attributes()[published[1]].get_object()
                 if not from_view.py_class(owner):
                     continue
@@ -88,10 +88,10 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         cls,
         path: Path,
         module: p.Infra.RopeSourceModule,
-        owner: p.Infra.RopePyObject,
+        owner: p.Infra.RopeSourceClass,
         wanted: frozenset[int],
         *,
-        declared_alias: p.Infra.RopePyObject,
+        declared_alias: p.Infra.RopePyName,
     ) -> set[tuple[Path, int, int]]:
         """Collect one owner's native PEP 613 publications on wanted lines.
 
@@ -118,8 +118,12 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                     )
                     if layout.region == metadata.region
                 )
-                if declaration.value_binding is None or not from_view.abstract_class(
-                    declaration.value_binding.get_object()
+                if (
+                    declaration.annotation is None
+                    or declaration.value_binding is None
+                    or not from_view.abstract_class(
+                        declaration.value_binding.get_object()
+                    )
                 ):
                     continue
                 begin, end = declaration.annotation

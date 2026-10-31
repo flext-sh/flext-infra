@@ -812,7 +812,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             providers,
             snapshots,
             failed={
-                u.Infra.dep_name(task.repository.distribution): outcome
+                u.Infra.distribution_identity(task.repository.distribution): outcome
                 for task, outcome in zip(tasks, lazy, strict=True)
                 if outcome.failed
             },
@@ -951,7 +951,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if waves.failure:
             raise ValueError(waves.error)
         distributions = {
-            u.Infra.dep_name(task.repository.distribution): task.repository.distribution
+            u.Infra.distribution_identity(
+                task.repository.distribution
+            ): task.repository.distribution
             for task in tasks
         }
         return (
@@ -986,7 +988,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         staged = {file.path: file for file in providers}
         for wave in waves:
             for task in wave:
-                distribution = u.Infra.dep_name(task.repository.distribution)
+                distribution = u.Infra.distribution_identity(
+                    task.repository.distribution
+                )
                 outcome = type(self).plan_repository_task(
                     task.model_copy(update={"provider_plans": tuple(staged.values())}),
                     snapshots[task.repository.name],
@@ -1035,7 +1039,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if len(selected) != 1 or selected[0].desired_content is None:
             msg = "final root metadata has no single pyproject payload"
             raise ValueError(msg)
-        names = {u.Infra.dep_name(task.repository.distribution) for task in tasks}
+        names = {
+            u.Infra.distribution_identity(task.repository.distribution)
+            for task in tasks
+        }
         edges: set[frozenset[str]] = set()
         for file in (manifest, selected[0]):
             if file.desired_content is None:
@@ -1063,21 +1070,50 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         root: Path,
         tasks: Sequence[m.Infra.CodegenRepositoryPlanTask],
     ) -> Mapping[str, m.Infra.CodegenRepositoryPlanOutcome]:
-        """Close failed controls before any target Python source is opened."""
+        """Close failed controls before any target Python source is opened.
+
+        Returns:
+            The not-planned outcome of every task blocked by a failed control,
+            keyed by repository name.
+
+        """
+        failures = self._failed_control_outcomes(tasks)
+        if not failures:
+            return {}
+        blocked = self._control_blocked_dependents(root, tasks, failures)
+        return {
+            task.repository.name: self._control_blocked_outcome(task, cause)
+            for task in tasks
+            if (
+                cause := blocked.get(
+                    u.Infra.distribution_identity(task.repository.distribution)
+                )
+            )
+            is not None
+        }
+
+    def _failed_control_outcomes(
+        self,
+        tasks: Sequence[m.Infra.CodegenRepositoryPlanTask],
+    ) -> Mapping[str, m.Infra.CodegenRepositoryPlanOutcome]:
+        """Retain every failed control outcome of the selected tasks.
+
+        Returns:
+            The failed control outcome per task distribution name.
+
+        """
         controlled = {
             outcome.repository: outcome
             for outcome in self.state.control_outcomes
             if outcome.failed
         }
         failures = {
-            u.Infra.dep_name(task.repository.distribution): controlled[
+            u.Infra.distribution_identity(task.repository.distribution): controlled[
                 task.repository.name
             ]
             for task in tasks
             if task.repository.name in controlled
         }
-        if not failures:
-            return {}
         for failure in failures.values():
             if failure.native_failure is None:
                 failure.native_failure = r.fail(
@@ -1086,6 +1122,21 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     exception=failure.exception,
                 )
             self.retain_diagnostics(failure.exception, failure=failure.native_failure)
+        return failures
+
+    def _control_blocked_dependents(
+        self,
+        root: Path,
+        tasks: Sequence[m.Infra.CodegenRepositoryPlanTask],
+        failures: Mapping[str, m.Infra.CodegenRepositoryPlanOutcome],
+    ) -> Mapping[str, m.Infra.CodegenRepositoryPlanOutcome]:
+        """Close every failed control over its source dependents.
+
+        Returns:
+            The blocking control outcome per affected distribution name; every
+            task is blocked when the dependency inventory itself fails.
+
+        """
         graph = r[Mapping[str, tuple[str, ...]]].create_from_callable(
             lambda: u.Infra.workspace_dependency_graph(
                 root, tuple(task.repository for task in tasks)
@@ -1124,32 +1175,40 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             first = next(iter(failures.values()))
             blocked = {
-                u.Infra.dep_name(task.repository.distribution): first for task in tasks
+                u.Infra.distribution_identity(task.repository.distribution): first
+                for task in tasks
             }
-        outcomes: dict[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
-        for task in tasks:
-            cause = blocked.get(u.Infra.dep_name(task.repository.distribution))
-            if cause is None:
-                continue
-            detail = cause.error
-            if not detail and cause.native_failure is not None:
-                detail = (
-                    cause.native_failure.error
-                    or cause.native_failure.error_code
-                    or "control failed"
-                )
-            outcomes[task.repository.name] = m.Infra.CodegenRepositoryPlanOutcome(
-                repository=task.repository.name,
-                error=(
-                    f"not planned: control prerequisite {cause.repository} failed: "
-                    f"{detail or cause.exception}"
-                ),
-                native_failure=cause.native_failure,
-                exception=cause.exception,
-                error_type=cause.error_type,
-                error_traceback=cause.error_traceback,
+        return blocked
+
+    @staticmethod
+    def _control_blocked_outcome(
+        task: m.Infra.CodegenRepositoryPlanTask,
+        cause: m.Infra.CodegenRepositoryPlanOutcome,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Record one task as not planned because its control failed.
+
+        Returns:
+            The not-planned outcome carrying the control's original cause.
+
+        """
+        detail = cause.error
+        if not detail and cause.native_failure is not None:
+            detail = (
+                cause.native_failure.error
+                or cause.native_failure.error_code
+                or "control failed"
             )
-        return outcomes
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=task.repository.name,
+            error=(
+                f"not planned: control prerequisite {cause.repository} failed: "
+                f"{detail or cause.exception}"
+            ),
+            native_failure=cause.native_failure,
+            exception=cause.exception,
+            error_type=cause.error_type,
+            error_traceback=cause.error_traceback,
+        )
 
     def _gathered_repository_plans(
         self,
@@ -1185,7 +1244,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 list[m.Infra.UvEnvironmentPlan]]]``.
 
         """
-        current_target = planning[1]
         result_type = r[
             tuple[
                 list[m.Infra.CodegenFilePlan],
@@ -1195,6 +1253,70 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ]
         ]
         u.Cli.info(f"stage=plan repositories={len(selected)}")
+        planned_tasks = self._repository_plan_tasks(
+            root, planning, selected, surface, inputs
+        )
+        if planned_tasks.failure:
+            return result_type.from_failure(planned_tasks)
+        tasks = planned_tasks.value
+        # Each repository retains its own native election through the lazy
+        # provider and managed passes. Inventory membership identifies nested
+        # checkouts without merging their internal package names into one engine.
+        roots = {
+            task.repository.name: (root / task.repository.path).resolve()
+            for task in tasks
+        }
+        blocked = self._blocked_control_outcomes(root, tasks)
+        eligible = tuple(task for task in tasks if task.repository.name not in blocked)
+        with ExitStack() as stack:
+            snapshots = {
+                name: stack.enter_context(
+                    u.Infra.workspace_snapshot(
+                        project_root,
+                        tuple(
+                            member
+                            for member in roots.values()
+                            if member.is_relative_to(project_root)
+                        ),
+                    )
+                )
+                for name, project_root in roots.items()
+                if name not in blocked
+            }
+            planned = self._repository_plan_outcomes(
+                eligible, surface, inputs, snapshots
+            )
+            observed = {outcome.repository: outcome for outcome in planned}
+            outcomes = tuple(
+                blocked[task.repository.name]
+                if task.repository.name in blocked
+                else observed[task.repository.name]
+                for task in tasks
+            )
+            self._verify_snapshot_outcomes(snapshots, outcomes)
+        return self._reported_repository_plans(root, selected, outcomes)
+
+    def _repository_plan_tasks(
+        self,
+        root: Path,
+        planning: tuple[
+            m.Infra.WorkspaceSpec,
+            m.Infra.RepositoryConformTarget,
+            m.Infra.RepositoryRef,
+        ],
+        selected: tuple[m.Infra.RepositoryRef, ...],
+        surface: c.Infra.CodegenConformSurface,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[tuple[m.Infra.CodegenRepositoryPlanTask, ...]]:
+        """Build one planning task per selected internal FLEXT repository.
+
+        Returns:
+            The ordered planning tasks, or the first member configuration
+            failure.
+
+        """
+        current_target = planning[1]
+        result_type = r[tuple[m.Infra.CodegenRepositoryPlanTask, ...]]
         tasks: list[m.Infra.CodegenRepositoryPlanTask] = []
         for repository in selected:
             if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
@@ -1237,59 +1359,32 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     selected_inputs=selected_inputs,
                 ),
             )
-        # Each repository retains its own native election through the lazy
-        # provider and managed passes. Inventory membership identifies nested
-        # checkouts without merging their internal package names into one engine.
-        roots = {
-            task.repository.name: (root / task.repository.path).resolve()
-            for task in tasks
-        }
-        blocked = self._blocked_control_outcomes(root, tasks)
-        eligible = tuple(task for task in tasks if task.repository.name not in blocked)
-        with ExitStack() as stack:
-            snapshots = {
-                name: stack.enter_context(
-                    u.Infra.workspace_snapshot(
-                        project_root,
-                        tuple(
-                            member
-                            for member in roots.values()
-                            if member.is_relative_to(project_root)
-                        ),
-                    )
-                )
-                for name, project_root in roots.items()
-                if name not in blocked
-            }
-            planned = self._repository_plan_outcomes(
-                eligible, surface, inputs, snapshots
+        return result_type.ok(tuple(tasks))
+
+    def _verify_snapshot_outcomes(
+        self,
+        snapshots: Mapping[str, p.Infra.WorkspaceSnapshot],
+        outcomes: tuple[m.Infra.CodegenRepositoryPlanOutcome, ...],
+    ) -> None:
+        """Fail every outcome whose source observation changed while planning."""
+        for name, snapshot in snapshots.items():
+            verified = u.Infra.workspace_snapshot_verify(
+                snapshot, tuple(snapshot.sources)
             )
-            observed = {outcome.repository: outcome for outcome in planned}
-            outcomes = tuple(
-                blocked[task.repository.name]
-                if task.repository.name in blocked
-                else observed[task.repository.name]
-                for task in tasks
-            )
-            for name, snapshot in snapshots.items():
-                verified = u.Infra.workspace_snapshot_verify(
-                    snapshot, tuple(snapshot.sources)
-                )
-                if verified.failure:
-                    self.retain_diagnostics(verified.exception, failure=verified)
-                    outcome = next(item for item in outcomes if item.repository == name)
-                    outcome.error = "\n".join(
-                        value
-                        for value in (
-                            outcome.error,
-                            verified.error or "source observation changed",
-                        )
-                        if value
+            if verified.failure:
+                self.retain_diagnostics(verified.exception, failure=verified)
+                outcome = next(item for item in outcomes if item.repository == name)
+                outcome.error = "\n".join(
+                    value
+                    for value in (
+                        outcome.error,
+                        verified.error or "source observation changed",
                     )
-                    if outcome.native_failure is None:
-                        outcome.native_failure = verified
-                    outcome.exception = outcome.native_failure.exception
-        return self._reported_repository_plans(root, selected, outcomes)
+                    if value
+                )
+                if outcome.native_failure is None:
+                    outcome.native_failure = verified
+                outcome.exception = outcome.native_failure.exception
 
     def _reported_repository_plans(
         self,
@@ -1389,6 +1484,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
         """Preserve a planning failure as data without retry or publication.
 
+        Only the planning failure classes the planner raises are retained as
+        data; every other exception propagates unchanged.
+
         Returns:
             The outcome of the repository planning task, including any failure
             information.
@@ -1403,7 +1501,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         try:
             outcome = cls._plan_repository_task(task, snapshot)
-        except Exception as exc:
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
             outcome = cls._failed_outcome(
                 task.repository.name, exc, time.monotonic() - started
             )
@@ -1448,47 +1546,23 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             repository,
         )
         if resolved.failure:
-            return m.Infra.CodegenRepositoryPlanOutcome(
-                repository=repository.name,
-                native_failure=resolved,
-                error=resolved.error or f"checkout root failed: {repository.name}",
-                exception=resolved.exception,
-                elapsed=time.monotonic() - started,
+            return cls._prerequisite_failed_outcome(
+                repository.name,
+                resolved,
+                f"checkout root failed: {repository.name}",
+                started,
             )
         if task.surface is c.Infra.CodegenConformSurface.LAZY_INIT:
-            planned = (
-                r[Sequence[m.Infra.CodegenFilePlan]].ok(())
-                if task.initial_workspace is not None
-                and task.initial_workspace.project is not None
-                and repository.name == task.initial_workspace.repository.name
-                else planner._planned_lazy_init_files(resolved.value)
-            )
-            native = planner.state.planning_failure
-            if native is None and planned.failure:
-                native = planned
-            return m.Infra.CodegenRepositoryPlanOutcome(
-                repository=repository.name,
-                native_failure=native,
-                files=() if planned.failure else tuple(planned.value),
-                error=(native.error or "" if native is not None else ""),
-                exception=(
-                    native.exception
-                    if native is not None
-                    else planner.state.planning_exception
-                ),
-                issues=tuple(planner.state.planning_issues),
-                elapsed=time.monotonic() - started,
-            )
+            return planner._lazy_init_outcome(task, resolved.value, started)
         inputs = task.selected_inputs
         if inputs is None:
             loaded = u.Infra.load_codegen_inputs(resolved.value)
             if loaded.failure:
-                return m.Infra.CodegenRepositoryPlanOutcome(
-                    repository=repository.name,
-                    native_failure=loaded,
-                    error=loaded.error or f"configuration failed: {repository.name}",
-                    exception=loaded.exception,
-                    elapsed=time.monotonic() - started,
+                return cls._prerequisite_failed_outcome(
+                    repository.name,
+                    loaded,
+                    f"configuration failed: {repository.name}",
+                    started,
                 )
             inputs = loaded.value
         planned_inputs = planner._repository_planning_inputs(
@@ -1499,127 +1573,235 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             inputs=inputs,
         )
         if planned_inputs.failure:
-            return m.Infra.CodegenRepositoryPlanOutcome(
-                repository=repository.name,
-                native_failure=planned_inputs,
-                error=(
-                    planned_inputs.error or f"planning inputs failed: {repository.name}"
-                ),
-                exception=planned_inputs.exception,
-                elapsed=time.monotonic() - started,
+            return cls._prerequisite_failed_outcome(
+                repository.name,
+                planned_inputs,
+                f"planning inputs failed: {repository.name}",
+                started,
             )
-        repository_root, target, local_workspace = planned_inputs.value
+        return planner._governed_repository_outcome(
+            task, inputs, planned_inputs.value, started
+        )
+
+    @staticmethod
+    def _prerequisite_failed_outcome(
+        repository: str,
+        failure: p.FailureLike,
+        default_error: str,
+        started: float,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Retain one failed planning prerequisite of a repository as data.
+
+        Returns:
+            The failed outcome carrying the prerequisite's native failure.
+
+        """
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=repository,
+            native_failure=failure,
+            error=failure.error or default_error,
+            exception=failure.exception,
+            elapsed=time.monotonic() - started,
+        )
+
+    def _lazy_init_outcome(
+        self,
+        task: m.Infra.CodegenRepositoryPlanTask,
+        repository_root: Path,
+        started: float,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Plan the lazy-init surface of one resolved repository.
+
+        Returns:
+            The lazy-init file plans of the repository, or its failure.
+
+        """
+        planned = (
+            r[Sequence[m.Infra.CodegenFilePlan]].ok(())
+            if task.initial_workspace is not None
+            and task.initial_workspace.project is not None
+            and task.repository.name == task.initial_workspace.repository.name
+            else self._planned_lazy_init_files(repository_root)
+        )
+        native = self.state.planning_failure
+        if native is None and planned.failure:
+            native = planned
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=task.repository.name,
+            native_failure=native,
+            files=() if planned.failure else tuple(planned.value),
+            error=(native.error or "" if native is not None else ""),
+            exception=(
+                native.exception
+                if native is not None
+                else self.state.planning_exception
+            ),
+            issues=tuple(self.state.planning_issues),
+            elapsed=time.monotonic() - started,
+        )
+
+    def _governed_repository_outcome(
+        self,
+        task: m.Infra.CodegenRepositoryPlanTask,
+        inputs: m.Infra.CodegenInputs,
+        planned_inputs: tuple[
+            Path,
+            m.Infra.RepositoryConformTarget,
+            m.Infra.WorkspaceSpec,
+        ],
+        started: float,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Plan the governed files of one repository from its resolved inputs.
+
+        Returns:
+            The repository's governed file and environment plans, or its
+            failure retained as data.
+
+        """
+        repository_root, target, local_workspace = planned_inputs
         target = target.model_copy(
             update={
                 "vscode_spec": inputs.spec.vscode,
                 "vscode_sources": inputs.sources,
             },
         )
+        scaffold = (
+            task.initial_workspace is not None
+            and task.initial_workspace.project is not None
+            and task.repository.name == task.initial_workspace.repository.name
+        )
         try:
-            with planner.shared_source_views():
-                planned = planner._governed_repository_plans(
+            with self.shared_source_views():
+                planned = self._governed_repository_plans(
                     target,
                     local_workspace,
-                    planner.surface_contract(
+                    self.surface_contract(
                         c.Infra.CodegenConformSurface(task.surface),
                         codegen=inputs.spec,
                     ),
                     inputs,
-                    scaffold=(
-                        task.initial_workspace is not None
-                        and task.initial_workspace.project is not None
-                        and repository.name == task.initial_workspace.repository.name
-                    ),
+                    scaffold=scaffold,
                 )
                 if planned.failure:
-                    planner.retain_diagnostics(planned.exception, failure=planned)
+                    self.retain_diagnostics(planned.exception, failure=planned)
         except (OSError, ValueError, TypeError, RuntimeError) as exc:
-            caught = cls._failed_outcome(
-                repository.name, exc, time.monotonic() - started
+            return self._caught_planning_outcome(
+                task.repository.name, repository_root, exc, started
             )
-            native = planner.state.planning_failure
-            caught.issues = tuple(planner.state.planning_issues)
-            if native is not None:
-                caught.issues += (
-                    m.Infra.Issue(
-                        file=str(repository_root),
-                        line=0,
-                        column=0,
-                        code=c.Infra.ToolOutcome.ERROR.value,
-                        message=caught.error_traceback or caught.error,
-                    ),
-                )
-                caught.native_failure = native
-                caught.exception = native.exception
-                caught.error = native.error or ""
-                caught.error_type = (
-                    f"{type(native.exception).__module__}.{type(native.exception).__qualname__}"
-                    if native.exception is not None
-                    else ""
-                )
-                caught.error_traceback = (
-                    "".join(traceback.format_exception(native.exception))
-                    if native.exception is not None
-                    else ""
-                )
-            return caught
         if planned.failure:
-            native = (
-                planner.state.planning_failure
-                if planner.state.planning_failure is not None
-                else planned
+            return self._failed_governed_outcome(
+                task.repository.name, repository_root, planned, started
             )
-            planning_failure = native.exception
-            if planning_failure is not None:
-                traceback.print_exception(planning_failure)
-            outcome = m.Infra.CodegenRepositoryPlanOutcome(
-                repository=repository.name,
-                files=tuple(
-                    file
-                    for file in planner.state.completed_source_plans or ()
-                    if file.project == repository_root
-                ),
-                error=native.error or "",
-                native_failure=native,
-                exception=planning_failure,
-                error_type=(
-                    f"{type(planning_failure).__module__}."
-                    f"{type(planning_failure).__qualname__}"
-                    if planning_failure is not None
-                    else ""
-                ),
-                error_traceback=(
-                    "".join(traceback.format_exception(planning_failure))
-                    if planning_failure is not None
-                    else ""
-                ),
-                issues=tuple(planner.state.planning_issues),
-                elapsed=time.monotonic() - started,
-            )
-        else:
-            governed_plans, retired_plans = planned.value
-            planning_failure = planner.state.planning_exception
-            outcome = m.Infra.CodegenRepositoryPlanOutcome(
-                repository=repository.name,
-                files=(*governed_plans, *retired_plans),
-                environment=planner.uv_environment_plan(
-                    root=repository_root,
-                    target=target,
-                    workspace=local_workspace,
-                    config=inputs.spec,
-                ),
-                elapsed=time.monotonic() - started,
-                issues=tuple(planner.state.planning_issues),
-                exception=planner.state.planning_exception,
-                native_failure=planner.state.planning_failure,
-                error=str(planning_failure) if planning_failure is not None else "",
-                error_traceback=(
-                    "".join(traceback.format_exception(planning_failure))
-                    if planning_failure is not None
-                    else ""
+        governed_plans, retired_plans = planned.value
+        planning_failure = self.state.planning_exception
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=task.repository.name,
+            files=(*governed_plans, *retired_plans),
+            environment=self.uv_environment_plan(
+                root=repository_root,
+                target=target,
+                workspace=local_workspace,
+                config=inputs.spec,
+            ),
+            elapsed=time.monotonic() - started,
+            issues=tuple(self.state.planning_issues),
+            exception=self.state.planning_exception,
+            native_failure=self.state.planning_failure,
+            error=str(planning_failure) if planning_failure is not None else "",
+            error_traceback=(
+                "".join(traceback.format_exception(planning_failure))
+                if planning_failure is not None
+                else ""
+            ),
+        )
+
+    def _caught_planning_outcome(
+        self,
+        repository: str,
+        repository_root: Path,
+        exc: OSError | ValueError | TypeError | RuntimeError,
+        started: float,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Retain a raised governed-planning failure with its native cause.
+
+        Returns:
+            The failed outcome, attributed to the planner's native failure when
+            one was recorded before the exception.
+
+        """
+        caught = self._failed_outcome(repository, exc, time.monotonic() - started)
+        native = self.state.planning_failure
+        caught.issues = tuple(self.state.planning_issues)
+        if native is not None:
+            caught.issues += (
+                m.Infra.Issue(
+                    file=str(repository_root),
+                    line=0,
+                    column=0,
+                    code=c.Infra.ToolOutcome.ERROR.value,
+                    message=caught.error_traceback or caught.error,
                 ),
             )
-        return outcome
+            caught.native_failure = native
+            caught.exception = native.exception
+            caught.error = native.error or ""
+            caught.error_type = (
+                f"{type(native.exception).__module__}.{type(native.exception).__qualname__}"
+                if native.exception is not None
+                else ""
+            )
+            caught.error_traceback = (
+                "".join(traceback.format_exception(native.exception))
+                if native.exception is not None
+                else ""
+            )
+        return caught
+
+    def _failed_governed_outcome(
+        self,
+        repository: str,
+        repository_root: Path,
+        planned: p.FailureLike,
+        started: float,
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Retain a failed governed plan with the files it already completed.
+
+        Returns:
+            The failed outcome carrying the planner's native failure.
+
+        """
+        native = (
+            self.state.planning_failure
+            if self.state.planning_failure is not None
+            else planned
+        )
+        planning_failure = native.exception
+        if planning_failure is not None:
+            traceback.print_exception(planning_failure)
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=repository,
+            files=tuple(
+                file
+                for file in self.state.completed_source_plans or ()
+                if file.project == repository_root
+            ),
+            error=native.error or "",
+            native_failure=native,
+            exception=planning_failure,
+            error_type=(
+                f"{type(planning_failure).__module__}."
+                f"{type(planning_failure).__qualname__}"
+                if planning_failure is not None
+                else ""
+            ),
+            error_traceback=(
+                "".join(traceback.format_exception(planning_failure))
+                if planning_failure is not None
+                else ""
+            ),
+            issues=tuple(self.state.planning_issues),
+            elapsed=time.monotonic() - started,
+        )
 
     def _repository_planning_inputs(
         self,

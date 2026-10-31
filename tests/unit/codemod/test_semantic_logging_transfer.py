@@ -141,11 +141,12 @@ class TestsFlextInfraSemanticLoggingTransfer:
         u.Tests.commit_git_changes(root, "Declare logging transfer sources")
         # Match the adapter worker's SOURCE-PREP without deleting legacy sources.
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        rendered = u.Infra.render_utility_facade(package)
-        if rendered is None:
+        projection = u.Infra.render_utility_facade(package)
+        if projection is None:
             pytest.fail(
                 "the logging utility owner must have a native facade projection"
             )
+        rendered = tm.ok(projection)
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
         tm.ok(
             u.Tests.materialize_codegen_plans(

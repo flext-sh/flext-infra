@@ -1,0 +1,50 @@
+id: ban-test-double-infix-name
+snapshots:
+  "class AlgarOudMigFakeLdapClient:\n    pass\n":
+    labels:
+    - source: |-
+        class AlgarOudMigFakeLdapClient:
+            pass
+      style: primary
+      start: 0
+      end: 41
+    - source: AlgarOudMigFakeLdapClient
+      style: secondary
+      start: 6
+      end: 31
+  "class OudSpy:\n    pass\n":
+    labels:
+    - source: |-
+        class OudSpy:
+            pass
+      style: primary
+      start: 0
+      end: 22
+    - source: OudSpy
+      style: secondary
+      start: 6
+      end: 12
+  "class ProjectStubWriter:\n    pass\n":
+    labels:
+    - source: |-
+        class ProjectStubWriter:
+            pass
+      style: primary
+      start: 0
+      end: 33
+    - source: ProjectStubWriter
+      style: secondary
+      start: 6
+      end: 23
+  "class Writer_Dummy:\n    pass\n":
+    labels:
+    - source: |-
+        class Writer_Dummy:
+            pass
+      style: primary
+      start: 0
+      end: 28
+    - source: Writer_Dummy
+      style: secondary
+      start: 6
+      end: 18

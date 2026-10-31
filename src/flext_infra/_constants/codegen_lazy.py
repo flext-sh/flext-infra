@@ -41,6 +41,8 @@ class FlextInfraConstantsCodegenLazy:
         "install_lazy_exports",
     )
     "Existing SDK helpers eagerly bound and published by the bootstrap root."
+    LAZY_EXPORT_MAPPING_ARGUMENT_INDEX: ClassVar[int] = 2
+    "Positional index of the export mapping in an ``install_lazy_exports`` call."
     TEST_ONLY_SOURCE_MODULE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$",
     )

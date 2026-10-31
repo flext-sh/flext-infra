@@ -15,3 +15,9 @@ valid:
       pass
 # __all__ string-form membership is semantic (rope: public_export_names_source owns it; bead flext-wjxd7) — not expressible as ast-grep textual equality.
 invalid:
+# The generated tuple form publishes the class through a module literal.
+- |
+  class FlextMeltanoModels(FlextResult):
+      pass
+  _PUBLIC = ["FlextMeltanoModels"]
+  __all__ = tuple(_PUBLIC)

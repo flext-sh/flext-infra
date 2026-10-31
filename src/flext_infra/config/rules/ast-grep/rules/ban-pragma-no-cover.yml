@@ -9,12 +9,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
 rule:
   kind: comment
   regex: "^#\\s*pragma:\\s*no\\s*cover\\s*$"
@@ -30,12 +24,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
 rule:
   kind: comment
   regex: "pragma:\\s*no\\s*cover"

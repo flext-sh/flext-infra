@@ -57,7 +57,7 @@ class TestsModelProtocolNativeMro:
         for path, source in sources.items():
             tm.ok(u.Cli.atomic_write_text_file(path, source))
         with infra.rope_workspace(root) as workspace:
-            projected = u.Infra.protocol_model_sources(workspace)
+            projected = tm.ok(u.Infra.protocol_model_sources(workspace))
         tm.that(projected, empty=False)
         for path, source in projected.items():
             tm.ok(u.Cli.ensure_dir((root / path).parent))

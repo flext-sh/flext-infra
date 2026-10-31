@@ -36,9 +36,9 @@ class FlextInfraModelsLayout:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Extra project-specific archived root entries"),
         ] = ()
-        ignore_additions: Annotated[
+        gitignore_additions: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(description="Patterns the project .ignore must carry"),
+            m.Field(description="Patterns the project .gitignore must carry"),
         ] = ()
         moves: Annotated[
             tuple[FlextInfraModelsLayout.LayoutMoveSpec, ...],

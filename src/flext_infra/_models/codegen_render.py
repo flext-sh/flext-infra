@@ -431,11 +431,16 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         )
         docstring: str | None = m.Field(
             default=None,
-            description="Owned documentation for a new skeleton; existing source retains its own text.",
+            description=(
+                "Owned documentation for a new skeleton; existing source"
+                " retains its own text."
+            ),
         )
         module_prefix: str | None = m.Field(
             default=None,
-            description="Authored module prelude and native import output, when refactoring.",
+            description=(
+                "Authored module prelude and native import output, when refactoring."
+            ),
         )
         module_suffix: str = m.Field(
             default="",
@@ -452,11 +457,17 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         )
         header_source: str | None = m.Field(
             default=None,
-            description="Unchanged native class header when its structural arguments are unchanged.",
+            description=(
+                "Unchanged native class header when its structural"
+                " arguments are unchanged."
+            ),
         )
         header_comments: tuple[str, ...] = m.Field(
             default=(),
-            description="Native lexical comment fragments retained while recomposing a changed header.",
+            description=(
+                "Native lexical comment fragments retained while"
+                " recomposing a changed header."
+            ),
         )
         class_indent: str = m.Field(
             default="", description="Native indentation of the selected class."
@@ -464,19 +475,28 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         indentation: str = m.Field(
             default="    ",
             min_length=1,
-            description="Template indentation; native refactors supply their project policy.",
+            description=(
+                "Template indentation; native refactors supply their project policy."
+            ),
         )
         body_source: tuple[str | tuple[str, str], ...] | None = m.Field(
             default=None,
-            description="Ordered authored source and native class-publication slots, retaining declaration order and trivia.",
+            description=(
+                "Ordered authored source and native class-publication"
+                " slots, retaining declaration order and trivia."
+            ),
         )
         publications: Mapping[str, str] = m.Field(
             default_factory=dict[str, str],
-            description="Native class-publication targets and their authenticated expressions.",
+            description=(
+                "Native class-publication targets and their authenticated expressions."
+            ),
         )
         exports: tuple[str, ...] | None = m.Field(
             default=None,
-            description="Declared module exports; absent only for a new class skeleton.",
+            description=(
+                "Declared module exports; absent only for a new class skeleton."
+            ),
         )
         managed_header: str | None = m.Field(
             default=None,

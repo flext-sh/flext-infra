@@ -74,9 +74,11 @@ class TestsFlextInfraPyrightPublicContract:
             encoding=c.DEFAULT_ENCODING,
         )
         with u.Infra.facade_source_project(root) as (project, sources):
-            generated = tm.not_none(
-                u.Infra.render_utility_facade(
-                    package, family="p", project=project, sources=sources
+            generated = tm.ok(
+                tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, family="p", project=project, sources=sources
+                    )
                 )
             )
         facade.write_text(generated, encoding=c.DEFAULT_ENCODING)
@@ -111,8 +113,12 @@ class TestsFlextInfraPyrightPublicContract:
         tm.that(result.issues, eq=(), msg=result.raw_output)
         with u.Infra.facade_source_project(root) as (project, sources):
             tm.that(
-                u.Infra.render_utility_facade(
-                    package, family="p", project=project, sources=sources
+                tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, family="p", project=project, sources=sources
+                        )
+                    )
                 ),
                 eq=generated,
             )

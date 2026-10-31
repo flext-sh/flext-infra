@@ -484,11 +484,6 @@ class FlextInfraUtilitiesImportLawNormalization(
         if candidate.failure:
             return r[tuple[m.Infra.ImportLawPass | None, str]].from_failure(candidate)
         current = candidate.value
-        facade_dependencies = cls.import_facade_dependencies(
-            module,
-            root_exports,
-            import_graph,
-        )
         tree = ast.parse(current, filename=str(file_path))
         parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
         state = m.Infra.ImportLawPass(
@@ -499,7 +494,11 @@ class FlextInfraUtilitiesImportLawNormalization(
                 module=module,
                 layer=cls.module_import_layer(module, namespace=namespace),
                 own_exports=cls._import_law_declared_exports(tree),
-                facade_dependencies=facade_dependencies,
+                facade_dependencies=cls.import_facade_dependencies(
+                    module,
+                    root_exports,
+                    import_graph,
+                ),
                 family_letter=cls.family_letter(namespace_dir, file_path),
                 direct_imports=cls.import_direct_module(
                     namespace_dir,
@@ -705,13 +704,10 @@ class FlextInfraUtilitiesImportLawNormalization(
         Returns:
             The rewritten source, the unchanged source at the pass's fixed
             point, or the first typed classification failure of the attempted
-            categories.
-
-        Raises:
-            ValueError: If one category plans overlapping edits.
+            categories. An overlapping-edit ``ValueError`` raised by the
+            first rewrite propagates unchanged.
 
         """
-        lines = source.splitlines()
         repaired = cls._import_law_own_family_candidate(
             state, source, member_resolver=member_resolver
         )
@@ -723,7 +719,6 @@ class FlextInfraUtilitiesImportLawNormalization(
         return cls._import_law_first_rewrite(
             state,
             source,
-            lines,
             sources=sources,
             rope_project=rope_project,
             member_resolver=member_resolver,
@@ -734,7 +729,6 @@ class FlextInfraUtilitiesImportLawNormalization(
         cls,
         state: m.Infra.ImportLawPass,
         source: str,
-        lines: Sequence[str],
         *,
         sources: Mapping[Path, str] | None,
         rope_project: p.Infra.RopeProject | None,
@@ -754,6 +748,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             ValueError: If one category plans overlapping edits.
 
         """
+        lines = source.splitlines()
         builders: tuple[
             Callable[[], p.Result[tuple[tuple[int, int, Sequence[str]], ...]]], ...
         ] = (
@@ -763,7 +758,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             lambda: r[tuple[tuple[int, int, Sequence[str]], ...]].ok(
                 value=tuple(cls._import_law_guard_edits(state.tree, lines)),
             ),
-            lambda: cls._import_law_placement_edits(state, lines),
+            lambda: cls._import_law_placement_edits(state, lines).map(tuple),
             lambda: r[tuple[tuple[int, int, Sequence[str]], ...]].ok(
                 value=tuple(cls._import_law_root_alias_binding_edits(state, lines)),
             ),
@@ -1186,6 +1181,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
         Raises:
             ValueError: If the module is absent or has a self dependency.
+            TypeError: If Rope does not parse the module into a module tree.
 
         """
         if module == state.scope.namespace or state.source_project is None:
@@ -1194,13 +1190,28 @@ class FlextInfraUtilitiesImportLawNormalization(
             state.source_project.get_module(module)
         )
         resource = parsed.get_resource()
-        real_path = getattr(resource, "real_path", None) if resource else None
-        if real_path is None or Path(real_path).resolve() not in state.sources:
+        if isinstance(resource, p.Infra.RopeRoot) and resource.has_child(
+            c.Infra.INIT_PY
+        ):
+            # A package's source is its initializer, read through Rope's
+            # public resource and module API.
+            resource = resource.get_child(c.Infra.INIT_PY)
+            parsed = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
+                state.source_project.get_pymodule(resource)
+            )
+        sources = state.sources
+        if (
+            resource is None
+            or sources is None
+            or Path(resource.real_path).resolve() not in sources
+        ):
             message = f"layer-zero helper is absent from the candidate: {module}"
             raise ValueError(message)
-        tree: ast.Module = (
-            state.tree if module == state.scope.module else parsed.get_ast()
-        )
+        native_tree = state.tree if module == state.scope.module else parsed.get_ast()
+        if not isinstance(native_tree, ast.Module):
+            message = f"layer-zero helper is not a parsed module: {module}"
+            raise TypeError(message)
+        tree = native_tree
         family_base = (
             cls.import_module_role(module, namespace=state.scope.namespace) == "family"
         )

@@ -17,6 +17,7 @@ from pathlib import Path
 from flext_cli import cli
 
 from flext_infra import c, config, m, p, r, t, u
+from flext_infra._utilities._rope import FlextInfraRopeProject
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod import FlextInfraCodemodRename
@@ -95,9 +96,8 @@ class FlextInfraCodemodSemanticApply(
 
         """
         outcome = r[tuple[Path, ...]]
-        root, target = root.resolve(), target.resolve()
-        if not target.is_relative_to(root):
-            return outcome.fail("source plan output escapes workspace")
+        root = root.resolve()
+        target = u.Infra.contained_write_targets(root, (target,))[0]
         content = cls._validated_source_plan_content(before, planned, target, root)
         if content.failure:
             return outcome.from_failure(content)
@@ -365,7 +365,7 @@ class FlextInfraCodemodSemanticApply(
             )
             if parent_resource.exists() and replacement in (
                 u.Infra.public_export_names_source(
-                    u.Infra.require_source_object(
+                    u.Infra.require_source_module(
                         workspace.rope_project.get_pymodule(
                             parent_resource, force_errors=True
                         )
@@ -600,7 +600,7 @@ class FlextInfraCodemodSemanticApply(
             owned = any(
                 letter
                 in u.Infra.public_export_names_source(
-                    u.Infra.require_source_object(
+                    u.Infra.require_source_module(
                         workspace.rope_project.get_pymodule(
                             u.Infra.file_resource_at(workspace.rope_project, facade),
                             force_errors=True,
@@ -969,7 +969,11 @@ class FlextInfraCodemodSemanticApply(
                 ))
             )
             live = stack.enter_context(
-                u.Infra.open_project(candidate.workspace, project_roots=projects)
+                u.Infra.open_project(
+                    candidate.workspace,
+                    project_roots=projects,
+                    fscommands=FlextInfraRopeProject.OverlayFiles(()),
+                )
             )
             project = stack.enter_context(
                 closing(

@@ -15,8 +15,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+import tomllib
 from collections.abc import Mapping
 from pathlib import Path
+
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import (
@@ -106,9 +110,9 @@ class FlextInfraWorkspaceFlextEditable:
             ),
         )
         # Every distribution the consumer DECLARES and the workspace PROVIDES is
-        # an editable candidate — not only the currently-installed ones. A prior
-        # plain setup (lock-only sync) may have removed a member entirely (or
-        # the receipt's sync exclusions kept it out); electing from installed
+        # an editable candidate — not only the currently-installed ones. The
+        # frozen sync before this step may have removed a member entirely;
+        # electing from installed
         # state alone then never restores it and the consumer's pin check fails
         # forever. The declared-deps intersection keeps workspace members the
         # consumer does not use (e.g. the umbrella meta-distribution) out of the
@@ -133,28 +137,78 @@ class FlextInfraWorkspaceFlextEditable:
             dependency group, markers and extras stripped.
 
         """
-        from packaging.requirements import InvalidRequirement, Requirement
-        from packaging.utils import canonicalize_name
-
         manifest = runtime_root / c.PYPROJECT_FILENAME
         if not manifest.is_file():
             return set()
-        try:
-            import tomllib
-
-            payload = tomllib.loads(manifest.read_text())
-        except (OSError, ValueError):
-            return set()
+        payload = tomllib.loads(manifest.read_text())
         raw: list[str] = list(payload.get("project", {}).get("dependencies", []))
         for group in (payload.get("dependency-groups") or {}).values():
             raw.extend(group)
-        names: set[str] = set()
-        for declaration in raw:
-            try:
-                names.add(canonicalize_name(Requirement(declaration).name))
-            except (InvalidRequirement, ValueError):
-                continue
-        return names
+        return {canonicalize_name(Requirement(declaration).name) for declaration in raw}
+
+    @staticmethod
+    def _bind_editables(
+        runtime_root: Path,
+        sources: Mapping[str, Path],
+        *,
+        python: str,
+        uv: Path,
+    ) -> p.Result[bool]:
+        """Replace locked distributions with editable bindings of their sources.
+
+        A locked install leaves its package directory behind (uv renames only
+        the dist-info), and that stale directory shadows the editable source on
+        sys.path, so the locked distributions are removed first. The binding
+        never discovers project configuration (``--no-config``): any
+        ``[tool.uv] override-dependencies``, including the FLEXT workspace's
+        own, would replace these explicit editable requests with the
+        overridden git source. The binding is path-based
+        (``c.Infra.FLEXT_EDITABLE_BUILD_SETTING``) so static resolvers see the
+        source, never an import-hook finder only the interpreter follows.
+
+        Returns:
+            Success once both native commands succeed; the first failure
+            otherwise.
+
+        """
+        uninstalled = u.Cli.run_live(
+            (
+                str(uv),
+                "pip",
+                "uninstall",
+                "--no-config",
+                "--python",
+                python,
+                *sources,
+            ),
+            cwd=runtime_root,
+            timeout=c.Infra.TIMEOUT_LONG,
+        )
+        if uninstalled.failure:
+            return r[bool].from_failure(uninstalled)
+        installed = u.Cli.run_live(
+            (
+                str(uv),
+                "pip",
+                "install",
+                "--no-config",
+                "--python",
+                python,
+                "--no-deps",
+                "--config-setting",
+                c.Infra.FLEXT_EDITABLE_BUILD_SETTING,
+                *(
+                    argument
+                    for source in sources.values()
+                    for argument in ("--editable", str(source))
+                ),
+            ),
+            cwd=runtime_root,
+            timeout=c.Infra.TIMEOUT_LONG,
+        )
+        if installed.failure:
+            return r[bool].from_failure(installed)
+        return r[bool].ok(value=True)
 
     @classmethod
     def _execute_pip_install(
@@ -179,46 +233,11 @@ class FlextInfraWorkspaceFlextEditable:
         if pending.failure:
             return r[bool].from_failure(pending)
         if pending.value:
-            # A locked install leaves its package directory behind (uv renames
-            # only the dist-info), and that stale directory shadows the
-            # editable source on sys.path. Remove the locked distributions
-            # first; the check and origin verification below own the verdict.
-            # The overlay binds from the FLEXT workspace: a consumer's
-            # [tool.uv] override-dependencies replaces any requirement carrying
-            # a distribution name — including these explicit editable requests —
-            # and silently installs the overridden git source instead.
-            overlay_cwd = str(selection.flext_root)
-            _ = u.Cli.run_live(
-                (
-                    str(uv),
-                    "pip",
-                    "uninstall",
-                    "--python",
-                    python,
-                    *pending.value,
-                ),
-                cwd=runtime_root,
-                timeout=c.Infra.TIMEOUT_LONG,
+            bound = cls._bind_editables(
+                runtime_root, pending.value, python=python, uv=uv
             )
-            installed = u.Cli.run_live(
-                (
-                    str(uv),
-                    "pip",
-                    "install",
-                    "--python",
-                    python,
-                    "--no-deps",
-                    *(
-                        argument
-                        for source in pending.value.values()
-                        for argument in ("--editable", str(source))
-                    ),
-                ),
-                cwd=overlay_cwd,
-                timeout=c.Infra.TIMEOUT_LONG,
-            )
-            if installed.failure:
-                return r[bool].from_failure(installed)
+            if bound.failure:
+                return bound
         checked = u.Cli.run_live(
             (str(uv), "pip", "check", "--python", python),
             cwd=runtime_root,

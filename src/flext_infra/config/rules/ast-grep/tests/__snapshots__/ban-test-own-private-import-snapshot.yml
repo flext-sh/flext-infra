@@ -1,0 +1,32 @@
+id: ban-test-own-private-import
+snapshots:
+  from ._helpers import build_plan:
+    labels:
+    - source: from ._helpers import build_plan
+      style: primary
+      start: 0
+      end: 32
+    - source: ._helpers
+      style: secondary
+      start: 5
+      end: 14
+  from ai_hub._models.base import AiHubModelsBase:
+    labels:
+    - source: from ai_hub._models.base import AiHubModelsBase
+      style: primary
+      start: 0
+      end: 47
+    - source: ai_hub._models.base
+      style: secondary
+      start: 5
+      end: 24
+  from ai_hub.services._clean_search import AiHubCleanSearchMixin:
+    labels:
+    - source: from ai_hub.services._clean_search import AiHubCleanSearchMixin
+      style: primary
+      start: 0
+      end: 63
+    - source: ai_hub.services._clean_search
+      style: secondary
+      start: 5
+      end: 34

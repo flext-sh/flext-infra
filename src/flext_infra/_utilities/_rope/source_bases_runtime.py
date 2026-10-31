@@ -976,6 +976,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _unresolved_declared_reference(
             self,
             provider: p.Infra.RopeSourceModule,
+            resource: p.Infra.RopeResource,
             attributes: t.StrTuple,
             target: str,
             *,
@@ -989,7 +990,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             Args:
                 provider: The owned source module that publishes the name; its
-                    module identity and resource drive every sub-resolution.
+                    module identity drives every sub-resolution.
+                resource: The native module or package resource the caller
+                    resolved for the provider.
                 attributes: Remaining dotted attribute path of the reference.
                 target: Fully spelled provider reference being resolved.
                 route: Owned flag, visiting set and depth budget tuple.
@@ -1000,7 +1003,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             owned, visiting, depth = route
             module_name = self._provider_name(provider)
-            resource = provider.get_resource()
             bindings = self._provider_source_bindings(module_name, provider, resource)
             if (
                 attributes[0] not in bindings
@@ -1075,6 +1077,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     message = f"Project-owned provider is not source: {target}"
                     raise TypeError(message)
                 return None
+            if (
+                resource.is_folder()
+                and self._future_directive(provider, attributes[0])
+                and self._project.find_module(target) is not None
+            ):
+                return self._external_reference(
+                    target, attributes[1:], visiting | {target}, depth + 1
+                )
             bindings = self._provider_source_bindings(module_name, provider, resource)
             # A lexical collector may shadow an initializer export with None;
             # the installer literal remains the declaration SSOT for that name.
@@ -1084,6 +1094,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if reference is None:
                 return self._unresolved_declared_reference(
                     provider,
+                    resource,
                     attributes,
                     target,
                     route=(owned, visiting, depth),
@@ -1228,28 +1239,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             name = attributes[0]
             target = f"{self._provider_name(module)}.{name}"
             if target in visiting:
-                chain = " <- ".join(sorted(visiting))
-                message = f"Cyclic provider reexport: {target} (visiting: {chain})"
-                failure = ValueError(message)
-                resource = module.get_resource()
-                failure.add_note(
-                    f"Provider origin: name={module.get_name()!r}; "
-                    "resource="
-                    f"{resource.real_path if resource is not None else None!r}; "
-                    f"captured={self._captured_provider_modules(module)!r}; "
-                    f"attributes={attributes!r}"
+                raise self._cyclic_provider_failure(
+                    module, attributes, target, visiting
                 )
-                if resource is not None:
-                    failure.add_note(
-                        f"Provider captured descendants={
-                            tuple(
-                                (name, str(path))
-                                for name, (path, _) in self._sources.items()
-                                if path.is_relative_to(Path(resource.real_path))
-                            )
-                        }"
-                    )
-                raise failure
             if (
                 not self._captured_provider_modules(module)
                 and name in module.get_attributes()
@@ -1265,40 +1257,113 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if declared is not None:
                 return declared
             if name not in module.get_attributes():
-                reexported = self._missing_provider_reference(
-                    module, attributes, visiting, depth
+                return self._undeclared_provider_reference(
+                    module, attributes, target, visiting, depth
                 )
-                if reexported is not None:
-                    return reexported
-                outer = module.get_resource()
-                if (
-                    outer is not None
-                    and outer.is_folder()
-                    and self._project.find_module(target) is not None
-                ):
-                    # A family package publishes submodules, not attributes:
-                    # the cached package view can trail a fresh sibling file,
-                    # so the native module election is the truth — continue
-                    # the walk inside the elected child module. A plain
-                    # module (file resource) keeps the declared failure.
-                    return self._external_reference(
-                        target, attributes[1:], visiting | {target}, depth + 1
-                    )
-                captured = self._sources.get(self._provider_name(module))
-                captured_state = (
-                    "absent"
-                    if captured is None
-                    else f"len={len(captured[1])} has03={'FlextProtocolsLoggingPart03' in captured[1]}"
-                )
-                message = (
-                    f"Provider {module.get_name()} does not declare {name}: {target}"
-                    f"; captured={captured_state}"
-                )
-                raise ValueError(message)
             binding = self._provider_attribute_binding(module, name, target)
             return self._native_provider_reference(
                 module, binding, attributes, visiting, depth
             )
+
+        @staticmethod
+        def _future_directive(module: p.Infra.RopeSourceModule, name: str) -> bool:
+            """Whether a module binds ``name`` only as a ``__future__`` directive.
+
+            ``from __future__ import annotations`` binds ``annotations`` in a
+            package initializer, but importing ``package.annotations`` rebinds
+            that attribute to the submodule, exactly as Python's import system
+            does. The directive feature is never a class provider, so a native
+            submodule of the same name wins over it.
+
+            Returns:
+                Whether the binding is a native ``__future__`` imported name.
+
+            """
+            binding = module.get_attributes().get(name)
+            return (
+                FlextInfraUtilitiesRopeRuntime.imported_name(binding)
+                and binding.imported_module.module_name == c.Infra.FUTURE_MODULE
+            )
+
+        def _cyclic_provider_failure(
+            self,
+            module: t.Infra.RopeSemanticModule,
+            attributes: t.StrTuple,
+            target: str,
+            visiting: frozenset[str],
+        ) -> ValueError:
+            """Build the cyclic reexport failure with its provider provenance.
+
+            Returns:
+                The failure naming the cycle, provider origin, and captures.
+
+            """
+            chain = " <- ".join(sorted(visiting))
+            message = f"Cyclic provider reexport: {target} (visiting: {chain})"
+            failure = ValueError(message)
+            resource = module.get_resource()
+            failure.add_note(
+                f"Provider origin: name={module.get_name()!r}; "
+                "resource="
+                f"{resource.real_path if resource is not None else None!r}; "
+                f"captured={self._captured_provider_modules(module)!r}; "
+                f"attributes={attributes!r}"
+            )
+            if resource is not None:
+                failure.add_note(
+                    f"Provider captured descendants={
+                        tuple(
+                            (captured_name, str(path))
+                            for captured_name, (path, _) in self._sources.items()
+                            if path.is_relative_to(Path(resource.real_path))
+                        )
+                    }"
+                )
+            return failure
+
+        def _undeclared_provider_reference(
+            self,
+            module: t.Infra.RopeSemanticModule,
+            attributes: t.StrTuple,
+            target: str,
+            visiting: frozenset[str],
+            depth: int,
+        ) -> str:
+            """Resolve a name the provider module does not bind natively.
+
+            Returns:
+                The identity reached through a reexport or an elected submodule.
+
+            Raises:
+                ValueError: If the provider neither reexports nor publishes it.
+
+            """
+            reexported = self._missing_provider_reference(
+                module, attributes, visiting, depth
+            )
+            if reexported is not None:
+                return reexported
+            outer = module.get_resource()
+            if (
+                outer is not None
+                and outer.is_folder()
+                and self._project.find_module(target) is not None
+            ):
+                # A family package publishes submodules, not attributes:
+                # the cached package view can trail a fresh sibling file,
+                # so the native module election is the truth — continue
+                # the walk inside the elected child module. A plain
+                # module (file resource) keeps the declared failure.
+                return self._external_reference(
+                    target, attributes[1:], visiting | {target}, depth + 1
+                )
+            captured = self._sources.get(self._provider_name(module))
+            captured_state = "absent" if captured is None else f"len={len(captured[1])}"
+            message = (
+                f"Provider {module.get_name()} does not declare {attributes[0]}: "
+                f"{target}; captured={captured_state}"
+            )
+            raise ValueError(message)
 
         def _native_provider_reference(
             self,
@@ -2042,7 +2107,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         ),
                         visiting | {key},
                         depth + 1,
-                    )
+                    ), []
                 message = (
                     f"Planned namespace has no module binding: {module}.{name}"
                     if bindings is None

@@ -158,34 +158,48 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             return self._planned(request).flat_map(
                 lambda plan: self._published(
                     request,
-                    root,
                     plan,
                     after_publication,
                     after_cohort_publication=after_cohort_publication,
                 )
             )
+        return self._execute_all_surfaces(
+            request,
+            root,
+            after_publication=after_publication,
+            after_cohort_publication=after_cohort_publication,
+        )
+
+    def _execute_all_surfaces(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+        root: Path,
+        *,
+        after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
+        after_cohort_publication: tuple[
+            Callable[[tuple[Path, ...]], p.Result[bool]], ...
+        ],
+    ) -> p.Result[p.Infra.CodegenResult]:
+        """Publish the control cohort, re-elect its inputs, then the full plan.
+
+        Returns:
+            The plan and written paths, or the first failure with every
+            independent effect receipt.
+
+        """
         guarded_control = r.safe(self._control_plan, exceptions=(Exception,))
         control_plan = guarded_control(request).flat_map(r.from_result)
         if control_plan.failure:
             return r[p.Infra.CodegenResult].from_failure(control_plan)
         control = self._published(
             request,
-            root,
             control_plan.value,
             (),
             after_cohort_publication=after_cohort_publication,
             prepared_files=control_plan.value.files,
         )
         if control.failure:
-            native = next(
-                (
-                    outcome.native_failure
-                    for outcome in self.state.control_outcomes
-                    if outcome.native_failure is not None
-                ),
-                None,
-            )
-            self.retain_diagnostics(failure=control if native is None else native)
+            self._retain_control_failure(control)
         written = self._written_paths(control)
         refreshed = self._advance_control_inputs(root, written)
         if refreshed.failure:
@@ -193,16 +207,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             return self._execution_failure(
                 (control, refreshed) if control.failure else (refreshed,), written
             )
+        failures: list[p.FailureLike] = [control] if control.failure else []
         planned = self._planned(request)
-        failures: list[p.FailureLike] = []
-        if control.failure:
-            failures.append(control)
         if planned.failure:
-            failures.append(planned)
-            return self._execution_failure(tuple(failures), written)
+            return self._execution_failure((*failures, planned), written)
         published = self._published(
             request,
-            root,
             planned.value,
             (),
             after_cohort_publication=after_cohort_publication,
@@ -212,6 +222,36 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             failures.append(published)
         if failures:
             return self._execution_failure(tuple(failures), written)
+        return self._completed_followups(planned.value, written, after_publication)
+
+    def _retain_control_failure(
+        self,
+        control: p.Result[p.Infra.CodegenResult],
+    ) -> None:
+        """Retain the control cohort's first native cause, else its failure."""
+        native = next(
+            (
+                outcome.native_failure
+                for outcome in self.state.control_outcomes
+                if outcome.native_failure is not None
+            ),
+            None,
+        )
+        self.retain_diagnostics(failure=control if native is None else native)
+
+    def _completed_followups(
+        self,
+        plan: m.Infra.CodegenPlan,
+        written: tuple[Path, ...],
+        after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
+    ) -> p.Result[p.Infra.CodegenResult]:
+        """Run every follow-up over the written paths of a complete publication.
+
+        Returns:
+            The plan and written paths, or the first follow-up failure with its
+            additional written paths.
+
+        """
         for operation in after_publication:
             completed = operation(written)
             if completed.failure:
@@ -226,7 +266,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     (completed,), tuple(dict.fromkeys((*written, *extra)))
                 )
         return r[p.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=planned.value, written_files=written)
+            m.Infra.CodegenResult(plan=plan, written_files=written)
         )
 
     def _advance_control_inputs(
@@ -234,7 +274,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         root: Path,
         written: tuple[Path, ...],
     ) -> p.Result[bool]:
-        """Re-elect metadata after own effects without altering old witnesses."""
+        """Re-elect metadata after own effects without altering old witnesses.
+
+        Returns:
+            ``True`` when a written manifest re-elected the inputs, ``False``
+            when no manifest was written, or the first election failure.
+
+        """
         if not any(path.name == c.PYPROJECT_FILENAME for path in written):
             return r[bool].ok(value=False)
         scaffold = self.state.initial_workspace is not None
@@ -255,7 +301,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _written_paths(
         result: p.Result[p.Infra.CodegenResult],
     ) -> tuple[Path, ...]:
-        """Read the existing successful or partial-publication receipt."""
+        """Read the existing successful or partial-publication receipt.
+
+        Returns:
+            The paths written by the publication, complete or partial.
+
+        """
         if result.success:
             return tuple(result.value.written_files)
         return tuple(
@@ -270,7 +321,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         failures: tuple[p.FailureLike, ...],
         written: tuple[Path, ...],
     ) -> p.Result[p.Infra.CodegenResult]:
-        """Retain the first original cause and every independent effect receipt."""
+        """Retain the first original cause and every independent effect receipt.
+
+        Returns:
+            The failure carrying the first cause and every written path.
+
+        """
         first = self.state.planning_failure
         if first is None:
             first = failures[0]
@@ -291,7 +347,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         self,
         request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[m.Infra.CodegenPlan]:
-        """Plan the native file-only control cohort before Python inventory."""
+        """Plan the native file-only control cohort before Python inventory.
+
+        Returns:
+            The control cohort plan with every repository outcome, or the
+            first workspace, selection, seed or ordering failure.
+
+        """
         result_type = r[m.Infra.CodegenPlan]
         root = request.root.expanduser().resolve()
         captured = u.Infra.load_codegen_inputs(root)
@@ -301,54 +363,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         if elected.failure:
             return result_type.from_failure(elected)
         workspace, current_target, current_repository = elected.value
-        selected = self._select_repositories(request, workspace, current_repository)
+        selected = self._select_repositories(
+            request, workspace, current_repository
+        ).flat_map(self._control_identities)
         if selected.failure:
             return result_type.from_failure(selected)
-        by_name = {
-            t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
-                repository.distribution
-            ): repository
-            for repository in selected.value
-        }
-        if len(by_name) != len(selected.value):
-            return result_type.fail(
-                "workspace declares duplicate distribution identities"
-            )
-        if len({repository.name for repository in selected.value}) != len(
-            selected.value
-        ):
-            return result_type.fail(
-                "workspace declares duplicate repository identities"
-            )
-        seed: tuple[m.Infra.CodegenFilePlan, ...] = ()
-        if workspace.flext_source is not None:
-            initial = self._plan_existing_control(
-                current_target, workspace, captured.value
-            )
-            if initial.failure:
-                return result_type.from_failure(initial)
-            seed = initial.value.files
-        graph = dict(
-            u.Infra.workspace_dependency_graph(
-                root,
-                selected.value,
-                inputs=workspace.inputs,
-                planned_manifests=tuple(
-                    plan for plan in seed if plan.path.name == c.PYPROJECT_FILENAME
-                ),
-            )
+        seed = self._control_seed(current_target, workspace, captured.value)
+        if seed.failure:
+            return result_type.from_failure(seed)
+        graph = self._control_graph(
+            root, workspace, captured.value, tuple(selected.value.values()), seed.value
         )
-        executor = captured.value.spec.templates.bootstrap_entry.bootstrap_distribution
-        owner = t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
-            workspace.repository.distribution
-        )
-        if (
-            executor is not None
-            and executor in graph
-            and owner in graph
-            and executor != owner
-        ):
-            graph[owner] = (*graph[owner], executor)
         ordered = u.Cli.dag_order(graph)
         if ordered.failure:
             return result_type.from_failure(ordered)
@@ -356,62 +381,36 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         failures: dict[str, p.FailureLike] = {}
         previous = self.state.provider_plans
         self.state.provider_plans = u.Infra.codegen_compose_file_plans(
-            (*(previous or ()), *seed), ordered=True
+            (*(previous or ()), *seed.value), ordered=True
         )
         try:
             for name in ordered.value:
-                repository = by_name[name]
-                blocked = next(
-                    (
-                        failures[dependency]
-                        for dependency in graph[name]
-                        if dependency in failures
-                    ),
-                    None,
-                )
-                planned = (
-                    r[m.Infra.CodegenRepositoryPlanOutcome].from_failure(blocked)
-                    if blocked is not None
-                    else self._control_repository(
+                outcomes.append(
+                    self._control_outcome(
                         m.Infra.CodegenRepositoryPlanTask(
                             root=root,
                             workspace=workspace,
                             current_target=current_target,
-                            repository=repository,
+                            repository=selected.value[name],
                             surface=request.what,
                             selected_inputs=(
                                 captured.value
-                                if repository.name == current_target.repository.name
+                                if selected.value[name].name
+                                == current_target.repository.name
                                 else None
                             ),
-                        )
+                        ),
+                        graph[name],
+                        failures,
                     )
                 )
-                if planned.failure:
-                    native = blocked if blocked is not None else planned
-                    failures[name] = native
-                    self.retain_diagnostics(native.exception, failure=native)
-                    outcomes.append(
-                        m.Infra.CodegenRepositoryPlanOutcome(
-                            repository=repository.name,
-                            error=native.error or "control planning failed",
-                            exception=native.exception,
-                            native_failure=native,
-                        )
-                    )
-                else:
-                    outcomes.append(planned.value)
-                    self.state.provider_plans = u.Infra.codegen_compose_file_plans(
-                        (*(self.state.provider_plans or ()), *planned.value.files),
-                        ordered=True,
-                    )
                 self.state.control_outcomes = tuple(outcomes)
         finally:
             self.state.provider_plans = previous
         return result_type.ok(
             m.Infra.CodegenPlan(
                 request=request,
-                repositories=selected.value,
+                repositories=tuple(selected.value.values()),
                 workspace=workspace,
                 uv_environments=(),
                 files=u.Infra.codegen_compose_file_plans(
@@ -422,11 +421,151 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             )
         )
 
+    @staticmethod
+    def _control_identities(
+        selected: tuple[m.Infra.RepositoryRef, ...],
+    ) -> p.Result[dict[str, m.Infra.RepositoryRef]]:
+        """Index the selected repositories by their unique distribution identity.
+
+        Returns:
+            The selected repositories keyed by distribution name, in selection
+            order, or the duplicate-identity failure.
+
+        """
+        result_type = r[dict[str, m.Infra.RepositoryRef]]
+        by_name = {
+            t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
+                repository.distribution
+            ): repository
+            for repository in selected
+        }
+        if len(by_name) != len(selected):
+            return result_type.fail(
+                "workspace declares duplicate distribution identities"
+            )
+        if len({repository.name for repository in selected}) != len(selected):
+            return result_type.fail(
+                "workspace declares duplicate repository identities"
+            )
+        return result_type.ok(by_name)
+
+    def _control_seed(
+        self,
+        current_target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        inputs: m.Infra.CodegenInputs,
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Plan the invoking target's existing control files for a sourced workspace.
+
+        Returns:
+            The invoking target's control file plans, empty without a declared
+            FLEXT source, or the original planning failure.
+
+        """
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        if workspace.flext_source is None:
+            return result_type.ok(())
+        initial = self._plan_existing_control(current_target, workspace, inputs)
+        if initial.failure:
+            return result_type.from_failure(initial)
+        return result_type.ok(initial.value.files)
+
+    @staticmethod
+    def _control_graph(
+        root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+        inputs: m.Infra.CodegenInputs,
+        selected: tuple[m.Infra.RepositoryRef, ...],
+        seed: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> dict[str, tuple[str, ...]]:
+        """Read the local dependency graph with its bootstrap executor edge.
+
+        Returns:
+            The dependency graph of the selected repositories, the workspace
+            owner depending on the declared bootstrap executor.
+
+        """
+        graph = dict(
+            u.Infra.workspace_dependency_graph(
+                root,
+                selected,
+                inputs=workspace.inputs,
+                planned_manifests=tuple(
+                    plan for plan in seed if plan.path.name == c.PYPROJECT_FILENAME
+                ),
+            )
+        )
+        executor = inputs.spec.templates.bootstrap_entry.bootstrap_distribution
+        owner = t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
+            workspace.repository.distribution
+        )
+        if (
+            executor is not None
+            and executor in graph
+            and owner in graph
+            and executor != owner
+        ):
+            graph[owner] = (*graph[owner], executor)
+        return graph
+
+    def _control_outcome(
+        self,
+        task: m.Infra.CodegenRepositoryPlanTask,
+        dependencies: tuple[str, ...],
+        failures: dict[str, p.FailureLike],
+    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        """Plan one control repository unless a dependency already failed.
+
+        A failure, its own or inherited from a dependency, is recorded under
+        the repository's distribution identity and retained as diagnostics; a
+        success extends the provider plans visible to later repositories.
+
+        Returns:
+            The repository's planning outcome, carrying its native failure.
+
+        """
+        name = t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
+            task.repository.distribution
+        )
+        blocked = next(
+            (
+                failures[dependency]
+                for dependency in dependencies
+                if dependency in failures
+            ),
+            None,
+        )
+        planned = (
+            r[m.Infra.CodegenRepositoryPlanOutcome].from_failure(blocked)
+            if blocked is not None
+            else self._control_repository(task)
+        )
+        if planned.success:
+            self.state.provider_plans = u.Infra.codegen_compose_file_plans(
+                (*(self.state.provider_plans or ()), *planned.value.files),
+                ordered=True,
+            )
+            return planned.value
+        native = blocked if blocked is not None else planned
+        failures[name] = native
+        self.retain_diagnostics(native.exception, failure=native)
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=task.repository.name,
+            error=native.error or "control planning failed",
+            exception=native.exception,
+            native_failure=native,
+        )
+
     def _control_repository(
         self,
         task: m.Infra.CodegenRepositoryPlanTask,
     ) -> p.Result[m.Infra.CodegenRepositoryPlanOutcome]:
-        """Resolve a control target through the existing metadata owners."""
+        """Resolve a control target through the existing metadata owners.
+
+        Returns:
+            The control target's planning outcome, or its first failure.
+
+        """
         result_type = r[m.Infra.CodegenRepositoryPlanOutcome]
         resolved = self._resolved_repository_root(
             task.root, task.workspace, task.current_target, task.repository
@@ -578,7 +717,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _published(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        root: Path,
         plan: m.Infra.CodegenPlan,
         after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
         *,
@@ -599,6 +737,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
         """
         result_type = r[p.Infra.CodegenResult]
+        root = request.root.expanduser().resolve()
         if not plan.outcomes:
             published = self._published_cohort(
                 request,
@@ -663,6 +802,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     break
         if failures:
             first = failures[0]
+            failed_names: list[t.JsonValue] = sorted(failed_repositories)
             return result_type.fail(
                 "\n".join(failure.error or "generation failed" for failure in failures),
                 error_code=first.error_code,
@@ -672,7 +812,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     "errors": [
                         failure.error or "generation failed" for failure in failures
                     ],
-                    "failed_repositories": sorted(failed_repositories),
+                    "failed_repositories": failed_names,
                 },
                 exception=first.exception,
             )
@@ -686,7 +826,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
         plan: m.Infra.CodegenPlan,
-        ready: dict[str, m.Infra.CodegenRepository],
+        ready: dict[str, m.Infra.RepositoryRef],
         prepared_files: tuple[m.Infra.CodegenFilePlan, ...] | None,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]] | None:
         """Fold ready-repository documentation into the published plan.
@@ -736,16 +876,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         root: Path,
         plan: m.Infra.CodegenPlan,
         documents: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
-        owner: m.Infra.CodegenRepository,
+        owner: m.Infra.RepositoryRef,
     ) -> None:
         """Attach a documentation planning failure to its owning root outcome.
 
         The owning root repository outcome carries the documentation failure
         as its native cause, and the plan retains the diagnostic with the
         executor's recorded planning failure first.
-
-        Returns:
-            None. The plan and its owning outcome are updated in place.
 
         """
         issue = m.Infra.Issue(
@@ -929,7 +1066,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         cls,
         root: Path,
         plan: m.Infra.CodegenPlan,
-        repositories: dict[str, m.Infra.CodegenRepository],
+        repositories: dict[str, m.Infra.RepositoryRef],
         projects: dict[Path, set[str]],
         edges: dict[str, set[str]],
     ) -> tuple[m.Infra.CodegenPlan, ...]:

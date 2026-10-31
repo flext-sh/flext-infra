@@ -1,0 +1,51 @@
+id: rewire-pytest-constant-to-tests-constants
+snapshots:
+  "@pytest.mark.slow\ndef test_value() -> None: ...\n":
+    fixed: |
+      @c.Tests.MARK.slow
+      def test_value() -> None: ...
+    labels:
+    - source: pytest.mark
+      style: primary
+      start: 1
+      end: 12
+    - source: pytest
+      style: secondary
+      start: 1
+      end: 7
+    - source: mark
+      style: secondary
+      start: 8
+      end: 12
+  "pytest.fail(\"contract broken\")\n":
+    fixed: |
+      c.Tests.FAIL("contract broken")
+    labels:
+    - source: pytest.fail
+      style: primary
+      start: 0
+      end: 11
+    - source: pytest
+      style: secondary
+      start: 0
+      end: 6
+    - source: fail
+      style: secondary
+      start: 7
+      end: 11
+  "pytest.skip(\"not executed\")\n":
+    fixed: |
+      c.Tests.SKIP("not executed")
+    labels:
+    - source: pytest.skip
+      style: primary
+      start: 0
+      end: 11
+    - source: pytest
+      style: secondary
+      start: 0
+      end: 6
+    - source: skip
+      style: secondary
+      start: 7
+      end: 11

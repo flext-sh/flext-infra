@@ -283,7 +283,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         Args:
             project: The Rope project instance.
             expression: The dotted expression representing the attribute path.
-            module_name: Optional explicit module name to resolve the expression against.
+            module_name: Optional explicit module name to resolve the
+                expression against.
 
         Returns:
             The declaration reached through the native module object graph.
@@ -291,7 +292,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         Raises:
             ValueError: When the identity does not name an attribute.
             TypeError: The fetched provider violates its native semantic contract.
-            AttributeNotFoundError: When the requested attribute is not found on the module.
+            AttributeNotFoundError: When the requested attribute is not found
+                on the module.
             ModuleSyntaxError: When the module has invalid syntax.
 
         """
@@ -373,9 +375,10 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 and getattr(node.value.func, "id", "") == "install_lazy_exports"
             ):
                 continue
-            if len(node.value.args) < 3:
+            mapping_index = c.Infra.LAZY_EXPORT_MAPPING_ARGUMENT_INDEX
+            if len(node.value.args) <= mapping_index:
                 continue
-            mapping = node.value.args[2]
+            mapping = node.value.args[mapping_index]
             inner = (
                 mapping.args[0]
                 if isinstance(mapping, ast.Call) and mapping.args

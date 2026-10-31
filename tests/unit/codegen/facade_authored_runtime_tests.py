@@ -283,10 +283,10 @@ class TestsFlextInfraGeneratedRuntime:
         for path, source in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, source))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name} import u\n"
@@ -440,9 +440,11 @@ class TestsFlextInfraGeneratedRuntime:
             declared_files=outcome.files,
         ) as binding:
             tm.that(
-                tm.not_none(
-                    u.Infra.render_utility_facade(
-                        package, project=binding[0], sources=binding[1]
+                tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, project=binding[0], sources=binding[1]
+                        )
                     )
                 ).encode(c.DEFAULT_ENCODING),
                 eq=projected[utility_facade].desired_content,
@@ -540,12 +542,14 @@ class TestsFlextInfraGeneratedRuntime:
                     project=provider_root,
                     path=model_facade,
                     before=by_path[model_facade],
-                    desired_content=tm.not_none(
-                        u.Infra.render_utility_facade(
-                            provider,
-                            family="m",
-                            project=binding[0],
-                            sources=binding[1],
+                    desired_content=tm.ok(
+                        tm.not_none(
+                            u.Infra.render_utility_facade(
+                                provider,
+                                family="m",
+                                project=binding[0],
+                                sources=binding[1],
+                            )
                         )
                     ).encode(c.DEFAULT_ENCODING),
                     desired_mode=tm.not_none(by_path[model_facade].mode),
@@ -554,9 +558,11 @@ class TestsFlextInfraGeneratedRuntime:
                 root,
                 declared_files=tuple(plans.values()),
             ) as binding:
-                consumer = tm.not_none(
-                    u.Infra.render_utility_facade(
-                        package, project=binding[0], sources=binding[1]
+                consumer = tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, project=binding[0], sources=binding[1]
+                        )
                     )
                 )
                 plans[consumer_facade] = m.Infra.CodegenFilePlan(
@@ -582,9 +588,11 @@ class TestsFlextInfraGeneratedRuntime:
                 root,
                 declared_files=tuple(plans.values()),
             ) as binding:
-                tm.that(
-                    u.Infra.render_utility_facade(
-                        package, project=binding[0], sources=binding[1]
+                tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, project=binding[0], sources=binding[1]
+                        )
                     ),
                     eq=consumer,
                 )

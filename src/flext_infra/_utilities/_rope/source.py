@@ -13,7 +13,10 @@ from operator import itemgetter
 from pathlib import Path
 
 from flext_infra import c, p, t
-from flext_infra._utilities import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeBase,
@@ -569,9 +572,9 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
 
         Raises:
             TypeError: If the resource is not a Rope file resource.
+            ValueError: If the written file is outside the project's root.
 
         """
-        del rope_project
         if not FlextInfraUtilitiesRopeRuntime.file_resource(resource):
             msg = f"expected a Rope file resource: {resource.path}"
             raise TypeError(msg)
@@ -579,6 +582,9 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
         for start, end, replacement in sorted(changes, key=itemgetter(0), reverse=True):
             source = source[:start] + replacement + source[end:]
         if apply and source != resource.read():
+            FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
+                Path(rope_project.root.real_path), (Path(resource.real_path),)
+            )
             resource.write(source)
         return source
 

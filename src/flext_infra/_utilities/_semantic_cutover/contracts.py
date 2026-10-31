@@ -201,10 +201,19 @@ class FlextInfraUtilitiesSemanticContracts(
         inserted: dict[Path, tuple[str, ...]] = {}
         for selection in rules:
             revision = selection.source_revision
+            # Historical declarations are composed only into a provider the
+            # scanned project owns; a Python-path dependency is never a target.
             if (
                 selection.operation
                 == c.Infra.RopeContractOperation.RETIRE_GENERIC_TYPING_WRAPPERS
                 and revision is not None
+                and workspace.rope_project.source_owned(
+                    Path(
+                        cls._generic_history_provider(
+                            workspace.rope_project, selection
+                        )[3].real_path
+                    )
+                )
             ):
                 path, candidate, names = cls._generic_collection_history(
                     workspace.rope_project, selection, revision=revision
@@ -1126,7 +1135,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 admit,
             )
             self.modules = {
-                path: FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+                path: FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     FlextInfraUtilitiesRopeCore.resolve_pymodule(
                         project,
                         project.get_resource(
@@ -1494,7 +1503,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 )
             ):
                 return {}
-            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                 owner.get_module()
             )
             refactors = FlextInfraUtilitiesRopeRuntimeRefactors
@@ -1792,7 +1801,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 return None
             refactors = FlextInfraUtilitiesRopeRuntimeRefactors
             if region in self._strings(module):
-                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+                provider = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     owner.get_module()
                 )
                 selected = refactors.source_declaration_region(

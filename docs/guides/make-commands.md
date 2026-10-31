@@ -576,7 +576,10 @@ explicitly. Its service base uses the Core kernel, and separate service instance
 retain their injected settings without reading module globals. The CLI binds the
 already-composed API alias.
 
-`make mod` validates the rule fixtures and applies declared consumer text cutovers,
+`make mod` invokes `flext-infra refactor mod --repository-root <root>`, which
+performs the transformation directly: the operation has no apply mode and no
+rule selector, and only its `--check` and `--dry-run` inspection modes write
+nothing. It validates the rule fixtures and applies declared consumer text cutovers,
 then invokes the existing Rope census before the structural fixed-point cycle. The census
 derives public `c.*` paths from live facade declarations and inheritance, rewrites
 qualified import bindings, and preserves the declaration parts composing `c`.

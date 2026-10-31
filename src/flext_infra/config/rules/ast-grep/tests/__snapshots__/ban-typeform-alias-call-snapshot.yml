@@ -1,0 +1,47 @@
+id: ban-typeform-alias-call
+snapshots:
+  TypeAdapter(t.TypeForm(t.JsonMapping)):
+    fixed: TypeAdapter(TypeForm(t.JsonMapping))
+    labels:
+    - source: t.TypeForm
+      style: primary
+      start: 12
+      end: 22
+    - source: t
+      style: secondary
+      start: 12
+      end: 13
+    - source: TypeForm
+      style: secondary
+      start: 14
+      end: 22
+  "t.TypeForm(Mapping[str, int])":
+    fixed: TypeForm(Mapping[str, int])
+    labels:
+    - source: t.TypeForm
+      style: primary
+      start: 0
+      end: 10
+    - source: t
+      style: secondary
+      start: 0
+      end: 1
+    - source: TypeForm
+      style: secondary
+      start: 2
+      end: 10
+  "x: t.TypeForm[int]":
+    fixed: "x: TypeForm[int]"
+    labels:
+    - source: t.TypeForm
+      style: primary
+      start: 3
+      end: 13
+    - source: t
+      style: secondary
+      start: 3
+      end: 4
+    - source: TypeForm
+      style: secondary
+      start: 5
+      end: 13

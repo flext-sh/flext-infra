@@ -24,6 +24,7 @@ from flext_infra import c, codegen, config, gates, m, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProcess,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesResourceLimits,
 )
 from flext_infra._utilities._git import (
@@ -144,14 +145,24 @@ class FlextInfraUtilitiesProtectedEditLinting:
     ) -> p.Result[tuple[Path, ...]]:
         """Publish generated plans through the shared file-change publisher.
 
-        Python is normalized first; runtime-local index entries are retired and
-        the cached project document is invalidated after its file changes.
+        Every plan's target must physically live inside its declared project
+        and that project must be FLEXT-writable for ``root`` before any effect;
+        the containment owner raises otherwise. Python is normalized first;
+        runtime-local index entries are retired and the cached project
+        document is invalidated after its file changes.
 
         Returns:
             The written or deleted paths, or the first failure.
 
         """
         result_type = r[tuple[Path, ...]]
+        grouped: MutableMapping[Path, list[Path]] = {}
+        for plan in plans:
+            grouped.setdefault(plan.project, []).append(plan.path)
+        for project, targets in grouped.items():
+            FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
+                project, targets, authority=root
+            )
         lock = FlextInfraUtilitiesGitMutationScope.mutation_lock_path(root)
         if lock.failure:
             return result_type.from_failure(lock)
@@ -191,7 +202,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _publish_verified_plans(
         cls,
         plans: Sequence[m.Infra.CodegenFilePlan],
-        changes: Sequence[m.Infra.FileChange],
+        changes: Sequence[m.Cli.FileChange],
         lock_path: Path,
         result_type: type[p.Result[tuple[Path, ...]]],
     ) -> p.Result[tuple[Path, ...]]:
@@ -274,7 +285,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                         directory, required=True
                     )
                     if directory_state.failure:
-                        return directory_state
+                        return r[bool].from_failure(directory_state)
                     removed = u.Cli.atomic_delete_empty_directory_guarded(
                         directory_state.value
                     )
@@ -437,6 +448,56 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return r[frozenset[str]].ok(frozenset(codes))
 
     @classmethod
+    def _ruff_environment(cls, command_cwd: Path) -> Mapping[str, str]:
+        """Run Ruff with the gate environment and its external project cache.
+
+        Returns:
+            The lint environment carrying the project's external Ruff cache.
+
+        """
+        return {
+            **cls._command_env(),
+            c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
+                FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
+            ),
+        }
+
+    @classmethod
+    def ruff_files(
+        cls, arguments: Sequence[str], paths: Sequence[Path]
+    ) -> p.Result[bool]:
+        """Run one declared Ruff surface on files through the gate runtime.
+
+        Files are grouped by owning project: each group runs the active
+        environment's Ruff from that project with its external cache, so no
+        cache lands in the caller's working directory or the source tree.
+
+        Returns:
+            Success when every group's Ruff run exits cleanly, else its failure.
+
+        """
+        grouped: MutableMapping[Path, list[Path]] = {}
+        for path in paths:
+            grouped.setdefault(cls._command_cwd(path, path.parent), []).append(path)
+        for project, members in grouped.items():
+            executed = u.Cli.run_checked(
+                (
+                    *cls._workspace_tool_command(c.Infra.RUFF),
+                    *arguments,
+                    *(str(path) for path in members),
+                ),
+                cwd=project,
+                options=m.Cli.ProcessOptions(
+                    env=cls._ruff_environment(project),
+                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                ),
+                timeout=cls._gate_deadline(c.Infra.RUFF),
+            )
+            if executed.failure:
+                return r[bool].from_failure(executed)
+        return r[bool].ok(value=True)
+
+    @classmethod
     def _ruff_stdin_pass(
         cls,
         path: Path,
@@ -460,10 +521,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             f"normalize: ruff {arguments[0]} settings source="
             f"{'staged' if settings else 'none'} project={command_cwd} path={path}"
         )
-        environment = dict(cls._command_env())
-        environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
-            FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
-        )
+        environment = cls._ruff_environment(command_cwd)
         executed = u.Cli.run_raw(
             (
                 *cls._workspace_tool_command(c.Infra.RUFF),
@@ -1083,9 +1141,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             )
         environment = dict(cls._command_env())
         if tool_name == c.Infra.RUFF:
-            environment[c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE] = str(
-                FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
-            )
+            environment = dict(cls._ruff_environment(command_cwd))
         elif tool_name == c.Infra.MYPY:
             environment[c.Infra.MypyCacheEnvironment.CACHE_DIR.value] = str(
                 FlextInfraUtilitiesResourceLimits.mypy_cache_directory(command_cwd)

@@ -693,7 +693,7 @@ class FlextInfraProtocolsBase(Protocol):
         def __call__(
             self,
             repository_root: Path,
-        ) -> MarkdownFormatGate:
+        ) -> FlextInfraProtocolsBase.MarkdownFormatGate:
             """Bind the gate to the scope root."""
             ...
 
@@ -854,7 +854,9 @@ class FlextInfraProtocolsBase(Protocol):
         """Validated inputs consumed by the public codemod handler."""
 
         @property
-        def apply(self) -> bool: ...
+        def apply(self) -> bool:
+            """Whether the run writes; derived, never a caller-selected mode."""
+            ...
 
         @property
         def check(self) -> bool: ...

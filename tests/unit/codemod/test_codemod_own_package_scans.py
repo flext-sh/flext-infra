@@ -225,10 +225,7 @@ class TestsFlextInfraCodemodOwnPackageScans:
                 ),
                 encoding="utf-8",
             )
-            with (
-                u.Infra.open_project(mod_workspace) as project,
-                u.Infra.semantic_matching_context(),
-            ):
+            with u.Infra.open_project(mod_workspace) as project:
                 resource = u.Infra.require_file_resource(
                     project.get_resource(source.relative_to(mod_workspace).as_posix()),
                     source,
@@ -428,7 +425,7 @@ class TestsFlextInfraCodemodOwnPackageScans:
             FlextInfraModGateEngine.scan(
                 mod_workspace,
                 fix=False,
-                selection=("ban-utilities-own-letter-import",),
+                selection=("ban-own-letter-import",),
                 source_files=(source,),
             )
         )

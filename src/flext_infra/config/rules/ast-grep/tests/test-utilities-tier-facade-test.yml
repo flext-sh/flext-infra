@@ -1,0 +1,43 @@
+id: test-utilities-tier-facade
+valid:
+  - |
+    from tests import u
+
+    value = u.Tests.codegen_file_text(plan)
+  - |
+    from tests import c, m, u
+
+    value = u.Infra.resolve(c.Infra.NAME, m.Infra.Plan)
+  - |
+    from flext_infra import c, m
+
+    value = c.Infra.NAME
+  - |
+    from flext_infra import u as infra_u
+
+    value = infra_u.Infra.resolve(plan)
+  - |
+    from flext_infra import user
+
+    value = user
+  - |
+    def local_import_stays_with_the_local_law():
+        from flext_infra import u
+        return u.Infra.resolve(plan)
+invalid:
+  - |
+    from flext_infra import u
+
+    value = u.Tests.codegen_file_text(plan)
+  - |
+    from flext_infra import c, u, m
+    from tests import u
+
+    value = u.Infra.resolve(c.Infra.NAME, m.Infra.Plan)
+  - |
+    from flext_core import (
+        r,
+        u,
+    )
+
+    value = r[int].ok(u.Tests.count(plan))

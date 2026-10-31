@@ -1,0 +1,32 @@
+id: retire-pytest-import
+snapshots:
+  "import pytest\n":
+    fixed: |+
+      
+    labels:
+    - source: import pytest
+      style: primary
+      start: 0
+      end: 13
+    - source: |
+        import pytest
+      style: secondary
+      start: 0
+      end: 14
+  "import pytest\n\nvalue = u.Tests.approx(1.0)\n":
+    fixed: |
+      
+      
+      value = u.Tests.approx(1.0)
+    labels:
+    - source: import pytest
+      style: primary
+      start: 0
+      end: 13
+    - source: |
+        import pytest
+        
+        value = u.Tests.approx(1.0)
+      style: secondary
+      start: 0
+      end: 43

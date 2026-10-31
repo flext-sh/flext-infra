@@ -10,15 +10,6 @@ files:
   - "**/protocols.py"
   - "**/_protocols.py"
   - "**/_protocols/**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/tests/unit/**"
-  - "**/tests/integration/**"
-  - "**/tests/e2e/**"
 rule:
   kind: class_definition
   has:

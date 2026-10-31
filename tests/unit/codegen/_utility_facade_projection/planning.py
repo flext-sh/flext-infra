@@ -9,12 +9,11 @@ from __future__ import annotations
 import os
 import sys
 from collections.abc import MutableMapping
-from functools import partial
 from pathlib import Path
 
 import pytest
 
-from tests import c, m, p, r, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen._utility_facade_projection.publication import (
     UtilityFacadePublication,
 )
@@ -140,21 +139,22 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             for layout in layouts:
                 package = layout.package_dir
                 if scope == "collision":
-                    rejected = r[str | None].create_from_callable(
-                        partial(
-                            u.Infra.render_utility_facade,
-                            package,
-                            project=project,
-                            sources=sources,
+                    tm.fail(
+                        tm.not_none(
+                            u.Infra.render_utility_facade(
+                                package, project=project, sources=sources
+                            )
                         ),
+                        has="Owner",
                     )
-                    tm.fail(rejected, has="Owner")
                     tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
                     return []
                 facade = package / c.Infra.UTILITIES_PY
-                rendered = tm.not_none(
-                    u.Infra.render_utility_facade(
-                        package, project=project, sources=sources
+                rendered = tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, project=project, sources=sources
+                        ),
                     ),
                 )
                 facade_plans.append(
@@ -277,7 +277,9 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         """
         service = u.Tests.create_lazy_init_service(package.parent.parent)
         tm.ok(u.Tests.materialize_lazy_init(service))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        )
         cls._write(facade, rendered)
         output = tm.ok(
             u.Cli.run_raw(
@@ -381,7 +383,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         initial_init = tm.ok(
             u.Cli.atomic_read_binary_file_state(package / "__init__.py", required=True),
         )
-        updated = tm.not_none(u.Infra.render_utility_facade(package))
+        updated = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
 
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)),
@@ -481,7 +483,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             "u = Facade\n__all__ = ['Facade', 'u']\n"
         )
         self._write(facade, original)
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         tm.that(facade.read_text(), eq=original)
         self._write(facade, rendered)
         tm.ok(
@@ -489,7 +491,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
                 u.Tests.create_lazy_init_service(package.parent.parent),
             ),
         )
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -540,7 +542,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         self._write(consumer, source)
         facade = package / "utilities.py"
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)),
             eq=before,
@@ -603,11 +605,11 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             "u = Utilities\n__all__ = ['Utilities', 'u']\n"
         )
         self._write(facade, source)
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         tm.that(facade.read_text(), eq=source)
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         output = tm.ok(
             u.Cli.run_raw(
                 (
@@ -624,7 +626,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         tm.that(facade.read_text(), eq=rendered)
 
     def test_rejects_competing_declared_owners(self, tmp_path: Path) -> None:
-        """Fail before projection when two publishers claim one public name."""
+        """Fail loud, naming both publishers, when two claim one public name."""
         _, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-sample",
@@ -652,8 +654,9 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         )
         self._write(facade, original)
 
-        with pytest.raises(ValueError, match="Competing declared facade owner names"):
-            u.Infra.render_utility_facade(package)
+        error = tm.fail(tm.not_none(u.Infra.render_utility_facade(package)))
+        for module in ("first", "second"):
+            tm.that(error, has=f"{package.name}.{family.directory}.{module}")
         tm.that(facade.read_text(), eq=original)
 
     def test_rejects_competing_inherited_namespaces(self, tmp_path: Path) -> None:
@@ -676,8 +679,12 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         self._write(facade, source)
         (package / family.directory).mkdir()
 
-        with pytest.raises(ValueError, match="competing inherited utility namespaces"):
-            u.Infra.render_utility_facade(package)
+        error = tm.fail(
+            tm.not_none(u.Infra.render_utility_facade(package)),
+            has="Ambiguous source class binding",
+        )
+        for namespace in ("Sample", "Extra"):
+            tm.that(error, has=namespace)
         tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     def test_unmaterialized_family_projects_executable_owner_composition(
@@ -719,17 +726,23 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             project,
             sources,
         ):
-            rendered = tm.not_none(
-                u.Infra.render_utility_facade(package, project=project, sources=sources)
+            rendered = tm.ok(
+                tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, project=project, sources=sources
+                    )
+                )
             )
         tm.fail(owners.exists())
         tm.that(facade.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         with u.Infra.facade_source_project(
             root, planned_sources={**planned, facade: rendered}
         ) as (project, sources):
-            tm.that(
-                u.Infra.render_utility_facade(
-                    package, project=project, sources=sources
+            tm.ok(
+                tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, project=project, sources=sources
+                    )
                 ),
                 eq=rendered,
             )
@@ -764,13 +777,17 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         if not virtual:
             self._write(owner, source)
 
-        with (
-            u.Infra.facade_source_project(
-                tmp_path, planned_sources={owner: source} if virtual else {}
-            ) as (project, sources),
-            pytest.raises(ValueError, match="have no public facade"),
-        ):
-            u.Infra.render_utility_facade(package, project=project, sources=sources)
+        with u.Infra.facade_source_project(
+            tmp_path, planned_sources={owner: source} if virtual else {}
+        ) as (project, sources):
+            tm.fail(
+                tm.not_none(
+                    u.Infra.render_utility_facade(
+                        package, project=project, sources=sources
+                    )
+                ),
+                has="Family declarations have no public facade",
+            )
 
     @staticmethod
     @pytest.mark.parametrize("present", [False, True])
@@ -858,7 +875,9 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             facade,
             expected_stdout="child",
         )
-        repeated = u.Infra.render_utility_facade(package, family="c")
+        repeated = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        )
         tm.that(
             repeated,
             eq=rendered,
@@ -891,7 +910,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         self._write(initializer, conflicted)
 
         if generated:
-            tm.not_none(u.Infra.render_utility_facade(package))
+            tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
             tm.that((package / "utilities.py").read_text(), eq=original)
         else:
             with pytest.raises(SyntaxError):
@@ -906,7 +925,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         tm.that(u.Infra.render_utility_facade(package), eq=None)
 
     def test_rejects_unsupported_facade_base_expression(self, tmp_path: Path) -> None:
-        """Reject dynamic bases instead of converting them to an empty owner."""
+        """Reject a statically unresolvable base, naming its expression."""
         package = tmp_path / "src" / "flext_sample"
         self._write(
             package / "codemod" / "batch_apply.py",
@@ -932,8 +951,10 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             '__all__ = ["FlextSampleUtilities", "u"]\n',
         )
 
-        with pytest.raises(ValueError, match="unsupported utility facade base"):
-            u.Infra.render_utility_facade(package)
+        tm.fail(
+            tm.not_none(u.Infra.render_utility_facade(package)),
+            has="owner_factory",
+        )
 
     def test_nested_namespace_owner_is_never_also_composed_whole(
         self,
@@ -972,7 +993,9 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             expected_stdout="nested",
         )
         tm.that(rendered, has="class Sample(NestedOwner.Sample)")
-        tm.that(u.Infra.render_utility_facade(package, family="c"), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="c")), eq=rendered
+        )
 
     @pytest.mark.parametrize("owner_name", ["FlextSampleTypes", "CompleteTypeOwner"])
     def test_type_facade_imports_its_owner_through_the_family_package(
@@ -980,11 +1003,12 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         tmp_path: Path,
         owner_name: str,
     ) -> None:
-        """The projected type facade keeps its private owner alias.
+        """The projected type facade keeps its authored owner alias.
 
         Premise: the owner is imported through the family package's lazy
-        exports; a per-module import was rewritten to the package form and
-        lost its ``as`` alias, leaving a class that inherits its own name.
+        exports and the authored ``LocalOwner`` alias and base are retained.
+        An owner whose public name is the facade class itself occupies the
+        facade's own provider binding and fails loud instead of being renamed.
         """
         root, package = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -1021,29 +1045,25 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             "__all__: list[str] = ['FlextSampleTypes', 't']\n",
         )
         with u.Infra.facade_source_project(root) as (project, sources):
-            rendered = u.Infra.render_type_facade(
+            projected = u.Infra.render_type_facade(
                 package, facade, dict(sources), project=project
             )
+        if owner_name == "FlextSampleTypes":
+            error = tm.fail(projected, has="Occupied facade provider binding")
+            tm.that(error, ends=":FlextSampleTypes")
+            return
+        rendered = tm.ok(projected)
         tm.that(
             rendered,
             has=(
-                f"from flext_sample.{family.directory} import "
-                + (
-                    "FlextSampleTypes as _FlextSampleTypes"
-                    if owner_name == "FlextSampleTypes"
-                    else owner_name
-                )
+                f"from flext_sample.{family.directory} import {owner_name}"
+                " as LocalOwner"
             ),
         )
-        tm.that(
-            rendered,
-            has="class FlextSampleTypes("
-            + ("_FlextSampleTypes" if owner_name == "FlextSampleTypes" else owner_name)
-            + ")",
-        )
+        tm.that(rendered, has="class FlextSampleTypes(LocalOwner)")
         self._write(facade, rendered)
         with u.Infra.facade_source_project(root) as (project, sources):
-            tm.that(
+            tm.ok(
                 u.Infra.render_type_facade(
                     package, facade, dict(sources), project=project
                 ),

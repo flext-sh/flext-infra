@@ -24,11 +24,6 @@ severity: error
 files:
 - "**/*.py"
 ignores:
-- "**/.git/**"
-- "**/.venv/**"
-- "**/legado/**"
-- "**/legacy/**"
-- "**/node_modules/**"
 - "**/protocols.py"
 - "**/_protocols/**"
 - "**/config/rules/ast-grep/tests/**"

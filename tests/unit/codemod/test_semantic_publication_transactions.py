@@ -539,7 +539,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
             "def run() -> str:\n"
             "    return DeclaredService.execute()\n"
         )
-        warmed = tm.not_none(
+        warmed = tm.ok(
             u.Infra.normalize_import_source(
                 project_root=mod_workspace,
                 file_path=consumer_path,
@@ -574,21 +574,21 @@ class TestsFlextInfraSemanticPublicationTransactions:
             candidate_consumer = candidate_root / consumer_path.relative_to(
                 mod_workspace
             )
-            normalized = tm.not_none(
+            normalized = tm.ok(
                 u.Infra.normalize_import_source(
                     project_root=candidate_root,
                     file_path=candidate_consumer,
                     source=candidate,
                 ),
+                eq=warmed,
             )
-            tm.that(normalized, eq=warmed)
-            tm.that(
+            tm.ok(
                 u.Infra.normalize_import_source(
                     project_root=candidate_root,
                     file_path=candidate_consumer,
                     source=normalized,
                 ),
-                eq=None,
+                eq=normalized,
             )
             fresh = tm.ok(
                 u.Cli.run(
@@ -602,7 +602,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
                             f"    project_root=Path({str(candidate_root)!r}),\n"
                             f"    file_path=Path({str(candidate_consumer)!r}),\n"
                             f"    source={candidate!r},\n"
-                            ")\n"
+                            ").value\n"
                             f"assert normalized == {normalized!r}\n"
                             f"{normalized}\n"
                             f"assert run() == {current.stem!r}\n"

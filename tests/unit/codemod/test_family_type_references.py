@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import ast
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
-from tests import c, p, tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -203,7 +203,7 @@ class TestsFlextInfraFamilyTypeReferences:
             ):
                 tm.that(proposed[consumer], has=preserved)
             TestsFlextInfraFamilyTypeReferences._assert_string_payloads_preserved(
-                root, rope.rope_project, consumer, proposed
+                references, proposed[consumer]
             )
             for rewritten in (
                 "Container['Part.DomainItem']",
@@ -235,66 +235,40 @@ class TestsFlextInfraFamilyTypeReferences:
         tm.that(consumer.read_text(encoding="utf-8"), eq=references)
 
     @staticmethod
-    def _assert_string_payloads_preserved(
-        root: Path,
-        project: p.Infra.RopeProject,
-        consumer: Path,
-        proposed: Mapping[Path, str],
-    ) -> None:
-        """Compare payload bindings semantically in the original and candidate."""
-        original = u.Infra.resolve_pymodule(
-            project, project.get_file(consumer.relative_to(root).as_posix())
-        )
+    def _assert_string_payloads_preserved(original: str, candidate: str) -> None:
+        """Require the candidate to bind every module string payload verbatim."""
         payloads = TestsFlextInfraFamilyTypeReferences._string_assignments(original)
-        tm.that(set(payloads), eq={"LABEL", "TEXT"})
-        with u.Infra.facade_source_project(
-            root, planned_sources=proposed, source_project=project
-        ) as (candidate, _captured):
-            module = u.Infra.resolve_pymodule(
-                candidate,
-                candidate.get_file(consumer.relative_to(root).as_posix()),
-            )
-            tm.that(
-                set(TestsFlextInfraFamilyTypeReferences._string_assignments(module)),
-                eq=set(payloads),
-            )
-            finder = u.Infra.semantic_finder(module)
-            for name, literal in payloads.items():
-                tm.that(
-                    sum(
-                        module.source_code[first:last] == name
-                        for pattern in (
-                            f"${{target}} = {literal}",
-                            f"${{target}}: ${{annotation}} = {literal}",
-                        )
-                        for match in finder.get_matches(pattern)
-                        for first, last in (match.get_capture_region("target"),)
-                    ),
-                    eq=1,
-                )
+        tm.that({name for name, _literal in payloads}, eq={"LABEL", "TEXT"})
+        tm.that(
+            TestsFlextInfraFamilyTypeReferences._string_assignments(candidate),
+            eq=payloads,
+        )
 
     @staticmethod
-    def _string_assignments(module: p.Infra.RopePyModule) -> Mapping[str, str]:
-        """Capture string assignment expressions through the native matcher.
+    def _string_assignments(source: str) -> tuple[tuple[str, str | None], ...]:
+        """Read module-level string payload bindings with their exact spelling.
 
         Args:
-            module: The native module owning the immutable source view.
+            source: The module source whose top-level bindings are read.
 
         Returns:
-            Names and expressions for semantic matching in another source view.
+            Bound names and their literal source segments, in source order.
 
         """
-        source = module.source_code
-        finder = u.Infra.semantic_finder(module)
-        return {
-            source[first:last]: source[value_first:value_last]
-            for pattern in (
-                "${target} = ${payload}",
-                "${target}: ${annotation} = ${payload}",
-            )
-            for match in finder.get_matches(
-                pattern, {"payload": "type=__builtins__.str"}
-            )
-            for first, last in (match.get_capture_region("target"),)
-            for value_first, value_last in (match.get_capture_region("payload"),)
-        }
+        bindings: list[tuple[str, str | None]] = []
+        target: ast.expr
+        value: ast.expr | None
+        for node in ast.parse(source).body:
+            if isinstance(node, ast.Assign) and len(node.targets) == 1:
+                target, value = node.targets[0], node.value
+            elif isinstance(node, ast.AnnAssign):
+                target, value = node.target, node.value
+            else:
+                continue
+            if (
+                isinstance(target, ast.Name)
+                and isinstance(value, ast.Constant)
+                and isinstance(value.value, str)
+            ):
+                bindings.append((target.id, ast.get_source_segment(source, value)))
+        return tuple(bindings)

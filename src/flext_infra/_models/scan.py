@@ -337,6 +337,53 @@ class FlextInfraModelsScan:
                     raise ValueError(msg)
             return self
 
+    class ModModuleQuarantine(m.ContractModel):
+        """One source module excluded from a mod run by its own planning failure."""
+
+        path: Annotated[
+            Path, m.Field(description="Absolute source module the failure names")
+        ]
+        cause: Annotated[
+            str, m.Field(description="Original failure message of the planner")
+        ]
+        error_code: Annotated[
+            str | None, m.Field(description="Original failure code, when declared")
+        ] = None
+
+    class ModQuarantineExclusion(m.ContractModel):
+        """One phase's coherent change dropped whole for touching quarantine."""
+
+        phase: Annotated[
+            str, m.Field(description="Phase whose complete contribution was dropped")
+        ]
+        modules: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Quarantined modules the dropped change touched"),
+        ]
+        paths: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Every target of the dropped coherent change"),
+        ]
+
+    class ModPhaseAdvance(m.ArbitraryTypesModel):
+        """Outcome of one joint mod iteration over the current source state."""
+
+        report: Annotated[
+            ModScanReport, m.Field(description="Scan of the post-iteration sources")
+        ]
+        phase_states: Annotated[
+            tuple[tuple[tuple[str, str], ...], ...],
+            m.Field(description="Fingerprints the cross-phase cycle check observes"),
+        ]
+        drifted: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Captured inputs another actor changed on disk"),
+        ] = ()
+        quarantined: Annotated[
+            ModModuleQuarantine | None,
+            m.Field(description="Module whose attributed failure voided the plan"),
+        ] = None
+
     class ModTextRule(FlextInfraModelsBase.FrozenArbitrary):
         """One declarative sed-by-list entry with its exact rewrite receipt."""
 

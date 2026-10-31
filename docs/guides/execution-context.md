@@ -2349,35 +2349,6 @@ consumer. Preserve valid WIP and establish which side violates its contract
 before extending either side. This development installation is distinct from
 the final locked-package, CI and integrated-runtime proofs.
 
-The lint-freeze catalog retains entries outside a modernizer invocation's
-observed project scope. It may replace the complete inventory only when the
-observed project roots equal the declared operation roots, retaining missing
-managed checkouts in that comparison, and the scan has no invalid paths. An existing digest
-must not be changed or removed merely because the scanned document differs;
-that drift requires the operator's rule-change authorization. Existing catalog bytes are
-validated before use and retained as the original publication preimage; the
-shared codegen publisher owns the update. This does not authorize changing any
-frozen rule, scope, severity or tool setting. Missing or malformed evidence
-remains a failure, and a partial refresh never proves fleet coverage.
-The catalog location is declared by `make.lint_freeze_catalog`; the checker
-uses its explicit repository execution root, never a search through neighboring
-catalog files. The modernizer validates each rendered candidate against that
-original catalog before writing the document. It cannot initialize a missing
-baseline or admit a new entry from the current working tree. Initial baseline
-materialization belongs to the generator's explicitly declared project inputs;
-that bootstrap path still requires implementation and runtime verification.
-Live document reads retain their original atomic file state by reference.
-Publication includes the unchanged catalog observation in the same existing
-publisher call as the candidate document, so both preimages are verified before
-effects. Pure in-memory rendering has no physical witness and cannot publish.
-Publication reuses the existing ordered multi-owner leases for the operation
-root and every physical project owner in its plans. The catalog and consulted
-configuration inputs remain unchanged observations in that same publication.
-This protects the cooperating writers of the cohort; it does not establish a
-global reader barrier or authorize replacing the frozen catalog.
-Catalog keys use the manifest's declared project identity, not the checkout's
-directory name; an independent clone or linked worktree preserves that identity.
-
 The default `make gen` handler invokes the generation engine at `PROJECT_ROOT`,
 with `all` scope locally and `self` scope in its declared CI context. A local
 workspace invocation covers its root and declared members, while a standalone

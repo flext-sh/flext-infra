@@ -14,6 +14,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r, t
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesProtectedEditLinting,
+)
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
@@ -142,7 +146,7 @@ class FlextInfraUtilitiesRopeImports:
         if not isinstance(tree, ast.AST):
             msg = "Rope import inventory requires a native syntax tree"
             raise TypeError(msg)
-        pending = [tree]
+        pending: list[ast.AST] = [tree]
         imports: list[t.Infra.PythonImportNode] = []
         while pending:
             node = pending.pop()
@@ -459,6 +463,10 @@ class FlextInfraUtilitiesRopeImports:
             return r[bool].ok(value=False)
         changed = any(change.new_contents != original_source for change in change_list)
         if changed and apply:
+            FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
+                Path(rope_project.root.real_path),
+                tuple(Path(change.resource.real_path) for change in change_list),
+            )
             rope_project.do(changes)
         return r[bool].ok(changed)
 
@@ -481,7 +489,12 @@ class FlextInfraUtilitiesRopeImports:
             The resulting ``p.Result[bool]``.
 
         """
-        existing_paths = tuple(path.resolve() for path in file_paths if path.is_file())
+        existing_paths = (
+            FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
+                Path(rope_project.root.real_path),
+                tuple(path for path in file_paths if path.is_file()),
+            )
+        )
         if not existing_paths:
             return r[bool].ok(value=False)
         canonical_imports: MutableMapping[
@@ -497,10 +510,8 @@ class FlextInfraUtilitiesRopeImports:
             except ValueError as exc:
                 return r[bool].fail(str(exc), exception=exc)
         before = {path: path.read_bytes() for path in existing_paths}
-        normalized_paths = tuple(str(path) for path in existing_paths)
-        check_result = u.Cli.run_checked(
-            ["ruff", "check", "--fix", "--select", "I,F401", *normalized_paths],
-            timeout=c.Infra.TIMEOUT_SHORT,
+        check_result = FlextInfraUtilitiesProtectedEditLinting.ruff_files(
+            (c.Infra.CHECK, "--fix", "--select", "I,F401"), existing_paths
         )
         if check_result.failure:
             return r[bool].from_failure(check_result)
@@ -511,9 +522,8 @@ class FlextInfraUtilitiesRopeImports:
             )
             if restore_result.failure:
                 return r[bool].from_failure(restore_result)
-        format_result = u.Cli.run_checked(
-            ["ruff", "format", *normalized_paths],
-            timeout=c.Infra.TIMEOUT_SHORT,
+        format_result = FlextInfraUtilitiesProtectedEditLinting.ruff_files(
+            (c.Infra.FORMAT,), existing_paths
         )
         if format_result.failure:
             return r[bool].from_failure(format_result)
@@ -712,6 +722,9 @@ class FlextInfraUtilitiesRopeImports:
         updated_source = module_imports.get_changed_source()
         if updated_source == resource.read():
             return r[bool].ok(value=False)
+        FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
+            Path(rope_project.root.real_path), (Path(resource.real_path),)
+        )
         resource.write(updated_source)
         return r[bool].ok(value=True)
 
@@ -803,6 +816,9 @@ class FlextInfraUtilitiesRopeImports:
         if updated.failure:
             return r[str].from_failure(updated)
         if updated.value != resource.read():
+            FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
+                Path(rope_project.root.real_path), (Path(resource.real_path),)
+            )
             resource.write(updated.value)
         return updated
 
@@ -888,87 +904,35 @@ class FlextInfraUtilitiesRopeImports:
             Candidate source, or an admission refusal before any resource write.
 
         """
-        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
             FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         )
         original = module.source_code
         selected = frozenset(aliases)
         if not selected or source_module == target_module:
             return r[str].ok(original)
-        source_resource = rope_project.find_module(source_module)
-        target_resource = rope_project.find_module(target_module)
+        endpoints = (
+            (source_module, rope_project.find_module(source_module)),
+            (target_module, rope_project.find_module(target_module)),
+        )
         consumers = cls._reject_module_alias_consumers(
             rope_project,
             resource,
             original.splitlines(keepends=True),
-            source_resource,
+            endpoints[0][1],
             selected,
         )
         if consumers.failure:
             return r[str].from_failure(consumers)
-        index = module.get_source_binding_index()
-        imports: list[
-            tuple[p.Infra.RopeSourceImportLayout, str, p.Infra.RopeScope]
-        ] = []
-        for declaration in index.import_layouts():
-            if declaration.module_region is None:
-                continue
-            provider = declaration.module_name or ""
-            if declaration.level:
-                imported = rope_project.find_relative_module(
-                    provider, resource.parent, declaration.level
-                )
-                if imported is None:
-                    # No native provider means this declaration has not been
-                    # elected as either relocation endpoint. A matching local
-                    # spelling alone must not capture an unrelated import.
-                    continue
-                matched = tuple(
-                    name
-                    for name, owner in (
-                        (source_module, source_resource),
-                        (target_module, target_resource),
-                    )
-                    if owner is not None and owner.real_path == imported.real_path
-                )
-                provider = (
-                    matched[0]
-                    if matched
-                    else (
-                        FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                            rope_project, imported
-                        ).get_name()
-                    )
-                )
-            if provider not in {source_module, target_module}:
-                continue
-            context = index.context_at(declaration.region[0])
-            imports.append((declaration, provider, context.structural_scope))
+        imports = cls._relocation_imports(rope_project, resource, module, endpoints)
         changes: list[m.Infra.SourceRewrite] = []
         for declaration, provider, scope in imports:
             if any(name == "*" for name, _alias, _region in declaration.aliases):
-                owner_resource = (
-                    source_resource if provider == source_module else target_resource
+                admission = cls._reject_star_consumer(
+                    rope_project, resource, provider, endpoints, consumers.value
                 )
-                if owner_resource is None:
-                    return r[str].fail(
-                        f"unresolved Rope star-import provider: {provider}"
-                    )
-                imported = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    rope_project, owner_resource
-                )
-                exported = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                    imported
-                )
-                if any(
-                    FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
-                    for name, binding in imported.get_attributes().items()
-                    if name in exported
-                    for expected in consumers.value
-                ):
-                    return r[str].fail(
-                        f"unsupported Rope module/star consumer: {resource.path}"
-                    )
+                if admission.failure:
+                    return r[str].from_failure(admission)
             moved = tuple(
                 (name, alias)
                 for name, alias, _region in declaration.aliases
@@ -976,41 +940,178 @@ class FlextInfraUtilitiesRopeImports:
             )
             if provider != source_module or not moved:
                 continue
-            bound = tuple(alias or name for name, alias, _region in declaration.aliases)
-            if len(set(bound)) != len(bound):
-                return r[str].fail(
-                    f"conflicting Rope imported binding: {resource.path}"
-                )
-            if source_resource is None:
-                return r[str].fail(f"unresolved Rope source module: {source_module}")
-            for other, other_provider, other_scope in imports:
-                if other_provider != target_module or other_scope is not scope:
-                    continue
-                if any(
-                    name == "*"
-                    or any(
-                        (alias or name) == (moved_alias or moved_name)
-                        and name != moved_name
-                        for moved_name, moved_alias in moved
-                    )
-                    for name, alias, _region in other.aliases
-                ):
-                    return r[str].fail(
-                        f"ambiguous Rope target binding: {target_module}"
-                    )
+            admission = cls._admit_moved_aliases(
+                resource, declaration, moved, (imports, scope), endpoints
+            )
+            if admission.failure:
+                return r[str].from_failure(admission)
             rendered = cls._render_import_alias_statement(
                 module, declaration, target_module, selected
             )
             if rendered.failure:
                 return r[str].from_failure(rendered)
             changes.extend(rendered.value)
-        if not changes:
-            return r[str].ok(original)
         return r[str].ok(
             FlextInfraUtilitiesRopeRuntime.content_change(
                 resource, original, changes
             ).new_contents
+            if changes
+            else original
         )
+
+    @classmethod
+    def _relocation_imports(
+        cls,
+        rope_project: p.Infra.RopeProject,
+        resource: p.Infra.RopeFile,
+        module: p.Infra.RopeSourceModule,
+        endpoints: tuple[
+            tuple[str, p.Infra.RopeResource | None],
+            tuple[str, p.Infra.RopeResource | None],
+        ],
+    ) -> list[tuple[p.Infra.RopeSourceImportLayout, str, p.Infra.RopeScope]]:
+        """Collect import declarations whose provider is a relocation endpoint.
+
+        Returns:
+            Each endpoint declaration with its provider and structural scope.
+
+        """
+        names = frozenset(name for name, _owner in endpoints)
+        index = module.get_source_binding_index()
+        imports: list[
+            tuple[p.Infra.RopeSourceImportLayout, str, p.Infra.RopeScope]
+        ] = []
+        for declaration in index.import_layouts():
+            if declaration.module_region is None:
+                continue
+            provider = cls._import_provider(
+                rope_project, resource, declaration, endpoints
+            )
+            if provider is None or provider not in names:
+                continue
+            context = index.context_at(declaration.region[0])
+            imports.append((declaration, provider, context.structural_scope))
+        return imports
+
+    @staticmethod
+    def _import_provider(
+        rope_project: p.Infra.RopeProject,
+        resource: p.Infra.RopeFile,
+        declaration: p.Infra.RopeSourceImportLayout,
+        endpoints: tuple[
+            tuple[str, p.Infra.RopeResource | None],
+            tuple[str, p.Infra.RopeResource | None],
+        ],
+    ) -> str | None:
+        """Resolve the absolute provider of one import declaration.
+
+        Returns:
+            The provider module name, or None when no native provider exists.
+
+        """
+        provider = declaration.module_name or ""
+        if not declaration.level:
+            return provider
+        imported = rope_project.find_relative_module(
+            provider, resource.parent, declaration.level
+        )
+        if imported is None:
+            # No native provider means this declaration has not been
+            # elected as either relocation endpoint. A matching local
+            # spelling alone must not capture an unrelated import.
+            return None
+        matched = tuple(
+            name
+            for name, owner in endpoints
+            if owner is not None and owner.real_path == imported.real_path
+        )
+        return (
+            matched[0]
+            if matched
+            else FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                rope_project, imported
+            ).get_name()
+        )
+
+    @staticmethod
+    def _reject_star_consumer(
+        rope_project: p.Infra.RopeProject,
+        resource: p.Infra.RopeFile,
+        provider: str,
+        endpoints: tuple[
+            tuple[str, p.Infra.RopeResource | None],
+            tuple[str, p.Infra.RopeResource | None],
+        ],
+        consumers: tuple[p.Infra.RopePyName, ...],
+    ) -> p.Result[bool]:
+        """Refuse a star import whose public exports bind a module consumer.
+
+        Returns:
+            Successful admission or the unresolved/unsupported star refusal.
+
+        """
+        (source_module, source_resource), (_target, target_resource) = endpoints
+        owner_resource = (
+            source_resource if provider == source_module else target_resource
+        )
+        if owner_resource is None:
+            return r[bool].fail(f"unresolved Rope star-import provider: {provider}")
+        imported = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, owner_resource)
+        )
+        exported = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(imported)
+        if any(
+            FlextInfraUtilitiesRopeRuntime.same_name(expected, binding)
+            for name, binding in imported.get_attributes().items()
+            if name in exported
+            for expected in consumers
+        ):
+            return r[bool].fail(
+                f"unsupported Rope module/star consumer: {resource.path}"
+            )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _admit_moved_aliases(
+        resource: p.Infra.RopeFile,
+        declaration: p.Infra.RopeSourceImportLayout,
+        moved: tuple[tuple[str, str | None], ...],
+        scoped: tuple[
+            Sequence[tuple[p.Infra.RopeSourceImportLayout, str, p.Infra.RopeScope]],
+            p.Infra.RopeScope,
+        ],
+        endpoints: tuple[
+            tuple[str, p.Infra.RopeResource | None],
+            tuple[str, p.Infra.RopeResource | None],
+        ],
+    ) -> p.Result[bool]:
+        """Refuse conflicting or ambiguous bindings of the moved aliases.
+
+        Returns:
+            Successful admission or the conflict/unresolved/ambiguity refusal.
+
+        """
+        imports, scope = scoped
+        (source_module, source_resource), (target_module, _target) = endpoints
+        bound = tuple(alias or name for name, alias, _region in declaration.aliases)
+        if len(set(bound)) != len(bound):
+            return r[bool].fail(f"conflicting Rope imported binding: {resource.path}")
+        if source_resource is None:
+            return r[bool].fail(f"unresolved Rope source module: {source_module}")
+        for other, other_provider, other_scope in imports:
+            if other_provider != target_module or other_scope is not scope:
+                continue
+            if any(
+                name == "*"
+                or any(
+                    (alias or name) == (moved_alias or moved_name)
+                    and name != moved_name
+                    for moved_name, moved_alias in moved
+                )
+                for name, alias, _region in other.aliases
+            ):
+                return r[bool].fail(f"ambiguous Rope target binding: {target_module}")
+        return r[bool].ok(value=True)
 
     @classmethod
     def _reject_module_alias_consumers(
@@ -1042,7 +1143,7 @@ class FlextInfraUtilitiesRopeImports:
             if source_resource is not None
             else ()
         )
-        pymodule = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
+        pymodule = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
             FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         )
         source = "".join(lines)
@@ -1165,6 +1266,7 @@ class FlextInfraUtilitiesRopeImports:
 
     @staticmethod
     def _persisted_import_block(
+        rope_project: t.Infra.RopeProject,
         module_imports: t.Infra.RopeModuleImports,
         resource: t.Infra.RopeFile,
         *,
@@ -1184,6 +1286,9 @@ class FlextInfraUtilitiesRopeImports:
         if updated == resource.read():
             return None
         if apply:
+            FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
+                Path(rope_project.root.real_path), (Path(resource.real_path),)
+            )
             resource.write(updated)
         return updated
 
@@ -1214,6 +1319,7 @@ class FlextInfraUtilitiesRopeImports:
             ),
         )
         return FlextInfraUtilitiesRopeImports._persisted_import_block(
+            rope_project,
             module_imports,
             resource,
             apply=apply,
@@ -1269,6 +1375,7 @@ class FlextInfraUtilitiesRopeImports:
         if not changed:
             return None
         return FlextInfraUtilitiesRopeImports._persisted_import_block(
+            rope_project,
             module_imports,
             resource,
             apply=apply,

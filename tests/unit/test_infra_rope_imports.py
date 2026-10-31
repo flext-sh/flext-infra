@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING
 
 import pytest
@@ -217,26 +216,50 @@ class TestsFlextInfraRopeImports:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("module_source", "expected"),
+        ("module_source", "occurrence", "expected"),
         [
-            pytest.param("from x import p\nclass A:\n    y = p.X\n", True, id="one"),
             pytest.param(
-                "if TYPE_CHECKING:\n    from x import p\nq = p.Y\n",
-                True,
-                id="guarded",
+                "from x import p\nclass A:\n    y = p.X\n", "p.X", True, id="class"
             ),
-            pytest.param("from x import p\ndef f(p): ...\n", False, id="param"),
-            pytest.param("from x import p\nfrom y import p\n", False, id="twice"),
-            pytest.param("from x import *\nfrom y import p\n", False, id="star"),
-            pytest.param("def f():\n    from x import p\n", False, id="local"),
-            pytest.param("from x import p\n[p for p in z]\n", False, id="loop"),
+            pytest.param(
+                "from x import p\ndef f():\n    return p.Z\n",
+                "p.Z",
+                True,
+                id="function",
+            ),
+            pytest.param(
+                "if flag:\n    from x import p\nq = p.Y\n",
+                "p.Y",
+                False,
+                id="conditional",
+            ),
+            pytest.param(
+                "from x import p\nfrom y import p\nq = p.Y\n",
+                "p.Y",
+                False,
+                id="twice",
+            ),
+            pytest.param(
+                "def f():\n    from x import p\n    return p.Z\nq = p.Y\n",
+                "p.Y",
+                False,
+                id="local",
+            ),
+            pytest.param("q = p.Y\nfrom x import p\n", "p.Y", False, id="later"),
         ],
     )
     def test_single_module_import_binding_follows_python_scoping(
         module_source: str,
+        occurrence: str,
         *,
         expected: bool,
     ) -> None:
-        """Only a sole module-level import binds every load of the name."""
-        tree = ast.parse(module_source)
-        tm.that(u.Infra.single_reaching_binding(tree, "p"), eq=expected)
+        """Only one unconditional earlier declaration reaches the occurrence."""
+        module = u.Infra.build_string_module(None, module_source)
+        offset = module_source.index(occurrence)
+        tm.that(
+            u.Infra.single_reaching_binding(
+                module, u.Infra.scope_at(module, offset), "p", offset
+            ),
+            eq=expected,
+        )

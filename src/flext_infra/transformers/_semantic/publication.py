@@ -212,6 +212,9 @@ class FlextInfraTransformersSemanticPublication:
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Bind each final edit to its destination's current state, once.
 
+        The owning project is elected inside ``root`` only: a dependency module
+        reached through the Python path never becomes its own project here.
+
         Returns:
             One plan per edit, or the first destination read failure.
 
@@ -224,7 +227,7 @@ class FlextInfraTransformersSemanticPublication:
                 return result_type.from_failure(before)
             files.append(
                 m.Infra.CodegenFilePlan(
-                    project=u.Infra.project_root(edit.file_path) or root,
+                    project=u.Infra.nearest_project_root(root, edit.file_path) or root,
                     path=edit.file_path,
                     before=before.value,
                     desired_content=None

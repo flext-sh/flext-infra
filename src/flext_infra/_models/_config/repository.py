@@ -340,16 +340,11 @@ class FlextInfraModelsConfigRepository:
             m.Field(
                 description=(
                     "Governance kind; only internal_flext repositories are "
-                    "rewritten by generation. Defaults to internal_flext, which "
-                    "is the behaviour every manifest had before this field "
-                    "existed: a repository that omits it is one this generator "
-                    "already conforms. Requiring it outright made every manifest "
-                    "written before the field was added fail validation, so a "
-                    "consumer that had not yet updated could not run `make gen` "
-                    "at all -- and a consumer is allowed to lag."
+                    "rewritten by generation. Required: a generator that cannot "
+                    "read the kind fails closed and never assumes internal_flext."
                 ),
             ),
-        ] = c.Infra.ProjectKind.INTERNAL_FLEXT
+        ]
         codegen: Annotated[
             c.Infra.CodegenKind,
             m.Field(description="Repository code-generation policy"),

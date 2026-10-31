@@ -49,7 +49,7 @@ class FlextInfraUtilitiesRopeModulePatch:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntime
-        module = runtime.require_source_object(
+        module = runtime.require_source_module(
             project.get_pymodule(
                 runtime.file_resource_at(project, path), force_errors=True
             )
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         with project.source_view(
             declared_files=declarations, additional_source_folders=None
         ) as candidate:
-            yield FlextInfraUtilitiesRopeRuntime.require_source_object(
+            yield FlextInfraUtilitiesRopeRuntime.require_source_module(
                 candidate.get_pymodule(candidate.get_resource(resource.path))
             )
 
@@ -280,17 +280,18 @@ class FlextInfraUtilitiesRopeModulePatch:
 
     @staticmethod
     def _apply_alias_rename(
-        project: p.Infra.RopeProject,
-        resource: p.Infra.RopeResource,
+        resource: p.Infra.RopeFile,
         candidate: p.Infra.RopeSourceModule,
         words: p.Infra.RopeWorder,
-        fragment: p.Infra.RopeFragment,
         source: str,
         *,
-        alias: str,
-        original: str,
+        selection: tuple[p.Infra.RopeSourceFragment, str, str],
     ) -> p.Result[str]:
         """Rename one aliased own-package import to its original binding.
+
+        ``selection`` holds the aliased import fragment, its alias, and the
+        original binding. The candidate module belongs to the same project
+        that ``candidate_module`` bound, so its core owns the rename.
 
         Returns:
             The renamed candidate text, or the typed occupation or no-change
@@ -299,6 +300,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         """
         runtime = FlextInfraUtilitiesRopeRuntime
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
+        fragment, alias, original = selection
         if resource.exists() and resource.read() != source:
             # The rename offsets belong to the held text epoch; rope computes
             # changes against the resource's own bytes. A divergent epoch
@@ -314,7 +316,7 @@ class FlextInfraUtilitiesRopeModulePatch:
             return r[str].fail(f"import alias destination is occupied: {original}")
         offset = words.get_word_range(fragment.end - 1)[0]
         changes = refactors.rename_changes(
-            project,
+            candidate.pycore.project,
             resource,
             offset,
             original,
@@ -343,7 +345,6 @@ class FlextInfraUtilitiesRopeModulePatch:
         """
         runtime = FlextInfraUtilitiesRopeRuntime
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        project = module.pycore.project
         resource = module.get_resource()
         if resource is None:
             msg = "import alias has no source resource"
@@ -384,14 +385,11 @@ class FlextInfraUtilitiesRopeModulePatch:
                     ).new_contents
                     continue
                 renamed = cls._apply_alias_rename(
-                    project,
                     resource,
                     candidate,
                     words,
-                    fragment,
                     source,
-                    alias=alias,
-                    original=original,
+                    selection=selected,
                 )
                 if renamed.failure:
                     return renamed
