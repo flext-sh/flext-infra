@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import ast
 import re
-import tomllib
 from collections.abc import Mapping, Sequence
 from importlib import import_module
 from importlib.util import find_spec
@@ -31,7 +30,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPythonModel,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
+from flext_infra._utilities._codemod import (
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodRules,
+)
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
@@ -150,8 +152,8 @@ class FlextInfraUtilitiesCodemodNativePackage:
         for package, children in facts.modules.items():
             merged_modules.setdefault(package, children)
         run = FlextInfraUtilitiesPythonModel.python_model_run(snapshot.engine, {})
-        for package in cls._codemod_provider_declared_packages(project):
-            exports = cls._codemod_installed_package_exports(run, package)
+        for package in cls._codemod_provider_packages(own):
+            exports = cls._codemod_installed_package_exports(snapshot, run, package)
             if exports is None:
                 continue
             merged_exports.setdefault(package, exports)
@@ -164,57 +166,51 @@ class FlextInfraUtilitiesCodemodNativePackage:
         )
 
     @staticmethod
-    def _codemod_provider_declared_packages(project: Path) -> tuple[str, ...]:
-        """Distributions the project declares and the environment installs.
+    def _codemod_provider_packages(project: Path) -> t.StrTuple:
+        """Facade packages the project's runtime closure installs.
 
-        Reads the project manifest's dependency declarations (the SSOT of what
-        the project composes) and keeps every name that resolves in the
-        running environment, so only present providers contribute exports.
+        The closure's import packages come from the runtime-closure owner;
+        a package is a facade provider by the same generated-lazy-export
+        verdict ``codemod_facade_packages`` applies. The own package is
+        excluded: the repository facts already carry it.
 
         Returns:
-            Provider package names in manifest declaration order.
+            The provider facade package names, sorted.
 
         """
-        manifest = project / "pyproject.toml"
-        if not manifest.is_file():
-            return ()
-        declared = tomllib.loads(manifest.read_text())
-        project_table = declared.get("project", {})
-        uv_table = declared.get("tool", {}).get("uv", {})
-        requirements: list[str] = [
-            *project_table.get("dependencies", []),
-            *(
-                item
-                for extras in project_table.get("optional-dependencies", {}).values()
-                for item in extras
-            ),
-            *uv_table.get("override-dependencies", []),
-            *uv_table.get("constraint-dependencies", []),
-        ]
-        names: list[str] = []
-        for requirement in requirements:
-            name = re.split(r"[<>=!~\[; @]", requirement, maxsplit=1)[0].strip()
-            if name and name.replace("-", "_").isidentifier() and name not in names:
-                names.append(name)
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         return tuple(
-            name for name in names if find_spec(name.replace("-", "_")) is not None
+            sorted(
+                module
+                for module in FlextInfraUtilitiesCodemodNative.codemod_runtime_modules(
+                    project
+                )
+                if module != own and u.runtime_alias_names(module)
+            )
         )
 
     @classmethod
     def _codemod_installed_package_exports(
-        cls, run: m.Infra.PythonModelRun, package: str
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        run: m.Infra.PythonModelRun,
+        package: str,
     ) -> t.StrTuple | None:
         """Statically read one installed package initializer's ``__all__``.
+
+        Rope's module finder elects the package folder on the project's
+        python path; its initializer is read by the same static model the
+        repository facts use.
 
         Returns:
             The declared names, or ``None`` when the package publishes no
             initializer the static model can read.
 
         """
-        spec = find_spec(package)
-        if spec is None or not spec.submodule_search_locations:
+        resource = snapshot.engine.find_module(package)
+        if resource is None or FlextInfraUtilitiesRopeRuntime.file_resource(resource):
             return None
-        initializer = Path(next(iter(spec.submodule_search_locations))) / "__init__.py"
+        initializer = Path(resource.real_path) / "__init__.py"
         if not initializer.is_file():
             return None
         module = FlextInfraUtilitiesPythonModel.python_model_module_at(
@@ -381,7 +377,8 @@ class FlextInfraUtilitiesCodemodNativePackage:
             The generated ``import-header`` rule documents keyed by id.
 
         """
-        facts = cls.codemod_workspace_export_facts(snapshot, project)
+        del snapshot
+        del project
         directories = facts.directories
         groups: dict[tuple[str, str | None, t.StrTuple], set[str]] = {}
         resolvable = cls.codemod_header_resolvable_names(facts)
