@@ -12,10 +12,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, config, m, p, r, s, t, u
-from flext_infra.workspace import (
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceLockCompleteness,
-)
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraLockIntegrityVerifier(s[bool]):
@@ -33,41 +30,15 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
     )
 
     @classmethod
-    def upgrade_lock(
+    def upgrade_mise_lock(
         cls,
         request: p.Infra.WorkspaceRequest,
         runner: p.Cli.CommandRunner,
     ) -> p.Result[bool]:
-        """Verify the native UV lock, then upgrade the elected Mise locks.
-
-        Generated ``make upg`` is the only UV lock writer: native ``uv lock
-        --upgrade`` runs there before any FLEXT Python, and setup installs that
-        lock before this executor starts. This operation proves the written UV
-        lock fresh and complete through native ``uv lock --check``, then owns
-        the Mise half for the runtime root and every declared member.
-
-        Returns:
-            Native lock verification and Mise upgrade, or the first failure.
-
-        """
-        resolved = FlextInfraWorkspaceDetector.resolution_context(
-            request.repository_root
-        )
-        if resolved.failure:
-            return r.from_failure(resolved)
-        root = resolved.value.runtime_root
-        return FlextInfraWorkspaceLockCompleteness.verify_lock(root).flat_map(
-            lambda _: cls._upgrade_mise_lock(runner, root)
-        )
-
-    @classmethod
-    def _upgrade_mise_lock(
-        cls,
-        runner: p.Cli.CommandRunner,
-        runtime_root: Path,
-    ) -> p.Result[bool]:
         """Lock, in one pass, only the Mise tools whose resolution changed.
 
+        Generated ``make upg`` writes the UV lock natively and verifies it with
+        ``workspace verify-lock``; this operation owns only the Mise half.
         Every governed repository (the runtime root and each declared member)
         renders its own ``.mise.toml`` and commits its own ``mise.lock`` for
         standalone consumption, and Mise resolves a member's tools from the
@@ -82,11 +53,17 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
             Success when every lock is current, or the first native failure.
 
         """
-        return u.Infra.managed_mise_self(runtime_root).flat_map(
+        resolved = FlextInfraWorkspaceDetector.resolution_context(
+            request.repository_root
+        )
+        if resolved.failure:
+            return r.from_failure(resolved)
+        root = resolved.value.runtime_root
+        return u.Infra.managed_mise_self(root).flat_map(
             lambda mise: cls._lock_mise_roots(
                 runner,
                 mise,
-                u.Infra.governed_project_roots(runtime_root),
+                u.Infra.governed_project_roots(root),
             ),
         )
 
