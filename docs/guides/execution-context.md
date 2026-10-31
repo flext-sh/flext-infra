@@ -131,9 +131,11 @@ records this bounded exception; [parent ADR-010](../../../docs/architecture/adr/
 retains the common lifecycle contract. Reuse existing public operations and their
 typed owners, not raw tools, private-module execution or a second dispatcher.
 
-The direct native lock-writing operation is
-`flext-infra deps upgrade-lock --repository-root <root>` at the dependency composition
-root. It delegates to managed uv without generation, installation or another resolver.
+The only UV lock writer is generated `make upg`, which runs native
+`uv lock --upgrade` at the dependency composition root before any FLEXT Python.
+It then runs `workspace verify-lock` and
+`flext-infra deps upgrade-mise-lock --repository-root <root>`, which writes only the
+Mise locks, without generation, installation or another resolver.
 Installed `workspace verify-lock` delegates freshness and closure checks to native
 `uv lock --check`, not an Infra marker evaluator or graph walker. These commands remove
 inherited project/interpreter selectors through `make.native_environment_unset` and
@@ -201,13 +203,15 @@ memories `operator-ruling-2026-10-02-repair-never-deadlocks` and
 FLEXT suppliers from the runtime environment, so generated `make upg` first runs
 native `uv lock --upgrade` with the Mise-resolved Python and no FLEXT Python,
 then the setup installation provisions exactly that lock, and only then invokes
-`deps upgrade-lock`. Before every frozen installation, setup compares the
+`workspace verify-lock` and `deps upgrade-mise-lock`. A project source that no
+longer imports still receives the written and installed UV lock; the executor
+steps that follow fail loud on it. Before every frozen installation, setup compares the
 creator identity recorded in the environment (`make.environment_identity`) with
 the Mise-resolved uv and Python and recreates a divergent environment with native
 `uv venv --clear`; `uv sync` alone keeps an environment whose interpreter still
 satisfies the request. Direnv exports no `UV_PROJECT` or
 `UV_PROJECT_ENVIRONMENT`.
-`deps upgrade-lock` also owns the Mise half, in the same single pass over the
+`deps upgrade-mise-lock` owns the Mise half, in the same single pass over the
 runtime root and every declared member: each governed repository renders its own
 `.mise.toml` and commits its own `mise.lock`, and Mise resolves a member's tools
 from the member's lock. For each of them, native `mise lock --bump --dry-run

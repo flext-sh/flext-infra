@@ -389,10 +389,16 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 # owns the runtime environment: it compares the creator identity uv recorded
 # (make.environment_identity) with the Mise-resolved uv and Python and, on any
 # divergence, recreates it through native `uv venv --clear` before the frozen
-# installation. A current environment is left untouched.
+# installation. A directory without the marker is not an environment (its
+# interpreter reports the base prefix, so an exact sync would rewrite the shared
+# Mise Python): it is recreated the same way. A current environment is left
+# untouched.
 {% set identity = make.environment_identity -%}
 RECREATE_DIVERGENT_RUNTIME = identity_file="$(RUNTIME_VENV)/{{ identity.marker_file }}"; \
-	if [ -f "$$identity_file" ]; then \
+	if [ -e "$(RUNTIME_VENV)" ] && [ ! -f "$$identity_file" ]; then \
+		printf 'setup: recreating %s: no %s, so a sync would target the base interpreter\n' "$(RUNTIME_VENV)" "{{ identity.marker_file }}"; \
+		$(UV) venv --clear --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$(RUNTIME_VENV)"; \
+	elif [ -f "$$identity_file" ]; then \
 		mise_bin="$(MISE)"; \
 		uv_bin="$$( "$${mise_bin}" -C "$(RUNTIME_ROOT)" which "uv" )"; \
 		declared_uv="$$( "$${uv_bin}" self version --short )"; \
@@ -772,9 +778,10 @@ _builtin_require_environment: _builtin_require_interpreter
 # operator-ruling-2026-10-09-setup-always-upg-cures). The flext_infra executor
 # imports its FLEXT dependencies from this environment, so a stale lock (or a
 # project whose own source needs newer suppliers) cannot run it. Native uv
-# therefore writes the upgraded lock first, with no Python of ours, and the
-# setup installation provisions exactly that lock; only then does the executor
-# run its verified UV and Mise half. It generates no projection.
+# is therefore the only UV lock writer and runs first, with no Python of ours,
+# and the setup installation provisions exactly that lock. Only then does the
+# executor verify that lock and upgrade the Mise locks, whose changed-tool
+# selection reads Mise's JSON preview. It generates no projection.
 .PHONY: _upg_lifecycle
 _upg_lifecycle:
 	+@set -eu; \
@@ -785,7 +792,8 @@ _upg_lifecycle:
 	$(RESOLVE_DESIRED_PYTHON); \
 	$(UV) lock --upgrade --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
 	$(INSTALL_RUNTIME_RECIPE); \
-	$(PROJECT_FLEXT_INFRA) deps upgrade-lock --repository-root "$(RUNTIME_ROOT)"; \
+	$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} verify-lock --repository-root "$(RUNTIME_ROOT)"; \
+	$(PROJECT_FLEXT_INFRA) deps upgrade-mise-lock --repository-root "$(RUNTIME_ROOT)"; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
 	esac; \
