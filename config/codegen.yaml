@@ -29,4 +29,4 @@ Infra:
       - name: mod-snapshots
         description: Regenerate every owned ast-grep rule-test snapshot and report changes for review.
     branch_policy:
-      integration_branch: 0.12.0-dev
+      integration_branch: 0.21.0-dev

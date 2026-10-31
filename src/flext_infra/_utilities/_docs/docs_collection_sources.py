@@ -268,16 +268,23 @@ class FlextInfraUtilitiesDocsCollectionSources:
             The resulting ``tuple[m.Infra.PlanCollectionManifest,
                 tuple[Path, ...]]``.
 
+        Raises:
+            ValueError: If published collection manifest has no association proof.
+
         """
         manifest_path = canonical / "collection-manifest.json"
         before = cls.collection_capture(manifest_path, states)
         if before.content is None:
             return m.Infra.PlanCollectionManifest(
-                configuration_sha256=None, coverage=(),
+                configuration_sha256=None,
+                coverage=(),
             ), ()
         manifest = m.Infra.PlanCollectionManifest.model_validate_json(before.content)
         if manifest.configuration_sha256 is None:
-            msg = f"published collection manifest has no association proof: {manifest_path}"
+            msg = (
+                f"published collection manifest has no association proof: "
+                f"{manifest_path}"
+            )
             raise ValueError(msg)
         excluded: list[Path] = [manifest_path]
         cls._validate_revision_locators(manifest)

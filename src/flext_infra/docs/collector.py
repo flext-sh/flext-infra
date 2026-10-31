@@ -36,11 +36,15 @@ class FlextInfraDocCollector:
         if request.check:
             return r[bool].ok(
                 u.Infra.docs_verify_plan_collection(
-                    root, configuration.value, inputs=tuple(inputs.values()),
+                    root,
+                    configuration.value,
+                    inputs=tuple(inputs.values()),
                 ),
             )
         bundle = u.Infra.docs_collect_plan_files(
-            root, configuration.value, inputs=tuple(inputs.values()),
+            root,
+            configuration.value,
+            inputs=tuple(inputs.values()),
         )
         incomplete = tuple(
             item for item in bundle.coverage if item.adapter == "private-inventory"

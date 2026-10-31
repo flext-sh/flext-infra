@@ -206,8 +206,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             self.desired[manifest_path] = (
                 m.Infra.PlanCollectionManifest(
                     configuration_sha256=(
-                        FlextInfraUtilitiesDocsCollectionSources
-                        .collection_configuration_digest(self.configuration)
+                        FlextInfraUtilitiesDocsCollectionSources.collection_configuration_digest(
+                            self.configuration
+                        )
                     ),
                     coverage=tuple(self.coverage),
                     revisions=tuple(self.history),
@@ -525,7 +526,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             msg = "collection verification requires enabled collection"
             raise ValueError(msg)
         _root, canonical, _projection = cls._validated_collection_roots(
-            repository_root, configuration,
+            repository_root,
+            configuration,
         )
         cls._require_unique_sources(configuration)
         states: MutableMapping[Path, m.Cli.AtomicFileState] = {
@@ -556,7 +558,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             ValueError: If associations, coverage or publication authorization differ.
 
         """
-        if manifest.configuration_sha256 != cls.collection_configuration_digest(configuration):
+        if manifest.configuration_sha256 != cls.collection_configuration_digest(
+            configuration
+        ):
             msg = "collection configuration differs from published association proof"
             raise ValueError(msg)
         sources = {source.id: source for source in configuration.sources}
@@ -576,7 +580,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 msg = f"source has no complete publishable collection proof: {identity}"
                 raise ValueError(msg)
             if item.status != ("collected" if item.files else "empty"):
-                msg = f"published collection source coverage is inconsistent: {identity}"
+                msg = (
+                    f"published collection source coverage is inconsistent: {identity}"
+                )
                 raise ValueError(msg)
 
     @classmethod
@@ -589,7 +595,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         """Verify every manifest-owned canonical file through its original snapshot.
 
         Raises:
-            ValueError: If the index or owned artifact inventory is incomplete or changed.
+            ValueError: If the index or owned artifact inventory is incomplete
+                or changed.
 
         """
         paths = tuple(
@@ -600,12 +607,17 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             msg = "published collection artifact inventory is incomplete or duplicated"
             raise ValueError(msg)
         for artifact in manifest.artifacts:
-            observed = cls.collection_capture(canonical / artifact.relative_path, states)
+            observed = cls.collection_capture(
+                canonical / artifact.relative_path, states
+            )
             if (
                 not cls._artifact_matches(observed, artifact)
                 or observed.mode != c.Infra.DOCS_ARTIFACT_MODE
             ):
-                msg = f"published collection artifact is missing or changed: {observed.path}"
+                msg = (
+                    f"published collection artifact is missing or changed: "
+                    f"{observed.path}"
+                )
                 raise ValueError(msg)
 
     @classmethod
@@ -629,25 +641,47 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             incoming = canonical / cls._validated_owned_path(
                 revision.canonical_path.with_suffix("") / "incoming" / revision.digest,
             )
-            names = (Path(revision.source_path.name), *(
-                Path(revision.source_path.name).with_suffix("") / name
-                for name in revision.attachments
-            ))
+            names = (
+                Path(revision.source_path.name),
+                *(
+                    Path(revision.source_path.name).with_suffix("") / name
+                    for name in revision.attachments
+                ),
+            )
             paths = (
                 incoming / "plan.md",
                 *(incoming / "attachments" / name for name in revision.attachments),
             )
-            required = (canonical / revision.canonical_path, incoming / "provenance.json", *paths)
-            if any(path not in states or states[path].content is None for path in required):
-                msg = f"published collection revision has no complete owned evidence: {revision.identity}"
+            required = (
+                canonical / revision.canonical_path,
+                incoming / "provenance.json",
+                *paths,
+            )
+            if any(
+                path not in states or states[path].content is None for path in required
+            ):
+                msg = (
+                    f"published collection revision has no complete owned evidence: "
+                    f"{revision.identity}"
+                )
                 raise ValueError(msg)
             provenance = m.Infra.PlanCollectionRevision.model_validate_json(
                 states[incoming / "provenance.json"].content,
             )
-            if provenance != revision or cls.collection_revision_digest(
-                tuple((name, states[path]) for name, path in zip(names, paths, strict=True)),
-            ) != revision.digest:
-                msg = f"published collection revision provenance or digest differs: {revision.identity}"
+            if (
+                provenance != revision
+                or cls.collection_revision_digest(
+                    tuple(
+                        (name, states[path])
+                        for name, path in zip(names, paths, strict=True)
+                    ),
+                )
+                != revision.digest
+            ):
+                msg = (
+                    f"published collection revision provenance or digest differs: "
+                    f"{revision.identity}"
+                )
                 raise ValueError(msg)
 
     @classmethod
@@ -682,7 +716,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             ).hexdigest()
         )
         digest = cls.collection_revision_digest(
-            tuple((artifact.path.relative_to(path.parent), artifact) for artifact in artifacts),
+            tuple(
+                (artifact.path.relative_to(path.parent), artifact)
+                for artifact in artifacts
+            ),
         )
         plan = artifacts[0].content
         if plan is None:

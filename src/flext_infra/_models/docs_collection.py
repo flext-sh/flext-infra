@@ -203,11 +203,14 @@ class FlextInfraModelsDocsCollection:
         """Generated artifact ownership and provenance, never execution state."""
 
         configuration_sha256: t.NonEmptyStr | None = m.Field(
-            description="Typed source association digest; None only before first collection",
+            description="Typed source association digest; None only before first "
+            "collection",
         )
-        coverage: tuple[
-            FlextInfraModelsDocsCollection.PlanCollectionCoverage, ...
-        ] = m.Field(description="Complete source coverage from the published collection")
+        coverage: tuple[FlextInfraModelsDocsCollection.PlanCollectionCoverage, ...] = (
+            m.Field(
+                description="Complete source coverage from the published collection"
+            )
+        )
 
         revisions: tuple[FlextInfraModelsDocsCollection.PlanCollectionRevision, ...] = (
             m.Field(

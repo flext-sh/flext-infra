@@ -465,18 +465,12 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 else render_inputs.codegen.modes.file_default
             ),
             ownership=entry.ownership,
-            inputs=(
-                ()
-                if entry.bootstrap_distribution is None
-                else (
-                    *render_inputs.workspace.inputs,
-                    *(
-                        state
-                        for plan in planned_manifests
-                        for state in (plan.before, *plan.inputs)
-                    ),
-                )
-            ),
+        )
+        planned = self.with_bootstrap_inputs(
+            planned,
+            render_inputs,
+            planned_manifests,
+            bootstrap=entry.bootstrap_distribution is not None,
         )
         if planned.success and names is not None:
             render_inputs.planned_direct_sources = names.value

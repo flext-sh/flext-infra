@@ -31,6 +31,76 @@ class FlextInfraUtilitiesDocsGuides:
     """Project guide projections derived from root ``docs/guides`` sources."""
 
     @staticmethod
+    def _guide_source(
+        path: Path, previous: m.Infra.CodegenFilePlan | None
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, bytes]]:
+        """Return the guide's original observation and its current bytes.
+
+        Returns:
+            The snapshot and the bytes the section is spliced into, or the
+            original failure.
+
+        """
+        result = r[tuple[m.Cli.AtomicFileState, bytes]]
+        captured = (
+            r[m.Cli.AtomicFileState].ok(previous.before)
+            if previous is not None
+            else u.Cli.atomic_read_binary_file_state(path, required=True)
+        )
+        if captured.failure:
+            return result.from_failure(captured)
+        content = (
+            previous.desired_content if previous is not None else captured.value.content
+        )
+        if content is None:
+            return result.fail(f"declared Make contract guide is absent: {path}")
+        return result.ok((captured.value, content))
+
+    @staticmethod
+    def _spliced_section(path: Path, source: str, section: str) -> str:
+        """Replace the guide's one matching section with the rendered contract.
+
+        Returns:
+            The guide source carrying the rendered section.
+
+        Raises:
+            ValueError: The declared section or template heading is not unique.
+
+        """
+        declared_headings = u.Cli.markdown_headings(section)
+        if len(declared_headings) != 1:
+            msg = "Make contract template must declare exactly one section heading"
+            raise ValueError(msg)
+        heading = declared_headings[0]
+        headings = u.Cli.markdown_headings(source)
+        matches = tuple(
+            item
+            for item in headings
+            if item.level == heading.level and item.text == heading.text
+        )
+        if len(matches) != 1:
+            msg = (
+                f"Make contract section is absent or ambiguous: {path}: {heading.text}"
+            )
+            raise ValueError(msg)
+        selected = matches[0]
+        lines = source.splitlines(keepends=True)
+        end = next(
+            (
+                item.line - 1
+                for item in headings
+                if item.line > selected.line and item.level <= selected.level
+            ),
+            len(lines),
+        )
+        return (
+            "".join(lines[: selected.line - 1])
+            + section.rstrip()
+            + "\n\n"
+            + "".join(lines[end:])
+        )
+
+    @staticmethod
     def docs_make_contract_plans(
         repository_root: Path,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
@@ -39,9 +109,6 @@ class FlextInfraUtilitiesDocsGuides:
 
         Returns:
             The mixed-file effect, empty when undeclared, or the original failure.
-
-        Raises:
-            ValueError: The declared section or template heading is not unique.
 
         """
         result = r[tuple[m.Infra.CodegenFilePlan, ...]]
@@ -59,58 +126,25 @@ class FlextInfraUtilitiesDocsGuides:
             return result.ok(())
         path = repository_root / make.docs.contract_guide
         previous = next((plan for plan in declared_files if plan.path == path), None)
-        captured = (
-            r[m.Cli.AtomicFileState].ok(previous.before)
-            if previous is not None
-            else u.Cli.atomic_read_binary_file_state(path, required=True)
-        )
-        if captured.failure:
-            return result.from_failure(captured)
-        content = previous.desired_content if previous is not None else captured.value.content
-        if content is None:
-            return result.fail(f"declared Make contract guide is absent: {path}")
+        observed = FlextInfraUtilitiesDocsGuides._guide_source(path, previous)
+        if observed.failure:
+            return result.from_failure(observed)
+        captured, content = observed.value
         rendered = FlextInfraUtilitiesDocsRender.docs_make_contract(make)
         if rendered.failure:
             return result.from_failure(rendered)
-        section = rendered.value.rendered
-        declared_headings = u.Cli.markdown_headings(section)
-        if len(declared_headings) != 1:
-            msg = "Make contract template must declare exactly one section heading"
-            raise ValueError(msg)
-        heading = declared_headings[0]
-        source = content.decode(c.DEFAULT_ENCODING)
-        headings = u.Cli.markdown_headings(source)
-        matches = tuple(
-            item
-            for item in headings
-            if item.level == heading.level and item.text == heading.text
-        )
-        if len(matches) != 1:
-            msg = f"Make contract section is absent or ambiguous: {path}: {heading.text}"
-            raise ValueError(msg)
-        selected = matches[0]
-        lines = source.splitlines(keepends=True)
-        end = next(
-            (
-                item.line - 1
-                for item in headings
-                if item.line > selected.line and item.level <= selected.level
-            ),
-            len(lines),
-        )
-        updated = (
-            "".join(lines[: selected.line - 1])
-            + section.rstrip()
-            + "\n\n"
-            + "".join(lines[end:])
+        updated = FlextInfraUtilitiesDocsGuides._spliced_section(
+            path, content.decode(c.DEFAULT_ENCODING), rendered.value.rendered
         )
         return result.ok((
             m.Infra.CodegenFilePlan(
                 project=repository_root,
                 path=path,
-                before=captured.value,
+                before=captured,
                 desired_content=updated.encode(c.DEFAULT_ENCODING),
-                desired_mode=(previous.desired_mode if previous is not None else captured.value.mode),
+                desired_mode=(
+                    previous.desired_mode if previous is not None else captured.mode
+                ),
                 owner="docs",
                 policy="merge",
                 inputs=(

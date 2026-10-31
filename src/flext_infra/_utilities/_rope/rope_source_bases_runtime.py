@@ -1018,9 +1018,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return self._external_reference(
                     target, attributes[1:], visiting | {target}, depth + 1
                 )
-            if attributes[0] in self._provider_source_bindings(
-                module_name, self._providers[module_name].get_module(), resource
-            ) or owned or module_name in self._sources:
+            if (
+                attributes[0]
+                in self._provider_source_bindings(
+                    module_name, self._providers[module_name].get_module(), resource
+                )
+                or owned
+                or module_name in self._sources
+            ):
                 physical = self._physical_declared_reference(
                     module_name, resource, attributes[0]
                 )

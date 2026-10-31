@@ -448,6 +448,36 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         )
 
     @staticmethod
+    def with_bootstrap_inputs(
+        planned: p.Result[m.Infra.CodegenFilePlan],
+        render_inputs: m.Infra.CodegenRenderInputs,
+        planned_manifests: Sequence[m.Infra.CodegenFilePlan],
+        *,
+        bootstrap: bool,
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        """Attach a bootstrap distribution's observations to its plan.
+
+        The rendered bytes of a bootstrap distribution derive from the
+        workspace inputs and the manifests planned in the same run; candidate
+        admission authenticates exactly those states with the plan.
+
+        Returns:
+            The plan carrying its derivation inputs, or the original failure.
+
+        """
+        if not bootstrap:
+            return planned
+        inputs = (
+            *render_inputs.workspace.inputs,
+            *(
+                state
+                for plan in planned_manifests
+                for state in (plan.before, *plan.inputs)
+            ),
+        )
+        return planned.map(lambda plan: plan.model_copy(update={"inputs": inputs}))
+
+    @staticmethod
     def uv_environment_plan(
         *,
         root: Path,
