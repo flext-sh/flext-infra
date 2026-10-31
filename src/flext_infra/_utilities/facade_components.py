@@ -1588,13 +1588,16 @@ class FlextInfraUtilitiesFacadeComponents:
         )
         attributes = current.get_attributes()
         if owner.get_name() not in attributes:
-            recovered = cls._facade_disk_module(project, path, owner)
-            if recovered.failure:
-                return r[
-                    tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass]
-                ].from_failure(recovered)
-            current = recovered.value
-            attributes = current.get_attributes()
+            # Owner must be re-electable inside the declared candidate view.
+            # The former disk fallback parsed another epoch of the same path
+            # and fed its offsets to slices of the composed text — the
+            # interleaved-corruption class. Losing the owner here rejects the
+            # cohort for re-planning instead.
+            return r[tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass]].fail(
+                f"Projected facade lost its native declaration: {path}"
+                f" (owner {owner.get_name()!r} absent from the candidate view;"
+                f" view exports {sorted(attributes)[:6]})"
+            )
         actual = attributes[owner.get_name()].get_object()
         if not types.py_class(actual):
             return r[tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass]].fail(
@@ -1612,42 +1615,6 @@ class FlextInfraUtilitiesFacadeComponents:
             current,
             actual,
         ))
-
-    @staticmethod
-    def _facade_disk_module(
-        project: p.Infra.RopeProject,
-        path: Path,
-        owner: p.Infra.RopeSourceClass,
-    ) -> p.Result[p.Infra.RopeSourceModule]:
-        """Read the physical declaration when the candidate overlay dropped it.
-
-        Returns:
-            The one-shot disk module declaring the owner, or the lost declaration.
-
-        """
-        # O candidate overlay compartilha o caminho de disco com
-        # conteúdo diverso: o mesmo módulo pode chegar aqui sem a
-        # declaração que o disco tem (dropped/dissolved parts).
-        # Parse one-shot do disco (string module, fora do cache do
-        # projeto — sem inflar memória na fase de facades).
-        # O resource do view pode remapear o caminho (staging do
-        # quoted-move troca conteúdos no mesmo path); o disco físico
-        # é lido pelo path absoluto real, nunca pelo view.
-        real_disk = Path(str(path))
-        if not real_disk.is_absolute():
-            real_disk = Path(project.root.real_path) / real_disk
-        disk_source = real_disk.read_text()
-        disk_module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-            project, disk_source
-        )
-        disk_attributes = disk_module.get_attributes()
-        if owner.get_name() in disk_attributes:
-            return r[p.Infra.RopeSourceModule].ok(disk_module)
-        return r[p.Infra.RopeSourceModule].fail(
-            f"Projected facade lost its native declaration: {path}"
-            f" (owner {owner.get_name()!r} absent from disk source;"
-            f" disk exports {sorted(disk_attributes)[:6]})"
-        )
 
     @classmethod
     def _facade_rendered_class(
@@ -1670,6 +1637,15 @@ class FlextInfraUtilitiesFacadeComponents:
         current, actual = projected
         retained, publications, alias_names = composition
         scope = actual.get_scope()
+        # Epoch guard: the layout, lines and every offset below are read from
+        # `current`'s frozen parse; the slices below index `source`. Different
+        # texts here produced interleaved corruption (epoch mismatch of the
+        # same path) — fail the cohort instead of rendering it.
+        if current.source_code != source:
+            return r[str].fail(
+                "facade layout epoch mismatch: layout text and composed text"
+                f" differ for {current.get_module().get_resource().path if current.get_module().get_resource() else '<virtual>'}"
+            )
         index = current.get_source_binding_index()
         layout = index.class_layout(scope)
         end = current.lines.get_line_end(
