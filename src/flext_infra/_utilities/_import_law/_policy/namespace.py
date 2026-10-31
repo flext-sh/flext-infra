@@ -569,6 +569,14 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                     ).read()
                 )
             )
+            if not module_name:
+                # Installed provider Rope cannot name (empty dotted name):
+                # identity tracking is impossible, so resolve the alias
+                # natively at this boundary instead of following further.
+                alias_name, _boundary_declaration = cls._declared_binding(
+                    ast.parse(source), alias_name
+                )
+                return provider.get_attributes().get(alias_name)
             route = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
                 module_name, path, source, project=project, pymodule=provider
             ).get(alias_name)
