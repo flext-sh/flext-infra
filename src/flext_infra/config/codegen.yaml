@@ -673,6 +673,15 @@ Infra:
         marker_file: pyvenv.cfg
         uv_key: uv
         python_key: version_info
+      # Isolated environment that runs `make upg`'s one residual flext-infra
+      # step (the Mise platform-gap repair). Native uv syncs it from the
+      # project's own frozen lock, the dependency group that pins flext-infra,
+      # without installing the project itself, so the step never imports the
+      # project's source. It lives under the project's .flext area, never in
+      # <RUNTIME_ROOT>/.venv and never in a Mise base interpreter.
+      executor_environment:
+        directory: .flext/executor
+        dependency_group: dev
       pytest_scratch:
         user_home_environment_variable: HOME
         home_relative_directory: .local/state
