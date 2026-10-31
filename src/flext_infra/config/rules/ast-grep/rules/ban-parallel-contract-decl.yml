@@ -1,0 +1,58 @@
+# FLEXT standard F7 (flext-typing:31-33, operator ruling 2026-10-30): a
+# parallel alias/type declaration duplicating an owned contract is declared at
+# its owner facade/typings module, never re-declared in a parallel module.
+# This gate catches the declaration shape at module level: a capitalized alias
+# assignment to a subscripted/generic type. PEP 695 `type` statements and the
+# `TypeAlias` annotated form are ENFORCE-009's owner rule
+# (ban-manual-typing-alias-outside-typings), which this rule never duplicates.
+#
+# Scope is the module body: a declaration nested in a class or function is the
+# enclosing namespace's own member, not a loose module object.
+#
+# Owners are excluded by derivation, never by a path or package list: the
+# generated provider publishes `facade-family-t`, the modules whose own
+# `__all__` declares `t` and the members of the private family package of such
+# a facade module, in every tier (`src/`, `tests/`, `examples/`, `scripts/`).
+# `metadata.scope.not-in` drops that family from the rule's files, so the
+# typings owner of every tier declares its contracts and any other module
+# declaring one is a parallel declaration.
+id: ban-parallel-contract-decl
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  enforce: [ENFORCE-009]
+  scope:
+    not-in: [ facade-family-t ]
+  description: >-
+    A contract alias is declared only at the typings family that owns it; a
+    module outside the `t` family never re-declares one at module level.
+rule:
+  any:
+    - kind: assignment
+      inside:
+        kind: expression_statement
+        inside:
+          kind: module
+      # An annotated binding declares a typed value (its annotation names the
+      # type); the `TypeAlias` annotated form is ENFORCE-009's owner rule.
+      not:
+        has:
+          field: type
+          kind: type
+      all:
+        - has:
+            field: left
+            regex: "^[A-Z][A-Za-z0-9]+$"
+        - has:
+            field: right
+            any:
+              - kind: subscript
+              - kind: generic_type
+message: >-
+  Module-level contract declaration outside the `t` family: contracts are
+  declared at their owning typings family module, never re-declared in a
+  parallel module (flext-typing F7).
