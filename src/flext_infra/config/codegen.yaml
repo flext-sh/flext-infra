@@ -134,7 +134,7 @@ Infra:
       # (the header stage owns import-header, the catalog stage the rest).
       renderers:
         - name: codemod_import_header_rules
-          facts: codemod_package_export_facts
+          facts: codemod_workspace_export_facts
           shapes: [import-header]
         - name: codemod_module_member_rules
           facts: codemod_package_export_facts
