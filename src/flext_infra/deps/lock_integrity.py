@@ -11,7 +11,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, r, s, t, u
+from flext_infra import c, config, p, r, s, t, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -30,27 +30,24 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
     )
 
     @classmethod
-    def upgrade_mise_lock(
+    def repair_mise_platforms(
         cls,
         request: p.Infra.WorkspaceRequest,
         runner: p.Cli.CommandRunner,
     ) -> p.Result[bool]:
-        """Lock, in one pass, only the Mise tools whose resolution changed.
+        """Lock, per governed repository, the locked tools missing a platform.
 
-        Generated ``make upg`` writes the UV lock natively and verifies it with
-        ``workspace verify-lock``; this operation owns only the Mise half.
-        Every governed repository (the runtime root and each declared member)
-        renders its own ``.mise.toml`` and commits its own ``mise.lock`` for
-        standalone consumption, and Mise resolves a member's tools from the
-        member's lock. The single upgrade pass therefore relocks each of them.
-        Plain ``mise lock`` refreshes the metadata of every locked version and
-        downloads each provenance artifact again. The native ``--dry-run
-        --json`` preview costs only version resolution and names exactly the
-        tools whose locked version would change; tools missing a declared
-        platform join them. Mise then locks and verifies those tools alone.
+        Generated ``make upg`` owns every native stage before this one: it
+        relocks the tools whose ``mise lock --bump --dry-run`` preview is not
+        ``[]`` and writes the UV lock, all before any FLEXT Python. Mise
+        reports no preview for a locked version that lacks a table for a
+        platform ``toolchain.mise_lockfile_platforms`` declares, so this
+        repair alone reads each governed ``mise.lock`` (the runtime root and
+        every declared member) and locks exactly those tools. It runs from the
+        isolated upgrade executor and never imports the project.
 
         Returns:
-            Success when every lock is current, or the first native failure.
+            Success when no declared platform is missing, or the first failure.
 
         """
         resolved = FlextInfraWorkspaceDetector.resolution_context(
@@ -60,7 +57,7 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
             return r.from_failure(resolved)
         root = resolved.value.runtime_root
         return u.Infra.managed_mise_self(root).flat_map(
-            lambda mise: cls._lock_mise_roots(
+            lambda mise: cls._repair_mise_roots(
                 runner,
                 mise,
                 u.Infra.governed_project_roots(root),
@@ -68,39 +65,42 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
         )
 
     @classmethod
-    def _lock_mise_roots(
+    def _repair_mise_roots(
         cls,
         runner: p.Cli.CommandRunner,
         mise: Path,
         roots: Sequence[Path],
     ) -> p.Result[bool]:
-        """Relock each governed repository in order, stopping at the first failure.
+        """Repair each governed repository in order, stopping at the first failure.
 
         Returns:
-            Success when every lock is current, or the first native failure.
+            Success when every lock covers its platforms, or the first failure.
 
         """
         for root in roots:
-            locked = cls._relock_mise_root(runner, root, mise)
-            if locked.failure:
-                return locked
+            repaired = cls._repair_mise_root(runner, root, mise)
+            if repaired.failure:
+                return repaired
         return r[bool].ok(value=True)
 
     @classmethod
-    def _relock_mise_root(
+    def _repair_mise_root(
         cls,
         runner: p.Cli.CommandRunner,
         root: Path,
         mise: Path,
     ) -> p.Result[bool]:
-        """Select and lock the changed tools of one governed repository.
+        """Lock the platform-incomplete tools of one governed repository.
 
         Returns:
-            Success when its lock is current, or the native lock's failure.
+            Success when its lock covers every platform, or the native failure.
 
         """
-        return cls._mise_lock_selection(runner, root, mise).flat_map(
-            lambda tools: cls._lock_mise_tools(runner, root, mise, tools),
+        return (
+            u.Cli
+            .toml_read_json(root / c.Infra.MISE_LOCK_FILENAME)
+            .flat_map(cls._incomplete_mise_tools)
+            .flat_map(lambda tools: cls._lock_mise_tools(runner, root, mise, tools))
         )
 
     @staticmethod
@@ -112,50 +112,6 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
 
         """
         return (str(mise), "-C", str(runtime_root), "lock", "--bump")
-
-    @classmethod
-    def _mise_lock_selection(
-        cls,
-        runner: p.Cli.CommandRunner,
-        runtime_root: Path,
-        mise: Path,
-    ) -> p.Result[Sequence[str]]:
-        """Tools whose locked version changes, then tools missing a platform.
-
-        Returns:
-            The ordered unique tool names Mise must lock, possibly none.
-
-        """
-        return runner.capture(
-            (*cls._mise_lock_command(runtime_root, mise), "--dry-run", "--json"),
-            cwd=runtime_root,
-            timeout=c.Infra.TIMEOUT_LONG,
-        ).flat_map(
-            lambda preview: u.Cli.toml_read_json(
-                runtime_root / c.Infra.MISE_LOCK_FILENAME,
-            ).flat_map(lambda lock: cls._selected_mise_tools(preview, lock)),
-        )
-
-    @classmethod
-    def _selected_mise_tools(
-        cls,
-        preview: str,
-        lock: t.JsonMapping,
-    ) -> p.Result[Sequence[str]]:
-        """Merge the previewed version changes with the platform gaps.
-
-        Returns:
-            The ordered unique tool names, version changes first.
-
-        """
-        changes = u.type_adapter(tuple[m.Infra.MiseLockChange, ...]).validate_json(
-            preview,
-        )
-        return cls._incomplete_mise_tools(lock).map(
-            lambda incomplete: tuple(
-                dict.fromkeys((*(change.name for change in changes), *incomplete)),
-            ),
-        )
 
     @classmethod
     def _lock_mise_tools(
@@ -173,8 +129,8 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
         """
         if not tools:
             u.Cli.info(
-                f"{runtime_root / c.Infra.MISE_LOCK_FILENAME}: no version change "
-                "and no missing platform; nothing to lock",
+                f"{runtime_root / c.Infra.MISE_LOCK_FILENAME}: no missing "
+                "platform; nothing to lock",
             )
             return r[bool].ok(value=True)
         return runner.run_live(

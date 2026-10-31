@@ -427,30 +427,6 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Selectors already proven before this entry."),
         ]
 
-    class MiseLockChange(m.FrozenModel):
-        """One locked-version change native ``mise lock --dry-run --json`` reports."""
-
-        name: Annotated[
-            str,
-            m.Field(description="Tool identity mise accepts as a lock argument."),
-        ]
-        backend: Annotated[
-            str,
-            m.Field(description="Backend that resolves the tool."),
-        ]
-        lockfile: Annotated[
-            str,
-            m.Field(description="Lockfile the change would be written to."),
-        ]
-        old_versions: Annotated[
-            Sequence[str],
-            m.Field(description="Versions currently locked."),
-        ]
-        new_versions: Annotated[
-            Sequence[str],
-            m.Field(description="Versions the re-resolved selector would lock."),
-        ]
-
     class ToolchainSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
         """Language-runtime and native-tool versions shared by generated projects.
 
