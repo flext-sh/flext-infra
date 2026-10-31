@@ -49,9 +49,6 @@ class FlextInfraGates:
     check_env: ClassVar[Mapping[str, str] | None] = None
     check_remove_env_keys: ClassVar[Sequence[str]] = (c.Infra.ENV_VAR_FORCE_COLOR,)
     check_report_evidence: ClassVar[Sequence[str]] = ()
-    # stdin payload of the check command; None = the null device (the tool
-    # reads its targets from disk)
-    check_input: ClassVar[str | None] = None
 
     def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
         """Whether this project's detected content selects the gate at all.
@@ -190,7 +187,6 @@ class FlextInfraGates:
             cmd,
             project_dir,
             ctx,
-            input_data=self._check_input(project_dir, ctx, targets),
         )
         if u.Cli.process_succeeded(result.outcome):
             self._validate_check_report(result, project_dir, ctx, targets)
@@ -697,24 +693,6 @@ class FlextInfraGates:
             *check_dirs,
             *self.check_module_command_suffix,
         )
-
-    def _check_input(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        targets: Sequence[str],
-    ) -> str | None:
-        """Return the payload the check command reads from its stdin.
-
-        Default: none, so the check tool reads its targets from disk. A gate
-        whose tool lints a supplied view of its targets returns that view.
-
-        Returns:
-            The child's stdin payload, or ``None`` for the null device.
-
-        """
-        _ = project_dir, ctx, targets
-        return self.check_input
 
     def _parse_check_output(
         self,

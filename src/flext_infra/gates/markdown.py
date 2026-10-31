@@ -39,8 +39,9 @@ class FlextInfraGatesMarkdown(FlextInfraMarkdownGateBase):
         """Lint the collected Markdown files read-only, through their lint view.
 
         rumdl has no configuration that excludes a region of a file, so the
-        check reads every target from ``--stdin-batch`` (see ``_check_input``)
-        under its own path, with declared foreign projected blocks masked.
+        check reads every target from ``--stdin-batch`` (see
+        ``_execute_check_command``) under its own path, with declared foreign
+        projected blocks masked.
 
         Returns:
             The rumdl check invocation.
@@ -50,20 +51,29 @@ class FlextInfraGatesMarkdown(FlextInfraMarkdownGateBase):
         return self._rumdl_command(project_dir, "check", (), "--stdin-batch")
 
     @override
-    def _check_input(
+    def _execute_check_command(
         self,
         project_dir: Path,
         ctx: m.Infra.GateContext,
         targets: Sequence[str],
-    ) -> str:
-        """Supply every target's projected-block lint view on stdin.
+        started: float,
+    ) -> m.Infra.GateExecution:
+        """Run the read-only lint over every target's projected-block view.
+
+        The check command reads its targets from stdin, so the invocation
+        carries the rumdl ``--stdin-batch`` payload of every target.
 
         Returns:
-            The rumdl ``--stdin-batch`` payload.
+            The parsed lint execution.
 
         """
-        del ctx
-        return self.projected_block_stdin_batch(project_dir, targets)
+        result = self._run(
+            self._build_check_command(project_dir, ctx, targets),
+            project_dir,
+            ctx,
+            input_data=self.projected_block_stdin_batch(project_dir, targets),
+        )
+        return self._parsed_gate_execution(project_dir, ctx, result, started)
 
     @override
     def _build_fix_command(
@@ -80,6 +90,18 @@ class FlextInfraGatesMarkdown(FlextInfraMarkdownGateBase):
         """
         del ctx
         return self._rumdl_command(project_dir, "check", targets, "--fix")
+
+    @override
+    def _projected_command(self, project_dir: Path, target: str) -> Sequence[str]:
+        """Repair one projected file's lint view read from stdin.
+
+        Returns:
+            The rumdl ``check --fix --stdin`` invocation named after ``target``.
+
+        """
+        return self._rumdl_command(
+            project_dir, "check", (), "--fix", "--stdin", "--stdin-filename", target
+        )
 
     @override
     def _parse_check_output(

@@ -99,6 +99,80 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
         return self._rumdl_command(project_dir, "fmt", check_dirs, "--check")
 
     @override
+    def _execute_check_command(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        targets: Sequence[str],
+        started: float,
+    ) -> m.Infra.GateExecution:
+        """Check projected files through their view; the rest in one disk pass.
+
+        A file with a declared projected block is formatted from its lint view
+        on stdin and its blocks are spliced back; it is unformatted when the
+        spliced result differs from the file on disk.
+
+        Returns:
+            One execution covering every target.
+
+        """
+        projected = self._projected_targets(project_dir, targets)
+        if not projected:
+            return super()._execute_check_command(project_dir, ctx, targets, started)
+        executions: list[m.Infra.GateExecution] = []
+        plain = tuple(target for target in targets if target not in projected)
+        if plain:
+            executions.append(
+                super()._execute_check_command(project_dir, ctx, plain, started)
+            )
+        for target in targets:
+            if target not in projected:
+                continue
+            _, original, diagnostics, spliced = self._projected_round_trip(
+                project_dir, ctx, target
+            )
+            executions.append(
+                self._parsed_gate_execution(project_dir, ctx, diagnostics, started)
+            )
+            if spliced != original:
+                executions.append(
+                    self._detected_gate_execution(
+                        project_dir,
+                        ctx=ctx,
+                        issues=(self._unformatted_issue(target),),
+                        started=started,
+                    )
+                )
+        return self._merged_execution(project_dir, ctx, started, executions)
+
+    @override
+    def _projected_command(self, project_dir: Path, target: str) -> Sequence[str]:
+        """Format one projected file's lint view read from stdin.
+
+        Returns:
+            The rumdl ``fmt --stdin`` invocation named after ``target``.
+
+        """
+        return self._rumdl_command(
+            project_dir, "fmt", (), "--stdin", "--stdin-filename", target
+        )
+
+    def _unformatted_issue(self, file: str) -> m.Infra.Issue:
+        """Report one file the formatter would rewrite.
+
+        Returns:
+            The format finding for ``file``.
+
+        """
+        return m.Infra.Issue(
+            file=file,
+            line=1,
+            column=1,
+            code=self.gate_id,
+            message="file is not rumdl-formatted (repair belongs to `make fmt`)",
+        )
+
+    @override
     def _build_fix_command(
         self,
         project_dir: Path,
@@ -136,13 +210,7 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
         old_header, new_header = c.Infra.MARKDOWN_FORMAT_DIFF_HEADERS
         lines = result.stdout.splitlines()
         issues: MutableSequence[m.Infra.Issue] = [
-            m.Infra.Issue(
-                file=current.removeprefix(old_header),
-                line=1,
-                column=1,
-                code=self.gate_id,
-                message="file is not rumdl-formatted (repair belongs to `make fmt`)",
-            )
+            self._unformatted_issue(current.removeprefix(old_header))
             for current, following in itertools.pairwise(lines)
             if current.startswith(old_header)
             and following == new_header + current.removeprefix(old_header)
