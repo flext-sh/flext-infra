@@ -133,9 +133,10 @@ typed owners, not raw tools, private-module execution or a second dispatcher.
 
 The only UV lock writer is generated `make upg`, which runs native
 `uv lock --upgrade` at the dependency composition root before any FLEXT Python.
-It then runs `workspace verify-lock` and
-`flext-infra deps upgrade-mise-lock --repository-root <root>`, which writes only the
-Mise locks, without generation, installation or another resolver.
+Its only FLEXT Python step runs last, from the isolated upgrade executor:
+`flext-infra deps repair-mise-platforms --repository-root <root>`, which writes
+only the Mise locks of tools missing a declared platform, without generation,
+installation or another resolver.
 Installed `workspace verify-lock` delegates freshness and closure checks to native
 `uv lock --check`, not an Infra marker evaluator or graph walker. These commands remove
 inherited project/interpreter selectors through `make.native_environment_unset` and
@@ -199,30 +200,79 @@ every `mise.lock` entry and records only missing ones. Check reports drift throu
 `uv lock --check`; upgrade alone advances versions and writes the native locks.
 Upgrade always cures, even from a stale lock or a broken environment (tracker
 memories `operator-ruling-2026-10-02-repair-never-deadlocks` and
-`operator-ruling-2026-10-09-setup-always-upg-cures`). The executor imports its
-FLEXT suppliers from the runtime environment, so generated `make upg` first runs
-native `uv lock --upgrade` with the Mise-resolved Python and no FLEXT Python,
-then the setup installation provisions exactly that lock, and only then invokes
-`workspace verify-lock` and `deps upgrade-mise-lock`. A project source that no
-longer imports still receives the written and installed UV lock; the executor
-steps that follow fail loud on it. Before every frozen installation, setup compares the
-creator identity recorded in the environment (`make.environment_identity`) with
-the Mise-resolved uv and Python and recreates a divergent environment with native
-`uv venv --clear`; `uv sync` alone keeps an environment whose interpreter still
-satisfies the request. Direnv exports no `UV_PROJECT` or
-`UV_PROJECT_ENVIRONMENT`.
-`deps upgrade-mise-lock` owns the Mise half, in the same single pass over the
-runtime root and every declared member: each governed repository renders its own
-`.mise.toml` and commits its own `mise.lock`, and Mise resolves a member's tools
-from the member's lock. For each of them, native `mise lock --bump --dry-run
---json` resolves the moving requests and names the tools whose locked version
-would change, without downloading artifacts. Only those tools, plus any locked
-tool missing a declared platform, are passed to `mise lock --bump <tool>…`, which
-locks and verifies their provenance for every declared platform. An unchanged
-upgrade fetches nothing beyond version resolution. Plain `mise lock` with no tool
-arguments would refresh every locked entry and re-download each provenance
-artifact, so it is never used. Neither command installs tools; setup consumes
-the resulting lock.
+`operator-ruling-2026-10-09-setup-always-upg-cures`; design D1, operator approval
+2026-10-31). Generated `make upg` runs only native stages before any FLEXT
+Python, each lock written by its own native writer:
+
+`_upg_toolchain` runs in the `make upg` process itself, which elects the
+bootstrap scope without the native workspace reader, so neither a missing
+toolchain nor a corrupt lock stops it:
+
+1. Acquire the pinned Mise through the official installer.
+2. The acquired Mise's own TOML reader, `mise fmt --stdin`, which reads no lock,
+   first proves itself on an empty document and then reads `uv.lock` and each
+   governed `mise.lock`. A lock it classifies as invalid TOML (exit 1) is
+   deleted, and its native writer regenerates it in full in the next stage. This
+   is a syntax classification, not a provisioning or lock parser.
+3. Per governed repository (the runtime root and every gitlink its
+   `.gitmodules` governs), one `mise lock --bump --dry-run --json` must print
+   exactly `[]`. Otherwise each declared tool previews alone, and
+   `mise lock --bump <tool>…` locks and verifies provenance only for the tools
+   whose own preview is not `[]`; an absent lock previews every tool and is
+   regenerated in full. The previews resolve versions only; the lock of a
+   changed tool downloads its provenance artifacts for every declared platform.
+   Plain `mise lock` with no tool arguments would refresh every locked entry and
+   re-download each provenance artifact, so it is never used.
+   Regenerating an invalid or absent lock is a repair path with no native
+   shortcut: every declared tool is locked again, and Mise downloads each tool's
+   provenance artifact for every declared platform to verify its attestation
+   (disabling that verification is not an option: Mise then fails closed on the
+   bumped tools). Measured 2026-10-31 (mise 2026.10.3, 13 tools, 4 platforms): the
+   relock takes 43.6 s, and a `make upg` that cures a corrupt root `mise.lock`
+   takes 63.4 s.
+4. The locked `mise install` of the declared toolchain, from that lock, so a
+   missing, bumped or newly declared tool (Python and uv included) is the one
+   the UV stage uses.
+5. `_upg_lifecycle`: native `uv lock --upgrade` with that Python, then the setup
+   installation of exactly that lock.
+6. Last, the isolated upgrade executor (`make.executor_environment`, a declared
+   ignored artifact of the `.gitignore` projection) runs
+   `deps repair-mise-platforms`, which locks the tools missing a platform that
+   `toolchain.mise_lockfile_platforms` declares: Mise reports no preview for that
+   gap. Native uv syncs the executor from the project's frozen lock, only the
+   dependency group that pins flext-infra, without the project and without
+   editable installs, and runs it with `python -I`, so the step never imports
+   the project's source. The sync passes native `--compile-bytecode`, so the
+   first import after a recreation finds compiled bytecode even when the host
+   exports `PYTHONDONTWRITEBYTECODE`.
+
+Declared prerequisites of stage 6, open until they close:
+
+- **Self-hosting repositories** (flext-core, flext-cli, flext-infra: the project
+  is in flext-infra's own closure). The consumer-lock executor omits the
+  project, so it cannot import flext-infra there. Their executor must come from
+  flext-infra's own frozen lock, which today does not run its own source (the
+  `ForceDecode` skew). It closes when the integration lane's `make upg` repairs
+  flext-infra's lock.
+- **Publication.** A consumer's executor runs the flext-infra version its lock
+  pins, so `deps repair-mise-platforms` exists there only after the release
+  that carries it is published and the consumer's `make upg` locks it.
+
+A project source that no longer imports still has every lock written and
+installed. Before every frozen installation, setup and the executor sync compare
+the creator identity recorded in the environment (`make.environment_identity`)
+with the Mise-resolved uv and Python and recreate a divergent environment, or a
+directory without the marker, with native `uv venv --clear` (`--force` for the
+directory without the marker); `uv sync` alone keeps an environment whose
+interpreter still satisfies the request, and on a directory without the marker
+it would target the Mise base interpreter. uv caches each interpreter query by
+executable path and target timestamp, which recreation does not change, so every
+runtime and executor sync runs with native `--refresh` (measured 0.3 s on a
+current environment) and a query cached while the marker was absent never
+survives. Direnv
+exports no `UV_PROJECT` or `UV_PROJECT_ENVIRONMENT`. Each governed repository
+renders its own `.mise.toml` and commits its own `mise.lock`, and Mise resolves a
+member's tools from the member's lock.
 The [projector bootstrap dependency cut](../../../docs/architecture/adr/018-generator-declarations.md#projector-bootstrap-dependency-cut)
 owns cold import repair. Elect the same projector and original planning models
 before the aggregate they repair, retaining public package imports. The former

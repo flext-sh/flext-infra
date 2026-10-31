@@ -672,6 +672,55 @@ class FlextInfraModelsConfigMake(
                 m.Field(description="Marker key holding the interpreter version"),
             ]
 
+        class ExecutorEnvironmentSpec(FlextInfraModelsConfigContract.ConfigContract):
+            """Isolated environment running ``make upg``'s residual flext-infra step.
+
+            Native uv syncs it from the project's frozen lock, selecting only the
+            dependency group that pins flext-infra and never installing the
+            project itself, so the step imports neither the project's source nor
+            the runtime environment. It is a uv-created virtual environment of
+            its own, never ``<RUNTIME_ROOT>/.venv`` and never a Mise base
+            interpreter.
+            """
+
+            directory: Annotated[
+                Path,
+                m.Field(description="Runtime-root-relative executor environment"),
+            ]
+            dependency_group: Annotated[
+                t.NonEmptyStr,
+                m.Field(
+                    description="Dependency group whose frozen closure pins flext-infra"
+                ),
+            ]
+
+            @m.model_validator(mode="after")
+            def _validate_directory(self) -> Self:
+                """Keep the executor inside its runtime root, apart from ``.venv``.
+
+                Returns:
+                    The resulting ``Self``.
+
+                Raises:
+                    ValueError: If the directory is absolute, escapes the root,
+                        or names the runtime environment.
+
+                """
+                parts = self.directory.parts
+                if (
+                    self.directory.is_absolute()
+                    or not parts
+                    or ".." in parts
+                    or parts[0] == c.Infra.ENVIRONMENT_DIRECTORY
+                ):
+                    msg = (
+                        "executor_environment.directory must be a relative path "
+                        "inside the runtime root, outside the runtime "
+                        f"environment: {self.directory}"
+                    )
+                    raise ValueError(msg)
+                return self
+
         class PytestScratchSpec(FlextInfraModelsConfigContract.ConfigContract):
             """Scratch root every pytest-running verb declares (storage law).
 
@@ -830,6 +879,15 @@ class FlextInfraModelsConfigMake(
                 description=(
                     "Native creator identity setup compares with the declared "
                     "toolchain before installing into the runtime environment"
+                )
+            ),
+        ]
+        executor_environment: Annotated[
+            ExecutorEnvironmentSpec,
+            m.Field(
+                description=(
+                    "Isolated environment that runs the residual flext-infra "
+                    "upgrade step without importing the project"
                 )
             ),
         ]

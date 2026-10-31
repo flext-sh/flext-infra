@@ -157,6 +157,14 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 ),
             ),
         ]
+        mise_lock_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Committed Mise lock of every governed repository"),
+        ] = c.Infra.MISE_LOCK_FILENAME
+        uv_lock_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Committed native uv lock of the runtime root"),
+        ] = c.Infra.UV_LOCK_FILENAME
         python_version: Annotated[
             t.NonEmptyStr,
             m.Field(description="Python minor line the environment syncs against"),

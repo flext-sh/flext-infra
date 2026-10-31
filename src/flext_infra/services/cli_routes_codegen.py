@@ -14,16 +14,18 @@ class FlextInfraCodegenRoutes:
     """Own check, codegen, and dependency command routes."""
 
     @staticmethod
-    def execute_upgrade_mise_lock(
+    def execute_repair_mise_platforms(
         request: p.Infra.WorkspaceRequest,
     ) -> p.Result[bool]:
-        """Compose the Mise lock upgrade with the shared native command runner.
+        """Compose the Mise platform repair with the shared native command runner.
 
         Returns:
-            The Mise lock upgrade result, or its first native failure.
+            The Mise platform repair result, or its first native failure.
 
         """
-        return deps.FlextInfraLockIntegrityVerifier.upgrade_mise_lock(request, u.Cli)
+        return deps.FlextInfraLockIntegrityVerifier.repair_mise_platforms(
+            request, u.Cli
+        )
 
     @staticmethod
     def check_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
@@ -187,11 +189,11 @@ class FlextInfraCodegenRoutes:
         """
         return FlextInfraUtilitiesBase.result_routes((
             (
-                "upgrade-mise-lock",
-                "Upgrade the governed Mise locks without installing",
+                "repair-mise-platforms",
+                "Lock the governed Mise tools missing a declared platform",
                 m.Infra.WorkspaceRequest,
-                FlextInfraCodegenRoutes.execute_upgrade_mise_lock,
-                "native Mise lock upgrade completed",
+                FlextInfraCodegenRoutes.execute_repair_mise_platforms,
+                "native Mise platform repair completed",
             ),
             (
                 "detect",
