@@ -799,11 +799,34 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
+# Generation is a fenced, budgeted operation: one codegen per tree (flock),
+# terminated inside the declared budget with its kill reserve (the profile
+# checkpoint survives a budget kill), never mutating the tree unannounced.
+GEN_BUDGET_SECONDS ?= 900
+GEN_KILL_RESERVE_SECONDS ?= 30
+GEN_LOCK_FILE := $(PROJECT_ROOT)/$(dir {{ make.generation_profile_path }})gen.lock
+GEN_PROFILE ?=
+
 _builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
 	scope=all; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
-	FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.generation_profile_path }}" $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"
+	mkdir -p "$(dir $(GEN_LOCK_FILE))"; \
+	exec 9>"$(GEN_LOCK_FILE)"; \
+	flock --exclusive --wait 0 9 || { echo "gen: another codegen generation holds the tree ($(GEN_LOCK_FILE))" >&2; exit 1; }; \
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.generation_profile_path }}" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"
+
+# Focal generation is the bounded diagnosis vehicle: one surface (and, for
+# facades, one module) through the identical engine, lock and budget.
+_builtin_gen_scope_all: _builtin_require_interpreter
+	@set -eu; \
+	scope="$(or $(strip $(SCOPE)),self)"; \
+	module_args=""; \
+	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
+	mkdir -p "$(dir $(GEN_LOCK_FILE))"; \
+	exec 9>"$(GEN_LOCK_FILE)"; \
+	flock --exclusive --wait 0 9 || { echo "gen-scope: another codegen generation holds the tree ($(GEN_LOCK_FILE))" >&2; exit 1; }; \
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(basename $(PROJECT_ROOT)/{{ make.generation_profile_path }})-scope.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
 
 # Structural rewrites use the target's existing semantic operation.
 _builtin_mod_apply: _builtin_require_environment
@@ -821,6 +844,7 @@ _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-clean: _builtin_clean_generated
 _builtin-gen: _builtin_gen_all
+_builtin-gen-scope: _builtin_gen_scope_all
 _builtin-mod: _builtin_mod_apply
 {%- if release_verbs %}
 # The repository's release capability elects these product operations.
