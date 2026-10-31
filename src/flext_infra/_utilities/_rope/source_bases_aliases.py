@@ -86,6 +86,12 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         # bodies are not inputs to this package-alias reader.
         if path.name != c.Infra.INIT_PY:
             return {}
+        # An installed provider Rope cannot name (empty dotted name) contributes
+        # no textual bindings: a standalone consumer following a lazy route into
+        # site-packages falls back to declared-binding resolution instead of
+        # failing the whole analysis on the provider's own relative exports.
+        if not module:
+            return {}
         # The bindings are a pure function of the initializer text, so one
         # read per distinct text serves every facade render of the process.
         key = (str(project), module, str(path), source)
