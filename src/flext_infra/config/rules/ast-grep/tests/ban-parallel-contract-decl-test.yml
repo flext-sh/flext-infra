@@ -1,0 +1,37 @@
+# Fixtures carry no file scope, so the `not-in: facade-family-t` narrowing is
+# not applied here: a module-level declaration matches as it would in any
+# module outside the `t` family. The owner cases below are the shapes the `t`
+# family declares inside its facade class, which never match at any scope.
+id: ban-parallel-contract-decl
+valid:
+  # PEP 695 statements belong to ENFORCE-009 (ban-manual-typing-alias-outside-typings).
+  - |
+    type _PrivateMap = Mapping[str, Source]
+  # The typings owner declares its contracts inside its one facade class.
+  - |
+    class FlextInfraTypes(FlextCliTypes):
+        type SourceMap = Mapping[str, Source]
+        ModScanReport = ModOccurrenceReport[ModScanFinding]
+  # A class-body alias is the enclosing namespace's own member.
+  - |
+    class FlextInfraModelsScan:
+        ModScanReport = ModOccurrenceReport[ModScanFinding]
+  # A function-local subscript is a value read, not a module contract.
+  - |
+    def first(values: t.StrSequence) -> str:
+        Head = values[0]
+        return Head
+  # An annotated binding is a typed value read, not an implicit alias.
+  - |
+    EchoRequest: type[_message.Message] = _globals["EchoRequest"]
+  # A module-level non-type binding stays out of scope.
+  - |
+    logger = u.fetch_logger(__name__)
+  - |
+    MAX_DEPTH = 3
+invalid:
+  # A parallel module re-declaring the contract alias at module level.
+  - |
+    ModScanReport = ModOccurrenceReport[ModScanFinding]
+  - |
+    SourceMap = t.MappingKV[str, Source]

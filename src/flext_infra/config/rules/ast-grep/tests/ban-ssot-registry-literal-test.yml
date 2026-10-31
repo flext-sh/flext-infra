@@ -1,0 +1,31 @@
+# Fixtures carry no file scope, so the `not-in: [facade-family-c, layer-zero]`
+# narrowing is not applied here: constants and config data are excluded only
+# by the generated scope of a scanned project. The valid cases are the shapes
+# that never match at any scope.
+id: ban-ssot-registry-literal
+valid:
+  # A registry derived from its SSOT owner.
+  - |
+    OWNERS_REGISTRY = derive_registry()
+  - |
+    class FlextInfraServiceRoutes:
+        ROUTE_REGISTRY = u.Infra.route_registry(settings.routes)
+  # A mapping whose name declares no registry role.
+  - |
+    defaults = {"timeout": 30}
+  # An immutable view over a derived mapping.
+  - |
+    PLUGIN_ALLOWLIST = MappingProxyType(u.Infra.plugin_allowlist())
+invalid:
+  # A transcribed registry in a service module.
+  - |
+    OWNERS_REGISTRY = {"algar": "oud", "flext": "infra"}
+  - |
+    class FlextInfraServiceRoutes:
+        ROLE_ROSTER = {"a": 1, "b": 2}
+  - |
+    class FlextInfraServiceGuard:
+        def check(self) -> None:
+            command_allowlist = {name: True for name in ("ruff", "mypy")}
+  - |
+    tool_denylist = {}
