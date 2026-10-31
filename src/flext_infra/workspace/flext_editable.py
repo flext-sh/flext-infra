@@ -144,6 +144,11 @@ class FlextInfraWorkspaceFlextEditable:
             # only the dist-info), and that stale directory shadows the
             # editable source on sys.path. Remove the locked distributions
             # first; the check and origin verification below own the verdict.
+            # The overlay binds from the FLEXT workspace: a consumer's
+            # [tool.uv] override-dependencies replaces any requirement carrying
+            # a distribution name — including these explicit editable requests —
+            # and silently installs the overridden git source instead.
+            overlay_cwd = str(selection.flext_root)
             _ = u.Cli.run_live(
                 (
                     str(uv),
@@ -170,7 +175,7 @@ class FlextInfraWorkspaceFlextEditable:
                         for argument in ("--editable", str(source))
                     ),
                 ),
-                cwd=runtime_root,
+                cwd=overlay_cwd,
                 timeout=c.Infra.TIMEOUT_LONG,
             )
             if installed.failure:
