@@ -1,0 +1,16 @@
+id: core-factories-to-owner-classes
+# `valid` MUST NOT match: another receiver, another member of `u`, or the
+# owner-class constructors themselves.
+valid:
+  - dispatcher = cls.build_dispatcher()
+  - registry = self.u.build_registry()
+  - name = u.build_label()
+  - registry = FlextRegistry.create(dispatcher, discovery_module=support)
+  - runtime = FlextContainer.build_service_runtime(service)
+# `invalid` MUST match: a `u` factory call or bare reference that builds a
+# higher-layer object.
+invalid:
+  - dispatcher = u.build_dispatcher()
+  - registry = u.build_registry(dispatcher, discovery_module=support)
+  - runtime = u.build_service_runtime(service)
+  - "registry: p.Registry = Field(default_factory=u.build_registry)"

@@ -16,6 +16,10 @@ snapshots:
       style: secondary
       start: 30
       end: 41
+    - source: pytest.MonkeyPatch
+      style: secondary
+      start: 23
+      end: 41
   "def probe(request: pytest.FixtureRequest) -> None: ...\n":
     fixed: |
       def probe(request: t.Tests.FixtureRequest) -> None: ...
@@ -31,4 +35,8 @@ snapshots:
     - source: FixtureRequest
       style: secondary
       start: 26
+      end: 40
+    - source: pytest.FixtureRequest
+      style: secondary
+      start: 19
       end: 40

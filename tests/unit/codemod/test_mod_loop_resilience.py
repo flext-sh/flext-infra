@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra, m, p, r
+from flext_infra import config, e, infra, m, p, r
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraCodemodBatchApply
 from tests import c, tm, u
 
@@ -123,10 +123,11 @@ class _OneModuleFailsPhase:
         del root, preflight, rope_workspace
         result = r[tuple[m.Infra.CodegenFilePlan, ...]]
         if self.bad in sources:
-            return result.fail(
+            failure = e.OperationError(
                 f"cannot plan {self.bad.name}",
-                error_data={c.Infra.MOD_FAILURE_MODULE_KEY: str(self.bad)},
+                context={c.Infra.MOD_FAILURE_MODULE_KEY: str(self.bad)},
             )
+            return result.fail(str(failure), exception=failure)
         return result.ok(
             tuple(
                 _rewrite(path, path.read_text(encoding="utf-8") + "SHARED = 1\n")
@@ -222,7 +223,9 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
             extra.unlink()
     _ = (project / c.PYPROJECT_FILENAME).write_text(
         "[project]\nname='sample-proj'\n"
-        f"version='{config.Infra.initial_project_version}'\ndependencies=[]\n",
+        f"version='{config.Infra.initial_project_version}'\n"
+        'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+        'license = "MIT"\ndependencies=[]\n',
         encoding="utf-8",
     )
     u.Tests.copy_tracked_mise_seeds(project)
@@ -312,7 +315,8 @@ class TestsFlextInfraModLoopResilience:
 
         tm.ok(result.failure)
         tm.that(result.error, has="quarantined module(s)")
-        tm.that(result.error, has=f"{alpha}: cannot plan alpha.py")
+        tm.that(result.error, has=f"{alpha}: ")
+        tm.that(result.error, has="cannot plan alpha.py")
         tm.that(
             result.error,
             has=(

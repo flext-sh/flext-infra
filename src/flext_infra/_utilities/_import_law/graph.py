@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, t
+from flext_infra import c, e, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
@@ -138,7 +138,8 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
                 str]]``.
 
         Raises:
-            ValueError: If rope could not name module.
+            e.OperationError: If rope could not name one module; its context
+                names that module.
 
         """
         raw: MutableMapping[str, set[str]] = {}
@@ -167,7 +168,9 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
             )
             if not name:
                 msg = f"rope could not name module {resource.path}"
-                raise ValueError(msg)
+                raise e.OperationError(
+                    msg, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                )
             modules[path] = name
             package = name if path.name == c.Infra.INIT_PY else name.rpartition(".")[0]
             raw[name] = set(

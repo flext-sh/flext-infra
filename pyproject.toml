@@ -30,7 +30,7 @@ dependencies = [
   "pymdown-extensions>=11.0.1",
   "pytest>=9.1.1",
   "pytest-markdown-docs>=0.9.2",
-  "rope @ git+https://github.com/marlon-costa-dc/rope.git@becece05c27c3189b12a06f3fbfa28ad62a98a96",
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@41dd74bf11b11f874bac008cc82bea71e5f4b863",
   "tomlkit>=0.13,<1",
   "typing-extensions>=4.16.0",
 ]

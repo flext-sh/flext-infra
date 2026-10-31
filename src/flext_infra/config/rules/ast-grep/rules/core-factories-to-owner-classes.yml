@@ -1,0 +1,190 @@
+# The utilities layer (``u``) of flext-core sits below the dispatcher, the
+# registry and the container, yet ``u.build_dispatcher``, ``u.build_registry``
+# and ``u.build_service_runtime`` built those higher-layer objects, reading
+# them back through the package's lazy export at call time. That inverted the
+# layer direction. Construction now belongs to each owner class:
+#
+# - ``u.build_dispatcher`` -> ``FlextDispatcher`` (the factory was a
+#   pass-through plus an always-true protocol check);
+# - ``u.build_registry`` -> ``FlextRegistry.create`` (alternative constructor
+#   returning ``Self``, same parameters);
+# - ``u.build_service_runtime`` -> ``FlextContainer.build_service_runtime``
+#   (same parameter).
+#
+# The rewrite targets the attribute itself, so the call forms
+# (``u.build_registry(d, discovery_module=m)``) and the bare references
+# (``default_factory=u.build_registry``) are both carried, arguments intact.
+# Only the receiver ``u`` matches: ``cls.build_dispatcher()`` and
+# ``self.u.build_registry`` are other owners and stay untouched.
+#
+# The ``-import-*`` documents below bind the owner class each rewrite emits.
+id: core-factories-to-owner-classes
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+metadata:
+  owner: flext-core
+rule:
+  kind: attribute
+  pattern: u.$FACTORY
+constraints:
+  FACTORY:
+    regex: "^(?:build_dispatcher|build_registry|build_service_runtime)$"
+transform:
+  DISPATCHER:
+    replace:
+      source: $FACTORY
+      replace: "^build_dispatcher$"
+      by: FlextDispatcher
+  REGISTRY:
+    replace:
+      source: $DISPATCHER
+      replace: "^build_registry$"
+      by: FlextRegistry.create
+  OWNER:
+    replace:
+      source: $REGISTRY
+      replace: "^build_service_runtime$"
+      by: FlextContainer.build_service_runtime
+fix: $OWNER
+message: >-
+  `u.$FACTORY` builds a higher-layer object from the utilities layer; construct
+  it through its owner class (`FlextDispatcher`, `FlextRegistry.create`,
+  `FlextContainer.build_service_runtime`).
+---
+# ``FlextDispatcher`` emitted by the rewrite above needs a module-level binding.
+# A module that names it without binding it -- and does not declare it --
+# receives ``from flext_core import FlextDispatcher`` right after
+# ``from __future__ import annotations``, which every FLEXT module starts with;
+# the formatter merges and orders it. Only a module-level import counts as a
+# binding: a ``TYPE_CHECKING`` import does not bind the runtime call.
+id: core-factories-to-owner-classes-import-dispatcher
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+metadata:
+  owner: flext-core
+rule:
+  kind: future_import_statement
+  inside:
+    kind: module
+    all:
+      - has:
+          stopBy: end
+          kind: identifier
+          regex: "^FlextDispatcher$"
+          not:
+            any:
+              - inside:
+                  kind: import_from_statement
+                  stopBy: end
+              - inside:
+                  kind: attribute
+                  field: attribute
+      - not:
+          has:
+            kind: import_from_statement
+            regex: "^from \\.?[\\w.]* import[\\s\\S]*\\bFlextDispatcher\\b"
+      - not:
+          has:
+            stopBy: end
+            kind: class_definition
+            has:
+              field: name
+              regex: "^FlextDispatcher$"
+fix: |-
+  from __future__ import annotations
+
+  from flext_core import FlextDispatcher
+message: >-
+  This module names `FlextDispatcher` without binding it; import it from
+  `flext_core`.
+---
+# ``FlextRegistry.create`` emitted by the rewrite above needs a module-level
+# binding of ``FlextRegistry``; same mechanism as the dispatcher binding.
+id: core-factories-to-owner-classes-import-registry
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+metadata:
+  owner: flext-core
+rule:
+  kind: future_import_statement
+  inside:
+    kind: module
+    all:
+      - has:
+          stopBy: end
+          kind: attribute
+          regex: "^FlextRegistry\\.create$"
+      - not:
+          has:
+            kind: import_from_statement
+            regex: "^from \\.?[\\w.]* import[\\s\\S]*\\bFlextRegistry\\b"
+      - not:
+          has:
+            stopBy: end
+            kind: class_definition
+            has:
+              field: name
+              regex: "^FlextRegistry$"
+fix: |-
+  from __future__ import annotations
+
+  from flext_core import FlextRegistry
+message: >-
+  This module calls `FlextRegistry.create` without binding `FlextRegistry`;
+  import it from `flext_core`.
+---
+# ``FlextContainer.build_service_runtime`` emitted by the rewrite above needs a
+# module-level binding of ``FlextContainer``; same mechanism as the dispatcher
+# binding.
+id: core-factories-to-owner-classes-import-container
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+metadata:
+  owner: flext-core
+rule:
+  kind: future_import_statement
+  inside:
+    kind: module
+    all:
+      - has:
+          stopBy: end
+          kind: attribute
+          regex: "^FlextContainer\\.build_service_runtime$"
+      - not:
+          has:
+            kind: import_from_statement
+            regex: "^from \\.?[\\w.]* import[\\s\\S]*\\bFlextContainer\\b"
+      - not:
+          has:
+            stopBy: end
+            kind: class_definition
+            has:
+              field: name
+              regex: "^FlextContainer$"
+fix: |-
+  from __future__ import annotations
+
+  from flext_core import FlextContainer
+message: >-
+  This module calls `FlextContainer.build_service_runtime` without binding
+  `FlextContainer`; import it from `flext_core`.

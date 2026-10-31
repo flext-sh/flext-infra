@@ -1,0 +1,21 @@
+id: core-factories-to-owner-classes-import-container
+# `valid` MUST NOT match: the binding is present at module level, or the
+# container is only reached for another member.
+valid:
+  - |
+    from __future__ import annotations
+
+    from flext_core import FlextContainer
+
+    runtime = FlextContainer.build_service_runtime(service)
+  - |
+    from __future__ import annotations
+
+    container = FlextContainer.shared()
+# `invalid` MUST match: `FlextContainer.build_service_runtime` without the
+# binding.
+invalid:
+  - |
+    from __future__ import annotations
+
+    runtime = FlextContainer.build_service_runtime(service)

@@ -57,6 +57,41 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         findings: Sequence[m.Infra.ModOccurrence] = (),
         import_normalizer: p.Infra.SourceImportNormalizer | None = None,
     ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
+        """Plan one phase without effects at its declared result boundary.
+
+        A typed failure of ``c.Infra.MOD_MODULE_FAILURE_TYPES`` born for one
+        module (its context names ``c.Infra.MOD_FAILURE_MODULE_KEY``) becomes this phase's failed result,
+        so its ``error_data`` attributes the module. Every engine exception
+        escapes unchanged.
+
+        Returns:
+            The immutable result view of the selected phase's source edits.
+
+        """
+        attempt = r.safe(
+            cls._plan_semantic_cutover_phase,
+            exceptions=c.Infra.MOD_MODULE_FAILURE_TYPES,
+        )(
+            phase,
+            rope_workspace=rope_workspace,
+            sources=sources,
+            findings=findings,
+            import_normalizer=import_normalizer,
+        )
+        if attempt.failure:
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].from_failure(attempt)
+        return attempt.value
+
+    @classmethod
+    def _plan_semantic_cutover_phase(
+        cls,
+        phase: c.Infra.SemanticCutoverPhase,
+        *,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        sources: Mapping[Path, str],
+        findings: Sequence[m.Infra.ModOccurrence],
+        import_normalizer: p.Infra.SourceImportNormalizer | None,
+    ) -> p.ResultView[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan one phase without effects; the first exception escapes unchanged.
 
         ``rope_workspace`` supplies the repository root that reported findings

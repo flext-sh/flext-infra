@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, MutableMapping, Sequence
+from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, Literal, Protocol, Self, runtime_checkable
 
@@ -116,6 +116,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             *,
             declared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = (),
             additional_source_folders: tuple[str, ...] | None = (),
+            analysis_files: Mapping[Path, str] | None = None,
         ) -> AbstractContextManager[Self]: ...
 
         def source_state(

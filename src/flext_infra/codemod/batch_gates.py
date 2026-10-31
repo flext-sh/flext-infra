@@ -1137,8 +1137,6 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         report: m.Infra.ModOccurrenceReport[m.Infra.ModScanFinding],
-        *,
-        exact_replacements: bool = False,
     ) -> p.Result[bool]:
         """Publish the admitted native report only under its original input CAS.
 
@@ -1165,9 +1163,7 @@ class FlextInfraModGateEngine:
         )
         if verified.failure:
             return r[bool].from_failure(verified)
-        return FlextInfraModReplacements.publish(
-            root, cls.authored(report), exact_replacements=exact_replacements
-        )
+        return FlextInfraModReplacements.publish(root, cls.authored(report))
 
     @classmethod
     def _native_scan_report(

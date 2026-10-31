@@ -101,6 +101,41 @@ class FlextInfraUtilitiesImportLawNormalization(
         declared_files: tuple[m.Infra.CodegenFilePlan, ...],
         snapshot: p.Infra.WorkspaceSnapshot,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Plan import rewrites at this phase's declared result boundary.
+
+        A typed failure of ``c.Infra.MOD_MODULE_FAILURE_TYPES`` born for one
+        module (its context names ``c.Infra.MOD_FAILURE_MODULE_KEY``) becomes the phase's failed result,
+        so its ``error_data`` attributes the module. Every engine exception
+        escapes unchanged.
+
+        Returns:
+            One plan per rewritten file, or the first planning failure.
+
+        """
+        attempt = r.safe(
+            cls._plan_import_normalization_phase,
+            exceptions=c.Infra.MOD_MODULE_FAILURE_TYPES,
+        )(
+            project_root,
+            files,
+            sources=sources,
+            declared_files=declared_files,
+            snapshot=snapshot,
+        )
+        if attempt.failure:
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(attempt)
+        return attempt.value
+
+    @classmethod
+    def _plan_import_normalization_phase(
+        cls,
+        project_root: Path,
+        files: Sequence[Path],
+        *,
+        sources: Mapping[Path, str],
+        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        snapshot: p.Infra.WorkspaceSnapshot,
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan import rewrites against the working sources.
 
         Returns:

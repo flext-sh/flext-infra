@@ -13,7 +13,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-from flext_core import c
+from flext_core import c, e
 
 from flext_infra._constants import (
     FlextInfraConstantsBase,
@@ -57,6 +57,15 @@ class FlextInfraConstantsRefactor:
     (
         "``error_data`` key a mod planner sets to attribute its failure to one"
         " source module; the loop quarantines that module and continues."
+    )
+    MOD_MODULE_FAILURE_TYPES: ClassVar[tuple[type[Exception], ...]] = (
+        e.OperationError,
+        e.ValidationError,
+    )
+    (
+        "Typed FLEXT failures a mod phase boundary converts into its failed"
+        " result; born for one module, their context carries"
+        " ``MOD_FAILURE_MODULE_KEY``. Every other exception escapes unchanged."
     )
     MOD_WRITTEN_FILES_KEY: ClassVar[str] = "written_files"
     (

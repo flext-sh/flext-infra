@@ -47,13 +47,13 @@ class FlextInfraTypesPytest:
         type Pytester = pytest.Pytester
         type RunResult = pytest.RunResult
         type Session = pytest.Session
+        type StashKey[V] = pytest.StashKey[V]
         type TempPathFactory = pytest.TempPathFactory
         type TestReport = pytest.TestReport
         type WorkerController = xdist.workermanage.WorkerController
         FenceSyntax = FenceSyntax
         MarkdownInlinePythonItem = MarkdownInlinePythonItem
         MarkdownTextFile = MarkdownTextFile
-        StashKey = pytest.StashKey
         failed = pytest.fail.Exception
 
 

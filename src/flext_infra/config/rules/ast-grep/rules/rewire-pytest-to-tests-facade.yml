@@ -62,6 +62,11 @@ rule:
     - has:
         field: attribute
         pattern: $NAME
+    # Only type positions: a constructor call (`pytest.StashKey()`) stays on
+    # the runtime owner, since `t.Tests.$NAME` is an alias, not a factory.
+    - inside:
+        kind: type
+        stopBy: end
 constraints:
   NAME:
     matches: library-member-owner-pytest-t

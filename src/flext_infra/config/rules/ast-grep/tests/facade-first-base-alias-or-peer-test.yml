@@ -7,7 +7,7 @@ valid:
       pass
   __all__ = ["FlextMeltanoModels"]
 - |
-  class Payload(m.ArbitraryTypesModel):
+  class Payload(m.ManagedModel):
       pass
 # A class the module does not declare is no facade.
 - |

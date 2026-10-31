@@ -3,7 +3,7 @@
 # violation, never silently ignored. Models on an `m.*` preset inherit the
 # preset's declared extra policy. Composition parts are not models of their
 # own: a `*Mixin` contributes fields to the model that composes it, and the
-# flext-core infrastructure presets (ArbitraryTypesModel ... WarningOutcome)
+# flext-core infrastructure presets (ContractModel ... WarningOutcome)
 # are the classes that declare each extra policy.
 id: require-model-extra-forbid
 language: python
@@ -13,7 +13,7 @@ files:
 constraints:
   NAME:
     not:
-      regex: "(?:Mixin|^(?:ArbitraryTypesModel|ContractModel|EnumManagedModel|FlexibleInternalModel|FlexibleModel|FrozenValueModel|ImmutableValueModel|InvalidOutcome|ManagedModel|Metadata|NormalizedModel|StrictBoundaryModel|StrictManagedModel|TaggedModel|TimestampedModel|ValidOutcome|WarningOutcome))$"
+      regex: "(?:Mixin|^(?:ContractModel|EnumManagedModel|FlexibleInternalModel|FlexibleModel|FrozenValueModel|ImmutableValueModel|InvalidOutcome|ManagedModel|Metadata|NormalizedModel|StrictBoundaryModel|StrictManagedModel|TaggedModel|TimestampedModel|ValidOutcome|WarningOutcome))$"
 rule:
   kind: class_definition
   has:

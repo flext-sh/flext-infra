@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from os import PathLike
 from os.path import realpath
@@ -74,6 +74,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self.select_source_roots(source_roots)
             self._closed_observations = observations is not None
             self.plans: tuple[m.Infra.CodegenFilePlan, ...] = ()
+            self.analysis: Mapping[Path, bytes] = {}
             for state in observations if observations is not None else ():
                 self._record_observation(state)
             self.replace(plans)
@@ -247,18 +248,33 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             )
 
         def replace(
-            self, plans: tuple[m.Infra.CodegenFilePlan, ...]
+            self,
+            plans: tuple[m.Infra.CodegenFilePlan, ...],
+            analysis: Mapping[Path, bytes] | None = None,
         ) -> tuple[tuple[Path, bool, bool], ...]:
             """Change only candidate deltas, retaining authenticated preimages.
+
+            ``analysis`` binds read-only bytes over existing dependency files:
+            native resolution reads them, but they never join ``plans`` and so
+            never reach publication. ``None`` declares no analysis view.
 
             Returns:
                 Changed source paths and their preceding/following existence.
 
             Raises:
-                ValueError: A candidate disagrees with a retained witness or
-                    contains conflicting declarations for one physical path.
+                ValueError: A candidate disagrees with a retained witness,
+                    contains conflicting declarations for one physical path,
+                    or an analysis view shadows an owned source or a plan.
 
             """
+            views: dict[Path, bytes] = {}
+            for supplied, content in (analysis or {}).items():
+                path = self._resolved(str(supplied))
+                if self._elected_source_owner(path):
+                    msg = f"analysis view cannot shadow an owned source: {path}"
+                    raise ValueError(msg)
+                self.source_state(path)
+                views[path] = content
             selected: dict[Path, m.Infra.CodegenFilePlan] = {}
             for plan in plans:
                 path = self._resolved(str(plan.path))
@@ -274,11 +290,16 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 ):
                     msg = f"candidate source conflicts with captured state: {path}"
                     raise ValueError(msg)
+                if path in views:
+                    msg = f"analysis view shadows a declared plan: {path}"
+                    raise ValueError(msg)
                 selected[path] = plan
             for plan in selected.values():
                 self._record_observation(plan.before)
             changed: list[tuple[Path, bool, bool]] = []
-            for path in sorted(self._files.keys() | self._hidden | selected.keys()):
+            for path in sorted(
+                self._files.keys() | self._hidden | selected.keys() | views.keys()
+            ):
                 previous = (
                     self._files[path]
                     if path in self._files
@@ -287,15 +308,20 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     else self._states[path].content
                 )
                 plan = selected.get(path)
+                overlaid = plan is not None or path in views
                 following = (
-                    self._states[path].content if plan is None else plan.desired_content
+                    views[path]
+                    if path in views
+                    else self._states[path].content
+                    if plan is None
+                    else plan.desired_content
                 )
                 if previous != following:
                     changed.append((path, previous is not None, following is not None))
-                if path in self._files and (plan is None or following is None):
+                if path in self._files and (not overlaid or following is None):
                     del self._files[path]
                     self._remove_membership(path)
-                if plan is not None and following is not None:
+                if overlaid and following is not None:
                     if path not in self._files:
                         self._add_membership(path)
                     self._files[path] = following
@@ -304,6 +330,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 else:
                     self._hidden.discard(path)
             self.plans = plans
+            self.analysis = views
             return tuple(changed)
 
         def _add_membership(self, path: Path) -> None:
@@ -584,6 +611,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         *,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = (),
         additional_source_folders: tuple[str, ...] | None = (),
+        analysis_files: Mapping[Path, str] | None = None,
     ) -> Generator[Self]:
         """Bind one candidate and restore the entry view without disk effects.
 
@@ -592,6 +620,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         Physical preimages stay unchanged across every logical view transition.
         ``None`` retains the entry plans or roots while acquiring the same
         barrier, so preparing a nested candidate cannot observe another thread.
+        ``analysis_files`` binds read-only dependency sources that native
+        resolution reads but publication never sees; ``None`` retains the
+        entry analysis view.
 
         Yields:
             This same native project reading the bound candidate.
@@ -609,6 +640,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             msg = "another thread owns this native source view"
             raise RuntimeError(msg)
         previous = files.plans
+        previous_analysis = files.analysis
         folders = tuple(self._custom_source_folders)
         frozen = self._frozen_folders
         try:
@@ -617,13 +649,21 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 tuple(folder.path for folder in folders)
                 if additional_source_folders is None
                 else additional_source_folders,
+                previous_analysis
+                if analysis_files is None
+                else {
+                    path: source.encode(c.DEFAULT_ENCODING)
+                    for path, source in analysis_files.items()
+                },
             )
             yield self
         finally:
             primary = sys.exception()
             try:
                 self._set_source_view(
-                    previous, tuple(folder.path for folder in folders)
+                    previous,
+                    tuple(folder.path for folder in folders),
+                    previous_analysis,
                 )
                 self._custom_source_folders = list(folders)
                 self._frozen_folders = frozen
@@ -643,6 +683,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         self,
         plans: tuple[m.Infra.CodegenFilePlan, ...],
         folders: tuple[str, ...],
+        analysis: Mapping[Path, bytes] | None,
     ) -> None:
         """Evolve source deltas before notifying native resource observers.
 
@@ -662,7 +703,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         root = Path(self.root.real_path)
         self._validate_source_folders(root, folders, plans)
         previous_directories = files.directory_membership
-        changed = files.replace(plans)
+        changed = files.replace(plans, analysis)
         selected = tuple(sorted({*election.source_folders, *folders}))
         files.select_source_roots((root, *(root / folder for folder in selected)))
         changed_folders = selected != tuple(
@@ -1071,7 +1112,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         preferences.set("source_folders", value=list(selected.source_folders))
         self._ropefolder_name = None
         self._source_election = selected
-        self._set_source_view(declared_files, ())
+        self._set_source_view(declared_files, (), None)
         return self
 
     @staticmethod

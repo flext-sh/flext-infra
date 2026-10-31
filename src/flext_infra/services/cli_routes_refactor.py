@@ -287,9 +287,8 @@ class FlextInfraRefactorRoutes:
             name="ast",
             help_text=(
                 "Run the ast engine standalone: ast-grep cascade plus "
-                "sed-by-list cascade (scan report; --apply reaches the "
-                "mechanical fixed point); --rules selects exact CSV AST IDs "
-                "only, over the complete governed corpus"
+                "sed-by-list cascade over the complete governed catalog "
+                "(scan report; --apply reaches the mechanical fixed point)"
             ),
             model_cls=FlextInfraCodemodAstScan,
             handler=FlextInfraCodemodAstScan.execute_command,

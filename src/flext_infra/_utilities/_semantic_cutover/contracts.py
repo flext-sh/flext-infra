@@ -17,6 +17,7 @@ from collections.abc import (
     MutableSequence,
     Sequence,
 )
+from contextlib import AbstractContextManager
 from pathlib import Path
 
 from flext_cli import cli, u
@@ -199,27 +200,26 @@ class FlextInfraUtilitiesSemanticContracts(
         """
         analysis_sources: dict[Path, str] = {}
         inserted: dict[Path, tuple[str, ...]] = {}
+        dependency_views: dict[Path, str] = {}
         for selection in rules:
             revision = selection.source_revision
-            # Historical declarations are composed only into a provider the
-            # scanned project owns; a Python-path dependency is never a target.
             if (
                 selection.operation
                 == c.Infra.RopeContractOperation.RETIRE_GENERIC_TYPING_WRAPPERS
                 and revision is not None
-                and workspace.rope_project.source_owned(
-                    Path(
-                        cls._generic_history_provider(
-                            workspace.rope_project, selection
-                        )[3].real_path
-                    )
-                )
             ):
                 path, candidate, names = cls._generic_collection_history(
                     workspace.rope_project, selection, revision=revision
                 )
-                analysis_sources[path] = candidate
-                inserted[path] = names
+                # An owned provider is an editable candidate whose historical
+                # declarations are withdrawn before publication. A Python-path
+                # dependency only lends its historical names to consumer
+                # selection through a read-only analysis view.
+                if workspace.rope_project.source_owned(path):
+                    analysis_sources[path] = candidate
+                    inserted[path] = names
+                else:
+                    dependency_views[path] = candidate
         plans = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(workspace.rope_project.root.real_path),
             (),
@@ -227,7 +227,9 @@ class FlextInfraUtilitiesSemanticContracts(
             source_project=workspace.rope_project,
         )
         with workspace.rope_project.source_view(
-            declared_files=plans, additional_source_folders=None
+            declared_files=plans,
+            additional_source_folders=None,
+            analysis_files=dependency_views,
         ):
             return cls._plan_bound_contract_rules(
                 workspace, sources, rules, options, (analysis_sources, inserted)
@@ -367,14 +369,8 @@ class FlextInfraUtilitiesSemanticContracts(
         anchor, indentation = cls._generic_history_anchor(
             current, module.get_source_binding_index().fragments, provider
         )
-        with project.source_view(
-            declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
-                Path(project.root.real_path),
-                (),
-                {path: cls._generic_history_source(path, revision)},
-                source_project=project,
-            ),
-            additional_source_folders=None,
+        with cls._generic_history_view(
+            project, path, cls._generic_history_source(path, revision)
         ):
             _identity, provider, module, _resource = cls._generic_history_provider(
                 project, selection
@@ -396,21 +392,45 @@ class FlextInfraUtilitiesSemanticContracts(
             else (),
         ).new_contents
         for import_module, members in imports.items():
-            with project.source_view(
-                declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
-                    Path(project.root.real_path),
-                    (),
-                    {path: candidate},
-                    source_project=project,
-                ),
-                additional_source_folders=None,
-            ):
+            with cls._generic_history_view(project, path, candidate):
                 imported = FlextInfraUtilitiesRopeImports.add_import(
                     project, resource, import_module, tuple(members), apply=False
                 )
                 if imported is not None:
                     candidate = imported
         return path, candidate, tuple(names)
+
+    @staticmethod
+    def _generic_history_view(
+        project: p.Infra.RopeProject,
+        path: Path,
+        source: str,
+    ) -> AbstractContextManager[p.Infra.RopeProject]:
+        """Bind one provider source for analysis by its project ownership.
+
+        An owned provider is a declared candidate of this project. A
+        Python-path dependency is bound read-only: native resolution reads it
+        while publication never sees it.
+
+        Returns:
+            The native source view reading the supplied provider source.
+
+        """
+        if project.source_owned(path):
+            return project.source_view(
+                declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                    Path(project.root.real_path),
+                    (),
+                    {path: source},
+                    source_project=project,
+                ),
+                additional_source_folders=None,
+            )
+        return project.source_view(
+            declared_files=None,
+            additional_source_folders=None,
+            analysis_files={path: source},
+        )
 
     @classmethod
     def _generic_history_provider(

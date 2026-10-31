@@ -20,7 +20,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, e, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
@@ -238,7 +238,10 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             Declared plans including authenticated source overrides.
 
         Raises:
-            ValueError: If planned bytes conflict with a declared plan.
+            e.OperationError: If planned bytes conflict with a declared plan;
+                its context names the one module concerned.
+            e.ValidationError: If a planned source escapes its owning project;
+                its context names the one module concerned.
 
         """
         inherited = (
@@ -251,7 +254,10 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             previous = declarations.get(plan.path)
             if previous is not None and previous != plan:
                 message = f"Rope source has competing declarations: {plan.path}"
-                raise ValueError(message)
+                raise e.OperationError(
+                    message,
+                    context={c.Infra.MOD_FAILURE_MODULE_KEY: str(plan.path)},
+                )
             declarations[plan.path] = plan
         for supplied_path, source in planned_sources.items():
             path = supplied_path.resolve()
@@ -260,9 +266,17 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             if declared is not None:
                 if declared.desired_content != content:
                     message = f"Rope planned source has competing declarations: {path}"
-                    raise ValueError(message)
+                    raise e.OperationError(
+                        message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                    )
                 continue
             prior = inherited.get(path)
+            owner = prior.project if prior is not None else root
+            if not path.is_relative_to(owner):
+                message = f"codegen path escapes owning project: {path}"
+                raise e.ValidationError(
+                    message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                )
             before = (
                 prior.before
                 if prior is not None
@@ -278,7 +292,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             if mode is None:
                 mode = config.Infra.codegen.modes.file_default
             declarations[path] = m.Infra.CodegenFilePlan(
-                project=prior.project if prior is not None else root,
+                project=owner,
                 path=path,
                 before=before,
                 desired_content=content,

@@ -684,6 +684,9 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 return r[int].from_failure(native)
             observation = native.value
             metadata_paths = tuple(str(path) for path in observation.metadata_paths)
+        hooks = cls._validate_path_hooks(metadata_paths)
+        if hooks.failure:
+            return r[int].from_failure(hooks)
         return cls._validate_required(
             members,
             locked,
@@ -1196,6 +1199,48 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             return r[bool].fail(
                 f"registry dependency has a foreign direct origin: {name}"
             )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _validate_path_hooks(metadata_paths: Sequence[str]) -> p.Result[bool]:
+        """Prove every site ``.pth`` hook is recorded by an installed artifact.
+
+        A ``.pth`` in an install directory runs at interpreter start and can
+        put any path on ``sys.path``. Only a hook an installed distribution
+        lists in its RECORD is environment-owned; that covers the editable
+        hooks the setup selection receipt admits, because their reinstall
+        records them. Any other hook is a borrowed environment and fails.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        owned: set[Path] = set()
+        for distribution in u.installed_distributions(path=metadata_paths):
+            files = distribution.files
+            if files is None:
+                return r[bool].fail(
+                    "installed artifact has no file inventory: "
+                    f"{distribution.metadata['Name']}",
+                )
+            owned.update(
+                Path(str(distribution.locate_file(file))).resolve()
+                for file in files
+                if file.suffix == ".pth"
+            )
+        for directory in sorted({Path(path).resolve() for path in metadata_paths}):
+            for hook in sorted(directory.glob("*.pth")):
+                if hook.resolve() in owned:
+                    continue
+                injected = tuple(
+                    line
+                    for line in hook.read_text(encoding="utf-8").splitlines()
+                    if line.strip() and not line.startswith("#")
+                )
+                return r[bool].fail(
+                    "environment path hook has no installed owner: "
+                    f"file={hook} injects={injected}",
+                )
         return r[bool].ok(value=True)
 
     @staticmethod

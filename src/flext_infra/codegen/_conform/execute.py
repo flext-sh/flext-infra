@@ -1397,7 +1397,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         owned = tuple(
-            repository.name
+            # The docs selector names PROJECTS (what docs discovery indexes:
+            # the distribution), not the repository catalog key (git slug).
+            repository.distribution
             for repository in plan.repositories
             if repository.path == Path()
         )
