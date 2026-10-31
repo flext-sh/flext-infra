@@ -54,6 +54,36 @@ class FlextInfraUtilitiesFacadeComponents:
     """Derive component-to-namespace references and render their relocation."""
 
     @staticmethod
+    def _same_facade_target(occupied: object, provider: object) -> bool:
+        """Whether an occupied binding names the same class the planning holds.
+
+        Rope yields distinct PyClass instances for one logical class when the
+        provider was resolved through a different project instance (snapshot
+        overlay vs live module scan); object identity would then reject a
+        binding that is in fact the class the facade already imports. Two
+        bindings name the same target when both are classes of the same
+        qualified origin (module + name); a genuine collision — a different
+        class reusing the short name — keeps the occupation verdict.
+
+        Returns:
+            Whether both objects denote the same underlying class.
+
+        """
+        if occupied is provider:
+            return True
+        get_module = getattr(occupied, "get_module", None)
+        if get_module is None or not hasattr(provider, "get_module"):
+            return False
+        occupied_module = get_module()
+        provider_module = provider.get_module()
+        if occupied_module is None or provider_module is None:
+            return False
+        return (
+            occupied_module.get_name() == provider_module.get_name()
+            and getattr(occupied, "get_name", lambda: "")() == provider.get_name()
+        )
+
+    @staticmethod
     def generate_module_skeleton(
         *,
         context: m.Infra.ModuleSkeletonRenderContext,
@@ -553,7 +583,9 @@ class FlextInfraUtilitiesFacadeComponents:
                 continue
             binding = provider.get_name()
             occupied = module.get_scope().get_names().get(binding)
-            if occupied is not None and occupied.get_object() is not provider:
+            if occupied is not None and not cls._same_facade_target(
+                occupied.get_object(), provider
+            ):
                 message = f"Occupied facade provider binding: {path}:{binding}"
                 return r[str].fail(message)
             added_imports.append(runtime.from_import(package, 0, ((binding, None),)))
@@ -570,7 +602,9 @@ class FlextInfraUtilitiesFacadeComponents:
                     f"Occupied nominal facade publication: {path}:{published_name}"
                 )
             imported = module.get_scope().get_names().get(published_name)
-            if imported is not None and imported.get_object() is not provider:
+            if imported is not None and not cls._same_facade_target(
+                imported.get_object(), provider
+            ):
                 return r[str].fail(
                     f"Occupied nominal facade import: {path}:{published_name}"
                 )
