@@ -273,7 +273,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
                 ],
             },
             c.Infra.DEPENDENCY_GROUPS: {
-                c.Infra.DEV: list(
+                c.Infra.DEV: list[t.JsonValue](
                     u.Infra.project_development_requirements(
                         request.codegen.scaffold.project,
                         distribution=request.project_name,

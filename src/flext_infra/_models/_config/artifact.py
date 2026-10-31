@@ -1060,11 +1060,16 @@ class FlextInfraModelsConfigArtifact(
 
             """
             # A generated source tree is tracked: ignoring it would hide the
-            # modules a regeneration adds from ``git add``.
-            return tuple(
-                f"{artifact.name}/" if artifact.is_dir else artifact.name
-                for artifact in self.artifacts
-                if artifact.gitignore and not artifact.generated_source
+            # modules a regeneration adds from ``git add``. The upgrade
+            # executor environment (make.executor_environment) is a
+            # runtime-root-relative path, so it is ignored anchored at the root.
+            return (
+                *(
+                    f"{artifact.name}/" if artifact.is_dir else artifact.name
+                    for artifact in self.artifacts
+                    if artifact.gitignore and not artifact.generated_source
+                ),
+                f"/{self.make.executor_environment.directory.as_posix()}/",
             )
 
         @m.computed_field

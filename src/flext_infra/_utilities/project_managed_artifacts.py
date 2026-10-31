@@ -67,7 +67,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             )
             if document.failure:
                 return result_type.from_failure(document)
-            loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            loaded = r[
+                tuple[m.Infra.CodegenConfigSpec, c.Infra.ProjectKind]
+            ].create_from_callable(
                 partial(
                     cls._repository_codegen_spec,
                     document.value.values,
@@ -84,7 +86,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             )
             if captured.failure:
                 return result_type.from_failure(captured)
-            loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+            loaded = r[
+                tuple[m.Infra.CodegenConfigSpec, c.Infra.ProjectKind]
+            ].create_from_callable(
                 partial(
                     cls._layered_codegen_spec,
                     repository_root.resolve(),
@@ -471,7 +475,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 "projected codegen declaration is outside elected layers"
             )
             return result_type.fail(str(error), exception=error)
-        loaded = r[m.Infra.CodegenConfigSpec].create_from_callable(
+        loaded = r[
+            tuple[m.Infra.CodegenConfigSpec, c.Infra.ProjectKind]
+        ].create_from_callable(
             lambda: cls._repository_codegen_spec(
                 cls._repository_config_document(
                     selected, captured.sources, projections
@@ -480,8 +486,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             ),
         )
 
-        def codegen_inputs(spec: m.Infra.CodegenConfigSpec) -> m.Infra.CodegenInputs:
-            return m.Infra.CodegenInputs(spec=spec, sources=captured.sources)
+        def codegen_inputs(
+            validated: tuple[m.Infra.CodegenConfigSpec, c.Infra.ProjectKind],
+        ) -> m.Infra.CodegenInputs:
+            spec, kind = validated
+            return m.Infra.CodegenInputs(spec=spec, kind=kind, sources=captured.sources)
 
         return loaded.map(codegen_inputs)
 
