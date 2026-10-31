@@ -20,6 +20,7 @@ from flext_cli import u
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._rope import (
@@ -378,11 +379,17 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         initializer = target.parent / c.Infra.INIT_PY
         if initializer not in candidate:
             virtual.append(cls._module_destination_plan(root, initializer, "", mode))
+        published = cls._module_published_exports(project, root, source)
         intermediate = cls._module_resource_relocation(
             project, paths, candidate, virtual, mode
         )
         if intermediate.failure:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(intermediate)
+        rewired = cls._module_barrel_consumers(
+            project, (source, target), candidate, published
+        )
+        if rewired.failure:
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(rewired)
         changed = {
             path: text
             for path, text in candidate.items()
@@ -399,6 +406,138 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 resource_move=True,
             )
         )
+
+    @classmethod
+    def _module_published_exports(
+        cls, project: p.Infra.RopeProject, root: Path, source: Path
+    ) -> tuple[str, frozenset[str]]:
+        """Read the moved module's identity and public exports before the move.
+
+        Returns:
+            The moved module name and the names it publishes.
+
+        """
+        moved = cls._elected_move_module(project, root, source, role="source")
+        return (
+            moved.get_name(),
+            frozenset(
+                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(moved)
+            ),
+        )
+
+    @classmethod
+    def _module_barrel_consumers(
+        cls,
+        project: p.Infra.RopeProject,
+        paths: tuple[Path, Path],
+        candidate: MutableMapping[Path, str],
+        published: tuple[str, frozenset[str]],
+    ) -> p.Result[bool]:
+        """Rewire consumers that import a moved class through a package barrel.
+
+        A package that held the moved module but does not hold its destination
+        stops republishing its classes once its initializer is regenerated
+        from its own children. Every ``from barrel import Name`` of a moved
+        export is retargeted, in this candidate, to the destination package
+        that republishes it; a consumer importing the barrel module itself
+        cannot be proved and refuses the move. Initializers are owned by the
+        publication rewrite and their regeneration.
+
+        Returns:
+            True, or the first consumer whose barrel route cannot be rewired.
+
+        """
+        source, target = paths
+        module_name, exports = published
+        parts = module_name.split(".")
+        root = Path(project.root.real_path).resolve()
+        destination_package = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+            target.parent, project_root=root, source_project=project
+        )
+        barrels = frozenset(
+            ".".join(parts[:index])
+            for index in range(1, len(parts))
+            if not (
+                destination_package == ".".join(parts[:index])
+                or destination_package.startswith(".".join(parts[:index]) + ".")
+            )
+        )
+        if not exports or not barrels:
+            return r[bool].ok(value=True)
+        for path, text in tuple(candidate.items()):
+            if path in {source, target} or not any(
+                barrel in text for barrel in barrels
+            ):
+                continue
+            if path.name == c.Infra.INIT_PY:
+                # Initializer publications are rewritten by
+                # ``_rewritten_init_publications`` and regenerated from children.
+                continue
+            rewritten = cls._barrel_consumer_text(
+                project, (root, path), text, (barrels, exports, destination_package)
+            )
+            if rewritten.failure:
+                return r[bool].from_failure(rewritten)
+            candidate[path] = rewritten.value
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _barrel_consumer_text(
+        cls,
+        project: p.Infra.RopeProject,
+        location: tuple[Path, Path],
+        text: str,
+        route: tuple[frozenset[str], frozenset[str], str],
+    ) -> p.Result[str]:
+        """Retarget one consumer's barrel imports of moved exports.
+
+        Returns:
+            The consumer text, retargeted when it imported a moved export from
+            a barrel, or the barrel attribute route the move cannot prove.
+
+        """
+        root, path = location
+        barrels, exports, destination_package = route
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        imports = runtime.module_imports_for_pymodule(
+            project,
+            runtime.build_string_module(
+                project, text, resource=cls._resource(project, root, path)
+            ),
+        )
+        retargeted: list[tuple[str, str | None]] = []
+        for statement in imports.imports:
+            info = statement.import_info
+            if isinstance(info, p.Infra.RopeNormalImport) and any(
+                name in barrels for name, _alias in info.names_and_aliases
+            ):
+                return r[str].fail(
+                    f"module move cannot prove a barrel attribute consumer: {path}"
+                )
+            if not (
+                isinstance(info, p.Infra.RopeFromImport)
+                and info.level == 0
+                and info.module_name in barrels
+            ):
+                continue
+            moved = [item for item in info.names_and_aliases if item[0] in exports]
+            if moved:
+                retargeted.extend(moved)
+                statement.import_info = runtime.from_import(
+                    info.module_name,
+                    0,
+                    tuple(
+                        item
+                        for item in info.names_and_aliases
+                        if item[0] not in exports
+                    ),
+                )
+        if not retargeted:
+            return r[str].ok(text)
+        imports.add_import(
+            runtime.from_import(destination_package, 0, tuple(retargeted))
+        )
+        return r[str].ok(imports.get_changed_source())
 
     @classmethod
     def _module_resource_relocation(
