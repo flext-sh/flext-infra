@@ -393,9 +393,10 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 {% set identity = make.environment_identity -%}
 RECREATE_DIVERGENT_RUNTIME = identity_file="$(RUNTIME_VENV)/{{ identity.marker_file }}"; \
 	if [ -f "$$identity_file" ]; then \
-		uv_bin="$(MISE) -C "$(RUNTIME_ROOT)" which "uv""; \
-		declared_uv="$$("$${uv_bin}" self version --short)"; \
-		declared_python="$$("$${desired_python}" --version)"; declared_python="$${declared_python\#Python }"; \
+		mise_bin="$(MISE)"; \
+		uv_bin="$$( "$${mise_bin}" -C "$(RUNTIME_ROOT)" which "uv" )"; \
+		declared_uv="$$( "$${uv_bin}" self version --short )"; \
+		declared_python="$$( "$${desired_python}" --version | sed "s/^Python //" )"; \
 		created_uv="$$(sed -n 's/^{{ identity.uv_key }}[[:space:]]*=[[:space:]]*//p' "$$identity_file")"; \
 		created_python="$$(sed -n 's/^{{ identity.python_key }}[[:space:]]*=[[:space:]]*//p' "$$identity_file")"; \
 		if [ "$$created_uv" != "$$declared_uv" ] || [ "$$created_python" != "$$declared_python" ]; then \
