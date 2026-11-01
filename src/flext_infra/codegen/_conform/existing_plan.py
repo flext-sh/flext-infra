@@ -1258,8 +1258,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     ) -> p.Result[str]:
         """Recover, overlay, conform, and format the control project metadata.
 
+        The control cohort publishes the same final form as the repository
+        plan (``published_pyproject_source``), so one run writes it once.
+
         Returns:
-            The formatted conformed metadata source, or the first failure.
+            The published conformed metadata source, or the first failure.
 
         """
         result_type = r[str]
@@ -1280,7 +1283,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return result_type.from_failure(conformed)
         return u.Infra.format_toml_source(
             conformed.value, path=manifest_path, toolchain_root=target.toolchain_root
-        )
+        ).map(self.published_pyproject_source)
 
     def _control_dependency_overlay(
         self,

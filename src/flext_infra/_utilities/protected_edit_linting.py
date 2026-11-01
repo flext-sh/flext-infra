@@ -347,8 +347,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
             settings=settings,
         )
 
-    @staticmethod
+    @classmethod
     def _staged_ruff_settings(
+        cls,
         plans: Sequence[m.Infra.CodegenFilePlan],
     ) -> Mapping[Path, Sequence[str]]:
         """Render each staged pyproject's Ruff table as ``--config`` overrides.
@@ -358,11 +359,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
         the on-disk copy reads the settings the run replaces (an UP040 that is
         unfixable in the new settings once rewrote ``Name: TypeAlias = Owner``
         into a runtime-different ``type`` statement). Ruff runs ``--isolated``
-        and every leaf of the complete staged ``[tool.ruff]`` table, ``src`` and
-        first-party settings included, becomes one quoted dotted ``--config``
-        key, so on-disk state is irrelevant and the run's discovery matches the
-        projection exactly. Paths resolve against the project root, which is
-        the pass's working directory.
+        and every top-level key of the complete staged ``[tool.ruff]`` table,
+        ``src`` and first-party settings included, becomes one quoted
+        ``--config`` key carrying its table inline, so on-disk state is
+        irrelevant and the run's rule selection matches the projection
+        exactly. Paths resolve against the project root, which is the pass's
+        working directory.
 
         Returns:
             Override arguments per project root that stages a pyproject.
@@ -385,24 +387,41 @@ class FlextInfraUtilitiesProtectedEditLinting:
             # `--isolated` makes Ruff ignore every on-disk configuration, so the
             # complete staged table below is the whole configuration: a key the
             # staged file drops is dropped here too, never merged from disk.
+            # Each top-level key is one override whose table is inline: Ruff
+            # layers every `--config` as its own rule selection, so a
+            # `lint.select` override split from its `lint.ignore` re-selects
+            # what the project ignores; one inline `lint` table is one
+            # selection, exactly as the pyproject declares it.
             overrides: list[str] = ["--isolated"]
-            pending: list[tuple[Sequence[str], t.JsonValue]] = [
-                ((key,), value) for key, value in ruff.items()
-            ]
-            while pending:
-                keys, value = pending.pop()
-                if isinstance(value, Mapping):
-                    pending.extend(
-                        ((*keys, key), nested) for key, nested in value.items()
-                    )
-                    continue
-                dotted = ".".join(u.Cli.json_dumps(key).unwrap() for key in keys)
+            for key, value in ruff.items():
+                inline = cls._ruff_inline_value(value)
                 overrides.extend((
                     "--config",
-                    f"{dotted} = {u.Cli.json_dumps(value).unwrap()}",
+                    f"{u.Cli.json_dumps(key).unwrap()} = {inline}",
                 ))
             staged[plan.project] = tuple(overrides)
         return staged
+
+    @classmethod
+    def _ruff_inline_value(cls, value: t.JsonValue) -> str:
+        """Render one staged Ruff value as a TOML inline value.
+
+        Keys and scalars are JSON literals, which TOML reads unchanged;
+        tables become inline tables and arrays keep their order.
+
+        Returns:
+            The TOML inline literal of ``value``.
+
+        """
+        if isinstance(value, Mapping):
+            members = ", ".join(
+                f"{u.Cli.json_dumps(key).unwrap()} = {cls._ruff_inline_value(nested)}"
+                for key, nested in value.items()
+            )
+            return f"{{{members}}}"
+        if isinstance(value, list):
+            return f"[{', '.join(cls._ruff_inline_value(item) for item in value)}]"
+        return u.Cli.json_dumps(value).unwrap()
 
     @classmethod
     def _ruff_stdin_codes(

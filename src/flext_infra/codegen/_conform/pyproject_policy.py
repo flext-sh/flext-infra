@@ -28,6 +28,24 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         """
         return f"{c.Infra.RENDERED_BY_MARKER}{__version__}"
 
+    @classmethod
+    def published_pyproject_source(cls, formatted: str) -> str:
+        """Return the final pyproject bytes every writer of one run publishes.
+
+        The parse-merge-dump composition drops every template comment, so
+        this owner prefixes the one generated-file header (owner, adjustment
+        rule, regeneration verb) and the render provenance on the formatted
+        source. The control cohort and the repository plan both publish
+        through it, so one run computes one projection and the second writer
+        finds nothing to change. A re-run reads the live file as data, so the
+        header never accumulates.
+
+        Returns:
+            The header-carrying pyproject source.
+
+        """
+        return f"{c.Infra.BANNER}{cls.rendered_by_stamp()}\n{formatted.lstrip()}"
+
     @staticmethod
     def _scaffold_python_dirs(
         entries: Sequence[p.Infra.TemplateEntrySpec],
