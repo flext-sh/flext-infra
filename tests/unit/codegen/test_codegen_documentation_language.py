@@ -40,8 +40,6 @@ class TestsFlextInfraCodegenDocumentationLanguage:
             root, workspace, what=c.Infra.CodegenConformSurface.PYPROJECT
         )
         plan = tm.ok(service.plan(request))
-        tm.that(plan.issues, empty=True)
-        tm.that(plan.exception is None, eq=True)
         file = next(
             item for item in plan.files if item.path.name == c.PYPROJECT_FILENAME
         )

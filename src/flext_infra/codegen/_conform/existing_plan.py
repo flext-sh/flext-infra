@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-import traceback
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, contextmanager
 from functools import partial
@@ -109,7 +108,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         root = target.root
-        self.state.completed_source_plans = None
         surface_plans = self._plan_existing_contract_surface(
             target,
             workspace,
@@ -261,12 +259,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             target.root,
             declared_files=sources.value[0],
         ) as binding:
-            if (
-                contract.custom
-                and self.state.planning_exception is None
-                and not self.state.planning_issues
-            ):
-                self.state.completed_source_plans = sources.value[0]
             tooling_runtime = None
             if contract.tooling:
                 tooling_context = self._existing_tooling_context(
@@ -800,10 +792,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         *,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-        """Borrow the existing engine and preserve the DSL's complete outcome.
+        """Borrow the existing engine; its first planning failure propagates raw.
 
         Returns:
-            A complete source cohort or its original causal planning failure.
+            The complete source cohort, or the missing-ports refusal.
 
         """
         ports, snapshot = self.state.ports, self.state.snapshot
@@ -825,36 +817,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 declared_files=declared_files,
                 planners=(self._projected_exports, self._source_view),
                 selection=selection,
-            )
-        self.retain_diagnostics(
-            outcome.exception, issues=outcome.issues, failure=outcome.native_failure
-        )
-        if outcome.failed:
-            if not outcome.issues:
-                self._record_file_failure(
-                    root,
-                    "\n".join(
-                        part
-                        for part in (
-                            outcome.error,
-                            outcome.error_type,
-                            outcome.error_traceback,
-                        )
-                        if part
-                    ),
-                    exception=outcome.exception,
-                )
-            self.state.completed_source_plans = u.Infra.codegen_compose_file_plans(
-                (*(self.state.completed_source_plans or ()), *outcome.files),
-                ordered=True,
-            )
-            if outcome.native_failure is not None:
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(
-                    outcome.native_failure
-                )
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
-                outcome.error or f"Facade source planning failed: {root}",
-                exception=outcome.exception,
             )
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(outcome.files)
 
@@ -1814,11 +1776,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 continue
             resolved = self._managed_render_entry(codegen, workspace, root, managed)
             if resolved.failure:
-                self._record_file_failure(
-                    root / managed.path,
-                    resolved.error or "managed file resolution failed",
-                )
-                continue
+                u.Infra.codegen_raise_failure(root / managed.path, resolved)
             (entry, path), present = resolved.value
             if not present or entry is None or path is None:
                 continue
@@ -1838,39 +1796,23 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     path,
                 )
                 if orphan.failure:
-                    self._record_file_failure(
-                        path,
-                        orphan.error or "managed file retirement failed",
-                    )
-                    continue
+                    u.Infra.codegen_raise_failure(path, orphan)
                 planned.extend(orphan.value)
                 continue
-            try:
-                rendered = self._rendered_managed_plan(
-                    render_inputs,
-                    managed,
-                    m.Infra.ArtifactRenderRoute(
-                        entry=entry,
-                        destination=entry.destination,
-                        failure_prefix="",
-                        project_context=None,
-                        planned_manifests=self._candidate_manifests(planned),
-                    ),
-                    path,
-                )
-            except (OSError, ValueError) as exception:
-                self._record_file_failure(
-                    path,
-                    traceback.format_exc(),
-                    exception=exception,
-                )
-                continue
+            rendered = self._rendered_managed_plan(
+                render_inputs,
+                managed,
+                m.Infra.ArtifactRenderRoute(
+                    entry=entry,
+                    destination=entry.destination,
+                    failure_prefix="",
+                    project_context=None,
+                    planned_manifests=self._candidate_manifests(planned),
+                ),
+                path,
+            )
             if rendered.failure:
-                self._record_file_failure(
-                    path,
-                    rendered.error or "managed file rendering failed",
-                )
-                continue
+                u.Infra.codegen_raise_failure(path, rendered)
             planned.append(rendered.value)
         return self._artifact_dependency_plans(codegen, root, planned)
 
@@ -2138,14 +2080,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         plans: list[m.Infra.CodegenFilePlan] = []
         make_plan = self._validated_custom_make_plan(root, policy)
         if make_plan.failure:
-            self._record_file_failure(
-                root / policy.filename,
-                make_plan.error or "custom Make planning failed",
-            )
-        else:
-            make_plan_value, make_plan_present = make_plan.value
-            if make_plan_present and make_plan_value is not None:
-                plans.append(make_plan_value)
+            u.Infra.codegen_raise_failure(root / policy.filename, make_plan)
+        make_plan_value, make_plan_present = make_plan.value
+        if make_plan_present and make_plan_value is not None:
+            plans.append(make_plan_value)
         if root.is_dir():
             snapshot = self.state.snapshot
             ports = self.state.ports
@@ -2299,8 +2237,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         Returns:
             The resulting ``p.Result[tuple[m.Infra.CodegenFilePlan, ...]]``
-            carrying one plan per represented artifact; per-artifact failures
-            are recorded and skipped.
+            carrying one plan per represented artifact.
+
+        Raises:
+            ValueError: When a governed artifact path is not a regular file.
 
         """
         plans: list[m.Infra.CodegenFilePlan] = []
@@ -2309,25 +2249,15 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         for relative, governed in governed_by_path.items():
             path = root / relative
             if path.exists() and not path.is_file():
-                error = ValueError(f"governed artifact is not a regular file: {path}")
-                self._record_file_failure(
-                    path,
-                    str(error),
-                    exception=error,
-                )
-                continue
+                msg = f"governed artifact is not a regular file: {path}"
+                raise ValueError(msg)
             if not self._governed_entry_reachable(codegen, target, relative):
                 continue
             if not path.exists() and governed.policy != "merge":
                 continue
             current = self._governed_current_text(path)
             if current.failure:
-                self._record_file_failure(
-                    path,
-                    current.error or "cannot read governed artifact",
-                    exception=current.exception,
-                )
-                continue
+                u.Infra.codegen_raise_failure(path, current)
             request = m.Infra.CodegenGovernedPlanRequest(
                 root=root,
                 relative=relative,
@@ -2337,12 +2267,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             )
             decided = self._decide_governed_plan(request)
             if decided.failure:
-                self._record_file_failure(
-                    path,
-                    decided.error or "cannot plan governed artifact",
-                    exception=decided.exception,
-                )
-                continue
+                u.Infra.codegen_raise_failure(path, decided)
             decided_value, decided_present = decided.value
             if decided_present and decided_value is not None:
                 plans.append(decided_value)

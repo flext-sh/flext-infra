@@ -14,7 +14,7 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm, u
+from tests import c, e, m, p, t, tm, u
 
 
 # Exemplar: conform materializes a full managed tree on disk, so the render
@@ -365,15 +365,10 @@ class TestsFlextInfraCodegenManifestlessExisting:
             unsupported,
         )
 
-        plan = tm.ok(
+        with u.Tests.raises(
+            e.OperationError, match=f"unsupported scaffold license: {unsupported}"
+        ):
             TestsFlextInfraCodegenManifestlessExisting.plan_surface(
                 root,
                 c.Infra.CodegenConformSurface.ALL,
-            ),
-        )
-
-        tm.that(plan.files, empty=True)
-        tm.that(
-            "\n".join(issue.message for issue in plan.issues),
-            has=f"unsupported scaffold license: {unsupported}",
-        )
+            )

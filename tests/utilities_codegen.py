@@ -130,7 +130,6 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             members=members,
             what=what,
         )
-        tm.that(plan.issues, eq=(), msg=str(plan.issues))
         return tm.not_none(
             TestsFlextInfraUtilitiesCodegenMixin.planned_text(plan, destination),
         )

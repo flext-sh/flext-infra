@@ -11,7 +11,6 @@ import concurrent.futures
 import difflib
 import os
 import sys
-import traceback
 from collections import Counter
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from itertools import islice
@@ -1184,24 +1183,15 @@ class FlextInfraUtilitiesProtectedEditLinting:
     ) -> m.Infra.LintGateResult:
         """Retain the native receipt without turning an absent report into success.
 
+        A process that never produced a native outcome stops the gate at once:
+        its original exception propagates unchanged.
+
         Returns:
             Diagnostic evidence and the independent first execution failure.
 
         """
-        if executed.failure:
-            return m.Infra.LintGateResult(
-                tool_name=tool_name,
-                execution_error=str(executed.error),
-                error_code=executed.error_code,
-                error_data=executed.error_data,
-                error_traceback=(
-                    "".join(traceback.format_exception(executed.exception))
-                    if executed.exception is not None
-                    else None
-                ),
-            )
         output = m.Cli.CommandOutput.model_validate(
-            executed.value, from_attributes=True
+            executed.unwrap(), from_attributes=True
         )
         parsed = FlextInfraUtilitiesProtectedEditLinting._lint_report_errors(
             tool_name, output.stdout

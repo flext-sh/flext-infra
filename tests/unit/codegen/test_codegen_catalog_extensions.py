@@ -699,8 +699,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
         ).plan(request)
 
         plan = tm.ok(result)
-        tm.that(plan.issues, eq=())
-        tm.that(plan.exception, eq=None)
         tm.that(
             tuple(item.name for item in plan.repositories),
             eq=(root.name, member.name),

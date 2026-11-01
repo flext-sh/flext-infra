@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import FlextInfraConfig
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, tm, u
+from tests import c, e, m, p, tm, u
 
 
 class TestsFlextInfraArtifactRenderEmptyGuard:
@@ -24,7 +24,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
     and was emitted verbatim: consumers inspected the directory, saw the
     artifact present, and concluded the capability was delivered while every
     step it owns was silently absent. The render funnel owns the refusal:
-    empty render in, typed planning issue out, naming the template, the
+    empty render in, typed planning refusal raised, naming the template, the
     destination, and the declaration cause.
     """
 
@@ -32,11 +32,13 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
     def _plan_render(
         tmp_path: Path,
         content: str,
-    ) -> tuple[p.Result[m.Infra.CodegenPlan], Path, Path]:
-        """Plan a template declared through the target's repository-local config.
+    ) -> tuple[
+        FlextInfraCodegenConform.Generate, m.Infra.CodegenGenerateRequest, Path, Path
+    ]:
+        """Declare a template through the target's repository-local config.
 
         Returns:
-            The planning result, template source path, and destination path.
+            The bound planner, its request, template source and destination path.
 
         """
         root = tmp_path / "project"
@@ -79,30 +81,30 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
         )
-        planned = FlextInfraCodegenConform.Generate(
+        planner = FlextInfraCodegenConform.Generate(
             repository_root=root,
             state=m.Infra.CodegenConformState(
                 repository_root=root,
                 initial_workspace=workspace,
                 request=request,
             ),
-        ).plan(request)
-        return planned, source, root / entry.destination
+        )
+        return planner, request, source, root / entry.destination
 
     @staticmethod
     def test_empty_render_fails_loud_naming_template_and_cause(
         tmp_path: Path,
     ) -> None:
-        """A 0-byte render produces a planning issue naming template and cause."""
-        refused, source, destination = (
+        """A 0-byte render raises a planning refusal naming template and cause."""
+        planner, request, source, destination = (
             TestsFlextInfraArtifactRenderEmptyGuard._plan_render(
                 tmp_path,
                 "",
             )
         )
-        plan = tm.ok(refused)
-        tm.ok(bool(plan.issues))
-        diagnostic = "\n".join(issue.message for issue in plan.issues)
+        with u.Tests.raises(e.OperationError) as raised:
+            planner.plan(request)
+        diagnostic = str(raised.value)
         tm.that(
             diagnostic,
             has=str(source),
@@ -113,7 +115,6 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         tm.that(diagnostic, has="render produced no content")
         tm.that(diagnostic, has="consumer declaration error")
-        tm.fail(any(file.path == destination for file in plan.files))
         tm.fail(destination.exists())
 
     @staticmethod
@@ -121,17 +122,18 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tmp_path: Path,
     ) -> None:
         """A whitespace-only render is refused and carries the planner banner."""
-        refused, _, destination = TestsFlextInfraArtifactRenderEmptyGuard._plan_render(
-            tmp_path,
-            "  \n\t\n",
+        planner, request, _, destination = (
+            TestsFlextInfraArtifactRenderEmptyGuard._plan_render(
+                tmp_path,
+                "  \n\t\n",
+            )
         )
-        plan = tm.ok(refused)
-        tm.ok(bool(plan.issues))
-        diagnostic = "\n".join(issue.message for issue in plan.issues)
+        with u.Tests.raises(e.OperationError) as raised:
+            planner.plan(request)
+        diagnostic = str(raised.value)
         tm.that(diagnostic, has="stage=templates ")
         tm.that(diagnostic, has="repository=")
         tm.that(diagnostic, has="publishing a 0-byte artifact is forbidden")
-        tm.fail(any(file.path == destination for file in plan.files))
         tm.fail(destination.exists())
 
     @staticmethod
@@ -140,13 +142,13 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
     ) -> None:
         """A render with real content passes through byte-exact."""
         content = "ready:\n\t@echo ready\n"
-        kept, _, destination = TestsFlextInfraArtifactRenderEmptyGuard._plan_render(
-            tmp_path,
-            content,
+        planner, request, _, destination = (
+            TestsFlextInfraArtifactRenderEmptyGuard._plan_render(
+                tmp_path,
+                content,
+            )
         )
-        tm.fail(kept.failure)
-        plan = tm.ok(kept)
-        tm.fail(bool(plan.issues))
+        plan = tm.ok(planner.plan(request))
         tm.that(u.Tests.planned_text(plan, destination.name), eq=content)
         tm.fail(destination.exists())
 

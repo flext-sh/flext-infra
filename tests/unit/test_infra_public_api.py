@@ -34,7 +34,7 @@ class TestsFlextInfraPublicApi:
 
     @staticmethod
     def test_conform_invocations_keep_independent_mutable_state(tmp_path: Path) -> None:
-        """Each public invocation owns its diagnostics without copying caller ports."""
+        """Each public invocation owns its mutable state without copying ports."""
         ports = flext_infra.infra.codegen_conform_collaborators()
         first = flext_infra.m.Infra.CodegenConformState(
             repository_root=tmp_path,
@@ -44,21 +44,12 @@ class TestsFlextInfraPublicApi:
             repository_root=tmp_path,
             ports=ports,
         )
-        issue = flext_infra.m.Infra.Issue(
-            file=str(tmp_path),
-            line=0,
-            column=0,
-            code=flext_infra.c.Infra.ToolOutcome.ERROR.value,
-            message="Invocation-local planning failure",
-        )
-        first.planning_issues.append(issue)
-        first.planning_exception = ValueError(issue.message)
+        first.provider_plans = ()
 
         tm.that(first.ports is ports, truth=True)
         tm.that(second.ports is ports, truth=True)
-        tm.that(first.planning_issues, eq=[issue])
-        tm.that(second.planning_issues, empty=True)
-        tm.that(second.planning_exception, none=True)
+        tm.that(first.provider_plans, eq=())
+        tm.that(second.provider_plans, none=True)
 
     @staticmethod
     def test_codegen_handlers_are_inherited_without_replacing_health(
@@ -86,7 +77,6 @@ class TestsFlextInfraPublicApi:
             tm.that(root.exists(), truth=False)
         tm.that(tm.ok(api.execute()), eq=before)
         tm.that(hasattr(api, c.ContextScope.REQUEST), truth=False)
-        tm.that(hasattr(api, "planning_issues"), truth=False)
 
     @staticmethod
     def test_model_mirror_has_no_public_handler_or_refactor_route() -> None:
@@ -135,9 +125,8 @@ class TestsFlextInfraPublicApi:
             )
         tm.that(first is not second, truth=True)
         tm.that(first.state.request is not second.state.request, truth=True)
-        first.state.planning_exception = ValueError("First invocation failure")
-        tm.that(second.state.planning_exception, none=True)
-        tm.that(second.state.planning_issues, empty=True)
+        first.state.provider_plans = ()
+        tm.that(second.state.provider_plans, none=True)
 
     @staticmethod
     def test_codegen_routes_register_dto_classes_as_runtime_values(

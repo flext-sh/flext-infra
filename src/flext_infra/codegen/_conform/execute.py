@@ -156,8 +156,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             *after_cohort_publication,
             self.authorize_published_envrc,
         )
-        self._begin_planning()
-        self.state.control_outcomes = ()
         u.Cli.info(
             f"operation=generate root={request.root} scope={request.scope} "
             # Bind diagnostics to the selected process settings, never an old report.
@@ -237,12 +235,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         """Publish the control cohort, re-elect its inputs, then the full plan.
 
         Returns:
-            The plan and written paths, or the first failure with every
-            independent effect receipt.
+            The plan and written paths, or the first failure with the paths
+            already written before it.
 
         """
-        # Declared control failures are typed results; anything else is a
-        # defect that escapes raw with its traceback (fail-loud law).
         control_plan = self._control_plan(request)
         if control_plan.failure:
             return r[p.Infra.CodegenResult].from_failure(control_plan)
@@ -254,18 +250,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             prepared_files=control_plan.value.files,
         )
         if control.failure:
-            self._retain_control_failure(control)
+            return control
         written = self._written_paths(control)
         refreshed = self._advance_control_inputs(root, written)
         if refreshed.failure:
-            self.retain_diagnostics(failure=refreshed)
-            return self._execution_failure(
-                (control, refreshed) if control.failure else (refreshed,), written
-            )
-        failures: list[p.FailureLike] = [control] if control.failure else []
+            return self._execution_failure(refreshed, written)
         planned = self._planned(request)
         if planned.failure:
-            return self._execution_failure((*failures, planned), written)
+            return self._execution_failure(planned, written)
         published = self._published(
             request,
             planned.value,
@@ -274,25 +266,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         )
         written = tuple(dict.fromkeys((*written, *self._written_paths(published))))
         if published.failure:
-            failures.append(published)
-        if failures:
-            return self._execution_failure(tuple(failures), written)
+            return self._execution_failure(published, written)
         return self._completed_followups(planned.value, written, after_publication)
-
-    def _retain_control_failure(
-        self,
-        control: p.Result[p.Infra.CodegenResult],
-    ) -> None:
-        """Retain the control cohort's first native cause, else its failure."""
-        native = next(
-            (
-                outcome.native_failure
-                for outcome in self.state.control_outcomes
-                if outcome.native_failure is not None
-            ),
-            None,
-        )
-        self.retain_diagnostics(failure=control if native is None else native)
 
     def _completed_followups(
         self,
@@ -318,7 +293,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     )
                 )
                 return self._execution_failure(
-                    (completed,), tuple(dict.fromkeys((*written, *extra)))
+                    completed, tuple(dict.fromkeys((*written, *extra)))
                 )
         return r[p.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=plan, written_files=written)
@@ -371,31 +346,25 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             )
         )
 
+    @staticmethod
     def _execution_failure(
-        self,
-        failures: tuple[p.FailureLike, ...],
+        failure: p.FailureLike,
         written: tuple[Path, ...],
     ) -> p.Result[p.Infra.CodegenResult]:
-        """Retain the first original cause and every independent effect receipt.
+        """Retain the first original cause and the paths written before it.
 
         Returns:
-            The failure carrying the first cause and every written path.
+            The failure carrying its cause and every written path.
 
         """
-        first = self.state.planning_failure
-        if first is None:
-            first = failures[0]
         return r[p.Infra.CodegenResult].fail(
-            "\n".join(failure.error or str(failure.exception) for failure in failures),
-            error_code=first.error_code,
+            failure.error or str(failure.exception),
+            error_code=failure.error_code,
             error_data={
-                **(first.error_data or {}),
+                **(failure.error_data or {}),
                 "written_files": [str(path) for path in written],
-                "errors": [
-                    failure.error or str(failure.exception) for failure in failures
-                ],
             },
-            exception=first.exception,
+            exception=failure.exception,
         )
 
     def _control_plan(
@@ -432,34 +401,29 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         ordered = u.Cli.dag_order(graph)
         if ordered.failure:
             return result_type.from_failure(ordered)
-        outcomes: list[m.Infra.CodegenRepositoryPlanOutcome] = []
-        failures: dict[str, p.FailureLike] = {}
         previous = self.state.provider_plans
         self.state.provider_plans = u.Infra.codegen_compose_file_plans(
             (*(previous or ()), *seed.value), ordered=True
         )
         try:
-            for name in ordered.value:
-                outcomes.append(
-                    self._control_outcome(
-                        m.Infra.CodegenRepositoryPlanTask(
-                            root=root,
-                            workspace=workspace,
-                            current_target=current_target,
-                            repository=selected.value[name],
-                            surface=request.what,
-                            selected_inputs=(
-                                captured.value
-                                if selected.value[name].name
-                                == current_target.repository.name
-                                else None
-                            ),
+            outcomes = tuple(
+                self._control_outcome(
+                    m.Infra.CodegenRepositoryPlanTask(
+                        root=root,
+                        workspace=workspace,
+                        current_target=current_target,
+                        repository=selected.value[name],
+                        surface=request.what,
+                        selected_inputs=(
+                            captured.value
+                            if selected.value[name].name
+                            == current_target.repository.name
+                            else None
                         ),
-                        graph[name],
-                        failures,
-                    )
+                    ),
                 )
-                self.state.control_outcomes = tuple(outcomes)
+                for name in ordered.value
+            )
         finally:
             self.state.provider_plans = previous
         return result_type.ok(
@@ -471,8 +435,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 files=u.Infra.codegen_compose_file_plans(
                     tuple(file for outcome in outcomes for file in outcome.files)
                 ),
-                outcomes=tuple(outcomes),
-                exception=self.state.planning_exception,
+                outcomes=outcomes,
             )
         )
 
@@ -566,50 +529,25 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _control_outcome(
         self,
         task: m.Infra.CodegenRepositoryPlanTask,
-        dependencies: tuple[str, ...],
-        failures: dict[str, p.FailureLike],
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
-        """Plan one control repository unless a dependency already failed.
+        """Plan one control repository; its first failure stops the cohort.
 
-        A failure, its own or inherited from a dependency, is recorded under
-        the repository's distribution identity and retained as diagnostics; a
-        success extends the provider plans visible to later repositories.
+        A success extends the provider plans visible to later repositories.
 
         Returns:
-            The repository's planning outcome, carrying its native failure.
+            The repository's planning outcome.
 
         """
-        name = t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
-            task.repository.distribution
-        )
-        blocked = next(
-            (
-                failures[dependency]
-                for dependency in dependencies
-                if dependency in failures
-            ),
-            None,
-        )
-        planned = (
-            r[m.Infra.CodegenRepositoryPlanOutcome].from_failure(blocked)
-            if blocked is not None
-            else self._control_repository(task)
-        )
-        if planned.success:
-            self.state.provider_plans = u.Infra.codegen_compose_file_plans(
-                (*(self.state.provider_plans or ()), *planned.value.files),
-                ordered=True,
+        planned = self._control_repository(task)
+        if planned.failure:
+            u.Infra.codegen_raise_failure(
+                (task.root / task.repository.path).resolve(), planned
             )
-            return planned.value
-        native = blocked if blocked is not None else planned
-        failures[name] = native
-        self.retain_diagnostics(native.exception, failure=native)
-        return m.Infra.CodegenRepositoryPlanOutcome(
-            repository=task.repository.name,
-            error=native.error or "control planning failed",
-            exception=native.exception,
-            native_failure=native,
+        self.state.provider_plans = u.Infra.codegen_compose_file_plans(
+            (*(self.state.provider_plans or ()), *planned.value.files),
+            ordered=True,
         )
+        return planned.value
 
     def _control_repository(
         self,
@@ -659,7 +597,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The plan when every projection is current, or the stale paths.
 
         """
-        self._begin_planning()
         root = request.root.expanduser().resolve()
         return (
             FlextInfraCodegenPreconditions
@@ -683,12 +620,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
         """
         result_type = r[p.Infra.CodegenResult]
-        if (
-            plan.issues
-            or plan.exception is not None
-            or any(outcome.failed for outcome in plan.outcomes)
-        ):
-            return result_type.from_failure(self._admitted_plans(request, plan))
         ports = self.state.ports
         if ports is None:
             return result_type.fail(
@@ -714,10 +645,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         self,
         request: p.Infra.CodegenGenerateRequest,
     ) -> p.Result[m.Infra.CodegenPlan]:
-        """Plan the request, failing when planning produced only failures.
+        """Plan the request; a planning exception propagates with its traceback.
 
         Returns:
-            The plan, or its planning failure.
+            The plan, or its typed admission failure.
 
         """
         started = time.monotonic()
@@ -727,46 +658,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if request.what in c.Infra.FILE_ONLY_SURFACES
             else self._plan_request(request)
         )
-        failed = planned.failure or (
-            planned.success
-            and (
-                bool(planned.value.issues)
-                or planned.value.exception is not None
-                or any(outcome.failed for outcome in planned.value.outcomes)
-            )
-        )
         u.Cli.info(
             f"stage=planning state=end root={request.root} "
             f"elapsed={time.monotonic() - started:.3f}s "
             f"files={len(planned.value.files) if planned.success else 0} "
-            f"failed={failed}"
+            f"failed={planned.failure}"
         )
-        if (
-            planned.success
-            and not planned.value.files
-            and (
-                planned.value.issues
-                or planned.value.exception is not None
-                or any(outcome.failed for outcome in planned.value.outcomes)
-            )
-        ):
-            native = self.state.planning_failure
-            if native is None:
-                native = next(
-                    (
-                        outcome.native_failure
-                        for outcome in planned.value.outcomes
-                        if outcome.native_failure is not None
-                    ),
-                    None,
-                )
-            if native is not None:
-                return r[m.Infra.CodegenPlan].from_failure(native)
-            return r[m.Infra.CodegenPlan].fail(
-                "\n".join(issue.formatted for issue in planned.value.issues)
-                or "generation planning failed",
-                exception=planned.value.exception,
-            )
         return planned
 
     def _published(
@@ -817,10 +714,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         ready = {
             repository.name: repository
             for repository in plan.repositories
-            if any(
-                outcome.repository == repository.name and not outcome.failed
-                for outcome in plan.outcomes
-            )
+            if any(outcome.repository == repository.name for outcome in plan.outcomes)
         }
         documentation_failure = self._ready_documentation_plans(
             request,
@@ -886,13 +780,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]] | None:
         """Fold ready-repository documentation into the published plan.
 
-        A documentation planning failure is attached to the root repository's
-        outcome when one exists; without an owning root repository the
-        failure aborts publication before any effect.
+        A documentation planning failure aborts publication before any effect.
 
         Returns:
             ``None`` when the plan carries the documentation files, otherwise
-            the documentation planning failure without a root repository owner.
+            the documentation planning failure.
 
         """
         ready_roots = {
@@ -914,60 +806,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 ),
             )
         )
-        if documents.success:
-            plan.files = documents.value
-            return None
-        owner = next(
-            (repository for repository in ready.values() if repository.path == Path()),
-            None,
-        )
-        if owner is None:
+        if documents.failure:
             return documents
-        self._reconciled_documentation_failure(root, plan, documents, owner)
+        plan.files = documents.value
         return None
-
-    def _reconciled_documentation_failure(
-        self,
-        root: Path,
-        plan: m.Infra.CodegenPlan,
-        documents: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
-        owner: m.Infra.RepositoryRef,
-    ) -> None:
-        """Attach a documentation planning failure to its owning root outcome.
-
-        The owning root repository outcome carries the documentation failure
-        as its native cause, and the plan retains the diagnostic with the
-        executor's recorded planning failure first.
-
-        """
-        issue = m.Infra.Issue(
-            file=str(root),
-            line=0,
-            column=0,
-            code=c.Infra.ToolOutcome.ERROR.value,
-            message=documents.error or "documentation planning failed",
-        )
-        original = next(
-            outcome for outcome in plan.outcomes if outcome.repository == owner.name
-        )
-        native = original.native_failure
-        if native is None and original.exception is not None:
-            native = r.fail(original.error, exception=original.exception)
-        if native is None:
-            native = documents
-        original.error = native.error or ""
-        original.exception = native.exception
-        original.native_failure = native
-        original.issues = (*original.issues, issue)
-        plan.issues = (*plan.issues, issue)
-        first_native = self.state.planning_failure
-        plan.exception = (
-            first_native.exception
-            if first_native is not None
-            else plan.exception
-            if plan.exception is not None
-            else native.exception
-        )
 
     def _published_ordered_cohorts(
         self,
@@ -979,7 +821,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             Callable[[tuple[Path, ...]], p.Result[bool]], ...
         ] = (),
     ) -> tuple[list[Path], list[p.FailureLike], set[str]]:
-        """Publish every cohort, planning failure first, retaining failures.
+        """Publish every cohort, retaining publication failures.
 
         Returns:
             Every written path, every cohort failure, and the repositories of
@@ -989,19 +831,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         written: list[Path] = []
         failures: list[p.FailureLike] = []
         failed_repositories: set[str] = set()
-        first_native = self.state.planning_failure
-        ordered = sorted(
-            cohorts,
-            key=lambda cohort: (
-                not any(
-                    outcome.native_failure is first_native
-                    for outcome in cohort.outcomes
-                )
-                if first_native is not None
-                else False
-            ),
-        )
-        for cohort in ordered:
+        for cohort in cohorts:
             published = self._published_cohort(
                 request,
                 root,
@@ -1011,10 +841,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             )
             if published.failure:
                 failures.append(published)
-                for outcome in cohort.outcomes:
-                    if outcome.native_failure is None and not outcome.failed:
-                        outcome.native_failure = published
-                        outcome.exception = published.exception
                 failed_repositories.update(
                     repository.name for repository in cohort.repositories
                 )
@@ -1049,23 +875,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             name: (root / repository.path).resolve()
             for name, repository in repositories.items()
         }
-        accounted = tuple(
-            issue for outcome in outcomes.values() for issue in outcome.issues
-        )
-        if any(
-            issue not in accounted
-            and not any(
-                outcome.failed and issue.file == str(roots[outcome.repository])
-                for outcome in outcomes.values()
-            )
-            for issue in plan.issues
-        ) or (
-            plan.exception is not None
-            and not any(
-                outcome.exception is plan.exception for outcome in outcomes.values()
-            )
-        ):
-            return result_type.ok((plan,))
         projects: dict[Path, set[str]] = {roots[name]: {name} for name in outcomes}
         for outcome in outcomes.values():
             for file in outcome.files:
@@ -1082,7 +891,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             return result_type.fail(message)
         edges = cls._cohort_dependency_edges(files, projects, outcomes)
         return result_type.ok(
-            cls._component_cohort_plans(root, plan, repositories, projects, edges)
+            cls._component_cohort_plans(plan, repositories, projects, edges)
         )
 
     @classmethod
@@ -1116,10 +925,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                         edges[owner].add(repository)
         return edges
 
-    @classmethod
+    @staticmethod
     def _component_cohort_plans(
-        cls,
-        root: Path,
         plan: m.Infra.CodegenPlan,
         repositories: dict[str, m.Infra.RepositoryRef],
         projects: dict[Path, set[str]],
@@ -1128,75 +935,28 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         """Group the plan's outcomes into one cohort per graph component.
 
         Returns:
-            One cohort per strongly connected component, the plan's own
-            exception first when present.
+            One cohort per strongly connected component.
 
         """
-        roots = {
-            name: (root / repository.path).resolve()
-            for name, repository in repositories.items()
-        }
-        cohorts: list[m.Infra.CodegenPlan] = []
-        for component in u.Cli.dag_strongly_connected(edges):
-            selected = tuple(
-                outcome for outcome in plan.outcomes if outcome.repository in component
+        return tuple(
+            m.Infra.CodegenPlan(
+                request=plan.request,
+                workspace=plan.workspace,
+                uv_environments=plan.uv_environments,
+                repositories=tuple(repositories[name] for name in sorted(component)),
+                files=tuple(
+                    file
+                    for file in plan.files
+                    if projects[file.project].intersection(component)
+                ),
+                outcomes=tuple(
+                    outcome
+                    for outcome in plan.outcomes
+                    if outcome.repository in component
+                ),
             )
-            issues = tuple(issue for outcome in selected for issue in outcome.issues)
-            failed = tuple(outcome for outcome in selected if outcome.failed)
-            issues += tuple(
-                m.Infra.Issue(
-                    file=str(roots[outcome.repository]),
-                    line=0,
-                    column=0,
-                    code=c.Infra.ToolOutcome.ERROR.value,
-                    message=(
-                        outcome.error_traceback
-                        or outcome.error
-                        or outcome.error_type
-                        or str(outcome.exception)
-                    ),
-                )
-                for outcome in failed
-                if outcome.error
-                or outcome.error_type
-                or outcome.error_traceback
-                or outcome.exception is not None
-            )
-            cohorts.append(
-                m.Infra.CodegenPlan(
-                    request=plan.request,
-                    workspace=plan.workspace,
-                    uv_environments=plan.uv_environments,
-                    repositories=tuple(
-                        repositories[name] for name in sorted(component)
-                    ),
-                    files=tuple(
-                        file
-                        for file in plan.files
-                        if projects[file.project].intersection(component)
-                    ),
-                    issues=issues,
-                    exception=next(
-                        (
-                            outcome.exception
-                            for outcome in failed
-                            if outcome.exception is plan.exception
-                        ),
-                        next(
-                            (
-                                outcome.exception
-                                for outcome in failed
-                                if outcome.exception is not None
-                            ),
-                            None,
-                        ),
-                    ),
-                    outcomes=selected,
-                )
-            )
-        if plan.exception is not None:
-            cohorts.sort(key=lambda cohort: cohort.exception is not plan.exception)
-        return tuple(cohorts)
+            for component in u.Cli.dag_strongly_connected(edges)
+        )
 
     def _published_cohort(
         self,
@@ -1304,12 +1064,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        if (
-            plan.issues
-            or plan.exception is not None
-            or any(outcome.failed for outcome in plan.outcomes)
-        ):
-            return self._planning_native_failure(plan)
         ports = self.state.ports
         if ports is None:
             return result_type.fail(
@@ -1349,47 +1103,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             for file in files
         )
         return self._validated_source_plans(request, files, ports)
-
-    def _planning_native_failure(
-        self,
-        plan: m.Infra.CodegenPlan,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-        """Translate the cohort's planning failure to its original cause.
-
-        The executor's recorded planning failure wins when one of the
-        cohort's outcomes carries it; otherwise the cohort's own matching
-        native failure is retained.
-
-        Returns:
-            The translated native planning failure, or the cohort's
-            formatted planning issues.
-
-        """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        native = next(
-            (
-                outcome.native_failure
-                for outcome in plan.outcomes
-                if outcome.native_failure is not None
-                and (
-                    plan.exception is None
-                    or outcome.native_failure.exception is plan.exception
-                )
-            ),
-            None,
-        )
-        first_native = self.state.planning_failure
-        if first_native is not None and any(
-            outcome.native_failure is first_native for outcome in plan.outcomes
-        ):
-            native = first_native
-        if native is not None:
-            return result_type.from_failure(native)
-        return result_type.fail(
-            "\n".join(issue.formatted for issue in plan.issues)
-            or "generation planning failed",
-            exception=plan.exception,
-        )
 
     @staticmethod
     def _validated_source_plans(

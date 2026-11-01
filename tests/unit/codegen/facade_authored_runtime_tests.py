@@ -336,10 +336,10 @@ class TestsFlextInfraGeneratedRuntime:
             )
 
     @staticmethod
-    def test_failed_planning_retains_only_a_completed_source_cohort(
+    def test_failed_planning_raises_its_cause_unpublished(
         tmp_path: Path,
     ) -> None:
-        """A tooling failure retains the completed source cohort, unpublished.
+        """A tooling failure stops planning with its cause and publishes nothing.
 
         Premise: projected import cycles are a declarative catalog finding
         (``ban-cyclic-import``), not a planning failure, so the first planning
@@ -405,8 +405,11 @@ class TestsFlextInfraGeneratedRuntime:
                 root, inputs=inputs
             )
         )
-        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
-            outcome = codegen.FlextInfraCodegenConform.Generate.plan_repository_task(
+        with (
+            u.Infra.workspace_snapshot(root, (root,)) as snapshot,
+            u.Tests.raises(m.ValidationError, match="settings"),
+        ):
+            codegen.FlextInfraCodegenConform.Generate.plan_repository_task(
                 m.Infra.CodegenRepositoryPlanTask(
                     root=root,
                     workspace=spec,
@@ -421,33 +424,6 @@ class TestsFlextInfraGeneratedRuntime:
                     provider_plans=incoming,
                 ),
                 snapshot,
-            )
-        tm.that(outcome.failed, eq=True)
-        tm.that(outcome.error, has="settings")
-        tm.that(isinstance(outcome.exception, m.ValidationError), eq=True)
-        projected = {file.path: file for file in outcome.files}
-        tm.that(set(projected), has=facade)
-        tm.that(set(projected), has=barrel)
-        tm.that(set(projected), has=utility_facade)
-        tm.that(set(projected), has=package / c.Infra.INIT_PY)
-        tm.that(
-            projected[facade].before,
-            eq=next(state for state in originals if state.path == facade),
-        )
-        tm.fail(b"DepartedOwner" in tm.not_none(projected[facade].desired_content))
-        with u.Infra.facade_source_project(
-            root,
-            declared_files=outcome.files,
-        ) as binding:
-            tm.that(
-                tm.ok(
-                    tm.not_none(
-                        u.Infra.render_utility_facade(
-                            package, project=binding[0], sources=binding[1]
-                        )
-                    )
-                ).encode(c.DEFAULT_ENCODING),
-                eq=projected[utility_facade].desired_content,
             )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
