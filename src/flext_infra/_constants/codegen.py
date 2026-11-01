@@ -145,6 +145,8 @@ class FlextInfraConstantsCodegen(
         ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),
     )
     "Runtime singleton modules for src/: (filename, class_suffix, base_class, doc)."
+    PROTOCOL_GENERATED_STEM: ClassVar[str] = "generated_models"
+    """Module stem of a generated protocol mirror (``<stem>_<route token>``)."""
     VIOLATION_PATTERN: ClassVar[t.RegexPattern] = re.compile(
         r"\[(?P<rule>[a-z0-9][a-z0-9-]*)\]\s+"
         r"(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)",

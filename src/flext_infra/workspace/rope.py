@@ -44,15 +44,13 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         project.validate(project.root)
         self.bind_candidate(declared_files=declared_files)
         original = {plan.path: plan for plan in declared_files}
-        sources = {
-            Path(resource.real_path): project.source_text(Path(resource.real_path))
-            for resource in project.get_python_files()
-            if Path(resource.real_path).is_relative_to(root)
-        }
         packages = sorted({
             path.parent
-            for path in sources
-            if path.name == c.Infra.INIT_PY
+            for path in (
+                Path(resource.real_path) for resource in project.get_python_files()
+            )
+            if path.is_relative_to(root)
+            and path.name == c.Infra.INIT_PY
             and (selection is None or path.parent.is_relative_to(selection[0].parent))
         })
         for package in packages:
@@ -61,7 +59,6 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                     (package, letter, family),
                     initializer=initializer,
                     selection=selection,
-                    sources=sources,
                 )
         return m.Infra.CodegenRepositoryPlanOutcome(
             repository=layout.project_name if layout is not None else root.as_posix(),
@@ -78,7 +75,6 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         initializer: p.Infra.SourceInitializerPlanner,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-        sources: Mapping[Path, str],
     ) -> None:
         """Plan one facade family of one package."""
         package, letter, family = item
@@ -93,24 +89,21 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         if not self.rope_project.source_query(directory, "isdir"):
             return
         self._projection_directory(
-            (package, directory, letter, family),
+            (package, directory, letter),
             initializer=initializer,
             selection=selection,
-            sources=sources,
         )
 
     def _projection_directory(
         self,
-        item: tuple[Path, Path, str, m.Infra.FacadeFamily],
+        item: tuple[Path, Path, str],
         *,
         initializer: p.Infra.SourceInitializerPlanner,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-        sources: Mapping[Path, str],
     ) -> None:
         """Plan one family directory."""
-        package, directory, letter, family = item
+        package, directory, letter = item
         project = self.rope_project
-        baseline = self._candidate_files
         selected = c.Infra.FacadeFamily(letter)
         elected = u.Infra.facade_module_path(package, letter, project=project)
         if elected is None:
@@ -124,33 +117,8 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             return
         if elected.failure:
             u.Infra.codegen_raise_failure(directory, elected)
-        domains = {
-            parent
-            for path in sources
-            if path.is_relative_to(directory)
-            for parent in path.parents
-            if parent != directory
-            and parent.is_relative_to(directory)
-            and all(
-                part.startswith("_") for part in parent.relative_to(directory).parts
-            )
-        }
-        with project.source_view(declared_files=(), additional_source_folders=None):
-            observed = {
-                domain: u.Infra.family_subfacade_owners(project, domain)
-                if project.source_query(domain, "isdir")
-                else []
-                for domain in domains
-            }
-        self._projection_domains(
-            (directory, family, selected),
-            observed,
-            initializer=initializer,
-            selection=selection,
-        )
         self._projection_finish(
             (directory, elected.value, selected),
-            baseline,
             initializer=initializer,
             selection=selection,
         )
@@ -213,40 +181,18 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     def _projection_finish(
         self,
         item: tuple[Path, Path, c.Infra.FacadeFamily],
-        baseline: tuple[m.Infra.CodegenFilePlan, ...],
         *,
         initializer: p.Infra.SourceInitializerPlanner,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
     ) -> None:
-        """Render the family facade, rewire consumers and refresh exports."""
+        """Render the generated family facade and refresh its exports."""
         directory, destination, selected = item
-        project = self.rope_project
         rendered = u.Infra.facade_component_source(
-            project, destination, directory, family=selected
+            self.rope_project, destination, directory, family=selected
         )
         if rendered.failure:
             u.Infra.codegen_raise_failure(destination, rendered)
         self._projection_source(destination, rendered.value)
-        self._projection_stage(
-            u.Infra.plan_component_consumers(
-                self.repository_root,
-                source_project=project,
-                declared_files=self._candidate_files,
-            )
-        )
-        if selected is c.Infra.FacadeFamily.U:
-            before = {plan.path: plan for plan in baseline}
-            self._projection_stage(
-                u.Infra.facade_component_retirements(
-                    project,
-                    tuple(
-                        plan.path
-                        for plan in self._candidate_files
-                        if before.get(plan.path) != plan
-                    ),
-                    declared_files=self._candidate_files,
-                )
-            )
         self._projection_exports(
             directory, initializer=initializer, selection=selection
         )

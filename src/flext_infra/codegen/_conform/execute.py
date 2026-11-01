@@ -844,7 +844,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             )
         started = time.monotonic()
         u.Cli.info(f"stage=publication state=start root={root} files={len(admitted)}")
-        published = ports.file_publisher.publish_codegen_plans(root, admitted)
+        # Admission already normalized these bytes; publish them as admitted.
+        published = ports.file_publisher.publish_normalized_codegen_plans(
+            root, admitted, admitted
+        )
         completed_paths = (
             published.value
             if published.success

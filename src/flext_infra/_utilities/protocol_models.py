@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from itertools import chain
 from pathlib import Path
 
 from flext_cli import u
@@ -92,7 +91,7 @@ class FlextInfraUtilitiesModelsProtocol:
             result_type = r[Mapping[Path, str]]
             if self.package is None or not {"m", "p"}.issubset(self.facades):
                 return result_type.ok({})
-            self.selected.update(self._consumed())
+            self.selected.update(self._declared())
             declarations: dict[str, list[t.Infra.AstStatement]] = {}
             imports: dict[str, dict[str, str]] = {}
             dependencies: dict[str, set[str]] = {}
@@ -155,7 +154,9 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             token = route.replace(".", "_").lower()
             destination = directory / (
-                f"generated_models_{token}.py" if token else "generated_models.py"
+                f"{c.Infra.PROTOCOL_GENERATED_STEM}_{token}.py"
+                if token
+                else f"{c.Infra.PROTOCOL_GENERATED_STEM}.py"
             )
             selected_imports = dict(imports)
             if siblings:
@@ -351,65 +352,53 @@ class FlextInfraUtilitiesModelsProtocol:
                     return result_type.fail(f"competing model identities for p.{route}")
             return result_type.ok(value=True)
 
-        def _consumed(self) -> set[str]:
-            """Read protocol primaries through native scope identities, not names.
+        def _declared(self) -> set[str]:
+            """Select the model routes whose generated mirror already exists.
+
+            Generation projects declarations and never infers them: each
+            generated ``generated_models_<route token>`` module of this
+            package's protocol family declares its route, and the projection
+            re-renders it from the model's current fields. A route whose model
+            disappeared selects nothing, so its mirror is retired. Creating a
+            mirror from consumer usage is a source transformation owned by
+            ``make mod``.
 
             Returns:
-                Consumed models not already owned by an authored operational port.
+                The declared model routes.
 
             Raises:
-                ValueError: If an indexed consumer resource is unavailable.
+                ValueError: If two model routes share one generated token.
 
             """
-            selected: set[str] = set()
-            facade = self.facades["p"]
-            for entry in self.workspace.modules():
-                resource = self.workspace.resource(entry.file_path)
-                if resource is None:
+            if self.package is None:
+                return set()
+            directory = self.package / (
+                FlextInfraUtilitiesCodegenNamespace.facade_families()["p"].directory
+            )
+            tokens = {
+                entry.file_path.stem.removeprefix(
+                    c.Infra.PROTOCOL_GENERATED_STEM
+                ).removeprefix("_")
+                for entry in self.workspace.modules()
+                if entry.file_path.parent == directory
+                and entry.file_path.stem.startswith(c.Infra.PROTOCOL_GENERATED_STEM)
+                and self.project.source_text(entry.file_path).startswith(
+                    c.Infra.AUTOGEN_HEADER
+                )
+            }
+            declared: dict[str, str] = {}
+            for route in self.models:
+                token = route.replace(".", "_").lower()
+                if token not in tokens:
+                    continue
+                previous = declared.setdefault(token, route)
+                if previous != route:
                     message = (
-                        f"indexed protocol consumer is unavailable: {entry.file_path}"
+                        f"model routes {previous} and {route} share the generated "
+                        f"protocol token {token}"
                     )
                     raise ValueError(message)
-                module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    self.project, resource
-                )
-                source = module.source_code
-                if source.startswith(c.Infra.AUTOGEN_HEADER):
-                    continue
-                references = FlextInfraUtilitiesSemanticFamilyTypeReferences
-                primaries = (
-                    (source[begin:end], self.scope_at(module, begin))
-                    for begin, end in references.reference_regions(source)
-                )
-                quoted = (
-                    (expression[begin:end], scope)
-                    for expression, scope, _line in (
-                        references.scoped_quoted_type_references(
-                            source, self.project, module
-                        )
-                    )
-                    for begin, end in references.reference_regions(expression)
-                )
-                for primary, scope in chain(primaries, quoted):
-                    root, separator, route = primary.partition(".")
-                    if not separator or route not in self.models:
-                        continue
-                    reference = self.expression_name(scope, root)
-                    if not (
-                        self.same_name(facade, reference)
-                        or self.same_name(self.facades["m"], reference)
-                    ):
-                        continue
-                    if route not in self.member_cache:
-                        self.member_cache[route] = self._member(facade, route)
-                    port = self.member_cache[route]
-                    owner = port.get_object().get_module() if port is not None else None
-                    if owner is None or (
-                        self.source_module(owner)
-                        and owner.source_code.startswith(c.Infra.AUTOGEN_HEADER)
-                    ):
-                        selected.add(route)
-            return selected
+            return set(declared.values())
 
         def _fields(self, binding: p.Infra.RopePyName) -> list[t.Infra.AstStatement]:
             """Retain inherited annotated data, never defaults or model methods.
