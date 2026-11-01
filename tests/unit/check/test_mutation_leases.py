@@ -75,6 +75,48 @@ class TestsFlextInfraMutationLeases:
         tm.ok(gate.check(root, context).result.passed)
 
     @staticmethod
+    def test_held_scope_records_its_holder_and_nests(tmp_path: Path) -> None:
+        """The outermost holder records itself; a nested hold keeps that record."""
+        root = u.Tests.git_repository(tmp_path)
+        lock = tm.ok(u.Infra.mutation_lock_path(root))
+        with u.Infra.hold_mutation_scope(root, "outer") as held:
+            tm.that(held, eq=lock)
+            holder = u.Infra.mutation_lock_holder(lock)
+            tm.that(holder is not None, eq=True)
+            if holder is not None:
+                tm.that(holder.operation, eq="outer")
+                tm.that(holder.root, eq=root.resolve())
+            with u.Infra.hold_mutation_scope(root, "inner"):
+                nested = u.Infra.mutation_lock_holder(lock)
+                tm.that(nested, eq=holder)
+            tm.that(u.Infra.mutation_lock_holder(lock), eq=holder)
+        tm.that(u.Infra.mutation_lock_holder(lock), eq=None)
+        tm.that(u.Infra.mutation_lock_holder_path(lock).exists(), eq=False)
+
+    @staticmethod
+    def test_concurrent_writer_waits_for_held_scope(tmp_path: Path) -> None:
+        """A second writer waits for the holder instead of failing at once."""
+        root = u.Tests.git_repository(tmp_path)
+        lock = tm.ok(u.Infra.mutation_lock_path(root))
+
+        def second_writer() -> str:
+            with u.Infra.hold_mutation_scope(root, "second"):
+                holder = u.Infra.mutation_lock_holder(lock)
+                return "" if holder is None else holder.operation
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            with u.Infra.hold_mutation_scope(root, "first"):
+                waiting = pool.submit(second_writer)
+                with pytest.raises(TimeoutError):
+                    waiting.result(timeout=0.2)
+                observed = u.Infra.mutation_lock_holder(lock)
+                tm.that(observed is not None, eq=True)
+                if observed is not None:
+                    tm.that(observed.operation, eq="first")
+            tm.that(waiting.result(), eq="second")
+        tm.that(u.Infra.mutation_lock_holder(lock), eq=None)
+
+    @staticmethod
     def test_malformed_git_marker_is_not_a_file_scope(tmp_path: Path) -> None:
         """Test malformed git marker is not a file scope."""
         marker = tmp_path / c.Infra.GIT_DIR

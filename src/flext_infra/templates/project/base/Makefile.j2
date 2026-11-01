@@ -918,21 +918,18 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
-# Generation is a fenced, budgeted operation: one codegen per tree (flock),
-# terminated inside the declared budget with its kill reserve (the profile
-# checkpoint survives a budget kill), never mutating the tree unannounced.
+# Generation is a fenced, budgeted operation: `codegen generate` holds the
+# tree's mutation lock for the whole run (a concurrent writer waits visibly,
+# bounded by config Infra.mutation_lock), terminated inside the declared budget
+# with its kill reserve (the profile checkpoint survives a budget kill).
 GEN_BUDGET_SECONDS ?= 900
 GEN_KILL_RESERVE_SECONDS ?= 30
-GEN_LOCK_FILE := $(PROJECT_ROOT)/$(dir {{ make.generation_profile_path }})gen.lock
 GEN_PROFILE ?=
 
 _builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
 	scope=all; \
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
-	mkdir -p "$(dir $(GEN_LOCK_FILE))"; \
-	exec 9>"$(GEN_LOCK_FILE)"; \
-	flock --exclusive --wait 0 9 || { echo "gen: another codegen generation holds the tree ($(GEN_LOCK_FILE))" >&2; exit 1; }; \
 	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.generation_profile_path }}" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"; \
 	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),:,direnv allow "$(PROJECT_ROOT)")
 
@@ -943,9 +940,6 @@ _builtin_gen_scope_all: _builtin_require_interpreter
 	scope="$(or $(strip $(SCOPE)),self)"; \
 	module_args=""; \
 	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
-	mkdir -p "$(dir $(GEN_LOCK_FILE))"; \
-	exec 9>"$(GEN_LOCK_FILE)"; \
-	flock --exclusive --wait 0 9 || { echo "gen-scope: another codegen generation holds the tree ($(GEN_LOCK_FILE))" >&2; exit 1; }; \
 	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(basename $(PROJECT_ROOT)/{{ make.generation_profile_path }})-scope.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
 
 # Structural rewrites use the target's existing semantic operation; the

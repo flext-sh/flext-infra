@@ -25,6 +25,22 @@ class FlextInfraModelsConfigStatic:
             m.Field(description="Ordered production source directory names"),
         ]
 
+    class MutationLockSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Bounded, visible wait for a mutation scope held by another writer."""
+
+        wait_deadline_seconds: Annotated[
+            t.PositiveFloat,
+            m.Field(description="Longest wait before failing with the last holder"),
+        ]
+        poll_interval_seconds: Annotated[
+            t.PositiveFloat,
+            m.Field(description="Interval between read-only lock availability polls"),
+        ]
+        report_interval_seconds: Annotated[
+            t.PositiveFloat,
+            m.Field(description="Interval between progress lines naming the holder"),
+        ]
+
     class ConsolidationOutcome(FlextInfraModelsConfigContract.ConfigContract):
         """Per-file constants consolidation outcome."""
 

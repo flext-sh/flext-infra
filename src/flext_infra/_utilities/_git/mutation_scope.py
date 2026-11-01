@@ -6,12 +6,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
+import time
+from collections.abc import Generator
+from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
+from filelock import Timeout
+from flext_cli import u
 from git import GitError, Repo
 from git.repo.fun import is_git_dir
 
-from flext_infra import c, m, p, r
+from flext_infra import c, config, m, p, r
 
 
 class FlextInfraUtilitiesGitMutationScope:
@@ -87,6 +94,112 @@ class FlextInfraUtilitiesGitMutationScope:
                 / c.Infra.MUTATION_LOCK_NAME
             )
         )
+
+    @staticmethod
+    def mutation_lock_holder_path(lock_path: Path) -> Path:
+        """Locate the sibling record naming the writer that holds ``lock_path``.
+
+        Returns:
+            The holder record path beside the lock.
+
+        """
+        return lock_path.with_name(lock_path.name + c.Infra.MUTATION_LOCK_HOLDER_SUFFIX)
+
+    @classmethod
+    def mutation_lock_holder(cls, lock_path: Path) -> m.Infra.MutationLockHolder | None:
+        """Read the recorded holder of ``lock_path`` without touching the lock.
+
+        Returns:
+            The recorded holder, or ``None`` while no recording writer holds it.
+
+        """
+        try:
+            raw = cls.mutation_lock_holder_path(lock_path).read_bytes()
+        except FileNotFoundError:
+            return None
+        return m.Infra.MutationLockHolder.model_validate_json(raw)
+
+    @classmethod
+    def _mutation_holder_text(cls, lock_path: Path) -> str:
+        holder = cls.mutation_lock_holder(lock_path)
+        if holder is None:
+            # A plain publisher records nothing; a holding operation records
+            # itself right after acquiring, so the first poll can precede it.
+            return "an unrecorded holder"
+        return (
+            f"pid={holder.pid} operation={holder.operation} "
+            f"since={holder.acquired_at:%Y-%m-%dT%H:%M:%SZ}"
+        )
+
+    @classmethod
+    @contextmanager
+    def hold_mutation_scope(cls, root: Path, operation: str) -> Generator[Path]:
+        """Hold ``root``'s mutation lock for a whole operation, waiting visibly.
+
+        A held lock is polled read-only until the configured deadline; every
+        report interval names the recorded holder and the elapsed wait. The
+        outermost holder records itself beside the lock and removes only that
+        record. Nested writers in the same thread re-enter the same lock.
+
+        Yields:
+            The held lock path.
+
+        Raises:
+            TimeoutError: The lock is still held at the deadline; the message
+                carries the last observed holder.
+
+        """
+        spec = config.Infra.mutation_lock
+        lock_path = cls.mutation_lock_path(root).unwrap()
+        lock = u.Cli.file_changes_lock(lock_path)
+        started = time.monotonic()
+        reported = started - spec.report_interval_seconds
+
+        def report_wait() -> bool:
+            nonlocal reported
+            now = time.monotonic()
+            if now - reported >= spec.report_interval_seconds:
+                reported = now
+                u.Cli.info(
+                    f"{operation}: waiting {now - started:.0f}s for "
+                    f"{cls._mutation_holder_text(lock_path)} (lock={lock_path})"
+                )
+            return False
+
+        try:
+            lock.acquire(
+                timeout=spec.wait_deadline_seconds,
+                poll_interval=spec.poll_interval_seconds,
+                cancel_check=report_wait,
+            )
+        except Timeout as exc:
+            msg = (
+                f"{operation}: mutation lock {lock_path} still held after "
+                f"{spec.wait_deadline_seconds:.0f}s by "
+                f"{cls._mutation_holder_text(lock_path)}"
+            )
+            raise TimeoutError(msg) from exc
+        holder_path = cls.mutation_lock_holder_path(lock_path)
+        outermost = lock.lock_counter == 1
+        try:
+            if outermost:
+                u.Cli.write_atomic_bytes(
+                    holder_path,
+                    m.Infra
+                    .MutationLockHolder(
+                        pid=os.getpid(),
+                        operation=operation,
+                        root=root.resolve(),
+                        acquired_at=datetime.now(UTC),
+                    )
+                    .model_dump_json()
+                    .encode(c.DEFAULT_ENCODING),
+                )
+            yield lock_path
+        finally:
+            if outermost:
+                holder_path.unlink(missing_ok=True)
+            lock.release()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitMutationScope"]
