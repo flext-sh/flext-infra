@@ -10,23 +10,14 @@ from collections.abc import Mapping, Sequence
 from functools import partial
 from pathlib import Path
 
-from flext_infra import (
-    c,
-    check as validation_services,
-    config,
-    deps as dependency_services,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, check as validation_services, config, m, p, r, t, u
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
 from flext_infra.codegen._conform.pyproject_policy import (
     FlextInfraCodegenConformPyprojectPolicy,
 )
+from flext_infra.deps.phases import FlextInfraEnsurePackagingPhase
 
 
 class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
@@ -636,16 +627,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     *packaged_data_paths.directories,
                 ),
                 project_declaration_resource=(
-                    (
-                        dependency_services.FlextInfraEnsurePackagingPhase.declaration_resource
-                    )(
+                    (FlextInfraEnsurePackagingPhase.declaration_resource)(
                         package=repository.package,
                     )
                 ),
                 packaged_data_excludes=(
-                    (
-                        dependency_services.FlextInfraEnsurePackagingPhase.resolve_data_excludes
-                    )(
+                    (FlextInfraEnsurePackagingPhase.resolve_data_excludes)(
                         repository_root,
                         packaged_data_paths,
                         project.packaged_data_excludes,
@@ -658,9 +645,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 # Carry only the validated
                 # project declaration; conform owns no inferred Hatch hook.
                 hatch_build_hook_path=project.hatch_build_hook_path,
-                uv_cache_key_files=(
-                    dependency_services.FlextInfraEnsurePackagingPhase.uv_cache_key_files
-                )(
+                uv_cache_key_files=(FlextInfraEnsurePackagingPhase.uv_cache_key_files)(
                     project.hatch_build_hook_path,
                 ),
                 class_stem=project.class_stem,
@@ -850,7 +835,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """
         if profile is c.Infra.MakeProfile.WORKSPACE:
             return m.Infra.PackagedDataSelection()
-        return dependency_services.FlextInfraEnsurePackagingPhase.resolve_data_paths(
+        return FlextInfraEnsurePackagingPhase.resolve_data_paths(
             repository_root,
             project.package_name,
             project.packaged_data_paths,
