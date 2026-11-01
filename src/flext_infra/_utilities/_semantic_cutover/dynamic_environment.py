@@ -102,15 +102,8 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
             Returns:
                 The resulting ``ast.Module``.
 
-            Raises:
-                TypeError: If the native module exposes no module syntax tree.
-
             """
-            tree = self.module.get_ast()
-            if not isinstance(tree, ast.Module):
-                msg = "dynamic environment analysis has no native module syntax"
-                raise TypeError(msg)
-            return tree
+            return self.module.get_ast()
 
         def _resolved(self, node: ast.expr) -> p.Infra.RopePyName | None:
             span = self.node_span_offsets(self.source, node)

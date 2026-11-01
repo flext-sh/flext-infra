@@ -257,9 +257,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
                 member.target, ast.Name
             ):
                 names.add(member.target.id)
-            elif isinstance(member, ast.TypeAlias) and isinstance(
-                member.name, ast.Name
-            ):
+            elif isinstance(member, ast.TypeAlias):
                 names.add(member.name.id)
         return names
 

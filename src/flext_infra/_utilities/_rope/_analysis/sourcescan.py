@@ -196,15 +196,8 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             Returns:
                 The parsed module.
 
-            Raises:
-                TypeError: If rope's untyped parser returns no module tree.
-
             """
-            tree = ast.parse(source, filename=filename)
-            if not isinstance(tree, ast.Module):  # untyped rope boundary
-                msg = "rope parser returned no module tree"
-                raise TypeError(msg)
-            return tree
+            return ast.parse(source, filename=filename)
 
     @staticmethod
     def module_class_base_names(

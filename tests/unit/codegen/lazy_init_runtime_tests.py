@@ -140,7 +140,6 @@ class TestsFlextInfraLazyInitRuntime:
                         generated_path.relative_to(repository).as_posix()
                     ),
                 )
-                tm.ok(isinstance(native, p.Infra.RopeSourceModule))
                 tm.ok(bool(u.Infra.public_export_names_source(native)))
 
     @staticmethod
@@ -309,7 +308,6 @@ class TestsFlextInfraLazyInitRuntime:
                     initializer.relative_to(repository).as_posix()
                 ),
             )
-            tm.ok(isinstance(module, p.Infra.RopeSourceModule))
             tm.that(u.Infra.public_export_names_source(module), eq=expected)
             tm.that(
                 u.Infra.module_export_names_source(
@@ -794,7 +792,6 @@ class TestsFlextInfraLazyInitRuntime:
                     (family / c.Infra.INIT_PY).relative_to(repository).as_posix()
                 ),
             )
-            tm.ok(isinstance(module, p.Infra.RopeSourceModule))
             exports = u.Infra.public_export_names_source(module)
         tm.ok("FlextStaleErrors" in exports)
         derived = u.Infra.runtime_evaluated_base_classes(repository, planned, roots)

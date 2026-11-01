@@ -84,10 +84,8 @@ class TestsFlextInfraRopeContractCatalog:
             tm.ok(restored.phase is rule.phase)
             tm.that(type(rule.phase), eq=c.Infra.SemanticCutoverPhase)
             tm.that(type(rule.operation), eq=c.Infra.RopeContractOperation)
-            tm.ok(
-                all(
-                    isinstance(kind, c.Infra.RopeScopeKind) for kind in rule.scope_kinds
-                )
+            tm.that(
+                {type(kind) for kind in rule.scope_kinds}, eq={c.Infra.RopeScopeKind}
             )
             payload["phase"] = "".join(c.Infra.SemanticCutoverPhase)
             with pytest.raises(ValueError, match="phase"):

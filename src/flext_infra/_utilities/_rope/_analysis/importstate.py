@@ -321,15 +321,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             Local class infos for one resolved Rope module.
 
         Raises:
-            TypeError: If Rope does not expose a module AST or a valid superclass.
             ValueError: If Rope's superclass lineage is incomplete or cyclic.
 
         """
         class_infos: MutableSequence[m.Infra.ClassInfo] = []
         tree = pymodule.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "Rope class discovery requires a module AST"
-            raise TypeError(msg)
         declared_base_counts = {
             node.name: len(node.bases)
             for node in tree.body

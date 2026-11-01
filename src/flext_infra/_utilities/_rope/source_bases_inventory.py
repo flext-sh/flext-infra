@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Mapping, MutableMapping
 
 from flext_infra import m, t
@@ -48,9 +47,6 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
             message = f"Captured file has no native source module: {request.path}"
             raise TypeError(message)
         parsed = provider.get_ast()
-        if not isinstance(parsed, ast.Module):
-            message = f"Rope returned a non-module AST for {request.path}"
-            raise TypeError(message)
         package = (
             request.module
             if request.path.name == "__init__.py"

@@ -365,7 +365,6 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             The resulting ``str``.
 
         Raises:
-            TypeError: If Own MRO received a non-content native effect.
             ValueError: If Own MRO native change escaped its source.
 
         """
@@ -386,9 +385,6 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             for change in runtime.change_set_members(
                 changes.changes, "Own MRO received a non-content native effect"
             ).unwrap():
-                if not isinstance(change, p.Infra.RopeChangeContents):
-                    msg = "Own MRO received a non-content native effect"
-                    raise TypeError(msg)
                 if Path(change.resource.real_path) != path:
                     msg = "Own MRO native change escaped its source"
                     raise ValueError(msg)

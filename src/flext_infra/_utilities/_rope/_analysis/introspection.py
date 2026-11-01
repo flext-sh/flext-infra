@@ -92,8 +92,6 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         result: MutableSequence[m.Infra.SymbolInfo] = []
         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
-        if not isinstance(tree, ast.Module):
-            return result
         for node in tree.body:
             result.extend(
                 FlextInfraUtilitiesRopeAnalysisIntrospection._module_symbols_from_node(

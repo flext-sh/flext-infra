@@ -251,14 +251,10 @@ class FlextInfraUtilitiesSemanticComposition(
 
         Raises:
             ValueError: A behavior alias escapes as a class identity.
-            TypeError: If the composition consumer has no native module syntax.
 
         """
         rewritten: dict[tuple[int, int], m.Infra.SourceRewrite] = {}
         tree = module.get_ast()
-        if not isinstance(tree, ast.AST):
-            message = "Composition consumer has no native module syntax"
-            raise TypeError(message)
         parents = cls.ast_parent_map(tree)
         for node in ast.walk(tree):
             if not isinstance(node, ast.Attribute):
