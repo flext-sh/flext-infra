@@ -1620,8 +1620,9 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> p.Result[dict[str, str]]:
         """Publish nominal providers that no alias or retained base already binds.
 
-        A provider the namespace already composes as a base is published by
-        that base; a second ``Name: TypeAlias = Name`` would only repeat it.
+        A provider the namespace already composes, as a base or through a
+        base's MRO, is published by that base; a second
+        ``Name: TypeAlias = Name`` would only repeat it.
 
         Returns:
             The nominal publication names in declaration order, or the first
@@ -1632,7 +1633,15 @@ class FlextInfraUtilitiesFacadeComponents:
         publications: dict[str, str] = {}
         for provider in nominal:
             if provider in aliases.values() or any(
-                base is provider for _expression, base in retained
+                base is provider
+                or (
+                    FlextInfraUtilitiesRopeRuntimeTypes.py_class(base)
+                    and any(
+                        cls._same_facade_target(ancestor, provider)
+                        for ancestor in base.get_mro()[1:]
+                    )
+                )
+                for _expression, base in retained
             ):
                 continue
             published_name = provider.get_name()
