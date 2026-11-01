@@ -464,7 +464,7 @@ context = FlextInfraWorkspaceDetector.resolution_context(root).unwrap()
 lock_state = u.Cli.atomic_read_binary_file_state(
     context.lock_path, required=True,
 ).unwrap()
-tm.not_none(lock_state.mode)
+assert lock_state.mode is not None
 obsolete = root / c.Infra.UV_LOCK_FILENAME
 if obsolete != context.lock_path:
     obsolete_state = u.Cli.atomic_read_binary_file_state(
@@ -491,7 +491,7 @@ if obsolete != context.lock_path:
     refused = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
         root, repository, lock_state=foreign_lock,
     )
-    tm.fail(refused)
+    assert refused.failure
     assert "captured elected lock" in refused.error
 assert u.Cli.atomic_read_binary_file_state(
     context.lock_path, required=True,
@@ -502,11 +502,11 @@ metadata, requirements = u.Infra.member_declaration_requirements(
     state,
     repository.distribution,
 ).unwrap()
-tm.not_none(state.content)
+assert state.content is not None
 document = u.Cli.toml_parse_text(state.content.decode(c.DEFAULT_ENCODING))
-tm.not_none(document)
+assert document is not None
 payload = u.Cli.toml_as_mapping(document)
-tm.not_none(payload)
+assert payload is not None
 project = payload["project"]
 assert metadata.dependencies == tuple(project.get("dependencies", ()))
 assert metadata.optional_dependencies == {
@@ -523,7 +523,7 @@ assert {
 assert tuple(requirements) == tuple(
     u.Infra.document_requirement_lines(document).unwrap()
 )
-tm.not_none(state.mode)
+assert state.mode is not None
 u.Cli.atomic_write_binary_file_guarded(
     state,
     state.content + b"\\n",
@@ -532,7 +532,7 @@ u.Cli.atomic_write_binary_file_guarded(
 changed = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
     root, repository
 )
-tm.fail(changed)
+assert changed.failure
 assert "RECORD" in changed.error
 print("installed Git declaration: complete groups, extras and RECORD authentication")
 """
