@@ -672,18 +672,27 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     def source_owned(self, path: Path) -> bool:
         """Separate this project's own sources from its dependency lookup roots.
 
+        A project reading the native tree elects the same owners from Rope's
+        own folders: its root and source folders own, its Python-path
+        folders are dependency lookup roots.
+
         Returns:
             Whether an elected source root, not a Python-path dependency
             root, owns the physical path.
 
-        Raises:
-            TypeError: The project does not own an authenticated overlay.
-
         """
         files = self.fscommands
         if not isinstance(files, self.OverlayFiles):
-            msg = "source ownership requires an authenticated source overlay"
-            raise TypeError(msg)
+            files = self.OverlayFiles(
+                (),
+                source_roots=(
+                    Path(self.root.real_path),
+                    *(Path(folder.real_path) for folder in self.get_source_folders()),
+                ),
+                dependency_roots=tuple(
+                    Path(folder.real_path) for folder in self.get_python_path_folders()
+                ),
+            )
         return files.source_owned(path)
 
     @contextmanager

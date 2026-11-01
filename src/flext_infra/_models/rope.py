@@ -233,6 +233,15 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
                 description="Whether conditional bindings may degrade to unknown",
             ),
         ] = False
+        source_owned: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether the scanned project's elected source roots own the "
+                    "module; only owned modules carry the explicit-binding law"
+                ),
+            ),
+        ]
         definitions: Annotated[
             m.InstanceOf[
                 MutableMapping[str, FlextInfraModelsRope.SourceClassDefinition]

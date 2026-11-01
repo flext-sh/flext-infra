@@ -141,7 +141,8 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         Raises:
             ValueError: If a relative import escapes the package or a star
-                import has no explicit class binding.
+                import in a module the scanned project owns has no explicit
+                class binding.
 
         """
         parts = spec.package.split(".") if spec.package else []
@@ -155,12 +156,13 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             imported = node.module or ""
         for alias in node.names:
             if alias.name == "*":
-                if spec.allow_conditional:
-                    # External/installed modules re-export through star
-                    # imports (PyYAML: ``from .reader import *``). A name the
-                    # module never binds explicitly is then bound in the
-                    # module itself; the runtime walk follows its star
-                    # re-exports to the declaring module.
+                if not spec.source_owned:
+                    # The explicit-binding law governs only the scanned
+                    # project's own sources. A dependency keeps its native
+                    # star re-exports (PyYAML: ``from .error import *``): a
+                    # name it never binds explicitly is bound in the module
+                    # itself, and the runtime walk follows rope's own star
+                    # resolution to the declaring module.
                     bindings["*"] = m.Infra.SourceClassReference(
                         target=spec.module,
                         qualified_base=spec.module,
@@ -740,6 +742,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             package=spec.package,
             required_line=spec.required_line,
             allow_conditional=spec.allow_conditional,
+            source_owned=spec.source_owned,
             definitions=spec.definitions,
             lexical={**spec.lexical, **bindings},
         )
