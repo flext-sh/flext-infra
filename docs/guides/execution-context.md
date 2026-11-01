@@ -221,8 +221,15 @@ toolchain nor a corrupt lock stops it:
    whose own preview is not `[]`; an absent lock previews every tool and is
    regenerated in full. The previews resolve versions only; the lock of a
    changed tool downloads its provenance artifacts for every declared platform.
-   Plain `mise lock` with no tool arguments would refresh every locked entry and
-   re-download each provenance artifact, so it is never used.
+   Plain `mise lock` with no tool arguments refreshes every locked entry and
+   re-downloads each provenance artifact, so it runs only on the pruning path:
+   when the whole preview is not `[]` but no declared tool's own preview
+   changes, the change is the removal of entries for tools the configuration
+   no longer declares. Plain `mise lock` keeps the locked versions and prunes
+   those entries, and a whole preview that is still not `[]` afterwards fails
+   the upgrade. Measured 2026-11-01 on a two-member scratch workspace whose root
+   lock still carried six undeclared tools: the prune took 43.7 s, and the next
+   `make upg` reported no locked version changes in every governed checkout.
    Regenerating an invalid or absent lock is a repair path with no native
    shortcut: every declared tool is locked again, and Mise downloads each tool's
    provenance artifact for every declared platform to verify its attestation
