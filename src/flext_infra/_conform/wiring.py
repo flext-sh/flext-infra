@@ -72,7 +72,6 @@ class FlextInfraConformWiring:
         workspace: p.Infra.RopeWorkspaceDsl,
         *,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-        planners: tuple[p.Infra.SourceInitializerPlanner, p.Infra.SourceViewProvider],
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
         """Close facade cohorts through the session's own projection DSL.
@@ -83,7 +82,6 @@ class FlextInfraConformWiring:
         """
         return workspace.facade_projection(
             declared_files=declared_files,
-            planners=planners,
             selection=selection,
         )
 

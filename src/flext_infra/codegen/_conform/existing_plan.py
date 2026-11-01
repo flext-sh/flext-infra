@@ -584,7 +584,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             outcome = ports.component_planner(
                 workspace,
                 declared_files=declared_files,
-                planners=(self._projected_exports, self._source_view),
                 selection=selection,
             )
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(outcome.files)

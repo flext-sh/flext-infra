@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
-from contextlib import AbstractContextManager
 from pathlib import Path
 from types import FunctionType
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
@@ -242,27 +241,6 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]: ...
 
     @runtime_checkable
-    class SourceViewProvider(Protocol):
-        """Borrow the caller-owned native view for one candidate source epoch.
-
-        Identical effective bytes and tombstones under the same root share the
-        invocation's existing view. Changed candidates require another binding;
-        the caller retains original file witnesses, snapshot authority and teardown.
-        """
-
-        def __call__(
-            self,
-            root: Path,
-            *,
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-        ) -> AbstractContextManager[
-            tuple[
-                FlextInfraProtocolsRopeRuntime.RopeProject,
-                Mapping[Path, str],
-            ]
-        ]: ...
-
-    @runtime_checkable
     class SourceComponentPlanner(Protocol):
         """Close a facade or package cohort; no selection means every family."""
 
@@ -271,10 +249,6 @@ class FlextInfraProtocolsBase(Protocol):
             workspace: FlextInfraProtocolsRope.RopeWorkspaceDsl,
             *,
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-            planners: tuple[
-                FlextInfraProtocolsBase.SourceInitializerPlanner,
-                FlextInfraProtocolsBase.SourceViewProvider,
-            ],
             selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
         ) -> m.Infra.CodegenRepositoryPlanOutcome: ...
 
