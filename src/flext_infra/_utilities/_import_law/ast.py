@@ -151,9 +151,12 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
         """Return the ids of every node inside a non-evaluated annotation.
 
         Function argument and return annotations and module-level variable
-        annotations are strings under ``from __future__ import annotations``.
-        Class-body annotations remain runtime-sensitive unless native ancestry
-        proves ordinary class construction or the declaration is a ClassVar.
+        annotations are strings under ``from __future__ import annotations``;
+        PEP 695 type-parameter bounds, defaults and ``type`` alias values are
+        lazily evaluated by the language, and function-local variable
+        annotations are never evaluated. Class-body annotations remain
+        runtime-sensitive unless native ancestry proves ordinary class
+        construction or the declaration is a ClassVar.
 
         Returns:
             The resulting ``frozenset[int]``.
@@ -178,11 +181,38 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
                 )
                 if node.returns is not None:
                     annotations.append(node.returns)
+            # PEP 695/696 type-parameter bounds, constraints and defaults, and
+            # ``type`` alias values, are evaluated lazily by the language.
+            if isinstance(
+                node, (*c.Infra.AST_FUNCTION_TYPES, ast.ClassDef, ast.TypeAlias)
+            ):
+                for parameter in node.type_params:
+                    if (
+                        isinstance(parameter, ast.TypeVar)
+                        and parameter.bound is not None
+                    ):
+                        annotations.append(parameter.bound)
+                    if parameter.default_value is not None:
+                        annotations.append(parameter.default_value)
+            if isinstance(node, ast.TypeAlias):
+                annotations.append(node.value)
             for annotation in annotations:
                 ids.update(id(sub) for sub in ast.walk(annotation))
         for statement in tree.body:
             if isinstance(statement, ast.AnnAssign):
                 ids.update(id(sub) for sub in ast.walk(statement.annotation))
+        # A variable annotation whose nearest enclosing scope is a function is
+        # never evaluated (PEP 526), whatever the module's annotation mode.
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.AnnAssign):
+                continue
+            scope = state.parents.get(id(node))
+            while scope is not None and not isinstance(
+                scope, (*c.Infra.AST_FUNCTION_TYPES, ast.ClassDef)
+            ):
+                scope = state.parents.get(id(scope))
+            if isinstance(scope, c.Infra.AST_FUNCTION_TYPES):
+                ids.update(id(sub) for sub in ast.walk(node.annotation))
         # ``ClassVar[...]`` members are excluded from Pydantic/dataclass field
         # processing, so their class-body annotations are never evaluated at
         # runtime and must not count as runtime reads of the binding.

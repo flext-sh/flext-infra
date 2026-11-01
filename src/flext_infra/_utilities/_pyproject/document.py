@@ -1073,6 +1073,17 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 if optional is not None and group in optional
             ],
         )
+        try:
+            per_rule = FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                config.Infra.tooling,
+                c.Infra.DEPTRY,
+                "per_rule_ignores",
+                t.TypeForm(Mapping[str, Sequence[str]]),
+            )
+        except (KeyError, ValueError):
+            per_rule = {}
+        for rule, dependencies in sorted(per_rule.items()):
+            u.Cli.toml_sync_string_list(deptry, rule, list(dependencies))
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
             return r[bool].from_failure(typecheck_paths)

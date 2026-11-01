@@ -473,8 +473,12 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             runtime_checkable = typing_module.get_attributes()[
                 "runtime_checkable"
             ].get_object()
+            # ``typing.Protocol`` constructs ordinarily; its own lineage
+            # (``Generic`` is a compiled builtin with no source declaration on
+            # Python 3.12+) is part of that proof, not an unknown ancestor.
+            ordinary = {self._object_id, *self._linearize(protocol)}
             for identity in self._linearize(self._resolve(qualified)):
-                if identity in {self._object_id, protocol}:
+                if identity in ordinary:
                     continue
                 if identity not in self._definitions:
                     return False

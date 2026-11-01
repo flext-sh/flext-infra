@@ -1113,9 +1113,16 @@ class FlextInfraUtilitiesImportLawNormalization(
             if scope.bootstrap_dependency
             else cls.import_module_role(scope.module, namespace=scope.namespace)
         )
+        runtime_only = role == "layer0" and cls.import_law_runtime_only_layer_zero(
+            scope.module, namespace=scope.namespace
+        )
         for node in cls._import_law_iter_imports(state.tree):
             if isinstance(node, ast.ImportFrom) and node.level:
                 continue  # The next pass validates the absolute rewrite.
+            if runtime_only and cls._import_law_inside_type_checking(
+                node, state.parents
+            ):
+                continue
             for alias in node.names:
                 target = (
                     node.module or ""
@@ -1168,6 +1175,27 @@ class FlextInfraUtilitiesImportLawNormalization(
                     f"{target}.{alias.name}",
                 )
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def import_law_runtime_only_layer_zero(module: str, *, namespace: str) -> bool:
+        """Return whether a layer-zero module is constrained at runtime only.
+
+        The lazy loader, bootstrap dependencies and pytest plugins are layer
+        zero because they execute before the facades exist; a type-checking
+        import never executes, so it cannot create that cycle. The config and
+        settings roots keep ADR-005's law, which bans own facades even under
+        ``TYPE_CHECKING``.
+
+        Returns:
+            Whether type-checking imports are outside the module's boundary.
+
+        """
+        parts = module.split(".")[len(namespace.split(".")) :]
+        stem = parts[0].lstrip("_") if parts else ""
+        return not any(
+            stem == root or stem.startswith(f"{root}_")
+            for root in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+        )
 
     @classmethod
     def import_law_layer_zero_helper(
@@ -1277,9 +1305,19 @@ class FlextInfraUtilitiesImportLawNormalization(
             message = "layer-zero helper edges require a native source project"
             raise ValueError(message)
         edges: set[str] = set()
+        runtime_only = cls.import_law_runtime_only_layer_zero(
+            state.scope.module, namespace=state.scope.namespace
+        )
+        parents = {
+            id(child): parent
+            for parent in ast.walk(tree)
+            for child in ast.iter_child_nodes(parent)
+        }
         for node in cls._import_law_iter_imports(tree):
             if isinstance(node, ast.ImportFrom) and node.module == "__future__":
                 continue  # Compiler features do not load a schema dependency.
+            if runtime_only and cls._import_law_inside_type_checking(node, parents):
+                continue
             if isinstance(node, ast.ImportFrom) and node.level:
                 provider = ".".join(module.split(".")[: -node.level])
                 provider = f"{provider}.{node.module}" if node.module else provider
@@ -1289,6 +1327,13 @@ class FlextInfraUtilitiesImportLawNormalization(
                 dependency = (
                     provider if isinstance(node, ast.ImportFrom) else alias.name
                 )
+                if dependency != state.scope.namespace and not dependency.startswith(
+                    f"{state.scope.namespace}."
+                ):
+                    # External providers (stdlib, foundation libraries, compiled
+                    # extensions) carry no own candidate edge; Rope reports no
+                    # module for their variables, so they are never resolved.
+                    continue
                 native = (
                     FlextInfraUtilitiesRopeRuntime
                     .qualified_name(
@@ -1311,10 +1356,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                     or identity.startswith(f"{state.scope.namespace}.")
                 ) and cls.import_module_role(identity) == "family":
                     return None
-                if dependency == state.scope.namespace or dependency.startswith(
-                    f"{state.scope.namespace}."
-                ):
-                    edges.add(dependency)
+                edges.add(dependency)
         return frozenset(edges)
 
     @staticmethod
