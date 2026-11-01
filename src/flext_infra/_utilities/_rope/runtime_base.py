@@ -90,7 +90,6 @@ class FlextInfraUtilitiesRopeRuntimeBase:
     def maybe_class_object(
         cls,
         value: p.AttributeProbe,
-        label: str = "native Rope class",
     ) -> p.Infra.RopeClassObject | None:
         """Admit native classes, yielding ``None`` for unresolved ancestors.
 
