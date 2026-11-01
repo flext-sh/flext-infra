@@ -59,6 +59,13 @@ class FlextInfraModelsDeps(
         native_sources: Sequence[str] = m.Field(
             default=(), description="Names with explicit native UV source declarations"
         )
+        overridden_sources: Sequence[str] = m.Field(
+            default=(),
+            description=(
+                "Names whose source the declared UV override elects; their "
+                "requirement lines carry no direct reference of their own"
+            ),
+        )
 
     class ProjectPackagingDeclaration(m.ExternalContractModel):
         """Native packaging facts retained independently of Python export health."""

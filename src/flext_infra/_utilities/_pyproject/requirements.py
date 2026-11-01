@@ -265,9 +265,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        declared_sources: Mapping[str, str],
-        candidate_sources: Mapping[str, str],
-        native_sources: Sequence[str] = (),
+        provenance: m.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Render internal requirements from their declared Git provenance.
 
@@ -275,11 +273,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``p.Result[bool]``.
 
         """
-        provenance = m.Infra.RequirementsProvenance(
-            declared_sources=declared_sources,
-            candidate_sources=candidate_sources,
-            native_sources=native_sources,
-        )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
             project,
@@ -412,11 +405,14 @@ class FlextInfraUtilitiesPyprojectRequirements:
         Native sources and inline requirements retain their authored refs,
         extras and markers. Only explicit candidate declarations replace a
         source; generated bare floors use their declared provider provenance.
+        A distribution elected by the declared UV override keeps its extras
+        and marker but loses its direct reference: the override owns it.
 
         Returns:
             The resulting ``p.Result[str]``.
 
         """
+        requirement = cls._without_overridden_source(requirement, provenance)
         dependency_name = cls._internal_dependency_name(
             requirement,
             declared_sources=provenance.declared_sources,
@@ -771,6 +767,28 @@ class FlextInfraUtilitiesPyprojectRequirements:
         else:
             u.Cli.toml_remove_key_if_present(groups, codegen_name)
         return r[bool].ok(value=True)
+
+    @classmethod
+    def _without_overridden_source(
+        cls, requirement: str, provenance: m.Infra.RequirementsProvenance
+    ) -> str:
+        """Drop the direct reference of a distribution the UV override elects.
+
+        The declared override is the one source of that distribution; a second
+        direct reference on the requirement line would drift from it on every
+        pin change. Extras, specifier and marker stay.
+
+        Returns:
+            The requirement without its direct reference, or it unchanged.
+
+        """
+        if not cls._declares_direct_source(requirement):
+            return requirement
+        parsed = Requirement(requirement)
+        if canonicalize_name(parsed.name) not in provenance.overridden_sources:
+            return requirement
+        parsed.url = None
+        return str(parsed)
 
     @staticmethod
     def _declares_direct_source(requirement: str) -> bool:
