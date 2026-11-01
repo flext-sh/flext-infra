@@ -746,7 +746,12 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             definitions=spec.definitions,
             lexical={**spec.lexical, **bindings},
         )
-        branches = []
+        branches: list[
+            tuple[
+                MutableMapping[str, m.Infra.SourceClassReference | None],
+                Sequence[ast.stmt],
+            ]
+        ] = []
         for statements in alternatives:
             branch: MutableMapping[str, m.Infra.SourceClassReference | None] = {}
             cls.collect(branch_spec, statements, branch, scope)

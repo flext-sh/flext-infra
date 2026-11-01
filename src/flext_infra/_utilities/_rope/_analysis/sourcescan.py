@@ -98,8 +98,15 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             Returns:
                 The parsed expression node.
 
+            Raises:
+                TypeError: If rope's untyped parser returns no expression tree.
+
             """
-            return ast.parse(source, mode="eval").body
+            tree = ast.parse(source, mode="eval")
+            if not isinstance(tree, ast.Expression):  # untyped rope boundary
+                msg = "rope parser returned no expression tree"
+                raise TypeError(msg)
+            return tree.body
 
         @staticmethod
         def unparse(node: t.Infra.RopeAstNode) -> str:
@@ -189,8 +196,15 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             Returns:
                 The parsed module.
 
+            Raises:
+                TypeError: If rope's untyped parser returns no module tree.
+
             """
-            return ast.parse(source, filename=filename)
+            tree = ast.parse(source, filename=filename)
+            if not isinstance(tree, ast.Module):  # untyped rope boundary
+                msg = "rope parser returned no module tree"
+                raise TypeError(msg)
+            return tree
 
     @staticmethod
     def module_class_base_names(

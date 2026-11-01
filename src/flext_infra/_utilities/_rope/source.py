@@ -261,10 +261,9 @@ class FlextInfraUtilitiesRopeSource(FlextInfraUtilitiesRopeRuntimeBase):
             ("flext_core._settings", "FlextSettings"),
             ("flext_core._config", "FlextConfig"),
         ):
-            module = source_project.get_module(module_name)
-            if not runtime.source_module(module):
-                msg = f"Native settings module is not a source module: {module_name}"
-                raise TypeError(msg)
+            module = runtime.require_source_module(
+                source_project.get_module(module_name)
+            )
             owner = module.get_attribute(name).get_object()
             if not runtime.py_class(owner):
                 msg = (
