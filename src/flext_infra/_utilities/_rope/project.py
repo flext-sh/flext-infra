@@ -9,6 +9,9 @@ from __future__ import annotations
 import sys
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
+from functools import lru_cache
+from importlib import metadata
+from importlib.machinery import EXTENSION_SUFFIXES
 from os import PathLike
 from os.path import realpath
 from pathlib import Path
@@ -672,18 +675,27 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     def source_owned(self, path: Path) -> bool:
         """Separate this project's own sources from its dependency lookup roots.
 
+        A project reading the native tree elects the same owners from Rope's
+        own folders: its root and source folders own, its Python-path
+        folders are dependency lookup roots.
+
         Returns:
             Whether an elected source root, not a Python-path dependency
             root, owns the physical path.
 
-        Raises:
-            TypeError: The project does not own an authenticated overlay.
-
         """
         files = self.fscommands
         if not isinstance(files, self.OverlayFiles):
-            msg = "source ownership requires an authenticated source overlay"
-            raise TypeError(msg)
+            files = self.OverlayFiles(
+                (),
+                source_roots=(
+                    Path(self.root.real_path),
+                    *(Path(folder.real_path) for folder in self.get_source_folders()),
+                ),
+                dependency_roots=tuple(
+                    Path(folder.real_path) for folder in self.get_python_path_folders()
+                ),
+            )
         return files.source_owned(path)
 
     @contextmanager
@@ -1018,6 +1030,46 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
     _source_election: p.Infra.RopeProjectElection | None = None
 
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _distribution_extension_modules(
+        state: tuple[tuple[str, int], ...],
+    ) -> tuple[str, ...]:
+        """Derive the compiled modules the installed distributions declare.
+
+        Rope sees a compiled module only through its ``extension_modules``
+        preference. Each distribution on the Python path declares its files
+        in its own metadata; a file carrying an interpreter extension suffix
+        is a compiled module, named by its folder-relative dotted path. The
+        key is each folder with its modification time, so an install or
+        removal is a new key, never a stale election.
+
+        Returns:
+            The dotted compiled-module names in deterministic order.
+
+        """
+        suffixes = sorted(EXTENSION_SUFFIXES, key=len, reverse=True)
+        names: set[str] = set()
+        for distribution in metadata.distributions(
+            path=[folder for folder, _ in state]
+        ):
+            # A record that names no extension suffix declares no compiled
+            # module; only the remaining distributions pay ``files`` parsing.
+            record = distribution.read_text("RECORD")
+            if record is not None and not any(item in record for item in suffixes):
+                continue
+            for file in distribution.files or ():
+                spelled = file.as_posix()
+                suffix = next(
+                    (item for item in suffixes if spelled.endswith(item)), None
+                )
+                if suffix is None:
+                    continue
+                parts = spelled.removesuffix(suffix).split("/")
+                if all(part.isidentifier() for part in parts):
+                    names.add(".".join(parts))
+        return tuple(sorted(names))
+
     def __init__(
         self,
         projectroot: str | PathLike[str],
@@ -1037,6 +1089,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         Raises:
             ValueError: The root is absent or the constructor changed its view.
+            TypeError: The ``python_path`` preference is not a folder sequence.
 
         """
         root = (
@@ -1051,15 +1104,35 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             message = f"Rope project root must already be a directory: {root}"
             raise ValueError(message)
         if "extension_modules" not in prefs:
+            python_path = prefs.get("python_path", ())
+            if isinstance(python_path, bool):
+                message = "Rope python_path preference must be a folder sequence"
+                raise TypeError(message)
+            # Rope's own lookup order: preference folders, then ``sys.path``.
+            folders = tuple(
+                folder
+                for entry in (*python_path, *sys.path)
+                if (folder := Path(entry).resolve()).is_dir()
+            )
             prefs["extension_modules"] = tuple(
-                sorted(
-                    name
-                    for name in tuple(sys.modules)
-                    if name.partition(".")[0] in sys.stdlib_module_names
-                    and (module := sys.modules.get(name)) is not None
-                    and module.__spec__ is not None
-                    and module.__spec__.origin in {"built-in", "frozen"}
-                )
+                sorted({
+                    *(
+                        name
+                        for name in tuple(sys.modules)
+                        if name.partition(".")[0] in sys.stdlib_module_names
+                        and (module := sys.modules.get(name)) is not None
+                        and module.__spec__ is not None
+                        and module.__spec__.origin in {"built-in", "frozen"}
+                    ),
+                    *FlextInfraRopeProject._distribution_extension_modules(
+                        tuple(
+                            dict.fromkeys(
+                                (str(folder), folder.stat().st_mtime_ns)
+                                for folder in folders
+                            )
+                        )
+                    ),
+                })
             )
         initializer: p.Infra.RopeProjectInitializer = Project.__dict__["__init__"]
         initializer(
@@ -1176,18 +1249,12 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         )
         external = NoProject(fscommands=files)
         external.prefs.extension_modules = list(selected.extension_modules)
-        if not isinstance(external, p.Infra.RopeExternalResourceOwner):
-            message = "native external resolver lost its resource factory contract"
-            raise TypeError(message)
         self.external_project = external
         self._snapshot_python_path_folders = [
             self._native_folder(external.get_folder(path))
             for path in selected.python_path_folders
         ]
         preferences = self.get_prefs()
-        if not isinstance(preferences, p.Infra.RopePreferences):
-            message = "native source project lost its preference update contract"
-            raise TypeError(message)
         preferences.set("ignored_resources", value=list(selected.ignored_resources))
         preferences.set("extension_modules", value=list(selected.extension_modules))
         preferences.set("source_folders", value=list(selected.source_folders))

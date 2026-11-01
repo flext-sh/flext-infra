@@ -1357,6 +1357,21 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return self._external_reference(
                     target, attributes[1:], visiting | {target}, depth + 1
                 )
+            if outer is not None and outer.is_folder():
+                package = self._provider_name(module)
+                declaring = self._planned_child_declaration(package, attributes[0])
+                if declaring is not None:
+                    # The package initializer is not regenerated yet: exactly
+                    # one planned child declares the class it will publish.
+                    return self._resolve(
+                        m.Infra.SourceClassReference(
+                            target=declaring,
+                            attributes=attributes,
+                            qualified_base=target,
+                        ),
+                        visiting | {target},
+                        depth + 1,
+                    )
             captured = self._sources.get(self._provider_name(module))
             captured_state = "absent" if captured is None else f"len={len(captured[1])}"
             message = (
@@ -1474,6 +1489,77 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     moved, attributes, visiting | {target}, depth + 1
                 )
             return None
+
+        def _planned_child_declaration(self, package: str, name: str) -> str | None:
+            """Elect the one planned module of a package tree declaring a class.
+
+            A generated package initializer publishes what its child modules
+            declare; until it is regenerated in the candidate, the planned
+            children (captured sources and every child module the candidate
+            view holds) are the authority for a name the package will publish.
+
+            Returns:
+                The declaring module name, or none when no planned module of the
+                package tree declares the class.
+
+            Raises:
+                ValueError: If more than one planned module declares the class.
+
+            """
+            prefix = f"{package}."
+            marker = f"class {name}"
+            types = FlextInfraUtilitiesRopeRuntime
+            # A capture whose module the candidate dissolved (a move source)
+            # declares nothing in the planned tree.
+            children = {
+                candidate_name: candidate_source
+                for candidate_name, (path, candidate_source) in self._sources.items()
+                if candidate_name.startswith(prefix)
+                and path.name != c.Infra.INIT_PY
+                and self._project.source_query(path, "isfile")
+            }
+            resource = self._project.find_module(package)
+            pending = (
+                [(Path(resource.real_path), prefix)]
+                if resource is not None and resource.is_folder()
+                else []
+            )
+            # The candidate view also holds planned modules no capture recorded
+            # (a generated module planned in this same pass); a subpackage
+            # republishes its own modules through its initializer.
+            while pending:
+                folder, dotted = pending.pop()
+                for child in self._project.source_children(folder):
+                    if self._project.source_query(child / c.Infra.INIT_PY, "isfile"):
+                        pending.append((child, f"{dotted}{child.name}."))
+                    elif (
+                        child.suffix == c.Infra.EXT_PYTHON
+                        and child.name != c.Infra.INIT_PY
+                        and self._project.source_query(child, "isfile")
+                    ):
+                        children.setdefault(
+                            f"{dotted}{child.stem}", self._project.source_text(child)
+                        )
+            declaring = tuple(
+                candidate_name
+                for candidate_name, candidate_source in sorted(children.items())
+                if marker in candidate_source
+                and types.defined_name(
+                    FlextInfraUtilitiesRopeRuntimeModules
+                    .build_string_module(
+                        self._project,
+                        candidate_source,
+                        resource=self._project.find_module(candidate_name),
+                    )
+                    .get_scope()
+                    .get_defined_names()
+                    .get(name)
+                )
+            )
+            if len(declaring) > 1:
+                message = f"Ambiguous planned child declarations: {package}.{name}"
+                raise ValueError(message)
+            return declaring[0] if declaring else None
 
         def _moved_class_module(
             self,
@@ -2104,6 +2190,20 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                             qualified_base=f"{submodule}.{remaining[0]}"
                             if remaining
                             else submodule,
+                        ),
+                        visiting | {key},
+                        depth + 1,
+                    ), []
+                declaring = self._planned_child_declaration(module, name)
+                if declaring is not None:
+                    # The package initializer has not been regenerated yet in
+                    # this candidate; it publishes its children's exports, and
+                    # exactly one planned child declares the class.
+                    return self._resolve(
+                        m.Infra.SourceClassReference(
+                            target=declaring,
+                            attributes=(name, *remaining),
+                            qualified_base=f"{module}.{name}",
                         ),
                         visiting | {key},
                         depth + 1,

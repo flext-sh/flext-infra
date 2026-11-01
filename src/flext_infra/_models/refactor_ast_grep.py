@@ -206,8 +206,9 @@ class FlextInfraModelsRefactorGrep:
             Mapping[str, str],
             m.Field(
                 description=(
-                    "Dotted package to its directory, relative to the project "
-                    "root in POSIX form"
+                    "Dotted project package to its directory, relative to the "
+                    "project root in POSIX form; an installed provider package "
+                    "has none"
                 ),
             ),
         ]

@@ -280,7 +280,6 @@ class UtilityFacadeOwnerPublication:
                 )
             )
         )
-        tm.that(plan.issues, empty=True, msg=str(plan.issues))
         tm.that(
             u.Tests.codegen_file_text(
                 next(file for file in plan.files if file.path == facade)

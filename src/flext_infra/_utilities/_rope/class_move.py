@@ -435,11 +435,12 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     ) -> p.Result[bool]:
         """Rewire consumers that import a moved class through a package barrel.
 
-        A package that held the moved module but does not hold its destination
-        stops republishing its classes once its initializer is regenerated
-        from its own children. Every ``from barrel import Name`` of a moved
-        export is retargeted, in this candidate, to the destination package
-        that republishes it; a consumer importing the barrel module itself
+        Every package on the moved module's chain republishes its exports only
+        through an initializer that is regenerated after this move. Every
+        ``from barrel import Name`` of a moved
+        export is retargeted, in this candidate, to the declaring module, which
+        publishes it independently of any initializer regeneration; a consumer
+        importing the barrel module itself
         cannot be proved and refuses the move. Initializers are owned by the
         publication rewrite and their regeneration.
 
@@ -454,19 +455,24 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         destination_package = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
             target.parent, project_root=root, source_project=project
         )
-        barrels = frozenset(
-            ".".join(parts[:index])
-            for index in range(1, len(parts))
-            if not (
-                destination_package == ".".join(parts[:index])
-                or destination_package.startswith(".".join(parts[:index]) + ".")
-            )
-        )
+        # Every package in the chain from the top-level package down to the
+        # moved module may republish its exports; none of them is regenerated
+        # yet in this candidate, so each barrel route is retargeted.
+        barrels = frozenset(".".join(parts[:index]) for index in range(1, len(parts)))
         if not exports or not barrels:
             return r[bool].ok(value=True)
+        if not destination_package:
+            return r[bool].fail(
+                f"module move destination has no import package: {target}"
+            )
+        # The declaring module is the route: it publishes the moved exports in
+        # this candidate whatever any initializer's later regeneration plans.
+        route = f"{destination_package}.{target.stem}"
         for path, text in tuple(candidate.items()):
-            if path in {source, target} or not any(
-                barrel in text for barrel in barrels
+            if (
+                path in {source, target}
+                or not any(name in text for name in exports)
+                or not any(barrel in text for barrel in barrels)
             ):
                 continue
             if path.name == c.Infra.INIT_PY:
@@ -474,7 +480,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 # ``_rewritten_init_publications`` and regenerated from children.
                 continue
             rewritten = cls._barrel_consumer_text(
-                project, (root, path), text, (barrels, exports, destination_package)
+                project, (root, path), text, (barrels, exports, route)
             )
             if rewritten.failure:
                 return r[bool].from_failure(rewritten)
@@ -801,9 +807,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 # candidate. Other missing resources retain their native error.
                 if path in retired:
                     continue
-                staged_text = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
-                    composed, cls._resource(composed, root, path)
-                ).source_code
+                # The overlay's bytes are the staged text; parsing every module
+                # only to read them back would build each consumer's AST.
+                staged_text = composed.source_text(path)
                 authoritative = staged_text if staged_text != epoch_text else epoch_text
                 consumer_text = cls._divergence_diagnostic(project, path, authoritative)
                 if path.name == c.Infra.INIT_PY and path != source:
@@ -910,20 +916,21 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
     @staticmethod
     def _quoted_stem_reference(text: str, stem: str) -> bool:
-        """Whether a source literal can reference the moved module by its stem.
+        """Whether a source can hold a quoted type or export of the moved module.
 
-        Quoted type expressions and ``__all__`` exports are string literals;
-        Rope's native lexer delimits them, so a stem spelled only in code or
-        comments can never be a quoted reference. Inside a literal, a quoted
-        type reaches the module through an attribute read (``stem.Name``) and
-        an export spells the stem as the whole literal; prose such as
-        ``at runtime.`` names no module. An import alias of the module
-        (``import pkg.runtime as rt``) is a reference name too.
+        The quoted rewrite edits only string constants in annotation positions
+        (``quoted_type_regions``) and ``__all__`` exports. A quoted type reaches
+        the module through an attribute read (``stem.Name``, or an import alias
+        of the module such as ``rt.Name``); an export spells the stem as a
+        whole literal, which Rope's native lexer delimits. Prose literals and
+        non-annotation strings can never be rewritten.
 
         Returns:
-            Whether any string literal holds a quoted or exported stem.
+            Whether an annotation string or an export literal names the module.
 
         """
+        if stem not in text:
+            return False
         stem_word = re.escape(stem)
         names = "|".join(
             re.escape(name)
@@ -932,15 +939,68 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 *re.findall(rf"(?<![A-Za-z0-9_]){stem_word}\s+as\s+(\w+)", text),
             )
         )
-        reference = re.compile(
-            rf"(?<![A-Za-z0-9_])(?:{names})\.[A-Za-z_]"
-            rf"|^[rRbBuU]?(['\"]){stem_word}\1$"
+        quoted = re.compile(rf"(?<![A-Za-z0-9_])(?:{names})\.[A-Za-z_]")
+        exported = re.compile(rf"^[rRbBuU]?(['\"]){stem_word}\1$")
+        lexer = FlextInfraUtilitiesRopeRuntime.ignored_regions
+        return (
+            re.search(rf"['\"]{stem_word}['\"]", text) is not None
+            and any(
+                text[first] != "#" and exported.search(text[first:last]) is not None
+                for first, last, _metadata in lexer(text)
+            )
+        ) or (
+            quoted.search(text) is not None
+            and any(
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and quoted.search(node.value) is not None
+                for annotation in FlextInfraUtilitiesRopeClassMove._annotation_nodes(
+                    ast.parse(text)
+                )
+                for node in ast.walk(annotation)
+            )
         )
-        regions = FlextInfraUtilitiesRopeRuntime.ignored_regions(text)
-        return any(
-            text[first] != "#" and reference.search(text[first:last]) is not None
-            for first, last, _metadata in regions
-        )
+
+    @staticmethod
+    def _annotation_nodes(tree: ast.Module) -> tuple[ast.expr, ...]:
+        """Collect the annotation-position expressions of one module.
+
+        Mirrors the native annotation regions: variable and parameter
+        annotations, return annotations, class bases and keywords, ``type``
+        alias values, and type-parameter bounds and defaults.
+
+        Returns:
+            Every annotation-position expression in the module.
+
+        """
+        found: list[ast.expr | None] = []
+        for node in ast.walk(tree):
+            match node:
+                case (
+                    ast.AnnAssign(annotation=annotation)
+                    | ast.arg(annotation=annotation)
+                ):
+                    found.append(annotation)
+                case (
+                    ast.FunctionDef(returns=returns)
+                    | ast.AsyncFunctionDef(returns=returns)
+                ):
+                    found.append(returns)
+                case ast.ClassDef(bases=bases, keywords=keywords):
+                    found.extend(bases)
+                    found.extend(keyword.value for keyword in keywords)
+                case ast.TypeAlias(value=value):
+                    found.append(value)
+                case ast.TypeVar(bound=bound, default_value=default):
+                    found.extend((bound, default))
+                case (
+                    ast.ParamSpec(default_value=default)
+                    | ast.TypeVarTuple(default_value=default)
+                ):
+                    found.append(default)
+                case _:
+                    continue
+        return tuple(item for item in found if item is not None)
 
     @staticmethod
     def _module_scopes(

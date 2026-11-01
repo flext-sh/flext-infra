@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import u
+from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, t
@@ -665,6 +666,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             pyproject_content,
             workspace=workspace,
             required_dev_dependencies=required_dev_dependencies,
+            uv_resolution=uv_resolution,
             options=options,
         )
         if prepared.failure:
@@ -720,6 +722,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         *,
         workspace: m.Infra.WorkspaceSpec,
         required_dev_dependencies: Sequence[str],
+        uv_resolution: m.Infra.UvResolutionSpec,
         options: PyprojectConformOptions | None,
     ) -> p.Result[_ConformedProvenance]:
         """Parse the source and compose its declared requirement provenance.
@@ -756,6 +759,11 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 tuple(canonicalize_name(name) for name in native_sources)
                 if native_sources is not None
                 else ()
+            ),
+            overridden_sources=tuple(
+                canonicalize_name(Requirement(override).name)
+                for override in uv_resolution.override_dependencies
+                if isinstance(override, str) and Requirement(override).url
             ),
         )
         return result.ok((
@@ -815,12 +823,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 "candidate dependencies are not declared requirements: "
                 + ", ".join(unused_candidates),
             )
-        normalized = cls._normalize_requirements(
-            source,
-            declared_sources=provenance.declared_sources,
-            candidate_sources=provenance.candidate_sources,
-            native_sources=provenance.native_sources,
-        )
+        normalized = cls._normalize_requirements(source, provenance=provenance)
         if normalized.failure:
             return result_type.from_failure(
                 normalized,

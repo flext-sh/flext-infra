@@ -129,10 +129,6 @@ class FlextInfraCandidateBootstrapService:
         )
         if planned.failure:
             return result_type.from_failure(planned)
-        if planned.value.exception is not None:
-            raise planned.value.exception
-        if planned.value.issues:
-            return result_type.fail(planned.value.issues[0].formatted)
         files = planned.value.files
         diagnostic = (
             f"candidate bootstrap has no declared destinations: {root}"

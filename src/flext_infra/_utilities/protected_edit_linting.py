@@ -11,7 +11,6 @@ import concurrent.futures
 import difflib
 import os
 import sys
-import traceback
 from collections import Counter
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from itertools import islice
@@ -55,8 +54,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
         A rewrite of existing bytes repairs exactly the Ruff rules its edit
         introduced (codes absent from ``before_source``), so no unchanged
         binding or pre-existing finding is touched; a whole new file receives
-        the declared full repair. ``settings`` carry the staged pyproject's
-        Ruff table when the same plan set rewrites it.
+        the declared full repair. Formatting follows the same law: a
+        generated projection (``c.Infra.AUTOGEN_HEADER``) is always formatted,
+        but an authored module is formatted only when its existing bytes are
+        already formatter-clean. Pending format debt in authored code belongs
+        to ``make fmt``; a rewrite never reformats untouched authored lines.
+        ``settings`` carry the staged pyproject's Ruff table when the same
+        plan set rewrites it.
 
         Returns:
             Normalized source, or the original configured repair failure.
@@ -114,18 +118,46 @@ class FlextInfraUtilitiesProtectedEditLinting:
         after_codes = cls._ruff_stdin_codes(path, source, settings=settings)
         if after_codes.failure:
             return r[str].from_failure(after_codes)
-        declared = config.Infra.codegen.make.ruff
         introduced = sorted(after_codes.value - before_codes.value)
         if introduced:
             repaired = cls.ruff_select_fix(path, source, introduced, settings=settings)
             if repaired.failure:
                 return repaired
             source = repaired.value
+        return cls._format_rewrite(path, (before_source, source), settings=settings)
+
+    @classmethod
+    def _format_rewrite(
+        cls,
+        path: Path,
+        rewrite: tuple[str, str],
+        *,
+        settings: Sequence[str],
+    ) -> p.Result[str]:
+        """Format a rewrite of existing bytes without touching authored debt.
+
+        ``rewrite`` pairs the existing bytes with the repaired candidate. A
+        generated projection (``c.Infra.AUTOGEN_HEADER``) is formatted in
+        full. An authored module is formatted only when its existing bytes are
+        already formatter-clean; otherwise the repaired candidate is returned
+        unformatted, because its format debt belongs to ``make fmt``.
+
+        Returns:
+            The candidate, formatted when the law allows, or Ruff's failure.
+
+        """
+        before_source, source = rewrite
+        arguments = (c.Infra.FORMAT, *config.Infra.codegen.make.ruff.format_apply)
+        if source.startswith(c.Infra.AUTOGEN_HEADER):
+            return cls._ruff_stdin_pass(path, source, arguments, settings=settings)
         return cls._ruff_stdin_pass(
-            path,
-            source,
-            (c.Infra.FORMAT, *declared.format_apply),
-            settings=settings,
+            path, before_source, arguments, settings=settings
+        ).flat_map(
+            lambda formatted: (
+                cls._ruff_stdin_pass(path, source, arguments, settings=settings)
+                if formatted == before_source
+                else r[str].ok(source)
+            )
         )
 
     @classmethod
@@ -389,8 +421,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
             settings=settings,
         )
 
-    @staticmethod
+    @classmethod
     def _staged_ruff_settings(
+        cls,
         plans: Sequence[m.Infra.CodegenFilePlan],
     ) -> Mapping[Path, Sequence[str]]:
         """Render each staged pyproject's Ruff table as ``--config`` overrides.
@@ -400,11 +433,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
         the on-disk copy reads the settings the run replaces (an UP040 that is
         unfixable in the new settings once rewrote ``Name: TypeAlias = Owner``
         into a runtime-different ``type`` statement). Ruff runs ``--isolated``
-        and every leaf of the complete staged ``[tool.ruff]`` table, ``src`` and
-        first-party settings included, becomes one quoted dotted ``--config``
-        key, so on-disk state is irrelevant and the run's discovery matches the
-        projection exactly. Paths resolve against the project root, which is
-        the pass's working directory.
+        and every top-level key of the complete staged ``[tool.ruff]`` table,
+        ``src`` and first-party settings included, becomes one quoted
+        ``--config`` key carrying its table inline, so on-disk state is
+        irrelevant and the run's rule selection matches the projection
+        exactly. Paths resolve against the project root, which is the pass's
+        working directory.
 
         Returns:
             Override arguments per project root that stages a pyproject.
@@ -427,24 +461,41 @@ class FlextInfraUtilitiesProtectedEditLinting:
             # `--isolated` makes Ruff ignore every on-disk configuration, so the
             # complete staged table below is the whole configuration: a key the
             # staged file drops is dropped here too, never merged from disk.
+            # Each top-level key is one override whose table is inline: Ruff
+            # layers every `--config` as its own rule selection, so a
+            # `lint.select` override split from its `lint.ignore` re-selects
+            # what the project ignores; one inline `lint` table is one
+            # selection, exactly as the pyproject declares it.
             overrides: list[str] = ["--isolated"]
-            pending: list[tuple[Sequence[str], t.JsonValue]] = [
-                ((key,), value) for key, value in ruff.items()
-            ]
-            while pending:
-                keys, value = pending.pop()
-                if isinstance(value, Mapping):
-                    pending.extend(
-                        ((*keys, key), nested) for key, nested in value.items()
-                    )
-                    continue
-                dotted = ".".join(u.Cli.json_dumps(key).unwrap() for key in keys)
+            for key, value in ruff.items():
+                inline = cls._ruff_inline_value(value)
                 overrides.extend((
                     "--config",
-                    f"{dotted} = {u.Cli.json_dumps(value).unwrap()}",
+                    f"{u.Cli.json_dumps(key).unwrap()} = {inline}",
                 ))
             staged[plan.project] = tuple(overrides)
         return staged
+
+    @classmethod
+    def _ruff_inline_value(cls, value: t.JsonValue) -> str:
+        """Render one staged Ruff value as a TOML inline value.
+
+        Keys and scalars are JSON literals, which TOML reads unchanged;
+        tables become inline tables and arrays keep their order.
+
+        Returns:
+            The TOML inline literal of ``value``.
+
+        """
+        if isinstance(value, Mapping):
+            members = ", ".join(
+                f"{u.Cli.json_dumps(key).unwrap()} = {cls._ruff_inline_value(nested)}"
+                for key, nested in value.items()
+            )
+            return f"{{{members}}}"
+        if isinstance(value, list):
+            return f"[{', '.join(cls._ruff_inline_value(item) for item in value)}]"
+        return u.Cli.json_dumps(value).unwrap()
 
     @classmethod
     def _ruff_stdin_codes(
@@ -1207,24 +1258,15 @@ class FlextInfraUtilitiesProtectedEditLinting:
     ) -> m.Infra.LintGateResult:
         """Retain the native receipt without turning an absent report into success.
 
+        A process that never produced a native outcome stops the gate at once:
+        its original exception propagates unchanged.
+
         Returns:
             Diagnostic evidence and the independent first execution failure.
 
         """
-        if executed.failure:
-            return m.Infra.LintGateResult(
-                tool_name=tool_name,
-                execution_error=str(executed.error),
-                error_code=executed.error_code,
-                error_data=executed.error_data,
-                error_traceback=(
-                    "".join(traceback.format_exception(executed.exception))
-                    if executed.exception is not None
-                    else None
-                ),
-            )
         output = m.Cli.CommandOutput.model_validate(
-            executed.value, from_attributes=True
+            executed.unwrap(), from_attributes=True
         )
         parsed = FlextInfraUtilitiesProtectedEditLinting._lint_report_errors(
             tool_name, output.stdout

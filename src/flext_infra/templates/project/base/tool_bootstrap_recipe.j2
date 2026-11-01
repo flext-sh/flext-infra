@@ -100,7 +100,10 @@ if [ -f {{ lock_path }} ]; then \
     change (a documented native result compared for equality, never parsed).
     Otherwise each declared tool previews alone and only the tools whose own
     preview is not `[]` are locked, so provenance artifacts are fetched for
-    the changed tools only. A change no declared tool owns stops the upgrade. -#}
+    the changed tools only. A change no declared tool owns is the removal of
+    entries for tools the configuration no longer declares: the native whole
+    `mise lock` (no `--bump`, locked versions kept) prunes them, and a preview
+    still not `[]` afterwards stops the upgrade. -#}
 {% macro mise_lock_changed(mise, lock_root, install_tools) -%}
 if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]; then \
 		printf 'upg: %s: no locked version changes\n' {{ lock_root }}; \
@@ -110,11 +113,16 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 			if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
 		done; \
 		if [ -z "$$changed_tools" ]; then \
-			printf 'ERROR[upg] %s: mise previews a lock change that no declared tool owns\n' {{ lock_root }} >&2; \
-			exit 2; \
+			printf 'upg: %s: pruning lock entries no declared tool owns\n' {{ lock_root }}; \
+			"{{ mise }}" -C {{ lock_root }} lock; \
+			if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" != "[]" ]; then \
+				printf 'ERROR[upg] %s: mise still previews a lock change that no declared tool owns\n' {{ lock_root }} >&2; \
+				exit 2; \
+			fi; \
+		else \
+			printf 'upg: %s: locking%s\n' {{ lock_root }} "$$changed_tools"; \
+			"{{ mise }}" -C {{ lock_root }} lock --bump $$changed_tools; \
 		fi; \
-		printf 'upg: %s: locking%s\n' {{ lock_root }} "$$changed_tools"; \
-		"{{ mise }}" -C {{ lock_root }} lock --bump $$changed_tools; \
 	fi;
 {%- endmacro %}
 

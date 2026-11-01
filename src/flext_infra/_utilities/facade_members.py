@@ -119,10 +119,17 @@ class FlextInfraUtilitiesFacadeMembers:
                 else kind.FUNCTION
             )
         origin_type = origin.get_type().get_module()
+        # A callable instance (its class declares ``__call__``, as pytest's
+        # ``fail``/``skip``/``exit`` outcome objects do) is called, never read:
+        # a function (operator ruling 2026-11-01). Typing special forms are
+        # callable instances too, so the typing verdict comes first.
         return (
             kind.TYPE
             if origin_type is not None
             and origin_type.get_name() in c.Infra.FACADE_MEMBER_TYPING_MODULES
+            else kind.FUNCTION
+            if types.py_class(origin.get_type())
+            and "__call__" in origin.get_type().get_attributes()
             else kind.CONSTANT
         )
 
@@ -279,11 +286,20 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
         assigned = runtime.annotation_assignment_outer_type(source_project, value)
         if assigned is not None:
             origin, from_value = assigned
             if not from_value:
-                return c.Infra.FacadeMemberKind.CONSTANT
+                # An annotated callable instance (``fail: _Fail = _Fail()``)
+                # takes its value's kind; any other annotated value is a constant.
+                owner_class = value.get_object().get_type()
+                return (
+                    None
+                    if types.py_class(owner_class)
+                    and "__call__" in owner_class.get_attributes()
+                    else c.Infra.FacadeMemberKind.CONSTANT
+                )
             if runtime.same_name(
                 runtime.qualified_name(source_project, "typing.Literal"), origin
             ) or runtime.same_name(

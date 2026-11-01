@@ -22,8 +22,6 @@ class FlextInfraConstantsPytest:
         """pytest constants, enums and exceptions; flext-tests inherits them."""
 
         MARK: ClassVar[pytest.MarkGenerator] = pytest.mark
-        FAIL: ClassVar = pytest.fail
-        SKIP: ClassVar = pytest.skip
         ExitCode = pytest.ExitCode
         FixtureLookupError = pytest.FixtureLookupError
         UsageError = pytest.UsageError

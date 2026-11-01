@@ -7,6 +7,12 @@
 # namespace. FlextUtilitiesLogging is the p.Logger protocol
 # adapter: fetch_logger returns stateful instances whose bound name and
 # structlog logger are the state the protocol's logging methods require.
+#
+# The utilities family is a project fact, not a directory name: the `files`
+# globs name the candidate shapes and `metadata.scope` keeps only the modules
+# of the `u` facade family (a module whose `__all__` declares `u`, and the
+# modules of the private family package behind it). A tests directory that
+# mirrors a source `_utilities/` tree is not part of that family.
 id: require-static-utility-method
 language: python
 severity: error
@@ -45,3 +51,5 @@ message: >-
   Detection only: the method reads instance state; methods that never read self are repaired by the make fix static-method recipe (no-self-use).
 metadata:
   enforce: [ENFORCE-102]
+  scope:
+    in: [ facade-family-u ]

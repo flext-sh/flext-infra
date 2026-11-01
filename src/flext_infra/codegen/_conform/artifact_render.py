@@ -372,18 +372,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             ),
             taplo_version=config.Infra.codegen.toolchain.tool_versions["taplo"],
         )
-        # The parse-merge-dump overlay drops every template comment, so
-        # this composition owner publishes the one generated-file header
-        # (owner, adjustment rule, regeneration verb) on the final bytes.
-        # A re-run reads the live file as data, so it never accumulates.
         # The render-provenance line names the running generator's version:
         # drift reports can then state both sides (rendered-by vs consumed)
         # instead of a bare byte diff (aihub-l42it.11 consolidation postmortem).
-        return formatted.map(
-            lambda source: (
-                f"{c.Infra.BANNER}{cls.rendered_by_stamp()}\n{source.lstrip()}"
-            ),
-        )
+        return formatted.map(cls.published_pyproject_source)
 
     @classmethod
     def _composed_mise_overlay(
@@ -1170,6 +1162,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 mise_selector=codegen.toolchain.mise_selector,
                 mise_version=codegen.toolchain.mise_version,
                 mise_install_tools=codegen.toolchain.mise_install_keys,
+                # A project in the infrastructure distribution's runtime closure
+                # (read from the installed metadata, never listed) supplies part
+                # of the executor itself: the executor installs its locked
+                # non-editable build.
+                executor_installs_project=(
+                    u.Infra.dep_name(target.repository.distribution)
+                    in u.Infra.installed_runtime_closure(
+                        codegen.infra_repository.distribution,
+                    )
+                ),
                 toolchain=codegen.toolchain,
                 python_version=codegen.toolchain.python_version,
                 make=codegen.make,

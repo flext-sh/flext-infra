@@ -31,8 +31,103 @@ valid:
         "over two lines without line breaks"
     )
   - two = "first line\n" "second line\n"
+  - assignments = f"value = {name!r}\n" f"other = 1\n" f"third = 2\n"
+  - |
+    detail = (
+        f"cwd={root}\n"
+        f"return-code={code}\n"
+        f"stdout={stdout}\n"
+        f"stderr={stderr}\n"
+    )
+  - |
+    header = (
+        "# AUTO-GENERATED FILE\n"
+        "# Regenerate with: make gen\n"
+        "# Owner: tooling\n"
+        "# Do not edit\n"
+    )
+  - |
+    workflow = (
+        "steps:\n"
+        "  - uses: actions/checkout@v4\n"
+        "    with:\n"
+        "      fetch-depth: 0\n"
+    )
+  - |
+    report = (
+        f"return-code={code}\n"
+        f"raise-count={count}\n"
+        "for details see the log\n"
+    )
+  - |
+    message = (
+        "class-nesting cannot derive a module owner without a project "
+        f"class stem for {convention.module_name}"
+    )
+  - |
+    message = (
+        f"{rule.id}: assert lowering requires a complete standalone statement "
+        f"with retained trivia in {module.get_name()}:"
+        f"{line}"
+    )
+  - |
+    payload = (
+        '{"results":[{"filename":"source.py","line_number":"1",'
+        '"test_id":"B101","issue_text":"assert used"}],"errors":[]}'
+    )
+  - |
+    shell = (
+        f"if (exit {status}); then outcome=0; "
+        "else outcome=$$?; fi; "
+        'printf "%s\\n" "$$outcome"\n'
+    )
 invalid:
-  - source = f"value = {name!r}\n" f"other = 1\n" f"third = 2\n"
+  - |
+    initializer = (
+        '"""Public provider exports."""\n'
+        "from .owner import FlextProvider\n"
+        '__all__ = ["FlextProvider"]\n'
+    )
+  - |
+    consumer = (
+        f"from {package.name} import u\n"
+        f"value = u.Domain.parse({raw!r})\n"
+    )
+  - |
+    getter = (
+        f"if {instance} is None:\n    return {own}.{fields[1]}\n"
+        f"return {own}.{fields[0]}({instance})\n"
+    )
+  - |
+    module = (
+        f"class Published{directory.name}: pass\n"
+        f"__all__ = ['Published{directory.name}']\n"
+    )
+  - |
+    condition = (
+        f"{indent}if (\n"
+        f"{indent}    not isinstance({receiver}, type)\n"
+        f"{indent}):\n"
+    )
+  - |
+    native = (
+        f"def {name}({argument}):\n"
+        f"    return {target}({argument})\n"
+    )
+  - |
+    guard = (
+        "try:\n"
+        "    value = load()\n"
+        "except KeyError:\n"
+        "    value = None\n"
+    )
+  - |
+    body = (
+        "def main() -> int:\n"
+        "    value = 1\n"
+        "    other = 2\n"
+        "    return value + other\n"
+    )
   - |
     code = (
         "from flext_cli import u\n"

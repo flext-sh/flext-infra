@@ -16,7 +16,6 @@ from __future__ import annotations
 import ast
 import builtins
 import re
-import tomllib
 from collections.abc import Mapping, Sequence
 from importlib import import_module
 from importlib.util import find_spec
@@ -32,7 +31,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPythonModel,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
+from flext_infra._utilities._codemod import (
+    FlextInfraUtilitiesCodemodNative,
+    FlextInfraUtilitiesCodemodRules,
+)
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
@@ -151,12 +153,13 @@ class FlextInfraUtilitiesCodemodNativePackage:
         for package, children in facts.modules.items():
             merged_modules.setdefault(package, children)
         run = FlextInfraUtilitiesPythonModel.python_model_run(snapshot.engine, {})
-        for package in cls._codemod_provider_declared_packages(project):
-            exports = cls._codemod_installed_package_exports(run, package)
+        for package in cls._codemod_provider_packages(own):
+            exports = cls._codemod_installed_package_exports(snapshot, run, package)
             if exports is None:
                 continue
+            # An installed provider contains no module of this project, so it
+            # has no project directory: it is never a header's scope.
             merged_exports.setdefault(package, exports)
-            merged_directories.setdefault(package, ".")
             merged_modules.setdefault(package, ())
         return m.Infra.CodemodPackageExportsFacts(
             exports=merged_exports,
@@ -165,57 +168,51 @@ class FlextInfraUtilitiesCodemodNativePackage:
         )
 
     @staticmethod
-    def _codemod_provider_declared_packages(project: Path) -> tuple[str, ...]:
-        """Distributions the project declares and the environment installs.
+    def _codemod_provider_packages(project: Path) -> t.StrTuple:
+        """Facade packages the project's runtime closure installs.
 
-        Reads the project manifest's dependency declarations (the SSOT of what
-        the project composes) and keeps every name that resolves in the
-        running environment, so only present providers contribute exports.
+        The closure's import packages come from the runtime-closure owner;
+        a package is a facade provider by the same generated-lazy-export
+        verdict ``codemod_facade_packages`` applies. The own package is
+        excluded: the repository facts already carry it.
 
         Returns:
-            Provider package names in manifest declaration order.
+            The provider facade package names, sorted.
 
         """
-        manifest = project / "pyproject.toml"
-        if not manifest.is_file():
-            return ()
-        declared = tomllib.loads(manifest.read_text())
-        project_table = declared.get("project", {})
-        uv_table = declared.get("tool", {}).get("uv", {})
-        requirements: list[str] = [
-            *project_table.get("dependencies", []),
-            *(
-                item
-                for extras in project_table.get("optional-dependencies", {}).values()
-                for item in extras
-            ),
-            *uv_table.get("override-dependencies", []),
-            *uv_table.get("constraint-dependencies", []),
-        ]
-        names: list[str] = []
-        for requirement in requirements:
-            name = re.split(r"[<>=!~\[; @]", requirement, maxsplit=1)[0].strip()
-            if name and name.replace("-", "_").isidentifier() and name not in names:
-                names.append(name)
+        own = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         return tuple(
-            name for name in names if find_spec(name.replace("-", "_")) is not None
+            sorted(
+                module
+                for module in FlextInfraUtilitiesCodemodNative.codemod_runtime_modules(
+                    project
+                )
+                if module != own and u.runtime_alias_names(module)
+            )
         )
 
     @classmethod
     def _codemod_installed_package_exports(
-        cls, run: m.Infra.PythonModelRun, package: str
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        run: m.Infra.PythonModelRun,
+        package: str,
     ) -> t.StrTuple | None:
         """Statically read one installed package initializer's ``__all__``.
+
+        Rope's module finder elects the package folder on the project's
+        python path; its initializer is read by the same static model the
+        repository facts use.
 
         Returns:
             The declared names, or ``None`` when the package publishes no
             initializer the static model can read.
 
         """
-        spec = find_spec(package)
-        if spec is None or not spec.submodule_search_locations:
+        resource = snapshot.engine.find_module(package)
+        if resource is None or FlextInfraUtilitiesRopeRuntime.file_resource(resource):
             return None
-        initializer = Path(next(iter(spec.submodule_search_locations))) / "__init__.py"
+        initializer = Path(resource.real_path) / "__init__.py"
         if not initializer.is_file():
             return None
         module = FlextInfraUtilitiesPythonModel.python_model_module_at(
@@ -381,33 +378,43 @@ class FlextInfraUtilitiesCodemodNativePackage:
         prunes the unused names and orders the block. A module inside a
         declaring package imports from the deepest declaring package that
         contains it; every other module imports from the unique shallowest
-        declaring package.
+        declaring package, and gets no header when that package is ambiguous.
 
         Returns:
             The generated ``import-header`` rule documents keyed by id.
 
         """
-        facts = cls.codemod_workspace_export_facts(snapshot, project)
+        del snapshot
+        del project
         directories = facts.directories
         groups: dict[tuple[str, str | None, t.StrTuple], set[str]] = {}
         resolvable = cls.codemod_header_resolvable_names(facts)
         for name, packages in cls._codemod_declaring_packages(facts).items():
-            if name not in resolvable:
-                continue
+            # A module inside a declaring package always resolves the name to
+            # the deepest declaring package containing it, even when the
+            # shallowest declaration is ambiguous (``u`` published by both the
+            # source package and the ``tests`` tier): only the unscoped rule
+            # needs a unique shallowest package.
+            # An installed provider has no project directory: it is never a
+            # scope and never an ignored nested scope.
+            root = resolvable.get(name)
+            located = tuple(package for package in packages if package in directories)
             for package in packages:
-                home = PurePosixPath(directories[package])
+                if package != root and package not in directories:
+                    continue
+                home = PurePosixPath(directories.get(package, "."))
                 nested = tuple(
                     sorted(
                         directories[other]
-                        for other in packages
+                        for other in located
                         if other != package
                         and (
-                            package == resolvable[name]
+                            package == root
                             or PurePosixPath(directories[other]).is_relative_to(home)
                         )
                     )
                 )
-                scope = None if package == resolvable[name] else home.as_posix()
+                scope = None if package == root else home.as_posix()
                 groups.setdefault((package, scope, nested), set()).add(name)
         utils = cls._codemod_name_utils()
         documents: dict[str, t.JsonMapping] = {}
@@ -813,6 +820,24 @@ class FlextInfraUtilitiesCodemodNativePackage:
             snapshot, project, (c.Infra.IMPORT_LAW_LAYER_ZERO_ROLE,)
         )
 
+    @staticmethod
+    def _codemod_binding_index(
+        snapshot: p.Infra.WorkspaceSnapshot, path: Path
+    ) -> p.Infra.RopeSourceBindingIndex:
+        """Rope's source binding index of one snapshot module.
+
+        Returns:
+            The index Rope builds over the module's one parse.
+
+        """
+        FlextInfraUtilitiesWorkspaceSnapshot.workspace_source(snapshot, path)
+        return FlextInfraUtilitiesRopeRuntime.require_source_module(
+            FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                snapshot.engine,
+                FlextInfraUtilitiesRopeRuntime.file_resource_at(snapshot.engine, path),
+            )
+        ).get_source_binding_index()
+
     @classmethod
     def codemod_imported_top_modules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
@@ -829,16 +854,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         imported: set[str] = set()
         for path in snapshots.workspace_python_files(snapshot, root):
-            snapshots.workspace_source(snapshot, path)
-            module = FlextInfraUtilitiesRopeRuntime.require_source_module(
-                FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    snapshot.engine,
-                    FlextInfraUtilitiesRopeRuntime.file_resource_at(
-                        snapshot.engine, path
-                    ),
-                )
+            imported.update(
+                cls._codemod_binding_index(snapshot, path).absolute_import_roots()
             )
-            imported.update(module.get_source_binding_index().absolute_import_roots())
         snapshot.absolute_import_roots[root] = tuple(sorted(imported))
         return snapshot.absolute_import_roots[root]
 
@@ -871,13 +889,15 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 for family in families
             ):
                 continue
-            tree = snapshots.workspace_module_tree(snapshot, path)
             bound = {
-                alias.asname or alias.name: alias.name
-                for node in ast.walk(tree)
-                if isinstance(node, ast.Import)
-                for alias in node.names
+                alias or name: name
+                for layout in cls._codemod_binding_index(
+                    snapshot, path
+                ).import_layouts()
+                if layout.module_name is None and layout.level == 0
+                for name, alias, _region in layout.aliases
             }
+            tree = snapshots.workspace_module_tree(snapshot, path)
             for node in ast.walk(tree):
                 if (
                     isinstance(node, ast.Attribute)
@@ -983,7 +1003,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         ]
         if ignores:
             document["ignores"] = ignores
-        return {rule_id: document}
+        return FlextInfraUtilitiesCodemodRules.tests_tier_documents(document, ignores)
 
     @classmethod
     def codemod_library_type_rules(
@@ -1122,8 +1142,12 @@ class FlextInfraUtilitiesCodemodNativePackage:
             constraints["ATTR"] = {
                 "not": {"regex": f"^(?:{'|'.join(map(re.escape, protocols))})$"}
             }
+        # The tests-tier delta names pytest types directly (pytest fixtures
+        # and hooks); every other library type there still belongs to `t`.
         return {
-            rule_id: document,
+            **FlextInfraUtilitiesCodemodRules.tests_tier_documents(
+                document, layer_zero
+            ),
             protocol_id: {
                 **document,
                 "id": protocol_id,
@@ -1179,15 +1203,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 sources=sources,
                 source_project=snapshot.engine,
             )
-            for node in ast.walk(state.tree):
-                if not isinstance(node, (ast.Import, ast.ImportFrom)):
-                    continue
-                for alias in node.names:
-                    target = (
-                        node.module or ""
-                        if isinstance(node, ast.ImportFrom)
-                        else alias.name
-                    )
+            for layout in cls._codemod_binding_index(snapshot, path).import_layouts():
+                for name, _alias, _region in layout.aliases:
+                    target = layout.module_name or name
                     if target.startswith(f"{state.scope.namespace}.") and (
                         FlextInfraUtilitiesImportLaw.import_law_layer_zero_helper(
                             state, target

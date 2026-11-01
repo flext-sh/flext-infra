@@ -221,8 +221,15 @@ toolchain nor a corrupt lock stops it:
    whose own preview is not `[]`; an absent lock previews every tool and is
    regenerated in full. The previews resolve versions only; the lock of a
    changed tool downloads its provenance artifacts for every declared platform.
-   Plain `mise lock` with no tool arguments would refresh every locked entry and
-   re-download each provenance artifact, so it is never used.
+   Plain `mise lock` with no tool arguments refreshes every locked entry and
+   re-downloads each provenance artifact, so it runs only on the pruning path:
+   when the whole preview is not `[]` but no declared tool's own preview
+   changes, the change is the removal of entries for tools the configuration
+   no longer declares. Plain `mise lock` keeps the locked versions and prunes
+   those entries, and a whole preview that is still not `[]` afterwards fails
+   the upgrade. Measured 2026-11-01 on a two-member scratch workspace whose root
+   lock still carried six undeclared tools: the prune took 43.7 s, and the next
+   `make upg` reported no locked version changes in every governed checkout.
    Regenerating an invalid or absent lock is a repair path with no native
    shortcut: every declared tool is locked again, and Mise downloads each tool's
    provenance artifact for every declared platform to verify its attestation
@@ -248,12 +255,19 @@ toolchain nor a corrupt lock stops it:
 
 Declared prerequisites of stage 6, open until they close:
 
-- **Self-hosting repositories** (flext-core, flext-cli, flext-infra: the project
-  is in flext-infra's own closure). The consumer-lock executor omits the
-  project, so it cannot import flext-infra there. Their executor must come from
-  flext-infra's own frozen lock, which today does not run its own source (the
-  `ForceDecode` skew). It closes when the integration lane's `make upg` repairs
-  flext-infra's lock.
+- **Self-hosting repositories** (flext-infra, flext-cli, flext-core). Every
+  executor syncs one form, `uv sync --frozen --no-default-groups --group
+  <dependency_group> --no-editable`. A project whose distribution belongs to the
+  runtime dependency closure of `codegen.infra_repository.distribution` (read at
+  generation from the installed distribution's metadata, never listed) also
+  installs its own locked non-editable build, because it supplies part of the
+  executor; every other project adds `--no-install-project`, so the executor
+  never imports its source. Every lock is already written before the executor
+  runs. The executor of flext-cli and flext-core imports, but stays open until
+  their locks run their own source: at the pinned `0.12.0-dev` versions their
+  CLI fails at import time (flext-cli: pydantic cannot build a schema for
+  `os.stat_result`; flext-core: `FlextCliTypes` has no `StrDict`), a defect at the
+  lock owner.
 - **Publication.** A consumer's executor runs the flext-infra version its lock
   pins, so `deps repair-mise-platforms` exists there only after the release
   that carries it is published and the consumer's `make upg` locks it.
@@ -583,11 +597,12 @@ Every declared target retains an explicit source-planning outcome; independent
 targets continue. A failed publication or hook stores that original failed Result
 on its shared cohort outcomes only when no earlier native failure was retained.
 
-The existing per-repository execution boundary contains unexpected `Exception`
-values as native outcomes with their original object and traceback. Native SDK
-exception inheritance need not be replicated in a catch catalog. Cancellation
-and signal exceptions outside `Exception` propagate; expected domain outcomes
-continue through their explicit typed Result branches.
+No execution boundary converts an unexpected `Exception` into an outcome: the
+control phase of generation and every repository run of `mod` return typed
+Results for their declared failures, and any other exception escapes raw with
+its traceback to the CLI. The only conversion is a `mod` phase boundary's typed
+module failure (`u.Infra.MOD_MODULE_FAILURE_TYPES`), whose
+`c.Infra.MOD_FAILURE_MODULE_KEY` lets the batch apply quarantine that module.
 
 Incremental workspace indexing accepts its prior typed index and changed paths
 as one refresh request. Module evolution and package assembly remain in the
@@ -3787,6 +3802,18 @@ semicolon-separated small statements. This preserves each import's physical span
 for subsequent line-based placement, including when runtime reads promote only
 some imports out of a typing guard. Leading and trailing comments remain attached
 to the rewritten statement group; no empty guard is masked with a synthetic pass.
+
+Module-level import order is the formatter's own isort order, because the Ruff
+`I001` repair is the last stage of every mod and generation normalization:
+`__future__`, standard library, third party, then first party (the module's
+namespace and the project's `src` packages); inside each section every `import x`
+precedes every `from x import y`, each by module path without case. A module the
+formatter already sorted therefore produces no plan. Publication normalizes a
+rewrite of existing bytes by repairing only the Ruff codes the rewrite introduced.
+A generated projection (one carrying the auto-generated header) is then formatted
+in full; an authored module is formatted only when its existing bytes are already
+formatter-clean. Authored format debt and pre-existing lint findings stay for
+`make fmt` and `make fix`; generation never reformats untouched authored lines.
 
 Deferred class annotations stay typing-only when native source ancestry proves
 ordinary class construction through `object`: undecorated declarations, no class

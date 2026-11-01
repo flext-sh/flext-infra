@@ -373,8 +373,12 @@ message: >-
   Service locator call: inject the dependency's `p` contract instead.
 ---
 # Annotations use the typed vocabulary: no Any, Optional, object or bare dict.
-# Names inside a call (a field factory such as `default_factory=dict`) are
-# values, not annotations.
+# A bare dict is the unparameterized builtin (`dict`, `Mapping[str, dict]`);
+# a parameterized `dict[K, V]` names its key and value types and is legal
+# (operator ruling 2026-11-01): the generic head of a `generic_type` or the
+# value of a `subscript` is not a bare dict. Field contracts of a parameterized
+# dict stay with dict-annotation-field-contract. Names inside a call (a field
+# factory such as `default_factory=dict`) are values, not annotations.
 #
 # No path is exempt in the universal layer. Dunder comparison/equality methods keep
 # their LSP-required `object` parameter (mypy rejects the narrowed @override
@@ -386,7 +390,19 @@ files:
   - "**/*.py"
 rule:
   kind: identifier
-  regex: "^(?:Any|Optional|object|dict)$"
+  any:
+    - regex: "^(?:Any|Optional|object)$"
+    - all:
+        - regex: "^dict$"
+        - not:
+            any:
+              - all:
+                  - nthChild: 1
+                  - inside:
+                      kind: generic_type
+              - inside:
+                  kind: subscript
+                  field: value
   not:
     any:
       - inside:
@@ -406,6 +422,6 @@ rule:
     stopBy: end
 message: >-
   Broad annotation: type through the `t` aliases and `p` protocols (no Any,
-  Optional, object or dict).
+  Optional, object or bare dict; a parameterized `dict[K, V]` is legal).
 metadata:
   enforce: [ENFORCE-016, ENFORCE-105]

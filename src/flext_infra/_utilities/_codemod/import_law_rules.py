@@ -351,7 +351,9 @@ class FlextInfraUtilitiesCodemodImportLawRules:
         }
         ranks = {
             path: FlextInfraUtilitiesImportLaw.module_import_layer(
-                ".".join(path.relative_to(root).with_suffix("").parts)
+                FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                    path, project_root=root
+                )
             )
             for path in located
         }
@@ -449,10 +451,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
                 target=name, attributes=("s",), qualified_base=f"{name}.s"
             )
             for name, (path, text) in modules.items()
-            if FlextInfraUtilitiesImportLaw.module_import_layer(
-                ".".join(path.relative_to(root).with_suffix("").parts)
-            )
-            == base_layer
+            if FlextInfraUtilitiesImportLaw.module_import_layer(name) == base_layer
             and "s" in cls._module_level_bindings(trees[path])
         )
         declared = tuple(

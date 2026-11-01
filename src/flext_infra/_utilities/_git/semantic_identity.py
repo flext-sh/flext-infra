@@ -163,7 +163,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         if primary.failure:
             return r[Path].from_failure(primary)
         git_dir = Path(repo.git_dir).resolve()
-        superproject = cls._superproject_root(
+        superproject, _attached = cls._superproject_root(
             repo, primary_root=primary.value, working_tree=working_tree
         )
         if superproject is not None or git_dir != Path(repo.common_dir).resolve():
@@ -255,25 +255,34 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         *,
         primary_root: Path,
         working_tree: Path,
-    ) -> Path | None:
+    ) -> tuple[Path | None, bool]:
         """Resolve the superproject working tree, probing the primary handle.
 
+        Git reports a superproject for the working tree it checks out as a
+        gitlink. A linked worktree of a submodule repository reports none: its
+        superproject comes from the primary checkout, and it is attached only
+        when Git says so for the working tree itself, never because its
+        directory happens to sit below the superproject.
+
         Returns:
-            The resulting ``Path | None``.
+            The superproject root, and whether Git attaches this working tree.
 
         """
         raw_super = repo.git.rev_parse("--show-superproject-working-tree").strip()
-        if not raw_super and primary_root != working_tree:
-            primary_repo = cls._repo(primary_root)
-            try:
-                raw_super = primary_repo.git.rev_parse(
-                    "--show-superproject-working-tree",
-                ).strip()
-            finally:
-                # The secondary handle is only opened for this one probe; every
-                # open GitPython handle pins a `git cat-file` child.
-                primary_repo.close()
-        return Path(raw_super).resolve() if raw_super else None
+        if raw_super:
+            return Path(raw_super).resolve(), True
+        if primary_root == working_tree:
+            return None, False
+        primary_repo = cls._repo(primary_root)
+        try:
+            raw_super = primary_repo.git.rev_parse(
+                "--show-superproject-working-tree",
+            ).strip()
+        finally:
+            # The secondary handle is only opened for this one probe; every
+            # open GitPython handle pins a `git cat-file` child.
+            primary_repo.close()
+        return (Path(raw_super).resolve() if raw_super else None), False
 
     @staticmethod
     def _has_gitlink_stages(repo: Repo) -> bool:
@@ -310,7 +319,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         porcelain = repo.git.status("--porcelain", "--untracked-files=all")
         branch = None if repo.head.is_detached else repo.active_branch.name
         origin_remote, upstream_remote = cls._redacted_remotes(repo)
-        superproject = cls._superproject_root(
+        superproject, is_attached_submodule = cls._superproject_root(
             repo,
             primary_root=primary_root,
             working_tree=working_tree,
@@ -328,9 +337,6 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         # whose .git is a real directory, so is_submodule stayed False and
         # consumers demoted them to unmanaged.
         is_submodule = superproject is not None
-        is_attached_submodule = (
-            superproject is not None and working_tree.is_relative_to(superproject)
-        )
 
         return m.Infra.GitIdentityReport(
             repo_root=working_tree,

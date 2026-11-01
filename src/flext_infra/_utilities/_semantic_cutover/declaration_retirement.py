@@ -201,9 +201,6 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             message = "ownership transfer requires a native class or function"
             raise TypeError(message)
         module = value.get_module()
-        if not isinstance(module, p.Infra.RopePyModule):
-            message = "ownership transfer has no native definition scope"
-            raise TypeError(message)
         resource = module.get_resource()
         if resource is None:
             message = "ownership transfer has no native definition resource"
@@ -351,14 +348,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             Whether the retired module body became provably empty.
 
         Raises:
-            TypeError: If the proposed module has no native syntax tree.
             ValueError: If a retiring wrapper still carries live behavior.
 
         """
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "retirement requires the proposed native module AST"
-            raise TypeError(msg)
         empty = all(
             (isinstance(item, ast.ImportFrom) and item.module == "__future__")
             or (
@@ -613,9 +606,6 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "retirement proof requires the native module AST"
-            raise TypeError(msg)
 
         def covers(line: int) -> bool:
             return path == span[0] and span[1] <= line <= span[2]
@@ -899,12 +889,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         sources: MutableMapping[t.Infra.RopeSourcePath, str],
         container: p.Infra.RopePyName,
     ) -> None:
-        """Remove only class-header edges to the proven empty native container.
-
-        Raises:
-            TypeError: If a base-owning module has no native syntax tree.
-
-        """
+        """Remove only class-header edges to the proven empty native container."""
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         for path, source in tuple(sources.items()):
             resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
@@ -916,9 +901,6 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             changes: list[m.Infra.SourceRewrite] = []
             tree = module.get_ast()
-            if not isinstance(tree, ast.Module):
-                msg = "retiring bases require the native module AST"
-                raise TypeError(msg)
             for node in ast.walk(tree):
                 rewrite = cls._retired_base_rewrite(
                     module, (path, source), node, container

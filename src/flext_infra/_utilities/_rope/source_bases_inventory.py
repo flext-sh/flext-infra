@@ -63,6 +63,7 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
             package=package,
             required_line=request.required_line,
             allow_conditional=request.allow_conditional,
+            source_owned=request.project.source_owned(request.path),
             definitions=definitions,
             lexical=globals_,
         )

@@ -9,13 +9,25 @@ valid:
 - from tests import tm
 - from collections.abc import Callable
 - from pydantic import Field
+- from flext_infra.workspace import FlextInfraWorkspaceDetector
+- from flext_infra.workspace import FlextInfraWorkspaceDetector, FlextInfraWorkspaceGovernance
+- from flext_infra.workspace import FlextInfraWorkspaceDetector as Detector
+- from flext_ldif.services import FlextLdifParser as Parser
+- |
+  from flext_infra.workspace import (
+      FlextInfraWorkspaceDetector,
+      FlextInfraWorkspaceGovernance,
+  )
 invalid:
 - from flext_core.services import FlextServiceRegistry
 - from flext_core.lazy_internal import install_lazy_exports
 - from flext_core.lazy.helpers import install_lazy_exports
 - from flext_core._models.registry import FlextModelsRegistry
-- from flext_ldif.services import FlextLdifParser as Parser
 - from flext_tests.pytest_bootstrap import bootstrap
+- from flext_infra.gates.loc_cap import FlextInfraGatesLocCap
+- from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+- from flext_infra.workspace import FlextInfraWorkspaceDetector, FlextInfraRopeWorkspaceMissing
+- from flext_ldif.services import FlextLdifWriter as Writer
 - |
   from flext_infra.codegen import (
       FlextInfraCodegenConform,

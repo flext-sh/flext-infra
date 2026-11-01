@@ -98,9 +98,6 @@ class FlextInfraUtilitiesSemanticDelegations(
         sources: Mapping[Path, str],
     ) -> tuple[list[p.Infra.SourceRewrite], list[p.Infra.RopeImportInfo]]:
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "delegation module has no native AST"
-            raise TypeError(msg)
         rewrites: list[p.Infra.SourceRewrite] = []
         required: list[p.Infra.RopeImportInfo] = []
         for owner in ast.walk(tree):
@@ -824,9 +821,6 @@ class FlextInfraUtilitiesSemanticDelegations(
             )
             raise TypeError(msg)
         tree = origin.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "prototype has no native lexical inventory"
-            raise TypeError(msg)
         if any(
             sum(
                 isinstance(part, c.Infra.AST_FUNCTION_TYPES)
@@ -1031,7 +1025,7 @@ class FlextInfraUtilitiesSemanticDelegations(
     @staticmethod
     def _require_deferred(module: p.Infra.RopePyModule) -> None:
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module) or not any(
+        if not any(
             isinstance(node, ast.ImportFrom)
             and node.module == "__future__"
             and any(alias.name == "annotations" for alias in node.names)

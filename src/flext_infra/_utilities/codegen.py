@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
+from typing import NoReturn
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p
+from flext_infra import c, config, e, m, p
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFacades,
@@ -59,6 +60,24 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesWorkspaceManifest,
 ):
     """Compose the source helpers consumed by the generation operation."""
+
+    @staticmethod
+    def codegen_raise_failure(scope: Path, failure: p.FailureLike) -> NoReturn:
+        """Stop codegen planning at its first failure instead of retaining it.
+
+        A failure carrying its original exception re-raises it unchanged.
+
+        Raises:
+            e.OperationError: A typed refusal naming the failed scope when the
+                failure carries no original exception.
+
+        """
+        if failure.exception is not None:
+            raise failure.exception
+        message = f"{failure.error}: {scope}"
+        raise e.OperationError(
+            message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(scope)}
+        )
 
     @staticmethod
     def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:

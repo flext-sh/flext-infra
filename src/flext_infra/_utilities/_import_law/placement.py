@@ -14,6 +14,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesImportLawPlacement(
@@ -30,9 +31,10 @@ class FlextInfraUtilitiesImportLawPlacement(
     a missing dependency fails loud at import time.
     """
 
-    _IMPORT_SECTION_STDLIB = 0
-    _IMPORT_SECTION_THIRD_PARTY = 1
-    _IMPORT_SECTION_OWN = 2
+    _IMPORT_SECTION_FUTURE = 0
+    _IMPORT_SECTION_STDLIB = 1
+    _IMPORT_SECTION_THIRD_PARTY = 2
+    _IMPORT_SECTION_OWN = 3
     _MIN_REORDERABLE_IMPORTS = 2
 
     # -- import guards ---------------------------------------------------------------
@@ -100,15 +102,19 @@ class FlextInfraUtilitiesImportLawPlacement(
         state: m.Infra.ImportLawPass,
         lines: Sequence[str],
     ) -> Sequence[tuple[int, int, Sequence[str]]]:
-        """Reorder module-level imports into the canonical layer groups.
+        """Reorder module-level imports into the formatter's isort layout.
 
         The region between the first and the last module-level import
         statement is rewritten only when it holds nothing but import
-        statements. The stable sort mirrors the formatter sections
-        (standard library, third party, own namespace) and orders the
-        own-namespace imports by the tooling import-layer order, then by
-        module path, so make mod and the formatter sections converge on
-        one layout.
+        statements. The stable sort is the formatter's own import order,
+        whose ``I001`` repair is the last stage of every mod and generation
+        normalization: sections ``__future__``, standard library, third
+        party, first party (the module's namespace and the project's ``src``
+        packages), and inside each section every ``import x`` before every
+        ``from x import y``, each by module path without case. A module the
+        formatter already sorted is therefore never rewritten: an order the
+        formatter would undo is churn that published untouched authored
+        modules, never a law.
 
         Returns:
             The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
@@ -130,15 +136,22 @@ class FlextInfraUtilitiesImportLawPlacement(
         )
         if any(not isinstance(node, c.Infra.AST_IMPORT_TYPES) for node in region):
             return ()
+        first_party = frozenset({
+            state.scope.namespace.partition(".")[0],
+            *FlextInfraUtilitiesRopeSource.discover_first_party_namespaces(
+                state.scope.project_root, source_project=state.source_project
+            ),
+        })
         ordered = sorted(
-            statements, key=lambda node: cls._import_law_import_sort_key(state, node)
+            statements,
+            key=lambda node: cls._import_law_import_sort_key(node, first_party),
         )
         if [id(node) for node in ordered] == [id(node) for node in statements]:
             return ()
         replacement: list[str] = []
         previous_section: int | None = None
         for node in ordered:
-            section = cls._import_law_import_section(state, node)
+            section = cls._import_law_import_section(node, first_party)
             if previous_section is not None and section != previous_section:
                 replacement.append("")
             replacement.extend(lines[node.lineno - 1 : cls._import_law_end_line(node)])
@@ -148,58 +161,39 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_import_sort_key(
         cls,
-        state: m.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
+        first_party: frozenset[str],
     ) -> tuple[int, int, str, int]:
-        """Return the stable sort key of one module-level import statement.
-
-        A root import from the own namespace ranks by the earliest layer
-        letter it imports (``from ns import t, m`` ranks at ``t``); a
-        submodule import ranks by the module path; anything else ranks at
-        the ``other`` slot.
+        """Return the formatter's sort key of one module-level import statement.
 
         Returns:
-            The ``(section, layer rank, module path, source line)`` tuple.
+            The ``(section, statement form, module path, source line)`` tuple:
+            ``import`` ranks before ``from`` and the path compares without case.
 
         """
-        section = cls._import_law_import_section(state, node)
-        root = state.scope.namespace
-        if isinstance(node, ast.ImportFrom) and (node.module or root) == root:
-            layer = min(
-                (
-                    cls.module_import_layer(f"{root}.{alias.name}", namespace=root)
-                    for alias in node.names
-                ),
-                default=cls.module_import_layer(
-                    f"{root}.{c.Infra.IMPORT_LAW_OTHER_LAYER}",
-                    namespace=root,
-                ),
-            )
-            module = root
-        else:
-            module = (
-                node.module or ""
-                if isinstance(node, ast.ImportFrom)
-                else node.names[0].name
-            )
-            layer = (
-                cls.module_import_layer(module, namespace=root)
-                if section == cls._IMPORT_SECTION_OWN
-                else 0
-            )
-        return (section, layer, module, node.lineno)
+        module = (
+            node.module or ""
+            if isinstance(node, ast.ImportFrom)
+            else node.names[0].name
+        )
+        return (
+            cls._import_law_import_section(node, first_party),
+            int(isinstance(node, ast.ImportFrom)),
+            module.lower(),
+            node.lineno,
+        )
 
     @classmethod
     def _import_law_import_section(
         cls,
-        state: m.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
+        first_party: frozenset[str],
     ) -> int:
         """Return the formatter section rank of one import statement.
 
         Returns:
-            ``0`` for the standard library, ``1`` for third parties and
-            ``2`` for the module's own namespace.
+            ``0`` for ``__future__``, ``1`` for the standard library, ``2``
+            for third parties and ``3`` for first-party packages.
 
         """
         root = (
@@ -209,15 +203,14 @@ class FlextInfraUtilitiesImportLawPlacement(
             if isinstance(node, ast.Import) and node.names
             else ""
         )
-        if (
-            not root
-            or root == state.scope.namespace
-            or root.startswith(f"{state.scope.namespace}.")
-        ):
+        package = root.partition(".")[0]
+        if not root or package in first_party:
             return cls._IMPORT_SECTION_OWN
+        if root == c.Infra.FUTURE_MODULE:
+            return cls._IMPORT_SECTION_FUTURE
         return (
             cls._IMPORT_SECTION_STDLIB
-            if root.partition(".")[0] in sys.stdlib_module_names
+            if package in sys.stdlib_module_names
             else cls._IMPORT_SECTION_THIRD_PARTY
         )
 

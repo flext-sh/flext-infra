@@ -210,10 +210,7 @@ def _provision_consumer_template(
         ),
     )
     planned = conform.plan(conform_request)
-    plan = tm.ok(planned)
-    if plan.exception is not None:
-        raise plan.exception
-    tm.that(plan.issues, empty=True, msg=str(plan.issues))
+    tm.ok(planned)
     tm.ok(
         u.Tests.materialize_codegen_plans(planned.map(lambda result: result.files)),
     )

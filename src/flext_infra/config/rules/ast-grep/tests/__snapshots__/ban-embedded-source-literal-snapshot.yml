@@ -6,6 +6,16 @@ snapshots:
       style: primary
       start: 23
       end: 83
+  "body = (\n    \"def main() -> int:\\n\"\n    \"    value = 1\\n\"\n    \"    other = 2\\n\"\n    \"    return value + other\\n\"\n)\n":
+    labels:
+    - source: |-
+        "def main() -> int:\n"
+            "    value = 1\n"
+            "    other = 2\n"
+            "    return value + other\n"
+      style: primary
+      start: 13
+      end: 112
   "code = (\n    \"from flext_cli import u\\n\"\n    \"e = {'b': ('c',)}\\n\"\n    \"print(u.Cli.dag_waves(e).error)\\n\"\n)\n":
     labels:
     - source: |-
@@ -15,6 +25,50 @@ snapshots:
       style: primary
       start: 13
       end: 106
+  "condition = (\n    f\"{indent}if (\\n\"\n    f\"{indent}    not isinstance({receiver}, type)\\n\"\n    f\"{indent}):\\n\"\n)\n":
+    labels:
+    - source: |-
+        f"{indent}if (\n"
+            f"{indent}    not isinstance({receiver}, type)\n"
+            f"{indent}):\n"
+      style: primary
+      start: 18
+      end: 109
+  "consumer = (\n    f\"from {package.name} import u\\n\"\n    f\"value = u.Domain.parse({raw!r})\\n\"\n)\n":
+    labels:
+    - source: |-
+        f"from {package.name} import u\n"
+            f"value = u.Domain.parse({raw!r})\n"
+      style: primary
+      start: 17
+      end: 91
+  "getter = (\n    f\"if {instance} is None:\\n    return {own}.{fields[1]}\\n\"\n    f\"return {own}.{fields[0]}({instance})\\n\"\n)\n":
+    labels:
+    - source: |-
+        f"if {instance} is None:\n    return {own}.{fields[1]}\n"
+            f"return {own}.{fields[0]}({instance})\n"
+      style: primary
+      start: 15
+      end: 118
+  "guard = (\n    \"try:\\n\"\n    \"    value = load()\\n\"\n    \"except KeyError:\\n\"\n    \"    value = None\\n\"\n)\n":
+    labels:
+    - source: |-
+        "try:\n"
+            "    value = load()\n"
+            "except KeyError:\n"
+            "    value = None\n"
+      style: primary
+      start: 14
+      end: 99
+  "initializer = (\n    '\"\"\"Public provider exports.\"\"\"\\n'\n    \"from .owner import FlextProvider\\n\"\n    '__all__ = [\"FlextProvider\"]\\n'\n)\n":
+    labels:
+    - source: |-
+        '"""Public provider exports."""\n'
+            "from .owner import FlextProvider\n"
+            '__all__ = ["FlextProvider"]\n'
+      style: primary
+      start: 20
+      end: 131
   "module = \"\"\"\nclass FlextDemo:\n    pass\n\"\"\"\n":
     labels:
     - source: |-
@@ -25,6 +79,22 @@ snapshots:
       style: primary
       start: 9
       end: 42
+  "module = (\n    f\"class Published{directory.name}: pass\\n\"\n    f\"__all__ = ['Published{directory.name}']\\n\"\n)\n":
+    labels:
+    - source: |-
+        f"class Published{directory.name}: pass\n"
+            f"__all__ = ['Published{directory.name}']\n"
+      style: primary
+      start: 15
+      end: 106
+  "native = (\n    f\"def {name}({argument}):\\n\"\n    f\"    return {target}({argument})\\n\"\n)\n":
+    labels:
+    - source: |-
+        f"def {name}({argument}):\n"
+            f"    return {target}({argument})\n"
+      style: primary
+      start: 15
+      end: 84
   "path.write_text(\"def main() -> int:\\n    return 0\\n\", encoding=\"utf-8\")\n":
     labels:
     - source: "\"def main() -> int:\\n    return 0\\n\""
@@ -37,9 +107,3 @@ snapshots:
       style: primary
       start: 9
       end: 38
-  "source = f\"value = {name!r}\\n\" f\"other = 1\\n\" f\"third = 2\\n\"":
-    labels:
-    - source: f"value = {name!r}\n" f"other = 1\n" f"third = 2\n"
-      style: primary
-      start: 9
-      end: 60

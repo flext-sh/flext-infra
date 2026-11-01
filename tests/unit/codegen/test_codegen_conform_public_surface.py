@@ -60,8 +60,6 @@ class TestsFlextInfraCodegenConformPublicSurface:
         plan = tm.ok(
             FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
         )
-        tm.that(plan.issues, eq=())
-        tm.that(plan.exception, eq=None)
         projected = next(file for file in plan.files if file.path == initializer)
         tm.that(projected.before, eq=before)
         tm.fail(b".removed" in tm.not_none(projected.desired_content))
@@ -431,12 +429,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
             workspace,
         )
 
-        plan = tm.ok(service.plan(request))
+        with u.Tests.raises(ValueError, match="cannot resolve package name") as raised:
+            service.plan(request)
 
-        tm.ok(bool(plan.issues))
-        cause = tm.not_none(plan.exception)
-        tm.that(str(cause), has="cannot resolve package name")
-        tm.that(str(cause), has=str(root / member.path))
+        tm.that(str(raised.value), has=str(root / member.path))
 
     @staticmethod
     def test_workspace_uv_plan_owns_root_environment_and_local_member_sources(

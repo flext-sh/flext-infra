@@ -6,18 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableSequence
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
 
 from flext_infra import p, t
-from flext_infra._models import (
-    FlextInfraModelsBase,
-    FlextInfraModelsCheck,
-    FlextInfraModelsMixins,
-)
+from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsMixins
 from flext_infra._models._config import FlextInfraModelsConfig
 
 
@@ -62,22 +58,8 @@ class FlextInfraModelsCodegenPipeline:
         ] = True
 
     class CodegenRepositoryPlanOutcome(m.ArbitraryTypesModel):
-        """One repository's planned files and environment, or its failure."""
+        """One repository's planned files and environment."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True,
-        )
-        exception: t.Port[BaseException] | None = m.Field(
-            default=None,
-            exclude=True,
-            description="First native target planning cause",
-        )
-        native_failure: t.Port[p.FailureLike] | None = m.Field(
-            default=None,
-            exclude=True,
-            description="Original failed Result retained by reference, without copying "
-            "metadata",
-        )
         repository: Annotated[
             t.NonEmptyStr,
             m.Field(description="Planned repository name"),
@@ -90,50 +72,16 @@ class FlextInfraModelsCodegenPipeline:
             FlextInfraModelsConfig.UvEnvironmentPlan | None,
             m.Field(description="uv environment plan of the repository"),
         ] = None
-        error: Annotated[
-            str,
-            m.Field(description="Planning failure, empty on success"),
-        ] = ""
-        error_type: Annotated[
-            str,
-            m.Field(description="Original qualified exception type, when raised"),
-        ] = ""
-        error_traceback: Annotated[
-            str,
-            m.Field(description="Original planning traceback, without local variables"),
-        ] = ""
-        issues: Annotated[
-            tuple[FlextInfraModelsCheck.Issue, ...],
-            m.Field(description="Native failures attributed to individual targets"),
-        ] = ()
         elapsed: Annotated[
             float,
             m.Field(ge=0, description="Planning wall seconds"),
         ] = 0.0
 
-        @m.computed_field
-        @property
-        def failed(self) -> bool:
-            """Include native causes even when no diagnostic was constructed."""
-            return bool(
-                self.error
-                or self.error_type
-                or self.error_traceback
-                or self.issues
-                or self.exception is not None
-                or self.native_failure is not None
-            )
-
     class CodegenPlan(m.ArbitraryTypesModel):
-        """Candidate effects retaining their native repository failure boundaries."""
+        """Candidate effects of one completely planned request."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
-        )
-        exception: t.Port[BaseException] | None = m.Field(
-            default=None,
-            exclude=True,
-            description="First native target failure carried into publication",
         )
         request: Annotated[
             t.Port[p.Infra.CodegenGenerateRequest],
@@ -155,10 +103,6 @@ class FlextInfraModelsCodegenPipeline:
             tuple[FlextInfraModelsConfig.CodegenFilePlan, ...],
             m.Field(description="All render results validated before application"),
         ]
-        issues: Annotated[
-            tuple[FlextInfraModelsCheck.Issue, ...],
-            m.Field(description="Planning failures retained alongside valid outputs"),
-        ] = ()
         outcomes: tuple[
             FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
         ] = m.Field(
@@ -237,13 +181,6 @@ class FlextInfraModelsCodegenPipeline:
     class CodegenConformState(m.ArbitraryTypesModel):
         """Mutable request-local data owned by one projection invocation."""
 
-        control_outcomes: tuple[
-            FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
-        ] = m.Field(
-            default=(),
-            exclude=True,
-            description="Original file-only control outcomes of this invocation",
-        )
         request: t.Port[p.Infra.CodegenGenerateRequest] | None = m.Field(
             default=None,
             exclude=True,
@@ -255,15 +192,6 @@ class FlextInfraModelsCodegenPipeline:
                 exclude=True,
                 description="Original cohort plans available to native source reads",
             )
-        )
-        completed_source_plans: (
-            tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] | None
-        ) = m.Field(
-            default=None,
-            exclude=True,
-            description=(
-                "Authenticated complete source output, absent before validation"
-            ),
         )
         repository_root: Path = m.Field(
             default=Path(),
@@ -280,21 +208,6 @@ class FlextInfraModelsCodegenPipeline:
             exclude=True,
             description="Facade-bound docs planning",
         )
-        planning_issues: MutableSequence[FlextInfraModelsCheck.Issue] = m.Field(
-            default_factory=list[FlextInfraModelsCheck.Issue],
-            exclude=True,
-            description="Native file planning failures retained by this invocation",
-        )
-        planning_exception: t.Port[BaseException] | None = m.Field(
-            default=None,
-            exclude=True,
-            description="First native file planning cause",
-        )
-        planning_failure: t.Port[p.FailureLike] | None = m.Field(
-            default=None,
-            exclude=True,
-            description="First failed Result from the native planning boundary",
-        )
         docs_planner: t.Port[p.Infra.DocsArtifactPlanner] | None = m.Field(
             default=None,
             exclude=True,
@@ -306,9 +219,6 @@ class FlextInfraModelsCodegenPipeline:
             description=(
                 "The run's one workspace snapshot; present while repositories plan"
             ),
-        )
-        _generation_issues: MutableSequence[FlextInfraModelsCheck.Issue] = (
-            m.PrivateAttr(default_factory=list[FlextInfraModelsCheck.Issue])
         )
 
 

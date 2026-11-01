@@ -80,7 +80,6 @@ class TestsFlextInfraCodegenBeadsProjection:
 
         plan = u.Tests.governed_project_plan(root)
 
-        tm.that(plan.issues, eq=())
         tm.that(plan.workspace.repository, eq=declared.repository)
         tm.that(plan.workspace.repository.kind, eq=kind)
         tm.that(plan.workspace.repository.package, eq=True)

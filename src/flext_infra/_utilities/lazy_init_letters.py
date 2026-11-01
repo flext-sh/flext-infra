@@ -274,20 +274,60 @@ class FlextInfraUtilitiesLazyInitLetters:
         that binds the name itself; that module's own letter derivation
         (``python_model_letters``: an exported alias of a class) decides.
 
-        Returns:
-            The declaring module name and whether it declares a facade letter.
+        A route has no declaration (``""``) when it ends at a package this run
+        plans without that name, or at a generated initializer that no longer
+        binds it: those surfaces are projections this generation owns, never
+        declaration owners, so a stale projection elsewhere cannot resurrect
+        what they dropped.
 
-        Raises:
-            ValueError: If the route is cyclic or ends in no static binding.
+        Returns:
+            The declaring module name, ``""`` without one, and whether it
+            declares a facade letter; resolved once per run when final.
 
         """
-        python = FlextInfraUtilitiesPythonModel
+        cached = run.declarations.get(target)
+        if cached is not None:
+            return cached
+        declaration, final = cls._lazy_init_route_declaration(run, target)
+        if final:
+            run.declarations[target] = declaration
+        return declaration
+
+    @classmethod
+    def _lazy_init_route_declaration(
+        cls, run: m.Infra.LazyInitRun, target: tuple[str, str]
+    ) -> tuple[tuple[str, bool], bool]:
+        """Walk one publication route for ``_lazy_init_declaration``.
+
+        A route is final when every indexed package it crosses is already
+        planned: plans never change once decided and every other source is
+        fixed for the run, so only such a route may be remembered.
+
+        Returns:
+            The declaring module name (``""`` without one) with its letter
+            status, and whether the route is final.
+
+        Raises:
+            ValueError: If the route is cyclic or an authored module publishes
+                a name it never binds.
+
+        """
         seen: set[tuple[str, str]] = set()
+        final = True
         while target not in seen:
             seen.add(target)
             module_name, attribute = target
-            package_dir, _ = cls._lazy_init_package_dir(run, module_name)
+            package_dir, path = cls._lazy_init_source(run, module_name)
             plan = run.plans.get(package_dir) if package_dir is not None else None
+            final = final and (
+                plan is not None or str(package_dir) not in run.index.packages_by_dir
+            )
+            if plan is not None and (
+                plan.action
+                not in {c.Infra.LazyInitAction.WRITE, c.Infra.LazyInitAction.RETAIN}
+                or attribute not in plan.exports
+            ):
+                return ("", False), final
             route = (
                 plan.lazy_map.get(attribute) or plan.eager_dunders.get(attribute)
                 if plan is not None
@@ -296,40 +336,81 @@ class FlextInfraUtilitiesLazyInitLetters:
             if route is not None and route != target:
                 target = route
                 continue
-            path = (
-                package_dir / c.Infra.INIT_PY
-                if package_dir is not None
-                else run.model.module_files.get(module_name)
-                or cls._lazy_init_module_file(run, module_name)
-            )
-            module = python.python_model_module_at(run.model, path, module_name)
-            if python.python_model_defines(module, attribute):
-                return module_name, attribute in python.python_model_letters(module)
-            imported = module.imports.get(attribute, "")
-            provider, _, name = imported.rpartition(".")
-            if not provider:
-                msg = f"lazy-init published name has no static binding: {target}"
-                raise ValueError(msg)
-            target = (provider, name)
+            declaration, target = cls._lazy_init_module_binding(run, target, path)
+            if declaration is not None:
+                return declaration, final
         msg = f"lazy-init cyclic publication: {target}"
         raise ValueError(msg)
 
-    @staticmethod
-    def _lazy_init_module_file(run: m.Infra.LazyInitRun, module_name: str) -> Path:
-        """Return the source file the run's native project elects for a module.
+    @classmethod
+    def _lazy_init_module_binding(
+        cls, run: m.Infra.LazyInitRun, target: tuple[str, str], path: Path
+    ) -> tuple[tuple[str, bool] | None, tuple[str, str]]:
+        """Read one route hop at the module source that publishes the name.
 
         Returns:
-            The elected module file.
+            The declaration when this module ends the route (``None`` when it
+            re-exports), and the next hop of the route.
 
         Raises:
-            ValueError: If the module resolves to no source file.
+            ValueError: If an authored module publishes a name it never binds.
 
         """
+        python = FlextInfraUtilitiesPythonModel
+        module_name, attribute = target
+        module = python.python_model_module_at(run.model, path, module_name)
+        if python.python_model_defines(module, attribute):
+            return (
+                module_name,
+                attribute in python.python_model_letters(module),
+            ), target
+        imported = module.imports.get(attribute, "")
+        if imported and (
+            imported in run.model.module_files
+            or cls._lazy_init_package_dir(run, imported)[0] is not None
+        ):
+            # ``from pkg import sub`` binds the submodule itself: the
+            # module is its own declaration, never a facade letter.
+            return (imported, False), target
+        provider, name = imported.rpartition(".")[::2]
+        if not provider:
+            text = cls.lazy_init_text(run, path)
+            if text is not None and text.startswith(c.Infra.AUTOGEN_HEADER):
+                return ("", False), target
+            msg = f"lazy-init published name has no static binding: {target}"
+            raise ValueError(msg)
+        return None, (provider, name)
+
+    @staticmethod
+    def _lazy_init_source(
+        run: m.Infra.LazyInitRun, module_name: str
+    ) -> tuple[Path | None, Path]:
+        """Return a module's package directory, if any, and its source file.
+
+        This run's index answers its own modules; one election through the
+        native project answers every other module.
+
+        Returns:
+            The package directory (``None`` for a plain module) and the file.
+
+        Raises:
+            ValueError: If the module resolves to no source.
+
+        """
+        package_dir = run.index.package_dir_by_name.get(module_name)
+        if package_dir is not None:
+            return package_dir, package_dir / c.Infra.INIT_PY
+        indexed = run.model.module_files.get(module_name)
+        if indexed is not None:
+            return None, indexed
         elected = run.model.source_project.find_module(module_name)
-        if elected is None or elected.is_folder():
+        if elected is None:
             msg = f"lazy-init published module resolves to no source: {module_name}"
             raise ValueError(msg)
-        return Path(elected.real_path)
+        found = Path(elected.real_path)
+        return (
+            (found, found / c.Infra.INIT_PY) if elected.is_folder() else (None, found)
+        )
 
     @staticmethod
     def _lazy_init_facet_binding(

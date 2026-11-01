@@ -112,8 +112,8 @@ class TestsFlextInfraRecursiveFamilyFacades:
         """Close facade cohorts through the session's public projection DSL.
 
         Returns:
-            The declared candidate advanced by every projected effect, or the
-            outcome's original native failure.
+            The declared candidate advanced by every projected effect; the
+            first projection failure propagates with its native cause.
 
         """
         outcome = workspace.facade_projection(
@@ -124,14 +124,6 @@ class TestsFlextInfraRecursiveFamilyFacades:
             ),
             selection=selection,
         )
-        if outcome.native_failure is not None:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(
-                outcome.native_failure
-            )
-        if outcome.failed:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
-                outcome.error or str(outcome.issues), exception=outcome.exception
-            )
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(
             u.Infra.codegen_compose_file_plans(
                 (*declared_files, *outcome.files), ordered=True

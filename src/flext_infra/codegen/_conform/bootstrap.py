@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, assert_never
 
-from flext_infra import c, m, p, r, s, u
+from flext_infra import c, m, p, s, u
 
 
 class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
@@ -27,52 +27,6 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
             description="Mutable request-local data owned by one conform invocation.",
         ),
     ] = m.Field(default_factory=m.Infra.CodegenConformState, validate_default=True)
-
-    def _begin_planning(self) -> None:
-        """Begin one public invocation without replacing its borrowed resources."""
-        self.state.planning_failure = None
-        self.state.planning_exception = None
-        self.state.planning_issues.clear()
-
-    def retain_diagnostics(
-        self,
-        *exceptions: BaseException | None,
-        issues: Sequence[m.Infra.Issue] = (),
-        failure: p.FailureLike | None = None,
-    ) -> None:
-        """Retain the first native failure as one indivisible contract."""
-        self.state.planning_issues.extend(issues)
-        if self.state.planning_failure is None:
-            exception = next(
-                (exception for exception in exceptions if exception is not None),
-                None,
-            )
-            if failure is None and exception is not None:
-                failure = r.fail(str(exception), exception=exception)
-            if failure is not None:
-                self.state.planning_failure = failure
-                self.state.planning_exception = failure.exception
-
-    def _record_file_failure(
-        self,
-        path: Path,
-        error: str,
-        *,
-        exception: BaseException | None = None,
-    ) -> None:
-        """Retain an actual target failure through the shared diagnostic model."""
-        self.retain_diagnostics(
-            exception,
-            issues=(
-                m.Infra.Issue(
-                    file=str(path),
-                    line=0,
-                    column=0,
-                    code=c.Infra.ToolOutcome.ERROR.value,
-                    message=error,
-                ),
-            ),
-        )
 
     @staticmethod
     def link_mode(

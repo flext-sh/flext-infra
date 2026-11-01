@@ -63,9 +63,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         Returns:
             The unique declaration and lexical scope, or None without native proof.
 
-        Raises:
-            TypeError: If the native module does not expose a Python syntax tree.
-
         """
         supplier = cls.source_import_binding(binding)
         if (
@@ -78,9 +75,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             return None
         tree = module.get_ast()
-        if not isinstance(tree, ast.AST):
-            message = "native alias module has no Python syntax tree"
-            raise TypeError(message)
         declarations: list[tuple[ast.TypeAlias, p.Infra.RopeScope]] = []
         for node in ast.walk(tree):
             if not isinstance(node, ast.TypeAlias):
@@ -547,9 +541,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         holder, line = binding.get_definition_location()
         if holder is not None and line is not None:
             tree = holder.get_ast()
-            if not isinstance(tree, ast.AST):
-                msg = "native alias holder has no Python AST"
-                raise TypeError(msg)
             statement = cls._class_alias_statement(holder, binding, tree)
             if statement is not None:
                 holder, declaration, scope, offset, primary = statement
@@ -595,12 +586,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             value is not a bare name reference.
 
         """
-        if isinstance(declaration, ast.Assign):
-            primary: ast.expr | None = declaration.value
-        elif isinstance(declaration, ast.AnnAssign):
-            primary = declaration.value
-        else:
-            return None
+        primary: ast.expr | None = declaration.value
         if primary is None or not isinstance(primary, c.Infra.AST_NAME_REFERENCE_TYPES):
             return None
         while isinstance(primary, ast.Attribute):
@@ -681,9 +667,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
     # Pass-scoped memo (single-invocation lifecycle): tree identity keys
     # keep entries fresh; the process boundary is the cache boundary.
-    _TREE_ASSIGNMENT_INDEXES: ClassVar[
-        dict[int, tuple[ast.AST, dict[int, ast.AST | None]]] | None
-    ] = None
+    _tree_assignment_indexes: ClassVar[
+        dict[int, tuple[ast.AST, dict[int, ast.AST | None]]]
+    ] = {}
 
     @classmethod
     def _tree_assignment_index(
@@ -702,12 +688,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             or None where the offset is ambiguous.
 
         """
-        indexes: dict[int, tuple[ast.AST, dict[int, ast.AST | None]]] | None = (
-            cls._TREE_ASSIGNMENT_INDEXES
-        )
-        if indexes is None:
-            indexes = {}
-            cls._TREE_ASSIGNMENT_INDEXES = indexes
+        indexes = cls._tree_assignment_indexes
         entry = indexes.get(id(tree))
         if entry is not None and entry[0] is tree:
             return entry[1]

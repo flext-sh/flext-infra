@@ -56,7 +56,7 @@ class FlextInfraUtilitiesGitRequirementSource:
             The resulting ``bool``.
 
         """
-        return c.Infra.GIT_COMMIT_OID_RE.fullmatch(ref) is not None
+        return c.Infra.GIT_COMMIT_REF_RE.fullmatch(ref) is not None
 
     @staticmethod
     def declared_git_source(requirement: str) -> p.Result[tuple[str, str]]:

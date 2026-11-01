@@ -119,7 +119,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         Returns:
             The validated full repository codegen policy of these layers and
-            the governance kind it declares.
+            the governance kind the repository declares.
 
         """
         return cls._repository_codegen_spec(
@@ -561,13 +561,13 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 as the cause.
 
         """
-        kind = FlextInfraUtilitiesProjectManagedArtifacts._require_declared_kind(
+        kind = FlextInfraUtilitiesProjectManagedArtifacts.require_declared_kind(
             u.Cli.json_walk_path(document, ("Infra", "codegen", "repository")),
             repository_root,
         )
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         try:
-            spec = m.Infra.CodegenConfigSpec.model_validate(codegen)
+            return m.Infra.CodegenConfigSpec.model_validate(codegen), kind
         except m.ValidationError as error:
             # Config-authoring failures surface as the service contract's own
             # error type, never as a raw third-party validation exception.

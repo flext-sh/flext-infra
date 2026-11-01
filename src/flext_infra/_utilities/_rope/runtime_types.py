@@ -108,6 +108,35 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         return value
 
     @classmethod
+    def require_declared_source_module(
+        cls, project: p.Infra.RopeProject, module: str
+    ) -> p.Infra.RopeSourceModule:
+        """Admit the source module that declares one dotted module or package.
+
+        Rope answers a package name with its ``PyPackage`` folder object, which
+        carries no source; the declaration of a package is its ``__init__.py``,
+        so a folder resolves to that file before admission.
+
+        Returns:
+            The native source module declaring ``module``.
+
+        Raises:
+            ValueError: If the resolved module has no source resource.
+            TypeError: If rope's untyped resource is not a rope resource.
+
+        """
+        resource = project.get_module(module).get_resource()
+        if resource is None:
+            message = f"declared module has no source: {module}"
+            raise ValueError(message)
+        if not isinstance(resource, p.Infra.RopeResource):  # untyped rope boundary
+            message = f"declared module source is not a rope resource: {module}"
+            raise TypeError(message)
+        if resource.is_folder():
+            resource = project.get_resource(f"{resource.path}/{c.Infra.INIT_PY}")
+        return cls.require_source_module(project.get_pymodule(resource))
+
+    @classmethod
     def require_parsed_module(cls, value: p.AttributeProbe) -> p.Infra.RopeParsedModule:
         """Admit native parsed modules through the existing runtime predicate.
 

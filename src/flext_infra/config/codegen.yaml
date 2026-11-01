@@ -134,7 +134,7 @@ Infra:
       # (the header stage owns import-header, the catalog stage the rest).
       renderers:
         - name: codemod_import_header_rules
-          facts: codemod_package_export_facts
+          facts: codemod_workspace_export_facts
           shapes: [import-header]
         - name: codemod_module_member_rules
           facts: codemod_package_export_facts
@@ -258,6 +258,9 @@ Infra:
       # of the same normalized name and marker take precedence at rendering.
       # The selected fork preserves region coverage and resolves opaque source
       # bindings lazily; stale transitive metadata must not select an older source.
+      # A global override is the one source of its distribution: gen renders
+      # every runtime, optional and dependency-group line of that name without
+      # a direct reference (extras, specifier and marker kept).
       uv_override_dependencies:
       - rope @ git+https://github.com/marlon-costa-dc/rope.git@d56a179adcb2a8d932d96e742cdc42abebaf3885
       # Moving selectors consumed by generated .mise.toml and CI. Only
@@ -1104,7 +1107,11 @@ Infra:
       - site
       - vendor
       # Fixture materialization and pytest collection roots, not analyzer
-      # exclusions. Python files remain governed regardless of fixture location.
+      # exclusions: lint and type analysis still govern their Python files.
+      # The project trees beneath each root are scenario data for the
+      # ast-grep rule catalog (operator ruling 2026-11-01): the shared scan
+      # inventory (u.Infra.ast_grep_scan_targets) leaves them out of both the
+      # codemod gate and make mod; modules directly in a root stay governed.
       # flext-tests derives its fixture-tree location from this owner.
       scenario_data_roots:
       - tests/fixtures

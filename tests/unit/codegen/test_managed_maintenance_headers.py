@@ -108,7 +108,6 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         outer = u.Tests.git_repository(tmp_path)
         root = outer / "fixture-project"
         plan = u.Tests.scaffold_plan(root, what=surface)
-        tm.that(plan.issues, eq=(), msg=str(plan.issues))
         evidence = m.Infra.CodegenPlanningReport.model_validate_json(
             (
                 tm.ok(u.Infra.refactor_report_evidence_root(Path.cwd()))
@@ -132,8 +131,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
     def test_scaffold_preserves_original_git_identity(tmp_path: Path) -> None:
         """An existing destination records its own original Git identity."""
         root = u.Tests.git_repository(tmp_path, name="fixture-project")
-        plan = u.Tests.scaffold_plan(root, what=c.Infra.CodegenConformSurface.MAKEFILE)
-        tm.that(plan.issues, eq=(), msg=str(plan.issues))
+        u.Tests.scaffold_plan(root, what=c.Infra.CodegenConformSurface.MAKEFILE)
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
         evidence = m.Infra.CodegenPlanningReport.model_validate_json(
             (

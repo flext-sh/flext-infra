@@ -266,20 +266,6 @@ class FlextInfraModelsBase:
             t.NonEmptyStr | None,
             m.Field(description="Execution or report failure, independent of findings"),
         ] = None
-        error_code: Annotated[
-            str | None,
-            m.Field(
-                description="Original Result failure code when no process launched"
-            ),
-        ] = None
-        error_data: Annotated[
-            t.JsonMapping | None,
-            m.Field(description="Original Result failure metadata"),
-        ] = None
-        error_traceback: Annotated[
-            str | None,
-            m.Field(description="Original Result exception traceback when available"),
-        ] = None
 
         @m.model_validator(mode="after")
         def _require_execution_evidence(self) -> Self:

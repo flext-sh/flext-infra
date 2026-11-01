@@ -29,16 +29,15 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
         """Plan dependency-closed facade cohorts through this native session.
 
+        The first cohort failure stops the projection with its original cause.
+
         Returns:
-            Complete source effects and native failures retained by reference.
+            The complete source effects of every planned cohort.
 
         """
         root, project = self.repository_root, self.rope_project
         initializer, _source_view = planners
         layout = self.layout(root)
-        outcome = m.Infra.CodegenRepositoryPlanOutcome(
-            repository=layout.project_name if layout is not None else root.as_posix()
-        )
         # Publication writes reach the filesystem outside the Rope resource
         # API, so the native module cache never sees the change events; the
         # validation walk is Rope's public route to drop stale PyModules.
@@ -59,35 +58,29 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         for package in packages:
             for letter, family in u.Infra.facade_families().items():
                 self._projection_family(
-                    outcome,
                     (package, letter, family),
                     initializer=initializer,
                     selection=selection,
                     sources=sources,
                 )
-        outcome.files = tuple(
-            plan for plan in self._candidate_files if original.get(plan.path) != plan
+        return m.Infra.CodegenRepositoryPlanOutcome(
+            repository=layout.project_name if layout is not None else root.as_posix(),
+            files=tuple(
+                plan
+                for plan in self._candidate_files
+                if original.get(plan.path) != plan
+            ),
         )
-        if outcome.exception is not None:
-            # f-string única: a tupla de duas strings viola o contrato
-            # str do CodegenRepositoryPlanOutcome.error_type (regressão
-            # recorrente de merge; ver handoff 20261029 update 4).
-            outcome.error_type = (
-                f"{type(outcome.exception).__module__}."
-                f"{type(outcome.exception).__qualname__}"
-            )
-        return outcome
 
     def _projection_family(
         self,
-        outcome: m.Infra.CodegenRepositoryPlanOutcome,
         item: tuple[Path, str, m.Infra.FacadeFamily],
         *,
         initializer: p.Infra.SourceInitializerPlanner,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
         sources: Mapping[Path, str],
     ) -> None:
-        """Plan one facade family of one package, isolating its native failure."""
+        """Plan one facade family of one package."""
         package, letter, family = item
         selected = c.Infra.FacadeFamily(letter)
         if (
@@ -99,44 +92,22 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         directory = package / family.directory
         if not self.rope_project.source_query(directory, "isdir"):
             return
-        baseline = self._candidate_files
-        try:
-            self._projection_directory(
-                outcome,
-                (package, directory, letter, family),
-                initializer=initializer,
-                selection=selection,
-                sources=sources,
-            )
-        except (OSError, *u.Infra.rope_hierarchy_errors()) as exception:
-            exception.add_note(
-                f"facade cohort={directory}; repository={self.repository_root}"
-            )
-            if outcome.exception is None and outcome.native_failure is None:
-                outcome.exception = exception
-                outcome.error = str(exception)
-            outcome.issues = (
-                *outcome.issues,
-                m.Infra.Issue(
-                    file=str(directory),
-                    line=0,
-                    column=0,
-                    code=c.Infra.ToolOutcome.ERROR.value,
-                    message=str(exception),
-                ),
-            )
-            self.bind_candidate(declared_files=baseline)
+        self._projection_directory(
+            (package, directory, letter, family),
+            initializer=initializer,
+            selection=selection,
+            sources=sources,
+        )
 
     def _projection_directory(
         self,
-        outcome: m.Infra.CodegenRepositoryPlanOutcome,
         item: tuple[Path, Path, str, m.Infra.FacadeFamily],
         *,
         initializer: p.Infra.SourceInitializerPlanner,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
         sources: Mapping[Path, str],
     ) -> None:
-        """Plan one family directory; restore the baseline when any cohort fails."""
+        """Plan one family directory."""
         package, directory, letter, family = item
         project = self.rope_project
         baseline = self._candidate_files
@@ -144,17 +115,15 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         elected = u.Infra.facade_module_path(package, letter, project=project)
         if elected is None:
             if u.Infra.facade_component_declarations(project, directory):
-                self._projection_reject(
+                u.Infra.codegen_raise_failure(
                     directory,
                     r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
                         f"Family declarations have no facade: {directory}"
                     ),
-                    outcome=outcome,
                 )
             return
         if elected.failure:
-            self._projection_reject(directory, elected, outcome=outcome)
-            return
+            u.Infra.codegen_raise_failure(directory, elected)
         domains = {
             parent
             for path in sources
@@ -173,37 +142,28 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                 else []
                 for domain in domains
             }
-        failed = self._projection_domains(
-            outcome,
+        self._projection_domains(
             (directory, family, selected),
             observed,
             initializer=initializer,
             selection=selection,
-        ) or self._projection_finish(
-            outcome,
+        )
+        self._projection_finish(
             (directory, elected.value, selected),
             baseline,
             initializer=initializer,
             selection=selection,
         )
-        if failed:
-            self.bind_candidate(declared_files=baseline)
 
     def _projection_domains(
         self,
-        outcome: m.Infra.CodegenRepositoryPlanOutcome,
         item: tuple[Path, m.Infra.FacadeFamily, c.Infra.FacadeFamily],
         observed: Mapping[Path, Sequence[tuple[Path, str]]],
         *,
         initializer: p.Infra.SourceInitializerPlanner,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> bool:
-        """Seed and render domain cohorts from the deepest level upward.
-
-        Returns:
-            Whether a cohort failed and was attributed to the outcome.
-
-        """
+    ) -> None:
+        """Seed and render domain cohorts from the deepest level upward."""
         directory, family, selected = item
         for depth in sorted({len(domain.parts) for domain in observed}, reverse=True):
             cohort = tuple(
@@ -212,19 +172,16 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                 if len(domain.parts) == depth
                 and u.Infra.facade_component_declarations(self.rope_project, domain)
             )
-            if cohort and self._projection_depth(
-                outcome,
-                cohort,
-                selected,
-                initializer=initializer,
-                selection=selection,
-            ):
-                return True
-        return False
+            if cohort:
+                self._projection_depth(
+                    cohort,
+                    selected,
+                    initializer=initializer,
+                    selection=selection,
+                )
 
     def _projection_depth(
         self,
-        outcome: m.Infra.CodegenRepositoryPlanOutcome,
         cohort: tuple[
             tuple[Path, Path, m.Infra.FacadeFamily, Sequence[tuple[Path, str]]], ...
         ],
@@ -232,22 +189,15 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         initializer: p.Infra.SourceInitializerPlanner,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> bool:
-        """Seed one same-depth cohort, refresh exports, then render its domains.
-
-        Returns:
-            Whether the cohort failed and was attributed to the outcome.
-
-        """
+    ) -> None:
+        """Seed one same-depth cohort, refresh exports, then render its domains."""
         directory = cohort[0][1]
         seeded = r.traverse(cohort, self._projection_seed)
         if seeded.failure:
-            self._projection_reject(directory, seeded, outcome=outcome)
-            return True
-        if self._projection_exports(
-            outcome, directory, initializer=initializer, selection=selection
-        ):
-            return True
+            u.Infra.codegen_raise_failure(directory, seeded)
+        self._projection_exports(
+            directory, initializer=initializer, selection=selection
+        )
         for domain, target, name in seeded.value:
             rendered = u.Infra.facade_component_source(
                 self.rope_project,
@@ -257,34 +207,25 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                 owner_name=name,
             )
             if rendered.failure:
-                self._projection_reject(domain, rendered, outcome=outcome)
-                return True
+                u.Infra.codegen_raise_failure(domain, rendered)
             self._projection_source(target, rendered.value)
-        return False
 
     def _projection_finish(
         self,
-        outcome: m.Infra.CodegenRepositoryPlanOutcome,
         item: tuple[Path, Path, c.Infra.FacadeFamily],
         baseline: tuple[m.Infra.CodegenFilePlan, ...],
         *,
         initializer: p.Infra.SourceInitializerPlanner,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> bool:
-        """Render the family facade, rewire consumers and refresh exports.
-
-        Returns:
-            Whether the family failed and was attributed to the outcome.
-
-        """
+    ) -> None:
+        """Render the family facade, rewire consumers and refresh exports."""
         directory, destination, selected = item
         project = self.rope_project
         rendered = u.Infra.facade_component_source(
             project, destination, directory, family=selected
         )
         if rendered.failure:
-            self._projection_reject(destination, rendered, outcome=outcome)
-            return True
+            u.Infra.codegen_raise_failure(destination, rendered)
         self._projection_source(destination, rendered.value)
         self._projection_stage(
             u.Infra.plan_component_consumers(
@@ -306,24 +247,18 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                     declared_files=self._candidate_files,
                 )
             )
-        return self._projection_exports(
-            outcome, directory, initializer=initializer, selection=selection
+        self._projection_exports(
+            directory, initializer=initializer, selection=selection
         )
 
     def _projection_exports(
         self,
-        outcome: m.Infra.CodegenRepositoryPlanOutcome,
         scope: Path,
         *,
         initializer: p.Infra.SourceInitializerPlanner,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> bool:
-        """Stage the initializer exports of the current candidate.
-
-        Returns:
-            Whether the initializer failed and was attributed to the outcome.
-
-        """
+    ) -> None:
+        """Stage the initializer exports of the current candidate."""
         exports = initializer(
             self.repository_root,
             declared_files=self._candidate_files,
@@ -331,33 +266,8 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             selection=selection,
         )
         if exports.failure:
-            self._projection_reject(scope, exports, outcome=outcome)
-            return True
+            u.Infra.codegen_raise_failure(scope, exports)
         self._projection_stage(exports.value)
-        return False
-
-    @staticmethod
-    def _projection_reject(
-        scope: Path,
-        result: p.FailureLike,
-        *,
-        outcome: m.Infra.CodegenRepositoryPlanOutcome,
-    ) -> None:
-        """Attribute an expected failure without throwing or discarding its data."""
-        if outcome.native_failure is None and outcome.exception is None:
-            outcome.native_failure = result
-            outcome.exception = result.exception
-            outcome.error = result.error or ""
-        outcome.issues = (
-            *outcome.issues,
-            m.Infra.Issue(
-                file=str(scope),
-                line=0,
-                column=0,
-                code=result.error_code or c.Infra.ToolOutcome.ERROR.value,
-                message=result.error or "Source cohort planning failed",
-            ),
-        )
 
     def _projection_stage(self, plans: Sequence[m.Infra.CodegenFilePlan]) -> None:
         """Advance the existing candidate while preserving physical witnesses."""

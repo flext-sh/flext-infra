@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
+from importlib import metadata
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
@@ -59,6 +60,32 @@ class FlextInfraUtilitiesDependencyRequirements:
             or parsed.marker.evaluate(environment=dict(environment))
             else None
         )
+
+    @staticmethod
+    def installed_runtime_closure(distribution: str) -> frozenset[str]:
+        """Canonical names of an installed distribution and its runtime closure.
+
+        Each installed distribution's own metadata (``importlib.metadata``)
+        names its requirements; only those active without extras on this
+        interpreter are followed. An active requirement that is not installed
+        raises ``PackageNotFoundError``.
+
+        Returns:
+            The distribution and every runtime dependency it transitively requires.
+
+        """
+        closure: set[str] = set()
+        pending = [canonicalize_name(distribution)]
+        while pending:
+            name = pending.pop()
+            if name in closure:
+                continue
+            closure.add(name)
+            for raw in metadata.requires(name) or ():
+                parsed = Requirement(raw)
+                if parsed.marker is None or parsed.marker.evaluate({"extra": ""}):
+                    pending.append(canonicalize_name(parsed.name))
+        return frozenset(closure)
 
     @staticmethod
     def dependency_extras(requirements: Sequence[str], name: str) -> str:

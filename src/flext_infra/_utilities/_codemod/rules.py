@@ -9,12 +9,12 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, MutableMapping, Sequence
 from functools import cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodRulesDistributions,
     FlextInfraUtilitiesCodemodScopes,
@@ -25,6 +25,62 @@ class FlextInfraUtilitiesCodemodRules(
     FlextInfraUtilitiesCodemodRulesDistributions,
 ):
     """Resolve universal, runtime-transitive, and local ast-grep rule layers."""
+
+    @staticmethod
+    def tests_tier_documents(
+        document: t.JsonMapping, delta_ignores: Sequence[t.JsonValue]
+    ) -> Mapping[str, t.JsonMapping]:
+        """A library-boundary document and its pytest tests-tier delta copy.
+
+        ``conftest.py`` and each module directly in a declared scenario data
+        root (``codegen.exclusions.scenario_data_roots``) declare pytest
+        fixtures and hooks (flext-law, ADR-028 p.6): pytest is their direct
+        library there, and only there. The document ignores those files; the
+        copy ``<id>--tests-tier`` scans them with the document's own
+        ``MODULE`` constraint, further excluding the pytest module.
+
+        Returns:
+            The document and its delta copy keyed by rule id.
+
+        Raises:
+            TypeError: If the document declares no ``MODULE`` constraint.
+
+        """
+        files: list[t.JsonValue] = [
+            c.Infra.CODEMOD_CONFTEST_GLOB,
+            *(
+                f"**/{PurePosixPath(root).as_posix()}/*{c.Infra.EXT_PYTHON}"
+                for root in config.Infra.codegen.exclusions.scenario_data_roots
+            ),
+        ]
+        rule_id = str(document["id"])
+        delta_id = (
+            f"{rule_id}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
+            f"{c.Infra.CODEMOD_TESTS_TIER_DELTA_SUFFIX}"
+        )
+        constraints = document.get("constraints")
+        if not isinstance(constraints, Mapping) or "MODULE" not in constraints:
+            msg = f"{rule_id}: a library-boundary document constrains MODULE"
+            raise TypeError(msg)
+        module = constraints["MODULE"]
+        pytest_module: t.JsonDict = {"regex": rf"^{re.escape(c.Infra.PYTEST)}(?:\.|$)"}
+        ignores = document.get("ignores")
+        delta: t.JsonDict = {
+            **document,
+            "id": delta_id,
+            "files": files,
+            "constraints": {"MODULE": {"all": [module, {"not": pytest_module}]}},
+        }
+        delta.pop("ignores", None)
+        if delta_ignores:
+            delta["ignores"] = list(delta_ignores)
+        return {
+            rule_id: {
+                **document,
+                "ignores": [*(ignores if isinstance(ignores, list) else ()), *files],
+            },
+            delta_id: delta,
+        }
 
     @staticmethod
     def _read_provider_declaration(config_path: Path) -> t.JsonMapping:

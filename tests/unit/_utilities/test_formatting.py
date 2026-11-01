@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraUtilitiesformatting:
@@ -61,6 +61,14 @@ class TestsFlextInfraUtilitiesformatting:
         candidate = "import sys\n\nvalues = [" + ", ".join(map(str, values)) + "]\n"
         preserved = tm.ok(u.Infra.normalize_source(root, path, candidate))
         tm.fail("import sys" in preserved)
+        tm.ok(all(len(line) <= width for line in preserved.splitlines()))
+        tm.that(
+            tm.ok(u.Infra.normalize_source(root, path, preserved)),
+            eq=preserved,
+        )
+        # Premise: a rewrite of authored bytes carrying format debt repairs
+        # only what it introduced; the debt stays for ``make fmt``.
+        values_line = "values = [" + ", ".join(map(str, values)) + "]"
         normalized = tm.ok(
             u.Infra.normalize_source(
                 root,
@@ -70,14 +78,10 @@ class TestsFlextInfraUtilitiesformatting:
             )
         )
         tm.fail("import sys" in normalized)
+        tm.that(normalized, has=values_line)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
-        tm.ok(all(len(line) <= width for line in normalized.splitlines()))
-        tm.that(
-            tm.ok(u.Infra.normalize_source(root, path, normalized)),
-            eq=normalized,
-        )
         output = tm.ok(
-            u.Cli.run((sys.executable, "-c", normalized + "print(sum(values))\n"))
+            u.Cli.run((sys.executable, "-c", preserved + "print(sum(values))\n"))
         )
         tm.that(output.stdout.strip(), eq=str(sum(values)))
         with pytest.raises(SyntaxError):
@@ -110,6 +114,54 @@ class TestsFlextInfraUtilitiesformatting:
 
         tm.fail(rejected, has="E501")
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+
+    @staticmethod
+    def test_publication_never_rewrites_authored_module_with_findings(
+        fixture_tree: p.Tests.FixtureTree,
+        tmp_path: Path,
+    ) -> None:
+        """An authored module with lint and format findings is published as is.
+
+        Premise (measured on a consumer ``make gen``): a source rewrite that
+        only reorders imports reached publication, where the normalization
+        repaired its own ``I001`` and then reformatted the whole authored
+        module. Publication repairs only what a rewrite introduced; authored
+        format debt and lint findings belong to ``make fmt``/``make fix``.
+        A generated projection is still formatted in full. Both sources are
+        scenario data under ``tests/fixtures/authored-publication``.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        scenarios = fixture_tree(
+            "authored-publication", destination=tmp_path / "scenarios"
+        )
+        authored = (scenarios / "authored.py").read_text(encoding=c.DEFAULT_ENCODING)
+        churn = (scenarios / "import-churn.py").read_bytes()
+        path = package / "authored.py"
+        tm.ok(u.Cli.atomic_write_text_file(path, authored))
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(path))
+        plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=path,
+            before=before,
+            desired_content=churn,
+            desired_mode=before.mode,
+        )
+        changes = tm.ok(u.Infra.normalized_codegen_changes((plan,)))
+        tm.that(changes[0].desired_content, eq=before.content)
+        tm.ok(u.Infra.publish_codegen_plans(root, (plan,)))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=authored)
+        generated = f"{c.Infra.AUTOGEN_HEADER}\nvalues = [\n    1\n]\n"
+        tm.that(
+            tm.ok(
+                u.Infra.normalize_source(
+                    root,
+                    package / "generated.py",
+                    generated + "extra = [\n    2\n]\n",
+                    before_source=generated,
+                )
+            ),
+            has="values = [1]\nextra = [2]\n",
+        )
 
     @staticmethod
     def test_touched_formatting_repairs_imports_and_reaches_fixed_point(

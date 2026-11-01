@@ -705,7 +705,6 @@ class FlextInfraUtilitiesFacadeComponents:
             ordered = cls._facade_class_bases(
                 project,
                 (path, directory, module, rendered),
-                cls.facade_component_declarations(project, directory),
                 {
                     FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
                         module, source_project=project
@@ -866,7 +865,15 @@ class FlextInfraUtilitiesFacadeComponents:
                 ]
             ].from_failure(providers)
         composed = cls._facade_retained_providers(
-            module, path, providers.value[0], bases
+            module,
+            path,
+            providers.value[0],
+            (
+                bases,
+                cls._facade_root_precedence(project, directory, family)
+                if owner_name is not None
+                else (),
+            ),
         )
         if composed.failure:
             return r[
@@ -881,11 +888,17 @@ class FlextInfraUtilitiesFacadeComponents:
                     frozenset[str],
                 ]
             ].from_failure(composed)
+        # A recomposed utility domain owner is itself a utility provider, whose
+        # storage admits only ClassVar/Final members
+        # (``utility_namespace_declaration``); a ``TypeAlias`` publication there
+        # would make its own family root refuse it.
         published = cls._facade_nominal_publications(
             module,
             path,
             namespace,
-            providers.value[1],
+            ()
+            if family is c.Infra.FacadeFamily.U and owner_name is not None
+            else providers.value[1],
             (aliases, composed.value[0]),
         )
         if published.failure:
@@ -1007,7 +1020,6 @@ class FlextInfraUtilitiesFacadeComponents:
         proven = cls._facade_class_bases(
             project,
             (path, directory, module, owner),
-            declarations,
             sources,
         )
         if proven.failure:
@@ -1066,14 +1078,14 @@ class FlextInfraUtilitiesFacadeComponents:
         cls,
         project: p.Infra.RopeProject,
         facade: tuple[Path, Path, p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
-        declarations: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
         sources: Mapping[str, tuple[Path, str]],
     ) -> p.Result[tuple[t.StrTuple, ...]]:
         """Prove every facade class base before any source is rendered.
 
         A base whose import names no source binding is admitted only when its
-        provider is this family's generated barrel and a family module declares
-        the name (the barrel republication lands with the same generation) or
+        provider is this family's generated barrel (the facade is re-rendered
+        from the family declarations in the same generation: a declared name is
+        republished, a name no family module declares is a retired domain) or
         when it is an upstream module outside the project. Every other class
         is linearized by the source-bases owner, which rejects unresolved,
         module, ambiguous and inconsistent bases.
@@ -1090,8 +1102,7 @@ class FlextInfraUtilitiesFacadeComponents:
             barrel
         ).startswith(c.Infra.AUTOGEN_HEADER)
         admitted = (
-            frozenset({directory.resolve(), barrel.resolve()}),
-            frozenset(declaration.get_name() for _origin, declaration in declarations)
+            frozenset({directory.resolve(), barrel.resolve()})
             if generated
             else frozenset(),
             Path(project.root.real_path).resolve(),
@@ -1123,12 +1134,12 @@ class FlextInfraUtilitiesFacadeComponents:
     def _facade_class_deferred(
         project: p.Infra.RopeProject,
         facade: tuple[Path, p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
-        admitted: tuple[frozenset[Path], frozenset[str], Path],
+        admitted: tuple[frozenset[Path], Path],
     ) -> p.Result[bool]:
         """Classify one facade class by the provenance of its unresolved bases.
 
-        ``admitted`` holds the family barrel identities, the family names a
-        generated barrel republishes, and the project root.
+        ``admitted`` holds the generated family barrel identities (empty when
+        the barrel is authored) and the project root.
 
         Returns:
             Whether a base awaits its generated barrel republication, or the
@@ -1136,7 +1147,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         path, module, holder = facade
-        family, declared, root = admitted
+        family, root = admitted
         types = FlextInfraUtilitiesRopeRuntimeTypes
         deferred = False
         layout = module.get_source_binding_index().class_layout(holder.get_scope())
@@ -1160,7 +1171,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     f"Unresolved facade base: {path}:{expression}: {provider.error}",
                     exception=provider.exception,
                 )
-            if provider.value in family and binding.imported_name in declared:
+            if provider.value in family:
                 deferred = True
             elif provider.value.is_relative_to(root):
                 return r[bool].fail(f"Unresolved facade base: {path}:{expression}")
@@ -1508,9 +1519,14 @@ class FlextInfraUtilitiesFacadeComponents:
         module: p.Infra.RopeSourceModule,
         path: Path,
         admitted: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
-        bases: Sequence[tuple[str, p.Infra.RopePyObject]],
+        framing: tuple[Sequence[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]],
     ) -> p.Result[tuple[list[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]]]:
         """Retain uncovered bases and append each maximal admitted provider.
+
+        ``framing`` holds the authored bases and, for a recomposed domain owner,
+        the base precedence its family root facade already declares: bases that
+        facade names keep its order ahead of the rest, so the stale root stays
+        linearizable until it is re-rendered in the same pass.
 
         Returns:
             The retained base expressions and the provider bindings to import, or
@@ -1525,6 +1541,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 for _, other in admitted
             )
         )
+        bases, precedence = framing
         retained = [
             (expression, base)
             for expression, base in bases
@@ -1545,10 +1562,78 @@ class FlextInfraUtilitiesFacadeComponents:
                 ].fail(message)
             bindings.append(binding)
             retained.append((binding, provider))
+        retained.sort(
+            key=lambda item: (
+                precedence.index(item[1].get_name())
+                if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(item[1])
+                and item[1].get_name() in precedence
+                else len(precedence)
+            )
+        )
         return r[tuple[list[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]]].ok((
             retained,
             tuple(bindings),
         ))
+
+    @classmethod
+    def _facade_root_precedence(
+        cls,
+        project: p.Infra.RopeProject,
+        directory: Path,
+        family: c.Infra.FacadeFamily,
+    ) -> tuple[str, ...]:
+        """Read the base precedence the family root facade already declares.
+
+        Returns:
+            Every base class name of the root facade's classes, in declared
+            order, or none when the domain has no published family root.
+
+        """
+        family_directory = FlextInfraUtilitiesCodegenNamespace.facade_families()[
+            family
+        ].directory
+        package = next(
+            (
+                ancestor
+                for ancestor in directory.parents
+                if directory.is_relative_to(ancestor / family_directory)
+                and ancestor / family_directory != directory
+            ),
+            None,
+        )
+        elected = (
+            None
+            if package is None
+            else FlextInfraUtilitiesCodegenNamespace.facade_module_path(
+                package, family, project=project
+            )
+        )
+        if elected is None or elected.failure:
+            return ()
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            project.get_pymodule(
+                FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                    project, elected.value
+                )
+            )
+        )
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        index = module.get_source_binding_index()
+        names: dict[str, None] = {}
+        pending = [
+            scope
+            for scope in module.get_scope().get_scopes()
+            if types.py_class(scope.pyobject)
+        ]
+        while pending:
+            scope = pending.pop(0)
+            for _region, binding in index.class_layout(scope).base_bindings:
+                if binding is not None and types.abstract_class(binding.get_object()):
+                    names.setdefault(binding.get_object().get_name())
+            pending.extend(
+                child for child in scope.get_scopes() if types.py_class(child.pyobject)
+            )
+        return tuple(names)
 
     @classmethod
     def _facade_nominal_publications(
@@ -2047,6 +2132,10 @@ class FlextInfraUtilitiesFacadeComponents:
         ] = {}
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for path in paths:
+            # A module the candidate retires (a moved owner's old path) holds no
+            # published alias left to retire.
+            if not project.source_query(path, "isfile"):
+                continue
             try:
                 module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     project.get_pymodule(runtime.file_resource_at(project, path))

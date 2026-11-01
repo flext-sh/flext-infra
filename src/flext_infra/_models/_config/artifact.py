@@ -17,7 +17,6 @@ from flext_cli import m, t
 
 from flext_infra import c
 from flext_infra._models import (
-    FlextInfraModelsCheck,
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsDepsToolConfigProjectArtifacts,
     FlextInfraModelsLayout,
@@ -1164,8 +1163,8 @@ class FlextInfraModelsConfigArtifact(
             c.Infra.ProjectKind,
             m.Field(
                 description=(
-                    "Governance kind the repository declares, read once at "
-                    "the project boundary that fails closed when it is absent"
+                    "Governance kind the repository declares, validated once "
+                    "when the declaration is loaded"
                 ),
             ),
         ]
@@ -1471,16 +1470,6 @@ class FlextInfraModelsConfigArtifact(
         files: Annotated[
             tuple[FlextInfraModelsConfigArtifact.CodegenPlanningFileEvidence, ...],
             m.Field(description="Planned destination identities and content digests"),
-        ]
-        issues: Annotated[
-            tuple[FlextInfraModelsCheck.Issue, ...],
-            m.Field(description="Native target failures from original planning"),
-        ]
-        error: Annotated[str, m.Field(description="Original planning failure message")]
-        error_type: Annotated[str, m.Field(description="Original exception identity")]
-        error_traceback: Annotated[
-            str,
-            m.Field(description="Original planning traceback without reconstruction"),
         ]
         elapsed: Annotated[float, m.Field(ge=0, description="Planning wall seconds")]
 

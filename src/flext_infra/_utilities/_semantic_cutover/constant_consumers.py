@@ -21,7 +21,7 @@ from pathlib import Path
 
 from flext_cli import cli
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, e, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -147,7 +147,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                             f"constant has ambiguous explicit owners: "
                             f"{path}:{flat}: {destinations}"
                         )
-                        raise ValueError(msg)
+                        raise e.ValidationError(
+                            msg, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                        )
                     if not cls._equivalent_constant_declarations(
                         project, sources, binding, public[destinations[0]]
                     ):
@@ -440,7 +442,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     for region in refactors.semantic_regions(
                         module, literal, arguments={}, start=start, end=end
                     ):
-                        cls._record_matched_region(matched, region, reference, scope)
+                        cls._record_matched_region(
+                            matched, region, reference, scope, path
+                        )
         return matched
 
     @staticmethod
@@ -454,14 +458,17 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """Reject shadowing or a missing preceding unconditional facade import.
 
         Raises:
-            ValueError: The source does not admit the requested facade binding.
+            e.ValidationError: The source does not admit the requested facade
+                binding; its context names the module.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         existing = runtime.scope_at(module, offset).lookup("c")
         if existing is not None and not runtime.same_name(facade, existing):
             message = f"literal constant facade c is shadowed in {path}"
-            raise ValueError(message)
+            raise e.ValidationError(
+                message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+            )
         if isinstance(
             existing, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
         ) and not runtime.imported_binding_precedes(project, module, "c", offset):
@@ -469,7 +476,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 f"literal constant facade c has no preceding "
                 f"unconditional import in {path}"
             )
-            raise ValueError(message)
+            raise e.ValidationError(
+                message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+            )
 
     @staticmethod
     def _record_matched_region(
@@ -477,17 +486,21 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         region: tuple[int, int],
         reference: str,
         scope: str,
+        path: Path,
     ) -> None:
         """Record one matched region, refusing ambiguous public owners.
 
         Raises:
-            ValueError: The same region has competing native owners.
+            e.ValidationError: The same region has competing native owners; its
+                context names the module.
 
         """
         previous = matched.get(region)
         if previous is not None and previous != reference:
             message = f"{scope}: {previous}, {reference}"
-            raise ValueError(message)
+            raise e.ValidationError(
+                message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+            )
         matched[region] = reference
 
     @classmethod
@@ -536,7 +549,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     if not constructors:
                         continue
                     region = max(constructors, key=operator.itemgetter(0))
-                    cls._record_matched_region(matched, region, reference, scope)
+                    cls._record_matched_region(matched, region, reference, scope, path)
         return matched
 
     @classmethod
@@ -590,7 +603,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                             module, literal, arguments={}, start=begin, end=finish
                         ):
                             cls._record_matched_region(
-                                matched, region, reference, scope
+                                matched, region, reference, scope, path
                             )
         return matched
 
@@ -694,7 +707,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Native expression edits retaining aliases and unrelated lexical names.
 
         Raises:
-            ValueError: A referenced flat member has competing public destinations.
+            e.ValidationError: A referenced flat member has competing public
+                destinations or lost its publication; its context names the
+                module.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -727,7 +742,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     f"constant has ambiguous public owners in {path}: "
                     f"{tuple(references)}"
                 )
-                raise ValueError(message)
+                raise e.ValidationError(
+                    message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                )
             reference = references[0]
             if not runtime.same_name(
                 public[reference],
@@ -736,8 +753,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 .get_attributes()
                 .get(member),
             ):
-                message = f"constant destination lost its publication: {reference}"
-                raise ValueError(message)
+                message = (
+                    f"constant destination lost its publication in {path}: {reference}"
+                )
+                raise e.ValidationError(
+                    message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                )
             for start, end in regions:
                 prefix = module.source_code[start:end].rpartition(".")[0]
                 edits.append(
@@ -970,7 +991,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Proven occurrence edits, or no admissible binding retirement.
 
         Raises:
-            ValueError: The resource or canonical facade binding is unavailable.
+            ValueError: The consumer module has no source resource.
+            e.ValidationError: The canonical facade binding is shadowed; its
+                context names the module.
 
         """
         name, binding = imported
@@ -995,7 +1018,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 facade, existing
             ):
                 message = f"constant facade c is shadowed in {resource.real_path}"
-                raise ValueError(message)
+                raise e.ValidationError(
+                    message,
+                    context={c.Infra.MOD_FAILURE_MODULE_KEY: resource.real_path},
+                )
             start, end = occurrence.get_word_range()
             rewrites.append(m.Infra.SourceRewrite(start=start, end=end, text=reference))
         return tuple(rewrites)
@@ -1174,7 +1200,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             The package owning the consumer's canonical constants facade.
 
         Raises:
-            ValueError: Several constants facades are bound as c.
+            e.ValidationError: Several constants facades are bound as c; its
+                context names the module.
 
         """
         public_packages = {
@@ -1186,7 +1213,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         }
         if len(public_packages) > 1:
             msg = f"multiple constants facades bound as c in {path}"
-            raise ValueError(msg)
+            raise e.ValidationError(
+                msg, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+            )
         return next(iter(public_packages), declared_package)
 
 

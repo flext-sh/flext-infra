@@ -1,0 +1,23 @@
+# Fixture value of the generated `owning-package-export` utility: an imported
+# name that the generated initializer of exactly the package its import
+# statement names declares in __all__. The fixture packages are a public
+# subpackage (`flext_infra.workspace`), a nested public package
+# (`flext_ldif.services`) and the tests tier.
+id: owning-package-export
+language: Python
+rule:
+  any:
+    - regex: "^(?:FlextInfraWorkspaceDetector|FlextInfraWorkspaceGovernance)$"
+      inside:
+        kind: import_from_statement
+        stopBy: end
+        has:
+          field: module_name
+          regex: "^flext_infra\\.workspace$"
+    - regex: "^(?:FlextLdifParser)$"
+      inside:
+        kind: import_from_statement
+        stopBy: end
+        has:
+          field: module_name
+          regex: "^flext_ldif\\.services$"
