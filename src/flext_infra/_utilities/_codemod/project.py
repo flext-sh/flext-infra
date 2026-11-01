@@ -162,10 +162,16 @@ class FlextInfraUtilitiesCodemodProject(
             if not required:
                 continue
             if reached is None:
-                reached = {
-                    id(types.require_class_object(ancestor, f"ancestry of {namespace}"))
-                    for ancestor in owner.get_mro()[1:]
-                }
+                reached = set()
+                for ancestor in owner.get_mro()[1:]:
+                    # external or unresolved bases are not family members;
+                    # skipping them keeps the check exact for workspace-declared
+                    # classes without failing the whole ancestry analysis
+                    class_object = types.maybe_class_object(
+                        ancestor, f"ancestry of {namespace}"
+                    )
+                    if class_object is not None:
+                        reached.add(id(class_object))
             if not required <= reached:
                 return False
         return True

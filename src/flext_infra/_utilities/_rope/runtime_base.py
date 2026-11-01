@@ -87,6 +87,27 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         return value
 
     @classmethod
+    def maybe_class_object(
+        cls,
+        value: p.AttributeProbe,
+        label: str = "native Rope class",
+    ) -> p.Infra.RopeClassObject | None:
+        """Admit native classes, yielding ``None`` for unresolved ancestors.
+
+        Library and external bases may stay outside Rope's resolution; family
+        ancestry checks must skip them instead of failing the whole analysis.
+
+        Returns:
+            The original native class by reference, or ``None``.
+
+        """
+        if not isinstance(
+            value, cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractClass")
+        ) or not isinstance(value, p.Infra.RopeClassObject):
+            return None
+        return value
+
+    @classmethod
     def require_source_object(
         cls,
         value: p.AttributeProbe,
