@@ -235,6 +235,57 @@ class FlextInfraUtilitiesFacadeComponents:
         )
 
     @classmethod
+    def facade_domain_owner_observation(
+        cls,
+        project: p.Infra.RopeProject,
+        domain: Path,
+        family_declarations: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
+    ) -> list[tuple[Path, str]]:
+        """Observe the declared owner of one private domain, wherever it lives.
+
+        The owner is, in order: the class the canonical sibling ``x.py``
+        declares; else the one class of ``_x`` that no other class declared
+        in ``_x`` extends (native superclasses); else a family declaration
+        that extends every such maximal part, which ``make mod`` moves to the
+        canonical sibling. A domain with none of them has no owner yet, and
+        ``make mod`` creates it.
+
+        Returns:
+            The observed owner, or no owner when the domain declares none.
+
+        """
+        canonical = domain.parent / f"{domain.name.lstrip('_')}.py"
+        declared = [
+            (path, owner) for path, owner in family_declarations if path == canonical
+        ]
+        if declared:
+            return [(path, owner.get_name()) for path, owner in declared]
+        parts = list(cls.facade_component_declarations(project, domain))
+        extended = {
+            id(ancestor)
+            for _path, owner in parts
+            for ancestor in cls._native_ancestors(owner)
+        }
+        maximal = [(path, owner) for path, owner in parts if id(owner) not in extended]
+        if len(maximal) == 1:
+            return [(maximal[0][0], maximal[0][1].get_name())]
+        required = {id(owner) for _path, owner in maximal}
+        composers = [
+            (path, owner, {id(ancestor) for ancestor in cls._native_ancestors(owner)})
+            for path, owner in family_declarations
+        ]
+        composers = [
+            (path, owner, ancestors)
+            for path, owner, ancestors in composers
+            if maximal and required <= ancestors
+        ]
+        return [
+            (path, owner.get_name())
+            for path, owner, ancestors in composers
+            if not any(id(other) in ancestors for _p, other, _a in composers)
+        ]
+
+    @classmethod
     def _family_subfacade_owner_map(
         cls,
         project: p.Infra.RopeProject,
@@ -245,48 +296,38 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> dict[Path, list[tuple[Path, str]]]:
         """Elect each domain owner by declaration, never by inference.
 
-        Composed-part publication is single-owner: the public name of a
-        private ``_x`` domain is published by the module that composes its
-        parts by native MRO extension. That owner is the canonical sibling
-        ``x.py`` when it exists, else the one class of ``_x`` that no other
-        class declared in ``_x`` extends (native superclasses). A domain with
-        no such owner or several of them is a source defect that ``make mod``
-        repairs at its owner; generation never compensates for it.
+        Composed-part publication is single-owner: generation accepts only an
+        observed owner declared by the canonical sibling ``x.py`` or inside
+        ``_x`` itself. An owner declared anywhere else, several owners or none
+        is a source defect; generation never compensates for it.
 
         Returns:
             Each requested domain with its declared owner.
 
         Raises:
-            ValueError: If a domain declares no owner or several.
+            ValueError: If a domain has no owner in place or several.
 
         """
         elected: dict[Path, list[tuple[Path, str]]] = {}
         for domain in sorted(directories):
             canonical = domain.parent / f"{domain.name.lstrip('_')}.py"
-            candidates = [
-                (path, owner)
-                for path, owner in family_declarations[domain.parent]
-                if path == canonical
-            ] or [
-                (path, owner)
-                for path, owner in cls.facade_component_declarations(project, domain)
-            ]
-            extended = {
-                id(ancestor)
-                for _path, owner in candidates
-                for ancestor in cls._native_ancestors(owner)
-            }
-            owners = [
-                (path, owner.get_name())
-                for path, owner in candidates
-                if id(owner) not in extended
-            ]
-            if len(owners) != 1:
+            owners = cls.facade_domain_owner_observation(
+                project, domain, family_declarations[domain.parent]
+            )
+            if len(owners) != 1 or not (
+                owners[0][0] == canonical or owners[0][0].is_relative_to(domain)
+            ):
+                parts = [
+                    f"{path.name}:{owner.get_name()}"
+                    for path, owner in cls.facade_component_declarations(
+                        project, domain
+                    )
+                ]
                 message = (
-                    f"Facade domain {domain} declares {len(owners)} owners "
-                    f"{[f'{path.name}:{name}' for path, name in owners]}; declare "
-                    f"the canonical sibling {canonical.name} with one class "
-                    "composing its parts"
+                    f"Facade domain {domain} has {len(owners)} owners in place "
+                    f"{[f'{path.name}:{name}' for path, name in owners]} for its "
+                    f"parts {parts}; declare the canonical sibling "
+                    f"{canonical.name} with one class composing its parts"
                 )
                 raise ValueError(message)
             elected[domain] = owners
