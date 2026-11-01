@@ -11,17 +11,16 @@ from pathlib import Path
 from git import BadName, GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git.state_publication import (
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitStatePublication,
-)
-from flext_infra._utilities._git.worktree_patch import (
-    FlextInfraUtilitiesGitWorktreePatch,
+    FlextInfraUtilitiesGitWorktreeRoots,
+    FlextInfraUtilitiesGitWorktreeStatus,
 )
 
 
 class FlextInfraUtilitiesGitSemanticRefs(
-    FlextInfraUtilitiesGitWorktreePatch,
     FlextInfraUtilitiesGitStatePublication,
+    FlextInfraUtilitiesGitWorktreeRoots,
 ):
     """Own semantic refs operations."""
 
@@ -226,7 +225,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
             return r[m.Infra.GitOidReport].fail(
                 "current branch is not the receipt's recorded owned branch",
             )
-        status = cls.git_status(m.Infra.GitStatusRequest(repo_root=request.repo_root))
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
+            m.Infra.GitStatusRequest(repo_root=request.repo_root)
+        )
         if status.failure:
             return r[m.Infra.GitOidReport].from_failure(status)
         if status.value.dirty:
@@ -434,7 +435,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
             Cleanliness or the original inspection failure.
 
         """
-        status = cls.git_status(m.Infra.GitStatusRequest(repo_root=root))
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
+            m.Infra.GitStatusRequest(repo_root=root)
+        )
         if status.failure:
             return r[bool].from_failure(status)
         if status.value.dirty:

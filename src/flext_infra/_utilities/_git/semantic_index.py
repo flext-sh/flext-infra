@@ -12,9 +12,7 @@ from typing import TYPE_CHECKING
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
 from flext_infra import c, m, r
-from flext_infra._utilities._git.semantic_paths import (
-    FlextInfraUtilitiesGitSemanticPaths,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFiles
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,9 +20,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraUtilitiesGitSemanticIndex(
-    FlextInfraUtilitiesGitSemanticPaths,
-):
+class FlextInfraUtilitiesGitSemanticIndex(FlextInfraUtilitiesGitStateFiles):
     """Own semantic index operations."""
 
     @classmethod

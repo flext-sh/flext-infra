@@ -14,17 +14,14 @@ from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, 
 from gitdb.util import LockedFD
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git.semantic_publish import (
-    FlextInfraUtilitiesGitSemanticPublish,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStateFiles,
+    FlextInfraUtilitiesGitStateSnapshot,
 )
-from flext_infra._utilities._git.state_files import FlextInfraUtilitiesGitStateFiles
 from flext_infra._utilities._git.state_trees import FlextInfraUtilitiesGitStateTrees
 
 
-class FlextInfraUtilitiesGitSemanticPaths(
-    FlextInfraUtilitiesGitSemanticPublish,
-    FlextInfraUtilitiesGitStateFiles,
-):
+class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
     """Own semantic paths operations."""
 
     @classmethod
@@ -59,7 +56,7 @@ class FlextInfraUtilitiesGitSemanticPaths(
             ValueError: If the index artifact has unresolved stages.
 
         """
-        entries = FlextInfraUtilitiesGitStateTrees.state_snapshot_index(
+        entries = FlextInfraUtilitiesGitStateSnapshot.state_snapshot_index(
             request.repo_root,
             (Path(request.relative_path),),
         )
@@ -115,7 +112,7 @@ class FlextInfraUtilitiesGitSemanticPaths(
         result_type = r[m.Infra.GitBoolReport]
         relative = cls._retirable_relative_path(request)
         index_path = cls._git_index_path(request.repo_root)
-        entries = FlextInfraUtilitiesGitStateTrees.state_snapshot_index(
+        entries = FlextInfraUtilitiesGitStateSnapshot.state_snapshot_index(
             request.repo_root,
             (relative,),
         )

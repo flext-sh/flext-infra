@@ -19,6 +19,7 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticIndex,
     FlextInfraUtilitiesGitSemanticSubmodule,
     FlextInfraUtilitiesGitWorktreeDiscovery,
+    FlextInfraUtilitiesGitWorktreeRoots,
 )
 
 if TYPE_CHECKING:
@@ -82,8 +83,7 @@ class FlextInfraWorktreeProvisioning:
     ) -> p.Result[bool]:
 
         reference = member_path.as_posix()
-        submodule = FlextInfraUtilitiesGitSemanticSubmodule
-        contract = submodule.git_submodule_declaration(
+        contract = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declaration(
             m.Infra.GitSubmoduleContractRequest(repo_root=lane, member_path=reference),
         )
         if contract.failure:
@@ -105,8 +105,7 @@ class FlextInfraWorktreeProvisioning:
 
     @classmethod
     def _prepare_governed_gitlinks(cls, lane: Path) -> p.Result[bool]:
-        submodule = FlextInfraUtilitiesGitSemanticSubmodule
-        declared = submodule.git_submodule_declarations(lane)
+        declared = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(lane)
         if declared.failure:
             return r[bool].from_failure(declared)
         for declaration in declared.value:

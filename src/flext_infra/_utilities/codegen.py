@@ -13,31 +13,27 @@ from typing import NoReturn
 from flext_cli import u
 
 from flext_infra import c, config, e, m, p
-from flext_infra._utilities._git.ignore import FlextInfraUtilitiesGitignore
-from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
-    FlextInfraUtilitiesRopeAnalysisWorkspace,
-)
-from flext_infra._utilities._rope.module_patch import FlextInfraUtilitiesRopeModulePatch
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
-from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
-from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
-from flext_infra._utilities.project_managed_artifacts import (
+from flext_infra._utilities import (
+    FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesCodegenFacades,
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesIteration,
+    FlextInfraUtilitiesLintRecipes,
+    FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesProjectManagedArtifacts,
-)
-from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
-from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
-from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
-from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-from flext_infra._utilities.workspace_inventory import (
+    FlextInfraUtilitiesRefactor,
+    FlextInfraUtilitiesRepository,
+    FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesWorkspaceInventory,
-)
-from flext_infra._utilities.workspace_manifest import (
     FlextInfraUtilitiesWorkspaceManifest,
+)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitignore
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeModulePatch
+from flext_infra._utilities._rope._analysis import (
+    FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 

@@ -11,14 +11,10 @@ from collections.abc import Mapping
 from git import GitCommandError
 
 from flext_infra import c, config, m, p, r
-from flext_infra._utilities._git.worktree_materialization import (
-    FlextInfraUtilitiesGitWorktreeMaterialization,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeStatus
 
 
-class FlextInfraUtilitiesGitWorktreeCheckpoint(
-    FlextInfraUtilitiesGitWorktreeMaterialization,
-):
+class FlextInfraUtilitiesGitWorktreeCheckpoint(FlextInfraUtilitiesGitWorktreeStatus):
     """Own worktree checkpoint operations."""
 
     @staticmethod

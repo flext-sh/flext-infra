@@ -12,9 +12,9 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra import c, m
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeIO
-from flext_infra._utilities._git.state_snapshot import (
+from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitStateSnapshot,
+    FlextInfraUtilitiesGitWorktreeIO,
 )
 
 

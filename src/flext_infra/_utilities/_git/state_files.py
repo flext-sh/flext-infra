@@ -15,15 +15,13 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import m
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeIO
-from flext_infra._utilities._git.state_publication import (
-    FlextInfraUtilitiesGitStatePublication,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitStateFiles(
-    FlextInfraUtilitiesGitStatePublication,
-):
+class FlextInfraUtilitiesGitStateFiles(FlextInfraUtilitiesGitRepo):
     """Consume CLI physical-state primitives under the shared writer lease."""
 
     @classmethod

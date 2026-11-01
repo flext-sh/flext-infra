@@ -15,14 +15,9 @@ import time
 from pathlib import Path
 
 from flext_infra import c
-from flext_infra._utilities._git.worktree_status import (
-    FlextInfraUtilitiesGitWorktreeStatus,
-)
 
 
-class FlextInfraUtilitiesGitWorktreeMeasure(
-    FlextInfraUtilitiesGitWorktreeStatus,
-):
+class FlextInfraUtilitiesGitWorktreeMeasure:
     """Own the bounded tree measurement for worktree facts."""
 
     @classmethod

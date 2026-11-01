@@ -9,12 +9,13 @@ from __future__ import annotations
 from git import GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git.semantic_refs import FlextInfraUtilitiesGitSemanticRefs
-
-
-class FlextInfraUtilitiesGitSemanticPublish(
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitSemanticRefs,
-):
+)
+
+
+class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
     """Own semantic publish operations."""
 
     @classmethod
@@ -52,7 +53,7 @@ class FlextInfraUtilitiesGitSemanticPublish(
 
         """
         if request.reference.startswith(c.Infra.GIT_REFS_HEADS):
-            admitted = cls.git_verify_lane(
+            admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
                 m.Infra.GitLaneVerificationRequest(
                     repo_root=request.repo_root,
                     operation="retire",
@@ -109,7 +110,7 @@ class FlextInfraUtilitiesGitSemanticPublish(
             The resulting ``p.Result[m.Infra.GitTextReport]``.
 
         """
-        admitted = cls.git_verify_lane(
+        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=request.repo_root,
                 remote=request.remote,
@@ -198,7 +199,7 @@ class FlextInfraUtilitiesGitSemanticPublish(
             return r[m.Infra.GitBoolReport].fail(
                 "remote branch retirement requires its observed object identity",
             )
-        admitted = cls.git_verify_lane(
+        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=request.repo_root,
                 remote=request.remote,
@@ -259,7 +260,7 @@ class FlextInfraUtilitiesGitSemanticPublish(
             The resulting ``p.Result[m.Infra.GitBoolReport]``.
 
         """
-        admitted = cls.git_verify_lane(
+        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=request.repo_root,
                 operation="create",
@@ -320,7 +321,9 @@ class FlextInfraUtilitiesGitSemanticPublish(
             The resulting ``p.Result[m.Infra.GitBoolReport]``.
 
         """
-        listed = cls.git_stash_oids(m.Infra.GitRepoRequest(repo_root=request.repo_root))
+        listed = FlextInfraUtilitiesGitSemanticRefs.git_stash_oids(
+            m.Infra.GitRepoRequest(repo_root=request.repo_root)
+        )
         if listed.failure:
             return r[m.Infra.GitBoolReport].from_failure(listed)
         if request.oid not in listed.value.oids:

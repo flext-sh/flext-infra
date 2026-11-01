@@ -25,19 +25,16 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeIO
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitWorktreeIO,
+)
 from flext_infra._utilities._git.attestation_evidence import (
     FlextInfraUtilitiesGitAttestationEvidence,
 )
-from flext_infra._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentity,
-)
 
 
-class FlextInfraUtilitiesGitAttestation(
-    FlextInfraUtilitiesGitAttestationEvidence,
-    FlextInfraUtilitiesGitSemanticIdentity,
-):
+class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidence):
     """Create and verify immutable SSH-signed gate tags."""
 
     _TAG_PREFIX: ClassVar[str] = (
@@ -326,7 +323,9 @@ class FlextInfraUtilitiesGitAttestation(
 
         """
         root = request.repository_root
-        identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+        identity = FlextInfraUtilitiesGitSemanticIdentity.git_identity(
+            m.Infra.GitRepoRequest(repo_root=root)
+        )
         policy = c.Infra.GateAcceptancePolicy(inputs.spec.make.gate_acceptance_policy)
         return m.Infra.GateCaptureStart(
             repository_root=root,
@@ -400,7 +399,9 @@ class FlextInfraUtilitiesGitAttestation(
         """
         started = request.started
         root = started.repository_root
-        after = cls.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+        after = FlextInfraUtilitiesGitSemanticIdentity.git_identity(
+            m.Infra.GitRepoRequest(repo_root=root)
+        )
         issue: str | None = None
         if inputs.failure:
             issue = inputs.error

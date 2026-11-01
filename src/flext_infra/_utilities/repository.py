@@ -22,21 +22,22 @@ from packaging.utils import canonicalize_name
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRequirementSource,
     FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitSemanticRefs,
     FlextInfraUtilitiesGitWorktreeDiscovery,
+    FlextInfraUtilitiesGitWorktreeRoots,
 )
 from flext_infra._utilities._pyproject.conform import (
     FlextInfraUtilitiesPyprojectConform,
 )
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 
-class FlextInfraUtilitiesRepository(
-    FlextInfraUtilitiesGit,
-):
+class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     """Resolve detected identity and branch policy for one governed repository."""
 
     @classmethod
@@ -778,10 +779,8 @@ class FlextInfraUtilitiesRepository(
 
         """
         result_type = r[str]
-        declarations = (
-            FlextInfraUtilitiesGitWorktreeDiscovery.git_submodule_declarations(
-                repository_root,
-            )
+        declarations = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(
+            repository_root,
         )
         if declarations.failure:
             return result_type.from_failure(declarations)
@@ -1072,7 +1071,7 @@ class FlextInfraUtilitiesRepository(
             The declared integration line the repository publishes.
 
         """
-        branch_probe = FlextInfraUtilitiesGitSemanticPublish.git_ref_exists(
+        branch_probe = FlextInfraUtilitiesGitSemanticRefs.git_ref_exists(
             m.Infra.GitRefRequest(
                 repo_root=repository_root,
                 reference=f"refs/remotes/origin/{declared_branch}",
@@ -1080,7 +1079,7 @@ class FlextInfraUtilitiesRepository(
         )
         if branch_probe.failure:
             return r[str].from_failure(branch_probe)
-        tag_probe = FlextInfraUtilitiesGitSemanticPublish.git_ref_exists(
+        tag_probe = FlextInfraUtilitiesGitSemanticRefs.git_ref_exists(
             m.Infra.GitRefRequest(
                 repo_root=repository_root,
                 reference=f"refs/tags/{declared_branch}",
