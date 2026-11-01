@@ -1,4 +1,20 @@
-# Ban deep module imports in tests — tests must use package-root imports only.
+# Import law (docs guide "Imports and family composition", ADR-028 D10): a
+# public name is imported from the nearest owning package whose generated
+# initializer exports its declaring module. A package's generated `__init__`
+# re-exports what its modules declare (child maps are not merged into every
+# ancestor), so `from flext_infra.workspace import FlextInfraWorkspaceDetector`
+# is legal when `flext_infra/workspace/__init__.py` declares the name in
+# `__all__`; a module-file deep import (`from flext_infra.gates.loc_cap import
+# ...`) and an import from a package that does not export the name are not.
+#
+# Whether a dotted module is a package and what its initializer exports is a
+# project fact ast-grep cannot see: the generated `owning-package-export`
+# utility (u.Infra.codemod_imported_export_utilities, from the package export
+# facts) pairs each exported name with the exact package that declares it.
+# The module-member fix converges on it: its import header binds a name from
+# a package whose `__all__` declares it, which this rule accepts.
+#
+# Private package paths are judged by the private-import rules.
 id: ban-test-deep-module-import
 language: Python
 severity: error
@@ -6,7 +22,30 @@ files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
 rule:
-  pattern: from $MODULE import $$$IMPORTS
+  kind: import_from_statement
+  all:
+    - has:
+        field: module_name
+        pattern: $MODULE
+    # Every imported name is checked: a `field: name` relation reads only the
+    # first imported name, so the names are the direct children that are not
+    # the statement's module name.
+    - has:
+        any:
+          - all:
+              - kind: dotted_name
+              - not:
+                  inside:
+                    kind: import_from_statement
+                    field: module_name
+              - not:
+                  matches: owning-package-export
+          - all:
+              - kind: aliased_import
+              - has:
+                  field: name
+                  not:
+                    matches: owning-package-export
 constraints:
   MODULE:
     all:
@@ -15,11 +54,14 @@ constraints:
           regex: "^flext_core\\.lazy$"
 # Detection only: import rewiring belongs to the semantic make mod planner.
 message: |
-  Tests must use package-root imports only (e.g., `from flext_ldif import ldif`).
-  Deep imports like `from flext_ldif.services import ...` are forbidden.
-  Allowed: package-root facade (`<alias>`, `settings`, `config`, `c,t,p,m,u`),
-  `from tests import ...`, `from flext_tests import ...`, and the sanctioned
-  lazy bootstrap module `flext_core.lazy`.
-  See: flext.canonical_type_ownership, flext.test_import_law
+  `$MODULE` does not export every name imported from it. Import a public name
+  from the nearest owning package whose generated `__init__` exports it
+  (e.g., `from flext_infra.workspace import FlextInfraWorkspaceDetector`), or
+  from a package-root facade (`<alias>`, `settings`, `config`, `c,t,p,m,u`).
+  A module-file deep import such as `from flext_infra.gates.loc_cap import ...`
+  is forbidden. Also allowed: `from tests import ...`, `from flext_tests import
+  ...`, and the sanctioned lazy bootstrap module `flext_core.lazy`.
+  See: docs/guides/using-flext-core.md "Imports and family composition",
+  flext.test_import_law
 metadata:
   enforce: [ENFORCE-055]

@@ -9,11 +9,11 @@ valid:
     def test_value() -> None: ...
   - |
     value = pytest.approx(1.0)
-invalid:
-  - |
-    @pytest.mark.slow
-    def test_value() -> None: ...
   - |
     pytest.skip("not executed")
   - |
     pytest.fail("contract broken")
+invalid:
+  - |
+    @pytest.mark.slow
+    def test_value() -> None: ...

@@ -177,6 +177,24 @@ class FlextInfraUtilitiesProjectDiscovery(
             ),
         )
 
+    @staticmethod
+    def _scenario_data_tree(relative: Path) -> bool:
+        """Whether a repository-relative path lies in a scenario project tree.
+
+        A scenario project tree is a directory beneath one of the declared
+        ``codegen.exclusions.scenario_data_roots``; a file placed directly in
+        the root is not inside a tree.
+
+        Returns:
+            True when the path is inside a directory below a scenario data root.
+
+        """
+        roots = config.Infra.codegen.exclusions.scenario_data_roots
+        return any(
+            relative.is_relative_to(root) and len(relative.relative_to(root).parts) > 1
+            for root in map(Path, roots)
+        )
+
     @classmethod
     def ast_grep_scan_targets(
         cls,
@@ -193,6 +211,11 @@ class FlextInfraUtilitiesProjectDiscovery(
         and artifact outputs outside the rewrite inventory. The workspace
         coordinator visits declared members separately. Generated or retired
         owned typing paths remain detection inputs, never rewrite candidates.
+        A project tree beneath a declared scenario data root
+        (``codegen.exclusions.scenario_data_roots``) is scenario data, never
+        rule-catalog source: the catalog neither reports nor rewrites it
+        (operator ruling 2026-11-01). Modules directly in the root stay in the
+        inventory.
 
         Returns:
             Governed source and path-policy targets.
@@ -215,6 +238,7 @@ class FlextInfraUtilitiesProjectDiscovery(
                 owned_path_admission=True,
             )
             if not cls._is_nonparticipant(path, resolved_root, nonparticipants)
+            and not cls._scenario_data_tree(path.relative_to(resolved_root))
         }
         if source_files is not None:
             selected = {

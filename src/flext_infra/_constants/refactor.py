@@ -417,6 +417,12 @@ class FlextInfraConstantsRefactor:
         "**/_protocols/**",
         "**/protocols.py",
     )
+    # The pytest tests-tier delta (flext-law, ADR-028 p.6): `conftest.py` and
+    # the modules directly in a declared scenario data root declare pytest
+    # fixtures and hooks, so they import pytest and name its types directly.
+    # The scenario roots come from codegen.exclusions.scenario_data_roots.
+    CODEMOD_TESTS_TIER_DELTA_SUFFIX: ClassVar[str] = "tests-tier"
+    CODEMOD_CONFTEST_GLOB: ClassVar[str] = "**/conftest.py"
     # Generated rule shape that inserts the canonical package import of names
     # a module uses bare without binding them: 'import-header--<package>'.
     CODEMOD_IMPORT_HEADER_SHAPE: ClassVar[str] = "import-header"
@@ -463,6 +469,8 @@ class FlextInfraConstantsRefactor:
     CODEMOD_LOCAL_ALIAS_UTILITY: ClassVar[str] = "local-alias"
     CODEMOD_RUNTIME_ALIAS_UTILITY: ClassVar[str] = "runtime-alias"
     CODEMOD_PACKAGE_EXPORT_UTILITY: ClassVar[str] = "package-export"
+    CODEMOD_OWNING_PACKAGE_EXPORT_UTILITY: ClassVar[str] = "owning-package-export"
+    "Stable utility: an imported name its import's exact package declares in __all__."
     CODEMOD_COMPOSE_MODULE_UTILITY: ClassVar[str] = "compose-module"
     # File scopes a catalog rule names under metadata.scope; the generated
     # provider publishes them in its scopes file.
@@ -497,6 +505,8 @@ class FlextInfraConstantsRefactor:
     CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: ClassVar[str] = "family-without-base"
     CODEMOD_FAMILY_BASE_SCOPE: ClassVar[str] = "family-base-file"
     CODEMOD_FAMILY_ROLE_SCOPE: ClassVar[str] = "family-role"
+    CODEMOD_COMPOSITION_ROOT_SCOPE: ClassVar[str] = "composition-root"
+    "File scope: the package-root composition module `<package>/api.py`."
     CODEMOD_CLASS_STEM_SCOPE_PREFIX: ClassVar[str] = "class-stem-"
     CODEMOD_FAMILY_PEER_SCOPE_PREFIX: ClassVar[str] = "family-peer-"
     CODEMOD_MODEL_CLASS_SCOPE_PREFIX: ClassVar[str] = "model-class-"

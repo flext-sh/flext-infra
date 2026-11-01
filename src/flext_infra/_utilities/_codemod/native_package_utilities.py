@@ -997,7 +997,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         ]
         if ignores:
             document["ignores"] = ignores
-        return {rule_id: document}
+        return FlextInfraUtilitiesCodemodRules.tests_tier_documents(document, ignores)
 
     @classmethod
     def codemod_library_type_rules(
@@ -1136,8 +1136,12 @@ class FlextInfraUtilitiesCodemodNativePackage:
             constraints["ATTR"] = {
                 "not": {"regex": f"^(?:{'|'.join(map(re.escape, protocols))})$"}
             }
+        # The tests-tier delta names pytest types directly (pytest fixtures
+        # and hooks); every other library type there still belongs to `t`.
         return {
-            rule_id: document,
+            **FlextInfraUtilitiesCodemodRules.tests_tier_documents(
+                document, layer_zero
+            ),
             protocol_id: {
                 **document,
                 "id": protocol_id,

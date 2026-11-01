@@ -19,3 +19,7 @@ invalid:
   - |
     @pytest.fixture
     def workspace() -> None: ...
+  - |
+    pytest.fail("contract broken")
+  - |
+    pytest.skip("not executed")

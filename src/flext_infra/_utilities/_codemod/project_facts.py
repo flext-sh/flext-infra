@@ -114,7 +114,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         divergent member libraries would leak into the rule.
 
         Returns:
-            The ``package-export`` utility rule of the project.
+            The ``package-export`` and ``owning-package-export`` utility rules
+            of the project.
 
         """
         root = project.absolute().resolve()
@@ -142,8 +143,19 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                     ),
                 )
             )
+        # The import law (docs guide "Imports and family composition"): a
+        # public name is imported from a package whose generated initializer
+        # exports its declaring module, so `owning-package-export` pairs each
+        # name with the exact package whose `__all__` declares it.
+        owned = FlextInfraUtilitiesCodemodNativePackage.codemod_package_export_facts(
+            snapshot, project
+        ).exports
         return {
-            c.Infra.CODEMOD_PACKAGE_EXPORT_UTILITY: cls._fact_imported_from(exports)
+            c.Infra.CODEMOD_PACKAGE_EXPORT_UTILITY: cls._fact_imported_from(exports),
+            c.Infra.CODEMOD_OWNING_PACKAGE_EXPORT_UTILITY: cls._fact_imported_from(
+                {package: frozenset(names) for package, names in owned.items()},
+                exact=True,
+            ),
         }
 
     @classmethod
@@ -274,8 +286,10 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         ``<layer>``/``_<layer>`` module, no ``<layer>`` subpackage);
         ``family-without-base`` the modules of a private family package that
         has no ``base.py``; ``family-base-file`` each family package's ``base.py``
-        beside the package root; ``family-role`` the modules the import law
-        gives the family role; ``class-stem-<stems>`` the modules whose class
+        beside the package root; ``composition-root`` the package-root
+        composition module (``<package>/api.py``); ``family-role`` the modules
+        the import law gives the family role; ``class-stem-<stems>`` the modules
+        whose class
         must carry one of those stems; ``incomplete-composition-<namespace>``
         the facade modules whose nested ``namespace`` misses a class its
         family package declares.
@@ -316,6 +330,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         scopes: dict[str, list[str]] = {
             c.Infra.CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: [],
             c.Infra.CODEMOD_FAMILY_BASE_SCOPE: [],
+            c.Infra.CODEMOD_COMPOSITION_ROOT_SCOPE: [],
             **{
                 f"{c.Infra.CODEMOD_LACKS_LAYER_SCOPE_PREFIX}{layer}": []
                 for layer in order
@@ -361,6 +376,11 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                     if path.name == c.Infra.IMPORT_LAW_FAMILY_BASE_FILE
                     and path.parent.parent == layout.package_dir
                     and family_package(path.parent)
+                    else ()
+                ),
+                *(
+                    (c.Infra.CODEMOD_COMPOSITION_ROOT_SCOPE,)
+                    if path.name == c.Infra.API_PY and path.parent == layout.package_dir
                     else ()
                 ),
                 cls._class_stem_scope(path, root, layout, namespaces),
@@ -991,13 +1011,19 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         return {"regex": f"^(?:{alternatives})$"}
 
     @classmethod
-    def _fact_imported_from(cls, names: Mapping[str, frozenset[str]]) -> t.JsonMapping:
+    def _fact_imported_from(
+        cls, names: Mapping[str, frozenset[str]], *, exact: bool = False
+    ) -> t.JsonMapping:
         """Match an imported name listed for the package its import names.
 
+        ``exact`` pairs the name with exactly that package; otherwise with
+        the package and every module path below it.
+
         Returns:
-            A native rule pairing each name with its import statement's root.
+            A native rule pairing each name with its import statement's package.
 
         """
+        boundary = "$" if exact else r"(?:\.|$)"
         branches: list[t.JsonValue] = [
             {
                 **cls._fact_exact_names(tuple(found)),
@@ -1006,7 +1032,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                     "stopBy": "end",
                     "has": {
                         "field": "module_name",
-                        "regex": rf"^{re.escape(package)}(?:\.|$)",
+                        "regex": rf"^{re.escape(package)}{boundary}",
                     },
                 },
             }

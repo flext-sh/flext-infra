@@ -6,11 +6,27 @@ snapshots:
       style: primary
       start: 0
       end: 59
+    - source: flext_core._models.registry
+      style: secondary
+      start: 5
+      end: 32
+    - source: FlextModelsRegistry
+      style: secondary
+      start: 40
+      end: 59
   from flext_core.lazy.helpers import install_lazy_exports:
     labels:
     - source: from flext_core.lazy.helpers import install_lazy_exports
       style: primary
       start: 0
+      end: 56
+    - source: flext_core.lazy.helpers
+      style: secondary
+      start: 5
+      end: 28
+    - source: install_lazy_exports
+      style: secondary
+      start: 36
       end: 56
   from flext_core.lazy_internal import install_lazy_exports:
     labels:
@@ -18,11 +34,27 @@ snapshots:
       style: primary
       start: 0
       end: 57
+    - source: flext_core.lazy_internal
+      style: secondary
+      start: 5
+      end: 29
+    - source: install_lazy_exports
+      style: secondary
+      start: 37
+      end: 57
   from flext_core.services import FlextServiceRegistry:
     labels:
     - source: from flext_core.services import FlextServiceRegistry
       style: primary
       start: 0
+      end: 52
+    - source: flext_core.services
+      style: secondary
+      start: 5
+      end: 24
+    - source: FlextServiceRegistry
+      style: secondary
+      start: 32
       end: 52
   "from flext_infra.codegen import (\n    FlextInfraCodegenConform,\n    FlextInfraCodegenLazyInit,\n)\n":
     labels:
@@ -34,15 +66,87 @@ snapshots:
       style: primary
       start: 0
       end: 96
-  from flext_ldif.services import FlextLdifParser as Parser:
+    - source: flext_infra.codegen
+      style: secondary
+      start: 5
+      end: 24
+    - source: FlextInfraCodegenConform
+      style: secondary
+      start: 38
+      end: 62
+  from flext_infra.gates.loc_cap import FlextInfraGatesLocCap:
     labels:
-    - source: from flext_ldif.services import FlextLdifParser as Parser
+    - source: from flext_infra.gates.loc_cap import FlextInfraGatesLocCap
       style: primary
       start: 0
+      end: 59
+    - source: flext_infra.gates.loc_cap
+      style: secondary
+      start: 5
+      end: 30
+    - source: FlextInfraGatesLocCap
+      style: secondary
+      start: 38
+      end: 59
+  "from flext_infra.workspace import FlextInfraWorkspaceDetector, FlextInfraRopeWorkspaceMissing":
+    labels:
+    - source: >-
+        from flext_infra.workspace import FlextInfraWorkspaceDetector,
+        FlextInfraRopeWorkspaceMissing
+      style: primary
+      start: 0
+      end: 93
+    - source: flext_infra.workspace
+      style: secondary
+      start: 5
+      end: 26
+    - source: FlextInfraRopeWorkspaceMissing
+      style: secondary
+      start: 63
+      end: 93
+  from flext_infra.workspace.detector import FlextInfraWorkspaceDetector:
+    labels:
+    - source: from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+      style: primary
+      start: 0
+      end: 70
+    - source: flext_infra.workspace.detector
+      style: secondary
+      start: 5
+      end: 35
+    - source: FlextInfraWorkspaceDetector
+      style: secondary
+      start: 43
+      end: 70
+  from flext_ldif.services import FlextLdifWriter as Writer:
+    labels:
+    - source: from flext_ldif.services import FlextLdifWriter as Writer
+      style: primary
+      start: 0
+      end: 57
+    - source: flext_ldif.services
+      style: secondary
+      start: 5
+      end: 24
+    - source: FlextLdifWriter
+      style: secondary
+      start: 32
+      end: 47
+    - source: FlextLdifWriter as Writer
+      style: secondary
+      start: 32
       end: 57
   from flext_tests.pytest_bootstrap import bootstrap:
     labels:
     - source: from flext_tests.pytest_bootstrap import bootstrap
       style: primary
       start: 0
+      end: 50
+    - source: flext_tests.pytest_bootstrap
+      style: secondary
+      start: 5
+      end: 33
+    - source: bootstrap
+      style: secondary
+      start: 41
       end: 50

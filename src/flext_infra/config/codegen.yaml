@@ -1111,7 +1111,11 @@ Infra:
       - site
       - vendor
       # Fixture materialization and pytest collection roots, not analyzer
-      # exclusions. Python files remain governed regardless of fixture location.
+      # exclusions: lint and type analysis still govern their Python files.
+      # The project trees beneath each root are scenario data for the
+      # ast-grep rule catalog (operator ruling 2026-11-01): the shared scan
+      # inventory (u.Infra.ast_grep_scan_targets) leaves them out of both the
+      # codemod gate and make mod; modules directly in a root stay governed.
       # flext-tests derives its fixture-tree location from this owner.
       scenario_data_roots:
       - tests/fixtures
