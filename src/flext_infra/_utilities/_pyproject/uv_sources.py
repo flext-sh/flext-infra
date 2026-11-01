@@ -385,6 +385,15 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
                         )
                     continue
                 u.Cli.toml_sync_value(sources, name, {"workspace": True})
+            # A workspace source belongs to the declared membership: once
+            # .gitmodules no longer governs that member, uv rejects the source
+            # ("not a workspace member"), so it retires with the member.
+            declared = {canonicalize_name(item.distribution) for item in repositories}
+            for source_name, existing in declared_sources.items():
+                if canonicalize_name(source_name) not in declared and existing == {
+                    "workspace": True
+                }:
+                    u.Cli.toml_remove_key_if_present(sources, source_name)
             native_workspace = u.Cli.toml_ensure_table(uv, "workspace")
             u.Cli.toml_sync_string_list(
                 native_workspace,
