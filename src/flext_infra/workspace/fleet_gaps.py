@@ -18,11 +18,12 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     """Report every declared repository's hygiene gaps from that repo's own facts.
 
     Each row observes only what the checkout itself publishes: its porcelain
-    status, its open pull requests (an unreachable provider degrades to an
-    empty list), its unmerged-vs-integration branch count, the violation
-    counts explicitly selected check invocations carry, and the presence of the fleet's
-    standards files. The command is read-only over every probed repository
-    and writes exactly one receipt under the invoking workspace root.
+    status, its open pull requests, its unmerged-vs-integration branch count,
+    the violation counts explicitly selected check invocations carry, and the
+    presence of the fleet's standards files. The first row is the workspace
+    root. The command is read-only over every probed repository and writes
+    exactly one receipt in the invoking checkout's Git directory. A failed
+    probe fails the command; it is never reported as an empty fact.
     """
 
     quality_receipts: str | None = m.Field(
@@ -49,9 +50,17 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         quality = self._quality_findings(root, workspace)
         if quality.failure:
             return r[m.Infra.FleetGapsReport].from_failure(quality)
+        declared = (
+            workspace.integration.branch if workspace.integration is not None else None
+        )
         rows: list[m.Infra.FleetRepoGaps] = [
-            self._member_row(root, workspace, member, quality.value)
-            for member in workspace.subprojects
+            self._repo_row(
+                root, name=workspace.name, declared=declared, quality=quality.value
+            ),
+            *(
+                self._member_row(root, workspace, member, quality.value)
+                for member in workspace.subprojects
+            ),
         ]
         rows.extend(
             self._external_consumer_row(consumer, quality.value)
@@ -160,12 +169,12 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
             The resulting ``Sequence[str]``.
 
         """
-        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=repo_root))
-        if status.failure:
-            return ()
+        status = u.Infra.git_status(
+            m.Infra.GitStatusRequest(repo_root=repo_root)
+        ).unwrap()
         return tuple(
             line[c.Infra.GIT_PORCELAIN_PATH_OFFSET :].split("-> ", 1)[-1].strip()
-            for line in status.value.porcelain.splitlines()
+            for line in status.porcelain.splitlines()
             if line.strip()
         )
 
@@ -173,10 +182,13 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     def _open_pull_requests(
         repo_root: Path,
     ) -> tuple[m.Infra.FleetPullRequest, ...]:
-        """List the checkout's open pull requests; a provider failure is empty.
+        """List the checkout's open pull requests through the provider CLI.
 
         Returns:
-            The resulting ``tuple[m.Infra.FleetPullRequest, ...]``.
+            The open pull requests the provider reports.
+
+        Raises:
+            RuntimeError: The provider could not list them; its error is kept.
 
         """
         run = u.Cli.run_raw(
@@ -192,18 +204,19 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
             cwd=repo_root,
             timeout=c.Infra.TIMEOUT_SHORT,
         )
-        if run.failure or run.value.outcome.raw_return_code != 0:
-            return ()
-        parsed = u.Cli.json_parse(run.value.stdout)
-        if parsed.failure or not isinstance(parsed.value, list):
-            return ()
-        pull_requests: list[m.Infra.FleetPullRequest] = []
-        for item in parsed.value:
-            validated = u.validate_value(m.Infra.FleetPullRequest, item)
-            if validated.failure:
-                return ()
-            pull_requests.append(validated.value)
-        return tuple(pull_requests)
+        outcome = run.unwrap().outcome
+        if not u.Cli.process_succeeded(outcome):
+            msg = (
+                f"open pull requests unavailable for {repo_root}: "
+                f"exit {outcome.raw_return_code}: {run.value.stderr.strip()}"
+            )
+            raise RuntimeError(msg)
+        return tuple(
+            u.validate_value(m.Infra.FleetPullRequest, item).unwrap()
+            for item in u.Cli.json_as_sequence(
+                u.Cli.json_parse(run.value.stdout).unwrap()
+            )
+        )
 
     @classmethod
     def _unmerged_branches(

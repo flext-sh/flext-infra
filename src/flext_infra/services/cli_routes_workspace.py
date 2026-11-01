@@ -224,7 +224,7 @@ class FlextInfraWorkspaceRoutes:
     def workspace_routes(cls) -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Build the workspace group's native model and handler bindings.
 
-        The two routes that format their JSON payload stay explicit; every
+        The routes that format their JSON payload stay explicit; every
         other route is one data row of the shared route-table builder.
 
         Returns:
@@ -244,6 +244,17 @@ class FlextInfraWorkspaceRoutes:
                 help_text="Authenticate a retained and integrated Git checkpoint",
                 model_cls=m.Infra.GitLaneOwnershipRequest,
                 handler=flext_infra.FlextInfraGitService.lane_ownership,
+                success_formatter=cls._payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
+                name=c.Infra.FLEET_GAPS_ROUTE_NAME,
+                help_text=(
+                    "Report every declared repository's hygiene gaps (dirty paths, "
+                    "open PRs, unmerged branches, violation counts, standards "
+                    "presence) and publish the receipt"
+                ),
+                model_cls=workspace.FlextInfraWorkspaceFleetGaps,
+                handler=workspace.FlextInfraWorkspaceFleetGaps.execute_command,
                 success_formatter=cls._payload_json_formatter,
             ),
             *u.Infra.result_routes((
@@ -342,17 +353,6 @@ class FlextInfraWorkspaceRoutes:
                     "Publish this workspace's flext-infra to every member",
                     workspace.FlextInfraWorkspacePropagation,
                     flext_infra.infra.workspace_propagate,
-                    None,
-                ),
-                (
-                    c.Infra.FLEET_GAPS_ROUTE_NAME,
-                    (
-                        "Report every declared repository's hygiene gaps (dirty paths, "
-                        "open PRs, unmerged branches, violation counts, standards "
-                        "presence) and publish the receipt"
-                    ),
-                    workspace.FlextInfraWorkspaceFleetGaps,
-                    workspace.FlextInfraWorkspaceFleetGaps.execute_command,
                     None,
                 ),
             )),

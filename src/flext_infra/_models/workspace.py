@@ -838,7 +838,10 @@ class FlextInfraModelsWorkspace:
         ]
         head: Annotated[
             str,
-            m.Field(description="Branch the pull request proposes"),
+            m.Field(
+                validation_alias="headRefName",
+                description="Branch the pull request proposes",
+            ),
         ]
         title: Annotated[str, m.Field(description="Pull-request title")]
         url: Annotated[str, m.Field(description="Pull-request web address")]
