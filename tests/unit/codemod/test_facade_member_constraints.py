@@ -440,7 +440,11 @@ class TestsFlextInfraFacadeMemberConstraints:
     def _ownership_rules(cls) -> Mapping[str, t.JsonMapping]:
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
-            return u.Infra.codemod_facade_member_ownership_rules(snapshot, project)
+            return u.Infra.codemod_facade_member_ownership_rules(
+                snapshot,
+                project,
+                u.Infra.codemod_facade_census_facts(snapshot, project),
+            )
 
     @staticmethod
     def _alternatives(pattern: str) -> tuple[str, ...]:

@@ -550,5 +550,44 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Materialized workspace index for the open session"),
         ]
 
+    class FacadeCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One rendering's facade census, the shared facts of the facade rules.
+
+        Computed once per generated rendering from its injected snapshot and
+        bound to that snapshot: the renderers reject a census of any other
+        snapshot or project.
+        """
+
+        snapshot: Annotated[
+            t.Port[p.Infra.WorkspaceSnapshot],
+            m.Field(exclude=True, description="The snapshot the census was read from"),
+        ]
+        project: Annotated[
+            Path, m.Field(description="Absolute project root of the census")
+        ]
+        lineage: Annotated[
+            t.StrTuple,
+            m.Field(description="Facade-publishing root packages of the lineage"),
+        ]
+        references: Annotated[
+            Mapping[str, frozenset[str]],
+            m.Field(description="Foreign letter.member references by owner letter"),
+        ]
+        exposed: Annotated[
+            Mapping[str, frozenset[str]],
+            m.Field(description="Own duplicate member names by declaring letter"),
+        ]
+        missing: Annotated[
+            Mapping[str, frozenset[str]],
+            m.Field(description="Misplaced member names by declaring letter"),
+        ]
+        claims: Annotated[
+            t.Port[t.Infra.FacadeComponentClaims],
+            m.Field(
+                exclude=True,
+                description="Component methods with their composing facade targets",
+            ),
+        ]
+
 
 __all__: list[str] = ["FlextInfraModelsRope"]
