@@ -85,6 +85,13 @@ class FlextInfraProtocolsBase(Protocol):
             plans: Sequence[m.Infra.CodegenFilePlan],
         ) -> p.Result[tuple[Path, ...]]: ...
 
+        def publish_normalized_codegen_plans(
+            self,
+            root: Path,
+            plans: Sequence[m.Infra.CodegenFilePlan],
+            changes: Sequence[m.Cli.FileChange],
+        ) -> p.Result[tuple[Path, ...]]: ...
+
     @runtime_checkable
     class CodegenConformPorts(Protocol):
         """Caller-bound cross-family capabilities consumed by conform."""
@@ -104,11 +111,6 @@ class FlextInfraProtocolsBase(Protocol):
         def candidate_validator(
             self,
         ) -> Callable[[Path, Path, tuple[Path, ...]], p.Result[bool]]: ...
-
-        @property
-        def imports_planner(
-            self,
-        ) -> FlextInfraProtocolsBase.SourceImportPlanner: ...
 
         @property
         def component_planner(
@@ -224,22 +226,6 @@ class FlextInfraProtocolsBase(Protocol):
 
         def rollback(self) -> None:
             """Close the descriptor and remove only its unpublished lock."""
-            ...
-
-    @runtime_checkable
-    class SourceImportPlanner(Protocol):
-        """Plan canonical imports from one proposed workspace source epoch."""
-
-        def __call__(
-            self,
-            project_root: Path,
-            files: Sequence[Path],
-            *,
-            sources: Mapping[Path, str],
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-            snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
-        ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-            """Return source-preserving import plans without publishing them."""
             ...
 
     @runtime_checkable

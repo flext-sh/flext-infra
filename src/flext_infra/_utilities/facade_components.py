@@ -1668,7 +1668,12 @@ class FlextInfraUtilitiesFacadeComponents:
             ):
                 continue
             published_name = provider.get_name()
-            if published_name in namespace.get_scope().get_defined_names():
+            defined = namespace.get_scope().get_defined_names().get(published_name)
+            if defined is not None:
+                # Two producers of one run reaching the same publication collapse
+                # on its identity; only a different binding is an occupation.
+                if cls._same_facade_target(defined.get_object(), provider):
+                    continue
                 return r[dict[str, str]].fail(
                     f"Occupied nominal facade publication: {path}:{published_name}"
                 )

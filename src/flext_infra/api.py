@@ -14,8 +14,6 @@ from flext_cli import u
 
 import flext_infra
 from flext_infra import (
-    FlextInfraConformWiring,
-    FlextInfraPreviewWiring,
     c,
     check,
     codegen,
@@ -29,6 +27,8 @@ from flext_infra import (
     validate,
     workspace,
 )
+from flext_infra._conform import FlextInfraConformWiring
+from flext_infra._preview import FlextInfraPreviewWiring
 from flext_infra.services import FlextInfraCodegenHandlers, FlextInfraModHandlers
 
 if TYPE_CHECKING:

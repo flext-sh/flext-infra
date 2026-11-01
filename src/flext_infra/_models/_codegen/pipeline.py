@@ -161,15 +161,6 @@ class FlextInfraModelsCodegenPipeline:
                 description="Native cold-import admission in the source runtime",
             ),
         ]
-        imports_planner: Annotated[
-            t.Port[p.Infra.SourceImportPlanner],
-            m.Field(
-                exclude=True,
-                description=(
-                    "Shared import planner over the authenticated source candidate"
-                ),
-            ),
-        ]
         component_planner: Annotated[
             t.Port[p.Infra.SourceComponentPlanner],
             m.Field(

@@ -176,40 +176,56 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         result_type = r[tuple[m.Cli.FileChange, ...]]
-        changes: list[m.Cli.FileChange] = []
         staged_settings = cls._staged_ruff_settings(plans)
-        for plan in plans:
-            before = plan.before.content
-            # A plan that keeps its bytes changed nothing, so it has nothing
-            # to normalize; only rewritten or new sources go through ruff.
-            if (
-                plan.path.suffix != c.Infra.EXT_PYTHON
-                or plan.desired_content is None
-                or plan.desired_mode is None
-                or plan.desired_content == before
-            ):
-                changes.append(plan)
-                continue
-            normalized = cls.normalize_source(
-                plan.project,
-                plan.path,
-                plan.desired_content.decode(c.DEFAULT_ENCODING),
-                before_source=(
-                    None if before is None else before.decode(c.DEFAULT_ENCODING)
-                ),
-                settings=staged_settings.get(plan.project, ()),
-            )
-            if normalized.failure:
-                return result_type.from_failure(normalized)
-            changes.append(
+        # A plan that keeps its bytes changed nothing, so it has nothing to
+        # normalize; only rewritten or new sources go through ruff. Each file's
+        # normalization is independent, so they run concurrently.
+        pending = [
+            plan
+            for plan in plans
+            if plan.path.suffix == c.Infra.EXT_PYTHON
+            and plan.desired_content is not None
+            and plan.desired_mode is not None
+            and plan.desired_content != plan.before.content
+        ]
+        normalized: dict[Path, str] = {}
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=config.Infra.codegen.lint_snapshot_workers
+        ) as pool:
+            futures = {
+                pool.submit(
+                    cls.normalize_source,
+                    plan.project,
+                    plan.path,
+                    (plan.desired_content or b"").decode(c.DEFAULT_ENCODING),
+                    before_source=(
+                        None
+                        if plan.before.content is None
+                        else plan.before.content.decode(c.DEFAULT_ENCODING)
+                    ),
+                    settings=staged_settings.get(plan.project, ()),
+                ): plan.path
+                for plan in pending
+            }
+            for future in concurrent.futures.as_completed(futures):
+                outcome = future.result()
+                if outcome.failure:
+                    pool.shutdown(wait=False, cancel_futures=True)
+                    return result_type.from_failure(outcome)
+                normalized[futures[future]] = outcome.value
+        return result_type.ok(
+            tuple(
                 m.Cli.FileChange(
                     path=plan.path,
                     before=plan.before,
-                    desired_content=normalized.value.encode(c.DEFAULT_ENCODING),
+                    desired_content=normalized[plan.path].encode(c.DEFAULT_ENCODING),
                     desired_mode=plan.desired_mode,
                 )
+                if plan.path in normalized
+                else plan
+                for plan in plans
             )
-        return result_type.ok(tuple(changes))
+        )
 
     @classmethod
     def publish_codegen_plans(
@@ -229,6 +245,26 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The written or deleted paths, or the first failure.
 
         """
+        return cls.normalized_codegen_changes(plans).flat_map(
+            lambda changes: cls.publish_normalized_codegen_plans(root, plans, changes)
+        )
+
+    @classmethod
+    def publish_normalized_codegen_plans(
+        cls,
+        root: Path,
+        plans: Sequence[m.Infra.CodegenFilePlan],
+        changes: Sequence[m.Cli.FileChange],
+    ) -> p.Result[tuple[Path, ...]]:
+        """Publish plans whose Python bytes the caller already normalized.
+
+        Generation normalizes once, when it admits the candidate; publishing
+        the admitted bytes must not run the formatters a second time.
+
+        Returns:
+            The written or deleted paths, or the first failure.
+
+        """
         result_type = r[tuple[Path, ...]]
         grouped: MutableMapping[Path, list[Path]] = {}
         for plan in plans:
@@ -240,16 +276,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
         lock = FlextInfraUtilitiesGitMutationScope.mutation_lock_path(root)
         if lock.failure:
             return result_type.from_failure(lock)
-        changes = cls.normalized_codegen_changes(plans)
-        if changes.failure:
-            return result_type.from_failure(changes)
         owners = tuple(dict.fromkeys((root, *(plan.project for plan in plans))))
         with (
             FlextInfraUtilitiesGitStateCheckpoint.state_leases(owners),
             u.Cli.file_changes_lock(lock.value),
         ):
             published = cls._publish_verified_plans(
-                plans, changes.value, lock.value, result_type
+                plans, tuple(changes), lock.value, result_type
             )
             if published.failure:
                 return published

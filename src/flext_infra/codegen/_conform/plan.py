@@ -211,11 +211,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     )
                     if family.failure:
                         return result_type.from_failure(family)
-                return self._converged_custom_sources(
+                return self._projected_custom_sources(
                     root,
                     (codegen, profile),
                     cohort=cohort,
-                    normalize_imports=True,
                     selection=(destination, c.Infra.FacadeFamily(family.value)),
                 ).map(operator.itemgetter(0))
             finally:
@@ -415,16 +414,15 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                                 f"lazy package selection is ambiguous: {request.module}"
                             )
                         selection = (destinations[0], None)
-                    converged = self._converged_custom_sources(
+                    projected = self._projected_custom_sources(
                         project,
                         (project_inputs.value.spec, participant.role.value),
                         cohort=tuple(files.values()),
-                        normalize_imports=True,
                         selection=selection,
                     )
-                    if converged.failure:
-                        return result_type.from_failure(converged)
-                    files.update((file.path, file) for file in converged.value[0])
+                    if projected.failure:
+                        return result_type.from_failure(projected)
+                    files.update((file.path, file) for file in projected.value[0])
             finally:
                 self.state.snapshot, self.state.provider_plans = previous
         return result_type.ok(

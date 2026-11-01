@@ -9,7 +9,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
-from flext_infra import FlextInfraPytestClock, c, settings
+from flext_infra import c, settings
+from flext_infra._pytest import FlextInfraPytestClock
 from flext_infra.services import FlextInfraCliDispatchService
 from flext_infra.validate import FlextInfraCProfileReport
 
