@@ -313,6 +313,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         return result_type.ok(
             m.Infra.RepositoryDeclarationInputs(
                 spec=loaded.value,
+                kind=declared.value,
                 sources=document.value.sources,
             ),
         )

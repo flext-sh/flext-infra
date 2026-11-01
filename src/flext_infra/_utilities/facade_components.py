@@ -1628,8 +1628,9 @@ class FlextInfraUtilitiesFacadeComponents:
         while pending:
             scope = pending.pop(0)
             for _region, binding in index.class_layout(scope).base_bindings:
-                if binding is not None and types.abstract_class(binding.get_object()):
-                    names.setdefault(binding.get_object().get_name())
+                base = None if binding is None else binding.get_object()
+                if types.abstract_class(base):
+                    names.setdefault(base.get_name())
             pending.extend(
                 child for child in scope.get_scopes() if types.py_class(child.pyobject)
             )

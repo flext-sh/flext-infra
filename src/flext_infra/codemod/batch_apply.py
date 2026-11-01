@@ -312,7 +312,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     def _syntax_waves(
         self,
         root: Path,
-        after_ast: m.Infra.ModScanReport,
+        after_ast: m.Infra.ModOccurrenceReport[m.Infra.ModScanFinding],
         native_ids: frozenset[str],
         state: tuple[
             dict[Path, m.Infra.SemanticFilePlan],
@@ -344,7 +344,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
     @staticmethod
     def _require_wave_progress(
-        after_ast: m.Infra.ModScanReport,
+        after_ast: m.Infra.ModOccurrenceReport[m.Infra.ModScanFinding],
         native_ids: frozenset[str],
         plans: Mapping[Path, m.Infra.SemanticFilePlan],
         seen: set[tuple[tuple[str, str], ...]],
