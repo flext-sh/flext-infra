@@ -54,8 +54,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
         A rewrite of existing bytes repairs exactly the Ruff rules its edit
         introduced (codes absent from ``before_source``), so no unchanged
         binding or pre-existing finding is touched; a whole new file receives
-        the declared full repair. ``settings`` carry the staged pyproject's
-        Ruff table when the same plan set rewrites it.
+        the declared full repair. Formatting follows the same law: a
+        generated projection (``c.Infra.AUTOGEN_HEADER``) is always formatted,
+        but an authored module is formatted only when its existing bytes are
+        already formatter-clean. Pending format debt in authored code belongs
+        to ``make fmt``; a rewrite never reformats untouched authored lines.
+        ``settings`` carry the staged pyproject's Ruff table when the same
+        plan set rewrites it.
 
         Returns:
             Normalized source, or the original configured repair failure.
@@ -71,18 +76,46 @@ class FlextInfraUtilitiesProtectedEditLinting:
         after_codes = cls._ruff_stdin_codes(path, source, settings=settings)
         if after_codes.failure:
             return r[str].from_failure(after_codes)
-        declared = config.Infra.codegen.make.ruff
         introduced = sorted(after_codes.value - before_codes.value)
         if introduced:
             repaired = cls.ruff_select_fix(path, source, introduced, settings=settings)
             if repaired.failure:
                 return repaired
             source = repaired.value
+        return cls._format_rewrite(path, (before_source, source), settings=settings)
+
+    @classmethod
+    def _format_rewrite(
+        cls,
+        path: Path,
+        rewrite: tuple[str, str],
+        *,
+        settings: Sequence[str],
+    ) -> p.Result[str]:
+        """Format a rewrite of existing bytes without touching authored debt.
+
+        ``rewrite`` pairs the existing bytes with the repaired candidate. A
+        generated projection (``c.Infra.AUTOGEN_HEADER``) is formatted in
+        full. An authored module is formatted only when its existing bytes are
+        already formatter-clean; otherwise the repaired candidate is returned
+        unformatted, because its format debt belongs to ``make fmt``.
+
+        Returns:
+            The candidate, formatted when the law allows, or Ruff's failure.
+
+        """
+        before_source, source = rewrite
+        arguments = (c.Infra.FORMAT, *config.Infra.codegen.make.ruff.format_apply)
+        if source.startswith(c.Infra.AUTOGEN_HEADER):
+            return cls._ruff_stdin_pass(path, source, arguments, settings=settings)
         return cls._ruff_stdin_pass(
-            path,
-            source,
-            (c.Infra.FORMAT, *declared.format_apply),
-            settings=settings,
+            path, before_source, arguments, settings=settings
+        ).flat_map(
+            lambda formatted: (
+                cls._ruff_stdin_pass(path, source, arguments, settings=settings)
+                if formatted == before_source
+                else r[str].ok(source)
+            )
         )
 
     @classmethod

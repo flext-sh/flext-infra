@@ -3803,6 +3803,18 @@ for subsequent line-based placement, including when runtime reads promote only
 some imports out of a typing guard. Leading and trailing comments remain attached
 to the rewritten statement group; no empty guard is masked with a synthetic pass.
 
+Module-level import order is the formatter's own isort order, because the Ruff
+`I001` repair is the last stage of every mod and generation normalization:
+`__future__`, standard library, third party, then first party (the module's
+namespace and the project's `src` packages); inside each section every `import x`
+precedes every `from x import y`, each by module path without case. A module the
+formatter already sorted therefore produces no plan. Publication normalizes a
+rewrite of existing bytes by repairing only the Ruff codes the rewrite introduced.
+A generated projection (one carrying the auto-generated header) is then formatted
+in full; an authored module is formatted only when its existing bytes are already
+formatter-clean. Authored format debt and pre-existing lint findings stay for
+`make fmt` and `make fix`; generation never reformats untouched authored lines.
+
 Deferred class annotations stay typing-only when native source ancestry proves
 ordinary class construction through `object`: undecorated declarations, no class
 keywords and no class-construction hook. Inheritance alone does not make annotations
