@@ -225,9 +225,11 @@ class FlextInfraStagedPackage:
     ) -> p.Result[bool]:
         """Write the planned composition into an exclusively owned empty tree.
 
-        The tree is a throwaway candidate removed once its validator returns,
-        so each write keeps its atomic replace and observed-state precondition
-        but skips the durability syncs (``WriteDurability.SCRATCH``).
+        The tree is a throwaway candidate this invocation created empty and
+        owns exclusively, removed once its validator returns: every destination
+        is absent by construction, so a write carries no observed-state
+        precondition and skips the durability syncs
+        (``WriteDurability.SCRATCH``). Each write keeps its atomic replace.
 
         Returns:
             Success after the writes, or their first original failure.
@@ -237,14 +239,10 @@ class FlextInfraStagedPackage:
             created = u.Cli.ensure_dir(path.parent)
             if created.failure:
                 return r[bool].from_failure(created)
-            before = u.Cli.atomic_read_binary_file_state(path)
-            if before.failure:
-                return r[bool].from_failure(before)
             u.Cli.write_atomic_state(
                 path,
                 content,
                 m.Cli.AtomicWriteOptions(
-                    expected_state=before.value,
                     permission_mode=mode,
                     durability=c.Cli.WriteDurability.SCRATCH,
                 ),
