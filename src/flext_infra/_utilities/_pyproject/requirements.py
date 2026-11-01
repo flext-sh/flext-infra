@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, r, t
@@ -406,13 +407,13 @@ class FlextInfraUtilitiesPyprojectRequirements:
         extras and markers. Only explicit candidate declarations replace a
         source; generated bare floors use their declared provider provenance.
         A distribution elected by the declared UV override keeps its extras
-        and marker but loses its direct reference: the override owns it.
+        and marker and carries the override's direct reference.
 
         Returns:
             The resulting ``p.Result[str]``.
 
         """
-        requirement = cls._without_overridden_source(requirement, provenance)
+        requirement = cls._with_override_reference(requirement, provenance)
         dependency_name = cls._internal_dependency_name(
             requirement,
             declared_sources=provenance.declared_sources,
@@ -769,25 +770,29 @@ class FlextInfraUtilitiesPyprojectRequirements:
         return r[bool].ok(value=True)
 
     @classmethod
-    def _without_overridden_source(
+    def _with_override_reference(
         cls, requirement: str, provenance: m.Infra.RequirementsProvenance
     ) -> str:
-        """Drop the direct reference of a distribution the UV override elects.
+        """Carry the direct reference the declared UV override elects.
 
-        The declared override is the one source of that distribution; a second
-        direct reference on the requirement line would drift from it on every
-        pin change. Extras, specifier and marker stay.
+        The override in codegen.yaml is the one source of that distribution.
+        ``[tool.uv] override-dependencies`` binds only this project's own
+        resolution, never its published metadata, so every requirement line of
+        the name carries the override's reference itself: an installer of this
+        distribution resolves the same fork, and a pin change moves every line
+        with the override. Extras and marker stay; a direct reference carries
+        no version specifier.
 
         Returns:
-            The requirement without its direct reference, or it unchanged.
+            The requirement bound to the override's reference, or it unchanged.
 
         """
-        if not cls._declares_direct_source(requirement):
-            return requirement
         parsed = Requirement(requirement)
-        if canonicalize_name(parsed.name) not in provenance.overridden_sources:
+        reference = provenance.override_references.get(canonicalize_name(parsed.name))
+        if reference is None:
             return requirement
-        parsed.url = None
+        parsed.url = reference
+        parsed.specifier = SpecifierSet()
         return str(parsed)
 
     @staticmethod
