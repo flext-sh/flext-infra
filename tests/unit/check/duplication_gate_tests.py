@@ -600,7 +600,12 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
     @staticmethod
     def _assessment_counts(root: Path) -> t.JsonMapping:
-        """The published duplication assessment counts of the latest check."""
+        """Read the published duplication assessment counts of the latest check.
+
+        Returns:
+            The assessment's counts mapping.
+
+        """
         assessment = root / "reports" / "duplication.raw.assessment.json"
         mapping = u.Cli.json_as_mapping(
             u.Cli.json_parse(assessment.read_text(encoding="utf-8")).unwrap()
