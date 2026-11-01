@@ -105,12 +105,6 @@ class FlextInfraUtilitiesSemanticModelAliases:
             return None
         return tuple(item for item in body if isinstance(item, ast.Assign))
 
-    @staticmethod
-    def _resource(project: p.Infra.RopeProject, path: Path) -> p.Infra.RopeResource:
-        return project.get_resource(
-            path.relative_to(Path(project.root.real_path)).as_posix(),
-        )
-
     @classmethod
     def _retire(
         cls,
@@ -121,7 +115,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        resource = cls._resource(project, path)
+        resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         node = next(
             item
@@ -146,7 +140,11 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 source = working[changed]
                 if source.startswith(c.Infra.AUTOGEN_HEADER):
                     continue
-                native = organizer.organize_imports(cls._resource(snapshot, changed))
+                native = organizer.organize_imports(
+                    FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                        snapshot, changed
+                    )
+                )
                 if native is not None:
                     for change in refactors.change_set_members(
                         native.changes,
@@ -248,7 +246,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
         for alias in aliases:
             snapshot = runtime.snapshot_project(project, working)
             try:
-                current = cls._resource(snapshot, path)
+                current = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                    snapshot, path
+                )
                 owner = next(
                     item
                     for item in ast.parse(working[path]).body
@@ -266,7 +266,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     current,
                     offset,
                     resources=tuple(
-                        cls._resource(snapshot, item)
+                        FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                            snapshot, item
+                        )
                         for item, source in working.items()
                         if not source.startswith(c.Infra.AUTOGEN_HEADER)
                     ),
@@ -428,7 +430,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 observed[path] = source
         consumers: set[Path] = set()
         for path, source in observed.items():
-            resource = cls._resource(project, path)
+            resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                project, path
+            )
             tree = ast.parse(source)
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             imports, spellings = cls._alias_import_spellings(
