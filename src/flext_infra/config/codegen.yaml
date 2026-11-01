@@ -166,13 +166,18 @@ Infra:
         # layer-zero files and isolated entrypoints are ignored by path.
         - name: codemod_ambient_environ_rules
           shapes: [ban-ambient-environ-read]
+        # The three facade renderers below share one facade census per
+        # rendering (codemod_facade_census_facts): lineage, member references,
+        # misplaced members and component claims are derived once.
         # One rule relocating every foreign facade reference to its owner
         # letter (one rewriter per owner), from the facade-member census.
         - name: codemod_facade_member_rules
+          facts: codemod_facade_census_facts
           shapes: [relocate-facade-member]
         # One rule per facade namespace relocating a family class read as a
         # namespace (`Component.member`) to its letter, from the facade MRO.
         - name: codemod_facade_component_rules
+          facts: codemod_facade_census_facts
           shapes: [relocate-facade-component]
         # Facade boundary (ADR-028): a facade member named after a library is
         # read only inside the families; the library set is derived.
@@ -181,6 +186,7 @@ Infra:
         # The duplicate retirement and wrong-layer guidance, one document per
         # declaring letter scoped to that letter's family files.
         - name: codemod_facade_member_ownership_rules
+          facts: codemod_facade_census_facts
           shapes: [retire-foreign-facade-member, facade-member-wrong-layer]
         # The catalog rules partitioned per file group (metadata.scope
         # .partition), rendered per project instead of elected as authored.

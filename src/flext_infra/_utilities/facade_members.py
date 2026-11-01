@@ -948,7 +948,7 @@ class FlextInfraUtilitiesFacadeMembers:
     def facade_member_census(
         cls, project: Path, *, source_project: p.Infra.RopeProject
     ) -> tuple[
-        Sequence[str],
+        t.StrTuple,
         Mapping[str, frozenset[str]],
         Mapping[str, frozenset[str]],
     ]:
@@ -1171,9 +1171,35 @@ class FlextInfraUtilitiesFacadeMembers:
                     owned.append((owner, value, member))
         return tuple(owned)
 
+    @staticmethod
+    def facade_census_root(
+        census: m.Infra.FacadeCensus,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        project: Path,
+    ) -> Path:
+        """Admit only the census read from this snapshot for this project.
+
+        Returns:
+            The census's absolute project root.
+
+        Raises:
+            ValueError: If the census belongs to another snapshot or project.
+
+        """
+        root = project.absolute()
+        if census.snapshot is not snapshot or census.project != root:
+            message = (
+                f"facade census of {census.project} is not this rendering's: {root}"
+            )
+            raise ValueError(message)
+        return root
+
     @classmethod
     def codemod_facade_member_ownership_rules(
-        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        project: Path,
+        census: m.Infra.FacadeCensus,
     ) -> Mapping[str, t.JsonMapping]:
         """Render the retirement and wrong-layer rules, one document per letter.
 
@@ -1182,18 +1208,15 @@ class FlextInfraUtilitiesFacadeMembers:
         object, and a misplaced declaration while the owner binds nothing
         under that name; both name sets come from the project's native source
         facades, and each document is scoped to the exact family files of
-        its letter.
+        its letter. ``census`` is the rendering's facade census.
 
         Returns:
             The rendered rule documents keyed by rule id.
 
         """
-        root = project.absolute()
+        root = cls.facade_census_root(census, snapshot, project)
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
-        _lineage, _references, exposed = cls.facade_member_census(
-            root, source_project=snapshot.engine
-        )
-        missing = cls._misplaced_members(package, source_project=snapshot.engine)
+        exposed, missing = census.exposed, census.missing
         families = cls.facade_member_family_files(root)
         separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
         documents: dict[str, t.JsonMapping] = {}
@@ -1276,7 +1299,7 @@ class FlextInfraUtilitiesFacadeMembers:
         }
 
     @classmethod
-    def _misplaced_members(
+    def facade_misplaced_members(
         cls, package: str, *, source_project: p.Infra.RopeProject
     ) -> Mapping[str, frozenset[str]]:
         """Collect each letter's members whose owner binds nothing under the name.
@@ -1321,7 +1344,10 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @classmethod
     def codemod_facade_member_rules(
-        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        project: Path,
+        census: m.Infra.FacadeCensus,
     ) -> Mapping[str, t.JsonMapping]:
         """Render the one rule relocating every foreign facade reference.
 
@@ -1332,16 +1358,15 @@ class FlextInfraUtilitiesFacadeMembers:
         function's parameters, and never assigned through. Inside ``Literal``
         type data it never moves; inside ``Annotated`` only the callable of a
         complete metadata call does. One rewriter per owner letter emits the
-        owner reference.
+        owner reference. ``census`` is the rendering's facade census.
 
         Returns:
             The single native rule document keyed by its rule id, or nothing
             when the lineage re-exports no foreign member.
 
         """
-        lineage, references, _names = cls.facade_member_census(
-            project, source_project=snapshot.engine
-        )
+        project = cls.facade_census_root(census, snapshot, project)
+        lineage, references = census.lineage, census.references
         if not references:
             return {}
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)

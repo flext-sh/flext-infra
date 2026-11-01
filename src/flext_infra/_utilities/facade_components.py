@@ -12,8 +12,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import io
 import re
 import sys
+import tokenize
 from collections.abc import Callable, Generator, Mapping, Sequence
 from functools import cache, partial
 from importlib.metadata import packages_distributions
@@ -2331,7 +2333,7 @@ class FlextInfraUtilitiesFacadeComponents:
         claims = cls._component_claims(root, source_project=source_project)
         if not claims:
             return ()
-        methods = cls._component_methods(claims)
+        components = cls._component_methods(claims)
         declared = {plan.path: plan for plan in declared_files}
         plans: list[m.Infra.CodegenFilePlan] = []
         module_syntax_error = FlextInfraUtilitiesRopeRuntime.exception_type(
@@ -2341,7 +2343,7 @@ class FlextInfraUtilitiesFacadeComponents:
             path = Path(resource.real_path)
             try:
                 module = cls._consumer_module(source_project, path)
-                calls = cls._component_calls(module, claims, methods)
+                calls = cls._component_calls(module, claims, components)
             except module_syntax_error:
                 # A projected consumer with invalid syntax (a render bug owned
                 # by its own stage) cannot be a valid consumer candidate; the
@@ -2576,15 +2578,11 @@ class FlextInfraUtilitiesFacadeComponents:
     @classmethod
     def _component_claims(
         cls, project: Path, *, source_project: p.Infra.RopeProject
-    ) -> Mapping[
-        tuple[p.Infra.RopeClassObject, str],
-        Sequence[tuple[str, str, p.Infra.RopeClassObject]],
-    ]:
+    ) -> t.Infra.FacadeComponentClaims:
         """Retain native receiver identities while discovering public composition.
 
         Returns:
-            The resulting ``Mapping[tuple[p.Infra.RopeClassObject, str],
-                Sequence[tuple[str, str, p.Infra.RopeClassObject]]]``.
+            Each claimed component method with its composing facade targets.
 
         """
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
@@ -2625,11 +2623,8 @@ class FlextInfraUtilitiesFacadeComponents:
     def _component_calls(
         cls,
         module: p.Infra.RopePyModule,
-        claims: Mapping[
-            tuple[p.Infra.RopeClassObject, str],
-            Sequence[tuple[str, str, p.Infra.RopeClassObject]],
-        ],
-        methods: Mapping[str, frozenset[str]],
+        claims: t.Infra.FacadeComponentClaims,
+        components: Mapping[str, frozenset[str]],
     ) -> Sequence[tuple[m.Infra.SourceRewrite, str, str]]:
         """Prove both the imported component and its lexical facade receiver.
 
@@ -2643,7 +2638,8 @@ class FlextInfraUtilitiesFacadeComponents:
         proves the receiver is the claimed component class and that its
         ``method`` is the claimed callable, which is exactly the identity the
         hierarchy occurrence filter proved, without inferring every unrelated
-        textual occurrence of the same method name.
+        textual occurrence of the same method name. ``components`` names each
+        claimed component's methods (``_component_methods``).
 
         Returns:
             Native source changes, original references and public destinations.
@@ -2652,54 +2648,73 @@ class FlextInfraUtilitiesFacadeComponents:
             TypeError: If component consumer has no native module tree.
 
         """
+        source = module.source_code
+        methods = cls._component_candidate_methods(source, components)
+        if not methods:
+            return ()
         words = FlextInfraUtilitiesRopeRuntimeModules.runtime_callable(
             "rope.base.worder", "Worder"
-        )(module.source_code)
+        )(source)
         if not isinstance(words, p.Infra.RopeWorder):
             message = "Component references require native word regions"
             raise TypeError(message)
         index = module.get_source_binding_index()
         references: dict[tuple[int, int], tuple[m.Infra.SourceRewrite, str, str]] = {}
-        for method in cls._component_candidate_methods(module.source_code, methods):
-            finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-                module.pycore.project, method
+        for start, method in cls._claimed_name_offsets(source, methods):
+            first, last = words.get_primary_range(start)
+            prefix, name, offset = words.get_splitted_primary_before(last)
+            context = index.context_at(offset)
+            if (
+                not prefix
+                or name != method
+                or context.access != "read"
+                or context.role == "class-base"
+                or not cls._component_receiver_candidate(context.environment, prefix)
+            ):
+                continue
+            destination = cls._component_destination(
+                module, prefix, method, offset, claims
             )
-            for occurrence in finder.find_occurrences(pymodule=module):
-                first, last = occurrence.get_primary_range()
-                prefix, name, offset = words.get_splitted_primary_before(last)
-                context = index.context_at(offset)
-                if (
-                    not prefix
-                    or name != method
-                    or context.access != "read"
-                    or context.role == "class-base"
-                    or not cls._component_receiver_candidate(
-                        context.environment, prefix
-                    )
-                ):
-                    continue
-                destination = cls._component_destination(
-                    module, prefix, method, offset, claims
+            if destination is not None:
+                references[first, last] = (
+                    m.Infra.SourceRewrite(start=first, end=last, text=destination),
+                    source[first:last],
+                    destination,
                 )
-                if destination is not None:
-                    references[first, last] = (
-                        m.Infra.SourceRewrite(start=first, end=last, text=destination),
-                        module.source_code[first:last],
-                        destination,
-                    )
         return tuple(value for _region, value in sorted(references.items()))
 
     @staticmethod
+    def _claimed_name_offsets(
+        source: str, methods: frozenset[str]
+    ) -> Generator[tuple[int, str]]:
+        """Yield the offset of every name token spelling a claimed method.
+
+        One tokenization serves every method of the module: it yields exactly
+        the offsets the native lexical finder (rope ``Finder`` without
+        filters) yields per method, whose token search keeps the NAME tokens
+        equal to its name. The tokenizer emits the replacement-field names of
+        an f-string as NAME tokens of their own (PEP 701).
+
+        Yields:
+            Each claimed name's source offset and the name, in source order.
+
+        """
+        line_starts = [0]
+        for line in source.splitlines(keepends=True):
+            line_starts.append(line_starts[-1] + len(line))
+        for token in tokenize.generate_tokens(io.StringIO(source).readline):
+            if token.type == tokenize.NAME and token.string in methods:
+                row, column = token.start
+                yield line_starts[row - 1] + column, token.string
+
+    @staticmethod
     def _component_methods(
-        claims: Mapping[
-            tuple[p.Infra.RopeClassObject, str],
-            Sequence[tuple[str, str, p.Infra.RopeClassObject]],
-        ],
+        claims: t.Infra.FacadeComponentClaims,
     ) -> Mapping[str, frozenset[str]]:
-        """Index the claimed methods by their component's class name, once.
+        """Group the claimed methods by the name of their component class.
 
         Returns:
-            Component class name to the methods claimed on it.
+            Each claimed component's name with its claimed methods.
 
         """
         methods: dict[str, set[str]] = {}
@@ -2709,8 +2724,8 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @staticmethod
     def _component_candidate_methods(
-        source: str, methods: Mapping[str, frozenset[str]]
-    ) -> tuple[str, ...]:
+        source: str, components: Mapping[str, frozenset[str]]
+    ) -> frozenset[str]:
         """Select the claimed methods whose component this module names.
 
         A lexical receiver names its component class in the module itself:
@@ -2719,16 +2734,14 @@ class FlextInfraUtilitiesFacadeComponents:
         receiver of it, so its methods need no occurrence search there.
 
         Returns:
-            The sorted methods of every component the source names.
+            The methods of every component the source names.
 
         """
-        return tuple(
-            sorted({
-                method
-                for name, owned in methods.items()
-                if name in source
-                for method in owned
-            })
+        return frozenset(
+            method
+            for name, owned in components.items()
+            if name in source
+            for method in owned
         )
 
     @staticmethod
@@ -2766,10 +2779,7 @@ class FlextInfraUtilitiesFacadeComponents:
         reference: str,
         method: str,
         offset: int,
-        claims: Mapping[
-            tuple[p.Infra.RopeClassObject, str],
-            Sequence[tuple[str, str, p.Infra.RopeClassObject]],
-        ],
+        claims: t.Infra.FacadeComponentClaims,
     ) -> str | None:
         """Elect an already bound facade for one native component call.
 
@@ -2962,25 +2972,65 @@ class FlextInfraUtilitiesFacadeComponents:
         }
 
     @classmethod
-    def codemod_facade_component_rules(
+    def codemod_facade_census_facts(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> m.Infra.FacadeCensus:
+        """Read the project's facade census once from the injected snapshot.
+
+        The member, ownership and component renderers of one rendering share
+        it as their facts: the lineage, the foreign member references and
+        names, the misplaced members and the component claims are derived a
+        single time over the snapshot's sources instead of once per renderer.
+
+        Returns:
+            The census bound to ``snapshot`` and the absolute project root.
+
+        """
+        root = project.absolute()
+        members = FlextInfraUtilitiesFacadeMembers
+        engine = snapshot.engine
+        lineage, references, exposed = members.facade_member_census(
+            root, source_project=engine
+        )
+        return m.Infra.FacadeCensus(
+            snapshot=snapshot,
+            project=root,
+            lineage=lineage,
+            references=references,
+            exposed=exposed,
+            missing=members.facade_misplaced_members(
+                FlextInfraUtilitiesPyprojectConform.project_package_name(root),
+                source_project=engine,
+            ),
+            claims=cls._component_claims(root, source_project=engine),
+        )
+
+    @classmethod
+    def codemod_facade_component_rules(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        project: Path,
+        census: m.Infra.FacadeCensus,
     ) -> Mapping[str, t.JsonMapping]:
         """Render native-proven component calls through their bound public facade.
 
         Calls share one rule per consumer file and public namespace, with exact
         native call-range alternatives. Bindings elect both receivers before
         rendering; spelling alone never admits a shadowed name. Constructors,
-        class bases and entity references remain unchanged.
+        class bases and entity references remain unchanged. ``census`` is the
+        rendering's facade census.
 
         Returns:
             Rules for the identity-proven calls in the captured project sources.
 
         """
-        root = project.absolute()
-        claims = cls._component_claims(root, source_project=snapshot.engine)
+        root = FlextInfraUtilitiesFacadeMembers.facade_census_root(
+            census, snapshot, project
+        )
+        claims = census.claims
         if not claims:
             return {}
-        methods = cls._component_methods(claims)
+        components = cls._component_methods(claims)
         prefix = (
             f"{c.Infra.FACADE_COMPONENT_RELOCATE_SHAPE}"
             f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
@@ -2992,7 +3042,7 @@ class FlextInfraUtilitiesFacadeComponents:
         ):
             module = cls._consumer_module(snapshot.engine, path)
             groups: dict[str, list[tuple[m.Infra.SourceRewrite, str, str]]] = {}
-            for witness in cls._component_calls(module, claims, methods):
+            for witness in cls._component_calls(module, claims, components):
                 groups.setdefault(witness[2].rpartition(".")[0], []).append(witness)
             for namespace, calls in sorted(groups.items()):
                 rule_id = (
