@@ -123,11 +123,12 @@ source carries an explicit empty reference sequence and zero count. Reobserving 
 after B selects A as current without changing A's original provenance timestamp,
 reordering history or duplicating its immutable evidence.
 
-The local collection owner may admit a typed legacy manifest only as the original
-ownership before-image. All configured sources must still be collected and every
-publication must emit the current association and coverage proof. Malformed or partly
-upgraded manifests are rejected. Verification never admits this before-image;
-migration neither patches evidence by hand nor exposes a second successful format.
+Collection and verification admit only the current manifest contract, including its
+association and coverage proof. Missing fields, null published association proof,
+and legacy counts-only coverage are rejected rather than reconstructed. Strict native
+JSON validation admits arrays and paths directly; raw model validators must not
+replace that input with Python values before field validation. The initial in-process
+empty manifest may retain an absent association proof until collection publishes it.
 
 ## Failure boundary
 

@@ -304,7 +304,6 @@ class FlextInfraUtilitiesDocsCollectionSources:
             ), ()
         manifest = m.Infra.PlanCollectionManifest.model_validate_json(
             before.content,
-            context={"manifest_before_image": True},
         )
         excluded: list[Path] = [manifest_path]
         cls._validate_revision_locators(manifest)

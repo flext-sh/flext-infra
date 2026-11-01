@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self
 
@@ -230,41 +229,24 @@ class FlextInfraModelsDocsCollection:
             description="Digest-attested generated artifact ownership",
         )
 
-        @m.model_validator(mode="before")
-        @classmethod
-        def _ownership_before_image(
-            cls,
-            value: t.JsonPayload,
+        @m.model_validator(mode="after")
+        def _require_published_association(
+            self,
             info: p.ValidationInfo,
-        ) -> t.JsonPayload:
-            """Admit typed legacy ownership only for local collection's before-image.
+        ) -> Self:
+            """Require published proof after native JSON tuple and path validation.
 
             Returns:
-                The payload for complete native validation, not qualified evidence.
+                The validated current manifest, retaining legitimate in-process absence.
 
             Raises:
-                ValueError: If published current-format proof is explicitly null.
+                ValueError: If published association proof is null.
 
             """
-            context = info.context
-            if (
-                isinstance(context, Mapping)
-                and context.get("manifest_before_image") is True
-                and isinstance(value, dict)
-            ):
-                if "configuration_sha256" not in value and "coverage" not in value:
-                    return {
-                        **value,
-                        "configuration_sha256": None,
-                        "coverage": [],
-                    }
-                if (
-                    "configuration_sha256" in value
-                    and value["configuration_sha256"] is None
-                ):
-                    msg = "published collection manifest has null association proof"
-                    raise ValueError(msg)
-            return value
+            if info.mode == "json" and self.configuration_sha256 is None:
+                msg = "published collection manifest has null association proof"
+                raise ValueError(msg)
+            return self
 
     class PlanCollectionCoverage(m.ContractModel):
         """Observed source coverage, explicitly distinct from reconciliation."""
@@ -288,29 +270,6 @@ class FlextInfraModelsDocsCollection:
             default=(),
             description="Private source references without transcript contents",
         )
-
-        @m.model_validator(mode="before")
-        @classmethod
-        def _ownership_before_image(
-            cls,
-            value: t.JsonPayload,
-            info: p.ValidationInfo,
-        ) -> t.JsonPayload:
-            """Admit counts-only coverage solely as unqualified local before-state.
-
-            Returns:
-                The payload for complete native validation before source recollection.
-
-            """
-            context = info.context
-            if (
-                isinstance(context, Mapping)
-                and context.get("manifest_before_image") is True
-                and isinstance(value, dict)
-                and "source_revisions" not in value
-            ):
-                return {**value, "source_revisions": []}
-            return value
 
     class PlanCollectionBundle(m.ArbitraryTypesModel):
         """Read-only planning result consumed by the existing publisher."""

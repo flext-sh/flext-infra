@@ -507,7 +507,26 @@ class FlextInfraUtilitiesPythonModel:
             TypeError: If the elected binding has no named native declaration.
 
         """
-        module_name, _, name = dotted.rpartition(".")
+        visited: set[str] = set()
+        while dotted not in visited:
+            visited.add(dotted)
+            module_name, _, name = dotted.rpartition(".")
+            facts = cls.python_model_module(run, module_name)
+            if facts is None:
+                return dotted
+            if facts.members.get(name) == "alias" and name in facts.imports:
+                dotted = facts.imports[name]
+                continue
+            # An assignment is itself a declaration, even when Rope cannot
+            # infer the assigned descriptor's object (for example staticmethod).
+            if facts.members.get(
+                name
+            ) == "attribute" and not cls.python_model_class_alias(facts, name):
+                return dotted
+            break
+        else:
+            msg = f"cyclic published binding: {dotted}"
+            raise TypeError(msg)
         path = run.module_files.get(module_name)
         if path is None:
             return dotted
