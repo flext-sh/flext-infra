@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, m, r, u
-from flext_infra.docs import FlextInfraDocServiceBase, FlextInfraDocsGeneratorBundle
+from flext_infra.docs import FlextInfraDocServiceBase
+from flext_infra.docs._generator import FlextInfraDocsGeneratorBundle
 
 if TYPE_CHECKING:
     from flext_infra import p

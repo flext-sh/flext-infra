@@ -84,23 +84,41 @@ and track the complete owner census in Bead `flext-43iz8`.
 - Lazy exports reject competing owners of one published name in a package. Identical
   class names in independent modules or packages are valid; declarations that are not
   published do not compete for export ownership.
-- <a id="adr-028-decision-15"></a>Public contracts and facade member names follow
-  [FLEXT ADR-028 Decision 15](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-15);
-  external consumers use capability names, never implementation-library names.
-- <a id="adr-028-decision-16"></a>This subproject's CA/DI and zero-duplication/smell
-  contract is [FLEXT ADR-028 Decision 16](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-16);
-  this file creates no alternate threshold or exception.
-- <a id="adr-028-decision-17"></a>Structural analysis and refactoring follow [FLEXT ADR-028 Decisions 5 and 17–18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17): reuse the
-  repository-scoped workspace model and native refactorings when they express the
-  operation; declarative, generalized rules own the remaining source checks. Duplicate
-  parse, discovery, import-graph, and refactoring layers are migration defects, not
-  alternate owners. The active code cutover is tracked by `flext-1engx.15`; this
-  instruction does not claim it is complete.
+
+#### ADR-028 decision 15
+
+Public contracts and facade member names follow
+[FLEXT ADR-028 Decision 15](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-15);
+external consumers use capability names, never implementation-library names.
+
+#### ADR-028 decision 16
+
+This subproject's CA/DI and zero-duplication/smell contract is
+[FLEXT ADR-028 Decision 16](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-16);
+this file creates no alternate threshold or exception.
+
+#### ADR-028 decision 17
+
+Structural analysis and refactoring follow
+[FLEXT ADR-028 Decisions 5 and 17–18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17):
+reuse the repository-scoped workspace model and native refactorings when they
+express the operation; declarative, generalized rules own the remaining source
+checks. Duplicate parse, discovery, import-graph, and refactoring layers are
+migration defects, not alternate owners. The active code cutover is tracked by
+`flext-1engx.15`; this instruction does not claim it is complete.
+
 - Config/settings canonical pattern: ADR-005 §§1–2 and the declaring settings/config
   docstrings (flext-z0zkq; fleet follow-up flext-la3z5).
-- <a id="adr-028-decision-18"></a>Codemod authoring and application follow [FLEXT ADR-028 Decisions 17–18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-18) and the root
-  [Codemod Rules guide, One rule per law](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/guides/codemod-rules.md#one-rule-per-law). ADR-014 continues to own
-  family shape, subject to the later accepted workspace and rule decisions.
+
+#### ADR-028 decision 18
+
+Codemod authoring and application follow
+[FLEXT ADR-028 Decisions 17–18](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-18)
+and the root
+[Codemod Rules guide, One rule per law](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/guides/codemod-rules.md#one-rule-per-law).
+ADR-014 continues to own family shape, subject to the later accepted workspace
+and rule decisions.
+
 - Family-wrapper flattening preserves the domain prefix in every promoted name.
   Semantic rewrites use the native workspace symbol identity for executable references
   and quoted type positions, including generic bases and deferred annotations. Ordinary
@@ -165,9 +183,10 @@ Independently valid effects remain published when another target fails; a change
 unrelated file cannot invalidate the whole invocation. Preserve the first original
 exception and its traceback. Never roll back published files or restore old source;
 repair the causal owner forward and resume through the canonical command.
-Journal contention waits only for native EACCES/EAGAIN/EWOULDBLOCK and retains the lock file's
-identity. Other lease errors escape unchanged. Every Mise warning and failed declared
-entrypoint blocks publication; no message classifier converts either to success.
+Journal contention waits only for native EACCES/EAGAIN/EWOULDBLOCK and retains the lock
+file's identity. Other lease errors escape unchanged. Every Mise warning and failed
+declared entrypoint blocks publication; no message classifier converts either to
+success.
 
 Configuration declares `latest`; only `make upg` resolves newer releases and writes
 the committed `uv.lock` and `mise.lock`. `make setup` installs from those locks (the CI

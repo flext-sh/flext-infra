@@ -10,11 +10,10 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import m, u
-from flext_infra.docs import (
-    FlextInfraDocAuditorMixin,
+from flext_infra.docs import FlextInfraDocAuditorMixin, FlextInfraDocServiceBase
+from flext_infra.docs._auditor import (
     FlextInfraDocsAuditorChecks,
     FlextInfraDocsAuditorReport,
-    FlextInfraDocServiceBase,
 )
 
 if TYPE_CHECKING:
