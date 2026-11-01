@@ -156,8 +156,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
             exports = cls._codemod_installed_package_exports(snapshot, run, package)
             if exports is None:
                 continue
+            # An installed provider contains no module of this project, so it
+            # has no project directory: it is never a header's scope.
             merged_exports.setdefault(package, exports)
-            merged_directories.setdefault(package, ".")
             merged_modules.setdefault(package, ())
         return m.Infra.CodemodPackageExportsFacts(
             exports=merged_exports,
@@ -371,7 +372,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         prunes the unused names and orders the block. A module inside a
         declaring package imports from the deepest declaring package that
         contains it; every other module imports from the unique shallowest
-        declaring package.
+        declaring package, and gets no header when that package is ambiguous.
 
         Returns:
             The generated ``import-header`` rule documents keyed by id.
@@ -383,22 +384,31 @@ class FlextInfraUtilitiesCodemodNativePackage:
         groups: dict[tuple[str, str | None, t.StrTuple], set[str]] = {}
         resolvable = cls.codemod_header_resolvable_names(facts)
         for name, packages in cls._codemod_declaring_packages(facts).items():
-            if name not in resolvable:
-                continue
+            # A module inside a declaring package always resolves the name to
+            # the deepest declaring package containing it, even when the
+            # shallowest declaration is ambiguous (``u`` published by both the
+            # source package and the ``tests`` tier): only the unscoped rule
+            # needs a unique shallowest package.
+            # An installed provider has no project directory: it is never a
+            # scope and never an ignored nested scope.
+            root = resolvable.get(name)
+            located = tuple(package for package in packages if package in directories)
             for package in packages:
-                home = PurePosixPath(directories[package])
+                if package != root and package not in directories:
+                    continue
+                home = PurePosixPath(directories.get(package, "."))
                 nested = tuple(
                     sorted(
                         directories[other]
-                        for other in packages
+                        for other in located
                         if other != package
                         and (
-                            package == resolvable[name]
+                            package == root
                             or PurePosixPath(directories[other]).is_relative_to(home)
                         )
                     )
                 )
-                scope = None if package == resolvable[name] else home.as_posix()
+                scope = None if package == root else home.as_posix()
                 groups.setdefault((package, scope, nested), set()).add(name)
         utils = cls._codemod_name_utils()
         documents: dict[str, t.JsonMapping] = {}
