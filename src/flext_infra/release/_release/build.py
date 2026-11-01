@@ -11,7 +11,7 @@ from json import dumps
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.release import FlextInfraReleaseReleaseProject
+from flext_infra.release._release import FlextInfraReleaseReleaseProject
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 

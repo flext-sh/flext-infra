@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, u
-from flext_infra.release import FlextInfraReleaseReleasePublish
+from flext_infra.release._release import FlextInfraReleaseReleasePublish
 
 
 class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):

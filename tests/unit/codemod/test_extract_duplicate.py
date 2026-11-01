@@ -10,7 +10,7 @@ import os
 import sys
 from pathlib import Path
 
-from flext_infra.codemod import FlextInfraCodemodExtractDuplicate
+from flext_infra.codemod import FlextInfraCodemodExtract
 from tests import c, m, t, tm, u
 
 _SAFE_SOURCE = (
@@ -100,13 +100,13 @@ class TestsFlextInfraExtractDuplicate:
         """A repeated side-effect block is hoisted and rewired byte-safely."""
         span = self._block_span(_SAFE_SOURCE, _SAFE_BLOCK)
         updated = tm.not_none(
-            FlextInfraCodemodExtractDuplicate.plan_source(_SAFE_SOURCE, (span,)),
+            FlextInfraCodemodExtract.plan_source(_SAFE_SOURCE, (span,)),
         )
         tm.that(updated, has="def _flext_extract_")
         tm.that(updated, has="Sample._flext_extract_")
         tm.that(updated.count("bucket.extend([seed, CONSTANT])"), eq=1)
         tm.that(
-            FlextInfraCodemodExtractDuplicate.plan_source(updated, (span,)),
+            FlextInfraCodemodExtract.plan_source(updated, (span,)),
             eq=None,
         )
         module = tmp_path / "sample.py"
@@ -127,7 +127,7 @@ class TestsFlextInfraExtractDuplicate:
         """A block whose return crosses the boundary is never extracted."""
         span = self._block_span(_UNSAFE_SOURCE, _UNSAFE_BLOCK)
         tm.that(
-            FlextInfraCodemodExtractDuplicate.plan_source(_UNSAFE_SOURCE, (span,)),
+            FlextInfraCodemodExtract.plan_source(_UNSAFE_SOURCE, (span,)),
             eq=None,
         )
 
@@ -162,11 +162,11 @@ class TestsFlextInfraExtractDuplicate:
             tm.ok(u.Cli.json_dumps(report)),
             encoding=c.DEFAULT_ENCODING,
         )
-        edits = tm.ok(FlextInfraCodemodExtractDuplicate.plan_project(tmp_path))
+        edits = tm.ok(FlextInfraCodemodExtract.plan_project(tmp_path))
         tm.that(edits, length=1)
         tm.that(edits[0].file_path, eq=module.resolve())
         module.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
         tm.that(
-            tm.ok(FlextInfraCodemodExtractDuplicate.plan_project(tmp_path)),
+            tm.ok(FlextInfraCodemodExtract.plan_project(tmp_path)),
             empty=True,
         )

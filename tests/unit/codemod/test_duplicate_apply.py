@@ -14,11 +14,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra
-from flext_infra.codemod import (
-    FlextInfraCodemodDuplicateApply,
-    FlextInfraCodemodLoopPhaseDuplicateApply,
-    FlextInfraModGateEngine,
-)
+from flext_infra.codemod import FlextInfraCodemodDuplicateApply, FlextInfraModGateEngine
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseDuplicateApply
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:

@@ -13,11 +13,11 @@ from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod import (
+from flext_infra.codemod._rename import (
     FlextInfraCodemodRenameSources,
     FlextInfraCodemodRenameSymbols,
 )
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 
 
 class FlextInfraApplyRenames:

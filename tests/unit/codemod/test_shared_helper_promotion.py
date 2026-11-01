@@ -15,7 +15,7 @@ from typing import cast
 import pytest
 
 from flext_infra import infra
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemantic
 from tests import c, m, tm, u
 
 
@@ -248,7 +248,7 @@ class TestsFlextInfraSharedHelperPromotion:
             for edit in edits
         )
         tm.ok(
-            FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+            FlextInfraTransformersSemantic.publish_semantic_file_plans(
                 plans,
                 repository_root=root,
             ),
@@ -358,7 +358,7 @@ class TestsFlextInfraSharedHelperPromotion:
             for edit in edits
         )
         tm.ok(
-            FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+            FlextInfraTransformersSemantic.publish_semantic_file_plans(
                 plans,
                 repository_root=root,
             ),

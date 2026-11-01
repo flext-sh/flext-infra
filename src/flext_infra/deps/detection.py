@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.deps import FlextInfraDepsDetectionRunners
+from flext_infra.deps._detection import FlextInfraDepsDetectionRunners
 
 
 class FlextInfraDependencyDetectionService(FlextInfraDepsDetectionRunners):

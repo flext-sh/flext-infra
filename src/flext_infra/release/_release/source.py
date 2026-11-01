@@ -10,7 +10,7 @@ import tarfile
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
-from flext_infra.release import FlextInfraReleaseReleaseArtifact
+from flext_infra.release._release import FlextInfraReleaseReleaseArtifact
 
 
 class FlextInfraReleaseReleaseSource(FlextInfraReleaseReleaseArtifact):

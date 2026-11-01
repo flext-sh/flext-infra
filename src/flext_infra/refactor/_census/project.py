@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections import Counter
 
 from flext_infra import m, p
-from flext_infra.refactor import (
+from flext_infra.refactor._census import (
     FlextInfraRefactorCensusFilters,
     FlextInfraRefactorCensusObjects,
 )

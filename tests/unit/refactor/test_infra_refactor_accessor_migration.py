@@ -13,11 +13,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, infra, m
-from flext_infra.codemod import (
-    FlextInfraCodemodLoopPhaseAccessorRename,
-    FlextInfraModGateEngine,
-)
-from flext_infra.refactor import FlextInfraRefactorAccessorOrigin
+from flext_infra.codemod import FlextInfraModGateEngine
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseAccessorRename
+from flext_infra.refactor import FlextInfraRefactorAccessor
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -197,7 +195,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
-            resolver = FlextInfraRefactorAccessorOrigin(rope.rope_project)
+            resolver = FlextInfraRefactorAccessor(rope.rope_project)
             module = resolver.module(path)
             tree = module.get_ast()
             receiver = next(
@@ -670,7 +668,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         source = f"class Owned:\n    def {name}(self):\n        return True\n"
         origin_file.write_text(source, encoding="utf-8")
         with u.Infra.open_project(workspace) as project:
-            resolver = FlextInfraRefactorAccessorOrigin(project)
+            resolver = FlextInfraRefactorAccessor(project)
             snapshot = u.Infra.snapshot_project(project, {origin_file: source})
             try:
                 if snapshot_case == "original":

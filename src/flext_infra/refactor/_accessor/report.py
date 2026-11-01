@@ -12,11 +12,11 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
 from flext_infra.codegen import FlextInfraStagedPackage
-from flext_infra.refactor import (
+from flext_infra.refactor._accessor import (
     FlextInfraRefactorAccessorOrigin,
     FlextInfraRefactorAccessorRewrite,
 )
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 
 if TYPE_CHECKING:
     from flext_infra import p

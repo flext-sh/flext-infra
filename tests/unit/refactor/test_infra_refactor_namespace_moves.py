@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import FlextInfraCli
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemantic
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, tm, u
 
@@ -248,7 +248,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             )
         else:
             tm.ok(
-                FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+                FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
                     plans,
                     repository_root=root,
                     options=m.Infra.SemanticPublicationOptions(
@@ -466,7 +466,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         content = "VALUE = 'newer package owner'\n"
         initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
         tm.fail(
-            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+            FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
@@ -587,7 +587,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             eq=["RECEIVER"],
         )
         tm.ok(
-            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+            FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
@@ -661,7 +661,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             ),
         )
         tm.fail(
-            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+            FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),

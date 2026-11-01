@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.gates import FlextInfraGatesPyright
 from tests import c, m, t, tm, u
 

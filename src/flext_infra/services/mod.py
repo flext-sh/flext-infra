@@ -13,7 +13,7 @@ from flext_cli import u
 
 import flext_infra
 from flext_infra import c, codemod, m, r, t
-from flext_infra.codemod._loop import FlextInfraCodemodLoopPhaseFacadeComponents
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseFacadeComponents
 
 if TYPE_CHECKING:
     from flext_infra import p

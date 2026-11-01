@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_cli import cli
 
 from flext_infra import config, m, u
-from flext_infra.refactor import FlextInfraRefactorCensusCollect
+from flext_infra.refactor._census import FlextInfraRefactorCensusCollect
 
 if TYPE_CHECKING:
     from flext_infra import p

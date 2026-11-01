@@ -13,19 +13,19 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codemod._loop.phase_accessor_rename import (
+    from flext_infra.codemod.loop.phase_accessor_rename import (
         FlextInfraCodemodLoopPhaseAccessorRename,
     )
-    from flext_infra.codemod._loop.phase_duplicate_apply import (
+    from flext_infra.codemod.loop.phase_duplicate_apply import (
         FlextInfraCodemodLoopPhaseDuplicateApply,
     )
-    from flext_infra.codemod._loop.phase_facade_components import (
+    from flext_infra.codemod.loop.phase_facade_components import (
         FlextInfraCodemodLoopPhaseFacadeComponents,
     )
-    from flext_infra.codemod._loop.phase_import_normalization import (
+    from flext_infra.codemod.loop.phase_import_normalization import (
         FlextInfraCodemodLoopPhaseImportNormalization,
     )
-    from flext_infra.codemod._loop.phase_namespace_relocation import (
+    from flext_infra.codemod.loop.phase_namespace_relocation import (
         FlextInfraCodemodLoopPhaseNamespaceRelocation,
     )
 

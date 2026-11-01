@@ -18,7 +18,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.deps import FlextInfraToolTablesPhase
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 from tests import c, m, t, tm, u
 

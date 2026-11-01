@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from flext_infra.deps import FlextInfraConsolidateGroupsPhase
+from flext_infra.deps.phases import FlextInfraConsolidateGroupsPhase
 from tests import c, t, tm, u
 
 
