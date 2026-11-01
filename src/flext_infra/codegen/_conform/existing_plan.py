@@ -1220,8 +1220,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     ) -> p.Result[str]:
         """Recover, overlay, conform, and format the control project metadata.
 
-        The control cohort publishes the same final form as the repository
-        plan (``published_pyproject_source``), so one run writes it once.
+        The control candidate carries the same final form as the repository
+        plan (``published_pyproject_source``); the run's one composed
+        publication writes it once.
 
         Returns:
             The published conformed metadata source, or the first failure.

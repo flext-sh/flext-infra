@@ -178,7 +178,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             )
         return self._execute_all_surfaces(
             request,
-            root,
             after_publication=after_publication,
             after_cohort_publication=after_cohort_publication,
         )
@@ -225,146 +224,40 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _execute_all_surfaces(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        root: Path,
         *,
         after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
         after_cohort_publication: tuple[
             Callable[[tuple[Path, ...]], p.Result[bool]], ...
         ],
     ) -> p.Result[p.Infra.CodegenResult]:
-        """Publish the control cohort, re-elect its inputs, then the full plan.
+        """Plan the control cohort and the full request, then publish them once.
+
+        The control cohort is planned first so a pre-Python refusal surfaces
+        before source analysis, but nothing is published until the complete
+        request is planned and admitted: a later planning failure leaves the
+        tree untouched. Both plans read the same original tree, the one view
+        ``check_managed`` compares; the full plan's final form supersedes the
+        control candidate of a shared destination.
 
         Returns:
-            The plan and written paths, or the first failure with the paths
-            already written before it.
+            The plan and written paths, or the first failure.
 
         """
         control_plan = self._control_plan(request)
         if control_plan.failure:
             return r[p.Infra.CodegenResult].from_failure(control_plan)
-        control = self._published(
-            request,
-            control_plan.value,
-            (),
-            after_cohort_publication=after_cohort_publication,
-            prepared_files=control_plan.value.files,
-        )
-        if control.failure:
-            return control
-        written = self._written_paths(control)
-        refreshed = self._advance_control_inputs(root, written)
-        if refreshed.failure:
-            return self._execution_failure(refreshed, written)
         planned = self._planned(request)
         if planned.failure:
-            return self._execution_failure(planned, written)
-        published = self._published(
+            return r[p.Infra.CodegenResult].from_failure(planned)
+        plan = planned.value
+        plan.files = u.Infra.codegen_compose_file_plans(
+            (*control_plan.value.files, *plan.files), ordered=True
+        )
+        return self._published(
             request,
-            planned.value,
-            (),
+            plan,
+            after_publication,
             after_cohort_publication=after_cohort_publication,
-        )
-        written = tuple(dict.fromkeys((*written, *self._written_paths(published))))
-        if published.failure:
-            return self._execution_failure(published, written)
-        return self._completed_followups(planned.value, written, after_publication)
-
-    def _completed_followups(
-        self,
-        plan: m.Infra.CodegenPlan,
-        written: tuple[Path, ...],
-        after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
-    ) -> p.Result[p.Infra.CodegenResult]:
-        """Run every follow-up over the written paths of a complete publication.
-
-        Returns:
-            The plan and written paths, or the first follow-up failure with its
-            additional written paths.
-
-        """
-        for operation in after_publication:
-            completed = operation(written)
-            if completed.failure:
-                extra = tuple(
-                    Path(path)
-                    for path in u.type_adapter(t.TypeForm(list[str])).validate_python(
-                        (completed.error_data or {}).get("written_files", []),
-                        strict=True,
-                    )
-                )
-                return self._execution_failure(
-                    completed, tuple(dict.fromkeys((*written, *extra)))
-                )
-        return r[p.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=plan, written_files=written)
-        )
-
-    def _advance_control_inputs(
-        self,
-        root: Path,
-        written: tuple[Path, ...],
-    ) -> p.Result[bool]:
-        """Re-elect metadata after own effects without altering old witnesses.
-
-        Returns:
-            ``True`` when a written manifest re-elected the inputs, ``False``
-            when no manifest was written, or the first election failure.
-
-        """
-        if not any(path.name == c.PYPROJECT_FILENAME for path in written):
-            return r[bool].ok(value=False)
-        scaffold = self.state.initial_workspace is not None
-        self.state.initial_workspace = None
-        captured = u.Infra.load_codegen_inputs(root)
-        if captured.failure:
-            return r[bool].from_failure(captured)
-        elected = workspace_services.FlextInfraWorkspaceDetector.load_workspace_spec(
-            root, inputs=captured.value
-        )
-        if elected.failure:
-            return r[bool].from_failure(elected)
-        if scaffold:
-            self.state.initial_workspace = elected.value
-        return r[bool].ok(value=True)
-
-    @staticmethod
-    def _written_paths(
-        result: p.Result[p.Infra.CodegenResult],
-    ) -> tuple[Path, ...]:
-        """Read the existing successful or partial-publication receipt.
-
-        Returns:
-            The paths written by the publication, complete or partial.
-
-        """
-        if result.success:
-            return tuple(result.value.written_files)
-        return tuple(
-            Path(path)
-            for path in u.type_adapter(t.TypeForm(list[str])).validate_python(
-                (result.error_data or {}).get("written_files", []), strict=True
-            )
-        )
-
-    @staticmethod
-    def _execution_failure(
-        failure: p.FailureLike,
-        written: tuple[Path, ...],
-    ) -> p.Result[p.Infra.CodegenResult]:
-        """Retain the first original cause and the paths written before it.
-
-        Returns:
-            The failure carrying its cause and every written path.
-
-        """
-        return r[p.Infra.CodegenResult].fail(
-            failure.error or str(failure.exception),
-            error_code=failure.error_code,
-            error_data={
-                **(failure.error_data or {}),
-                "written_files": [str(path) for path in written],
-            },
-            exception=failure.exception,
         )
 
     def _control_plan(
@@ -672,103 +565,54 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         plan: m.Infra.CodegenPlan,
         after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
         *,
-        prepared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = None,
         after_cohort_publication: tuple[
             Callable[[tuple[Path, ...]], p.Result[bool]], ...
         ] = (),
     ) -> p.Result[p.Infra.CodegenResult]:
-        """Publish independent authenticated cohorts, retaining every failure.
+        """Admit every authenticated cohort, then publish the request once.
 
-        Changed providers, consumers and exports share candidate admission.
-        Publication failures retain the writer's completed-path receipt;
-        unrelated admitted effects remain valid and are included in the final
-        failure metadata. Follow-ups require the complete request to succeed.
+        Changed providers, consumers and exports share candidate admission per
+        cohort. The first admission failure rejects the whole request before
+        any destination effect; the admitted cohorts are published together
+        through one publisher call. Follow-ups require that publication to
+        succeed.
 
         Returns:
-            The full result, or the first cause with all actual written paths.
+            The full result, or the first cause with the actual written paths.
 
         """
         result_type = r[p.Infra.CodegenResult]
         root = request.root.expanduser().resolve()
-        if not plan.outcomes:
-            published = self._published_cohort(
-                request,
-                root,
-                plan,
-                prepared_files=prepared_files,
-                publication_followups=(*after_cohort_publication, *after_publication),
-            )
-            if published.failure:
-                return result_type.fail(
-                    published.error or "generation cohort failed",
-                    error_code=published.error_code,
-                    error_data={
-                        **(published.error_data or {}),
-                        "failed_repositories": [
-                            repository.name for repository in plan.repositories
-                        ],
-                    },
-                    exception=published.exception,
+        selection: tuple[
+            tuple[m.Infra.CodegenPlan, tuple[m.Infra.CodegenFilePlan, ...] | None],
+            ...,
+        ] = ((plan, None),)
+        if plan.outcomes:
+            ready = {
+                repository.name: repository
+                for repository in plan.repositories
+                if any(
+                    outcome.repository == repository.name for outcome in plan.outcomes
                 )
-            return published
-        ready = {
-            repository.name: repository
-            for repository in plan.repositories
-            if any(outcome.repository == repository.name for outcome in plan.outcomes)
-        }
-        documentation_failure = self._ready_documentation_plans(
-            request,
+            }
+            documentation_failure = self._ready_documentation_plans(
+                request, root, plan, ready
+            )
+            if documentation_failure is not None:
+                return result_type.from_failure(documentation_failure)
+            cohorts = self._publication_cohorts(root, plan)
+            if cohorts.failure:
+                return result_type.from_failure(cohorts)
+            selection = tuple((cohort, cohort.files) for cohort in cohorts.value)
+        admitted = self._admitted_cohorts(request, root, selection)
+        if admitted.failure:
+            return result_type.from_failure(admitted)
+        return self._published_admitted(
             root,
             plan,
-            ready,
-            prepared_files,
+            admitted.value,
+            publication_followups=(*after_cohort_publication, *after_publication),
         )
-        if documentation_failure is not None:
-            return result_type.from_failure(documentation_failure)
-        cohorts = self._publication_cohorts(root, plan)
-        if cohorts.failure:
-            return result_type.from_failure(cohorts)
-        written, failures, failed_repositories = self._published_ordered_cohorts(
-            request,
-            root,
-            cohorts.value,
-            after_cohort_publication=after_cohort_publication,
-        )
-        if not failures:
-            for operation in after_publication:
-                completed = operation(tuple(written))
-                if completed.failure:
-                    failures.append(completed)
-                    written.extend(
-                        Path(path)
-                        for path in u.type_adapter(
-                            t.TypeForm(list[str])
-                        ).validate_python(
-                            (completed.error_data or {}).get("written_files", []),
-                            strict=True,
-                        )
-                    )
-                    break
-        if failures:
-            first = failures[0]
-            failed_names = list[t.JsonValue](sorted(failed_repositories))
-            return result_type.fail(
-                "\n".join(failure.error or "generation failed" for failure in failures),
-                error_code=first.error_code,
-                error_data={
-                    **(first.error_data or {}),
-                    "written_files": [str(path) for path in written],
-                    "errors": [
-                        failure.error or "generation failed" for failure in failures
-                    ],
-                    "failed_repositories": failed_names,
-                },
-                exception=first.exception,
-            )
-        payload: p.Infra.CodegenResult = m.Infra.CodegenResult(
-            plan=plan, written_files=tuple(written)
-        )
-        return result_type.ok(payload)
 
     def _ready_documentation_plans(
         self,
@@ -776,7 +620,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         root: Path,
         plan: m.Infra.CodegenPlan,
         ready: dict[str, m.Infra.RepositoryRef],
-        prepared_files: tuple[m.Infra.CodegenFilePlan, ...] | None,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]] | None:
         """Fold ready-repository documentation into the published plan.
 
@@ -790,71 +633,60 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         ready_roots = {
             (root / repository.path).resolve() for repository in ready.values()
         }
-        documents = (
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(prepared_files)
-            if prepared_files is not None
-            else self._docs_plans(
-                request,
-                m.Infra.CodegenPlan(
-                    request=plan.request,
-                    workspace=plan.workspace,
-                    repositories=tuple(ready.values()),
-                    files=tuple(
-                        file for file in plan.files if file.project in ready_roots
-                    ),
-                    uv_environments=plan.uv_environments,
-                ),
-            )
+        documents = self._docs_plans(
+            request,
+            m.Infra.CodegenPlan(
+                request=plan.request,
+                workspace=plan.workspace,
+                repositories=tuple(ready.values()),
+                files=tuple(file for file in plan.files if file.project in ready_roots),
+                uv_environments=plan.uv_environments,
+            ),
         )
         if documents.failure:
             return documents
         plan.files = documents.value
         return None
 
-    def _published_ordered_cohorts(
+    def _admitted_cohorts(
         self,
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
-        cohorts: tuple[m.Infra.CodegenPlan, ...],
-        *,
-        after_cohort_publication: tuple[
-            Callable[[tuple[Path, ...]], p.Result[bool]], ...
-        ] = (),
-    ) -> tuple[list[Path], list[p.FailureLike], set[str]]:
-        """Publish every cohort, retaining publication failures.
+        cohorts: tuple[
+            tuple[m.Infra.CodegenPlan, tuple[m.Infra.CodegenFilePlan, ...] | None],
+            ...,
+        ],
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Admit every cohort before any effect; the first refusal stops all.
+
+        Each cohort carries its prepared files, or ``None`` to derive its
+        documentation during admission.
 
         Returns:
-            Every written path, every cohort failure, and the repositories of
-            the failed cohorts, in publication order.
+            The admitted plans of every cohort in cohort order, or the first
+            admission failure naming its cohort's repositories.
 
         """
-        written: list[Path] = []
-        failures: list[p.FailureLike] = []
-        failed_repositories: set[str] = set()
-        for cohort in cohorts:
-            published = self._published_cohort(
-                request,
-                root,
-                cohort,
-                prepared_files=cohort.files,
-                publication_followups=after_cohort_publication,
+        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        admitted: list[m.Infra.CodegenFilePlan] = []
+        for cohort, prepared_files in cohorts:
+            files = self._admitted_cohort(
+                request, root, cohort, prepared_files=prepared_files
             )
-            if published.failure:
-                failures.append(published)
-                failed_repositories.update(
-                    repository.name for repository in cohort.repositories
+            if files.failure:
+                return result_type.fail(
+                    files.error or "generation cohort admission failed",
+                    error_code=files.error_code,
+                    error_data={
+                        **(files.error_data or {}),
+                        "failed_repositories": [
+                            repository.name for repository in cohort.repositories
+                        ],
+                    },
+                    exception=files.exception,
                 )
-                written.extend(
-                    Path(path)
-                    for path in u.type_adapter(t.TypeForm(list[str])).validate_python(
-                        (published.error_data or {}).get("written_files", []),
-                        strict=True,
-                    )
-                )
-                u.Cli.error(published.error or "generation cohort failed")
-            else:
-                written.extend(published.value.written_files)
-        return written, failures, failed_repositories
+            admitted.extend(files.value)
+        return result_type.ok(tuple(admitted))
 
     @classmethod
     def _publication_cohorts(
@@ -958,24 +790,47 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             for component in u.Cli.dag_strongly_connected(edges)
         )
 
-    def _published_cohort(
+    def _admitted_cohort(
         self,
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
         plan: m.Infra.CodegenPlan,
         *,
         prepared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = None,
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Admit one cohort without any destination effect.
+
+        Every planning diagnostic and cold-import failure rejects the cohort
+        before the first destination effect. Check and apply share this
+        candidate admission.
+
+        Returns:
+            The admitted normalized plans, or the first admission failure.
+
+        """
+        started = time.monotonic()
+        u.Cli.info(f"stage=admission state=start root={root} files={len(plan.files)}")
+        admitted = self._admitted_plans(request, plan, prepared_files=prepared_files)
+        u.Cli.info(
+            f"stage=admission state=end root={root} "
+            f"elapsed={time.monotonic() - started:.3f}s failed={admitted.failure}"
+        )
+        return admitted
+
+    def _published_admitted(
+        self,
+        root: Path,
+        plan: m.Infra.CodegenPlan,
+        admitted: tuple[m.Infra.CodegenFilePlan, ...],
+        *,
         publication_followups: tuple[
             Callable[[tuple[Path, ...]], p.Result[bool]], ...
         ] = (),
     ) -> p.Result[p.Infra.CodegenResult]:
-        """Admit and publish one complete cohort through the existing owners.
+        """Publish admitted plans once through the guarded publication owner.
 
-        Every planning diagnostic and cold-import failure rejects the cohort
-        before the first destination effect. Check and apply share candidate
-        admission and the existing guarded publication owner. Each entry of
-        ``publication_followups`` runs with the written paths after a
-        successful publication.
+        Each entry of ``publication_followups`` runs with the written paths
+        after a successful publication.
 
         Returns:
             The plan and written paths, or the first failure.
@@ -988,19 +843,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 "conformance requires facade-wired file publication"
             )
         started = time.monotonic()
-        u.Cli.info(f"stage=admission state=start root={root} files={len(plan.files)}")
-        admitted = self._admitted_plans(request, plan, prepared_files=prepared_files)
-        u.Cli.info(
-            f"stage=admission state=end root={root} "
-            f"elapsed={time.monotonic() - started:.3f}s failed={admitted.failure}"
-        )
-        if admitted.failure:
-            return result_type.from_failure(admitted)
-        started = time.monotonic()
-        u.Cli.info(
-            f"stage=publication state=start root={root} files={len(admitted.value)}"
-        )
-        published = ports.file_publisher.publish_codegen_plans(root, admitted.value)
+        u.Cli.info(f"stage=publication state=start root={root} files={len(admitted)}")
+        published = ports.file_publisher.publish_codegen_plans(root, admitted)
         completed_paths = (
             published.value
             if published.success
