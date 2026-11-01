@@ -705,7 +705,6 @@ class FlextInfraUtilitiesFacadeComponents:
             ordered = cls._facade_class_bases(
                 project,
                 (path, directory, module, rendered),
-                cls.facade_component_declarations(project, directory),
                 {
                     FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
                         module, source_project=project
@@ -1021,7 +1020,6 @@ class FlextInfraUtilitiesFacadeComponents:
         proven = cls._facade_class_bases(
             project,
             (path, directory, module, owner),
-            declarations,
             sources,
         )
         if proven.failure:
@@ -1080,14 +1078,14 @@ class FlextInfraUtilitiesFacadeComponents:
         cls,
         project: p.Infra.RopeProject,
         facade: tuple[Path, Path, p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
-        declarations: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
         sources: Mapping[str, tuple[Path, str]],
     ) -> p.Result[tuple[t.StrTuple, ...]]:
         """Prove every facade class base before any source is rendered.
 
         A base whose import names no source binding is admitted only when its
-        provider is this family's generated barrel and a family module declares
-        the name (the barrel republication lands with the same generation) or
+        provider is this family's generated barrel (the facade is re-rendered
+        from the family declarations in the same generation: a declared name is
+        republished, a name no family module declares is a retired domain) or
         when it is an upstream module outside the project. Every other class
         is linearized by the source-bases owner, which rejects unresolved,
         module, ambiguous and inconsistent bases.
@@ -1104,8 +1102,7 @@ class FlextInfraUtilitiesFacadeComponents:
             barrel
         ).startswith(c.Infra.AUTOGEN_HEADER)
         admitted = (
-            frozenset({directory.resolve(), barrel.resolve()}),
-            frozenset(declaration.get_name() for _origin, declaration in declarations)
+            frozenset({directory.resolve(), barrel.resolve()})
             if generated
             else frozenset(),
             Path(project.root.real_path).resolve(),
@@ -1137,12 +1134,12 @@ class FlextInfraUtilitiesFacadeComponents:
     def _facade_class_deferred(
         project: p.Infra.RopeProject,
         facade: tuple[Path, p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
-        admitted: tuple[frozenset[Path], frozenset[str], Path],
+        admitted: tuple[frozenset[Path], Path],
     ) -> p.Result[bool]:
         """Classify one facade class by the provenance of its unresolved bases.
 
-        ``admitted`` holds the family barrel identities, the family names a
-        generated barrel republishes, and the project root.
+        ``admitted`` holds the generated family barrel identities (empty when
+        the barrel is authored) and the project root.
 
         Returns:
             Whether a base awaits its generated barrel republication, or the
@@ -1150,7 +1147,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         path, module, holder = facade
-        family, declared, root = admitted
+        family, root = admitted
         types = FlextInfraUtilitiesRopeRuntimeTypes
         deferred = False
         layout = module.get_source_binding_index().class_layout(holder.get_scope())
@@ -1174,7 +1171,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     f"Unresolved facade base: {path}:{expression}: {provider.error}",
                     exception=provider.exception,
                 )
-            if provider.value in family and binding.imported_name in declared:
+            if provider.value in family:
                 deferred = True
             elif provider.value.is_relative_to(root):
                 return r[bool].fail(f"Unresolved facade base: {path}:{expression}")
