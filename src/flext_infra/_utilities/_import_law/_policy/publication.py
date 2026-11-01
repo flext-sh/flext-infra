@@ -95,7 +95,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                 for letter, family in (
                     FlextInfraUtilitiesCodegenNamespace.facade_families().items()
                 )
-                if family.directory in relative.parts[:-1]
+                # A family package is a direct child of the namespace.
+                if (len(relative.parts) > 1 and relative.parts[0] == family.directory)
                 or (len(relative.parts) == 1 and relative.stem == family.module)
             ),
             None,

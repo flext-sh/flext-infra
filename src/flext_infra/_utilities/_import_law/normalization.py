@@ -907,7 +907,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                         "Own-family exports have competing bindings; use make mod",
                     )
                 routes[bound, *path] = route
-        cls._import_law_own_family_annotations(state.tree)
+        cls._import_law_own_family_annotations(state.tree, scope.file_path)
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
             scope.project_root,
             planned_sources={scope.file_path: source},
@@ -1068,11 +1068,16 @@ class FlextInfraUtilitiesImportLawNormalization(
             module, path, source, project=project, pymodule=published
         )
         if owner not in routes or module == state.scope.module:
-            message = "Own-family owner has no non-self lazy export; use make mod"
+            message = (
+                "Own-family owner has no non-self lazy export; use make mod: "
+                f"{state.scope.file_path} owner={owner} module={module}"
+            )
             raise ValueError(message)
 
-    @staticmethod
-    def _import_law_own_family_annotations(tree: ast.Module) -> None:
+    @classmethod
+    def _import_law_own_family_annotations(
+        cls, tree: ast.Module, file_path: Path
+    ) -> None:
         """Reject quoted annotations outside this bounded corrective category.
 
         Raises:
@@ -1091,10 +1096,66 @@ class FlextInfraUtilitiesImportLawNormalization(
             )
             if annotation is not None and any(
                 isinstance(part, ast.Constant) and isinstance(part.value, str)
-                for part in ast.walk(annotation)
+                for part in cls._type_expression_nodes(annotation)
             ):
-                message = "Own-family quoted annotations require make mod"
+                message = (
+                    "Own-family quoted annotations require make mod: "
+                    f"{file_path}:{annotation.lineno}"
+                )
                 raise ValueError(message)
+
+    @staticmethod
+    def _type_expression_nodes(annotation: ast.expr) -> Sequence[ast.AST]:
+        """Return the nodes of an annotation that are type expressions.
+
+        Call arguments (``Field(description="...")``) and ``Literal[...]``
+        members are values, never quoted forward references.
+
+        Returns:
+            The annotation's type-expression nodes.
+
+        """
+        nodes: list[ast.AST] = []
+        pending: list[ast.AST] = [annotation]
+        while pending:
+            node = pending.pop()
+            nodes.append(node)
+            if isinstance(node, ast.Call):
+                continue
+            if isinstance(node, ast.Subscript) and (
+                (isinstance(node.value, ast.Name) and node.value.id == "Literal")
+                or (
+                    isinstance(node.value, ast.Attribute)
+                    and node.value.attr == "Literal"
+                )
+            ):
+                continue
+            pending.extend(ast.iter_child_nodes(node))
+        return nodes
+
+    @classmethod
+    def _import_law_outside_boundary(
+        cls,
+        state: m.Infra.ImportLawPass,
+        node: ast.Import | ast.ImportFrom,
+        *,
+        runtime_only: bool,
+    ) -> bool:
+        """Return whether one import is outside the dependency boundary check.
+
+        A relative import is validated by the next pass after its absolute
+        rewrite; a type-checking import never executes, so it is outside a
+        runtime-only layer-zero boundary.
+
+        Returns:
+            Whether the boundary validator skips the import.
+
+        """
+        if isinstance(node, ast.ImportFrom) and node.level:
+            return True
+        return runtime_only and cls._import_law_inside_type_checking(
+            node, state.parents
+        )
 
     @classmethod
     def _import_law_validate_import_boundary(
@@ -1113,9 +1174,12 @@ class FlextInfraUtilitiesImportLawNormalization(
             if scope.bootstrap_dependency
             else cls.import_module_role(scope.module, namespace=scope.namespace)
         )
+        runtime_only = role == "layer0" and cls.import_law_runtime_only_layer_zero(
+            scope.module, namespace=scope.namespace
+        )
         for node in cls._import_law_iter_imports(state.tree):
-            if isinstance(node, ast.ImportFrom) and node.level:
-                continue  # The next pass validates the absolute rewrite.
+            if cls._import_law_outside_boundary(state, node, runtime_only=runtime_only):
+                continue
             for alias in node.names:
                 target = (
                     node.module or ""
@@ -1168,6 +1232,27 @@ class FlextInfraUtilitiesImportLawNormalization(
                     f"{target}.{alias.name}",
                 )
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def import_law_runtime_only_layer_zero(module: str, *, namespace: str) -> bool:
+        """Return whether a layer-zero module is constrained at runtime only.
+
+        The lazy loader, bootstrap dependencies and pytest plugins are layer
+        zero because they execute before the facades exist; a type-checking
+        import never executes, so it cannot create that cycle. The config and
+        settings roots keep ADR-005's law, which bans own facades even under
+        ``TYPE_CHECKING``.
+
+        Returns:
+            Whether type-checking imports are outside the module's boundary.
+
+        """
+        parts = module.split(".")[len(namespace.split(".")) :]
+        stem = parts[0].lstrip("_") if parts else ""
+        return not any(
+            stem == root or stem.startswith(f"{root}_")
+            for root in c.Infra.IMPORT_LAW_ROOT_SINGLETONS
+        )
 
     @classmethod
     def import_law_layer_zero_helper(
@@ -1277,9 +1362,19 @@ class FlextInfraUtilitiesImportLawNormalization(
             message = "layer-zero helper edges require a native source project"
             raise ValueError(message)
         edges: set[str] = set()
+        runtime_only = cls.import_law_runtime_only_layer_zero(
+            state.scope.module, namespace=state.scope.namespace
+        )
+        parents = {
+            id(child): parent
+            for parent in ast.walk(tree)
+            for child in ast.iter_child_nodes(parent)
+        }
         for node in cls._import_law_iter_imports(tree):
             if isinstance(node, ast.ImportFrom) and node.module == "__future__":
                 continue  # Compiler features do not load a schema dependency.
+            if runtime_only and cls._import_law_inside_type_checking(node, parents):
+                continue
             if isinstance(node, ast.ImportFrom) and node.level:
                 provider = ".".join(module.split(".")[: -node.level])
                 provider = f"{provider}.{node.module}" if node.module else provider
@@ -1289,6 +1384,13 @@ class FlextInfraUtilitiesImportLawNormalization(
                 dependency = (
                     provider if isinstance(node, ast.ImportFrom) else alias.name
                 )
+                if dependency != state.scope.namespace and not dependency.startswith(
+                    f"{state.scope.namespace}."
+                ):
+                    # External providers (stdlib, foundation libraries, compiled
+                    # extensions) carry no own candidate edge; Rope reports no
+                    # module for their variables, so they are never resolved.
+                    continue
                 native = (
                     FlextInfraUtilitiesRopeRuntime
                     .qualified_name(
@@ -1311,10 +1413,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                     or identity.startswith(f"{state.scope.namespace}.")
                 ) and cls.import_module_role(identity) == "family":
                     return None
-                if dependency == state.scope.namespace or dependency.startswith(
-                    f"{state.scope.namespace}."
-                ):
-                    edges.add(dependency)
+                edges.add(dependency)
         return frozenset(edges)
 
     @staticmethod

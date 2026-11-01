@@ -10,6 +10,8 @@ valid:
     value = other.approx(1.0)
   - |
     value = pytest_helpers.raises
+  - |
+    pytest.fail("contract broken")
 invalid:
   - |
     with pytest.raises(ValueError):
@@ -19,7 +21,5 @@ invalid:
   - |
     @pytest.fixture
     def workspace() -> None: ...
-  - |
-    pytest.fail("contract broken")
   - |
     pytest.skip("not executed")

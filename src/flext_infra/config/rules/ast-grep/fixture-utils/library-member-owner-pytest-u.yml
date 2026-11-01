@@ -3,4 +3,4 @@
 id: library-member-owner-pytest-u
 language: Python
 rule:
-  regex: "^(?:approx|exit|fail|fixture|importorskip|param|raises|skip|warns)$"
+  regex: "^(?:approx|exit|fixture|importorskip|param|raises|skip|warns)$"
