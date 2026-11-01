@@ -5,7 +5,7 @@ Infra:
     derived-tool-roots: [deptry, mypy, pyrefly, pyright, pytest, ruff, vulture]
     derived-settings:
       mypy: [python_version, mypy_path, exclude, overrides, disable_error_code]
-      pyrefly: [python-version]
+      pyrefly: [python-version, sub-config]
       pyright: [pythonVersion, executionEnvironments, extraPaths, include, exclude, venv, venvPath]
       pytest.ini_options: [flext_slow_timeout_seconds, markers, flext_fixture_trees_root, flext_make_ci_variable, flext_make_ci_value]
       ruff: [target-version]
@@ -460,7 +460,14 @@ Infra:
           default-excludes:
           - "**/.*"
           ignored-diagnostic-globs: []
-          diagnostic-path-overrides: []
+          # Authorized, path-scoped type-checker rule exceptions: the single
+          # list for both checkers. One entry renders the Pyright
+          # executionEnvironment and the Pyrefly sub-config of its root. Each
+          # entry names root (an existing project-relative file or directory),
+          # rationale, authorization (tracker-key, or operator-words + date +
+          # channel) and changes (checker, rule, old, new). A missing
+          # authorization or root fails.
+          diagnostic-path-exceptions: []
           source-report-private-usage: error
           test-like-report-private-usage: error
           other-report-private-usage: error

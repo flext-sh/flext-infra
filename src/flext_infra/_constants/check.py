@@ -259,6 +259,10 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
 
     CHECK_FAIL_FAST_DEFAULT: ClassVar[bool] = False
     """Run every independent quality gate unless fail-fast is requested."""
+    SCAN_RACE_ATTEMPTS: ClassVar[int] = 3
+    """Capture attempts before a concurrent-source-change race fails loud."""
+    SCAN_RACE_BACKOFF_SECONDS: ClassVar[float] = 1.0
+    """Pause between capture attempts losing the concurrent-write race."""
     UNION_GATE_MIN_PROJECTS: ClassVar[int] = 2
     """Project count from which a multi-root gate runs once over their union."""
     SERVICE_FAIL_FAST: ClassVar[bool] = True

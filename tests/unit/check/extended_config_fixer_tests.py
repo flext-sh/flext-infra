@@ -180,7 +180,7 @@ class TestsFlextInfraExtendedConfigFixer:
                 (
                     "[tool.pyrefly]\n"
                     'search-path = ["src"]\n'
-                    "sub-settings = [\n"
+                    "sub-config = [\n"
                     '  { matches = "*.py", ignore = true },\n'
                     '  { matches = "*.pyi", ignore = false },\n'
                     "]\n"
@@ -193,14 +193,14 @@ class TestsFlextInfraExtendedConfigFixer:
             )
 
             tm.ok(result)
-            tm.that(result.value, has="removed ignore=true sub-settings for '*.py'")
+            tm.that(result.value, has="removed ignore=true sub-config for '*.py'")
             pyrefly = u.Tests.toml_table_at(
                 pyproject.read_text(encoding="utf-8"),
                 "tool",
                 "pyrefly",
             )
-            expected_sub_settings: t.JsonList = [{"matches": "*.pyi", "ignore": False}]
-            tm.that(pyrefly["sub-settings"], eq=expected_sub_settings)
+            expected_sub_configs: t.JsonList = [{"matches": "*.pyi", "ignore": False}]
+            tm.that(pyrefly["sub-config"], eq=expected_sub_configs)
 
         @staticmethod
         def test_process_file_syncs_root_project_excludes_via_public_api(

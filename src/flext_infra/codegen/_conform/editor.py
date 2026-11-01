@@ -9,10 +9,11 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, deps as dependency_services, m, p, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.codegen._conform.artifact_render import (
     FlextInfraCodegenConformArtifactRender,
 )
+from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.services._codegen.vscode import FlextInfraCodegenVscode
 
 
@@ -62,7 +63,7 @@ class FlextInfraCodegenConformEditor(
             return result_type.fail(
                 f"editor projection requires {c.PYPROJECT_FILENAME}"
             )
-        manifest = dependency_services.FlextInfraEnsurePyrightConfigPhase(
+        manifest = FlextInfraEnsurePyrightConfigPhase(
             tool_config, codegen=codegen
         ).render_source(
             captured.content.decode(c.DEFAULT_ENCODING),

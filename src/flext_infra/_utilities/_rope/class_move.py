@@ -435,14 +435,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     ) -> p.Result[bool]:
         """Rewire consumers that import a moved class through a package barrel.
 
-        Every package on the moved module's chain republishes its exports only
-        through an initializer that is regenerated after this move. Every
-        ``from barrel import Name`` of a moved
-        export is retargeted, in this candidate, to the declaring module, which
-        publishes it independently of any initializer regeneration; a consumer
-        importing the barrel module itself
-        cannot be proved and refuses the move. Initializers are owned by the
-        publication rewrite and their regeneration.
+        Every ``from barrel import Name`` of a moved export is retargeted to the
+        nearest package that publishes it: the destination package, whose
+        initializer the same ``make mod`` candidate regenerates (the semantic
+        publication joins the planned lazy inits). Importing the package, never
+        its leaf module, keeps a layer-zero consumer on a lazy barrel. A
+        consumer importing the barrel module itself cannot be proved and
+        refuses the move. Initializers are owned by the publication rewrite and
+        their regeneration.
 
         Returns:
             True, or the first consumer whose barrel route cannot be rewired.
@@ -465,9 +465,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             return r[bool].fail(
                 f"module move destination has no import package: {target}"
             )
-        # The declaring module is the route: it publishes the moved exports in
-        # this candidate whatever any initializer's later regeneration plans.
-        route = f"{destination_package}.{target.stem}"
+        # The destination package is the nearest owner that publishes the
+        # moved exports once this candidate's initializers are regenerated.
+        route = destination_package
         for path, text in tuple(candidate.items()):
             if (
                 path in {source, target}

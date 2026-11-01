@@ -49,7 +49,7 @@ class FlextInfraUtilitiesNativeTooling:
                 pyright.project_root,
                 *pyright.env_dirs,
                 *pyright.test_like_dirs,
-                *(override.root for override in pyright.diagnostic_path_overrides),
+                *(entry.root for entry in pyright.diagnostic_path_exceptions),
                 pyrefly.source_dir,
                 pyrefly.project_root,
                 *pyrefly.env_dirs,
@@ -90,6 +90,50 @@ class FlextInfraUtilitiesNativeTooling:
                             f"Local stub search roots are forbidden: {key}={value}"
                         )
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def diagnostic_exception_levels(
+        document: m.Infra.ToolConfigDocument,
+        checker: str,
+        project_root: Path | None,
+    ) -> Sequence[tuple[str, Mapping[str, str]]]:
+        """Resolve each authorized exception root to one checker's native levels.
+
+        Roots are relative to the project that declares them. Without an
+        on-disk project (a pre-write scaffold) the declarations render as
+        written; with one, every declared root must exist.
+
+        Returns:
+            Declaration-ordered roots paired with the checker's rule levels;
+            entries that change no rule of the checker are omitted.
+
+        Raises:
+            ValueError: If two exceptions declare the same root.
+            FileNotFoundError: If a declared root is absent from the project.
+
+        """
+        entries = document.tools.pyright.path_rules.diagnostic_path_exceptions
+        roots = [entry.root for entry in entries]
+        duplicated = sorted({root for root in roots if roots.count(root) > 1})
+        if duplicated:
+            msg = f"diagnostic exception roots declared twice: {duplicated}"
+            raise ValueError(msg)
+        resolved: list[tuple[str, Mapping[str, str]]] = []
+        for entry in entries:
+            if project_root is not None and not (project_root / entry.root).exists():
+                msg = (
+                    f"diagnostic exception root {entry.root!r} does not exist "
+                    f"in {project_root}"
+                )
+                raise FileNotFoundError(msg)
+            levels = {
+                change.rule: change.new
+                for change in entry.changes
+                if change.checker == checker
+            }
+            if levels:
+                resolved.append((entry.root, levels))
+        return tuple(resolved)
 
     @staticmethod
     def configuration_pairs(

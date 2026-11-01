@@ -1177,8 +1177,15 @@ class FlextInfraUtilitiesImportLawNormalization(
         runtime_only = role == "layer0" and cls.import_law_runtime_only_layer_zero(
             scope.module, namespace=scope.namespace
         )
+        runtime_only = role == "layer0" and cls.import_law_runtime_only_layer_zero(
+            scope.module, namespace=scope.namespace
+        )
         for node in cls._import_law_iter_imports(state.tree):
             if cls._import_law_outside_boundary(state, node, runtime_only=runtime_only):
+                continue
+            if runtime_only and cls._import_law_inside_type_checking(
+                node, state.parents
+            ):
                 continue
             for alias in node.names:
                 target = (

@@ -132,7 +132,7 @@ class FlextInfraDepsPyreflyFixSteps:
             if conf_map.get(c.Infra.IGNORE) is True:
                 removed_ignore = True
                 matches = conf_map.get("matches", c.Infra.DEFAULT_UNKNOWN)
-                fixes.append(f"removed ignore=true sub-settings for '{matches}'")
+                fixes.append(f"removed ignore=true sub-config for '{matches}'")
                 continue
             new_configs.append(conf_out)
         if len(new_configs) != len(configs):
