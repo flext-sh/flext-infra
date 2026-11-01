@@ -578,7 +578,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             candidate.workspace,
             candidate.updates,
             scan,
-            options=m.Infra.CodegenSourcePreviewOptions(
+            options=m.Infra.StageSourceOptions(
                 workspaces=candidate.workspaces,
                 modes=candidate.modes,
                 inputs=candidate.inputs,

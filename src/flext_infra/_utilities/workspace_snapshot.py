@@ -117,6 +117,29 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 sources[name] = (path, project.source_text(path))
         return sources
 
+    @staticmethod
+    def snapshot_engine(
+        snapshot: p.Infra.WorkspaceSnapshot | None,
+        root: Path,
+    ) -> p.Infra.RopeProject | None:
+        """Return the run snapshot's engine when it already reads ``root``.
+
+        A generation run owns one source engine; every consumer of the same
+        workspace binds its candidate on that engine instead of opening and
+        capturing another project.
+
+        Returns:
+            The snapshot engine for ``root``, or None when it reads another tree.
+
+        """
+        if (
+            snapshot is not None
+            and snapshot.workspace_root == root
+            and Path(snapshot.engine.root.real_path) == root
+        ):
+            return snapshot.engine
+        return None
+
     @classmethod
     @contextmanager
     def facade_source_project(

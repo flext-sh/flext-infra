@@ -42,7 +42,7 @@ class FlextInfraStagedPackage:
         updates: Mapping[Path, str | None],
         validator: Callable[[Path, Mapping[Path, Path]], T],
         *,
-        options: m.Infra.CodegenSourcePreviewOptions | None = None,
+        options: m.Infra.StageSourceOptions | None = None,
     ) -> p.Result[T]:
         """Validate updates and retirements inside a candidate tree.
 
@@ -54,17 +54,7 @@ class FlextInfraStagedPackage:
             The validator outcome, or the first planning or staging failure.
 
         """
-        options = options or m.Infra.CodegenSourcePreviewOptions()
-        planned = self.plan_sources(
-            workspace,
-            updates,
-            options=m.Infra.StageSourceOptions(
-                workspaces=options.workspaces,
-                modes=options.modes,
-                inputs=options.inputs,
-                declared_files=options.declared_files,
-            ),
-        )
+        planned = self.plan_sources(workspace, updates, options=options)
         if planned.failure:
             return r[T].from_failure(planned)
         plan = planned.value
@@ -293,6 +283,7 @@ class FlextInfraStagedPackage:
                     if file.project.is_relative_to(workspace)
                 )
             ),
+            source_project=u.Infra.snapshot_engine(options.snapshot, workspace),
         ) as (source_project, _):
             return cls._source_plan_project(
                 workspace,
