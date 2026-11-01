@@ -288,11 +288,13 @@ class FlextInfraGatesDeps(FlextInfraGates):
         backoff = c.Infra.SCAN_RACE_BACKOFF_SECONDS
         last_error: str | None = None
         for attempt in range(1, attempts + 1):
+            json_output_path = report_dir / "deptry.json"
+            json_output_path.unlink(missing_ok=True)
             captured = u.Infra.capture_deptry_scan(
                 project_dir,
                 Path(sys.executable).parent,
                 config_path=project_dir / c.PYPROJECT_FILENAME,
-                json_output_path=report_dir / "deptry.json",
+                json_output_path=json_output_path,
             )
             if captured.success:
                 return captured.value
