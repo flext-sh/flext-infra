@@ -180,6 +180,9 @@ class FlextInfraUtilitiesImportLawRoutes(
                     continue
                 routed.setdefault(
                     root
+                    or cls._import_law_unpublished_owner(
+                        state, (node.module, alias.name), resolve, sources
+                    )
                     or cls.lazy_source(
                         state.scope,
                         node.module,
@@ -216,6 +219,48 @@ class FlextInfraUtilitiesImportLawRoutes(
                 ),
             )
         return edits
+
+    @classmethod
+    def _import_law_unpublished_owner(
+        cls,
+        state: m.Infra.ImportLawPass,
+        imported: tuple[str, str],
+        resolve: Callable[[str, str], p.Infra.RopePyName | None],
+        sources: Mapping[Path, str] | None,
+    ) -> str | None:
+        """Return the owner of a name the candidate initializer stopped publishing.
+
+        A generated initializer publishes only its own declarations and facade
+        letters (lazy-init law), so a consumer importing a foreign singleton or
+        a private-package part through it loses its route when the planned
+        initializer drops the name. The authored initializer still records
+        where the name came from; the consumer moves to the deepest own package
+        whose planned initializer publishes it, or to the declaring
+        distribution root for a foreign provider, once native resolution proves
+        that owner binds the name.
+
+        Returns:
+            The owning package, or ``None`` when the candidate still publishes
+            the name or it never had an initializer route.
+
+        """
+        module, name = imported
+        root = state.scope.project_root
+        planned = cls.import_lazy_exports(root, module, sources=sources)
+        if planned is None or name in planned:
+            return None
+        provider = (cls.import_lazy_exports(root, module) or {}).get(name)
+        if provider is None:
+            return None
+        parts = provider.split(".")
+        if parts[0] != state.scope.namespace.split(".")[0]:
+            return parts[0] if resolve(parts[0], name) is not None else None
+        for depth in range(len(parts), 0, -1):
+            owner = ".".join(parts[:depth])
+            exports = cls.import_lazy_exports(root, owner, sources=sources)
+            if owner != module and exports is not None and name in exports:
+                return owner if resolve(owner, name) is not None else None
+        return None
 
     @classmethod
     def _import_law_inherited_facade(

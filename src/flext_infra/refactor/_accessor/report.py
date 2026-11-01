@@ -290,7 +290,7 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
             plan.workspace,
             plan.updates,
             validate,
-            options=m.Infra.CodegenSourcePreviewOptions(
+            options=m.Infra.StageSourceOptions(
                 workspaces=plan.workspaces,
                 modes=plan.modes,
                 inputs=plan.inputs,

@@ -128,6 +128,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
     from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
     from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
+    from flext_infra._utilities.rope import FlextInfraUtilitiesRope
     from flext_infra._utilities.semantic_cutover import (
         FlextInfraUtilitiesSemanticCutover,
     )
@@ -215,6 +216,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
+    "FlextInfraUtilitiesRope",
     "FlextInfraUtilitiesSemanticCutover",
     "FlextInfraUtilitiesTransformerHeader",
     "FlextInfraUtilitiesTransformerHeaderParser",
@@ -264,6 +266,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesLogParser": ".log_parser",
         "FlextInfraUtilitiesManagedConflicts": ".managed_conflicts",
         "FlextInfraUtilitiesMiseBinary": ".mise_binary",
+        "FlextInfraUtilitiesModelsProtocol": ".protocol_models",
         "FlextInfraUtilitiesMypy": ".mypy",
         "FlextInfraUtilitiesNamespaceConfig": ".namespace_config",
         "FlextInfraUtilitiesNativeTooling": ".native_tooling",
@@ -281,7 +284,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditLinting": ".protected_edit_linting",
         "FlextInfraUtilitiesProtectedEditPreview": ".protected_edit_preview",
         "FlextInfraUtilitiesProtectedEditWrites": ".protected_edit_writes",
-        "FlextInfraUtilitiesModelsProtocol": ".protocol_models",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",
@@ -295,6 +297,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRelease": ".release",
         "FlextInfraUtilitiesRepository": ".repository",
         "FlextInfraUtilitiesResourceLimits": ".resource_limits",
+        "FlextInfraUtilitiesRope": ".rope",
         "FlextInfraUtilitiesSemanticCutover": ".semantic_cutover",
         "FlextInfraUtilitiesTransformerHeader": ".transformer_header",
         "FlextInfraUtilitiesTransformerHeaderParser": ".transformer_header_parser",

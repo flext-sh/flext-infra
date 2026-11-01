@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""loop package.
+"""Flext Infra.codemod. Loop package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -19,6 +19,9 @@ if TYPE_CHECKING:
     from flext_infra.codemod._loop.phase_duplicate_apply import (
         FlextInfraCodemodLoopPhaseDuplicateApply,
     )
+    from flext_infra.codemod._loop.phase_facade_components import (
+        FlextInfraCodemodLoopPhaseFacadeComponents,
+    )
     from flext_infra.codemod._loop.phase_import_normalization import (
         FlextInfraCodemodLoopPhaseImportNormalization,
     )
@@ -30,6 +33,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraCodemodLoopPhaseAccessorRename",
     "FlextInfraCodemodLoopPhaseDuplicateApply",
+    "FlextInfraCodemodLoopPhaseFacadeComponents",
     "FlextInfraCodemodLoopPhaseImportNormalization",
     "FlextInfraCodemodLoopPhaseNamespaceRelocation",
 )
@@ -40,6 +44,7 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraCodemodLoopPhaseAccessorRename": ".phase_accessor_rename",
         "FlextInfraCodemodLoopPhaseDuplicateApply": ".phase_duplicate_apply",
+        "FlextInfraCodemodLoopPhaseFacadeComponents": ".phase_facade_components",
         "FlextInfraCodemodLoopPhaseImportNormalization": ".phase_import_normalization",
         "FlextInfraCodemodLoopPhaseNamespaceRelocation": ".phase_namespace_relocation",
     }),

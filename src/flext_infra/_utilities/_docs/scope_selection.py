@@ -199,10 +199,9 @@ class FlextInfraUtilitiesDocsScopeSelection:
 
         """
         payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
-        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-        project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
-            project_root,
-            payload,
+        docs_meta = FlextInfraUtilitiesPyprojectConform.docs_meta_from_payload(payload)
+        project_name = FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
+            project_root, payload
         )
         return m.Infra.DocScope(
             name=project_name,

@@ -100,9 +100,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
                 msg = f"docs pyproject TOML is invalid: {pyproject_path}"
                 raise ValueError(msg)
             payload = parsed
-        docs_meta = FlextInfraUtilitiesDocsScopeState.docs_meta_from_payload(
-            payload,
-        )
+        docs_meta = FlextInfraUtilitiesPyprojectConform.docs_meta_from_payload(payload)
         dependency_names = tuple(
             FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
                 payload,
@@ -124,9 +122,8 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
             payload=payload,
             docs_meta=docs_meta,
             project_name=(
-                FlextInfraUtilitiesDocsScopeState.project_name_from_payload(
-                    root,
-                    payload,
+                FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
+                    root, payload
                 )
             ),
             package_name=(
@@ -171,18 +168,6 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         )
 
     @staticmethod
-    def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:
-        """Return the declared project name from ``[project].name``.
-
-        Returns:
-            The declared project name from ``[project].name``.
-
-        """
-        return FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
-            entry, payload
-        )
-
-    @staticmethod
     def project_payload(
         project_root: Path,
     ) -> t.JsonMapping:
@@ -195,16 +180,6 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         return FlextInfraUtilitiesDocsScopeState.project_state(
             project_root,
         ).payload
-
-    @staticmethod
-    def docs_meta_from_payload(payload: t.JsonMapping) -> t.JsonMapping:
-        """Extract ``tool.flext.docs`` metadata from an already-parsed payload.
-
-        Returns:
-            The resulting ``t.JsonMapping``.
-
-        """
-        return FlextInfraUtilitiesPyprojectConform.docs_meta_from_payload(payload)
 
     @staticmethod
     def docs_documentation_language(

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, u
+from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.transformers import FlextInfraTransformersSemanticPublication
 
 if TYPE_CHECKING:
@@ -45,10 +46,30 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
                 project_root,
                 files,
                 sources=sources,
-                declared_files=(),
+                declared_files=cls._planned_initializers(
+                    project_root, snapshot
+                ).unwrap(),
                 snapshot=snapshot,
             ).unwrap()
         return cls._publish(project_root, planned).unwrap()
+
+    @staticmethod
+    def _planned_initializers(
+        project_root: Path, snapshot: p.Infra.WorkspaceSnapshot
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Plan the lazy initializers this candidate publishes with its rewrites.
+
+        Consumer routes are decided against the initializers the publication
+        joins into the same candidate, so an import of a name a planned
+        initializer no longer publishes moves to its owner in this batch.
+
+        Returns:
+            The planned initializer cohort, or the first planning failure.
+
+        """
+        return FlextInfraCodegenLazyInit.plan_candidate(
+            project_root, declared_files=(), snapshot=snapshot
+        )
 
     @staticmethod
     def _publish(
@@ -73,8 +94,9 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
             ).map(bool)
         )
 
-    @staticmethod
+    @classmethod
     def plan(
+        cls,
         root: Path,
         preflight: m.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
@@ -99,11 +121,17 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
                 and path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 and (u.Infra.project_root(path) or project_root) == project_root
             )
+            with u.Infra.workspace_snapshot(
+                project_root, (project_root,)
+            ) as project_snapshot:
+                initializers = cls._planned_initializers(project_root, project_snapshot)
+            if initializers.failure:
+                return initializers
             planned = u.Infra.plan_import_normalization(
                 project_root,
                 selected,
                 sources=sources,
-                declared_files=(),
+                declared_files=initializers.value,
                 snapshot=rope_workspace.snapshot,
             )
             if planned.failure:

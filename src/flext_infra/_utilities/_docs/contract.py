@@ -22,6 +22,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -295,7 +296,7 @@ class FlextInfraUtilitiesDocsContract:
             if isinstance(urls_value, Mapping)
             else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
-        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
+        docs_meta = FlextInfraUtilitiesPyprojectConform.docs_meta_from_payload(payload)
         project_name = str(project.get("name", "")).strip()
         classifiers_value = project.get("classifiers")
         codegen = (
