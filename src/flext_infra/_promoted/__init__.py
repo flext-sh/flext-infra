@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""promoted package.
+"""Flext Infra. Promoted package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     from flext_infra._promoted.base import FlextInfraPromotedBase
     from flext_infra._promoted.discovery import FlextInfraPromotedDiscovery
     from flext_infra._promoted.dispatch import FlextInfraPromotedDispatch
+    from flext_infra._promoted.protocols import FlextInfraProtocols, p
     from flext_infra._promoted.registry import FlextInfraPromotedRegistry
-    from flext_infra.protocols import FlextInfraProtocols, p
 
 
 __all__: tuple[str, ...] = (

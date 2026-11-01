@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""skill package.
+"""Flext Infra.validate. Skill package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -23,8 +23,6 @@ __all__: tuple[str, ...] = ("FlextInfraValidateSkillRuleRunner",)
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
-        "FlextInfraValidateSkillRuleRunner": ".rule_runner",
-    }),
+    MappingProxyType({"FlextInfraValidateSkillRuleRunner": ".rule_runner"}),
     public_exports=__all__,
 )

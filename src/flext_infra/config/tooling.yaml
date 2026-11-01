@@ -2,109 +2,109 @@ Infra:
   tooling:
     # Canonical validated native tooling policy; diagnostics remain blocking.
     raw-check-receipt-suffix: .raw.log
-    derived-tool-roots: [deptry, mypy, pyrefly, pyright, pytest, ruff, vulture]
+    derived-tool-roots: [ deptry, mypy, pyrefly, pyright, pytest, ruff, vulture ]
     derived-settings:
-      mypy: [python_version, mypy_path, exclude, overrides, disable_error_code]
-      pyrefly: [python-version, sub-config]
-      pyright: [pythonVersion, executionEnvironments, extraPaths, include, exclude, venv, venvPath]
-      pytest.ini_options: [flext_slow_timeout_seconds, markers, flext_fixture_trees_root, flext_make_ci_variable, flext_make_ci_value]
-      ruff: [target-version]
+      mypy: [ python_version, mypy_path, exclude, overrides, disable_error_code ]
+      pyrefly: [ python-version, sub-config ]
+      pyright: [ pythonVersion, executionEnvironments, extraPaths, include, exclude, venv, venvPath ]
+      pytest.ini_options: [ flext_slow_timeout_seconds, markers, flext_fixture_trees_root, flext_make_ci_variable, flext_make_ci_value ]
+      ruff: [ target-version ]
     # Native options are free key/value pairs, grouped by their tool table.
     # The same catalog drives modernization and every projected template.
     settings:
       codespell:
-      - [check-filenames, true]
-      - [ignore-words-list, 'crate,nd']
+      - [ check-filenames, true ]
+      - [ ignore-words-list, 'crate,nd' ]
       pydantic-mypy:
-      - [init_forbid_extra, true]
-      - [init_typed, true]
-      - [warn_required_dynamic_aliases, true]
+      - [ init_forbid_extra, true ]
+      - [ init_typed, true ]
+      - [ warn_required_dynamic_aliases, true ]
       pyrefly:
-      - [disable-project-excludes-heuristics, true]
-      - [use-ignore-files, false]
-      - [project-excludes, []]
+      - [ disable-project-excludes-heuristics, true ]
+      - [ use-ignore-files, false ]
+      - [ project-excludes, [] ]
       pyrefly.errors:
       # Preserve every diagnostic from the strict-error policy during cutover.
-      - [bad-argument-count, error]
-      - [bad-argument-type, error]
-      - [bad-assignment, error]
-      - [bad-class-definition, error]
-      - [bad-context-manager, error]
-      - [bad-dunder-all, error]
-      - [bad-function-definition, error]
-      - [bad-index, error]
-      - [bad-instantiation, error]
-      - [bad-keyword-argument, error]
-      - [bad-match, error]
-      - [bad-param-name-override, error]
-      - [bad-raise, error]
-      - [bad-return, error]
-      - [bad-specialization, error]
-      - [bad-typed-dict, error]
-      - [bad-typed-dict-key, error]
-      - [bad-unpacking, error]
-      - [deprecated, error]
-      - [implicit-abstract-class, error]
-      - [implicit-any, error]
-      - [implicit-import, error]
-      - [implicitly-defined-attribute, error]
-      - [inconsistent-inheritance, error]
-      - [inconsistent-overload, error]
-      - [invalid-annotation, error]
-      - [invalid-argument, error]
-      - [invalid-decorator, error]
-      - [invalid-inheritance, error]
-      - [invalid-literal, error]
-      - [invalid-overload, error]
-      - [invalid-param-spec, error]
-      - [invalid-pattern, error]
-      - [invalid-self-type, error]
-      - [invalid-super-call, error]
-      - [invalid-type-alias, error]
-      - [invalid-type-var, error]
-      - [invalid-type-var-tuple, error]
-      - [invalid-variance, error]
-      - [invalid-yield, error]
-      - [missing-argument, error]
-      - [missing-attribute, error]
-      - [missing-import, error]
-      - [missing-module-attribute, error]
-      - [missing-override-decorator, error]
-      - [missing-source, error]
-      - [missing-source-for-stubs, error]
-      - [no-access, error]
-      - [no-matching-overload, error]
-      - [not-a-type, error]
-      - [not-async, error]
-      - [not-callable, error]
-      - [not-iterable, error]
-      - [not-required-key-access, error]
-      - [open-unpacking, error]
-      - [protocol-implicitly-defined-attribute, error]
-      - [read-only, error]
-      - [redefinition, error]
-      - [redundant-cast, error]
-      - [redundant-condition, error]
-      - [unannotated-attribute, error]
-      - [unannotated-parameter, error]
-      - [unannotated-return, error]
-      - [unbound-name, error]
-      - [unexpected-keyword, error]
-      - [unexpected-positional-argument, error]
-      - [unknown-name, error]
-      - [unnecessary-comparison, error]
-      - [unnecessary-type-conversion, error]
-      - [unreachable, error]
-      - [unresolvable-dunder-all, error]
-      - [unsafe-overlap, error]
-      - [unsupported, error]
-      - [unsupported-delete, error]
-      - [unsupported-operation, error]
-      - [untyped-import, error]
-      - [unused-coroutine, error]
-      - [unused-ignore, error]
-      - [variance-mismatch, error]
-      - [inconsistent-overload-default, error]
+      - [ bad-argument-count, error ]
+      - [ bad-argument-type, error ]
+      - [ bad-assignment, error ]
+      - [ bad-class-definition, error ]
+      - [ bad-context-manager, error ]
+      - [ bad-dunder-all, error ]
+      - [ bad-function-definition, error ]
+      - [ bad-index, error ]
+      - [ bad-instantiation, error ]
+      - [ bad-keyword-argument, error ]
+      - [ bad-match, error ]
+      - [ bad-param-name-override, error ]
+      - [ bad-raise, error ]
+      - [ bad-return, error ]
+      - [ bad-specialization, error ]
+      - [ bad-typed-dict, error ]
+      - [ bad-typed-dict-key, error ]
+      - [ bad-unpacking, error ]
+      - [ deprecated, error ]
+      - [ implicit-abstract-class, error ]
+      - [ implicit-any, error ]
+      - [ implicit-import, error ]
+      - [ implicitly-defined-attribute, error ]
+      - [ inconsistent-inheritance, error ]
+      - [ inconsistent-overload, error ]
+      - [ invalid-annotation, error ]
+      - [ invalid-argument, error ]
+      - [ invalid-decorator, error ]
+      - [ invalid-inheritance, error ]
+      - [ invalid-literal, error ]
+      - [ invalid-overload, error ]
+      - [ invalid-param-spec, error ]
+      - [ invalid-pattern, error ]
+      - [ invalid-self-type, error ]
+      - [ invalid-super-call, error ]
+      - [ invalid-type-alias, error ]
+      - [ invalid-type-var, error ]
+      - [ invalid-type-var-tuple, error ]
+      - [ invalid-variance, error ]
+      - [ invalid-yield, error ]
+      - [ missing-argument, error ]
+      - [ missing-attribute, error ]
+      - [ missing-import, error ]
+      - [ missing-module-attribute, error ]
+      - [ missing-override-decorator, error ]
+      - [ missing-source, error ]
+      - [ missing-source-for-stubs, error ]
+      - [ no-access, error ]
+      - [ no-matching-overload, error ]
+      - [ not-a-type, error ]
+      - [ not-async, error ]
+      - [ not-callable, error ]
+      - [ not-iterable, error ]
+      - [ not-required-key-access, error ]
+      - [ open-unpacking, error ]
+      - [ protocol-implicitly-defined-attribute, error ]
+      - [ read-only, error ]
+      - [ redefinition, error ]
+      - [ redundant-cast, error ]
+      - [ redundant-condition, error ]
+      - [ unannotated-attribute, error ]
+      - [ unannotated-parameter, error ]
+      - [ unannotated-return, error ]
+      - [ unbound-name, error ]
+      - [ unexpected-keyword, error ]
+      - [ unexpected-positional-argument, error ]
+      - [ unknown-name, error ]
+      - [ unnecessary-comparison, error ]
+      - [ unnecessary-type-conversion, error ]
+      - [ unreachable, error ]
+      - [ unresolvable-dunder-all, error ]
+      - [ unsafe-overlap, error ]
+      - [ unsupported, error ]
+      - [ unsupported-delete, error ]
+      - [ unsupported-operation, error ]
+      - [ untyped-import, error ]
+      - [ unused-coroutine, error ]
+      - [ unused-ignore, error ]
+      - [ variance-mismatch, error ]
+      - [ inconsistent-overload-default, error ]
       deptry:
       - [ optional_dependencies_dev_groups, [ dev ] ]
       coverage.run:
@@ -116,30 +116,30 @@ Infra:
       - [ precision, 2 ]
       - [ exclude_also, [ "if _t.TYPE_CHECKING:", "if TYPE_CHECKING:", "if typing.TYPE_CHECKING:" ] ]
       hatch.metadata:
-      - [allow-direct-references, true]
+      - [ allow-direct-references, true ]
       tomlsort:
-      - [all, true]
-      - [in_place, true]
-      - [sort_first, [project, build-system, tool, dependency-groups]]
+      - [ all, true ]
+      - [ in_place, true ]
+      - [ sort_first, [ project, build-system, tool, dependency-groups ] ]
       vulture:
-      - [exclude, ["*/_protocols/*"]]
-      - [min_confidence, 100]
-      - [paths, [src]]
-      - [verbose, false]
+      - [ exclude, [ "*/_protocols/*" ] ]
+      - [ min_confidence, 100 ]
+      - [ paths, [ src ] ]
+      - [ verbose, false ]
       yamlfix:
-      - [line_length, &formatting_width 88]
-      - [preserve_quotes, true]
-      - [whitelines, 1]
-      - [section_whitelines, 1]
-      - [explicit_start, false]
+      - [ line_length, &formatting_width 88 ]
+      - [ preserve_quotes, true ]
+      - [ whitelines, 1 ]
+      - [ section_whitelines, 1 ]
+      - [ explicit_start, false ]
       pytest.ini_options:
-      - [asyncio_default_fixture_loop_scope, function]
-      - [python_files, ["*_test.py", "*_tests.py", "test_*.py"]]
-      - [testpaths, [tests]]
-      - [minversion, "8.0"]
-      - [python_classes, ["Test*"]]
-      - [filterwarnings, [error, "once::pytest.PytestAssertRewriteWarning"]]
-      - [addopts, [--benchmark-disable, --strict-markers, --markdown-docs, --durations=10]]
+      - [ asyncio_default_fixture_loop_scope, function ]
+      - [ python_files, [ "*_test.py", "*_tests.py", "test_*.py" ] ]
+      - [ testpaths, [ tests ] ]
+      - [ minversion, "8.0" ]
+      - [ python_classes, [ "Test*" ] ]
+      - [ filterwarnings, [ error, "once::pytest.PytestAssertRewriteWarning" ] ]
+      - [ addopts, [ --benchmark-disable, --strict-markers, --markdown-docs, --durations=10 ] ]
       pyright:
       - [ pythonPlatform, Linux ]
       - [ reportCallIssue, error ]
@@ -253,8 +253,8 @@ Infra:
           begin: '<!-- BEGIN BEADS (?P<block>[A-Z]+(?: [A-Z]+)*)(?:[: ].*)? -->'
           end: '<!-- END BEADS (?P<block>[A-Z]+(?: [A-Z]+)*) -->'
         rules:
-        - [default, true]
-        - [MD001, false]
+        - [ default, true ]
+        - [ MD001, false ]
           # MD013 prose and code lengths are THE markdown line contract for
           # both rumdl surfaces: `rumdl check` (markdown gate, `make fix`) and
           # `rumdl fmt` (markdown-format gate, `make fmt`) read this one rule
@@ -275,26 +275,26 @@ Infra:
             # leniency as headings.
             code_block_line_length: 200
             tables: false
-        - [MD022, false]
-        - [MD023, false]
-        - [MD024, { siblings_only: true }]
-        - [MD025, false]
-        - [MD031, false]
-        - [MD033, { allowed_elements: [ br, details, summary, kbd ] }]
-        - [MD036, false]
-        - [MD040, false]
-        - [MD041, false]
-        - [MD042, false]
-        - [MD046, false]
-        - [MD050, { style: consistent }]
-        - [MD051, false]
-        - [MD060, false]
+        - [ MD022, false ]
+        - [ MD023, false ]
+        - [ MD024, { siblings_only: true } ]
+        - [ MD025, false ]
+        - [ MD031, false ]
+        - [ MD033, { allowed_elements: [ br, details, summary, kbd ] } ]
+        - [ MD036, false ]
+        - [ MD040, false ]
+        - [ MD041, false ]
+        - [ MD042, false ]
+        - [ MD046, false ]
+        - [ MD050, { style: consistent } ]
+        - [ MD051, false ]
+        - [ MD060, false ]
         native_rules:
-        - [MD013, { reflow: false }]
-        - [MD057, false]
-        - [MD076, false]
+        - [ MD013, { reflow: false } ]
+        - [ MD057, false ]
+        - [ MD076, false ]
         native_settings:
-        - [per-file-flavor, { 'docs/**/*.md': mkdocs }]
+        - [ per-file-flavor, { 'docs/**/*.md': mkdocs } ]
       ruff:
         # Ruff exits 1 on findings. Remaining findings block repair acceptance;
         # the gate verifies the repaired state through the native read-only check.
@@ -316,15 +316,15 @@ Infra:
           # Enforcement law ids each Ruff rule claims; the enforcement catalog
           # is derived from these claims and the other owners' declarations.
           enforce:
-            import-outside-top-level: [ENFORCE-015, ENFORCE-081]
-            empty-type-checking-block: [ENFORCE-015]
-            any-type: [ENFORCE-016]
-            non-pep585-annotation: [ENFORCE-016]
-            non-pep604-annotation-union: [ENFORCE-016]
-            deprecated-import: [ENFORCE-016]
-            non-pep695-type-alias: [ENFORCE-016]
-            print: [ENFORCE-027]
-            magic-value-comparison: [ENFORCE-097]
+            import-outside-top-level: [ ENFORCE-015, ENFORCE-081 ]
+            empty-type-checking-block: [ ENFORCE-015 ]
+            any-type: [ ENFORCE-016 ]
+            non-pep585-annotation: [ ENFORCE-016 ]
+            non-pep604-annotation-union: [ ENFORCE-016 ]
+            deprecated-import: [ ENFORCE-016 ]
+            non-pep695-type-alias: [ ENFORCE-016 ]
+            print: [ ENFORCE-027 ]
+            magic-value-comparison: [ ENFORCE-097 ]
           # Operator law (2026-10-05 flext-p7bxt, reiterated 2026-10-18):
           # TC001-TC004 break Pydantic model resolution — the lazy facade
           # architecture requires the runtime imports these rules would move
@@ -424,7 +424,7 @@ Infra:
           # https://docs.python.org/3.13/reference/datamodel.html#type.__base__
           # https://docs.python.org/3.13/reference/datamodel.html#type.__bases__
           # https://docs.astral.sh/ruff/rules/bad-dunder-method-name/
-          # PLW3201 remains enabled for every other unrecognized dunder name.
+          # bad-dunder-method-name remains enabled for every other unrecognized dunder name.
       mypy:
         # Default analysis budget, not the project ceiling. Project overlays
         # may select a measured finite budget up to max_timeout_seconds.
@@ -434,11 +434,11 @@ Infra:
         # Pydantic 2 and pydantic.mypy are mandatory (operator 2026-10-05).
         # Missing, empty, and v1 plugin declarations fail validation rather
         # than being silently repaired by schema defaults.
-          # Analyze source distributions that have real annotations but omit
-          # the PEP 561 marker. Rope 1.14 is one such runtime owner; skipping
-          # it converts every public boundary into Any and makes its imports
-          # fail before our typed protocols can validate them.
-          # strict_concatenate is deprecated in mypy 1.20+; extra_checks covers it
+        # Analyze source distributions that have real annotations but omit
+        # the PEP 561 marker. Rope 1.14 is one such runtime owner; skipping
+        # it converts every public boundary into Any and makes its imports
+        # fail before our typed protocols can validate them.
+        # strict_concatenate is deprecated in mypy 1.20+; extra_checks covers it
         # Operator ruling 2026-10-05 (mypy-pydantic law): call-arg and
         # prop-decorator stay suspended until the fleet facade-alias family
         # is cured; pydantic.mypy remains mandatory. Mutating these codes is
@@ -632,12 +632,12 @@ Infra:
         # mandated boilerplate, not clones to repair. Per-package import
         # lists and every non-mandated line stay scanned.
         ignore-patterns:
-          - "Copyright \\(c\\) [0-9]{4} FLEXT Team\\. All rights reserved\\."
-          - "SPDX-License-Identifier: MIT"
-          - "from __future__ import annotations"
-          - "from typing import TYPE_CHECKING"
-          - "from types import MappingProxyType"
-          - "from flext_core.lazy import install_lazy_exports"
+        - "Copyright \\(c\\) [0-9]{4} FLEXT Team\\. All rights reserved\\."
+        - "SPDX-License-Identifier: MIT"
+        - "from __future__ import annotations"
+        - "from typing import TYPE_CHECKING"
+        - "from types import MappingProxyType"
+        - "from flext_core.lazy import install_lazy_exports"
 
     lazy-init:
       # Canonical import layer order of the FLEXT import law
@@ -671,7 +671,7 @@ Infra:
       # decision 2026-10-24): the PEP 747 TypeForm special form exists only in
       # typing_extensions on this Python line, and type checkers recognize it
       # only through its own name binding (ADR-028).
-      stdlib-backports: [typing_extensions]
+      stdlib-backports: [ typing_extensions ]
       reverse-import-mode: type_checking
       forward-import-form: absolute
     # One owner per facade member (operator order 2026-10-24): the kind of the
@@ -704,12 +704,9 @@ Infra:
     smells:
       fix-text:
         function-parameters: >-
-          Decompose into smaller functions or pass a context/model object only
-          when it carries domain meaning; adding a params model solely to silence
-          this rule is abominable.
+          Decompose into smaller functions or pass a context/model object only when it carries domain meaning; adding a params model solely to silence this rule is abominable.
         return-statements: >-
-          Refactor to a single result path; use early returns only when they
-          improve readability.
+          Refactor to a single result path; use early returns only when they improve readability.
         nested-control-flow: Extract helper functions to flatten control flow.
         boolean-logic: Simplify boolean expressions or introduce named predicates.
         function-complexity: >-
@@ -720,14 +717,14 @@ Infra:
           Refactor to a shared abstraction or delegate to a common helper.
       # Enforcement law ids the smells gate claims, keyed by qlty check name.
       enforce:
-        function-parameters: [ENFORCE-071]
-        return-statements: [ENFORCE-072]
-        nested-control-flow: [ENFORCE-073]
-        boolean-logic: [ENFORCE-074]
-        function-complexity: [ENFORCE-075]
-        file-complexity: [ENFORCE-076]
-        identical-code: [ENFORCE-077]
-        similar-code: [ENFORCE-078]
+        function-parameters: [ ENFORCE-071 ]
+        return-statements: [ ENFORCE-072 ]
+        nested-control-flow: [ ENFORCE-073 ]
+        boolean-logic: [ ENFORCE-074 ]
+        function-complexity: [ ENFORCE-075 ]
+        file-complexity: [ ENFORCE-076 ]
+        identical-code: [ ENFORCE-077 ]
+        similar-code: [ ENFORCE-078 ]
     # A public method whose name starts with one of these prefixes declares an
     # accessor; the accessor migration reports it with the replacement guidance.
     # The proven renames live in config/rules/rope/accessor-migrations.yaml.
@@ -751,11 +748,11 @@ Infra:
         # Generated canonical import headers settle before any catalog rule.
         - name: header
           kind: native
-          shapes: [import-header]
+          shapes: [ import-header ]
         # Every other native rule of the elected catalog.
         - name: catalog
           kind: native
         # Last: prune the imports the rewrites left unused and order them.
         - name: import-fix
           kind: ruff
-          select: [F401, I001]
+          select: [ F401, I001 ]

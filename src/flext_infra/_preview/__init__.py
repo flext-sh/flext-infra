@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""preview package.
+"""Flext Infra. Preview package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -21,8 +21,6 @@ __all__: tuple[str, ...] = ("FlextInfraPreviewWiring",)
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
-        "FlextInfraPreviewWiring": ".wiring",
-    }),
+    MappingProxyType({"FlextInfraPreviewWiring": ".wiring"}),
     public_exports=__all__,
 )

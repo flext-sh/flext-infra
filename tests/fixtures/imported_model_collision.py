@@ -6,33 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 from flext_infra.models import FlextInfraModels as ImportedModels
 
 
@@ -45,6 +18,7 @@ class TestsImportedModelCollision:
 
         Returns:
             The existing local text and canonical class name.
+
         """
         m = "occupied"
         return m + ImportedModels.Infra.WorkspaceTestsRequest.__name__

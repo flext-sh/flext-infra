@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Maintenance package.
+"""Flext Infra.maintenance package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -40,9 +40,9 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraMaintenanceClean": ".clean",
         "FlextInfraMaintenancePythonVersion": ".python_version",
+        "FlextInfraMaintenanceSonarcloud": ".sonarcloud",
         "FlextInfraMaintenanceSonarcloudClient": ".sonarcloud_client",
         "FlextInfraMaintenanceSonarcloudIssues": ".sonarcloud_issues",
-        "FlextInfraMaintenanceSonarcloud": ".sonarcloud",
     }),
     public_exports=__all__,
 )

@@ -20,16 +20,17 @@
   Generators, Typing :: Typed
 - Project class: `infra`
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
-- Main facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandPayload`,
-  `FlextInfraConfig`, `FlextInfraConformWiring`, `FlextInfraConstants`,
-  `FlextInfraGitLanes`, `FlextInfraGitService` (+17 more)
+- Main facades: `FlextInfra`, `FlextInfraBasePayload`, `FlextInfraBaseProjects`,
+  `FlextInfraCli`, `FlextInfraConfig`, `FlextInfraConformWiring`, `FlextInfraConstants`,
+  `FlextInfraFlextInfraConfig` (+23 more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
-- Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandPayload`,
-  `FlextInfraConfig`, `FlextInfraConformWiring`, `FlextInfraConstants`,
-  `FlextInfraGitLanes`, `FlextInfraGitService`, `FlextInfraModels`,
-  `FlextInfraPreviewWiring` (+18 more)
-- Exported module shortcuts: _none_
-- Generated module pages: `14`
+- Public symbol exports: `FlextInfra`, `FlextInfraBasePayload`,
+  `FlextInfraBaseProjects`, `FlextInfraCli`, `FlextInfraConfig`,
+  `FlextInfraConformWiring`, `FlextInfraConstants`, `FlextInfraFlextInfraConfig`,
+  `FlextInfraFlextInfraConform`, `FlextInfraFlextInfraCprofile` (+24 more)
+- Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `release`,
+  `services`, `validate`, `workspace`
+- Generated module pages: `20`
 
 ## Next Pages
 

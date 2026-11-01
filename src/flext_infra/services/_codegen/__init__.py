@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""codegen package.
+"""Flext Infra.services. Codegen package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -21,8 +21,6 @@ __all__: tuple[str, ...] = ("FlextInfraCodegenVscode",)
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
-        "FlextInfraCodegenVscode": ".vscode",
-    }),
+    MappingProxyType({"FlextInfraCodegenVscode": ".vscode"}),
     public_exports=__all__,
 )

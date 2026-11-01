@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""generator package.
+"""Flext Infra.docs. Generator package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -21,8 +21,6 @@ __all__: tuple[str, ...] = ("FlextInfraDocsGeneratorBundle",)
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
-        "FlextInfraDocsGeneratorBundle": ".bundle",
-    }),
+    MappingProxyType({"FlextInfraDocsGeneratorBundle": ".bundle"}),
     public_exports=__all__,
 )

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Internal package for profile.
+"""Flext Infra. Profile package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,9 +11,11 @@ from types import MappingProxyType
 
 from flext_core.lazy import install_lazy_exports
 
+__all__: tuple[str, ...] = ()
+
 install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({}),
-    public_exports=[],
+    public_exports=__all__,
 )

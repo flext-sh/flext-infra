@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""rope package.
+"""Flext Infra.workspace. Rope package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -21,8 +21,6 @@ __all__: tuple[str, ...] = ("FlextInfraWorkspaceRopeQuery",)
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
-        "FlextInfraWorkspaceRopeQuery": ".query",
-    }),
+    MappingProxyType({"FlextInfraWorkspaceRopeQuery": ".query"}),
     public_exports=__all__,
 )
