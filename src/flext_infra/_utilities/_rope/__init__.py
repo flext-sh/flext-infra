@@ -37,9 +37,6 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesRopeMovePublication,
     )
     from flext_infra._utilities._rope.native_project import FlextInfraRopeNativeProject
-    from flext_infra._utilities._rope.nested_class_move import (
-        FlextInfraUtilitiesRopeNestedClassMove,
-    )
     from flext_infra._utilities._rope.project import FlextInfraRopeProject
     from flext_infra._utilities._rope.pymodule import (
         FlextInfraUtilitiesRopeCorePyModule,
@@ -98,7 +95,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeMethodOrder",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeMovePublication",
-    "FlextInfraUtilitiesRopeNestedClassMove",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
     "FlextInfraUtilitiesRopeRuntimeMatching",
@@ -135,7 +131,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeMethodOrder": ".method_order",
         "FlextInfraUtilitiesRopeModulePatch": ".module_patch",
         "FlextInfraUtilitiesRopeMovePublication": ".move_publication",
-        "FlextInfraUtilitiesRopeNestedClassMove": ".nested_class_move",
         "FlextInfraUtilitiesRopeRuntime": ".runtime",
         "FlextInfraUtilitiesRopeRuntimeBase": ".runtime_base",
         "FlextInfraUtilitiesRopeRuntimeMatching": ".runtime_matching",

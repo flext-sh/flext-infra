@@ -314,6 +314,75 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(seen.values())
 
     @classmethod
+    def _facade_project_classes(
+        cls,
+        project: p.Infra.RopeProject,
+        providers: Sequence[tuple[str, p.Infra.RopePyObject]],
+    ) -> dict[int, p.Infra.RopeSourceClass]:
+        """Collect every provider class and ancestor declared in this project.
+
+        Returns:
+            The project's source classes keyed by native identity.
+
+        """
+        root = Path(project.root.real_path)
+        runtime = FlextInfraUtilitiesRopeRuntimeTypes
+        classes: dict[int, p.Infra.RopeSourceClass] = {}
+        for _name, provider in providers:
+            if not runtime.py_class(provider):
+                continue
+            for klass in (provider, *cls._native_ancestors(provider)):
+                if not runtime.py_class(klass):
+                    continue
+                resource = klass.get_module().get_resource()
+                if resource is not None and Path(resource.real_path).is_relative_to(
+                    root
+                ):
+                    classes[id(klass)] = klass
+        return classes
+
+    @classmethod
+    def _facade_member_collisions(
+        cls,
+        project: p.Infra.RopeProject,
+        providers: Sequence[tuple[str, p.Infra.RopePyObject]],
+    ) -> p.Result[bool]:
+        """Refuse a composition in which two unrelated parts declare one member.
+
+        Method resolution would silently pick one of them for every caller that
+        reaches the member through the composed facade. Only classes declared
+        in this project count; a part that extends another overrides it.
+
+        Returns:
+            True, or the first member two unrelated project parts declare.
+
+        """
+        classes = cls._facade_project_classes(project, providers)
+        lineage = {
+            key: frozenset(id(a) for a in cls._native_ancestors(klass))
+            for key, klass in classes.items()
+        }
+        declaring: dict[str, list[int]] = {}
+        for key, klass in classes.items():
+            for member in klass.get_scope().get_defined_names():
+                if not member.startswith("__"):
+                    declaring.setdefault(member, []).append(key)
+        for member, keys in sorted(declaring.items()):
+            roots = [
+                key
+                for key in keys
+                if not any(other in lineage and key in lineage[other] for other in keys)
+            ]
+            if len(roots) > 1:
+                names = sorted(classes[key].get_name() for key in roots)
+                message = (
+                    f"Facade composition declares {member!r} in unrelated parts "
+                    f"{names}; give each part its own name or one owner with make mod"
+                )
+                return r[bool].fail(message)
+        return r[bool].ok(value=True)
+
+    @classmethod
     def render_type_facade(
         cls,
         pkg_dir: Path,
@@ -689,6 +758,10 @@ class FlextInfraUtilitiesFacadeComponents:
                 if owner_name is not None
                 else (),
             ),
+        ).flat_map(
+            lambda retained: cls._facade_member_collisions(project, retained[0]).map(
+                lambda _settled: retained
+            )
         )
         if composed.failure:
             return r[
