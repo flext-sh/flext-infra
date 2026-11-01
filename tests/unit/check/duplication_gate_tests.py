@@ -602,7 +602,12 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
     @staticmethod
     def _rendered_jscpd_config(root: Path) -> t.JsonMapping:
-        """The generated jscpd invocation config of the latest scan."""
+        """Read the generated jscpd invocation config of the latest scan.
+
+        Returns:
+            The parsed jscpd configuration mapping.
+
+        """
         return u.Cli.json_as_mapping(
             u.Cli.json_parse(
                 (
@@ -617,14 +622,6 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """An authorized glob joins the render and the surface leaves the scan."""
         root = self._governed_with_python_clone(tmp_path, same_file=False)
         self._write_overlay(root, '        ignore:\n          - "**/first.py"\n')
-        loaded = u.Cli.yaml_safe_load(root / "config" / "tooling.yaml")
-        print(
-            "LOADED:", loaded.success, loaded.value if loaded.success else loaded.error
-        )
-        probed = FlextInfraGatesDuplication(root)._project_overlay(root)
-        print(
-            "PROBED:", probed.success, probed.value if probed.success else probed.error
-        )
 
         execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 

@@ -762,7 +762,9 @@ class FlextInfraWorkspaceDetector(
             return result_type.from_failure(inputs)
         repository = cls._local_repository_ref(
             subproject_root,
-            kind=inputs.value.kind,
+            kind=u.Infra.require_declared_kind(
+                inputs.value.spec.model_dump(mode="json"), subproject_root
+            ),
             path=path,
             composed=True,
             declared_url=declared_url,
@@ -1217,7 +1219,9 @@ class FlextInfraWorkspaceDetector(
         ]
         repository = cls._local_repository_ref(
             resolved_root,
-            kind=inputs.kind,
+            kind=u.Infra.require_declared_kind(
+                inputs.spec.repository.model_dump(mode="json"), resolved_root
+            ),
             composed=composed,
         )
         if repository.failure:

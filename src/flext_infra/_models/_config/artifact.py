@@ -1136,15 +1136,6 @@ class FlextInfraModelsConfigArtifact(
             FlextInfraModelsConfigWorkspace.RepositoryDeltaSpec,
             m.Field(description="Validated repository declaration subsection"),
         ]
-        kind: Annotated[
-            c.Infra.ProjectKind,
-            m.Field(
-                description=(
-                    "Governance kind the repository declares, read once at "
-                    "the project boundary that fails closed when it is absent"
-                ),
-            ),
-        ]
         sources: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
             m.Field(

@@ -128,7 +128,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
 
     @staticmethod
-    def _require_declared_kind(
+    def require_declared_kind(
         repository: t.JsonValue, repository_root: Path
     ) -> c.Infra.ProjectKind:
         """Read the governance kind a repository declares, failing closed.
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         """
         project = project_root.resolve()
         inputs = cls.load_codegen_inputs(project).unwrap()
-        if inputs.kind is c.Infra.ProjectKind.THIRD_PARTY_FORK:
+        if inputs.spec.repository.kind is c.Infra.ProjectKind.THIRD_PARTY_FORK:
             msg = f"third-party fork is never a FLEXT write target: {project}"
             raise ValueError(msg)
         if authority is not None and not project.is_relative_to(authority.resolve()):
@@ -303,7 +303,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             return result_type.from_failure(section)
         repository = section.value.get("repository", {})
         declared = r[c.Infra.ProjectKind].create_from_callable(
-            partial(cls._require_declared_kind, repository, repository_root)
+            partial(cls.require_declared_kind, repository, repository_root)
         )
         if declared.failure:
             return result_type.from_failure(declared)
@@ -313,7 +313,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         return result_type.ok(
             m.Infra.RepositoryDeclarationInputs(
                 spec=loaded.value,
-                kind=declared.value,
                 sources=document.value.sources,
             ),
         )
@@ -572,7 +571,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             # Config-authoring failures surface as the service contract's own
             # error type, never as a raw third-party validation exception.
             raise ValueError(str(error)) from error
-        return spec, kind
 
     @classmethod
     def _repository_config_document(

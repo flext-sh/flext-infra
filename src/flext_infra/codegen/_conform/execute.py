@@ -761,9 +761,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     "errors": [
                         failure.error or "generation failed" for failure in failures
                     ],
-                    "failed_repositories": list[t.JsonValue](
-                        sorted(failed_repositories)
-                    ),
+                    "failed_repositories": failed_names,
                 },
                 exception=first.exception,
             )

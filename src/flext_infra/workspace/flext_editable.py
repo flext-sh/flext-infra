@@ -15,11 +15,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-import tomllib
 from collections.abc import Mapping
 from pathlib import Path
 
-from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, p, r, u
@@ -118,33 +116,22 @@ class FlextInfraWorkspaceFlextEditable:
         # consumer does not use (e.g. the umbrella meta-distribution) out of the
         # receipt — the provenance gate needs an installed distribution per
         # receipt member.
-        declared = cls._declared_dependency_names(runtime_root)
+        document = u.Cli.toml_read_document(runtime_root / c.PYPROJECT_FILENAME)
+        if document.failure:
+            return r[tuple[dict[str, Path], tuple[str, ...]]].from_failure(document)
+        declared = {
+            canonicalize_name(name)
+            for name in u.Infra.declared_dependency_names(document.value)
+        }
         distributions = {
             repository.distribution: source.resolve()
             for repository, source in provided
-            if repository.package and repository.distribution in declared
+            if repository.package
+            and canonicalize_name(repository.distribution) in declared
         }
         return r[tuple[dict[str, Path], tuple[str, ...]]].ok(
             (distributions, metadata_paths),
         )
-
-    @staticmethod
-    def _declared_dependency_names(runtime_root: Path) -> set[str]:
-        """Distribution names the consumer's pyproject declares (all groups).
-
-        Returns:
-            The canonicalized names across runtime dependencies and every
-            dependency group, markers and extras stripped.
-
-        """
-        manifest = runtime_root / c.PYPROJECT_FILENAME
-        if not manifest.is_file():
-            return set()
-        payload = tomllib.loads(manifest.read_text())
-        raw: list[str] = list(payload.get("project", {}).get("dependencies", []))
-        for group in (payload.get("dependency-groups") or {}).values():
-            raw.extend(group)
-        return {canonicalize_name(Requirement(declaration).name) for declaration in raw}
 
     @staticmethod
     def _bind_editables(
