@@ -112,7 +112,6 @@
   "git.repositoryScanMaxDepth": 2,
   "githubPullRequests.autoRepositoryDetection": true,
   "githubPullRequests.ignoreSubmodules": false,
-  "markdownlint.configFile": ".markdownlint.json",
   "markdownlint.lintWorkspaceGlobs": [
     "!**/.git/**",
     "!**/.planning/**",

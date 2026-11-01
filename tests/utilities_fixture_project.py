@@ -7,13 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from packaging.utils import canonicalize_name
 
 from flext_infra import config, u
-from tests import c, m, tm
+from tests import c, m, t, tm
 
 # Fixture scenario data, declared here and nowhere else: flext-infra ships no
 # provider registry, so a test that needs a provider declares the one it means
@@ -332,14 +332,49 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             "  path: .\n"
             f"  role: {role.value}\n"
             "  state: active\n"
-            "  kind: internal_flext\n"
+            f"  kind: {c.Infra.ProjectKind.INTERNAL_FLEXT.value}\n"
             "  codegen: conform\n"
             "  package: true\n"
             "  editable: false\n"
             "  read_only: false\n",
             encoding="utf-8",
         )
+        TestsFlextInfraUtilitiesProjectFixtureMixin.declare_governed_kind(repository)
         return manifest
+
+    @staticmethod
+    def declare_governed_kind(repository: Path) -> None:
+        """Declare the governance kind at the repository's own project boundary.
+
+        Generators read ``Infra.codegen.repository.kind`` from the repository's
+        own ``config/codegen.yaml`` and fail closed without it; every governed
+        fixture root declares it there, exactly as a real FLEXT checkout does.
+        """
+        TestsFlextInfraUtilitiesProjectFixtureMixin.override_repository_declaration(
+            repository,
+            {"kind": c.Infra.ProjectKind.INTERNAL_FLEXT.value},
+        )
+
+    @staticmethod
+    def override_repository_declaration(
+        repository: Path,
+        updates: Mapping[str, t.JsonValue],
+    ) -> None:
+        """Merge ``updates`` into the repository's own codegen declaration.
+
+        The repository layer of ``Infra.codegen.repository`` is the only
+        authored repository policy; Git and project metadata own identity.
+        """
+        path = repository / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
+        empty: t.JsonMapping = {}
+        current = tm.ok(u.Cli.yaml_safe_load(path)) if path.is_file() else empty
+        infra = dict(u.Cli.toml_mapping_child(current, "Infra") or {})
+        codegen = dict(u.Cli.toml_mapping_child(infra, "codegen") or {})
+        declared = dict(u.Cli.toml_mapping_child(codegen, "repository") or {})
+        declared.update(updates)
+        codegen["repository"] = declared
+        infra["codegen"] = codegen
+        tm.ok(u.Cli.yaml_dump(path, {**current, "Infra": infra}))
 
     @staticmethod
     def declare_workspace_projects(repository: Path, projects: Sequence[str]) -> Path:

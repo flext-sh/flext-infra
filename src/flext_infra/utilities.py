@@ -51,6 +51,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeHelpers,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeInventory,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeSource,
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesInventory,
@@ -61,6 +62,8 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
+from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
+from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 
 
 class FlextInfraUtilities(flext_cli_u):
@@ -117,9 +120,12 @@ class FlextInfraUtilities(flext_cli_u):
         FlextInfraUtilitiesRopeHelpers,
         FlextInfraUtilitiesRopeImports,
         FlextInfraUtilitiesRopeInventory,
+        FlextInfraUtilitiesRopeRuntimeRefactors,
         FlextInfraUtilitiesRopeSource,
         FlextInfraUtilitiesRopeStructure,
         FlextInfraUtilitiesSemanticCutover,
+        FlextInfraWorktreeLifecycle,
+        FlextInfraWorktreeProvisioning,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

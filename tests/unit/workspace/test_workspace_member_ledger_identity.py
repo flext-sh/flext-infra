@@ -136,7 +136,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
             dispatcher="scripts/dispatch.py",
             roots=("scripts",),
         )
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             member,
             {
                 "examples_module": "examples.member_runtime",
@@ -164,7 +164,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
     ) -> None:
         """Selected command metadata must pass the declaration's typed contract."""
         member, parent = self._attach_member_to_workspace(tmp_path)
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             member,
             {"extra_verbs": "not-a-command-sequence"},
         )

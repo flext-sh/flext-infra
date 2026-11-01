@@ -39,6 +39,10 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         outcome = m.Infra.CodegenRepositoryPlanOutcome(
             repository=layout.project_name if layout is not None else root.as_posix()
         )
+        # Publication writes reach the filesystem outside the Rope resource
+        # API, so the native module cache never sees the change events; the
+        # validation walk is Rope's public route to drop stale PyModules.
+        project.validate(project.root)
         self.bind_candidate(declared_files=declared_files)
         original = {plan.path: plan for plan in declared_files}
         sources = {

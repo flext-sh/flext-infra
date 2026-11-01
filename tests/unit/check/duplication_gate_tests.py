@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
+from flext_infra import config, t
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraGatesDuplication
 from tests import c, m, tm, u
@@ -571,3 +571,134 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         )
         for duplicate in report.duplicates:
             tm.fail(duplicate.first_file == duplicate.second_file)
+
+    _IMPORT_LAW_BLOCK = (
+        "from dc_recon.services.universo import DcReconUniverso\n"
+        "from sqlalchemy import text\n"
+        "from sqlalchemy.exc import DatabaseError\n"
+        "from dc_recon import c, e, h, m, p, r, t, u\n"
+        "from dc_recon import c, e, h, m, p, r, s, t, u\n"
+        "if TYPE_CHECKING:\n"
+        "    from sqlalchemy.engine import Connection as SaConnection\n"
+        "    from collections.abc import Sequence\n"
+        "    from pathlib import Path\n"
+        "from datetime import UTC, datetime\n"
+        "import time\n"
+        "import json\n"
+        "from concurrent.futures import ThreadPoolExecutor, as_completed\n"
+        "from collections import Counter\n"
+        "import re\n"
+    )
+
+    @staticmethod
+    def _write_overlay(root: Path, jscpd_body: str) -> None:
+        """Declare one project tooling overlay with the given jscpd level."""
+        config_dir = root / "config"
+        config_dir.mkdir(exist_ok=True)
+        (config_dir / "tooling.yaml").write_text(
+            f"Infra:\n  tooling:\n    tools:\n      jscpd:\n{jscpd_body}",
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _rendered_jscpd_config(root: Path) -> t.JsonMapping:
+        """The generated jscpd invocation config of the latest scan."""
+        return u.Cli.json_as_mapping(
+            u.Cli.json_parse(
+                (
+                    root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_CONFIG_FILENAME
+                ).read_text(encoding="utf-8"),
+            ).unwrap(),
+        )
+
+    def test_project_overlay_glob_skips_the_declared_surface(
+        self, tmp_path: Path
+    ) -> None:
+        """An authorized glob joins the render and the surface leaves the scan."""
+        root = self._governed_with_python_clone(tmp_path, same_file=False)
+        self._write_overlay(root, '        ignore:\n          - "**/first.py"\n')
+        loaded = u.Cli.yaml_safe_load(root / "config" / "tooling.yaml")
+        print(
+            "LOADED:", loaded.success, loaded.value if loaded.success else loaded.error
+        )
+        probed = FlextInfraGatesDuplication(root)._project_overlay(root)
+        print(
+            "PROBED:", probed.success, probed.value if probed.success else probed.error
+        )
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.ok(
+            execution.result.passed,
+            msg="; ".join(issue.formatted for issue in execution.issues),
+        )
+        tm.that(
+            execution.raw_output,
+            has="jscpd project overlay merged: 1 globs, 0 patterns",
+        )
+        tm.that(self._rendered_jscpd_config(root).get("ignore"), has="**/first.py")
+
+    def test_project_overlay_patterns_skip_import_law_lines(
+        self, tmp_path: Path
+    ) -> None:
+        """Authorized import-law lines leave the token stream; no clone remains."""
+        root = tmp_path / "overlay-patterns"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-overlay-patterns",
+            beads=u.Tests.BeadsIdentity(
+                workspace="overlay-patterns-workspace",
+                database="overlay_patterns_database",
+                issue_prefix="overlay-patterns",
+            ),
+        )
+        package = root / "src" / "fixture_overlay_patterns"
+        package.mkdir(parents=True, exist_ok=True)
+        (package / "first.py").write_text(self._IMPORT_LAW_BLOCK, encoding="utf-8")
+        (package / "second.py").write_text(self._IMPORT_LAW_BLOCK, encoding="utf-8")
+        patterns = "".join(
+            f'          - "{line.strip()}"\n'
+            for line in self._IMPORT_LAW_BLOCK.splitlines()
+            if line.strip()
+        )
+        self._write_overlay(root, f"        ignore-patterns:\n{patterns}")
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.ok(
+            execution.result.passed,
+            msg="; ".join(issue.formatted for issue in execution.issues),
+        )
+        tm.that(
+            self._rendered_jscpd_config(root).get("ignorePattern"),
+            has="from dc_recon.services.universo import DcReconUniverso",
+        )
+
+    def test_absent_project_overlay_keeps_the_canonical_render(
+        self, tmp_path: Path
+    ) -> None:
+        """Without an overlay the render and receipt stay exactly canonical."""
+        root = self._governed_with_python_clone(tmp_path, same_file=False)
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.fail(execution.result.passed)
+        tm.fail("project overlay merged" in execution.raw_output)
+        tm.fail("**/first.py" in str(self._rendered_jscpd_config(root).get("ignore")))
+
+    def test_malformed_project_overlay_fails_closed(self, tmp_path: Path) -> None:
+        """An overlay key the schema forbids blocks the gate with its cause."""
+        root = self._governed_with_python_clone(tmp_path, same_file=False)
+        self._write_overlay(root, "        similarity: 0.5\n")
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.fail(execution.result.passed)
+        tm.that(
+            execution.raw_output,
+            has="project tooling.yaml jscpd overlay validation",
+        )
+        tm.that(
+            " ".join(issue.message for issue in execution.issues),
+            has="did not produce its required JSON report",
+        )

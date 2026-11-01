@@ -14,7 +14,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import builtins
 import re
+import tomllib
 from collections.abc import Mapping, Sequence
 from importlib import import_module
 from importlib.util import find_spec
@@ -119,6 +121,108 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 for package, names in sorted(children.items())
             },
         )
+
+    @classmethod
+    def codemod_workspace_export_facts(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> m.Infra.CodemodPackageExportsFacts:
+        """Package facts of the project plus its declared provider packages.
+
+        Provider rewire rules introduce facade letters and names that only
+        provider distributions declare, and the run's snapshot is deliberately
+        repository-scoped, so the header stage additionally reads each
+        declared dependency's installed initializer (the same static
+        ``__all__`` extraction the repository facts use). The project's own
+        packages keep precedence on any name collision.
+
+        Returns:
+            The merged typed package facts of the project and its providers.
+
+        """
+        own = project.resolve()
+        merged_exports: dict[str, t.StrTuple] = {}
+        merged_directories: dict[str, str] = {}
+        merged_modules: dict[str, t.StrTuple] = {}
+        facts = cls.codemod_package_export_facts(snapshot, own)
+        for package, names in facts.exports.items():
+            merged_exports.setdefault(package, names)
+        for package, directory in facts.directories.items():
+            merged_directories.setdefault(package, directory)
+        for package, children in facts.modules.items():
+            merged_modules.setdefault(package, children)
+        run = FlextInfraUtilitiesPythonModel.python_model_run(snapshot.engine, {})
+        for package in cls._codemod_provider_declared_packages(project):
+            exports = cls._codemod_installed_package_exports(run, package)
+            if exports is None:
+                continue
+            merged_exports.setdefault(package, exports)
+            merged_directories.setdefault(package, ".")
+            merged_modules.setdefault(package, ())
+        return m.Infra.CodemodPackageExportsFacts(
+            exports=merged_exports,
+            directories=merged_directories,
+            modules=merged_modules,
+        )
+
+    @staticmethod
+    def _codemod_provider_declared_packages(project: Path) -> tuple[str, ...]:
+        """Distributions the project declares and the environment installs.
+
+        Reads the project manifest's dependency declarations (the SSOT of what
+        the project composes) and keeps every name that resolves in the
+        running environment, so only present providers contribute exports.
+
+        Returns:
+            Provider package names in manifest declaration order.
+
+        """
+        manifest = project / "pyproject.toml"
+        if not manifest.is_file():
+            return ()
+        declared = tomllib.loads(manifest.read_text())
+        project_table = declared.get("project", {})
+        uv_table = declared.get("tool", {}).get("uv", {})
+        requirements: list[str] = [
+            *project_table.get("dependencies", []),
+            *(
+                item
+                for extras in project_table.get("optional-dependencies", {}).values()
+                for item in extras
+            ),
+            *uv_table.get("override-dependencies", []),
+            *uv_table.get("constraint-dependencies", []),
+        ]
+        names: list[str] = []
+        for requirement in requirements:
+            name = re.split(r"[<>=!~\[; @]", requirement, maxsplit=1)[0].strip()
+            if name and name.replace("-", "_").isidentifier() and name not in names:
+                names.append(name)
+        return tuple(
+            name for name in names if find_spec(name.replace("-", "_")) is not None
+        )
+
+    @classmethod
+    def _codemod_installed_package_exports(
+        cls, run: m.Infra.PythonModelRun, package: str
+    ) -> t.StrTuple | None:
+        """Statically read one installed package initializer's ``__all__``.
+
+        Returns:
+            The declared names, or ``None`` when the package publishes no
+            initializer the static model can read.
+
+        """
+        spec = find_spec(package)
+        if spec is None or not spec.submodule_search_locations:
+            return None
+        initializer = Path(next(iter(spec.submodule_search_locations))) / "__init__.py"
+        if not initializer.is_file():
+            return None
+        module = FlextInfraUtilitiesPythonModel.python_model_module_at(
+            run, initializer, package
+        )
+        exports = FlextInfraUtilitiesPythonModel.python_model_exports(module)
+        return None if exports is None else tuple(exports)
 
     @classmethod
     def codemod_package_export_utilities(
@@ -241,6 +345,11 @@ class FlextInfraUtilitiesCodemodNativePackage:
         """
         resolvable: dict[str, str] = {}
         for name, packages in cls._codemod_declaring_packages(facts).items():
+            # A Python builtin is always bound: a provider publishing a
+            # builtin-shadowing member (pulumi publishes `set`) must never
+            # make the header stage import over the builtin.
+            if hasattr(builtins, name):
+                continue
             depth = packages[0].count(".")
             if sum(package.count(".") == depth for package in packages) == 1:
                 resolvable[name] = packages[0]
@@ -278,8 +387,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
             The generated ``import-header`` rule documents keyed by id.
 
         """
-        del snapshot
-        del project
+        facts = cls.codemod_workspace_export_facts(snapshot, project)
         directories = facts.directories
         groups: dict[tuple[str, str | None, t.StrTuple], set[str]] = {}
         resolvable = cls.codemod_header_resolvable_names(facts)

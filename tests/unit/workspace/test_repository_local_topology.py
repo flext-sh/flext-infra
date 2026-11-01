@@ -106,7 +106,7 @@ class TestsFlextInfraRepositoryLocalTopology:
     ) -> None:
         """The repository's own codegen declaration carries its typed policy."""
         root = self._self_named_governed_root(tmp_path, "manifest-policy")
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             root,
             {
                 "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK.value,
@@ -126,7 +126,7 @@ class TestsFlextInfraRepositoryLocalTopology:
         """An explicit standalone policy needs no Beads or Gas City identity."""
         root = self._self_named_governed_root(tmp_path, "without-beads")
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             root,
             {"beads_enabled": False, "gascity_enabled": False},
         )
@@ -146,7 +146,7 @@ class TestsFlextInfraRepositoryLocalTopology:
         """A declaration that omits beads_enabled keeps the default participation."""
         root = self._self_named_governed_root(tmp_path, "overlay-default-beads")
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             root,
             {"ci_enabled": False},
         )
@@ -162,7 +162,7 @@ class TestsFlextInfraRepositoryLocalTopology:
     ) -> None:
         """Git and project metadata own identity; a declared one fails closed."""
         root = self._self_named_governed_root(tmp_path, "manifest-contradiction")
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             root,
             {"distribution": "different-distribution"},
         )
@@ -177,7 +177,7 @@ class TestsFlextInfraRepositoryLocalTopology:
     ) -> None:
         """Reject an unknown repository declaration field before policy use."""
         root = self._self_named_governed_root(tmp_path, "unknown-field")
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             root,
             {"unknown_contract": True},
         )
@@ -402,7 +402,7 @@ class TestsFlextInfraRepositoryLocalTopology:
     ) -> None:
         """One declaration loads standalone and inside a workspace unchanged."""
         member = self._attached_member(tmp_path)
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             member,
             {"uv_link_mode": "clone"},
         )
@@ -419,7 +419,7 @@ class TestsFlextInfraRepositoryLocalTopology:
     ) -> None:
         """Topology is observed from Git; a declared role fails closed."""
         root = self._self_named_governed_root(tmp_path, "manifest-role-claim")
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             root,
             {"role": c.Infra.MakeProfile.WORKSPACE.value},
         )

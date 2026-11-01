@@ -489,6 +489,7 @@ class TestsFlextInfraGithubGateAttestation:
                 f"      gate_receipts_directory: .reports/{policy.value}\n",
                 encoding="utf-8",
             )
+            u.Tests.declare_governed_kind(tmp_path)
             inputs = tm.ok(u.Infra.load_codegen_inputs(tmp_path))
             captured = tm.ok(
                 u.Infra.git_capture_gate(
@@ -704,6 +705,7 @@ class TestsFlextInfraGithubGateAttestation:
             "      gate_receipts_directory: .reports/changed-scope\n",
             encoding=c.DEFAULT_ENCODING,
         )
+        u.Tests.declare_governed_kind(tmp_path)
         tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
 
     @classmethod

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 from urllib.parse import urlsplit
 
-from flext_infra import c, config, m, r, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
 from flext_infra.gates import (
     FlextInfraDuplicationEvidence,
@@ -69,11 +69,18 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
         report, issues, tool_failed = self._report_issues(scan, project_dir)
         skipped_roots = self._absent_comparison_note(project_dir)
         not_executed = self._semantic_not_executed_reason()
+        overlay_note = self._overlay_note(project_dir)
         evidence = self._publish_raw_receipt(
             ctx,
             "\n".join(
                 part
-                for part in (scan.stdout, scan.stderr, not_executed, skipped_roots)
+                for part in (
+                    scan.stdout,
+                    scan.stderr,
+                    not_executed,
+                    skipped_roots,
+                    overlay_note,
+                )
                 if part
             ),
         )
@@ -423,6 +430,74 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             )
         return r[m.Infra.ProjectDuplicationOverrides].ok(validated.value)
 
+    @classmethod
+    def _project_overlay(
+        cls,
+        project_dir: Path,
+    ) -> p.Result[m.Infra.JscpdProjectOverlay]:
+        """Read ``Infra.tooling.tools.jscpd`` from the project tooling overlay.
+
+        The overlay has the same nesting as the packaged ``tooling.yaml``.
+        An absent file, or a nesting level the overlay does not declare, is a
+        typed absence (an empty overlay); a declared level that violates the
+        schema fails loud instead of being silently ignored.
+
+        Returns:
+            The resulting ``p.Result[m.Infra.JscpdProjectOverlay]``.
+
+        """
+        tooling = project_dir / "config" / "tooling.yaml"
+        if not tooling.is_file():
+            return r[m.Infra.JscpdProjectOverlay].ok(m.Infra.JscpdProjectOverlay())
+        loaded = u.Cli.yaml_safe_load(tooling)
+        if loaded.failure:
+            return r[m.Infra.JscpdProjectOverlay].fail(
+                f"invalid project tooling overlay ({tooling}): {loaded.error}",
+            )
+        current: t.JsonValue = dict(loaded.value)
+        for key in ("Infra", "tooling", "tools", "jscpd"):
+            if not isinstance(current, dict):
+                return r[m.Infra.JscpdProjectOverlay].fail(
+                    f"project tooling.yaml level above {key!r} is not a mapping "
+                    f"({tooling})",
+                )
+            if key not in current:
+                return r[m.Infra.JscpdProjectOverlay].ok(m.Infra.JscpdProjectOverlay())
+            current = current[key]
+        validated = u.validate_value(
+            m.Infra.JscpdProjectOverlay,
+            u.Cli.json_as_mapping(current),
+        )
+        if validated.failure:
+            return r[m.Infra.JscpdProjectOverlay].fail_op(
+                f"project tooling.yaml jscpd overlay validation ({tooling})",
+                validated.error,
+            )
+        return r[m.Infra.JscpdProjectOverlay].ok(validated.value)
+
+    def _overlay_note(self, project_dir: Path) -> str:
+        """Record merged project overlay exclusions beside the receipt.
+
+        What the gate skipped must stay visible: the note names the merged
+        counts. An invalid overlay already fails the render, so it is never
+        silently swallowed here.
+
+        Returns:
+            The note, or an empty string when the overlay declares nothing.
+
+        """
+        overlay = self._project_overlay(project_dir)
+        if overlay.failure:
+            return ""
+        merged_globs = len(overlay.value.ignore)
+        merged_patterns = len(overlay.value.ignore_patterns)
+        if not merged_globs and not merged_patterns:
+            return ""
+        return (
+            "jscpd project overlay merged: "
+            f"{merged_globs} globs, {merged_patterns} patterns"
+        )
+
     def _declared_duplication_trees(self) -> p.Result[Sequence[str]]:
         """Read duplication scope from the target's selected repository delta.
 
@@ -439,10 +514,11 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
     def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
 
-        R2: Reads thresholds from [tool.flext.project] config SSOT.
-        A generated-at-scan-time projection, never a second hand-edited
-        source; regenerating with unchanged constants produces byte-identical
-        content (idempotent).
+        R2: Reads thresholds from [tool.flext.project] config SSOT and the
+        operator-authorized scan exclusions from the project tooling overlay
+        (``config/tooling.yaml``). A generated-at-scan-time projection, never
+        a second hand-edited source; regenerating with unchanged constants
+        produces byte-identical content (idempotent).
 
         Returns:
             The resulting ``p.Result[Path]``.
@@ -452,6 +528,9 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
         if project_config.failure:
             return r[Path].from_failure(project_config)
         overrides = project_config.value
+        overlay = self._project_overlay(project_dir)
+        if overlay.failure:
+            return r[Path].from_failure(overlay)
         passes = config.Infra.tooling.tools.jscpd
         # The embedding pass runs wherever its declared host answers; in CI
         # it is typed NOT EXECUTED, and a locally unreachable host is typed
@@ -467,8 +546,8 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
                 name: tuple(extensions)
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
-            ignore=self._derived_ignore_patterns(),
-            ignorePattern=passes.ignore_patterns,
+            ignore=(*self._derived_ignore_patterns(), *overlay.value.ignore),
+            ignorePattern=(*passes.ignore_patterns, *overlay.value.ignore_patterns),
             minLines=overrides.min_lines,
             minTokens=overrides.min_tokens,
             mode=overrides.mode,

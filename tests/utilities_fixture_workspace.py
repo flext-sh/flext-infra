@@ -297,6 +297,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         config_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
         tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
+        TestsFlextInfraUtilitiesProjectFixtureMixin.declare_governed_kind(project_dir)
         return manifest_path
 
     @staticmethod
@@ -629,27 +630,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 eq=state,
             )
             return lane
-
-        @staticmethod
-        def override_repository_declaration(
-            repository: Path,
-            updates: Mapping[str, t.JsonValue],
-        ) -> None:
-            """Merge ``updates`` into the repository's own codegen declaration.
-
-            The repository layer of ``Infra.codegen.repository`` is the only
-            authored repository policy; Git and project metadata own identity.
-            """
-            path = repository / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
-            empty: t.JsonMapping = {}
-            current = tm.ok(u.Cli.yaml_safe_load(path)) if path.is_file() else empty
-            infra = dict(u.Cli.toml_mapping_child(current, "Infra") or {})
-            codegen = dict(u.Cli.toml_mapping_child(infra, "codegen") or {})
-            declared = dict(u.Cli.toml_mapping_child(codegen, "repository") or {})
-            declared.update(updates)
-            codegen["repository"] = declared
-            infra["codegen"] = codegen
-            tm.ok(u.Cli.yaml_dump(path, {**current, "Infra": infra}))
 
         @classmethod
         def attach_member_child(cls, root: Path) -> Path:

@@ -280,6 +280,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 project_root,
                 repository.distribution,
             )
+            u.Tests.declare_governed_kind(project_root)
             if shape.version is not None:
                 tm.ok(u.Infra.replace_project_version(project_root, shape.version))
             # The generated Makefile consumes the tracked Mise launcher for every

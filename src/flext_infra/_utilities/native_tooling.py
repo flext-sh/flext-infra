@@ -155,6 +155,21 @@ class FlextInfraUtilitiesNativeTooling:
         return u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(document))
 
     @staticmethod
+    def markdown_editor_configuration(markdown: m.Infra.MarkdownConfig) -> t.JsonDict:
+        """Elect the editor-compatible policy from the common Markdown rules.
+
+        Native rumdl rules and tables (``native_rules``/``native_settings``)
+        stay execution-tool-only: the editor projection reads the common
+        ``MD*`` rules exactly as declared, so one SSOT policy owns both tool
+        dialects without copying the native surface.
+
+        Returns:
+            The JSON mapping consumed by the settings projection.
+
+        """
+        return FlextInfraUtilitiesNativeTooling.configuration_pairs(markdown.rules)
+
+    @staticmethod
     def native_tool_configuration(
         document: m.Infra.ToolConfigDocument, root: str
     ) -> t.JsonDict:

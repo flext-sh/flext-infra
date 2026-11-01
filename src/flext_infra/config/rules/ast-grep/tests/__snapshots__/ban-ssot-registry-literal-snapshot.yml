@@ -1,0 +1,58 @@
+id: ban-ssot-registry-literal
+snapshots:
+  "OWNERS_REGISTRY = {\"algar\": \"oud\", \"flext\": \"infra\"}\n":
+    labels:
+    - source: "OWNERS_REGISTRY = {\"algar\": \"oud\", \"flext\": \"infra\"}"
+      style: primary
+      start: 0
+      end: 52
+    - source: OWNERS_REGISTRY
+      style: secondary
+      start: 0
+      end: 15
+    - source: "{\"algar\": \"oud\", \"flext\": \"infra\"}"
+      style: secondary
+      start: 18
+      end: 52
+  "class FlextInfraServiceGuard:\n    def check(self) -> None:\n        command_allowlist = {name: True for name in (\"ruff\", \"mypy\")}\n":
+    labels:
+    - source: "command_allowlist = {name: True for name in (\"ruff\", \"mypy\")}"
+      style: primary
+      start: 67
+      end: 128
+    - source: command_allowlist
+      style: secondary
+      start: 67
+      end: 84
+    - source: "{name: True for name in (\"ruff\", \"mypy\")}"
+      style: secondary
+      start: 87
+      end: 128
+  "class FlextInfraServiceRoutes:\n    ROLE_ROSTER = {\"a\": 1, \"b\": 2}\n":
+    labels:
+    - source: "ROLE_ROSTER = {\"a\": 1, \"b\": 2}"
+      style: primary
+      start: 35
+      end: 65
+    - source: ROLE_ROSTER
+      style: secondary
+      start: 35
+      end: 46
+    - source: "{\"a\": 1, \"b\": 2}"
+      style: secondary
+      start: 49
+      end: 65
+  "tool_denylist = {}\n":
+    labels:
+    - source: tool_denylist = {}
+      style: primary
+      start: 0
+      end: 18
+    - source: tool_denylist
+      style: secondary
+      start: 0
+      end: 13
+    - source: "{}"
+      style: secondary
+      start: 16
+      end: 18

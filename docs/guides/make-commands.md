@@ -454,9 +454,10 @@ or checking; `upg` owns changes to the resolved release.
 The markdown standard lives once in `flext-infra/src/flext_infra/config/tooling.yaml`
 (`Infra.tooling.tools.markdown`) and is projected to every repository by `make gen`:
 
-- Common `MD*` rules generate the markdownlint-compatible `.markdownlint.json`.
-  Native rumdl options and its additional rules are declared separately in the same
-  policy, never copied into the markdownlint projection. `.markdownlintignore`
+- Common `MD*` rules generate the editor-compatible `markdownlint.config`
+  object inside the managed `.vscode/settings.json`. Native rumdl options and
+  its additional rules are declared separately in the same policy, never
+  copied into the editor projection. `.markdownlintignore`
   and the native exclusions derive from the same governed scope.
 - `rumdl` is the command-line linter and reads generated `.rumdl.toml`, including
   the MkDocs dialect used by the documentation renderer. `make fix` applies its
