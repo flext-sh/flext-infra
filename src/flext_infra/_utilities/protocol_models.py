@@ -820,8 +820,13 @@ class FlextInfraUtilitiesModelsProtocol:
         ) -> t.Infra.AstExpression | None:
             """Select a consumed model dependency or preserve its authored port.
 
+            A model reference whose class another package declares stays that
+            package's contract: its mirror belongs to its owner, never to a
+            consumer that reaches it through an annotation.
+
             Returns:
-                The projected dependency, or None for a non-model symbol.
+                The projected dependency, or None for a non-model symbol or a
+                model declared outside this package.
 
             """
             for route, model in self.models.items():
@@ -835,6 +840,13 @@ class FlextInfraUtilitiesModelsProtocol:
                         self.facades["p"], self.expression_name(scope, root)
                     )
                 )
+                if (
+                    not future_port
+                    and binding is not None
+                    and self.same_name(model, binding)
+                    and not self._owned(model)
+                ):
+                    return None
                 if future_port or (
                     binding is not None and self.same_name(model, binding)
                 ):
@@ -852,6 +864,21 @@ class FlextInfraUtilitiesModelsProtocol:
                         self.references[route]
                     )
             return None
+
+        def _owned(self, model: p.Infra.RopePyName) -> bool:
+            """Whether this package's source declares the model class.
+
+            Returns:
+                True when the model's declaring resource lies in this package.
+
+            """
+            module = model.get_object().get_module()
+            resource = module.get_resource() if self.source_module(module) else None
+            return (
+                resource is not None
+                and self.package is not None
+                and Path(resource.real_path).is_relative_to(self.package)
+            )
 
         def _declared_port(
             self, binding: p.Infra.RopePyName, route: str
