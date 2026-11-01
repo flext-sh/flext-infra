@@ -298,6 +298,62 @@ class TestsFlextInfraGeneratedRuntime:
         )
 
     @staticmethod
+    def test_nested_namespace_does_not_inherit_its_wrappers(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """Child composition never duplicates the wrapper's class-valued member."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        facade = package / c.Infra.CONSTANTS_PY
+        sources = {
+            package / family.directory / "first.py": (
+                "class First:\n"
+                "    class Domain:\n"
+                "        FIRST = 'first'\n"
+                "__all__ = ['First']\n"
+            ),
+            package / family.directory / "second.py": (
+                "class Second:\n"
+                "    class Domain:\n"
+                "        SECOND = 'second'\n"
+                "__all__ = ['Second']\n"
+            ),
+            facade: (
+                f"from {package.name}.{family.directory}.first import First\n"
+                f"from {package.name}.{family.directory}.second import Second\n"
+                "class Constants:\n"
+                "    class Domain(First.Domain, Second.Domain, First, Second):\n"
+                "        pass\n"
+                "c = Constants\n"
+                "__all__ = ['Constants', 'c']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        )
+        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="c")),
+            eq=rendered,
+        )
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import c\n"
+            f"from {package.name}.{family.directory}.first import First\n"
+            f"from {package.name}.{family.directory}.second import Second\n"
+            "assert c.Domain.FIRST == First.Domain.FIRST\n"
+            "assert c.Domain.SECOND == Second.Domain.SECOND\n"
+            "assert First not in c.Domain.__mro__\n"
+            "assert Second not in c.Domain.__mro__\n",
+            cwd=root,
+        )
+
+    @staticmethod
     def test_checkout_environment_is_never_a_planning_source(tmp_path: Path) -> None:
         """Dependency modules read from the checkout environment stay inputs only.
 

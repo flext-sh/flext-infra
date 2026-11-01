@@ -780,9 +780,33 @@ class FlextInfraUtilitiesFacadeComponents:
                 ]
             ].from_failure(framed)
         layout, bases = framed.value
+        # A namespace-only wrapper is already represented by its nested class.
+        # Composing the wrapper again would introduce a second, incompatible
+        # class-valued member with the namespace's own name.
+        wrappers = tuple(
+            provider
+            for _origin, provider in resolved.value[2]
+            if namespace is not owner
+            and set(provider.get_attributes()) == {namespace.get_name()}
+            and provider.get_attributes()[namespace.get_name()].get_object()
+            in namespace.get_mro()[1:]
+        )
+        bases = [
+            (expression, base) for expression, base in bases if base not in wrappers
+        ]
+        elected = (
+            owner,
+            namespace,
+            tuple(
+                (origin, provider)
+                for origin, provider in resolved.value[2]
+                if provider not in wrappers
+            ),
+            resolved.value[3],
+        )
         aliases, alias_names = cls._facade_namespace_aliases(index, namespace)
         providers = cls._facade_admitted_providers(
-            project, resolved.value, family=family, aliases=aliases, bases=bases
+            project, elected, family=family, aliases=aliases, bases=bases
         )
         if providers.failure:
             return r[

@@ -19,6 +19,39 @@ class TestsFlextInfraLazyInitOwnership:
     """Validate public owner boundaries, collisions and native identity."""
 
     @staticmethod
+    def test_staticmethod_reexport_retains_assignment_owner(tmp_path: Path) -> None:
+        """Resolve an explicit imported descriptor without requiring Rope inference."""
+        repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
+        package.joinpath("operations.py").write_text(
+            "class Operations:\n"
+            "    @staticmethod\n"
+            "    def execute() -> str:\n"
+            "        return 'executed'\n\n"
+            "execute = Operations.execute\n"
+            "__all__ = ['execute']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        package.joinpath("aggregate.py").write_text(
+            "from .operations import execute\n__all__ = ['execute']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        generated = u.Tests.generated_init(package)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {package.name} import execute\n"
+                f"from {package.name}.operations import execute as owner\n"
+                "assert execute is owner\nprint(execute())\n",
+                python_paths=(str(package.parent), *sys.path),
+                cwd=repository,
+            ),
+            eq=["executed"],
+        )
+        tm.that(u.Tests.run_lazy_init(repository, check_only=True), eq=0)
+        tm.that(u.Tests.generated_init(package), eq=generated)
+
+    @staticmethod
     def test_root_rejects_symbols_from_deep_descendant_packages(
         tmp_path: Path,
     ) -> None:
