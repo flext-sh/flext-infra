@@ -74,6 +74,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             contexts={},
             parents={},
             declared={},
+            declarations={},
             packages={},
             collisions=[],
         )

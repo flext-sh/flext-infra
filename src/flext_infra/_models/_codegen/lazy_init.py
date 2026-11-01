@@ -334,6 +334,16 @@ class FlextInfraModelsCodegenLazyInit:
             t.Port[dict[str, frozenset[str]]],
             m.Field(exclude=True, description="Declared facade letters by package"),
         ]
+        declarations: Annotated[
+            t.Port[dict[tuple[str, str], tuple[str, bool]]],
+            m.Field(
+                exclude=True,
+                description=(
+                    "Declaring module and letter status per published "
+                    "(package, name) whose route crosses only decided plans"
+                ),
+            ),
+        ]
         packages: Annotated[
             t.Port[dict[Path, str]],
             m.Field(exclude=True, description="Declared public package by project"),
