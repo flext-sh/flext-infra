@@ -98,8 +98,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             sources = captured.value[1]
         if loaded.failure:
             return result_type.from_failure(loaded)
+        spec, kind = loaded.value
         return result_type.ok(
-            m.Infra.CodegenInputs(spec=loaded.value, sources=sources),
+            m.Infra.CodegenInputs(spec=spec, kind=kind, sources=sources),
         )
 
     @classmethod
@@ -109,7 +110,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         repository_root: Path,
         selected: tuple[Path, ...],
         snapshots: tuple[m.Cli.AtomicFileState, ...],
-    ) -> m.Infra.CodegenConfigSpec:
+    ) -> tuple[m.Infra.CodegenConfigSpec, c.Infra.ProjectKind]:
         """Memoize the validated policy of exact captured layer bytes.
 
         The key is the captured layers themselves, so a changed byte is a new
@@ -117,7 +118,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         spec is shared, as the parsed-content memo shares its documents.
 
         Returns:
-            The validated full repository codegen policy of these layers.
+            The validated full repository codegen policy of these layers and
+            the governance kind the repository declares.
 
         """
         return cls._repository_codegen_spec(
@@ -544,11 +546,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def _repository_codegen_spec(
         document: t.JsonMapping,
         repository_root: Path,
-    ) -> m.Infra.CodegenConfigSpec:
+    ) -> tuple[m.Infra.CodegenConfigSpec, c.Infra.ProjectKind]:
         """Validate composed policy with its model's already-compiled schema.
 
         Returns:
-            The validated full repository codegen policy.
+            The validated full repository codegen policy and the governance
+            kind the repository declares.
 
         Raises:
             ValueError: If the repository declares no governance kind, or the
@@ -557,13 +560,13 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
                 as the cause.
 
         """
-        FlextInfraUtilitiesProjectManagedArtifacts.require_declared_kind(
+        kind = FlextInfraUtilitiesProjectManagedArtifacts.require_declared_kind(
             u.Cli.json_walk_path(document, ("Infra", "codegen", "repository")),
             repository_root,
         )
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         try:
-            return m.Infra.CodegenConfigSpec.model_validate(codegen)
+            return m.Infra.CodegenConfigSpec.model_validate(codegen), kind
         except m.ValidationError as error:
             # Config-authoring failures surface as the service contract's own
             # error type, never as a raw third-party validation exception.

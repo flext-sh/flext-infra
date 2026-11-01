@@ -1151,6 +1151,15 @@ class FlextInfraModelsConfigArtifact(
             FlextInfraModelsConfigArtifact.CodegenConfigSpec,
             m.Field(description="Validated effective repository codegen declaration"),
         ]
+        kind: Annotated[
+            c.Infra.ProjectKind,
+            m.Field(
+                description=(
+                    "Governance kind the repository declares, validated once "
+                    "when the declaration is loaded"
+                ),
+            ),
+        ]
         sources: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
             m.Field(exclude=True, description="Exact consulted config input states"),
