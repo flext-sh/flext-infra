@@ -2330,6 +2330,7 @@ class FlextInfraUtilitiesFacadeComponents:
         claims = cls._component_claims(root, source_project=source_project)
         if not claims:
             return ()
+        methods = cls._component_methods(claims)
         declared = {plan.path: plan for plan in declared_files}
         plans: list[m.Infra.CodegenFilePlan] = []
         module_syntax_error = FlextInfraUtilitiesRopeRuntime.exception_type(
@@ -2339,7 +2340,7 @@ class FlextInfraUtilitiesFacadeComponents:
             path = Path(resource.real_path)
             try:
                 module = cls._consumer_module(source_project, path)
-                calls = cls._component_calls(module, claims)
+                calls = cls._component_calls(module, claims, methods)
             except module_syntax_error:
                 # A projected consumer with invalid syntax (a render bug owned
                 # by its own stage) cannot be a valid consumer candidate; the
@@ -2627,6 +2628,7 @@ class FlextInfraUtilitiesFacadeComponents:
             tuple[p.Infra.RopeClassObject, str],
             Sequence[tuple[str, str, p.Infra.RopeClassObject]],
         ],
+        methods: Mapping[str, frozenset[str]],
     ) -> Sequence[tuple[m.Infra.SourceRewrite, str, str]]:
         """Prove both the imported component and its lexical facade receiver.
 
@@ -2657,7 +2659,7 @@ class FlextInfraUtilitiesFacadeComponents:
             raise TypeError(message)
         index = module.get_source_binding_index()
         references: dict[tuple[int, int], tuple[m.Infra.SourceRewrite, str, str]] = {}
-        for method in cls._component_candidate_methods(module.source_code, claims):
+        for method in cls._component_candidate_methods(module.source_code, methods):
             finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
                 module.pycore.project, method
             )
@@ -2687,12 +2689,26 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(value for _region, value in sorted(references.items()))
 
     @staticmethod
-    def _component_candidate_methods(
-        source: str,
+    def _component_methods(
         claims: Mapping[
             tuple[p.Infra.RopeClassObject, str],
             Sequence[tuple[str, str, p.Infra.RopeClassObject]],
         ],
+    ) -> Mapping[str, frozenset[str]]:
+        """Index the claimed methods by their component's class name, once.
+
+        Returns:
+            Component class name to the methods claimed on it.
+
+        """
+        methods: dict[str, set[str]] = {}
+        for component, method in claims:
+            methods.setdefault(component.get_name(), set()).add(method)
+        return {name: frozenset(owned) for name, owned in methods.items()}
+
+    @staticmethod
+    def _component_candidate_methods(
+        source: str, methods: Mapping[str, frozenset[str]]
     ) -> tuple[str, ...]:
         """Select the claimed methods whose component this module names.
 
@@ -2705,9 +2721,6 @@ class FlextInfraUtilitiesFacadeComponents:
             The sorted methods of every component the source names.
 
         """
-        methods: dict[str, set[str]] = {}
-        for component, method in claims:
-            methods.setdefault(component.get_name(), set()).add(method)
         return tuple(
             sorted({
                 method
@@ -2966,6 +2979,7 @@ class FlextInfraUtilitiesFacadeComponents:
         claims = cls._component_claims(root, source_project=snapshot.engine)
         if not claims:
             return {}
+        methods = cls._component_methods(claims)
         prefix = (
             f"{c.Infra.FACADE_COMPONENT_RELOCATE_SHAPE}"
             f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
@@ -2977,7 +2991,7 @@ class FlextInfraUtilitiesFacadeComponents:
         ):
             module = cls._consumer_module(snapshot.engine, path)
             groups: dict[str, list[tuple[m.Infra.SourceRewrite, str, str]]] = {}
-            for witness in cls._component_calls(module, claims):
+            for witness in cls._component_calls(module, claims, methods):
                 groups.setdefault(witness[2].rpartition(".")[0], []).append(witness)
             for namespace, calls in sorted(groups.items()):
                 rule_id = (
