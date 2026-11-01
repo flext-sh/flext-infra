@@ -10,7 +10,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 from flext_infra import m, u
-from flext_infra.codegen import FlextInfraCodegenFixerResults, FlextInfraCodegenLazyInit
+from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra.codegen._fixer import FlextInfraCodegenFixerResults
 
 
 class FlextInfraCodegenFixerPasses(FlextInfraCodegenFixerResults):

@@ -25,7 +25,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         artifact = f"{project_name}.local.json"
         override = m.Infra.LayoutProjectOverrideSpec(
             archive_names=(artifact,),
-            ignore_additions=(artifact,),
+            gitignore_additions=(artifact,),
         )
         _, declaration, _ = FlextInfraConfig.config_layer_paths_for_repository(
             root,
@@ -78,7 +78,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
 
         ignore = (project / c.Infra.GITIGNORE).read_text(encoding="utf-8")
         entries = ignore.splitlines()
-        for pattern in override.ignore_additions:
+        for pattern in override.gitignore_additions:
             tm.that(entries.count(pattern), eq=1)
         tm.that(entries.count(f"{codegen.layout.archive_root}/"), eq=1)
         tm.that(
@@ -120,7 +120,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         cls._declare_layout_override(project, project.name)
         codegen = tm.ok(u.Infra.load_codegen_inputs(project)).spec
         override = codegen.layout.project_overrides[project.name]
-        rendered = u.Infra.render_project_ignore(
+        rendered = u.Infra.render_project_gitignore(
             codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name=project.name,
@@ -128,7 +128,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         )
 
         entries = tm.ok(rendered).splitlines()
-        for pattern in override.ignore_additions:
+        for pattern in override.gitignore_additions:
             tm.that(entries.count(pattern), eq=1)
         tm.that(entries.count(f"{codegen.layout.archive_root}/"), eq=1)
 
@@ -137,7 +137,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tmp_path: Path,
     ) -> None:
         """A backup module is source code even when its name contains backup."""
-        rendered = u.Infra.render_project_ignore(
+        rendered = u.Infra.render_project_gitignore(
             config.Infra.codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name="flext-cli",
@@ -221,7 +221,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         entries = (root / c.Infra.GITIGNORE).read_text(encoding="utf-8").splitlines()
         missing = tuple(
             pattern
-            for pattern in override.ignore_additions
+            for pattern in override.gitignore_additions
             if entries.count(pattern) != 1
         )
         tm.that(missing, eq=())

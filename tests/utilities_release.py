@@ -89,7 +89,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         )
         # The integration baseline uses the same ignore contract as its release
         # lane, so local resolver state never becomes an untracked source file.
-        ignore = u.Infra.render_project_ignore(
+        ignore = u.Infra.render_project_gitignore(
             config.Infra.codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name=workspace.name,

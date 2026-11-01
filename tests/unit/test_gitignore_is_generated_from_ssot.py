@@ -70,7 +70,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         while still ignoring the root-level vendor tree it was meant for.
         """
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name="probe-project",
@@ -110,7 +110,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         )
 
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.WORKSPACE,
                 project_name="probe-root",

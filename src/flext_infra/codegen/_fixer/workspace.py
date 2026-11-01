@@ -10,7 +10,7 @@ from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
-from flext_infra.codegen import FlextInfraCodegenFixerPasses
+from flext_infra.codegen._fixer import FlextInfraCodegenFixerPasses
 from flext_infra.refactor import FlextInfraNamespaceEnforcer
 
 if TYPE_CHECKING:

@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenLayoutPlan
+from flext_infra.codegen._layout import FlextInfraCodegenLayoutPlan
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 

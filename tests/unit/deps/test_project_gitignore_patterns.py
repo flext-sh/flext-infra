@@ -43,7 +43,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             },
         )
 
-        rendered = u.Infra.render_project_ignore(
+        rendered = u.Infra.render_project_gitignore(
             config.Infra.codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name=root.name,
@@ -87,7 +87,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             {"tooling.yaml": "ManagedArtifacts: {}\n"},
         )
 
-        rendered = u.Infra.render_project_ignore(
+        rendered = u.Infra.render_project_gitignore(
             config.Infra.codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name=root.name,
@@ -144,7 +144,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         (root / ".ignore").write_bytes(("old policy\n\n" + external).encode())
 
         first = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,
@@ -152,7 +152,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             ),
         )
         template = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,
@@ -170,7 +170,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         tm.that("old policy" not in first, truth=True)
         (root / ".ignore").write_bytes(first.encode())
         second = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,
@@ -212,7 +212,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         ignore = root / c.Infra.GITIGNORE
         ignore.write_text(external, encoding=c.DEFAULT_ENCODING)
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,
@@ -229,7 +229,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         )
         tm.that(observed.stdout.strip(), eq=relative.as_posix())
         repeated = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,
@@ -260,7 +260,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         root = self._external_project(tmp_path / "project")
         (root / ".ignore").write_text(current, encoding="utf-8")
 
-        result = u.Infra.render_project_ignore(
+        result = u.Infra.render_project_gitignore(
             config.Infra.codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name=root.name,
@@ -282,7 +282,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         )
 
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,
@@ -309,7 +309,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             encoding="utf-8",
         )
 
-        result = u.Infra.render_project_ignore(
+        result = u.Infra.render_project_gitignore(
             config.Infra.codegen,
             profile=c.Infra.MakeProfile.STANDALONE,
             project_name=root.name,
@@ -343,7 +343,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         )
 
         first = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,
@@ -354,7 +354,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         tm.that(first.count("# BEGIN external projection extended\n") == 1, truth=True)
         (root / ".ignore").write_text(first, encoding="utf-8")
         second = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,
@@ -376,7 +376,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         )
 
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,

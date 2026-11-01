@@ -123,9 +123,9 @@ class TestsFlextInfraCodegenArtifactSsot:
         expected = tuple(
             f"{artifact.name}/" if artifact.is_dir else artifact.name
             for artifact in codegen.artifacts
-            if artifact.ignore and not artifact.generated_source
+            if artifact.gitignore and not artifact.generated_source
         )
-        tm.that(codegen.ignore_artifact_patterns, eq=expected)
+        tm.that(codegen.gitignore_artifact_patterns, eq=expected)
         tm.that(len(expected), eq=len(set(expected)))
 
     @staticmethod
@@ -154,7 +154,7 @@ class TestsFlextInfraCodegenArtifactSsot:
             },
         )
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 declared,
                 profile=profile,
                 project_name="fixture-project",
@@ -164,7 +164,7 @@ class TestsFlextInfraCodegenArtifactSsot:
         tm.that(declared.generated_sources, has=name)
         tm.that(declared.source_scan_ignored, has=name)
         tm.that(declared.generated_source_globs, has=f"**/{name}/**")
-        tm.that(declared.ignore_artifact_patterns, lacks=f"{name}/")
+        tm.that(declared.gitignore_artifact_patterns, lacks=f"{name}/")
         tm.that(
             u.Tests.is_tracked_under(rendered, f"src/fixture/{name}/wire_pb2.py"),
             eq=True,
@@ -187,17 +187,17 @@ class TestsFlextInfraCodegenArtifactSsot:
         """Require every derived pattern to be governed or appended."""
         emitted = {
             pattern
-            for section in codegen.ignore_sections
+            for section in codegen.gitignore_sections
             for pattern in section.patterns
         }
         governed = {
             pattern.lstrip("!")
-            for section in codegen.scaffold.ignore_sections
+            for section in codegen.scaffold.gitignore_sections
             for pattern in section.patterns
         }
         unaccounted = tuple(
             pattern
-            for pattern in codegen.ignore_artifact_patterns
+            for pattern in codegen.gitignore_artifact_patterns
             if pattern not in emitted and pattern not in governed
         )
         tm.that(unaccounted, eq=())
@@ -213,7 +213,7 @@ class TestsFlextInfraCodegenArtifactSsot:
     ) -> None:
         """Track portable governance and exclude machine-owned provider settings."""
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 codegen,
                 profile=profile,
                 project_name="fixture-project",

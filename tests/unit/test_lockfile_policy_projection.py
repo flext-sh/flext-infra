@@ -30,7 +30,7 @@ class TestsFlextInfraLockfilePolicyProjection:
     ) -> None:
         """Git itself decides that the rendered ignore file keeps the lock tracked."""
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=profile,
                 project_name="fixture-project",
@@ -56,7 +56,7 @@ class TestsFlextInfraLockfilePolicyProjection:
     ) -> None:
         """Track native dependency graphs without tracking local installation state."""
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 config.Infra.codegen,
                 profile=profile,
                 project_name="fixture-project",

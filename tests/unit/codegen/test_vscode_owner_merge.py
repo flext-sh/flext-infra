@@ -531,7 +531,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         )
         (root / c.Infra.GITIGNORE).write_text(
             tm.ok(
-                u.Infra.render_project_ignore(
+                u.Infra.render_project_gitignore(
                     config.Infra.codegen,
                     profile=c.Infra.MakeProfile.STANDALONE,
                     project_name=root.name,
@@ -571,7 +571,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             update={"managed_files": (artifact,)},
         )
         rendered = tm.ok(
-            u.Infra.render_project_ignore(
+            u.Infra.render_project_gitignore(
                 codegen,
                 profile=c.Infra.MakeProfile.STANDALONE,
                 project_name=root.name,
@@ -882,7 +882,7 @@ class TestsFlextInfraMarkdownEditorProjection:
         common = dict(markdown.rules)
         native_only = {name for name, _value in markdown.native_rules} - common.keys()
         tm.that(native_only & derived.keys(), eq=set())
-        tm.fail("reflow" in derived["MD013"])
+        tm.fail("reflow" in u.Cli.json_as_mapping(derived["MD013"]))
 
     @staticmethod
     def test_render_projects_derived_markdownlint_config(tmp_path: Path) -> None:
