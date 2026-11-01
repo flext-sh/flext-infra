@@ -118,12 +118,8 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                     )
                     if layout.region == metadata.region
                 )
-                if (
-                    declaration.annotation is None
-                    or declaration.value_binding is None
-                    or not from_view.abstract_class(
-                        declaration.value_binding.get_object()
-                    )
+                if declaration.annotation is None or not from_view.abstract_class(
+                    cls._publication_value(module, declaration)
                 ):
                     continue
                 begin, end = declaration.annotation
@@ -141,6 +137,37 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                     declaration.region[0] - module.lines.get_line_start(line) + 1,
                 ))
         return found
+
+    @staticmethod
+    def _publication_value(
+        module: p.Infra.RopeSourceModule,
+        declaration: p.Infra.RopeSourceAssignmentLayout,
+    ) -> p.Infra.RopePyObject | None:
+        """Resolve the object a class-body ``Name: TypeAlias = Value`` binds.
+
+        Python evaluates the value before binding the name, so a value spelled
+        exactly as its own target reads the module binding of that name, never
+        the class-scope assignment the binding index resolves it to.
+
+        Returns:
+            The bound object, or ``None`` when the value has no binding.
+
+        """
+        bound = (
+            declaration.value_binding.get_object()
+            if declaration.value_binding is not None
+            else None
+        )
+        if declaration.value is None or not declaration.targets:
+            return bound
+        begin, end = declaration.value
+        name = declaration.targets[0][0]
+        if module.source_code[begin:end] != name or (
+            bound is not None and FlextInfraUtilitiesRopeRuntime.abstract_class(bound)
+        ):
+            return bound
+        module_binding = module.get_scope().get_names().get(name)
+        return module_binding.get_object() if module_binding is not None else bound
 
     _SEMANTIC_STATE_CACHE: ClassVar[
         MutableMapping[tuple[str, str, str], m.Infra.ModuleSemanticState]

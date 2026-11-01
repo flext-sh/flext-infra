@@ -1044,6 +1044,10 @@ class FlextInfraUtilitiesFacadeComponents:
             else frozenset[Path](),
             Path(project.root.real_path).resolve(),
         )
+        # A generated facade's own base list is the previous projection, which
+        # this run re-derives from the family declarations: a base it no longer
+        # resolves awaits that re-render instead of blocking it.
+        rendered = project.source_text(path).startswith(c.Infra.AUTOGEN_HEADER)
         proven: list[tuple[m.Infra.SourceClassReference]] = []
         for reference, holder in cls._facade_class_references(
             FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
@@ -1052,7 +1056,7 @@ class FlextInfraUtilitiesFacadeComponents:
             owner,
         ):
             deferred = cls._facade_class_deferred(
-                project, (path, module, holder), admitted
+                project, (path, module, holder), admitted, rendered=rendered
             )
             if deferred.failure:
                 return result_type.from_failure(deferred)
@@ -1072,11 +1076,15 @@ class FlextInfraUtilitiesFacadeComponents:
         project: p.Infra.RopeProject,
         facade: tuple[Path, p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
         admitted: tuple[frozenset[Path], Path],
+        *,
+        rendered: bool,
     ) -> p.Result[bool]:
         """Classify one facade class by the provenance of its unresolved bases.
 
         ``admitted`` holds the generated family barrel identities (empty when
-        the barrel is authored) and the project root.
+        the barrel is authored) and the project root. In a ``rendered``
+        (generated) facade an unresolved base belongs to the stale projection
+        the run re-derives, so it defers instead of failing.
 
         Returns:
             Whether a base awaits its generated barrel republication, or the
@@ -1091,6 +1099,9 @@ class FlextInfraUtilitiesFacadeComponents:
         for (start, end), binding in layout.base_bindings:
             expression = module.source_code[start:end]
             if binding is None:
+                if rendered:
+                    deferred = True
+                    continue
                 return r[bool].fail(f"Unresolved facade base: {path}:{expression}")
             if not types.imported_name(binding):
                 continue
@@ -1104,11 +1115,16 @@ class FlextInfraUtilitiesFacadeComponents:
                 )
             )
             if provider.failure:
+                if rendered:
+                    deferred = True
+                    continue
                 return r[bool].fail(
                     f"Unresolved facade base: {path}:{expression}: {provider.error}",
                     exception=provider.exception,
                 )
-            if provider.value in family:
+            if provider.value in family or (
+                rendered and provider.value.is_relative_to(root)
+            ):
                 deferred = True
             elif provider.value.is_relative_to(root):
                 return r[bool].fail(f"Unresolved facade base: {path}:{expression}")
@@ -1211,8 +1227,18 @@ class FlextInfraUtilitiesFacadeComponents:
         """
         layout = index.class_layout(namespace.get_scope())
         source = module.source_code
+        # A generated facade's base list is the previous projection; a base it
+        # no longer resolves is re-derived from the family providers.
+        rendered = source.startswith(c.Infra.AUTOGEN_HEADER)
         bases: list[tuple[str, p.Infra.RopePyObject]] = []
         for (start, end), binding in layout.base_bindings:
+            if rendered and (
+                binding is None
+                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
+                    binding.get_object()
+                )
+            ):
+                continue
             if binding is None:
                 message = f"Unresolved facade base: {path}:{source[start:end]}"
                 return r[
@@ -1490,8 +1516,15 @@ class FlextInfraUtilitiesFacadeComponents:
                 continue
             binding = provider.get_name()
             occupied = module.get_scope().get_names().get(binding)
-            if occupied is not None and not cls._same_facade_target(
-                occupied.get_object(), provider
+            # A generated facade's own imports are the previous projection the
+            # render replaces; only a non-import binding is an occupation there.
+            stale_import = module.source_code.startswith(
+                c.Infra.AUTOGEN_HEADER
+            ) and FlextInfraUtilitiesRopeRuntimeTypes.imported_name(occupied)
+            if (
+                occupied is not None
+                and not stale_import
+                and not cls._same_facade_target(occupied.get_object(), provider)
             ):
                 message = f"Occupied facade provider binding: {path}:{binding}"
                 return r[
@@ -1606,8 +1639,19 @@ class FlextInfraUtilitiesFacadeComponents:
             defined = namespace.get_scope().get_defined_names().get(published_name)
             if defined is not None:
                 # Two producers of one run reaching the same publication collapse
-                # on its identity; only a different binding is an occupation.
-                if cls._same_facade_target(defined.get_object(), provider):
+                # on its identity; only a different binding is an occupation. A
+                # prior ``Name: TypeAlias = Name`` publication is an assignment
+                # whose value Python reads from the module scope, so the module
+                # binding of that name is its target.
+                target = defined.get_object()
+                if not (
+                    FlextInfraUtilitiesRopeRuntimeTypes.py_class(target)
+                    or FlextInfraUtilitiesRopeRuntimeTypes.py_function(target)
+                ):
+                    module_binding = module.get_scope().get_names().get(published_name)
+                    if module_binding is not None:
+                        target = module_binding.get_object()
+                if cls._same_facade_target(target, provider):
                     continue
                 return r[dict[str, str]].fail(
                     f"Occupied nominal facade publication: {path}:{published_name}"
