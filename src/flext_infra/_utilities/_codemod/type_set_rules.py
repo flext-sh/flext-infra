@@ -81,7 +81,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
             key = (path[-1], frozenset(classes))
             held = canonical.get(key)
             if held is None or reference.count(".") < held[0].count("."):
-                canonical[key] = (reference, classes)
+                canonical[key] = (reference, tuple(classes))
         by_members: dict[frozenset[type], str] = {}
         sets: list[tuple[str, t.JsonDict]] = []
         for (_leaf, members), (reference, classes) in canonical.items():
