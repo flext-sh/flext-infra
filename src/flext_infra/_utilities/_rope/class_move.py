@@ -875,7 +875,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         """
         return name in text and any(
-            not FlextInfraUtilitiesRopeClassMove._bound_names(node).isdisjoint({
+            not FlextInfraUtilitiesRopeClassMove._node_bound_names(node).isdisjoint({
                 name,
                 "*",
             })
@@ -883,7 +883,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         )
 
     @staticmethod
-    def _bound_names(node: ast.AST) -> frozenset[str]:
+    def _node_bound_names(node: ast.AST) -> frozenset[str]:
         """Name every binding one syntax node declares.
 
         Returns:

@@ -953,13 +953,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             )
             for file in files
         )
-        return self._validated_source_plans(request, files, ports)
+        return self._validated_source_plans(
+            request, files, (ports, self.state.snapshot)
+        )
 
     @staticmethod
     def _validated_source_plans(
         request: p.Infra.CodegenGenerateRequest,
         files: tuple[m.Infra.CodegenFilePlan, ...],
-        ports: p.Infra.CodegenConformPorts,
+        run: tuple[p.Infra.CodegenConformPorts, p.Infra.WorkspaceSnapshot | None],
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Admit the normalized candidate through its injected runtime validator.
 
@@ -970,6 +972,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         if not any(file.path.suffix == c.Infra.EXT_PYTHON for file in files):
             return result_type.ok(files)
+        ports, snapshot = run
         root = request.root.expanduser().resolve()
         preview = ports.source_preview.preview_sources(
             root,
@@ -990,11 +993,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     })
                 ),
             ),
-            options=m.Infra.CodegenSourcePreviewOptions(
+            options=m.Infra.StageSourceOptions(
                 declared_files=files,
                 inputs=tuple(
                     state for file in files for state in (file.before, *file.inputs)
                 ),
+                snapshot=snapshot,
             ),
         ).flat_map(lambda outcome: outcome)
         if preview.failure:

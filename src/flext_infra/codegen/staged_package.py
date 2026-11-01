@@ -42,7 +42,7 @@ class FlextInfraStagedPackage:
         updates: Mapping[Path, str | None],
         validator: Callable[[Path, Mapping[Path, Path]], T],
         *,
-        options: m.Infra.CodegenSourcePreviewOptions | None = None,
+        options: m.Infra.StageSourceOptions | None = None,
     ) -> p.Result[T]:
         """Validate updates and retirements inside a candidate tree.
 
@@ -54,17 +54,7 @@ class FlextInfraStagedPackage:
             The validator outcome, or the first planning or staging failure.
 
         """
-        options = options or m.Infra.CodegenSourcePreviewOptions()
-        planned = self.plan_sources(
-            workspace,
-            updates,
-            options=m.Infra.StageSourceOptions(
-                workspaces=options.workspaces,
-                modes=options.modes,
-                inputs=options.inputs,
-                declared_files=options.declared_files,
-            ),
-        )
+        planned = self.plan_sources(workspace, updates, options=options)
         if planned.failure:
             return r[T].from_failure(planned)
         plan = planned.value
@@ -225,9 +215,11 @@ class FlextInfraStagedPackage:
     ) -> p.Result[bool]:
         """Write the planned composition into an exclusively owned empty tree.
 
-        The tree is a throwaway candidate removed once its validator returns,
-        so each write keeps its atomic replace and observed-state precondition
-        but skips the durability syncs (``WriteDurability.SCRATCH``).
+        The tree is a throwaway candidate this invocation created empty and
+        owns exclusively, removed once its validator returns: every destination
+        is absent by construction, so a write carries no observed-state
+        precondition and skips the durability syncs
+        (``WriteDurability.SCRATCH``). Each write keeps its atomic replace.
 
         Returns:
             Success after the writes, or their first original failure.
@@ -237,14 +229,10 @@ class FlextInfraStagedPackage:
             created = u.Cli.ensure_dir(path.parent)
             if created.failure:
                 return r[bool].from_failure(created)
-            before = u.Cli.atomic_read_binary_file_state(path)
-            if before.failure:
-                return r[bool].from_failure(before)
             u.Cli.write_atomic_state(
                 path,
                 content,
                 m.Cli.AtomicWriteOptions(
-                    expected_state=before.value,
                     permission_mode=mode,
                     durability=c.Cli.WriteDurability.SCRATCH,
                 ),
@@ -295,6 +283,7 @@ class FlextInfraStagedPackage:
                     if file.project.is_relative_to(workspace)
                 )
             ),
+            source_project=u.Infra.snapshot_engine(options.snapshot, workspace),
         ) as (source_project, _):
             return cls._source_plan_project(
                 workspace,

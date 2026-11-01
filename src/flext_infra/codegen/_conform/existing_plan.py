@@ -75,17 +75,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             raise RuntimeError(msg)
         stack, opened = self._source_views
         if root not in opened:
-            snapshot = self.state.snapshot
-            if (
-                snapshot is not None
-                and snapshot.workspace_root == root
-                and Path(snapshot.engine.root.real_path) == root
-            ):
-                opened[root] = snapshot.engine
-            else:
-                opened[root] = stack.enter_context(u.Infra.facade_source_project(root))[
-                    0
-                ]
+            engine = u.Infra.snapshot_engine(self.state.snapshot, root)
+            opened[root] = (
+                engine
+                if engine is not None
+                else stack.enter_context(u.Infra.facade_source_project(root))[0]
+            )
         with u.Infra.facade_source_project(
             root,
             declared_files=declared_files,

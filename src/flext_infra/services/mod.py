@@ -13,6 +13,7 @@ from flext_cli import u
 
 import flext_infra
 from flext_infra import c, codemod, m, r, t
+from flext_infra.codemod._loop import FlextInfraCodemodLoopPhaseFacadeComponents
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -168,6 +169,7 @@ class FlextInfraModHandlers:
                 rename_inputs=campaigns,
                 phase_callbacks=(
                     codemod.FlextInfraCodemodLoopPhaseImportNormalization(),
+                    FlextInfraCodemodLoopPhaseFacadeComponents(),
                     codemod.FlextInfraCodemodLoopPhaseNamespaceRelocation(),
                     codemod.FlextInfraCodemodLoopPhaseDuplicateApply(),
                     codemod.FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project),

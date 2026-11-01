@@ -115,8 +115,13 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                 with project.source_view(
                     declared_files=(), additional_source_folders=None
                 ):
+                    family_declarations = u.Infra.facade_component_declarations(
+                        project, directory
+                    )
                     observed = {
-                        domain: u.Infra.family_subfacade_owners(project, domain)
+                        domain: u.Infra.facade_domain_owner_observation(
+                            project, domain, family_declarations
+                        )
                         if project.source_query(domain, "isdir")
                         else []
                         for domain in domains
