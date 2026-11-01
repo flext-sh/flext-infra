@@ -29,13 +29,12 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
     FORMATTED = "# Test\n\n```python\nx = 1\n```\n"
     UNFORMATTED = "# Test\n\n```python\nx=1\n```\n"
     SYNTAX_BROKEN = "# Test\n\n```python\ndef broken(:\n    return 1\n```\n"
-    NOTEST_PSEUDO = "# Test\n\n```python notest\nthis is @@@ not python\n```\n"
+    NOTEST_PSEUDO = "# Test\n\n```python\nthis is @@@ not python\n```\n"
     FRAGMENT_THEN_UNFORMATTED = (
-        "# Test\n\n```python notest\ndef broken(:\n    return 1\n```\n\n"
-        "```python\nx=1\n```\n"
+        "# Test\n\n```python\ndef broken(:\n    return 1\n```\n\n```python\nx=1\n```\n"
     )
     FRAGMENT_THEN_FORMATTED = (
-        "# Test\n\n```python notest\ndef broken(:\n    return 1\n```\n\n"
+        "# Test\n\n```python\ndef broken(:\n    return 1\n```\n\n"
         "```python\nx = 1\n```\n"
     )
     # rumdl fmt reads the generated .rumdl.toml; the fixtures
