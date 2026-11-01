@@ -13,12 +13,12 @@ from typing import override
 from flext_infra import c, m, p, r, s, t, u
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod import (
-    FlextInfraCodemodLoopPhaseImportNormalization,
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
     FlextInfraModReplacements,
     FlextInfraModTextGateEngine,
 )
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseImportNormalization
 from flext_infra.refactor import FlextInfraRefactorCensus
 
 

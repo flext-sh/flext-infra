@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
-from flext_infra.deps import FlextInfraDepsDetectorRuntimeSteps
+from flext_infra.deps._detector import FlextInfraDepsDetectorRuntimeSteps
 
 
 class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):

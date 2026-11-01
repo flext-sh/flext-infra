@@ -12,7 +12,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from flext_infra import c, config, m, p, r, u
-from flext_infra.release import FlextInfraReleaseReleaseBuild
+from flext_infra.release._release import FlextInfraReleaseReleaseBuild
 
 
 class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):

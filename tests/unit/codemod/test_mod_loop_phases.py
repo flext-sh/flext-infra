@@ -14,9 +14,11 @@ from flext_infra import config, infra, m, p
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
+    FlextInfraModGateEngine,
+)
+from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseAccessorRename,
     FlextInfraCodemodLoopPhaseNamespaceRelocation,
-    FlextInfraModGateEngine,
 )
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,

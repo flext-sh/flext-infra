@@ -14,7 +14,7 @@ import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import config
-from flext_infra.deps import FlextInfraToolTablesPhase
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from tests import c, t, tm, u
 
 if TYPE_CHECKING:

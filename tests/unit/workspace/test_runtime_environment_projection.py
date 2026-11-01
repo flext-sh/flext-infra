@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
 from tests import c, m, t, tm, u
 
 

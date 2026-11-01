@@ -22,7 +22,7 @@ from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod import FlextInfraCodemodRename
 from flext_infra.codemod._rename import FlextInfraCodemodRenameSymbols
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 from flext_infra.workspace import FlextInfraRopeWorkspace
 
 

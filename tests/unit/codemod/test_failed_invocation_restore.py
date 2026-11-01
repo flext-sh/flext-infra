@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import FlextInfraCli
 from flext_infra.codemod import FlextInfraCodemodAstScan, FlextInfraCodemodSemanticApply
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemantic
 from tests import c, m, tm, u
 
 
@@ -409,7 +409,7 @@ class TestsFlextInfraFailedInvocationProgress:
         before = tm.ok(u.Cli.atomic_read_binary_file_state(accepted, required=True))
         stale = tm.ok(u.Cli.atomic_read_binary_file_state(unrelated, required=True))
         tm.ok(
-            FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+            FlextInfraTransformersSemantic.publish_semantic_file_plans(
                 (
                     m.Infra.SemanticFilePlan(
                         project=mod_workspace,
@@ -429,7 +429,7 @@ class TestsFlextInfraFailedInvocationProgress:
             u.Cli.atomic_read_binary_file_state(accepted, required=True),
         )
 
-        outcome = FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+        outcome = FlextInfraTransformersSemantic.publish_semantic_file_plans(
             (
                 m.Infra.SemanticFilePlan(
                     project=mod_workspace,

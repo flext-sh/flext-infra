@@ -12,10 +12,8 @@ from typing import TYPE_CHECKING
 from flext_cli import cli
 
 from flext_infra import c, m, r, u
-from flext_infra.codemod import (
-    FlextInfraCodemodLoopPhaseImportNormalization,
-    FlextInfraModGateEngine,
-)
+from flext_infra.codemod import FlextInfraModGateEngine
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseImportNormalization
 from flext_infra.refactor import (
     FlextInfraNamespaceRelocationCascade,
     FlextInfraRefactorNamespace,

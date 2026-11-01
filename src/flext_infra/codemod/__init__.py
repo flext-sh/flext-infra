@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
     from flext_infra.codemod.duplicate_apply import FlextInfraCodemodDuplicateApply
     from flext_infra.codemod.extract import FlextInfraCodemodExtract
-    from flext_infra.codemod.loop import FlextInfraCodemodLoop
     from flext_infra.codemod.rename import FlextInfraCodemodRename
     from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
     from flext_infra.codemod.snapshot_reconciler import (
@@ -36,7 +35,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodemodBatchApply",
     "FlextInfraCodemodDuplicateApply",
     "FlextInfraCodemodExtract",
-    "FlextInfraCodemodLoop",
     "FlextInfraCodemodRename",
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
@@ -55,7 +53,6 @@ install_lazy_exports(
         "FlextInfraCodemodBatchApply": ".batch_apply",
         "FlextInfraCodemodDuplicateApply": ".duplicate_apply",
         "FlextInfraCodemodExtract": ".extract",
-        "FlextInfraCodemodLoop": ".loop",
         "FlextInfraCodemodRename": ".rename",
         "FlextInfraCodemodSemanticApply": ".semantic_apply",
         "FlextInfraCodemodSnapshotReconciler": ".snapshot_reconciler",

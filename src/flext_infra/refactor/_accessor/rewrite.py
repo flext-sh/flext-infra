@@ -13,9 +13,9 @@ from tokenize import NAME, generate_tokens
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import m, u
-from flext_infra.refactor import FlextInfraRefactorAccessorOrigin
 from flext_infra.refactor._accessor import (
     FlextInfraRefactorAccessorExpression,
+    FlextInfraRefactorAccessorOrigin,
     FlextInfraRefactorAccessorWarnings,
 )
 
