@@ -235,6 +235,8 @@ class FlextInfraConstantsBase(
     "Root of regenerable codegen transaction state; never repository content."
     MUTATION_LOCK_NAME: ClassVar[str] = "flext-infra.lock"
     "Exclusive lock serializing every writer of one mutation scope."
+    MUTATION_LOCK_HOLDER_SUFFIX: ClassVar[str] = ".holder"
+    "Suffix of the lock's sibling file naming the writer that holds it."
     RELEASE_GITLEAKS_CONFIG_PATH: ClassVar[str] = "config/gitleaks-release.toml"
     "Workspace-relative trusted release secret-scan configuration."
     GIT_HOOK_VALIDATOR_RELPATH: ClassVar[str] = ".github/scripts/validate-git-hook.sh"

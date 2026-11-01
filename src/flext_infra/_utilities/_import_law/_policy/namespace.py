@@ -286,7 +286,12 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             module.split(".")[len(namespace.split(".")) if namespace else 1 :]
         ):
             stem = part.lstrip("_")
-            if any(stem == family.module for family in families.values()):
+            # A facade family is a direct child of its namespace; a deeper
+            # directory that mirrors a family name (``tests/unit/_models``)
+            # is ordinary code consuming the families.
+            if index == 0 and any(
+                stem == family.module for family in families.values()
+            ):
                 return "family"
             if index == 0 and any(
                 stem == role or stem.startswith(f"{role}_")

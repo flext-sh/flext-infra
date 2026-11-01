@@ -580,11 +580,11 @@ class TestsFlextInfraPytestRunner:
                 category = "ConsumerNotice"
                 declaration = (
                     "from flext_core import e\n\n"
-                    f"class {category}(e.SmellViolation):\n    pass\n"
+                    f"class {category}(e.SmellViolationError):\n    pass\n"
                 )
             else:
                 category = (
-                    e.SmellViolation.__name__
+                    e.SmellViolationError.__name__
                     if finding == "homonymous-warning"
                     else "DomainNotice"
                 )
