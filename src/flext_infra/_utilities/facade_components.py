@@ -284,9 +284,9 @@ class FlextInfraUtilitiesFacadeComponents:
             if len(owners) != 1:
                 message = (
                     f"Facade domain {domain} declares {len(owners)} owners "
-                    f"{[f'{path.name}:{name}' for path, name in owners]}; compose "
-                    f"its parts in one owner (canonical sibling {canonical.name}) "
-                    "with make mod"
+                    f"{[f'{path.name}:{name}' for path, name in owners]}; declare "
+                    f"the canonical sibling {canonical.name} with one class "
+                    "composing its parts"
                 )
                 raise ValueError(message)
             elected[domain] = owners
@@ -377,7 +377,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 names = sorted(classes[key].get_name() for key in roots)
                 message = (
                     f"Facade composition declares {member!r} in unrelated parts "
-                    f"{names}; give each part its own name or one owner with make mod"
+                    f"{names}; rename one of them or let one part extend the other"
                 )
                 return r[bool].fail(message)
         return r[bool].ok(value=True)
