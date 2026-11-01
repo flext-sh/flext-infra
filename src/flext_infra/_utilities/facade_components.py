@@ -387,12 +387,16 @@ class FlextInfraUtilitiesFacadeComponents:
         cls,
         project: p.Infra.RopeProject,
         providers: Sequence[tuple[str, p.Infra.RopePyObject]],
+        namespace: str,
     ) -> p.Result[bool]:
         """Refuse a composition in which two unrelated parts declare one member.
 
         Method resolution would silently pick one of them for every caller that
         reaches the member through the composed facade. Only classes declared
-        in this project count; a part that extends another overrides it.
+        in this project count; a part that extends another overrides it, and
+        parts that bind the same object (one re-export) agree. The
+        facade's own ``namespace`` class is composed from every part that
+        declares it, so its homonyms are the composition, not a collision.
 
         Returns:
             True, or the first member two unrelated project parts declare.
@@ -406,7 +410,7 @@ class FlextInfraUtilitiesFacadeComponents:
         declaring: dict[str, list[int]] = {}
         for key, klass in classes.items():
             for member in klass.get_scope().get_defined_names():
-                if not member.startswith("__"):
+                if not member.startswith("__") and member != namespace:
                     declaring.setdefault(member, []).append(key)
         for member, keys in sorted(declaring.items()):
             roots = [
@@ -414,7 +418,11 @@ class FlextInfraUtilitiesFacadeComponents:
                 for key in keys
                 if not any(other in lineage and key in lineage[other] for other in keys)
             ]
-            if len(roots) > 1:
+            bound = {
+                id(classes[key].get_scope().get_defined_names()[member].get_object())
+                for key in roots
+            }
+            if len(roots) > 1 and len(bound) > 1:
                 names = sorted(classes[key].get_name() for key in roots)
                 message = (
                     f"Facade composition declares {member!r} in unrelated parts "
@@ -800,9 +808,9 @@ class FlextInfraUtilitiesFacadeComponents:
                 else (),
             ),
         ).flat_map(
-            lambda retained: cls._facade_member_collisions(project, retained[0]).map(
-                lambda _settled: retained
-            )
+            lambda retained: cls._facade_member_collisions(
+                project, retained[0], namespace.get_name()
+            ).map(lambda _settled: retained)
         )
         if composed.failure:
             return r[
