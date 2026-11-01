@@ -1050,10 +1050,6 @@ Infra:
       - GEMINI.md
       # ZCode session plans are machine-local scratch, not authored documentation.
       - .zcode/**
-      # agents-governance projects the Copilot skill catalog here
-      # (.github/skills/.agents-governance.json names the owner); it is fixed at
-      # its writer, never formatted in the consuming repository.
-      - .github/skills/**
       # Release-please owns these release notes (operator authorization 2026-10-03).
       - CHANGELOG.md
       # External emitters own these table, API and project catalog projections.
