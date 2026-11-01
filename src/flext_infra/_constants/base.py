@@ -6,8 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from enum import StrEnum, unique
+from types import MappingProxyType
 from typing import ClassVar
 
 from flext_core import c
@@ -90,6 +91,16 @@ class FlextInfraConstantsBase(
     "Mypy tool section key."
     PYRIGHT: ClassVar[str] = "pyright"
     "Pyright tool section key."
+    DIAGNOSTIC_LEVELS: ClassVar[Mapping[str, frozenset[str]]] = MappingProxyType({
+        PYRIGHT: frozenset({"none", "information", "warning", "error"}),
+        PYREFLY: frozenset({"ignore", "info", "warn", "error"}),
+    })
+    "Native diagnostic levels each type checker accepts for one rule."
+    DIAGNOSTIC_RULE_PATTERNS: ClassVar[Mapping[str, str]] = MappingProxyType({
+        PYRIGHT: r"^report[A-Z][A-Za-z]*$",
+        PYREFLY: r"^[a-z]+(?:-[a-z]+)*$",
+    })
+    "Native rule-name grammar of each type checker."
     PYTEST: ClassVar[str] = "pytest"
     "Pytest tool section key."
     RUFF: ClassVar[str] = "ruff"
@@ -114,8 +125,12 @@ class FlextInfraConstantsBase(
     "Pyrefly project-excludes settings key."
     PYREFLY_PROJECT_EXCLUDES_FLAG: ClassVar[str] = "--project-excludes"
     "Pyrefly CLI flag carrying project excludes when explicit files are checked."
-    SUB_CONFIG: ClassVar[str] = "sub-settings"
-    "Pyrefly sub-settings key."
+    SUB_CONFIG: ClassVar[str] = "sub-config"
+    "Pyrefly path-scoped sub-config array key."
+    SUB_CONFIG_MATCHES: ClassVar[str] = "matches"
+    "Pyrefly sub-config glob key naming the files the entry governs."
+    SUB_CONFIG_ERRORS: ClassVar[str] = "errors"
+    "Pyrefly sub-config error-severity table key."
     EXTRA_PATHS: ClassVar[str] = "extraPaths"
     "Pyright extra paths settings key."
     REPORT_PRIVATE_USAGE: ClassVar[str] = "reportPrivateUsage"
@@ -167,7 +182,7 @@ class FlextInfraConstantsBase(
     PLUGINS: ClassVar[str] = "plugins"
     "Mypy plugins settings key."
     IGNORE: ClassVar[str] = "ignore"
-    "Pyrefly/sub-settings ignore key."
+    "Pyrefly sub-config ignore key."
     INCLUDE: ClassVar[str] = "include"
     "Generic include key."
     EXCLUDE: ClassVar[str] = "exclude"
