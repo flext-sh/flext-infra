@@ -241,8 +241,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             independent effect receipt.
 
         """
-        guarded_control = r.safe(self._control_plan, exceptions=(Exception,))
-        control_plan = guarded_control(request).flat_map(r.from_result)
+        # Declared control failures are typed results; anything else is a
+        # defect that escapes raw with its traceback (fail-loud law).
+        control_plan = self._control_plan(request)
         if control_plan.failure:
             return r[p.Infra.CodegenResult].from_failure(control_plan)
         control = self._published(
