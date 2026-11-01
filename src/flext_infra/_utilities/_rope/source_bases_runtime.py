@@ -1475,6 +1475,49 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
             return None
 
+        def _planned_child_declaration(self, package: str, name: str) -> str | None:
+            """Elect the one planned child module of a package declaring a class.
+
+            A generated package initializer publishes what its child modules
+            declare; until it is regenerated in the candidate, the planned
+            children are the authority for a name the package will publish.
+
+            Returns:
+                The declaring child module name, or none when no planned child
+                declares the class.
+
+            Raises:
+                ValueError: If more than one planned child declares the class.
+
+            """
+            prefix = f"{package}."
+            marker = f"class {name}"
+            types = FlextInfraUtilitiesRopeRuntime
+            declaring = tuple(
+                candidate_name
+                for candidate_name, (_path, candidate_source) in sorted(
+                    self._sources.items()
+                )
+                if candidate_name.startswith(prefix)
+                and "." not in candidate_name.removeprefix(prefix)
+                and marker in candidate_source
+                and types.defined_name(
+                    FlextInfraUtilitiesRopeRuntimeModules
+                    .build_string_module(
+                        self._project,
+                        candidate_source,
+                        resource=self._project.find_module(candidate_name),
+                    )
+                    .get_scope()
+                    .get_defined_names()
+                    .get(name)
+                )
+            )
+            if len(declaring) > 1:
+                message = f"Ambiguous planned child declarations: {package}.{name}"
+                raise ValueError(message)
+            return declaring[0] if declaring else None
+
         def _moved_class_module(
             self,
             module: t.Infra.RopeSemanticModule,
@@ -2104,6 +2147,20 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                             qualified_base=f"{submodule}.{remaining[0]}"
                             if remaining
                             else submodule,
+                        ),
+                        visiting | {key},
+                        depth + 1,
+                    ), []
+                declaring = self._planned_child_declaration(module, name)
+                if declaring is not None:
+                    # The package initializer has not been regenerated yet in
+                    # this candidate; it publishes its children's exports, and
+                    # exactly one planned child declares the class.
+                    return self._resolve(
+                        m.Infra.SourceClassReference(
+                            target=declaring,
+                            attributes=(name, *remaining),
+                            qualified_base=f"{module}.{name}",
                         ),
                         visiting | {key},
                         depth + 1,

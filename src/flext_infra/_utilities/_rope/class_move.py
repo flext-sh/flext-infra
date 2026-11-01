@@ -435,9 +435,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     ) -> p.Result[bool]:
         """Rewire consumers that import a moved class through a package barrel.
 
-        A package that held the moved module but does not hold its destination
-        stops republishing its classes once its initializer is regenerated
-        from its own children. Every ``from barrel import Name`` of a moved
+        Every package on the moved module's chain republishes its exports only
+        through an initializer that is regenerated after this move. Every
+        ``from barrel import Name`` of a moved
         export is retargeted, in this candidate, to the declaring module, which
         publishes it independently of any initializer regeneration; a consumer
         importing the barrel module itself
@@ -455,14 +455,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         destination_package = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
             target.parent, project_root=root, source_project=project
         )
-        barrels = frozenset(
-            ".".join(parts[:index])
-            for index in range(1, len(parts))
-            if not (
-                destination_package == ".".join(parts[:index])
-                or destination_package.startswith(".".join(parts[:index]) + ".")
-            )
-        )
+        # Every package in the chain from the top-level package down to the
+        # moved module may republish its exports; none of them is regenerated
+        # yet in this candidate, so each barrel route is retargeted.
+        barrels = frozenset(".".join(parts[:index]) for index in range(1, len(parts)))
         if not exports or not barrels:
             return r[bool].ok(value=True)
         if not destination_package:
@@ -473,8 +469,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         # this candidate whatever any initializer's later regeneration plans.
         route = f"{destination_package}.{target.stem}"
         for path, text in tuple(candidate.items()):
-            if path in {source, target} or not any(
-                barrel in text for barrel in barrels
+            if (
+                path in {source, target}
+                or not any(name in text for name in exports)
+                or not any(barrel in text for barrel in barrels)
             ):
                 continue
             if path.name == c.Infra.INIT_PY:
