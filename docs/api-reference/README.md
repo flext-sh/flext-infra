@@ -27,8 +27,9 @@ This section is generated from public exports and real docstrings.
 
 ## Surface Summary
 
-- Primary facades: `FlextInfra`, `FlextInfraBasePayload`, `FlextInfraBaseProjects`,
-  `FlextInfraCli`, `FlextInfraConfig`, `FlextInfraConformWiring` (+25 more)
+- Primary facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraConfig`,
+  `FlextInfraConstants`, `FlextInfraFlextInfraConfig`, `FlextInfraFlextInfraConform`
+  (+17 more)
 - Generated module pages: `20`
 
 Back to [project docs](../index.md).
