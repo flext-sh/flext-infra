@@ -16,9 +16,9 @@ from git import GitCommandError
 from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitMutationScope,
+    FlextInfraUtilitiesGitStateTrees,
     FlextInfraUtilitiesGitWorktreeIO,
 )
-from flext_infra._utilities._git.state_trees import FlextInfraUtilitiesGitStateTrees
 
 
 class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):

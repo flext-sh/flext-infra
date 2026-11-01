@@ -20,12 +20,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRefactor,
 )
-from flext_infra._utilities.iteration_directory import (
-    FlextInfraUtilitiesIterationDirectory,
-)
 
 
-class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirectory):
+class FlextInfraUtilitiesIterationWorkspace:
     """Static helpers for discovering Python files across workspace projects."""
 
     @staticmethod

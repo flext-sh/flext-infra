@@ -21,12 +21,9 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitRepo,
 )
-from flext_infra._utilities._git.semantic_lane import FlextInfraUtilitiesGitSemanticLane
 
 
-class FlextInfraUtilitiesGitSemanticIdentity(
-    FlextInfraUtilitiesGitSemanticLane,
-):
+class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
     """Own semantic identity operations."""
 
     @classmethod

@@ -12,8 +12,11 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m, r
-from flext_infra._utilities._git.semantic_worktree import (
-    FlextInfraUtilitiesGitSemanticWorktree,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticPaths,
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitSemanticRefs,
+    FlextInfraUtilitiesGitWorktreeStatus,
 )
 
 if TYPE_CHECKING:
@@ -22,9 +25,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraUtilitiesGitSemanticLane(
-    FlextInfraUtilitiesGitSemanticWorktree,
-):
+class FlextInfraUtilitiesGitSemanticLane:
     """Own the lane every repository publication shares (release, propagation)."""
 
     @classmethod
@@ -36,7 +37,9 @@ class FlextInfraUtilitiesGitSemanticLane(
 
         """
         root = request.repo_root
-        status = cls.git_status(m.Infra.GitStatusRequest(repo_root=root))
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
+            m.Infra.GitStatusRequest(repo_root=root)
+        )
         if status.failure:
             return r[Path].from_failure(status)
         if status.value.dirty:
@@ -44,7 +47,9 @@ class FlextInfraUtilitiesGitSemanticLane(
                 f"lane {request.branch} requires a clean checkout: {root}\n"
                 f"{status.value.porcelain}",
             )
-        current = cls.git_current_branch(m.Infra.GitRepoRequest(repo_root=root))
+        current = FlextInfraUtilitiesGitSemanticRefs.git_current_branch(
+            m.Infra.GitRepoRequest(repo_root=root)
+        )
         if current.failure:
             return r[Path].from_failure(current)
         if current.value.text != request.base:
@@ -99,7 +104,7 @@ class FlextInfraUtilitiesGitSemanticLane(
 
         """
         root = request.repo_root
-        admitted = cls.git_verify_lane(
+        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=root,
                 operation="verify",
@@ -112,7 +117,7 @@ class FlextInfraUtilitiesGitSemanticLane(
         base = cls._verified_lane_base(request)
         if base.failure:
             return r[bool].from_failure(base)
-        owned = cls.git_verify_lane(
+        owned = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=root,
                 operation="create",
@@ -193,7 +198,7 @@ class FlextInfraUtilitiesGitSemanticLane(
             )
         if switched.failure:
             return switched
-        return cls.git_merge_no_edit(
+        return FlextInfraUtilitiesGitSemanticPublish.git_merge_no_edit(
             m.Infra.GitCommitishRequest(repo_root=root, commitish=request.base),
         ).map(lambda _report: True)
 
@@ -206,7 +211,9 @@ class FlextInfraUtilitiesGitSemanticLane(
 
         """
         root = request.repo_root
-        status = cls.git_status(m.Infra.GitStatusRequest(repo_root=root))
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
+            m.Infra.GitStatusRequest(repo_root=root)
+        )
         if status.failure:
             return r[bool].from_failure(status)
         # The status code and the path are whitespace-separated; the first
@@ -218,12 +225,12 @@ class FlextInfraUtilitiesGitSemanticLane(
         )
         if not produced:
             return r[bool].ok(value=True)
-        staged = cls.git_add_paths(
+        staged = FlextInfraUtilitiesGitSemanticPaths.git_add_paths(
             m.Infra.GitPathsRequest(repo_root=root, paths=produced),
         )
         if staged.failure:
             return r[bool].from_failure(staged)
-        return cls.git_commit(
+        return FlextInfraUtilitiesGitSemanticPaths.git_commit(
             m.Infra.GitCommitRequest(repo_root=root, message=request.subject),
         ).map(lambda _report: True)
 
@@ -236,7 +243,7 @@ class FlextInfraUtilitiesGitSemanticLane(
 
         """
         root, branch = request.repo_root, request.branch
-        pushed = cls.git_push_upstream(
+        pushed = FlextInfraUtilitiesGitSemanticPublish.git_push_upstream(
             m.Infra.GitPushRequest(repo_root=root, branch=branch),
         )
         if pushed.failure:

@@ -9,14 +9,13 @@ from __future__ import annotations
 from git import GitCommandError, Repo
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git.semantic_index import (
-    FlextInfraUtilitiesGitSemanticIndex,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitSemanticRefs,
 )
 
 
-class FlextInfraUtilitiesGitSemanticWorktree(
-    FlextInfraUtilitiesGitSemanticIndex,
-):
+class FlextInfraUtilitiesGitSemanticWorktree(FlextInfraUtilitiesGitRepo):
     """Own semantic worktree operations."""
 
     @classmethod
@@ -30,7 +29,7 @@ class FlextInfraUtilitiesGitSemanticWorktree(
             The resulting ``p.Result[m.Infra.GitTextReport]``.
 
         """
-        admitted = cls.git_verify_lane(
+        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=request.repo_root,
                 operation="create",

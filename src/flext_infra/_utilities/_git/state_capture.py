@@ -11,12 +11,14 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git.state_transition import (
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStatePublication,
     FlextInfraUtilitiesGitStateTransition,
 )
 
 
 class FlextInfraUtilitiesGitStateCapture(
+    FlextInfraUtilitiesGitStatePublication,
     FlextInfraUtilitiesGitStateTransition,
 ):
     """Use the existing Git-root writer leases and physical file preconditions."""

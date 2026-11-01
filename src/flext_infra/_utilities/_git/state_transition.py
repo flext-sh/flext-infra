@@ -13,10 +13,16 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m
-from flext_infra._utilities._git.state_files import FlextInfraUtilitiesGitStateFiles
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStateFiles,
+    FlextInfraUtilitiesGitStateTrees,
+)
 
 
-class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
+class FlextInfraUtilitiesGitStateTransition(
+    FlextInfraUtilitiesGitStateFiles,
+    FlextInfraUtilitiesGitStateTrees,
+):
     """Accept only captured, baseline, or planned kind-transition absence."""
 
     @staticmethod

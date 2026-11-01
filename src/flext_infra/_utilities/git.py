@@ -12,22 +12,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities._git.attestation import FlextInfraUtilitiesGitAttestation
-from flext_infra._utilities._git.lane_hygiene import FlextInfraUtilitiesGitLaneHygiene
-from flext_infra._utilities._git.mutation_scope import (
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitAttestation,
+    FlextInfraUtilitiesGitLaneHygiene,
     FlextInfraUtilitiesGitMutationScope,
-)
-from flext_infra._utilities._git.requirement_source import (
     FlextInfraUtilitiesGitRequirementSource,
-)
-from flext_infra._utilities._git.scope import FlextInfraUtilitiesGitScope
-from flext_infra._utilities._git.semantic_submodule import (
+    FlextInfraUtilitiesGitScope,
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitSemanticIndex,
+    FlextInfraUtilitiesGitSemanticLane,
+    FlextInfraUtilitiesGitSemanticPaths,
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitSemanticRefs,
     FlextInfraUtilitiesGitSemanticSubmodule,
-)
-from flext_infra._utilities._git.state_capture import FlextInfraUtilitiesGitStateCapture
-from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktree
-from flext_infra._utilities._git.worktree_discovery import (
-    FlextInfraUtilitiesGitWorktreeDiscovery,
+    FlextInfraUtilitiesGitSemanticWorktree,
+    FlextInfraUtilitiesGitStateCapture,
+    FlextInfraUtilitiesGitWorktree,
 )
 
 
@@ -40,13 +40,20 @@ class FlextInfraUtilitiesGit(
     FlextInfraUtilitiesGitSemanticSubmodule,
     FlextInfraUtilitiesGitLaneHygiene,
     FlextInfraUtilitiesGitStateCapture,
-    FlextInfraUtilitiesGitWorktreeDiscovery,
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitSemanticIndex,
+    FlextInfraUtilitiesGitSemanticLane,
+    FlextInfraUtilitiesGitSemanticPaths,
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitSemanticRefs,
+    FlextInfraUtilitiesGitSemanticWorktree,
 ):
-    """Canonical Git owner for flext-infra: scope + worktree + checkpoint/patch.
+    """Canonical Git owner for flext-infra: every Git part composed flat.
 
-    Removal and semantic publication share the refs/preflight owner below both
-    effect boundaries. Compose removal here, not below refs: otherwise the
-    removal owner cannot call the shared guard without an import cycle.
+    A part inherits only the parts whose protected helpers it calls and reaches
+    another part's public operation through that owner (removal calls
+    ``FlextInfraUtilitiesGitSemanticRefs.git_verify_lane``), so the parts stay
+    shallow and only this owner composes them all.
     """
 
     @staticmethod

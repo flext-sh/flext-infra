@@ -21,14 +21,14 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentity,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitSemanticRefs,
+    FlextInfraUtilitiesGitWorktreeRoots,
 )
 
 
-class FlextInfraUtilitiesGitSemanticSubmodule(
-    FlextInfraUtilitiesGitSemanticIdentity,
-):
+class FlextInfraUtilitiesGitSemanticSubmodule(FlextInfraUtilitiesGitRepo):
     """Own ``.gitmodules`` composition and its derivations."""
 
     @classmethod
@@ -75,7 +75,7 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
             return result.from_failure(members)
         sources: list[m.Infra.DependencyCommitSourceSpec] = []
         for declaration, manifest in members.value:
-            recorded = cls.git_rev_parse(
+            recorded = FlextInfraUtilitiesGitSemanticRefs.git_rev_parse(
                 m.Infra.GitCommitishRequest(
                     repo_root=superproject_root,
                     commitish=f"{c.Infra.GIT_HEAD}:{declaration.path.as_posix()}",
@@ -196,7 +196,9 @@ class FlextInfraUtilitiesGitSemanticSubmodule(
                 ...,
             ]
         ]
-        declared = cls.git_submodule_declarations(superproject_root)
+        declared = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(
+            superproject_root
+        )
         if declared.failure:
             return result.from_failure(declared)
         members: list[

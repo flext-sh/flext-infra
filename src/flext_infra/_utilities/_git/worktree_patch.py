@@ -11,15 +11,13 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeIO
-from flext_infra._utilities._git.worktree_checkpoint import (
-    FlextInfraUtilitiesGitWorktreeCheckpoint,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitWorktreePatch(
-    FlextInfraUtilitiesGitWorktreeCheckpoint,
-):
+class FlextInfraUtilitiesGitWorktreePatch(FlextInfraUtilitiesGitRepo):
     """Own worktree patch operations."""
 
     @classmethod
