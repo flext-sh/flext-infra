@@ -1162,6 +1162,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 mise_selector=codegen.toolchain.mise_selector,
                 mise_version=codegen.toolchain.mise_version,
                 mise_install_tools=codegen.toolchain.mise_install_keys,
+                # A project in the infrastructure distribution's runtime closure
+                # (read from the installed metadata, never listed) supplies part
+                # of the executor itself: the executor installs its locked
+                # non-editable build.
+                executor_installs_project=(
+                    u.Infra.dep_name(target.repository.distribution)
+                    in u.Infra.installed_runtime_closure(
+                        codegen.infra_repository.distribution,
+                    )
+                ),
                 toolchain=codegen.toolchain,
                 python_version=codegen.toolchain.python_version,
                 make=codegen.make,

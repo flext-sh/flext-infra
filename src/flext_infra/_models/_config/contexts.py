@@ -165,6 +165,16 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             t.NonEmptyStr,
             m.Field(description="Committed native uv lock of the runtime root"),
         ] = c.Infra.UV_LOCK_FILENAME
+        executor_installs_project: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "The project belongs to the infrastructure distribution's "
+                    "runtime closure, so the upgrade executor installs the "
+                    "project's locked non-editable build instead of excluding it"
+                ),
+            ),
+        ]
         python_version: Annotated[
             t.NonEmptyStr,
             m.Field(description="Python minor line the environment syncs against"),

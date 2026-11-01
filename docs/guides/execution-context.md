@@ -255,12 +255,19 @@ toolchain nor a corrupt lock stops it:
 
 Declared prerequisites of stage 6, open until they close:
 
-- **Self-hosting repositories** (flext-core, flext-cli, flext-infra: the project
-  is in flext-infra's own closure). The consumer-lock executor omits the
-  project, so it cannot import flext-infra there. Their executor must come from
-  flext-infra's own frozen lock, which today does not run its own source (the
-  `ForceDecode` skew). It closes when the integration lane's `make upg` repairs
-  flext-infra's lock.
+- **Self-hosting repositories** (flext-infra, flext-cli, flext-core). Every
+  executor syncs one form, `uv sync --frozen --no-default-groups --group
+  <dependency_group> --no-editable`. A project whose distribution belongs to the
+  runtime dependency closure of `codegen.infra_repository.distribution` (read at
+  generation from the installed distribution's metadata, never listed) also
+  installs its own locked non-editable build, because it supplies part of the
+  executor; every other project adds `--no-install-project`, so the executor
+  never imports its source. Every lock is already written before the executor
+  runs. The executor of flext-cli and flext-core imports, but stays open until
+  their locks run their own source: at the pinned `0.12.0-dev` versions their
+  CLI fails at import time (flext-cli: pydantic cannot build a schema for
+  `os.stat_result`; flext-core: `FlextCliTypes` has no `StrDict`), a defect at the
+  lock owner.
 - **Publication.** A consumer's executor runs the flext-infra version its lock
   pins, so `deps repair-mise-platforms` exists there only after the release
   that carries it is published and the consumer's `make upg` locks it.
