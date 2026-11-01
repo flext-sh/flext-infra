@@ -10,8 +10,8 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config
-from flext_infra._utilities import FlextInfraUtilitiesGit
 from flext_infra._utilities._git import FlextInfraUtilitiesGitScope
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from pathlib import Path

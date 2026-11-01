@@ -21,7 +21,9 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentity
+from flext_infra._utilities._git.semantic_identity import (
+    FlextInfraUtilitiesGitSemanticIdentity,
+)
 
 
 class FlextInfraUtilitiesGitSemanticSubmodule(

@@ -16,10 +16,12 @@ from flext_cli import u
 
 from flext_infra import c, m, p, r
 from flext_infra._utilities import (
-    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRefactor,
+)
+from flext_infra._utilities.iteration_directory import (
+    FlextInfraUtilitiesIterationDirectory,
 )
 
 

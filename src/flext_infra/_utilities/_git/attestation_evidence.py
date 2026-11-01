@@ -14,10 +14,8 @@ from flext_cli import u
 
 from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesBase
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitSemanticIdentity,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentity
+from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
 
 
 class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):

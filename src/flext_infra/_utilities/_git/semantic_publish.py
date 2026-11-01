@@ -9,7 +9,7 @@ from __future__ import annotations
 from git import GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticRefs
+from flext_infra._utilities._git.semantic_refs import FlextInfraUtilitiesGitSemanticRefs
 
 
 class FlextInfraUtilitiesGitSemanticPublish(

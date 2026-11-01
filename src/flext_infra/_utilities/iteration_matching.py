@@ -12,10 +12,8 @@ import re
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from pathlib import Path

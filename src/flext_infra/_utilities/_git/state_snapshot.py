@@ -14,10 +14,8 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitWorktreeIO,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeIO
+from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
 
 
 class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):

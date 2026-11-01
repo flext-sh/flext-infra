@@ -25,12 +25,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitSemanticIdentity,
-    FlextInfraUtilitiesGitWorktreeIO,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeIO
 from flext_infra._utilities._git.attestation_evidence import (
     FlextInfraUtilitiesGitAttestationEvidence,
+)
+from flext_infra._utilities._git.semantic_identity import (
+    FlextInfraUtilitiesGitSemanticIdentity,
 )
 
 
