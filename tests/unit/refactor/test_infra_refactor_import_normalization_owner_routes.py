@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.codemod import FlextInfraCodemodLoopPhaseImportNormalization
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseImportNormalization
 from tests import tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,

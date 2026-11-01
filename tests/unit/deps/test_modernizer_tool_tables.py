@@ -14,9 +14,9 @@ import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import config
-from flext_infra.deps import (
+from flext_infra.deps import FlextInfraPyprojectModernizer
+from flext_infra.deps.phases import (
     FlextInfraEnsureRuffConfigPhase,
-    FlextInfraPyprojectModernizer,
     FlextInfraToolTablesPhase,
 )
 from flext_infra.gates import FlextInfraGatesMypy

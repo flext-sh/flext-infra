@@ -22,7 +22,7 @@ from flext_infra.refactor import (
     FlextInfraWrapperRootNamespaceRefactor,
 )
 from flext_infra.services import FlextInfraCliModProgress
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 
 
 class FlextInfraRefactorRoutes:

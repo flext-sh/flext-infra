@@ -14,7 +14,7 @@ from typing_extensions import TypeForm
 
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.deps import FlextInfraEnsureRuffConfigPhase
+from flext_infra.deps.phases import FlextInfraEnsureRuffConfigPhase
 from flext_infra.gates import FlextInfraGatesRuffFormat, FlextInfraGatesRuffLint
 from tests import c, m, t, tm, u
 

@@ -12,10 +12,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config
-from flext_infra.deps import (
-    FlextInfraEnsurePyrightConfigPhase,
-    FlextInfraPyprojectModernizer,
-)
+from flext_infra.deps import FlextInfraPyprojectModernizer
+from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, e, m, t, tm, u
 

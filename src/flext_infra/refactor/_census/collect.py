@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import m
-from flext_infra.refactor import (
+from flext_infra.refactor._census import (
     FlextInfraRefactorCensusProject,
     FlextInfraRefactorCensusRemoval,
 )

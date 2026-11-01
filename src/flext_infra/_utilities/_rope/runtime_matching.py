@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -14,8 +13,6 @@ from typing import ClassVar
 
 from flext_infra import p
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeBase
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase):
@@ -84,58 +81,28 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
     ) -> tuple[tuple[int, int], ...]:
         """Resolve source regions through Rope's identity-aware pattern matcher.
 
-        Matches whose node shapes Rope cannot map to a source region (bare
-        constants) are skipped with a logged note; policy detection stays
-        authoritative and the rule simply does not rewrite that node.
-
         Returns:
             Matched character ranges from the module's immutable source snapshot.
 
+        Raises:
+            AttributeError: If native matching fails to resolve a semantic attribute.
+
         """
         finder = cls.semantic_finder(module, arguments=arguments)
-        regions: list[tuple[int, int]] = []
-
-        def region_of(match: p.Infra.RopeMatch) -> tuple[int, int]:
-            """Map one match to its source region, skipping unmappable shapes.
-
-            Returns:
-                The matched character range.
-
-            """
-            try:
-                return match.get_region()
-            except AttributeError as error:
-                resource = module.get_resource()
-                error.add_note(
-                    f"Rope semantic match skipped resource="
-                    f"{resource.path if resource else None!r} "
-                    f"pattern={pattern!r} arguments={arguments!r} "
-                    f"region={(start, end)!r}",
-                )
-                _LOGGER.warning("rope semantic match skipped: %s", error)
-                return (-1, -1)
-
         try:
-            mapped = (
-                region_of(match)
+            return tuple(
+                match.get_region()
                 for match in finder.get_matches(
                     pattern, arguments, start=start, end=end
                 )
             )
-            regions.extend(region for region in mapped if region != (-1, -1))
         except AttributeError as error:
-            # the native matcher is itself a lazy generator: it may hit the
-            # same unmappable node while iterating; regions resolved so far
-            # are kept and the skip stays visible
             resource = module.get_resource()
             error.add_note(
-                f"Rope semantic match stream skipped resource="
-                f"{resource.path if resource else None!r} "
-                f"pattern={pattern!r} arguments={arguments!r} "
-                f"region={(start, end)!r}",
+                f"Rope semantic match resource={resource.path if resource else None!r} "
+                f"pattern={pattern!r} arguments={arguments!r} region={(start, end)!r}",
             )
-            _LOGGER.warning("rope semantic match stream skipped: %s", error)
-        return tuple(regions)
+            raise
 
     @classmethod
     def semantic_finder(

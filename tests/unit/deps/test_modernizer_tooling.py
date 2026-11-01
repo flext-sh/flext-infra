@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, check, config, deps
+from flext_infra.deps.phases import FlextInfraEnsureRuffConfigPhase
 from tests import c, m, t, tm, u
 
 
@@ -511,7 +512,7 @@ class TestsFlextInfraDepsModernizerTooling:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(f'[project]\nname = "{project_dir.name}"\n{source}'),
         )
-        phase = deps.FlextInfraEnsureRuffConfigPhase(
+        phase = FlextInfraEnsureRuffConfigPhase(
             tool_config_document,
             codegen=codegen,
         )

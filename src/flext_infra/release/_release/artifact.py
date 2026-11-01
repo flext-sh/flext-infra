@@ -14,7 +14,7 @@ from email.parser import Parser
 from pathlib import Path, PurePosixPath
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.release import FlextInfraReleaseReleaseBoundary
+from flext_infra.release._release import FlextInfraReleaseReleaseBoundary
 
 
 class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):

@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, deps
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from tests import c, e, m, t, tm, u
 
 
@@ -246,7 +247,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
         mypy = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["mypy"])
         tm.that(mypy["mypy_path"], eq=list(expected))
         tm.that(
-            deps.FlextInfraToolTablesPhase(tooling, codegen=codegen).apply_payload(
+            FlextInfraToolTablesPhase(tooling, codegen=codegen).apply_payload(
                 payload, path=path, mypy_search_paths=expected
             ),
             empty=True,

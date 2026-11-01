@@ -16,7 +16,7 @@ from flext_infra.refactor._census import (
     FlextInfraRefactorCensusCollectHelpers,
     FlextInfraRefactorCensusFilters,
 )
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 
 if TYPE_CHECKING:
     from flext_infra import p

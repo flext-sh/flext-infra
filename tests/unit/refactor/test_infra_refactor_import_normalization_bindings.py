@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import m
-from flext_infra.codemod import FlextInfraCodemodLoopPhaseImportNormalization
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseImportNormalization
 from tests import c, tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
