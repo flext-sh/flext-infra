@@ -14,7 +14,9 @@ from flext_cli import u
 from git import Git, GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeFacts
+from flext_infra._utilities._git.worktree_facts import (
+    FlextInfraUtilitiesGitWorktreeFacts,
+)
 
 
 class FlextInfraUtilitiesGitWorktreeRoots(

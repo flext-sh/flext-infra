@@ -20,8 +20,8 @@ from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitSemanticLane,
 )
+from flext_infra._utilities._git.semantic_lane import FlextInfraUtilitiesGitSemanticLane
 
 
 class FlextInfraUtilitiesGitSemanticIdentity(

@@ -11,8 +11,10 @@ from pathlib import Path
 from git import BadName, GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import (
+from flext_infra._utilities._git.state_publication import (
     FlextInfraUtilitiesGitStatePublication,
+)
+from flext_infra._utilities._git.worktree_patch import (
     FlextInfraUtilitiesGitWorktreePatch,
 )
 

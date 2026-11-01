@@ -12,7 +12,9 @@ from typing import TYPE_CHECKING
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
 from flext_infra import c, m, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticPaths
+from flext_infra._utilities._git.semantic_paths import (
+    FlextInfraUtilitiesGitSemanticPaths,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

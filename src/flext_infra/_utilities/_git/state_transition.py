@@ -13,7 +13,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, config, m
-from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFiles
+from flext_infra._utilities._git.state_files import FlextInfraUtilitiesGitStateFiles
 
 
 class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):

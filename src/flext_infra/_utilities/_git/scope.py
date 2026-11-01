@@ -11,8 +11,8 @@ from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitSemanticIdentity,
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentity
+from flext_infra._utilities._git.semantic_index import (
     FlextInfraUtilitiesGitSemanticIndex,
 )
 

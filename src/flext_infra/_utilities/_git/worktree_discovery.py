@@ -18,7 +18,9 @@ from flext_infra._constants import (
     FlextInfraConstantsSharedInfra,
 )
 from flext_infra._utilities import FlextInfraUtilitiesBase
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRoots
+from flext_infra._utilities._git.worktree_roots import (
+    FlextInfraUtilitiesGitWorktreeRoots,
+)
 
 
 class FlextInfraUtilitiesGitWorktreeDiscovery(

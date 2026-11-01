@@ -11,7 +11,9 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitStateTransition
+from flext_infra._utilities._git.state_transition import (
+    FlextInfraUtilitiesGitStateTransition,
+)
 
 
 class FlextInfraUtilitiesGitStateCapture(

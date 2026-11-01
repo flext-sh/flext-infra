@@ -14,10 +14,10 @@ from git import GitCommandError, HookExecutionError, InvalidGitRepositoryError, 
 from gitdb.util import LockedFD
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git import (
+from flext_infra._utilities._git.semantic_publish import (
     FlextInfraUtilitiesGitSemanticPublish,
-    FlextInfraUtilitiesGitStateFiles,
 )
+from flext_infra._utilities._git.state_files import FlextInfraUtilitiesGitStateFiles
 from flext_infra._utilities._git.state_trees import FlextInfraUtilitiesGitStateTrees
 
 
