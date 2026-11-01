@@ -167,20 +167,24 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         ready = FlextInfraCodegenPreconditions.rendering_engine(root)
         if ready.failure:
             return r[p.Infra.CodegenResult].from_failure(ready)
-        if request.what is not c.Infra.CodegenConformSurface.ALL:
-            return self._planned(request).flat_map(
-                lambda plan: self._published(
-                    request,
-                    plan,
-                    after_publication,
-                    after_cohort_publication=after_cohort_publication,
+        # One generation per tree: planning and publication read and write
+        # under the same lock, so a concurrent writer waits instead of
+        # invalidating this plan's observed states.
+        with u.Infra.hold_mutation_scope(root, "codegen generate"):
+            if request.what is not c.Infra.CodegenConformSurface.ALL:
+                return self._planned(request).flat_map(
+                    lambda plan: self._published(
+                        request,
+                        plan,
+                        after_publication,
+                        after_cohort_publication=after_cohort_publication,
+                    )
                 )
+            return self._execute_all_surfaces(
+                request,
+                after_publication=after_publication,
+                after_cohort_publication=after_cohort_publication,
             )
-        return self._execute_all_surfaces(
-            request,
-            after_publication=after_publication,
-            after_cohort_publication=after_cohort_publication,
-        )
 
     @staticmethod
     def authorize_published_envrc(
