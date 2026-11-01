@@ -1,1 +1,0 @@
-from flext_test_project._settings import Settings

@@ -9,29 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-from collections.abc import Mapping
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 import hashlib
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 from shlex import quote
@@ -589,7 +570,9 @@ def _ensure_provisioned(
 
 
 @pytest.fixture(scope="session")
-def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> Mapping[str, str]:
+def hermetic_git_environment(
+    session_runtime: p.Tests.SessionRuntime,
+) -> Mapping[str, str]:
     """Serve the fixture provider's Git sources from this run's local mirrors.
 
     The mirrors are built once per locked-source set under the canonical

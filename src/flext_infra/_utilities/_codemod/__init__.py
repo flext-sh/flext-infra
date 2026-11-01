@@ -64,9 +64,9 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraUtilitiesCodemodBindingChain": ".binding_chain",
         "FlextInfraUtilitiesCodemodImportLawRules": ".import_law_rules",
+        "FlextInfraUtilitiesCodemodNative": ".native_utilities",
         "FlextInfraUtilitiesCodemodNativeCascade": ".native_cascade",
         "FlextInfraUtilitiesCodemodNativePackage": ".native_package_utilities",
-        "FlextInfraUtilitiesCodemodNative": ".native_utilities",
         "FlextInfraUtilitiesCodemodProject": ".project",
         "FlextInfraUtilitiesCodemodProjectFacts": ".project_facts",
         "FlextInfraUtilitiesCodemodRules": ".rules",

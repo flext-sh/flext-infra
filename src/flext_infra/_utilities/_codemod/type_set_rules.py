@@ -70,15 +70,26 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
             return {}
         root = (c.Infra.FacadeFamily.C,)
         aliases = cls._facade_aliases(facade, root)
-        owners: dict[frozenset[type], str] = {}
-        sets: list[tuple[str, t.JsonDict]] = []
+        # One constant is reachable through one spelling per declaring route
+        # (a nested namespace and its flattened parent both bind it). The
+        # shortest path is the canonical spelling; deeper routes are the same
+        # declaration, not a second owner. Same set under a DIFFERENT leaf
+        # name stays an SSOT defect and fails below.
+        canonical: dict[tuple[str, frozenset[type]], tuple[str, tuple[type, ...]]] = {}
         for path, classes in cls._type_set_constants(facade, root):
             reference = ".".join(path)
-            members = frozenset(classes)
-            if members in owners:
-                msg = f"type set declared twice: {owners[members]} and {reference}"
+            key = (path[-1], frozenset(classes))
+            held = canonical.get(key)
+            if held is None or reference.count(".") < held[0].count("."):
+                canonical[key] = (reference, classes)
+        by_members: dict[frozenset[type], str] = {}
+        sets: list[tuple[str, t.JsonDict]] = []
+        for (_leaf, members), (reference, classes) in canonical.items():
+            twin = by_members.get(members)
+            if twin is not None:
+                msg = f"type set declared twice: {twin} and {reference}"
                 raise ValueError(msg)
-            owners[members] = reference
+            by_members[members] = reference
             spellings = tuple(cls._spellings(item, aliases) for item in classes)
             if all(spellings):
                 sets.append((reference, cls._type_set_rule(spellings)))

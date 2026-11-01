@@ -1620,8 +1620,9 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> p.Result[dict[str, str]]:
         """Publish nominal providers that no alias or retained base already binds.
 
-        A provider the namespace already composes as a base is published by
-        that base; a second ``Name: TypeAlias = Name`` would only repeat it.
+        A provider the namespace already composes, as a base or through a
+        base's MRO, is published by that base; a second
+        ``Name: TypeAlias = Name`` would only repeat it.
 
         Returns:
             The nominal publication names in declaration order, or the first
@@ -1632,7 +1633,15 @@ class FlextInfraUtilitiesFacadeComponents:
         publications: dict[str, str] = {}
         for provider in nominal:
             if provider in aliases.values() or any(
-                base is provider for _expression, base in retained
+                base is provider
+                or (
+                    FlextInfraUtilitiesRopeRuntimeTypes.py_class(base)
+                    and any(
+                        cls._same_facade_target(ancestor, provider)
+                        for ancestor in base.get_mro()[1:]
+                    )
+                )
+                for _expression, base in retained
             ):
                 continue
             published_name = provider.get_name()
@@ -1883,7 +1892,7 @@ class FlextInfraUtilitiesFacadeComponents:
             current.lines.get_line_number(layout.region[1])
         )
         body_source = cls._facade_body_source(
-            (current, actual), source, (layout, end), (alias_names, step)
+            (current, actual), source, (layout, end), (alias_names, step), retained
         )
         class_line = scope.get_start()
         desired_bases = tuple(expression for expression, _base in retained)
@@ -1926,6 +1935,7 @@ class FlextInfraUtilitiesFacadeComponents:
         source: str,
         frame: tuple[p.Infra.RopeSourceClassLayout, int],
         rendering: tuple[frozenset[str], int],
+        retained: Sequence[tuple[str, p.Infra.RopePyObject]],
     ) -> tuple[str | tuple[str, str], ...]:
         """Split the namespace body, retiring obsolete generated bindings.
 
@@ -1943,6 +1953,7 @@ class FlextInfraUtilitiesFacadeComponents:
         index = current.get_source_binding_index()
         retired = (
             cls._facade_retired_bindings(index, actual, source)
+            | cls._facade_retired_publications((current, scope), source, retained)
             if source.startswith(c.Infra.AUTOGEN_HEADER)
             else frozenset[tuple[int, int]]()
         )
@@ -1960,6 +1971,59 @@ class FlextInfraUtilitiesFacadeComponents:
             ]
             return (f"\n{class_indent}{' ' * step}pass",)
         return body_source
+
+    @classmethod
+    def _facade_retired_publications(
+        cls,
+        projected: tuple[p.Infra.RopeSourceModule, p.Infra.RopeScope],
+        source: str,
+        retained: Sequence[tuple[str, p.Infra.RopePyObject]],
+    ) -> frozenset[tuple[int, int]]:
+        """Find earlier nominal publications this composition no longer needs.
+
+        A generated ``Name: TypeAlias = Name`` reads ``Name`` from the module
+        scope. It is obsolete once that name no longer binds a class (its
+        declaration was retired) or once a retained base already reaches the
+        class through its MRO.
+
+        Returns:
+            The statement regions of every obsolete nominal publication.
+
+        """
+        module, scope = projected
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        names = module.get_scope().get_names()
+        retired: set[tuple[int, int]] = set()
+        for declaration in module.get_source_binding_index().assignment_layouts(scope):
+            if (
+                declaration.annotation is None
+                or declaration.value is None
+                or len(declaration.targets) != 1
+            ):
+                continue
+            name = declaration.targets[0][0]
+            begin, end = declaration.value
+            if source[begin:end] != name:
+                continue
+            binding = names.get(name)
+            target = binding.get_object() if binding is not None else None
+            if (
+                target is None
+                or not types.abstract_class(target)
+                or (
+                    types.py_class(target)
+                    and any(
+                        types.py_class(base)
+                        and any(
+                            cls._same_facade_target(ancestor, target)
+                            for ancestor in base.get_mro()[1:]
+                        )
+                        for _expression, base in retained
+                    )
+                )
+            ):
+                retired.add(declaration.region)
+        return frozenset(retired)
 
     @classmethod
     def _facade_retired_bindings(

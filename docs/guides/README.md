@@ -13,6 +13,7 @@ sourced from code and docstrings.
 - [Configuration](configuration.md)
 - [Csv campaigns](csv-campaigns.md)
 - [Development](development.md)
+- [Engine](engine.md)
 - [Execution context](execution-context.md)
 - [Getting started](getting-started.md)
 - [Git state capture](git-state-capture.md)

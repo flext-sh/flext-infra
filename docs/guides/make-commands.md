@@ -10,13 +10,27 @@
 - [Discover commands](#discover-commands)
 - [Architecture admission and acceptance](#architecture-admission-and-acceptance)
 - [Canonical workflow](#canonical-workflow)
+  - [Bootstrap and Member Lock Composition (ADR-030)](#bootstrap-and-member-lock-composition-adr-030)
+  - [Standard Lifecycle Sequence](#standard-lifecycle-sequence)
+  - [Submodule Initialization and Hook Dispatch](#submodule-initialization-and-hook-dispatch)
+  - [Release, Documentation, and Toolchain Contracts](#release-documentation-and-toolchain-contracts)
 - [Operation ownership](#operation-ownership)
+  - [Public Verb Matrix](#public-verb-matrix)
+  - [Profiling and Semantic Publication Boundaries](#profiling-and-semantic-publication-boundaries)
+  - [Conformance, Environment, and Runtime Bindings](#conformance-environment-and-runtime-bindings)
 - [Constants migration](#constants-migration)
 - [Verb single-pass contract](#verb-single-pass-contract)
+  - [Formatter and Repair Partitioning](#formatter-and-repair-partitioning)
+  - [Prerequisite and Full Check Execution](#prerequisite-and-full-check-execution)
+  - [Runtime Integrity and Report Receipts](#runtime-integrity-and-report-receipts)
 - [Markdown quality pipeline](#markdown-quality-pipeline)
 - [Test contract](#test-contract)
 - [Failure contract](#failure-contract)
 - [Scope and generation](#scope-and-generation)
+  - [Workspace vs. Member Scope Dispatch](#workspace-vs-member-scope-dispatch)
+  - [Scaffolding, Codemod Census, and Template Ownership](#scaffolding-codemod-census-and-template-ownership)
+  - [Convergence, Shared Worktree, and Clean Rules](#convergence-shared-worktree-and-clean-rules)
+  - [Git Lane and Worktree Hygiene Verification](#git-lane-and-worktree-hygiene-verification)
 - [Related guides](#related-guides)
 
 <!-- TOC END -->
@@ -55,10 +69,10 @@ verb is missing or broken, repair the root dispatcher owner and rerun that verb.
 ## Architecture admission and acceptance
 
 Command success does not replace architecture acceptance. Start with
-[root AGENTS.md](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md), the
-[session router](https://github.com/flext-sh/flext/blob/0.12.0-dev/.agents/commands/flext-law.md), and its exact
-[routing](https://github.com/flext-sh/flext/blob/0.12.0-dev/.agents/skills/flext-context-routing/SKILL.md) and
-[FLEXT law](https://github.com/flext-sh/flext/blob/0.12.0-dev/.agents/skills/flext-law/SKILL.md) owners. The router composes
+root AGENTS.md, the
+session router, and its exact
+routing and
+FLEXT law owners. The router composes
 global `search-first`, `yagni`, `ssot`, `solid`, `simplify` and `dry`; concrete
 dependency and data boundaries additionally follow the canonical global
 `dep-injection`, `clean-architecture` and `pydantic-development` skills under
@@ -89,6 +103,8 @@ checks are not fleet proof; failures and unexecuted gates remain explicit.
 
 ## Canonical workflow
 
+### Bootstrap and Member Lock Composition (ADR-030)
+
 The approved `flext-0029c` native-bootstrap target uses one root uv workspace in
 local execution and root CI; CI checks out declared submodules and installs
 noneditable. Locks follow
@@ -102,18 +118,20 @@ persisted state or synthetic resolvers. Official Mise acquisition and native loc
 tool provisioning precede `uv sync --frozen` into the owned physical `.venv`.
 No custom Python or AWK/shell lock/installer parser, copied admission resource or
 installed Infra check precedes successful provision. The task-only
-direct public CLI route
+[direct public CLI route](https://github.com/flext-sh/flext-infra/blob/0.12.0-dev/docs/guides/execution-context.md#native-bootstrap-task-route-flext-0029c)
 keeps Make integration last. This target contract does not attest current runtime;
 the general workflow below remains unchanged outside that task.
+
+### Standard Lifecycle Sequence
 
 Run each required operation explicitly from the workspace root:
 
 ```bash
 make setup
 make gen
-make mod
-make fix
 make fmt
+make fix
+make mod
 make build
 # Exercise the selected public consumer before the final tests.
 make check
@@ -131,6 +149,8 @@ Each standard verb executes its declared operation directly, without selectors t
 change its effect or phase. Domain commands may retain explicitly declared selectors
 interpreted by their owning registry; they never select a standard lifecycle's effect.
 
+### Submodule Initialization and Hook Dispatch
+
 Setup provisions governed gitlinks before creating the runtime environment. Its shared
 owner is `flext-infra/src/flext_infra/templates/project/base/submodule_setup_recipe.j2`;
 `config.Infra.codegen.make.submodule_timeout_seconds` bounds native provisioning, and
@@ -144,7 +164,8 @@ rewrites them.
 
 `make help` is the complete live inventory. The approved common surface is
 `setup`, `upg`, `gen`, `mod`, `fix`, `fmt`, `check`, `tests`, `help`, `build` and
-`clean`. Repository-owned product commands join it only through their declared
+`clean` (ADR-003).
+Repository-owned product commands join it only through their declared
 extension owner. No compatibility alias preserves a retired common verb.
 
 The ordinary dispatcher executes each declared `pre-<verb>` hook, handler and
@@ -152,6 +173,8 @@ The ordinary dispatcher executes each declared `pre-<verb>` hook, handler and
 declared scope; it does not bypass these extensions. Approval wrappers still
 must delegate to the corresponding builtin. Setup retains its separate
 provisioning and activation contract.
+
+### Release, Documentation, and Toolchain Contracts
 
 Release operations belong to an explicitly declared product protocol.
 `publishes_release` elects `release-<phase>` commands from the shared release
@@ -200,40 +223,31 @@ wrappers remain where used. These contracts are not current runtime receipts.
 
 ## Operation ownership
 
+### Public Verb Matrix
+
+<!-- Generated by make gen from the typed Make catalog; edit its owner. -->
+
 Each verb enters its existing domain owner. Generation and conformance share the
 same projection planner and transaction publisher; they do not share permission
 to repair authored declarations.
 
-| Verb | Owned operation |
-| --- | --- |
-| `setup` | Install committed locks, synchronize the physical environment and publish its declared runtime bindings |
-| `gen` | Render and publish projections from the current declarations |
-| `upg` | Resolve declared dependencies and tools and publish their resolution metadata and locks |
-| `mod` | Apply the declared semantic and structural consumer rewrites |
-| `fix` | Apply conformance repairs and the configured fixable gates |
-| `fmt` | Run the configured formatters |
-| `check` | Run the configured read-only gates and check conformance |
-| `tests` | Execute native incremental Testmon selection over the applicable population with the persistent database |
-| `help` | Discover the declared public interface without effects |
-| `build` | Produce local distribution and documentation artifacts without publishing |
-| `clean` | Remove only declared disposable resources owned by the selected target |
+| Verb | Owned operation | Inputs |
+| --- | --- | --- |
+| `setup` | Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only). | FLEXT |
+| `upg` | Resolve declared dependency and tool updates and publish their resolution metadata and locks. | — |
+| `gen` | Materialize explicitly declared new projects and publish every applicable generated projection. | — |
+| `gen-scope` | Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen. | WHAT, MODULE, SCOPE |
+| `mod` | Transform declared source structure and publish the complete coherent semantic change through the shared engines. | — |
+| `fix` | Apply declared repairs to authored inputs through their canonical owners. | — |
+| `fmt` | Format authored content through the configured formatters. | — |
+| `check` | Validate declarations, projections, environment, documentation and configured gates without repairs or publication. | CHECK_PHASE |
+| `tests` | Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database. | — |
+| `tests-full` | Execute the complete applicable population once without Testmon or a preliminary incremental run, preserving the existing database untouched. | — |
+| `help` | Discover the declared public interface without effects. | — |
+| `build` | Build local distribution and documentation artifacts without publishing them. | — |
+| `clean` | Remove only declared disposable resources owned by the selected target. | — |
 
-After phase-aware projection generation, fleet behavioral admission starts with
-`make check CHECK_PHASE=primary`, then `make tests`. Before that rollout, use the
-native composition:
-`flext-infra workspace check --repository-root <root> --phase primary` followed by
-`flext-infra workspace tests --repository-root <root> --scope all`. The primary
-producer captures the configured `make.check_prerequisite_gates` through the same
-native checker and report publisher as complete checks; a diagnostic `check run`
-report is not an original receipt. The test owners require fresh, complete,
-unfiltered global proof of that phase. Bare `make check` retains the complete
-configured quality contract, and the generated workflow still requires it after
-initial behavioral admission and before final incremental tests and publication.
-Mutating operations refresh primary source proof before the remaining acceptance
-steps; the initial tests never replace completion-cycle tests. The fast commit hook retains
-its own configured gates without requiring pytest. A successful member-only run
-never establishes fleet acceptance; all applicable checks still precede completion
-and integration.
+### Profiling and Semantic Publication Boundaries
 
 Generation and captured check processes share the validated
 `settings.Infra.profile` instrumentation setting, disabled by default.
@@ -253,15 +267,36 @@ modification use the same source authority, typed plans, engines and publisher;
 neither recursively invokes another public verb. A generated file is changed
 through its generating owner, never by a second repair or formatting writer.
 
-Within one repository invocation, each source is read and parsed exactly once:
-one native workspace model feeds every planning surface, and the executor
-rebases only the written paths between surfaces (ADR-018
-[single-read, single-batch publication](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#single-read-single-batch-publication-amended-2026-10-28-campaign-flext-pipol)).
-All planned effects of the invocation are validated as one complete candidate
-tree before any publication, and publication is a single atomic batch; the
-first causal failure retains the whole batch, leaving no partially published
-surface. No generation or modification surface re-reads the on-disk output of
-an earlier stage in place of the run's planned sources.
+**Accepted contract, implementation pending (2026-10-28, `flext-pipol`).**
+Within one repository invocation, unchanged source observations are read and
+parsed once. One native workspace model feeds every planning surface and
+refreshes changed resources and dependent facts incrementally in the same
+engine (ADR-018
+single-read, single-batch publication).
+Each small transaction stages and validates a complete dependency closure.
+The existing publication owner provides atomic visibility to cooperating
+Make/Rope readers through a common barrier, not operating-system atomicity
+across multiple files. A reader enters before bootstrap imports or any live
+configuration/source observation and stays protected for later lazy reads,
+unless it consumes an independent pinned candidate.
+
+Publication, index retirement, modes, directory effects, fast validation,
+incremental model/cache refresh and durable completion share that barrier.
+Acquire multiple scope locks in canonical physical-root order. Staged
+subprocess validators must not reacquire their parent's live barrier.
+The publisher's durable operational record rejects readers after an
+interruption until recovery is proved; process death releasing the lock
+does not establish consistency. This record is neither a tracker nor a new
+semantic index. Failure preserves its first cause and reverses only
+authenticated effects owned by that transaction, guarded against external
+edits. Shared WIP and completed independent transactions remain intact.
+
+The fast transaction validation budget is at most five seconds; total Make
+wall time remains at most sixty seconds, including barrier waits, staging,
+publication, incremental refresh and recovery. Existing performance policy
+owns these budgets; frozen lint/type policy is unchanged. A fast result
+never replaces full slice gates or public-consumer proof. These requirements
+are not receipts of current implementation or successful recovery.
 
 New-project generation consumes the target's own explicit project, integration,
 kind and provenance declarations. Workspace membership comes only from
@@ -269,11 +304,14 @@ kind and provenance declarations. Workspace membership comes only from
 `pyproject.toml` in an established repository is a failure, not scaffold intent.
 Generation never initializes remotes or creates an artificial commit.
 
-Each implementation slice reconciles its README, guides, AGENTS, ADRs, tracker
-and relevant canonical skills before code changes. Prove the public operation in
+Each implementation slice reconciles its README, guides, AGENTS, ADRs, tracker,
+existing plan files and relevant canonical skills, rules and commands before
+code changes. Prove the public operation in
 the real consumer before changing tests. Tests then validate observable behavior
 without mocks, implementation-shaped assertions, tautologies, copied
 configuration values or fallback execution.
+
+### Conformance, Environment, and Runtime Bindings
 
 The generated dispatcher invokes conformance checking only through `make check`
 and conformance repair only through `make fix`. Installing, generating,
@@ -300,14 +338,6 @@ Facades and the planned package initializers required by their imports form one
 dependent publication group. Generation reuses those initializer plans rather than
 publishing a facade against an older export map. Unrelated managed artifacts remain
 outside that group.
-
-The complete lazy plan supplied by the same invocation seeds facade convergence
-when only that repository's initializer outputs change. A changed foreign provider
-or other planned input requires export planning against that candidate first.
-Facade effects still trigger the existing export revalidation and convergence
-check before publication. Their content is compared with the candidate they
-actually read, including its planned initializers, rather than repeatedly
-comparing that candidate with the original checkout.
 
 Completed receipts retain their original input evidence. The advancing publication
 frontier contains outputs: a later phase proves those outputs before consuming them,
@@ -389,6 +419,8 @@ fresh-object identity; this rule does not extract new collection declarations.
 
 ## Verb single-pass contract
 
+### Formatter and Repair Partitioning
+
 The typed tooling and Make policy owns tool membership and capabilities; this guide
 does not maintain another gate matrix. `fix` applies declared repairs, `fmt` runs
 formatters and `check` performs read-only verification. A formatter does not become a
@@ -415,16 +447,39 @@ and use the existing guarded atomic writer.
 
 Each operation runs once for its selected inputs. Its own admission and publication
 checks remain necessary; they do not authorize a hidden global gate pass. Repeat only
-after relevant inputs change or to prove a fixed point. Normalizing bytes owned by a
-generator remains part of its single publisher, not another formatter over authored
-sources.
+after relevant inputs change or to prove a fixed point. The accepted gate-clean
+contract requires templates and renderers to produce final STRICT bytes directly;
+publication must not repair or format generated output afterward. Existing
+post-render cleanup is pending removal, not implementation proof.
 
-`make check` runs as one `flext-infra workspace check` process. The read-only
-projection verdict (`codegen conform --mode check`) runs first, so projection or lock
-skew fails as drift. The captured gates follow, keeping their own attested checker
-process, then the lane census (skipped in CI) and the documentation validation and
-audit. The first failure stops the verb. Under the commit-hook token the verb runs
-only the commit-stage gates. A dirty or changing tree is never a check condition.
+### Prerequisite and Full Check Execution
+
+`make check` runs as one `flext-infra workspace check` process
+(ADR-004).
+Its captured checker
+first executes the declared `make.check_prerequisite_gates` across the complete
+selected composition. Ruff and Pyrefly are the prerequisites: every selected
+repository must finish both without errors before any remaining gate runs.
+An interrupted or incomplete prerequisite inventory remains red. The checker retains
+each native result and runs each requested gate once; it never substitutes a sampled
+check or a separate implementation. Strict typing is repaired at the declaring owner,
+with the generated lazy `__init__.py` and explicit `__all__` contract preserved.
+Read-only prerequisites share the existing bounded CLI signal wave across repositories;
+each native tool retains its own project configuration, report directory and result.
+Repairs retain their serial publication order.
+A repository with no applicable prerequisite still runs its remaining applicable
+gates. An empty execution never proves that repository's complete check passed.
+The typed report retains the requested inventory and explicitly records pending
+applicability. Later gates elect their applicability after the prerequisites finish;
+that planning cannot delay the initial lint/type diagnostics or imply approval.
+
+The remaining captured gates follow, then the read-only projection verdict
+(`codegen conform --mode check`), lane census (outside CI), and documentation
+validation and audit. All remain mandatory. Under the commit-hook token only its
+declared commit-stage gates participate. A dirty or changing tree is never a check
+condition.
+
+### Runtime Integrity and Report Receipts
 
 The checker owns runtime integrity as a registered gate alongside the other checks.
 It invokes the existing dependency, lock, environment-provenance and toolchain
@@ -454,11 +509,11 @@ or checking; `upg` owns changes to the resolved release.
 The markdown standard lives once in `flext-infra/src/flext_infra/config/tooling.yaml`
 (`Infra.tooling.tools.markdown`) and is projected to every repository by `make gen`:
 
-- Common `MD*` rules generate the editor-compatible `markdownlint.config`
-  object inside the managed `.vscode/settings.json`. Native rumdl options and
-  its additional rules are declared separately in the same policy, never
-  copied into the editor projection. `.markdownlintignore`
-  and the native exclusions derive from the same governed scope.
+- Common `MD*` rules, native options and additional rules generate one
+  `.rumdl.toml`. The former markdownlint JSON projection is retired through the
+  codegen planner: automatic import of its unsupported context-specific options
+  caused native configuration warnings. `.markdownlintignore` and native
+  exclusions derive from the same governed scope.
 - `rumdl` is the command-line linter and reads generated `.rumdl.toml`, including
   the MkDocs dialect used by the documentation renderer. `make fix` applies its
   supported repairs; unresolved findings remain failures, not accepted exceptions.
@@ -477,16 +532,21 @@ The markdown standard lives once in `flext-infra/src/flext_infra/config/tooling.
 
 ## Test contract
 
-`make tests` is the single public suite operation. It executes the complete applicable
-inventory once, retaining the same persistent Testmon database. It does not prepend an
-incremental run, clear the cache, accept a file selector or preserve an alias for a
-retired test verb. CI and Git hooks consume this same operation.
+The public test operations and their selected modes are declared in the
+[Public Verb Matrix](#public-verb-matrix) and
+ADR-029.
+Each operation retains the complete applicable inventory, its declared selection
+and same-scope green-check prerequisite. A run does not switch modes, prepend an
+undeclared execution, clear a cache or accept a file selector. CI and Git hooks
+consume their declared operation.
 
 The execution receipt preserves the collected inventory, applicability decisions,
-executed counts and original subprocess outcomes. Zero collection, an absent manifest
-or a cache-only observation does not prove the complete suite. The native inventory
-and manifest must agree; neither may silently expand into another target. Warnings
-remain visible in the native result.
+executed counts and original subprocess outcomes. Zero collection and an absent
+manifest remain failures. An empty incremental selection is accepted only as a typed
+Testmon cache hit with database integrity and complete inventory/deselection
+accounting; it is never reported as tests passed. The native inventory and manifest
+must agree; neither may silently expand into another target. Warnings remain visible
+in the native result.
 
 Connectivity tests follow the root environment and reachability prerequisites;
 availability skips never prove connectivity or production readiness. Once a service
@@ -499,7 +559,7 @@ private-method assertions or copied configuration expectations.
 
 - The first exception, traceback, and non-zero exit propagate unchanged.
 - Warnings, empty output, and missing tools are failures. Connectivity availability
-  skips follow [root prerequisite law](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md#production-readiness-and-connectivity-tests)
+  skips follow root prerequisite law
   and never count as successful connectivity or production validation.
 - No retry, fallback, suppression, normalization, partial run, or alternate raw tool
   path can replace the canonical verb.
@@ -519,6 +579,8 @@ effects remain published. Native regression tests and runtime proof for this
 recovery case are pending; this contract is not a successful recovery receipt.
 
 ## Scope and generation
+
+### Workspace vs. Member Scope Dispatch
 
 The parent `.gitmodules` owns membership and each repository owns its typed kind and
 local policy. Local workspace generation includes the root and eligible managed
@@ -541,15 +603,11 @@ not overwritten; no shared latest writer is published. Consumers of
 `u.Infra.check_report_findings` pass the explicit invocation directory printed by
 the CLI, never the shared base or an implicitly selected latest run.
 
-Root `make check` currently checks only the root project; it is not a fleet-wide
-receipt. Run a member's standard verb from the workspace root with
-`make -f <member>/Makefile <verb>`, for example:
-
-```bash
-make -f flext-meltano/Makefile check
-make -f flext-meltano/Makefile tests
-make -f flext-meltano/Makefile build
-```
+Root `make check` checks the root and governed members through the existing
+`--scope all` checker selection. A standalone checkout selects its own repository.
+The approved campaign uses selector-free public verbs from the workspace root.
+Missing governed-member coverage is corrected at the existing dispatcher
+owner, not through a member Makefile or a new selector.
 
 The source template
 `flext-infra/src/flext_infra/templates/project/base/Makefile.j2`, in its derived-paths
@@ -557,9 +615,11 @@ and repository-root sections, binds `PROJECT_ROOT` to the selected Makefile's
 checkout rather than CWD. Attached members share the containing workspace's runtime
 environment. Standalone checkouts and member worktrees without a containing
 superproject own their runtime environment and run `make <verb>` from their own
-root. Selecting the member Makefile adds no project selector or alternate dispatcher.
+root.
 Manifest exclusions remain authoritative. Generated Make surfaces and documentation
 are changed at their template or configuration owner, then regenerated with `make gen`.
+
+### Scaffolding, Codemod Census, and Template Ownership
 
 Explicit new-project declarations let `make gen` reuse the existing scaffold service.
 The target's project identity, kind, integration and provenance are validated before
@@ -577,10 +637,7 @@ explicitly. Its service base uses the Core kernel, and separate service instance
 retain their injected settings without reading module globals. The CLI binds the
 already-composed API alias.
 
-`make mod` invokes `flext-infra refactor mod --repository-root <root>`, which
-performs the transformation directly: the operation has no apply mode and no
-rule selector, and only its `--check` and `--dry-run` inspection modes write
-nothing. It validates the rule fixtures and applies declared consumer text cutovers,
+`make mod` validates the rule fixtures and applies declared consumer text cutovers,
 then invokes the existing Rope census before the structural fixed-point cycle. The census
 derives public `c.*` paths from live facade declarations and inheritance, rewrites
 qualified import bindings, and preserves the declaration parts composing `c`.
@@ -603,6 +660,8 @@ physical scope without claiming completed generation. The publisher rechecks tho
 identities before effects. Profiling retains the same operation's outcome and raw
 evidence; wall time and function timings remain distinct.
 
+### Convergence, Shared Worktree, and Clean Rules
+
 Acceptance exercises each required public operation explicitly against workspace
 roots, selected members, independent checkouts and applicable CI contexts. Root
 mutation fanout follows declared membership; tests, checks and local builds retain
@@ -619,7 +678,7 @@ drift. An exit-zero invocation or a sample of unchanged files is insufficient: b
 observations do not cover every generated artifact. Repeated `mod`, `fix`
 and `fmt` also require zero relevant effects. Generated projections are
 gate-clean by construction (ADR-028
-[Decision 8](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-8)):
+Decision 8):
 `make gen` followed directly by `make check` is green and `make fmt` / `make fix`
 are no-ops, with zero post-adjustment, manual or automated — the engine never
 runs a fixer or formatter over its own output. A later effective change invalidates the
@@ -646,6 +705,8 @@ unreached commands remain unexecuted, never successful. Attached members share
 their physical superproject runtime, so attached validation does not substitute
 for standalone consumer proof. Ordinary root verbs remain repository-local and
 cannot, by themselves, establish a fleet-wide result.
+
+### Git Lane and Worktree Hygiene Verification
 
 The generated local `make check` includes the public
 `flext-infra workspace verify-lanes --repo-root <checkout>` gate. A workspace
@@ -706,3 +767,5 @@ governance consumer of this owner, not a second Git hygiene engine.
 - Development
 - Testing
 - Getting started
+- Codemod Rules
+- [Infra Execution Context](https://github.com/flext-sh/flext-infra/blob/0.12.0-dev/docs/guides/execution-context.md)
