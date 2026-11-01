@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
-from flext_infra import c, e, m, p
+from flext_infra import c, e, m, p, t
 from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.runtime_modules import (
@@ -379,10 +379,49 @@ class FlextInfraUtilitiesSemanticConstantSources:
         )
         if not references:
             return None
+        references = cls._constant_declaring_references(paths, references)
         if len(references) != 1:
             message = f"constant has ambiguous public owners in {path}: {references}"
             raise ValueError(message)
         return references[0]
+
+    @staticmethod
+    def _constant_declaring_references(
+        paths: Mapping[str, p.Infra.RopePyName],
+        references: t.StrTuple,
+    ) -> t.StrTuple:
+        """Drop publications a namespace only inherits from another candidate.
+
+        A namespace class that extends another candidate's namespace (for
+        example ``c.Tests`` composing ``c.Cli``) re-exposes that owner's
+        members; the extended namespace is the declaring owner. Unrelated
+        namespaces stay candidates, so a genuine ambiguity still fails.
+
+        Returns:
+            The references whose namespace no other candidate's namespace
+            precedes in native class ancestry.
+
+        """
+        namespaces = {
+            reference: paths[reference.rpartition(".")[0]].get_object()
+            for reference in references
+            if reference.rpartition(".")[0] in paths
+        }
+        return tuple(
+            reference
+            for reference in references
+            if not any(
+                other != reference
+                and other in namespaces
+                and reference in namespaces
+                and namespaces[other] is not namespaces[reference]
+                and namespaces[other]
+                in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
+                    namespaces[reference]
+                )
+                for other in references
+            )
+        )
 
     @classmethod
     def _constant_public_paths(
