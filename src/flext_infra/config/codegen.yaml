@@ -1114,12 +1114,12 @@ Infra:
       - htmlcov
       - site
       - vendor
-      # Fixture materialization and pytest collection roots. The project trees
-      # beneath each root are scenario data (operator rulings 2026-11-01): the
-      # shared scan inventory (u.Infra.ast_grep_scan_targets) leaves them out of
-      # the codemod gate and make mod, and analyzer_exclude_globs leaves them
-      # out of lint and type analysis; modules directly in a root stay governed.
-      # flext-tests derives its fixture-tree location from this owner.
+      # Fixture materialization and pytest collection roots. Fixtures are
+      # scenario data (operator ruling 2026-11-01): no linter, formatter or type
+      # checker analyzes them, and the codemod gate and make mod leave them
+      # out. Helpers that tests import live in conftest.py and u.Tests.*, never
+      # under these roots. flext-tests derives its fixture-tree location from
+      # this owner.
       scenario_data_roots:
       - tests/fixtures
     vscode:

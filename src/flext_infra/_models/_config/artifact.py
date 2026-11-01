@@ -240,9 +240,7 @@ class FlextInfraModelsConfigArtifact(
             m.Field(
                 description=(
                     "Project-relative fixture materialization and pytest collection "
-                    "roots; the project trees beneath each root are scenario data "
-                    "outside lint and type analysis, modules directly in it stay "
-                    "governed"
+                    "roots: scenario data that no analyzer lints, formats or types"
                 ),
             ),
         ] = ()
@@ -731,10 +729,6 @@ class FlextInfraModelsConfigArtifact(
         def analyzer_exclude_globs(self) -> tuple[str, ...]:
             """Project declared artifacts and walker exclusions into analyzer globs.
 
-            The project trees beneath each scenario-data root are scenario data
-            (operator ruling 2026-11-01); modules directly in the root stay
-            analyzed.
-
             Returns:
                 File patterns and recursive directory patterns, in stable order.
 
@@ -751,10 +745,7 @@ class FlextInfraModelsConfigArtifact(
                         if artifact.analysis_exclude
                     }
                     | {f"**/{name}/**" for name in self.check_excluded_dirs}
-                    | {
-                        f"**/{root}/*/**"
-                        for root in self.exclusions.scenario_data_roots
-                    }
+                    | {f"**/{root}/**" for root in self.exclusions.scenario_data_roots}
                 )
             )
 
