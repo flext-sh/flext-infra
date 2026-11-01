@@ -118,10 +118,6 @@ class TestsFlextInfraRecursiveFamilyFacades:
         """
         outcome = workspace.facade_projection(
             declared_files=declared_files,
-            planners=(
-                FlextInfraCodegenLazyInit.plan_candidate,
-                u.Infra.facade_source_project,
-            ),
             selection=selection,
         )
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(
@@ -164,7 +160,16 @@ class TestsFlextInfraRecursiveFamilyFacades:
             f"__all__ = [{name!r}]\n",
         )
         with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
-            tm.that(u.Infra.family_subfacade_owners(snapshot.engine, directory), eq=[])
+            tm.that(
+                u.Infra.facade_domain_owner_observation(
+                    snapshot.engine,
+                    directory,
+                    u.Infra.facade_component_declarations(
+                        snapshot.engine, directory.parent
+                    ),
+                ),
+                eq=[],
+            )
         tm.fail(sentinel.exists())
 
     @classmethod

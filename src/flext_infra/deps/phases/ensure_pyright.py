@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
-from pathlib import Path
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
@@ -15,6 +15,8 @@ from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import p
 
 
@@ -144,35 +146,44 @@ class FlextInfraEnsurePyrightConfigPhase:
             )
         return environments
 
-    def _diagnostic_override_envs(
+    def _diagnostic_exception_envs(
         self,
         *,
         project_dir: Path | None,
-        root_prefix: Path | None,
         source_path: str,
     ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
-        """Resolve configured overrides only when their project path exists.
+        """Render each authorized exception root before the broad environments.
+
+        Pyright elects the first environment containing a file, so each root
+        repeats the policy of its category and adds only its authorized levels.
 
         Returns:
-            The resulting ``Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]``.
+            One environment per exception that changes a Pyright rule.
 
         """
-        if project_dir is None:
-            return ()
         rules = self._tool_config.tools.pyright.path_rules
         environments: MutableSequence[m.Infra.PyrightConfig.ExecutionEnvironment] = []
-        for override in rules.diagnostic_path_overrides:
-            if not (project_dir / override.root).is_dir():
-                continue
-            resolved_root = (
-                root_prefix / override.root if root_prefix else Path(override.root)
-            ).as_posix()
+        for root, levels in u.Infra.diagnostic_exception_levels(
+            self._tool_config, c.Infra.PYRIGHT, project_dir
+        ):
+            parts = PurePosixPath(root).parts
+            env_dir = parts[0] if len(parts) > 1 else rules.project_root
+            diagnostic_levels = dict(levels)
+            report_private_usage = diagnostic_levels.pop(
+                c.Infra.REPORT_PRIVATE_USAGE,
+                self._report_private_usage_for_env(env_dir, rules=rules),
+            )
             environments.append(
                 m.Infra.PyrightConfig.ExecutionEnvironment(
-                    root=resolved_root,
-                    report_private_usage=override.report_private_usage,
-                    extra_paths=(source_path,),
-                    rationale=override.rationale,
+                    root=root,
+                    report_private_usage=report_private_usage,
+                    extra_paths=self._extra_paths_for_env(
+                        env_dir=env_dir,
+                        source_path=source_path,
+                        project_root=rules.project_root,
+                        source_dir=rules.source_dir,
+                    ),
+                    diagnostic_levels=diagnostic_levels,
                 ),
             )
         return tuple(environments)
@@ -227,13 +238,6 @@ class FlextInfraEnsurePyrightConfigPhase:
         for member, roots in self._workspace_member_roots(repository_root):
             source = self._project_source_path(prefix=member)
             environments.extend(
-                self._diagnostic_override_envs(
-                    project_dir=repository_root / member,
-                    root_prefix=Path(member),
-                    source_path=source,
-                )
-            )
-            environments.extend(
                 self._env_entry(
                     env_dir=env_dir,
                     root=f"{member}/{env_dir}",
@@ -277,9 +281,8 @@ class FlextInfraEnsurePyrightConfigPhase:
         if not is_root or repository_root is None:
             rules = self._tool_config.tools.pyright.path_rules
             return (
-                *self._diagnostic_override_envs(
+                *self._diagnostic_exception_envs(
                     project_dir=project_dir,
-                    root_prefix=None,
                     source_path=self._project_source_path(),
                 ),
                 *self._envs_for_dirs(
@@ -298,9 +301,8 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         # Specific roots precede the broad source environment.
         expected_envs.extend(
-            self._diagnostic_override_envs(
+            self._diagnostic_exception_envs(
                 project_dir=repository_root,
-                root_prefix=None,
                 source_path=root_source_path,
             ),
         )
@@ -383,6 +385,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
         """
         payload: t.JsonDict = environment.model_dump(mode="json", by_alias=True)
+        payload.update(environment.diagnostic_levels)
         return payload
 
     def _expected_excludes(

@@ -235,6 +235,57 @@ class FlextInfraUtilitiesFacadeComponents:
         )
 
     @classmethod
+    def facade_domain_owner_observation(
+        cls,
+        project: p.Infra.RopeProject,
+        domain: Path,
+        family_declarations: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
+    ) -> list[tuple[Path, str]]:
+        """Observe the declared owner of one private domain, wherever it lives.
+
+        The owner is, in order: the class the canonical sibling ``x.py``
+        declares; else the one class of ``_x`` that no other class declared
+        in ``_x`` extends (native superclasses); else a family declaration
+        that extends every such maximal part, which ``make mod`` moves to the
+        canonical sibling. A domain with none of them has no owner yet, and
+        ``make mod`` creates it.
+
+        Returns:
+            The observed owner, or no owner when the domain declares none.
+
+        """
+        canonical = domain.parent / f"{domain.name.lstrip('_')}.py"
+        declared = [
+            (path, owner) for path, owner in family_declarations if path == canonical
+        ]
+        if declared:
+            return [(path, owner.get_name()) for path, owner in declared]
+        parts = list(cls.facade_component_declarations(project, domain))
+        extended = {
+            id(ancestor)
+            for _path, owner in parts
+            for ancestor in cls._native_ancestors(owner)
+        }
+        maximal = [(path, owner) for path, owner in parts if id(owner) not in extended]
+        if len(maximal) == 1:
+            return [(maximal[0][0], maximal[0][1].get_name())]
+        required = {id(owner) for _path, owner in maximal}
+        composers = [
+            (path, owner, {id(ancestor) for ancestor in cls._native_ancestors(owner)})
+            for path, owner in family_declarations
+        ]
+        composers = [
+            (path, owner, ancestors)
+            for path, owner, ancestors in composers
+            if maximal and required <= ancestors
+        ]
+        return [
+            (path, owner.get_name())
+            for path, owner, ancestors in composers
+            if not any(id(other) in ancestors for _p, other, _a in composers)
+        ]
+
+    @classmethod
     def _family_subfacade_owner_map(
         cls,
         project: p.Infra.RopeProject,
@@ -245,48 +296,38 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> dict[Path, list[tuple[Path, str]]]:
         """Elect each domain owner by declaration, never by inference.
 
-        Composed-part publication is single-owner: the public name of a
-        private ``_x`` domain is published by the module that composes its
-        parts by native MRO extension. That owner is the canonical sibling
-        ``x.py`` when it exists, else the one class of ``_x`` that no other
-        class declared in ``_x`` extends (native superclasses). A domain with
-        no such owner or several of them is a source defect that ``make mod``
-        repairs at its owner; generation never compensates for it.
+        Composed-part publication is single-owner: generation accepts only an
+        observed owner declared by the canonical sibling ``x.py`` or inside
+        ``_x`` itself. An owner declared anywhere else, several owners or none
+        is a source defect; generation never compensates for it.
 
         Returns:
             Each requested domain with its declared owner.
 
         Raises:
-            ValueError: If a domain declares no owner or several.
+            ValueError: If a domain has no owner in place or several.
 
         """
         elected: dict[Path, list[tuple[Path, str]]] = {}
         for domain in sorted(directories):
             canonical = domain.parent / f"{domain.name.lstrip('_')}.py"
-            candidates = [
-                (path, owner)
-                for path, owner in family_declarations[domain.parent]
-                if path == canonical
-            ] or [
-                (path, owner)
-                for path, owner in cls.facade_component_declarations(project, domain)
-            ]
-            extended = {
-                id(ancestor)
-                for _path, owner in candidates
-                for ancestor in cls._native_ancestors(owner)
-            }
-            owners = [
-                (path, owner.get_name())
-                for path, owner in candidates
-                if id(owner) not in extended
-            ]
-            if len(owners) != 1:
+            owners = cls.facade_domain_owner_observation(
+                project, domain, family_declarations[domain.parent]
+            )
+            if len(owners) != 1 or not (
+                owners[0][0] == canonical or owners[0][0].is_relative_to(domain)
+            ):
+                parts = [
+                    f"{path.name}:{owner.get_name()}"
+                    for path, owner in cls.facade_component_declarations(
+                        project, domain
+                    )
+                ]
                 message = (
-                    f"Facade domain {domain} declares {len(owners)} owners "
-                    f"{[f'{path.name}:{name}' for path, name in owners]}; compose "
-                    f"its parts in one owner (canonical sibling {canonical.name}) "
-                    "with make mod"
+                    f"Facade domain {domain} has {len(owners)} owners in place "
+                    f"{[f'{path.name}:{name}' for path, name in owners]} for its "
+                    f"parts {parts}; declare the canonical sibling "
+                    f"{canonical.name} with one class composing its parts"
                 )
                 raise ValueError(message)
             elected[domain] = owners
@@ -312,6 +353,83 @@ class FlextInfraUtilitiesFacadeComponents:
             if FlextInfraUtilitiesRopeRuntimeTypes.py_class(ancestor):
                 pending.extend(ancestor.get_superclasses())
         return tuple(seen.values())
+
+    @classmethod
+    def _facade_project_classes(
+        cls,
+        project: p.Infra.RopeProject,
+        providers: Sequence[tuple[str, p.Infra.RopePyObject]],
+    ) -> dict[int, p.Infra.RopeSourceClass]:
+        """Collect every provider class and ancestor declared in this project.
+
+        Returns:
+            The project's source classes keyed by native identity.
+
+        """
+        root = Path(project.root.real_path)
+        runtime = FlextInfraUtilitiesRopeRuntimeTypes
+        classes: dict[int, p.Infra.RopeSourceClass] = {}
+        for _name, provider in providers:
+            if not runtime.py_class(provider):
+                continue
+            for klass in (provider, *cls._native_ancestors(provider)):
+                if not runtime.py_class(klass):
+                    continue
+                resource = klass.get_module().get_resource()
+                if resource is not None and Path(resource.real_path).is_relative_to(
+                    root
+                ):
+                    classes[id(klass)] = klass
+        return classes
+
+    @classmethod
+    def _facade_member_collisions(
+        cls,
+        project: p.Infra.RopeProject,
+        providers: Sequence[tuple[str, p.Infra.RopePyObject]],
+        namespace: str,
+    ) -> p.Result[bool]:
+        """Refuse a composition in which two unrelated parts declare one member.
+
+        Method resolution would silently pick one of them for every caller that
+        reaches the member through the composed facade. Only classes declared
+        in this project count; a part that extends another overrides it, and
+        parts that bind the same object (one re-export) agree. The
+        facade's own ``namespace`` class is composed from every part that
+        declares it, so its homonyms are the composition, not a collision.
+
+        Returns:
+            True, or the first member two unrelated project parts declare.
+
+        """
+        classes = cls._facade_project_classes(project, providers)
+        lineage = {
+            key: frozenset(id(a) for a in cls._native_ancestors(klass))
+            for key, klass in classes.items()
+        }
+        declaring: dict[str, list[int]] = {}
+        for key, klass in classes.items():
+            for member in klass.get_scope().get_defined_names():
+                if not member.startswith("__") and member != namespace:
+                    declaring.setdefault(member, []).append(key)
+        for member, keys in sorted(declaring.items()):
+            roots = [
+                key
+                for key in keys
+                if not any(other in lineage and key in lineage[other] for other in keys)
+            ]
+            bound = {
+                id(classes[key].get_scope().get_defined_names()[member].get_object())
+                for key in roots
+            }
+            if len(roots) > 1 and len(bound) > 1:
+                names = sorted(classes[key].get_name() for key in roots)
+                message = (
+                    f"Facade composition declares {member!r} in unrelated parts "
+                    f"{names}; rename one of them or let one part extend the other"
+                )
+                return r[bool].fail(message)
+        return r[bool].ok(value=True)
 
     @classmethod
     def render_type_facade(
@@ -689,6 +807,10 @@ class FlextInfraUtilitiesFacadeComponents:
                 if owner_name is not None
                 else (),
             ),
+        ).flat_map(
+            lambda retained: cls._facade_member_collisions(
+                project, retained[0], namespace.get_name()
+            ).map(lambda _settled: retained)
         )
         if composed.failure:
             return r[

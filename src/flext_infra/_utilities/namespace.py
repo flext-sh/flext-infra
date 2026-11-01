@@ -26,6 +26,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
@@ -512,12 +513,14 @@ class FlextInfraUtilitiesCodegenNamespace:
                 resolved_root / c.PYPROJECT_FILENAME, "isfile"
             )
         ):
-            project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
-                resolved_root,
-                FlextInfraUtilitiesDiscovery.pyproject_payload(
-                    resolved_root / c.PYPROJECT_FILENAME,
-                    source_project=rope_project,
-                ),
+            project_name = (
+                FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
+                    resolved_root,
+                    FlextInfraUtilitiesDiscovery.pyproject_payload(
+                        resolved_root / c.PYPROJECT_FILENAME,
+                        source_project=rope_project,
+                    ),
+                )
             )
         else:
             project_name = resolved_root.name
@@ -995,6 +998,13 @@ class FlextInfraUtilitiesCodegenNamespace:
             file_path,
         )
         if resource is None:
+            outside = not file_path.is_relative_to(rope_project.root.real_path)
+            if outside:
+                # A facade from another repository (an installed workspace
+                # member outside this Rope root) is not a publication surface
+                # of this repository: its shape is fixed upstream, so the
+                # inherited-shape enrichment has nothing to add.
+                return policy
             msg = f"facade source is unavailable to Rope: {file_path}"
             raise ValueError(msg)
         owner = FlextInfraUtilitiesRopeAnalysis.declared_facade_owner(

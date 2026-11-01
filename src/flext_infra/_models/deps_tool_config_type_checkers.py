@@ -6,38 +6,85 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Annotated, ClassVar
+from collections.abc import Mapping, Sequence
+from pathlib import PurePosixPath
+from typing import Annotated, ClassVar, Self
 
-from flext_cli import m
+from flext_cli import m, u
+from typing_extensions import TypeForm
 
 from flext_infra import c, t
+from flext_infra._models import FlextInfraModelsDepsToolConfigLinters
 
 
 class FlextInfraModelsDepsToolConfigTypeCheckers:
     """Type checker configuration models."""
 
+    class DiagnosticPathException(m.ContractModel):
+        """One authorized rule-level exception for an existing file or directory.
+
+        The same entry renders the Pyright execution environment and the
+        Pyrefly sub-config of its root; no second list exists.
+        """
+
+        root: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Project-relative file or directory the rules govern."),
+        ]
+        rationale: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Verified technical cause of the exception."),
+        ]
+        authorization: Annotated[
+            (
+                FlextInfraModelsDepsToolConfigLinters.TrackerAuthorization
+                | FlextInfraModelsDepsToolConfigLinters.OperatorAuthorization
+            ),
+            m.Field(description="Tracker key or verbatim operator approval."),
+        ]
+        changes: Annotated[
+            tuple[FlextInfraModelsDepsToolConfigLinters.DiagnosticRuleChange, ...],
+            m.Field(
+                min_length=1,
+                strict=False,
+                description="Rule-level changes, each naming its checker.",
+            ),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_scope(self) -> Self:
+            """Keep the root project-relative and each checker rule single-valued.
+
+            Returns:
+                The validated exception.
+
+            Raises:
+                ValueError: If the root is absolute, escapes the project, is a
+                    glob, or one checker rule changes twice.
+
+            """
+            path = PurePosixPath(self.root)
+            violations = (
+                path.is_absolute(),
+                not path.parts,
+                ".." in path.parts,
+                path.as_posix() != self.root,
+                any(token in self.root for token in "*?["),
+            )
+            if any(violations):
+                msg = (
+                    f"diagnostic exception root {self.root!r} must be a "
+                    "normalized project-relative path, not a glob"
+                )
+                raise ValueError(msg)
+            keys = [(change.checker, change.rule) for change in self.changes]
+            if len(set(keys)) != len(keys):
+                msg = f"diagnostic exception {self.root!r} changes one rule twice"
+                raise ValueError(msg)
+            return self
+
     class PyrightConfig(m.ArbitraryTypesModel):
         """Pyright strict settings loaded from YAML."""
-
-        class DiagnosticPathOverride(m.ContractModel):
-            """One evidence-backed diagnostic override for an existing path."""
-
-            root: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Project-relative override root."),
-            ]
-            report_private_usage: Annotated[
-                str,
-                m.Field(
-                    alias=c.Infra.REPORT_PRIVATE_USAGE,
-                    description="Narrow reportPrivateUsage value for this root.",
-                ),
-            ]
-            rationale: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Verified technical reason for the override."),
-            ]
 
         class ExecutionEnvironment(m.ContractModel):
             """Pyright execution environment entry."""
@@ -62,13 +109,16 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="extraPaths applied to this execution environment.",
                 ),
             ]
-            rationale: Annotated[
-                str,
+            diagnostic_levels: Annotated[
+                Mapping[str, str],
                 m.Field(
                     exclude=True,
-                    description="Non-rendered evidence for a scoped environment.",
+                    description=(
+                        "Authorized native rule levels the renderer adds to "
+                        "this environment's payload."
+                    ),
                 ),
-            ] = ""
+            ] = m.Field(default_factory=u.empty(TypeForm(Mapping[str, str])))
 
         class PathRulesConfig(m.ArbitraryTypesModel):
             """Path resolution rules loaded from YAML."""
@@ -131,15 +181,16 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     ),
                 ),
             ] = ()
-            diagnostic_path_overrides: Annotated[
+            diagnostic_path_exceptions: Annotated[
                 tuple[
-                    FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride,
+                    FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException,
                     ...,
                 ],
                 m.Field(
-                    alias="diagnostic-path-overrides",
+                    alias="diagnostic-path-exceptions",
                     description=(
-                        "Existing path roots with evidence-backed diagnostic overrides."
+                        "Authorized rule exceptions; each entry renders its Pyright "
+                        "environment and its Pyrefly sub-config."
                     ),
                 ),
             ] = ()

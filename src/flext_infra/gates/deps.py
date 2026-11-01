@@ -264,6 +264,48 @@ class FlextInfraGatesDeps(FlextInfraGates):
         ).unwrap()
         return report_dir
 
+    @staticmethod
+    def _capture_with_retry(
+        project_dir: Path,
+        report_dir: Path,
+    ) -> m.Infra.DeptryScan:
+        """Capture the deptry scan, retrying transient concurrent-write races.
+
+        Multi-agent worktrees mutate production sources while a scan runs; the
+        atomic verification rejects that lost race. Retrying the whole capture
+        on exactly this transient keeps the gate honest without masking real
+        failures, which still unwrap loud.
+
+        Returns:
+            The resulting ``m.Infra.DeptryScan``.
+
+        Raises:
+            RuntimeError: If every attempt loses the capture race, or on the
+                first non-transient capture failure.
+
+        """
+        attempts = c.Infra.SCAN_RACE_ATTEMPTS
+        backoff = c.Infra.SCAN_RACE_BACKOFF_SECONDS
+        last_error: str | None = None
+        for attempt in range(1, attempts + 1):
+            json_output_path = report_dir / "deptry.json"
+            json_output_path.unlink(missing_ok=True)
+            captured = u.Infra.capture_deptry_scan(
+                project_dir,
+                Path(sys.executable).parent,
+                config_path=project_dir / c.PYPROJECT_FILENAME,
+                json_output_path=json_output_path,
+            )
+            if captured.success:
+                return captured.value
+            detail = str(captured.error)
+            if "changed during scanning" not in detail:
+                captured.unwrap()  # non-transient: fail loud immediately
+            last_error = detail
+            time.sleep(backoff * attempt)
+        msg = f"deptry capture lost the concurrent-write race {attempts}x: {last_error}"
+        raise RuntimeError(msg)
+
     def _scan(
         self,
         project_dir: Path,
@@ -287,12 +329,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
         scan: m.Infra.DeptryScan | None = None
         try:
             report_dir = self._prepare_report_dir(project_dir, ctx)
-            scan = u.Infra.capture_deptry_scan(
-                project_dir,
-                Path(sys.executable).parent,
-                config_path=project_dir / c.PYPROJECT_FILENAME,
-                json_output_path=report_dir / "deptry.json",
-            ).unwrap()
+            scan = self._capture_with_retry(project_dir, report_dir)
             raw_output = (
                 f"cwd={project_dir} report={scan.report_state.path}\n"
                 f"return-code={scan.native.outcome.raw_return_code}\n"

@@ -118,7 +118,7 @@ class FlextInfraTransformersSemanticPublication:
                 for change in changes
             },
             lambda view_root, _paths: validator(view_root / relative),
-            options=m.Infra.CodegenSourcePreviewOptions(
+            options=m.Infra.StageSourceOptions(
                 workspaces=workspaces if len(workspaces) > 1 else (),
                 modes={
                     change.path: change.desired_mode

@@ -278,7 +278,7 @@ class FlextInfraProtocolsBase(Protocol):
             updates: Mapping[Path, str | None],
             validator: Callable[[Path, Mapping[Path, Path]], T],
             *,
-            options: m.Infra.CodegenSourcePreviewOptions | None = None,
+            options: m.Infra.StageSourceOptions | None = None,
         ) -> p.Result[T]:
             """Validate staged updates and retirements while preserving live sources."""
             ...

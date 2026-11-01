@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import ClassVar
 
 
 class FlextInfraConstantsConfig:
@@ -115,28 +114,6 @@ class FlextInfraConstantsConfig:
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
         WORKFLOWS = "workflows"
-
-    FILE_ONLY_SURFACES: ClassVar[frozenset[CodegenConformSurface]] = frozenset({
-        CodegenConformSurface.LAZY_INIT,
-        CodegenConformSurface.FACADES,
-    })
-    SELF_SCOPE_SURFACES: ClassVar[frozenset[CodegenConformSurface]] = frozenset({
-        CodegenConformSurface.ENVRC,
-        CodegenConformSurface.MISE_CONFIG,
-    })
-    # Root metadata can be planned directly, before conform-target detection.
-    DECLARED_TARGET_SURFACES: ClassVar[frozenset[CodegenConformSurface]] = (
-        SELF_SCOPE_SURFACES
-        | {
-            CodegenConformSurface.MAKEFILE,
-            CodegenConformSurface.PYPROJECT,
-            CodegenConformSurface.EDITOR,
-        }
-    )
-    # Docs still resolve a conform target, but do not require provisioned members.
-    ALLOW_UNPROVISIONED_SURFACES: ClassVar[frozenset[CodegenConformSurface]] = (
-        DECLARED_TARGET_SURFACES | {CodegenConformSurface.DOCS_CONFIG}
-    )
 
 
 __all__: list[str] = ["FlextInfraConstantsConfig"]

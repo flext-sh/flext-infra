@@ -93,30 +93,6 @@ class FlextInfraModelsCodegenTransaction:
                 raise ValueError(msg)
             return self
 
-    class CodegenSourcePreviewOptions(FlextInfraModelsBase.FrozenArbitrary):
-        """Composition scopes, observed file plans and modes of one source preview.
-
-        Generation admission retains the original declarations so the staged
-        candidate and publication describe the same updates and retirements.
-        """
-
-        workspaces: tuple[Path, ...] = m.Field(
-            default=(), description="Explicit composition scopes of the staged view"
-        )
-        modes: Mapping[Path, int] | None = m.Field(
-            default=None,
-            description="Declared file modes for the staged source updates",
-        )
-        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
-            default=(),
-            description="Original source observations materialized in the view",
-        )
-        declared_files: tuple[
-            FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...
-        ] = m.Field(
-            default=(), description="Original declarations of the candidate effects"
-        )
-
     class StageSourceOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Composition scopes, file modes and declared effects of a source candidate."""
 
