@@ -1606,8 +1606,19 @@ class FlextInfraUtilitiesFacadeComponents:
             defined = namespace.get_scope().get_defined_names().get(published_name)
             if defined is not None:
                 # Two producers of one run reaching the same publication collapse
-                # on its identity; only a different binding is an occupation.
-                if cls._same_facade_target(defined.get_object(), provider):
+                # on its identity; only a different binding is an occupation. A
+                # prior ``Name: TypeAlias = Name`` publication is an assignment
+                # whose value Python reads from the module scope, so the module
+                # binding of that name is its target.
+                target = defined.get_object()
+                if not (
+                    FlextInfraUtilitiesRopeRuntimeTypes.py_class(target)
+                    or FlextInfraUtilitiesRopeRuntimeTypes.py_function(target)
+                ):
+                    module_binding = module.get_scope().get_names().get(published_name)
+                    if module_binding is not None:
+                        target = module_binding.get_object()
+                if cls._same_facade_target(target, provider):
                     continue
                 return r[dict[str, str]].fail(
                     f"Occupied nominal facade publication: {path}:{published_name}"
