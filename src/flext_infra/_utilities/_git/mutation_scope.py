@@ -142,7 +142,7 @@ class FlextInfraUtilitiesGitMutationScope:
     def _record_mutation_holder(
         cls, lock_path: Path, holder: m.Infra.MutationLockHolder
     ) -> None:
-        u.Cli.write_atomic_bytes(
+        u.Cli.write_atomic_state(
             cls.mutation_lock_holder_path(lock_path),
             holder.model_dump_json().encode(c.DEFAULT_ENCODING),
         )
