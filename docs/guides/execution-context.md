@@ -3177,6 +3177,12 @@ same-depth domain moves, compose unordered before joining the ordered candidate;
 different peer effects conflict. Semantic seed edits retain preceding declared-plan
 metadata through the canonical semantic-edit conversion. Only genuinely absent
 sources use the creation path.
+Semantic publication normalizes the composed file changes once. Candidate validators
+consume that same admitted change tuple, and publication passes it by reference to
+the existing normalized-file publisher. Validation must not discard the accepted
+bytes and normalize the original plans again. Input verification, containment and
+publication leases remain owned by that publisher; no cache or second candidate
+representation replaces those checks.
 When complete generation invokes documentation, it supplies the composed managed
 file plans to the presentation-metadata producer. That producer projects the locale
 leaf from the candidate's desired bytes, not the physical pre-generation manifest,

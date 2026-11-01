@@ -29,8 +29,8 @@ class FlextInfraTransformersSemanticPublication:
     ) -> p.Result[tuple[Path, ...]]:
         """Compose declared projections, then publish or report pending effects.
 
-        A declared validator accepts the previewed candidate tree before any
-        live destination changes.
+        A declared validator accepts the normalized candidate before any live
+        destination changes. Publication receives those same admitted bytes.
 
         Returns:
             Published paths, the paths a publication would change when
@@ -45,36 +45,18 @@ class FlextInfraTransformersSemanticPublication:
             return r[tuple[Path, ...]].from_failure(composed)
         if not publish:
             return cls._pending_paths(composed.value)
-        if selected.validator is not None or selected.plan_validator is not None:
-            accepted = cls._accepted_candidate(
-                composed.value, repository_root, selected
-            )
-            if accepted.failure:
-                return r[tuple[Path, ...]].from_failure(accepted)
-        return u.Infra.publish_codegen_plans(repository_root, composed.value)
-
-    @staticmethod
-    def _accepted_candidate(
-        plans: Sequence[m.Infra.CodegenFilePlan],
-        repository_root: Path,
-        options: m.Infra.SemanticPublicationOptions,
-    ) -> p.Result[bool]:
-        """Preview the normalized candidate and run the consumer validator on it.
-
-        Returns:
-            Acceptance of the previewed candidate, or the first preview or
-            validator failure.
-
-        """
-        if options.validator is None and options.plan_validator is None:
-            return r[bool].ok(value=True)
-        changes = u.Infra.normalized_codegen_changes(plans)
+        changes = u.Infra.normalized_codegen_changes(composed.value)
         if changes.failure:
-            return r[bool].from_failure(changes)
-        if options.plan_validator is not None:
-            return options.plan_validator(changes.value)
-        return FlextInfraTransformersSemanticPublication._previewed_acceptance(
-            changes.value, repository_root, options
+            return r[tuple[Path, ...]].from_failure(changes)
+        accepted = (
+            selected.plan_validator(changes.value)
+            if selected.plan_validator is not None
+            else cls._previewed_acceptance(changes.value, repository_root, selected)
+        )
+        if accepted.failure:
+            return r[tuple[Path, ...]].from_failure(accepted)
+        return u.Infra.publish_normalized_codegen_plans(
+            repository_root, composed.value, changes.value
         )
 
     @staticmethod
