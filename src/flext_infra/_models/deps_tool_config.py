@@ -612,6 +612,16 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
+        ignore: Annotated[
+            Sequence[str],
+            m.Field(
+                description=(
+                    "Operator-authorized file globs jscpd skips; one project's "
+                    "tooling overlay extends the duplication gate's rendered "
+                    "scan exclusions with them."
+                ),
+            ),
+        ] = ()
 
     class MarkdownProjectedBlock(m.ArbitraryTypesModel):
         """One foreign writer's projected block that Markdown gates do not lint.

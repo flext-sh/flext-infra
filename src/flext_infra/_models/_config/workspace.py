@@ -161,11 +161,10 @@ class FlextInfraModelsConfigWorkspace:
 
         docs_audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
-            m.Field(
-                default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
-                description="Universal documentation-audit declarations",
-            ),
-        ]
+            m.Field(description="Universal documentation-audit declarations"),
+        ] = m.Field(
+            default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec
+        )
         project: Annotated[
             FlextInfraModelsConfigContexts.ProjectSpec | None,
             m.Field(description="Explicit metadata for a new project scaffold"),

@@ -462,9 +462,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Returns:
                 Whether the class defers annotations through its ancestry.
 
-            Raises:
-                TypeError: If a source provider has no module AST.
-
             """
             self._prepare_ordering()
             typing_module = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
@@ -483,9 +480,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return False
                 module_name, _name, line = identity.rsplit(":", 2)
                 tree = self._providers[module_name].get_ast()
-                if not isinstance(tree, ast.Module):
-                    message = f"Source provider has no module AST: {module_name}"
-                    raise TypeError(message)
                 declaration = next(
                     node
                     for node in ast.walk(tree)
@@ -824,14 +818,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The resolved declaration identity.
 
             Raises:
-                TypeError: If the captured module has no module AST.
                 ValueError: If no class declaration encloses the line.
 
             """
             tree = module.get_ast()
-            if not isinstance(tree, ast.Module):
-                message = f"External class has no module AST: {name}"
-                raise TypeError(message)
             path = ".".join(
                 node.name
                 for node in ast.walk(tree)
@@ -1829,8 +1819,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 message = "Rope source provider has no parsed module"
                 raise TypeError(message)
             tree = module.get_ast()
-            if not isinstance(tree, ast.Module):
-                return None
             file_name = Path(resource.real_path).name
             module_name = self._provider_name(module)
             package = (

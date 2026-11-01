@@ -134,18 +134,12 @@ class FlextInfraUtilitiesRopeImports:
         Returns:
             The import nodes of every lexical scope, in source order.
 
-        Raises:
-            TypeError: If Rope returns a non-native syntax tree.
-
         """
         tree = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project,
             source,
             resource=resource,
         ).get_ast()
-        if not isinstance(tree, ast.AST):
-            msg = "Rope import inventory requires a native syntax tree"
-            raise TypeError(msg)
         pending: list[ast.AST] = [tree]
         imports: list[t.Infra.PythonImportNode] = []
         while pending:

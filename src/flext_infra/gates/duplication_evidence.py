@@ -268,6 +268,12 @@ class FlextInfraDuplicationEvidence:
     ) -> m.Infra.DuplicationClassification:
         """Explain structural measurements without granting an exemption.
 
+        A span whose retained behavior cannot reach the declared floors is
+        sub-floor regardless of import overlap: the uncertainty names the
+        activation effects of retained bodies, and sub-floor remnants carry
+        none. Only spans with sufficient retained behavior need the
+        semantic review that import uncertainty demands.
+
         Returns:
             Disposition and evidence reason.
 
@@ -277,7 +283,7 @@ class FlextInfraDuplicationEvidence:
                 disposition="authority_data_candidate",
                 reason="Data may own policy; no format exemption",
             )
-        if format_name != "python" or any(side.uncertainty for side in measures):
+        if format_name != "python":
             return m.Infra.DuplicationClassification(
                 disposition="unresolved",
                 reason="; ".join(side.uncertainty for side in measures),
@@ -297,6 +303,11 @@ class FlextInfraDuplicationEvidence:
             return m.Infra.DuplicationClassification(
                 disposition="below_existing_behavior_floor",
                 reason="Below selected body floor; raw-hard preserved",
+            )
+        if any(side.uncertainty for side in measures):
+            return m.Infra.DuplicationClassification(
+                disposition="unresolved",
+                reason="; ".join(side.uncertainty for side in measures),
             )
         return m.Infra.DuplicationClassification(
             disposition="behavioral_candidate",

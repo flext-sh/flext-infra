@@ -184,12 +184,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         *,
         captured: bool,
     ) -> None:
-        """Captured parameters retain their annotation's original import binding.
-
-        Raises:
-            TypeError: If Rope does not retain the module's native syntax tree.
-
-        """
+        """Captured parameters retain their annotation's original import binding."""
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
         source = "from flext_infra import m as declared_models\n\n"
         source += "def outer(value: declared_models.Infra.ScopeMixin):\n"
@@ -205,9 +200,6 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             resolver = FlextInfraRefactorAccessorOrigin(rope.rope_project)
             module = resolver.module(path)
             tree = module.get_ast()
-            if not isinstance(tree, ast.AST):
-                msg = "Native receiver module has no source syntax tree"
-                raise TypeError(msg)
             receiver = next(
                 node.value
                 for node in ast.walk(tree)

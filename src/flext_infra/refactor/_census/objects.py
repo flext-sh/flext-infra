@@ -88,9 +88,6 @@ class FlextInfraRefactorCensusObjects:
         Returns:
             The resulting ``bool``.
 
-        Raises:
-            TypeError: If Census publication requires native source.
-
         """
         if item.scope_path != item.name:
             return False
@@ -107,9 +104,6 @@ class FlextInfraRefactorCensusObjects:
                         ).as_posix()
                     ),
                 )
-                if not isinstance(module, p.Infra.RopeSourceModule):
-                    msg = f"Census publication requires native source: {init_path}"
-                    raise TypeError(msg)
                 for export_name in u.Infra.public_export_names_source(module):
                     module_name, original_name = u.Infra.imported_symbol_binding_source(
                         module.source_code,

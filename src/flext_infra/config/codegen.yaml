@@ -110,97 +110,97 @@ Infra:
     # native cascade; nothing is projected into repositories.
     ast_grep:
       producers:
-        - codemod_own_package_utilities
-        - codemod_stdlib_module_utilities
-        - codemod_runtime_package_utilities
-        - codemod_generated_module_utilities
-        - codemod_package_export_utilities
-        - codemod_facade_family_package_utilities
-        - codemod_facade_package_utilities
-        - codemod_alias_utilities
-        - codemod_imported_export_utilities
-        - codemod_compose_module_utilities
-        - codemod_requested_utilities
+      - codemod_own_package_utilities
+      - codemod_stdlib_module_utilities
+      - codemod_runtime_package_utilities
+      - codemod_generated_module_utilities
+      - codemod_package_export_utilities
+      - codemod_facade_family_package_utilities
+      - codemod_facade_package_utilities
+      - codemod_alias_utilities
+      - codemod_imported_export_utilities
+      - codemod_compose_module_utilities
+      - codemod_requested_utilities
       # Project file sets a catalog rule scopes itself to through
       # metadata.scope ({in: [...], not-in: [...]}); the native stage writes
       # them into that rule's files/ignores.
       scopes:
-        - codemod_file_scopes
-        - codemod_layout_scopes
-        - codemod_declaration_scopes
-        - codemod_implementation_scopes
+      - codemod_file_scopes
+      - codemod_layout_scopes
+      - codemod_declaration_scopes
+      - codemod_implementation_scopes
       # Generated native rule documents: each renderer receives the typed
       # model of its producer and returns {rule id: native rule document}
       # (the header stage owns import-header, the catalog stage the rest).
       renderers:
-        - name: codemod_import_header_rules
-          facts: codemod_workspace_export_facts
-          shapes: [import-header]
-        - name: codemod_module_member_rules
-          facts: codemod_package_export_facts
-          shapes: [module-member]
-        # One rule for the constants facade: an inline isinstance set equal to
-        # a tuple-of-classes constant is rewired to it (one rewriter each).
-        - name: codemod_type_set_rules
-          shapes: [type-set]
-        # One rule failing and rewiring every read of a compat-marked constant
-        # to the new owner its warnings.deprecated marker names.
-        - name: codemod_compat_rules
-          shapes: [compat-read]
-        # Layer-zero import boundary rendered from the import-law classifier:
-        # a settings/config module imports neither its own root facade nor
-        # its own modules.
-        - name: codemod_layer_zero_rules
-          shapes:
-            - ban-settings-config-own-facade-import
-            - ban-settings-config-own-module-import
-        # Facade boundary (ADR-028): a library import outside the c/t/p/m/u
-        # families; stdlib, own and FLEXT facade packages are derived.
-        - name: codemod_external_import_rules
-          shapes: [ban-external-import-outside-facade-family]
-        # Typings boundary (ADR-028): a library type named inline outside the
-        # typings family; the library set is derived like the import boundary.
-        - name: codemod_library_type_rules
-          shapes: [ban-library-type-reference-outside-typings]
-        # One rule failing a real os.environ/os.getenv read; the project's
-        # layer-zero files and isolated entrypoints are ignored by path.
-        - name: codemod_ambient_environ_rules
-          shapes: [ban-ambient-environ-read]
-        # The three facade renderers below share one facade census per
-        # rendering (codemod_facade_census_facts): lineage, member references,
-        # misplaced members and component claims are derived once.
-        # One rule relocating every foreign facade reference to its owner
-        # letter (one rewriter per owner), from the facade-member census.
-        - name: codemod_facade_member_rules
-          facts: codemod_facade_census_facts
-          shapes: [relocate-facade-member]
-        # One rule per facade namespace relocating a family class read as a
-        # namespace (`Component.member`) to its letter, from the facade MRO.
-        - name: codemod_facade_component_rules
-          facts: codemod_facade_census_facts
-          shapes: [relocate-facade-component]
-        # Facade boundary (ADR-028): a facade member named after a library is
-        # read only inside the families; the library set is derived.
-        - name: codemod_library_member_name_rules
-          shapes: [ban-library-named-facade-member]
-        # The duplicate retirement and wrong-layer guidance, one document per
-        # declaring letter scoped to that letter's family files.
-        - name: codemod_facade_member_ownership_rules
-          facts: codemod_facade_census_facts
-          shapes: [retire-foreign-facade-member, facade-member-wrong-layer]
-        # The catalog rules partitioned per file group (metadata.scope
-        # .partition), rendered per project instead of elected as authored.
-        # Its shapes are those catalog declarations themselves.
-        - name: codemod_partitioned_rules
-          facts: codemod_scope_facts
-          shapes_from: codemod_partitioned_shapes
-        # The import-layer direction law: one document per importing layer,
-        # plus the settings-layer bounds, from each module's resolved layer.
-        - name: codemod_reverse_import_rules
-          shapes:
-            - ban-reverse-runtime-import
-            - ban-reverse-runtime-import-settings
-            - ban-runtime-protocols-in-settings
+      - name: codemod_import_header_rules
+        facts: codemod_workspace_export_facts
+        shapes: [ import-header ]
+      - name: codemod_module_member_rules
+        facts: codemod_package_export_facts
+        shapes: [ module-member ]
+      # One rule for the constants facade: an inline isinstance set equal to
+      # a tuple-of-classes constant is rewired to it (one rewriter each).
+      - name: codemod_type_set_rules
+        shapes: [ type-set ]
+      # One rule failing and rewiring every read of a compat-marked constant
+      # to the new owner its warnings.deprecated marker names.
+      - name: codemod_compat_rules
+        shapes: [ compat-read ]
+      # Layer-zero import boundary rendered from the import-law classifier:
+      # a settings/config module imports neither its own root facade nor
+      # its own modules.
+      - name: codemod_layer_zero_rules
+        shapes:
+        - ban-settings-config-own-facade-import
+        - ban-settings-config-own-module-import
+      # Facade boundary (ADR-028): a library import outside the c/t/p/m/u
+      # families; stdlib, own and FLEXT facade packages are derived.
+      - name: codemod_external_import_rules
+        shapes: [ ban-external-import-outside-facade-family ]
+      # Typings boundary (ADR-028): a library type named inline outside the
+      # typings family; the library set is derived like the import boundary.
+      - name: codemod_library_type_rules
+        shapes: [ ban-library-type-reference-outside-typings ]
+      # One rule failing a real os.environ/os.getenv read; the project's
+      # layer-zero files and isolated entrypoints are ignored by path.
+      - name: codemod_ambient_environ_rules
+        shapes: [ ban-ambient-environ-read ]
+      # The three facade renderers below share one facade census per
+      # rendering (codemod_facade_census_facts): lineage, member references,
+      # misplaced members and component claims are derived once.
+      # One rule relocating every foreign facade reference to its owner
+      # letter (one rewriter per owner), from the facade-member census.
+      - name: codemod_facade_member_rules
+        facts: codemod_facade_census_facts
+        shapes: [ relocate-facade-member ]
+      # One rule per facade namespace relocating a family class read as a
+      # namespace (`Component.member`) to its letter, from the facade MRO.
+      - name: codemod_facade_component_rules
+        facts: codemod_facade_census_facts
+        shapes: [ relocate-facade-component ]
+      # Facade boundary (ADR-028): a facade member named after a library is
+      # read only inside the families; the library set is derived.
+      - name: codemod_library_member_name_rules
+        shapes: [ ban-library-named-facade-member ]
+      # The duplicate retirement and wrong-layer guidance, one document per
+      # declaring letter scoped to that letter's family files.
+      - name: codemod_facade_member_ownership_rules
+        facts: codemod_facade_census_facts
+        shapes: [ retire-foreign-facade-member, facade-member-wrong-layer ]
+      # The catalog rules partitioned per file group (metadata.scope
+      # .partition), rendered per project instead of elected as authored.
+      # Its shapes are those catalog declarations themselves.
+      - name: codemod_partitioned_rules
+        facts: codemod_scope_facts
+        shapes_from: codemod_partitioned_shapes
+      # The import-layer direction law: one document per importing layer,
+      # plus the settings-layer bounds, from each module's resolved layer.
+      - name: codemod_reverse_import_rules
+        shapes:
+        - ban-reverse-runtime-import
+        - ban-reverse-runtime-import-settings
+        - ban-runtime-protocols-in-settings
 
     # SINGLE SSOT for every filesystem mode the codegen pipeline emits. Call
     # sites read these rows through config.Infra.codegen.modes; octal mode
@@ -429,7 +429,7 @@ Infra:
       mise_selector: github:jdx/mise
       mise_version: "2026.10.3"
       beads:
-        ownership_command_prefix: [direnv, exec, ., bd]
+        ownership_command_prefix: [ direnv, exec, ., bd ]
         # Beads ledger projection (.beads/config.yaml, .beads/metadata.yaml).
         # The bd and gc binaries are host tools; no project .mise.toml
         # declares them.
@@ -615,7 +615,7 @@ Infra:
       check_profile_path: .reports/check/route.pstats
       # Whole-composition prerequisites precede every other check gate.
       # A partial inventory or any diagnostic prevents subsequent phases.
-      check_prerequisite_gates: [lint, pyrefly]
+      check_prerequisite_gates: [ lint, pyrefly ]
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -729,20 +729,20 @@ Infra:
       # stops the network verbs, never degrading to anonymous. CI never runs it.
       github_credential_command: [ gh, auth, token ]
       native_environment_unset:
-        - MISE_PYTHON_UV_VENV_AUTO
-        - UV_PROJECT
-        - UV_WORKING_DIR
-        - UV_CONFIG_FILE
-        - UV_PROJECT_ENVIRONMENT
-        - UV_PYTHON
-        - UV_PYTHON_DOWNLOADS
-        - UV_NO_CONFIG
-        - UV_NO_SOURCES
-        - UV_FROZEN
-        - UV_LOCKED
-        - VIRTUAL_ENV
-        - PYTHONHOME
-        - PYTHONPATH
+      - MISE_PYTHON_UV_VENV_AUTO
+      - UV_PROJECT
+      - UV_WORKING_DIR
+      - UV_CONFIG_FILE
+      - UV_PROJECT_ENVIRONMENT
+      - UV_PYTHON
+      - UV_PYTHON_DOWNLOADS
+      - UV_NO_CONFIG
+      - UV_NO_SOURCES
+      - UV_FROZEN
+      - UV_LOCKED
+      - VIRTUAL_ENV
+      - PYTHONHOME
+      - PYTHONPATH
       setup_timeout_seconds: 118
       ci:
         variable: CI
@@ -893,7 +893,7 @@ Infra:
         description: Materialize explicitly declared new projects and publish every applicable generated projection.
         requires_activation: false
       - name: gen-scope
-        arguments: [WHAT, MODULE, SCOPE]
+        arguments: [ WHAT, MODULE, SCOPE ]
         description: Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
         requires_activation: false
       - name: mod
@@ -1127,88 +1127,85 @@ Infra:
       # Environment tokens resolve against the opened workspace or standalone checkout.
       runtime_environment_token: '${runtimeEnvironment}'
       settings:
-      - [python-envs.workspaceSearchPaths, [./.venv]]
-      - [terminal.integrated.env.linux, {PATH: '${runtimeEnvironment}/bin:${env:PATH}', VIRTUAL_ENV: '${runtimeEnvironment}'}]
-      - [ruff.interpreter, ['${runtimeEnvironment}/bin/python']]
-      - [ruff.path, ['${runtimeEnvironment}/bin/ruff']]
-      - [mypy-type-checker.interpreter, ['${runtimeEnvironment}/bin/python']]
-      - [mypy-type-checker.path, ['${interpreter}', -m, mypy]]
-      - [mypy-type-checker.cwd, '${nearestConfig}']
-      - [editor.mouseWheelZoom, true]
-      - [explorer.excludeGitIgnore, true]
-      - [files.autoSave, afterDelay]
-      - [search.useIgnoreFiles, true]
-      - [search.useGlobalIgnoreFiles, false]
-      - [search.useParentIgnoreFiles, false]
-      - [telemetry.feedback.enabled, false]
-      - [python.analysis.addExtraPathsForPythonProjects, false]
-      - [python.analysis.autoFormatStrings, true]
-      - [python.analysis.autoImportCompletions, true]
-      - [python.analysis.completeFunctionParens, true]
-      - [python.analysis.diagnosticMode, workspace]
-      - [python.analysis.diagnosticsSource, Pylance + Pyright]
-      - [python.analysis.displayEnglishDiagnostics, true]
-      - [python.analysis.enableAsyncProgram, false]
-      - [python.analysis.enableExternalTypeServer, false]
-      - [python.analysis.enableParallelIndexing, false]
-      - [python.analysis.enablePydanticSupport, true]
-      - [python.analysis.enablePyreflyShadowExperiment, false]
-      - [python.analysis.enablePyreflyNotification, false]
-      - [python.analysis.enablePyreflyNotificationForAll, false]
-      - [python.analysis.enableSnippetExtraTelemetry, false]
-      - [python.analysis.findRefsInBackgroundThread, false]
-      - [python.analysis.generateWithTypeAnnotation, true]
-      - [python.analysis.gotoOverrideCodeLens, true]
-      - [python.analysis.includeAliasesFromUserFiles, true]
-      - [python.analysis.includeExtraPathSymbolsInSymbolSearch, true]
-      - [python.analysis.includeVenvInWorkspaceSymbols, false]
-      - [python.analysis.indexing, true]
-      - [python.analysis.inlayHints.callArgumentNames, all]
-      - [python.analysis.inlayHints.functionReturnTypes, true]
-      - [python.analysis.inlayHints.pytestParameters, true]
-      - [python.analysis.inlayHints.variableTypes, true]
-      - [python.analysis.languageServerBackend, default]
-      - [python.analysis.languageServerMode, default]
-      - [python.analysis.logLevel, Information]
-      - [python.analysis.pyrightVersion, fromEnvironment]
-      - [python.analysis.referencesCodeLens, true]
-      - [python.analysis.renameInDocstrings, true]
-      - [python.analysis.showOnlyDirectDependenciesInAutoImport, false]
-      - [python.analysis.supportDocstringTemplate, true]
-      - [python.analysis.useDefaultExcludes, true]
-      - [python.analysis.useNearestConfiguration, false]
-      - [python.analysis.usePerProjectEnvironments, false]
-      - [python.analysis.userFileIndexingLimit, -1]
-      - [python.defaultInterpreterPath, '${runtimeEnvironment}/bin/python']
-      - [python.languageServer, Pylance]
-      - [python.pyrefly.diagnosticMode, workspace]
-      - [python.pyrefly.disableLanguageServices, true]
-      - [python.pyrefly.disableTypeErrors, false]
-      - [python.pyrefly.syncNotebooks, false]
-      - [python.testing.pytestEnabled, false]
-      - [python.testing.unittestEnabled, false]
-      - [python.terminal.activateEnvInCurrentTerminal, true]
-      - [python.terminal.activateEnvironment, true]
-      - [python.useEnvironmentsExtension, true]
-      - [ruff.configurationPreference, filesystemFirst]
-      - [ruff.format.preview, true]
-      - [ruff.importStrategy, fromEnvironment]
-      - [ruff.lint.preview, true]
-      - [pyrefly.lspPath, '${runtimeEnvironment}/bin/pyrefly']
-      - [shellcheck.useWorkspaceRootAsCwd, true]
-      - [shellcheck.useRepositoryRootAsCwd, true]
-      - [git.autoRepositoryDetection, subFolders]
-      - [git.detectSubmodules, true]
-      - [git.detectSubmodulesLimit, 100]
-      - [git.openRepositoryInParentFolders, always]
-      - [git.repositoryScanMaxDepth, 2]
-      - [githubPullRequests.autoRepositoryDetection, true]
-      - [githubPullRequests.ignoreSubmodules, false]
-      - [markdownlint.lintWorkspaceGlobs, ['!**/.git/**', '!**/.planning/**', '!**/.reports/**', '!**/.venv/**',
-          '!**/*.code-search', '!**/bower_components/**', '!**/build/**', '!**/dist/**', '!**/node_modules/**',
-          '!**/output/**', '!**/tmp/**', '!**/vendor/**', '**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}']]
-      - [yaml.disableSchemaDetection, ['**/.github/workflows/*.yml', '**/.github/workflows/*.yaml', '**/.gitea/workflows/*.yml',
-          '**/.gitea/workflows/*.yaml', '**/.forgejo/workflows/*.yml', '**/.forgejo/workflows/*.yaml']]
+      - [ python-envs.workspaceSearchPaths, [ ./.venv ] ]
+      - [ terminal.integrated.env.linux, { PATH: '${runtimeEnvironment}/bin:${env:PATH}', VIRTUAL_ENV: '${runtimeEnvironment}' } ]
+      - [ ruff.interpreter, [ '${runtimeEnvironment}/bin/python' ] ]
+      - [ ruff.path, [ '${runtimeEnvironment}/bin/ruff' ] ]
+      - [ mypy-type-checker.interpreter, [ '${runtimeEnvironment}/bin/python' ] ]
+      - [ mypy-type-checker.path, [ '${interpreter}', -m, mypy ] ]
+      - [ mypy-type-checker.cwd, '${nearestConfig}' ]
+      - [ editor.mouseWheelZoom, true ]
+      - [ explorer.excludeGitIgnore, true ]
+      - [ files.autoSave, afterDelay ]
+      - [ search.useIgnoreFiles, true ]
+      - [ search.useGlobalIgnoreFiles, false ]
+      - [ search.useParentIgnoreFiles, false ]
+      - [ telemetry.feedback.enabled, false ]
+      - [ python.analysis.addExtraPathsForPythonProjects, false ]
+      - [ python.analysis.autoFormatStrings, true ]
+      - [ python.analysis.autoImportCompletions, true ]
+      - [ python.analysis.completeFunctionParens, true ]
+      - [ python.analysis.diagnosticMode, workspace ]
+      - [ python.analysis.diagnosticsSource, Pylance + Pyright ]
+      - [ python.analysis.displayEnglishDiagnostics, true ]
+      - [ python.analysis.enableAsyncProgram, false ]
+      - [ python.analysis.enableExternalTypeServer, false ]
+      - [ python.analysis.enableParallelIndexing, false ]
+      - [ python.analysis.enablePydanticSupport, true ]
+      - [ python.analysis.enablePyreflyShadowExperiment, false ]
+      - [ python.analysis.enablePyreflyNotification, false ]
+      - [ python.analysis.enablePyreflyNotificationForAll, false ]
+      - [ python.analysis.enableSnippetExtraTelemetry, false ]
+      - [ python.analysis.findRefsInBackgroundThread, false ]
+      - [ python.analysis.generateWithTypeAnnotation, true ]
+      - [ python.analysis.gotoOverrideCodeLens, true ]
+      - [ python.analysis.includeAliasesFromUserFiles, true ]
+      - [ python.analysis.includeExtraPathSymbolsInSymbolSearch, true ]
+      - [ python.analysis.includeVenvInWorkspaceSymbols, false ]
+      - [ python.analysis.indexing, true ]
+      - [ python.analysis.inlayHints.callArgumentNames, all ]
+      - [ python.analysis.inlayHints.functionReturnTypes, true ]
+      - [ python.analysis.inlayHints.pytestParameters, true ]
+      - [ python.analysis.inlayHints.variableTypes, true ]
+      - [ python.analysis.languageServerBackend, default ]
+      - [ python.analysis.languageServerMode, default ]
+      - [ python.analysis.logLevel, Information ]
+      - [ python.analysis.pyrightVersion, fromEnvironment ]
+      - [ python.analysis.referencesCodeLens, true ]
+      - [ python.analysis.renameInDocstrings, true ]
+      - [ python.analysis.showOnlyDirectDependenciesInAutoImport, false ]
+      - [ python.analysis.supportDocstringTemplate, true ]
+      - [ python.analysis.useDefaultExcludes, true ]
+      - [ python.analysis.useNearestConfiguration, false ]
+      - [ python.analysis.usePerProjectEnvironments, false ]
+      - [ python.analysis.userFileIndexingLimit, -1 ]
+      - [ python.defaultInterpreterPath, '${runtimeEnvironment}/bin/python' ]
+      - [ python.languageServer, Pylance ]
+      - [ python.pyrefly.diagnosticMode, workspace ]
+      - [ python.pyrefly.disableLanguageServices, true ]
+      - [ python.pyrefly.disableTypeErrors, false ]
+      - [ python.pyrefly.syncNotebooks, false ]
+      - [ python.testing.pytestEnabled, false ]
+      - [ python.testing.unittestEnabled, false ]
+      - [ python.terminal.activateEnvInCurrentTerminal, true ]
+      - [ python.terminal.activateEnvironment, true ]
+      - [ python.useEnvironmentsExtension, true ]
+      - [ ruff.configurationPreference, filesystemFirst ]
+      - [ ruff.format.preview, true ]
+      - [ ruff.importStrategy, fromEnvironment ]
+      - [ ruff.lint.preview, true ]
+      - [ pyrefly.lspPath, '${runtimeEnvironment}/bin/pyrefly' ]
+      - [ shellcheck.useWorkspaceRootAsCwd, true ]
+      - [ shellcheck.useRepositoryRootAsCwd, true ]
+      - [ git.autoRepositoryDetection, subFolders ]
+      - [ git.detectSubmodules, true ]
+      - [ git.detectSubmodulesLimit, 100 ]
+      - [ git.openRepositoryInParentFolders, always ]
+      - [ git.repositoryScanMaxDepth, 2 ]
+      - [ githubPullRequests.autoRepositoryDetection, true ]
+      - [ githubPullRequests.ignoreSubmodules, false ]
+      - [ markdownlint.lintWorkspaceGlobs, [ '!**/.git/**', '!**/.planning/**', '!**/.reports/**', '!**/.venv/**', '!**/*.code-search', '!**/bower_components/**', '!**/build/**', '!**/dist/**', '!**/node_modules/**', '!**/output/**', '!**/tmp/**', '!**/vendor/**', '**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}' ] ]
+      - [ yaml.disableSchemaDetection, [ '**/.github/workflows/*.yml', '**/.github/workflows/*.yaml', '**/.gitea/workflows/*.yml', '**/.gitea/workflows/*.yaml', '**/.forgejo/workflows/*.yml', '**/.forgejo/workflows/*.yaml' ] ]
       map_union_settings:
         '[python]':
           diffEditor.ignoreTrimWhitespace: true
@@ -2128,7 +2125,7 @@ Infra:
           ownership:
             owner: codegen
             policy: merge
-            conflict_sections: [Infra.release.maintenance_line, Infra.release.finalize_maintenance]
+            conflict_sections: [ Infra.release.maintenance_line, Infra.release.finalize_maintenance ]
         # Repository-owned audit policy is validated from workspace.yaml,
         # rendered per project, and parsed into DocsAuditPolicySpec by the auditor.
         docs/docs_config.json:

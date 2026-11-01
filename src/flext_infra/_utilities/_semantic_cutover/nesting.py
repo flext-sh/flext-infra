@@ -1846,9 +1846,6 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         Returns:
             The existing model detector's selected nesting mapping.
 
-        Raises:
-            TypeError: If the selected module has no native module AST.
-
         """
         if (
             not path.is_relative_to(model_root)
@@ -1865,9 +1862,6 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ),
         )
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            message = f"singleton model requires a native module: {path}"
-            raise TypeError(message)
         return cls._singleton_model_namespace(
             project,
             path,

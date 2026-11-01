@@ -331,8 +331,6 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         """
         pymodule = FlextInfraUtilitiesRopeAnalysisAstHelpers.parse_string_module(source)
         tree = pymodule.get_ast()
-        if not isinstance(tree, ast.Module):
-            return ()
         return FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_module(tree)
 
     @staticmethod

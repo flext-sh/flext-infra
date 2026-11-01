@@ -404,16 +404,14 @@ exclude = [
   "**/incoming/**",
   "**/legado/**",
   "**/node_modules/**",
-  "**/protos/**",
   "**/reports/**",
   "**/site-packages/**",
   "**/site/**",
   "**/target/**",
-  "**/tests/fixtures/**",
   "**/venv/**",
 ]
 extraPaths = ["src", "."]
-include = ["conftest.py", "src", "tests"]
+include = ["conftest.py", "scripts", "src", "tests"]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportCallIssue = "error"
@@ -433,6 +431,13 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 useLibraryCodeForTypes = true
+venv = ".venv"
+venvPath = ".."
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = [".", "src"]
+reportPrivateUsage = "error"
+root = "scripts"
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src", "."]

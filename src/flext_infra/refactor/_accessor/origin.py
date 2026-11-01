@@ -127,7 +127,6 @@ class FlextInfraRefactorAccessorOrigin:
 
         Raises:
             ValueError: If ancestry is cyclic, inconsistent or unresolved.
-            TypeError: If the defining module has no syntax tree.
 
         """
         owner = u.Infra.require_class_object(owner, "accessor lineage")
@@ -146,9 +145,6 @@ class FlextInfraRefactorAccessorOrigin:
                 msg = f"accessor class has no defining module: {owner.get_name()}"
                 raise ValueError(msg)
             tree = module.get_ast()
-            if not isinstance(tree, ast.AST):
-                msg = "Rope class source has no syntax tree"
-                raise TypeError(msg)
             declaration = next(
                 (
                     node
@@ -698,17 +694,11 @@ class FlextInfraRefactorAccessorOrigin:
         Returns:
             Its qualified declaration path, or None for a non-class binding.
 
-        Raises:
-            TypeError: If the defining module has no native Python module AST.
-
         """
         module, line = binding.get_definition_location()
         if module is None or line is None:
             return None
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "Accessor definition module has no Python module AST"
-            raise TypeError(msg)
         classes: MutableSequence[ast.ClassDef] = [
             node
             for node in ast.walk(tree)

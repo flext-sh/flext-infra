@@ -91,16 +91,12 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             Original destinations, or the elected hierarchical declaration paths.
 
         Raises:
-            TypeError: The provider lacks a native module AST.
             ValueError: An isolated declaration scope cannot preserve its bindings.
 
         """
         if not definitions:
             return definitions
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "class-nesting declarations require a native module AST"
-            raise TypeError(msg)
         owner = next(iter(definitions.values()))
         binding = module.get_scope().get_defined_names().get(owner)
         scope = (
@@ -705,8 +701,6 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
         """
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            return None
         classes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
         if len(classes) != 1:
             return None

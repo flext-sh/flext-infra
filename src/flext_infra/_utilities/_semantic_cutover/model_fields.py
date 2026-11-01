@@ -85,7 +85,7 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         tree = module.get_ast()
-        if rule.call_target is None or not isinstance(tree, ast.AST):
+        if rule.call_target is None:
             msg = f"{rule.id}: native field metadata has no original callee AST"
             raise ValueError(msg)
         captured = match.get_ast(rule.call_target)

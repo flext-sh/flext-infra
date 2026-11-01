@@ -84,20 +84,26 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
                 if part
             ),
         )
+        assessment: m.Infra.DuplicationAssessment | None = None
         if report is not None and overrides.success:
-            issues = (
-                *issues,
-                *self._assessment_issues(
-                    (report, overrides.value),
-                    project_dir,
-                    evidence,
-                    (
-                        f"return_code={scan.outcome.raw_return_code}; "
-                        f"timed_out={scan.outcome.timed_out}; "
-                        f"signal={scan.outcome.forwarded_signal}; "
-                        f"{not_executed}; {skipped_roots}".rstrip("; ")
-                    ),
+            assessment_failures, assessment = self._publish_assessment(
+                (report, overrides.value),
+                project_dir,
+                evidence,
+                (
+                    f"return_code={scan.outcome.raw_return_code}; "
+                    f"timed_out={scan.outcome.timed_out}; "
+                    f"signal={scan.outcome.forwarded_signal}; "
+                    f"{not_executed}; {skipped_roots}".rstrip("; ")
                 ),
+            )
+            issues = (
+                *(
+                    self._blocking_issues(report, issues, assessment, project_dir)
+                    if assessment is not None
+                    else issues
+                ),
+                *assessment_failures,
             )
         outcome = (
             c.Infra.ToolOutcome.ERROR
@@ -161,17 +167,18 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             issues = (*issues, self._tool_failure_issue(scan))
         return report, issues, tool_failed
 
-    def _assessment_issues(
+    def _publish_assessment(
         self,
         assessed: tuple[m.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
         project_dir: Path,
         evidence: m.Infra.GateOutputReceipt,
         execution: str,
-    ) -> tuple[m.Infra.Issue, ...]:
+    ) -> tuple[tuple[m.Infra.Issue, ...], m.Infra.DuplicationAssessment | None]:
         """Publish the duplication assessment beside its receipt.
 
         Returns:
-            The assessment's own failures; none when it is clean.
+            The assessment's own failure issues and the published assessment
+            (``None`` when the source analysis itself failed).
 
         """
         report, overrides = assessed
@@ -184,19 +191,84 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
                 execution=execution,
             )
         except (OSError, ValueError) as exc:
-            return (self._failure_issue(f"duplication assessment: {exc}"),)
+            failure = (self._failure_issue(f"duplication assessment: {exc}"),)
+            return failure, None
         u.Cli.atomic_write_text_file(
             evidence.path.with_suffix(".assessment.json"),
             assessment.model_dump_json(indent=2),
         ).unwrap()
+        analysis_failures: tuple[m.Infra.Issue, ...] = ()
         if assessment.counts.get("analysis_error", 0):
-            return (
+            analysis_failures = (
                 self._failure_issue(
                     "duplication assessment contains source analysis errors; "
                     "see assessment receipt",
                 ),
             )
-        return ()
+        return analysis_failures, assessment
+
+    def _blocking_issues(
+        self,
+        report: m.Infra.JscpdReport,
+        issues: tuple[m.Infra.Issue, ...],
+        assessment: m.Infra.DuplicationAssessment,
+        project_dir: Path,
+    ) -> tuple[m.Infra.Issue, ...]:
+        """Keep every raw clone issue the assessment holds behavioral.
+
+        The assessment vocabulary already declares which spans carry no
+        reviewable behavior: only removable syntax, or retained bodies below
+        the selected floor. Those clones stay in the lossless assessment
+        receipt with their disposition and never vanish from evidence; they
+        stop failing the gate because there is no duplicated behavior to
+        repair. Import overlap alone never reaches this filter: a clone
+        whose retained bodies reach both floors stays ``unresolved`` and
+        blocking.
+
+        Returns:
+            The resulting behavioral issues, aligned with the raw duplicates.
+
+        """
+        blocking = {
+            candidate.canonical_index
+            if candidate.canonical_index == candidate.index
+            else candidate.index
+            for candidate in assessment.candidates
+            if candidate.disposition
+            not in {"non_behavioral_only", "below_existing_behavior_floor"}
+        }
+        aligned: list[int] = []
+        seen_pairs: set[str] = set()
+        for index, duplicate in enumerate(report.duplicates):
+            sides = (duplicate.first_file, duplicate.second_file)
+            spans = tuple(self._typed_side_span_key(side) for side in sides)
+            if spans[0] == spans[1]:
+                continue
+            if not any(Path(side.name).is_relative_to(project_dir) for side in sides):
+                continue
+            pair = "|".join(sorted(spans))
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+            aligned.append(index)
+        return tuple(
+            issues[issue_index]
+            for issue_index, duplicate_index in enumerate(aligned)
+            if duplicate_index in blocking
+        )
+
+    @staticmethod
+    def _typed_side_span_key(side: m.Infra.JscpdFile) -> str:
+        """Return one typed clone side's raw-issue span identity.
+
+        Returns:
+            The resulting ``<file>:<start>:<end>`` key.
+
+        """
+        raw = side.name
+        file_name, separator, _language = raw.rpartition(":")
+        name = file_name if separator and file_name and "." in file_name else raw
+        return f"{name}:{side.start_location.line}:{side.end_location.line}"
 
     def _scan_project(
         self,
@@ -479,7 +551,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
         """Record merged project overlay exclusions beside the receipt.
 
         What the gate skipped must stay visible: the note names the merged
-        counts. An invalid overlay already fails the render, so it is never
+        count. An invalid overlay already fails the render, so it is never
         silently swallowed here.
 
         Returns:
@@ -487,16 +559,9 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
 
         """
         overlay = self._project_overlay(project_dir)
-        if overlay.failure:
+        if overlay.failure or not overlay.value.ignore:
             return ""
-        merged_globs = len(overlay.value.ignore)
-        merged_patterns = len(overlay.value.ignore_patterns)
-        if not merged_globs and not merged_patterns:
-            return ""
-        return (
-            "jscpd project overlay merged: "
-            f"{merged_globs} globs, {merged_patterns} patterns"
-        )
+        return f"jscpd project overlay merged: {len(overlay.value.ignore)} globs"
 
     def _declared_duplication_trees(self) -> p.Result[Sequence[str]]:
         """Read duplication scope from the target's selected repository delta.
@@ -547,7 +612,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
             ignore=(*self._derived_ignore_patterns(), *overlay.value.ignore),
-            ignorePattern=(*passes.ignore_patterns, *overlay.value.ignore_patterns),
+            ignorePattern=passes.ignore_patterns,
             minLines=overrides.min_lines,
             minTokens=overrides.min_tokens,
             mode=overrides.mode,

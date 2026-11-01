@@ -5,6 +5,8 @@
 - [Authorization](#authorization)
 - [Source revisions](#source-revisions)
 - [Publication and verification](#publication-and-verification)
+- [Verification without provider homes](#verification-without-provider-homes)
+- [Failure boundary](#failure-boundary)
 
 <!-- TOC END -->
 

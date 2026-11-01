@@ -121,7 +121,7 @@ class TestsFlextInfraPytestCollectionManifest:
             f"{c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION}={target}",
             markdown=(
                 "```text\nnot Python\n```\n"
-                "```python notest\nraise RuntimeError('not executed')\n```\n"
+                "```python\nraise RuntimeError('not executed')\n```\n"
                 "```python\nvalue = 1\n```\n"
                 "```python continuation\nassert value == 1\n```\n"
             ),

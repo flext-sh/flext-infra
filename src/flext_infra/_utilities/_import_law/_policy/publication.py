@@ -412,7 +412,6 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
 
         Raises:
             ValueError: If the method needs facade dispatch or is not published.
-            TypeError: If the source declaration is not a module AST.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntime
@@ -427,9 +426,6 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             msg = f"model utility has no source owner: {qualified}"
             raise ValueError(msg)
         tree = holder.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = f"model utility has no source declaration: {qualified}"
-            raise TypeError(msg)
         declarations = [
             (owner, method)
             for owner in tree.body
