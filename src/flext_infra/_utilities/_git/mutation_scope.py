@@ -13,7 +13,6 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from filelock import Timeout
 from flext_cli import u
 from git import GitError, Repo
 from git.repo.fun import is_git_dir
@@ -107,28 +106,45 @@ class FlextInfraUtilitiesGitMutationScope:
 
     @classmethod
     def mutation_lock_holder(cls, lock_path: Path) -> m.Infra.MutationLockHolder | None:
-        """Read the recorded holder of ``lock_path`` without touching the lock.
+        """Read the last recorded holder of ``lock_path`` without touching the lock.
+
+        The record is replaced atomically and never deleted, so a reader sees
+        either no record (no recording writer ever held the lock) or a whole one.
 
         Returns:
-            The recorded holder, or ``None`` while no recording writer holds it.
+            The last recorded holder, or ``None`` when none was ever recorded.
 
         """
-        try:
-            raw = cls.mutation_lock_holder_path(lock_path).read_bytes()
-        except FileNotFoundError:
+        record = cls.mutation_lock_holder_path(lock_path)
+        if not record.is_file():
             return None
-        return m.Infra.MutationLockHolder.model_validate_json(raw)
+        return m.Infra.MutationLockHolder.model_validate_json(record.read_bytes())
 
     @classmethod
     def _mutation_holder_text(cls, lock_path: Path) -> str:
         holder = cls.mutation_lock_holder(lock_path)
         if holder is None:
-            # A plain publisher records nothing; a holding operation records
-            # itself right after acquiring, so the first poll can precede it.
             return "an unrecorded holder"
+        if holder.released_at is not None:
+            # A plain publisher records nothing, and a holding operation
+            # records itself right after acquiring: the last record is closed.
+            return (
+                f"an unrecorded holder (last recorded: {holder.operation} "
+                f"pid={holder.pid} released "
+                f"{holder.released_at:%Y-%m-%dT%H:%M:%SZ})"
+            )
         return (
             f"pid={holder.pid} operation={holder.operation} "
             f"since={holder.acquired_at:%Y-%m-%dT%H:%M:%SZ}"
+        )
+
+    @classmethod
+    def _record_mutation_holder(
+        cls, lock_path: Path, holder: m.Infra.MutationLockHolder
+    ) -> None:
+        u.Cli.write_atomic_bytes(
+            cls.mutation_lock_holder_path(lock_path),
+            holder.model_dump_json().encode(c.DEFAULT_ENCODING),
         )
 
     @classmethod
@@ -138,8 +154,8 @@ class FlextInfraUtilitiesGitMutationScope:
 
         A held lock is polled read-only until the configured deadline; every
         report interval names the recorded holder and the elapsed wait. The
-        outermost holder records itself beside the lock and removes only that
-        record. Nested writers in the same thread re-enter the same lock.
+        outermost holder records itself beside the lock and closes that record
+        before releasing. Nested writers in the same thread re-enter the lock.
 
         Yields:
             The held lock path.
@@ -172,33 +188,46 @@ class FlextInfraUtilitiesGitMutationScope:
                 poll_interval=spec.poll_interval_seconds,
                 cancel_check=report_wait,
             )
-        except Timeout as exc:
+        except TimeoutError as exc:
             msg = (
                 f"{operation}: mutation lock {lock_path} still held after "
                 f"{spec.wait_deadline_seconds:.0f}s by "
                 f"{cls._mutation_holder_text(lock_path)}"
             )
             raise TimeoutError(msg) from exc
-        holder_path = cls.mutation_lock_holder_path(lock_path)
-        outermost = lock.lock_counter == 1
+        if lock.lock_counter > 1:
+            try:
+                yield lock_path
+            finally:
+                lock.release()
+            return
+        holder = m.Infra.MutationLockHolder(
+            pid=os.getpid(),
+            operation=operation,
+            root=root.resolve(),
+            acquired_at=datetime.now(UTC),
+            released_at=None,
+        )
         try:
-            if outermost:
-                u.Cli.write_atomic_bytes(
-                    holder_path,
-                    m.Infra
-                    .MutationLockHolder(
-                        pid=os.getpid(),
-                        operation=operation,
-                        root=root.resolve(),
-                        acquired_at=datetime.now(UTC),
-                    )
-                    .model_dump_json()
-                    .encode(c.DEFAULT_ENCODING),
-                )
+            cls._record_mutation_holder(lock_path, holder)
             yield lock_path
+        except BaseException as original:
+            # Rollback keeps the original failure as the one re-raised and
+            # attaches a failed record close to its causal evidence.
+            try:
+                cls._record_mutation_holder(
+                    lock_path,
+                    holder.model_copy(update={"released_at": datetime.now(UTC)}),
+                )
+            except OSError as cleanup:
+                original.add_note(f"mutation holder record not closed: {cleanup!r}")
+            raise
+        else:
+            cls._record_mutation_holder(
+                lock_path,
+                holder.model_copy(update={"released_at": datetime.now(UTC)}),
+            )
         finally:
-            if outermost:
-                holder_path.unlink(missing_ok=True)
             lock.release()
 
 

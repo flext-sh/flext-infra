@@ -42,6 +42,10 @@ class FlextInfraModelsGitWorktreeState:
         acquired_at: Annotated[
             datetime, m.Field(description="UTC instant the lock was acquired")
         ]
+        released_at: Annotated[
+            datetime | None,
+            m.Field(description="UTC instant the holder released; none while held"),
+        ]
 
     class GitWorktreeCheckpointPublication(m.ContractModel):
         """Exact credential-free endpoint and durable remote checkpoint proof."""
