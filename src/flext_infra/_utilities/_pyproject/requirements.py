@@ -596,7 +596,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         if selected.failure:
             return r[tuple[str, str]].from_failure(selected)
         candidate_url, candidate_commit = selected.value
-        if not FlextInfraUtilitiesGitRequirementSource.ref_is_commit(candidate_commit):
+        if c.Infra.GIT_COMMIT_OID_RE.fullmatch(candidate_commit) is None:
             return r[tuple[str, str]].fail(
                 f"candidate dependency must pin a full Git commit: {dependency_name}",
             )

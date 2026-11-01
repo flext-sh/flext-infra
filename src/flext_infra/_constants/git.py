@@ -28,6 +28,11 @@ class FlextInfraConstantsGit:
     )
     "Full SHA-1 or SHA-256 commit object identity."
 
+    GIT_COMMIT_REF_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^(?:[0-9a-f]{7,40}|[0-9a-f]{64})$",
+    )
+    "A ref naming a commit, abbreviated or full, rather than an integration line."
+
     GIT_UNBORN_HEAD_ERROR_CODE: ClassVar[str] = "GIT_UNBORN_HEAD"
     "Identity is unavailable because HEAD names a branch that has no ref yet."
     GIT_UNBORN_HEAD_MARKER: ClassVar[str] = "UNBORN"
