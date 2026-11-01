@@ -967,7 +967,7 @@ class FlextInfraUtilitiesFacadeComponents:
         admitted = (
             frozenset({directory.resolve(), barrel.resolve()})
             if generated
-            else frozenset(),
+            else frozenset[Path](),
             Path(project.root.real_path).resolve(),
         )
         proven: list[tuple[m.Infra.SourceClassReference]] = []
@@ -1826,7 +1826,7 @@ class FlextInfraUtilitiesFacadeComponents:
         retired = (
             cls._facade_retired_bindings(index, actual, source)
             if source.startswith(c.Infra.AUTOGEN_HEADER)
-            else frozenset()
+            else frozenset[tuple[int, int]]()
         )
         body_source = cls._facade_alias_body_parts(
             index, scope, source, (layout.header_end, end), (alias_names, retired)
