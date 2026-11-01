@@ -240,7 +240,7 @@ class FlextInfraModelsConfigArtifact(
             m.Field(
                 description=(
                     "Project-relative fixture materialization and pytest collection "
-                    "roots; Python contents remain governed by lint and type analysis"
+                    "roots: scenario data that no analyzer lints, formats or types"
                 ),
             ),
         ] = ()
@@ -745,6 +745,7 @@ class FlextInfraModelsConfigArtifact(
                         if artifact.analysis_exclude
                     }
                     | {f"**/{name}/**" for name in self.check_excluded_dirs}
+                    | {f"**/{root}/**" for root in self.exclusions.scenario_data_roots}
                 )
             )
 

@@ -276,10 +276,12 @@ class FlextInfraModelsDocsGeneration:
                 for artifact in item.artifacts
             )
             metadata_paths = tuple(plan.path for plan in self.metadata_files)
-            allowed_metadata = {
-                item.scope.path / c.PYPROJECT_FILENAME for item in self.scopes
-            }
-            if any(path not in allowed_metadata for path in metadata_paths):
+            scope_roots = {item.scope.path for item in self.scopes}
+            if any(
+                plan.project not in scope_roots
+                or not plan.path.is_relative_to(plan.project)
+                for plan in self.metadata_files
+            ):
                 msg = "docs metadata target is outside its selected scope"
                 raise ValueError(msg)
             destinations = (*destinations, *metadata_paths)
