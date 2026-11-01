@@ -313,54 +313,6 @@ class FlextInfraUtilitiesFacadeComponents:
                 pending.extend(ancestor.get_superclasses())
         return tuple(seen.values())
 
-    @staticmethod
-    def _composed_member_suppliers(
-        owner: p.Infra.RopeSourceClass,
-        index: p.Infra.RopeSourceBindingIndex,
-        *,
-        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
-        project: p.Infra.RopeProject,
-    ) -> list[p.Infra.RopePyObject]:
-        """Collect class members and nested type bases a composed owner supplies.
-
-        Returns:
-            Class-valued assignment targets and nested type-namespace bases.
-
-        """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
-        member_suppliers: list[p.Infra.RopePyObject] = []
-        pending = [owner]
-        while pending:
-            holder = pending.pop()
-            member_suppliers.extend(
-                binding.value_binding.get_object()
-                for declaration in index.assignment_layouts(holder.get_scope())
-                if declaration.targets
-                and declaration.targets[0][0] != c.Infra.MODEL_CONFIG_ATTRIBUTE
-                for binding in index.assignment_layouts(
-                    holder.get_scope(),
-                    name=declaration.targets[0][0],
-                    resolve_values=True,
-                )
-                if binding.region == declaration.region
-                and binding.value_binding is not None
-                and types.py_class(binding.value_binding.get_object())
-            )
-            for scope in holder.get_scope().get_scopes():
-                nested = scope.pyobject
-                if (
-                    types.py_class(nested)
-                    and FlextInfraUtilitiesFacadeMembers.class_kind(
-                        nested,
-                        resolver_factory=resolver_factory,
-                        source_project=project,
-                    )
-                    is c.Infra.FacadeMemberKind.TYPE
-                ):
-                    member_suppliers.extend(nested.get_superclasses())
-                    pending.append(nested)
-        return member_suppliers
-
     @classmethod
     def render_type_facade(
         cls,
@@ -1979,51 +1931,6 @@ class FlextInfraUtilitiesFacadeComponents:
         )
 
     @classmethod
-    def facade_composes_class(
-        cls,
-        owner: p.Infra.RopeSourceClass,
-        *,
-        source_project: p.Infra.RopeProject,
-    ) -> bool:
-        """Authenticate a holder through its published family's native ancestry.
-
-        The family catalog locates the publisher, never elects a class name.
-        Ordinary type publications outside that exact ancestry remain types.
-
-        Returns:
-            Whether an existing public namespace composes this native class.
-
-        """
-        resource = owner.get_module().get_resource()
-        if resource is None:
-            return False
-        root = Path(source_project.root.real_path)
-        for directory in Path(resource.real_path).parents:
-            if not directory.is_relative_to(root):
-                break
-            for (
-                family
-            ) in FlextInfraUtilitiesCodegenNamespace.facade_families().values():
-                if directory.name != family.directory:
-                    continue
-                publisher = source_project.get_pymodule(
-                    source_project.get_folder(
-                        directory.parent.relative_to(root).as_posix()
-                    )
-                )
-                package = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-                    publisher, source_project=source_project
-                )
-                if any(
-                    owner is holder or owner in cls._component_ancestors(holder)
-                    for holder, _target in cls._facade_namespace_holders(
-                        package, (family.letter,), source_project=source_project
-                    )
-                ):
-                    return True
-        return False
-
-    @classmethod
     def plan_component_consumers(
         cls,
         root: Path,
@@ -2083,38 +1990,6 @@ class FlextInfraUtilitiesFacadeComponents:
                     )
                 )
         return tuple(plans)
-
-    @classmethod
-    def facade_component_references(
-        cls, project: Path, *, source_project: p.Infra.RopeProject
-    ) -> Mapping[tuple[str, str], frozenset[str]]:
-        """Map each facade namespace to the component references it composes.
-
-        A facade letter, or a namespace class nested in it, composes family
-        component classes by MRO (``class Infra(FlextInfraConstantsPytest)``).
-        Each public method a lineage component declares yields the exact
-        ``Component.member`` text under ``letter`` or ``letter.Namespace``
-        when the namespace binds the identical object; a reference two
-        namespaces would both claim is ambiguous and never relocates.
-
-        Returns:
-            Component references keyed by the composing root package and the
-            ``letter[.Namespace]`` target.
-
-        """
-        claims: dict[str, set[tuple[str, str]]] = {}
-        for (base, member), targets in cls._component_claims(
-            project, source_project=source_project
-        ).items():
-            reference = f"{base.get_name()}.{member}"
-            claims.setdefault(reference, set()).update(
-                (root, target) for root, target, _holder in targets
-            )
-        references: dict[tuple[str, str], set[str]] = {}
-        for reference, targets in claims.items():
-            if len(targets) == 1:
-                references.setdefault(next(iter(targets)), set()).add(reference)
-        return {key: frozenset(found) for key, found in sorted(references.items())}
 
     @staticmethod
     def _facade_namespace_holders(
