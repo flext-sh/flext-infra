@@ -1,4 +1,4 @@
-"""Ruff and Mypy tool configuration models for the deps subpackage.
+"""Ruff, Mypy and diagnostic-authorization models for the deps subpackage.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
+from datetime import date
 from typing import Annotated, Self
 
 from flext_cli import m
@@ -17,6 +19,95 @@ from flext_infra._models import FlextInfraModelsDepsToolConfigProject
 
 class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProject):
     """Linters tool configuration models."""
+
+    class TrackerAuthorization(m.ContractModel):
+        """Authorization recorded under one canonical tracker key."""
+
+        tracker_key: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                alias="tracker-key",
+                description="Tracker memory or item key recording the approval.",
+            ),
+        ]
+
+    class OperatorAuthorization(m.ContractModel):
+        """Authorization quoted verbatim from the operator."""
+
+        operator_words: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                alias="operator-words",
+                description="The operator's approval, verbatim.",
+            ),
+        ]
+        authorized_on: Annotated[
+            date,
+            m.Field(
+                alias="date",
+                strict=False,
+                description="Calendar date on which the operator approved.",
+            ),
+        ]
+        channel: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Channel and session that carried the approval."),
+        ]
+
+    class DiagnosticRuleChange(m.ContractModel):
+        """One checker rule moved from its policy level to an authorized level."""
+
+        checker: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Type checker owning the rule."),
+        ]
+        rule: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Native rule name of that checker."),
+        ]
+        old: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Level the policy applies outside the exception."),
+        ]
+        new: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Level authorized inside the exception root."),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_native_vocabulary(self) -> Self:
+            """Accept only native rule names and levels of the declared checker.
+
+            Returns:
+                The validated change.
+
+            Raises:
+                ValueError: If the checker, rule, or a level is not native, or
+                    the change keeps the policy level.
+
+            """
+            levels = c.Infra.DIAGNOSTIC_LEVELS.get(self.checker)
+            if levels is None:
+                msg = (
+                    f"unknown checker {self.checker!r}; declare one of "
+                    f"{sorted(c.Infra.DIAGNOSTIC_LEVELS)}"
+                )
+                raise ValueError(msg)
+            pattern = c.Infra.DIAGNOSTIC_RULE_PATTERNS[self.checker]
+            if re.fullmatch(pattern, self.rule) is None:
+                msg = f"{self.rule!r} is not a native {self.checker} rule name"
+                raise ValueError(msg)
+            for level in (self.old, self.new):
+                if level not in levels:
+                    msg = (
+                        f"{level!r} is not a native {self.checker} level; "
+                        f"declare one of {sorted(levels)}"
+                    )
+                    raise ValueError(msg)
+            if self.old == self.new:
+                msg = f"{self.checker} {self.rule} keeps level {self.old!r}"
+                raise ValueError(msg)
+            return self
 
     class RuffTypeCheckingConfig(m.ArbitraryTypesModel):
         """Ruff flake8-type-checking settings loaded from YAML."""

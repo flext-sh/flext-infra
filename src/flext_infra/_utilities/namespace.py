@@ -998,6 +998,13 @@ class FlextInfraUtilitiesCodegenNamespace:
             file_path,
         )
         if resource is None:
+            outside = not file_path.is_relative_to(rope_project.root.real_path)
+            if outside:
+                # A facade from another repository (an installed workspace
+                # member outside this Rope root) is not a publication surface
+                # of this repository: its shape is fixed upstream, so the
+                # inherited-shape enrichment has nothing to add.
+                return policy
             msg = f"facade source is unavailable to Rope: {file_path}"
             raise ValueError(msg)
         owner = FlextInfraUtilitiesRopeAnalysis.declared_facade_owner(

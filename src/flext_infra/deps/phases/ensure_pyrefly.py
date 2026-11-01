@@ -99,6 +99,21 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 )
             ),
         })
+        # The same authorized entries render Pyright environments; Pyrefly
+        # scopes them through glob-matched sub-configs relative to this file.
+        sub_configs: list[t.JsonValue] = [
+            {
+                c.Infra.SUB_CONFIG_MATCHES: root,
+                c.Infra.SUB_CONFIG_ERRORS: dict(levels),
+            }
+            for root, levels in u.Infra.diagnostic_exception_levels(
+                self._tool_config,
+                c.Infra.PYREFLY,
+                context.repository_root if context.is_root else project_dir,
+            )
+        ]
+        if sub_configs:
+            options[c.Infra.SUB_CONFIG] = sub_configs
         toml = m.Infra.DepsToml
         return toml.PhaseConfig(
             name="pyrefly",
