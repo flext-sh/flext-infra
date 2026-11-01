@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import config, e, infra, m, p, r
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraCodemodBatchApply
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class _RecordingProgress:
@@ -244,7 +244,7 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
 def _run(
     project: Path,
     *phases: p.Infra.ModLoopPhase,
-) -> tuple[p.Result[bool], _RecordingProgress]:
+) -> tuple[p.Result[t.Cli.ResultValue], _RecordingProgress]:
     """Drive the public batch apply with injected loop phases.
 
     Returns:
