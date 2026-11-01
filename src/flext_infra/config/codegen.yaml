@@ -262,6 +262,9 @@ Infra:
       # of the same normalized name and marker take precedence at rendering.
       # The selected fork preserves region coverage and resolves opaque source
       # bindings lazily; stale transitive metadata must not select an older source.
+      # A global override is the one source of its distribution: gen renders
+      # every runtime, optional and dependency-group line of that name without
+      # a direct reference (extras, specifier and marker kept).
       uv_override_dependencies:
       - rope @ git+https://github.com/marlon-costa-dc/rope.git@d56a179adcb2a8d932d96e742cdc42abebaf3885
       # Moving selectors consumed by generated .mise.toml and CI. Only
