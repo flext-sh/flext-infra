@@ -438,8 +438,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         A package that held the moved module but does not hold its destination
         stops republishing its classes once its initializer is regenerated
         from its own children. Every ``from barrel import Name`` of a moved
-        export is retargeted, in this candidate, to the destination package
-        that republishes it; a consumer importing the barrel module itself
+        export is retargeted, in this candidate, to the declaring module, which
+        publishes it independently of any initializer regeneration; a consumer
+        importing the barrel module itself
         cannot be proved and refuses the move. Initializers are owned by the
         publication rewrite and their regeneration.
 
@@ -464,6 +465,13 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         )
         if not exports or not barrels:
             return r[bool].ok(value=True)
+        if not destination_package:
+            return r[bool].fail(
+                f"module move destination has no import package: {target}"
+            )
+        # The declaring module is the route: it publishes the moved exports in
+        # this candidate whatever any initializer's later regeneration plans.
+        route = f"{destination_package}.{target.stem}"
         for path, text in tuple(candidate.items()):
             if path in {source, target} or not any(
                 barrel in text for barrel in barrels
@@ -474,7 +482,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 # ``_rewritten_init_publications`` and regenerated from children.
                 continue
             rewritten = cls._barrel_consumer_text(
-                project, (root, path), text, (barrels, exports, destination_package)
+                project, (root, path), text, (barrels, exports, route)
             )
             if rewritten.failure:
                 return r[bool].from_failure(rewritten)
