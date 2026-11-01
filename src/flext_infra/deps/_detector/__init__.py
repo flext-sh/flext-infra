@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""detector package.
+"""Flext Infra.deps. Detector package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -23,8 +23,6 @@ __all__: tuple[str, ...] = ("FlextInfraDepsDetectorRuntimeSteps",)
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
-        "FlextInfraDepsDetectorRuntimeSteps": ".runtime_steps",
-    }),
+    MappingProxyType({"FlextInfraDepsDetectorRuntimeSteps": ".runtime_steps"}),
     public_exports=__all__,
 )

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Gates package.
+"""Flext Infra.gates package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.pyrefly import FlextInfraGatesPyrefly
     from flext_infra.gates.pyright import FlextInfraGatesPyright
     from flext_infra.gates.readonly_namespace import FlextInfraReadonlyNamespace
+    from flext_infra.gates.ruff_base import FlextInfraGatesRuffGate
     from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
     from flext_infra.gates.ruff_lint import FlextInfraGatesRuffLint
     from flext_infra.gates.runtime_integrity import FlextInfraGatesRuntimeIntegrity
@@ -67,6 +68,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraGatesPyrefly",
     "FlextInfraGatesPyright",
     "FlextInfraGatesRuffFormat",
+    "FlextInfraGatesRuffGate",
     "FlextInfraGatesRuffLint",
     "FlextInfraGatesRuntimeIntegrity",
     "FlextInfraGatesScanner",
@@ -80,35 +82,36 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "FlextInfraDuplicationEvidence": ".duplication_evidence",
+        "FlextInfraDuplicationReport": ".duplication_report",
+        "FlextInfraGates": ".base_gate",
         "FlextInfraGatesBandit": ".bandit",
         "FlextInfraGatesCodemod": ".codemod",
         "FlextInfraGatesConflictMarkers": ".conflict_markers",
         "FlextInfraGatesDeps": ".deps",
         "FlextInfraGatesDirenv": ".direnv",
-        "FlextInfraDuplicationEvidence": ".duplication_evidence",
         "FlextInfraGatesDuplication": ".duplication",
-        "FlextInfraDuplicationReport": ".duplication_report",
         "FlextInfraGatesEnforcementCatalog": ".enforcement_catalog",
         "FlextInfraGatesFreshImport": ".fresh_import",
-        "FlextInfraGates": ".base_gate",
         "FlextInfraGatesIndexDeclarations": ".index_declarations",
         "FlextInfraGatesLayout": ".layout",
         "FlextInfraGatesLocCap": ".loc_cap",
-        "FlextInfraGatesMarkdownCode": ".markdown_code",
-        "FlextInfraMarkdownCodeSources": ".markdown_code_sources",
-        "FlextInfraGatesMarkdownFormat": ".markdown_format",
         "FlextInfraGatesMarkdown": ".markdown",
-        "FlextInfraMarkdownGateBase": ".markdown_support",
+        "FlextInfraGatesMarkdownCode": ".markdown_code",
+        "FlextInfraGatesMarkdownFormat": ".markdown_format",
         "FlextInfraGatesMypy": ".mypy",
         "FlextInfraGatesProjectModule": ".project_module",
         "FlextInfraGatesPyrefly": ".pyrefly",
         "FlextInfraGatesPyright": ".pyright",
-        "FlextInfraReadonlyNamespace": ".readonly_namespace",
         "FlextInfraGatesRuffFormat": ".ruff_format",
+        "FlextInfraGatesRuffGate": ".ruff_base",
         "FlextInfraGatesRuffLint": ".ruff_lint",
         "FlextInfraGatesRuntimeIntegrity": ".runtime_integrity",
         "FlextInfraGatesScanner": ".scanner_gate",
         "FlextInfraGatesSmells": ".smells",
+        "FlextInfraMarkdownCodeSources": ".markdown_code_sources",
+        "FlextInfraMarkdownGateBase": ".markdown_support",
+        "FlextInfraReadonlyNamespace": ".readonly_namespace",
     }),
     public_exports=__all__,
 )

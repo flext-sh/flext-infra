@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""conform package.
+"""Flext Infra. Conform package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -21,8 +21,6 @@ __all__: tuple[str, ...] = ("FlextInfraConformWiring",)
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
-        "FlextInfraConformWiring": ".wiring",
-    }),
+    MappingProxyType({"FlextInfraConformWiring": ".wiring"}),
     public_exports=__all__,
 )

@@ -2007,6 +2007,7 @@ Infra:
         - ".beads-credential-key"
         - ".worktrees/"
         - "legado/"
+        - ".beads.gate.lock"
       - name: "Beads ledger identity (workspace and standalone)"
         profiles: [ workspace, standalone ]
         patterns:

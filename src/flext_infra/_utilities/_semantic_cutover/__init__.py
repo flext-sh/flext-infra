@@ -204,8 +204,8 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticFamilyTypeReferences": ".family_type_references",
         "FlextInfraUtilitiesSemanticHelperReferences": ".helper_references",
         "FlextInfraUtilitiesSemanticModelAliases": ".model_aliases",
-        "FlextInfraUtilitiesTypesSemanticNesting": ".nesting_types",
         "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
+        "FlextInfraUtilitiesTypesSemanticNesting": ".nesting_types",
     }),
     public_exports=__all__,
 )

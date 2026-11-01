@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Codemod package.
+"""Flext Infra.codemod package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,21 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.codemod._extract.duplicate import FlextInfraCodemodExtractDuplicate
-    from flext_infra.codemod._loop.phase_accessor_rename import (
-        FlextInfraCodemodLoopPhaseAccessorRename,
-    )
-    from flext_infra.codemod._loop.phase_duplicate_apply import (
-        FlextInfraCodemodLoopPhaseDuplicateApply,
-    )
-    from flext_infra.codemod._loop.phase_import_normalization import (
-        FlextInfraCodemodLoopPhaseImportNormalization,
-    )
-    from flext_infra.codemod._loop.phase_namespace_relocation import (
-        FlextInfraCodemodLoopPhaseNamespaceRelocation,
-    )
-    from flext_infra.codemod._rename.sources import FlextInfraCodemodRenameSources
-    from flext_infra.codemod._rename.symbols import FlextInfraCodemodRenameSymbols
     from flext_infra.codemod.apply_renames import FlextInfraApplyRenames
     from flext_infra.codemod.ast_scan import FlextInfraCodemodAstScan
     from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
@@ -51,15 +36,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodemodBatchApply",
     "FlextInfraCodemodDuplicateApply",
     "FlextInfraCodemodExtract",
-    "FlextInfraCodemodExtractDuplicate",
     "FlextInfraCodemodLoop",
-    "FlextInfraCodemodLoopPhaseAccessorRename",
-    "FlextInfraCodemodLoopPhaseDuplicateApply",
-    "FlextInfraCodemodLoopPhaseImportNormalization",
-    "FlextInfraCodemodLoopPhaseNamespaceRelocation",
     "FlextInfraCodemodRename",
-    "FlextInfraCodemodRenameSources",
-    "FlextInfraCodemodRenameSymbols",
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCodemodSnapshotRefresh",
@@ -77,19 +55,8 @@ install_lazy_exports(
         "FlextInfraCodemodBatchApply": ".batch_apply",
         "FlextInfraCodemodDuplicateApply": ".duplicate_apply",
         "FlextInfraCodemodExtract": ".extract",
-        "FlextInfraCodemodExtractDuplicate": "._extract.duplicate",
         "FlextInfraCodemodLoop": ".loop",
-        "FlextInfraCodemodLoopPhaseAccessorRename": "._loop.phase_accessor_rename",
-        "FlextInfraCodemodLoopPhaseDuplicateApply": "._loop.phase_duplicate_apply",
-        "FlextInfraCodemodLoopPhaseImportNormalization": (
-            "._loop.phase_import_normalization"
-        ),
-        "FlextInfraCodemodLoopPhaseNamespaceRelocation": (
-            "._loop.phase_namespace_relocation"
-        ),
         "FlextInfraCodemodRename": ".rename",
-        "FlextInfraCodemodRenameSources": "._rename.sources",
-        "FlextInfraCodemodRenameSymbols": "._rename.symbols",
         "FlextInfraCodemodSemanticApply": ".semantic_apply",
         "FlextInfraCodemodSnapshotReconciler": ".snapshot_reconciler",
         "FlextInfraCodemodSnapshotRefresh": ".snapshot_refresh",

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""extract package.
+"""Flext Infra.codemod. Extract package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -21,8 +21,6 @@ __all__: tuple[str, ...] = ("FlextInfraCodemodExtractDuplicate",)
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
-        "FlextInfraCodemodExtractDuplicate": ".duplicate",
-    }),
+    MappingProxyType({"FlextInfraCodemodExtractDuplicate": ".duplicate"}),
     public_exports=__all__,
 )

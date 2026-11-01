@@ -6,33 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 from flext_infra.models import FlextInfraModels as ImportedModels
 
 
@@ -45,6 +18,7 @@ class TestsImportedModelReference:
 
         Returns:
             The canonical entity class name.
+
         """
         return ImportedModels.Infra.WorkspaceTestsRequest.__name__
 
@@ -54,7 +28,9 @@ class TestsImportedModelReference:
 
         Returns:
             The local class name.
+
         """
+
         class ImportedModels:
             """Independent local declaration, not an imported model."""
 

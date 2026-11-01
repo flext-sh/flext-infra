@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""config package.
+"""Flext Infra. Models. Config package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -66,6 +66,7 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "FlextInfraExternalCacheDirectorySpec": ".external_cache",
         "FlextInfraModelsConfig": ".base",
         "FlextInfraModelsConfigArtifact": ".artifact",
         "FlextInfraModelsConfigBeads": ".beads",
@@ -85,7 +86,6 @@ install_lazy_exports(
         "FlextInfraModelsConfigStatic": ".static",
         "FlextInfraModelsConfigTemplates": ".templates",
         "FlextInfraModelsConfigWorkspace": ".workspace",
-        "FlextInfraExternalCacheDirectorySpec": ".external_cache",
     }),
     public_exports=__all__,
 )

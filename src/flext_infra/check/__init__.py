@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Check package.
+"""Flext Infra.check package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,9 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.check._workspace.check_reports import (
-        FlextInfraCheckWorkspaceCheckReports,
-    )
     from flext_infra.check.gate_registry import FlextInfraGateRegistry
     from flext_infra.check.workspace import FlextInfraCheckWorkspace
     from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
@@ -25,7 +22,6 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraCheckWorkspace",
-    "FlextInfraCheckWorkspaceCheckReports",
     "FlextInfraGateRegistry",
     "FlextInfraWorkspaceCheckGates",
     "FlextInfraWorkspaceCheckUnion",
@@ -37,7 +33,6 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraCheckWorkspace": ".workspace",
-        "FlextInfraCheckWorkspaceCheckReports": "._workspace.check_reports",
         "FlextInfraGateRegistry": ".gate_registry",
         "FlextInfraWorkspaceCheckGates": ".workspace_check_gates",
         "FlextInfraWorkspaceCheckUnion": ".workspace_check_union",

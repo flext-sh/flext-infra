@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Transformers package.
+"""Flext Infra.transformers package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,9 +13,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.transformers._semantic.publication import (
-        FlextInfraTransformersSemanticPublication,
-    )
     from flext_infra.transformers.rope_transformer import FlextInfraRopeTransformer
     from flext_infra.transformers.semantic import FlextInfraTransformersSemantic
 
@@ -23,7 +20,6 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraRopeTransformer",
     "FlextInfraTransformersSemantic",
-    "FlextInfraTransformersSemanticPublication",
 )
 
 install_lazy_exports(
@@ -32,7 +28,6 @@ install_lazy_exports(
     MappingProxyType({
         "FlextInfraRopeTransformer": ".rope_transformer",
         "FlextInfraTransformersSemantic": ".semantic",
-        "FlextInfraTransformersSemanticPublication": "._semantic.publication",
     }),
     public_exports=__all__,
 )
