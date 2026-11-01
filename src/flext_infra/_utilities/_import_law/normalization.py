@@ -1216,7 +1216,6 @@ class FlextInfraUtilitiesImportLawNormalization(
 
         Raises:
             ValueError: If the module is absent or has a self dependency.
-            TypeError: If Rope does not parse the module into a module tree.
 
         """
         if module == state.scope.namespace or state.source_project is None:
@@ -1243,9 +1242,6 @@ class FlextInfraUtilitiesImportLawNormalization(
             message = f"layer-zero helper is absent from the candidate: {module}"
             raise ValueError(message)
         native_tree = state.tree if module == state.scope.module else parsed.get_ast()
-        if not isinstance(native_tree, ast.Module):
-            message = f"layer-zero helper is not a parsed module: {module}"
-            raise TypeError(message)
         tree = native_tree
         family_base = (
             cls.import_module_role(module, namespace=state.scope.namespace) == "family"

@@ -1249,18 +1249,12 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         )
         external = NoProject(fscommands=files)
         external.prefs.extension_modules = list(selected.extension_modules)
-        if not isinstance(external, p.Infra.RopeExternalResourceOwner):
-            message = "native external resolver lost its resource factory contract"
-            raise TypeError(message)
         self.external_project = external
         self._snapshot_python_path_folders = [
             self._native_folder(external.get_folder(path))
             for path in selected.python_path_folders
         ]
         preferences = self.get_prefs()
-        if not isinstance(preferences, p.Infra.RopePreferences):
-            message = "native source project lost its preference update contract"
-            raise TypeError(message)
         preferences.set("ignored_resources", value=list(selected.ignored_resources))
         preferences.set("extension_modules", value=list(selected.extension_modules))
         preferences.set("source_folders", value=list(selected.source_folders))

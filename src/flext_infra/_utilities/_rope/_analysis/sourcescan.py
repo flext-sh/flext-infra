@@ -140,13 +140,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             Returns:
                 The module with every missing location filled.
 
-            Raises:
-                TypeError: The node is not a native AST declaration.
-
             """
-            if not isinstance(module, ast.AST):
-                msg = "location fixing requires a native AST node"
-                raise TypeError(msg)
             return ast.fix_missing_locations(module)
 
         @staticmethod
