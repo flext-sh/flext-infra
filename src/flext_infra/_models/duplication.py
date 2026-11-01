@@ -86,12 +86,12 @@ class FlextInfraModelsDuplication:
         """Validated ``Infra.tooling.tools.jscpd`` project overlay.
 
         One project's ``config/tooling.yaml`` may extend the workspace jscpd
-        exclusions with operator-authorized, by-contract surfaces: file globs
-        for generated or evidence sources and token regexes for import-law
-        boilerplate. Thresholds, mode and similarity are SSOT policy and are
-        deliberately absent — an overlay can only widen what is skipped,
-        never relax what counts as a clone. Every undeclared key is a typed
-        absence; a declared key that violates the schema fails loud.
+        file exclusions with operator-authorized, by-contract surfaces:
+        generated sources and evidence data named by a dated authorization.
+        Thresholds, mode and similarity are SSOT policy and are deliberately
+        absent — an overlay can only widen what is skipped, never relax what
+        counts as a clone. An undeclared overlay is a typed absence; a
+        declared key that violates the schema fails loud.
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
@@ -106,16 +106,6 @@ class FlextInfraModelsDuplication:
                 description=(
                     "File globs jscpd skips; mandated generated and evidence "
                     "surfaces named by an operator authorization"
-                ),
-            ),
-        ] = ()
-        ignore_patterns: Annotated[
-            Sequence[str],
-            m.Field(
-                alias="ignore-patterns",
-                description=(
-                    "Code-level regexes whose tokens jscpd skips; import-law "
-                    "lines named by an operator authorization"
                 ),
             ),
         ] = ()

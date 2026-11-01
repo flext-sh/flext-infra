@@ -572,24 +572,6 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         for duplicate in report.duplicates:
             tm.fail(duplicate.first_file == duplicate.second_file)
 
-    _IMPORT_LAW_BLOCK = (
-        "from dc_recon.services.universo import DcReconUniverso\n"
-        "from sqlalchemy import text\n"
-        "from sqlalchemy.exc import DatabaseError\n"
-        "from dc_recon import c, e, h, m, p, r, t, u\n"
-        "from dc_recon import c, e, h, m, p, r, s, t, u\n"
-        "if TYPE_CHECKING:\n"
-        "    from sqlalchemy.engine import Connection as SaConnection\n"
-        "    from collections.abc import Sequence\n"
-        "    from pathlib import Path\n"
-        "from datetime import UTC, datetime\n"
-        "import time\n"
-        "import json\n"
-        "from concurrent.futures import ThreadPoolExecutor, as_completed\n"
-        "from collections import Counter\n"
-        "import re\n"
-    )
-
     @staticmethod
     def _write_overlay(root: Path, jscpd_body: str) -> None:
         """Declare one project tooling overlay with the given jscpd level."""
@@ -616,6 +598,15 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             ).unwrap(),
         )
 
+    @staticmethod
+    def _assessment_counts(root: Path) -> t.JsonMapping:
+        """The published duplication assessment counts of the latest check."""
+        assessment = root / "reports" / "duplication.raw.assessment.json"
+        mapping = u.Cli.json_as_mapping(
+            u.Cli.json_parse(assessment.read_text(encoding="utf-8")).unwrap()
+        )
+        return u.Cli.json_as_mapping(mapping.get("counts", {}))
+
     def test_project_overlay_glob_skips_the_declared_surface(
         self, tmp_path: Path
     ) -> None:
@@ -631,34 +622,52 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         )
         tm.that(
             execution.raw_output,
-            has="jscpd project overlay merged: 1 globs, 0 patterns",
+            has="jscpd project overlay merged: 1 globs",
         )
         tm.that(self._rendered_jscpd_config(root).get("ignore"), has="**/first.py")
 
-    def test_project_overlay_patterns_skip_import_law_lines(
+    def test_preamble_only_clone_is_retained_evidence_not_a_failure(
         self, tmp_path: Path
     ) -> None:
-        """Authorized import-law lines leave the token stream; no clone remains."""
-        root = tmp_path / "overlay-patterns"
+        """A clone of the module preamble stays evidence and never blocks.
+
+        Two modules whose shared span is the import-law preamble (docstring
+        tail, imports, TYPE_CHECKING block) carry no duplicated behavior:
+        the assessment classifies the span below the selected body floor,
+        the clone stays in the assessment receipt, and the gate passes.
+        """
+        root = tmp_path / "preamble-clone"
         u.Tests.WorktreeFixture.initialize_governed_project(
             root,
-            "fixture-overlay-patterns",
+            "fixture-preamble-clone",
             beads=u.Tests.BeadsIdentity(
-                workspace="overlay-patterns-workspace",
-                database="overlay_patterns_database",
-                issue_prefix="overlay-patterns",
+                workspace="preamble-clone-workspace",
+                database="preamble_clone_database",
+                issue_prefix="preamble-clone",
             ),
         )
-        package = root / "src" / "fixture_overlay_patterns"
+        package = root / "src" / "fixture_preamble_clone"
         package.mkdir(parents=True, exist_ok=True)
-        (package / "first.py").write_text(self._IMPORT_LAW_BLOCK, encoding="utf-8")
-        (package / "second.py").write_text(self._IMPORT_LAW_BLOCK, encoding="utf-8")
-        patterns = "".join(
-            f'          - "{line.strip()}"\n'
-            for line in self._IMPORT_LAW_BLOCK.splitlines()
-            if line.strip()
+        preamble = (
+            '"""Module contract line.\n'
+            "\n"
+            "Copyright (c) 2026 Fixture Team. All rights reserved.\n"
+            "SPDX-License-Identifier: MIT\n"
+            '"""\n'
+            "\n"
+            "from __future__ import annotations\n"
+            "\n"
+            "from typing import TYPE_CHECKING\n"
+            "\n"
+            "from sqlalchemy import text\n"
+            "\n"
+            "from dc_recon import c, e, h, m, p, r, t, u\n"
+            "\n"
+            "if TYPE_CHECKING:\n"
+            "    from sqlalchemy.engine import Connection as SaConnection\n"
         )
-        self._write_overlay(root, f"        ignore-patterns:\n{patterns}")
+        (package / "first.py").write_text(preamble, encoding="utf-8")
+        (package / "second.py").write_text(preamble, encoding="utf-8")
 
         execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
@@ -667,9 +676,46 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             msg="; ".join(issue.formatted for issue in execution.issues),
         )
         tm.that(
-            self._rendered_jscpd_config(root).get("ignorePattern"),
-            has="from dc_recon.services.universo import DcReconUniverso",
+            self._assessment_counts(root).get("below_existing_behavior_floor"),
+            eq=1,
         )
+
+    def test_bodies_above_floor_with_import_overlap_still_block(
+        self, tmp_path: Path
+    ) -> None:
+        """Import overlap never exempts a clone whose bodies reach the floors.
+
+        The two modules share real cloned bodies AND a preamble; the
+        retained bodies reach both floors, so the activation-effect
+        uncertainty keeps the clone unresolved and the gate fails.
+        """
+        root = tmp_path / "bodies-import-clone"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-bodies-import-clone",
+            beads=u.Tests.BeadsIdentity(
+                workspace="bodies-import-workspace",
+                database="bodies_import_database",
+                issue_prefix="bodies-import",
+            ),
+        )
+        package = root / "src" / "fixture_bodies_import_clone"
+        package.mkdir(parents=True, exist_ok=True)
+        module = (
+            '"""Module contract line."""\n'
+            "\n"
+            "from __future__ import annotations\n"
+            "\n"
+            "from dc_recon import c, e, h, m, p, r, t, u\n"
+            "\n" + self._PYTHON_BEHAVIOR_BLOCK
+        )
+        (package / "first.py").write_text(module, encoding="utf-8")
+        (package / "second.py").write_text(module, encoding="utf-8")
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.fail(execution.result.passed)
+        tm.that(self._assessment_counts(root).get("unresolved"), eq=1)
 
     def test_absent_project_overlay_keeps_the_canonical_render(
         self, tmp_path: Path
