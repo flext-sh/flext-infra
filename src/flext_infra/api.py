@@ -281,8 +281,8 @@ class FlextInfra(
             request.repository_root
         )
         governed = frozenset(flext_infra.u.Infra.governed_project_roots(root))
-        if governed == {root}:
-            return FlextInfraModHandlers.mod(self, request, progress)
+        if governed == frozenset({root}):
+            return super().mod(request, progress)
         inputs = flext_infra.u.Infra.load_codegen_inputs(root)
         if inputs.failure:
             return r[t.Cli.ResultValue].from_failure(inputs)
@@ -326,7 +326,7 @@ class FlextInfra(
                     consumer_roots=request.consumer_roots,
                 )
             )
-            completed = FlextInfraModHandlers.mod(self, child_request, progress)
+            completed = super().mod(child_request, progress)
             if completed.failure:
                 return completed
         return r[t.Cli.ResultValue].ok(value=True)

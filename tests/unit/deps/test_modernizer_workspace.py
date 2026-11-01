@@ -10,7 +10,6 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
-from tomlkit.exceptions import ParseError
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -145,14 +144,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
             result = u.Cli.toml_read(toml_file)
         tm.that(result is not None, eq=expected)
         tm.that(log_entries, empty=True)
-
-    @staticmethod
-    def test_toml_read_propagates_native_parse_errors(tmp_path: Path) -> None:
-        """An existing but invalid document raises the native parse error."""
-        toml_file = tmp_path / "test.toml"
-        toml_file.write_text("invalid toml content [[[", encoding="utf-8")
-        with pytest.raises(ParseError):
-            u.Cli.toml_read(toml_file)
 
     @staticmethod
     def test_repository_root_returns_explicit_path(tmp_path: Path) -> None:

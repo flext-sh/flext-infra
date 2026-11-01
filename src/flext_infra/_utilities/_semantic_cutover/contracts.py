@@ -499,9 +499,6 @@ class FlextInfraUtilitiesSemanticContracts(
             msg = f"{selection.id}: provider is not a native source class"
             raise TypeError(msg)
         module = provider.get_module()
-        if not isinstance(module, p.Infra.RopePyModule):
-            msg = f"{selection.id}: provider has no native source module"
-            raise TypeError(msg)
         resource = module.get_resource()
         if resource is None:
             msg = f"{selection.id}: historical provider requires source and revision"
@@ -1278,7 +1275,9 @@ class FlextInfraUtilitiesSemanticContracts(
             self._observe(module)
             references = FlextInfraUtilitiesSemanticFamilyTypeReferences
             bindings = module.get_source_binding_index()
-            protected = self.protected[module] if types_only else frozenset()
+            protected = (
+                self.protected[module] if types_only else frozenset[tuple[int, int]]()
+            )
             for start, stop in self.references[module]:
                 if region[0] <= start < stop <= region[1] and not any(
                     first <= start < stop <= last for first, last in protected
@@ -2204,9 +2203,6 @@ class FlextInfraUtilitiesSemanticContracts(
         if restrictions[1]:
             captured_node = match.get_ast("receiver")
             tree = module.get_ast()
-            if not isinstance(tree, ast.Module):
-                msg = "class-alias transfer has no native module AST"
-                raise TypeError(msg)
             if (
                 not any(
                     isinstance(node, ast.Assign)
@@ -2389,7 +2385,7 @@ class FlextInfraUtilitiesSemanticContracts(
         elif rule.call_target is not None:
             captured = match.get_ast(rule.call_target)
             tree = module.get_ast()
-            if captured is None or not isinstance(tree, ast.AST):
+            if captured is None:
                 msg = f"{rule.id}: call target requires an original native AST capture"
                 raise ValueError(msg)
             invocation = next(
@@ -2564,9 +2560,6 @@ class FlextInfraUtilitiesSemanticContracts(
         if rule.deferred_contract is not None:
             captured = match.get_ast(rule.deferred_contract)
             tree = module.get_ast()
-            if not isinstance(tree, ast.AST):
-                message = "native deferred contract module has no Python syntax tree"
-                raise TypeError(message)
             annotation = next(
                 (
                     node.annotation
@@ -2599,9 +2592,6 @@ class FlextInfraUtilitiesSemanticContracts(
             source = module.source_code
             region = match.get_region()
             tree = module.get_ast()
-            if not isinstance(tree, ast.Module):
-                message = f"{rule.id}: assert lowering requires its native module AST"
-                raise TypeError(message)
             statement = next(
                 (
                     node
@@ -3050,9 +3040,6 @@ class FlextInfraUtilitiesSemanticContracts(
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(owner):
             raise ValueError(failure)
         owner_tree = owner.get_ast()
-        if not isinstance(owner_tree, ast.AST):
-            message = "native metadata owner has no Python syntax tree"
-            raise TypeError(message)
         table = next(
             (
                 node
@@ -3095,9 +3082,6 @@ class FlextInfraUtilitiesSemanticContracts(
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(origin):
             raise ValueError(failure)
         origin_tree = origin.get_ast()
-        if not isinstance(origin_tree, ast.AST):
-            message = "native metadata constructor has no Python syntax tree"
-            raise TypeError(message)
         declaration = next(
             (
                 node
@@ -3247,9 +3231,6 @@ class FlextInfraUtilitiesSemanticContracts(
             else ast.unparse(node).rpartition(".")[-1]
         )
         holder_tree = holder.get_ast()
-        if not isinstance(holder_tree, ast.AST):
-            message = "native metadata binding has no Python syntax tree"
-            raise TypeError(message)
         declaration = next(
             (
                 item
@@ -3390,15 +3371,9 @@ class FlextInfraUtilitiesSemanticContracts(
         Returns:
             Whether the captured factory has only proven discarded consumers.
 
-        Raises:
-            TypeError: If the receiver has no original Python syntax tree.
-
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         tree = module.get_ast()
-        if not isinstance(tree, ast.AST):
-            message = "factory receiver requires the original native syntax tree"
-            raise TypeError(message)
         parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
         nodes: MutableMapping[tuple[type[ast.AST], int], ast.AST] = {
             (type(node), runtime.source_offset(module.source_code, node)): node

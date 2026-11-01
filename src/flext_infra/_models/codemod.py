@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
+from typing import TYPE_CHECKING, Annotated, ClassVar, Self
 
 from flext_cli import m, u
 
@@ -192,11 +192,11 @@ class FlextInfraModelsCodemod:
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Exact rule receipt identity")]
         operation: Annotated[
-            Literal[c.Infra.FamilyFlattenOperation.FLATTEN_SINGLE_WRAPPER],
+            c.Infra.FamilyFlattenOperation,
             m.Field(description="Supported semantic family transformation"),
         ]
         collision: Annotated[
-            Literal[c.Infra.FamilyCollisionPolicy.PREFIX_WRAPPER],
+            c.Infra.FamilyCollisionPolicy,
             m.Field(description="Member-name collision resolution policy"),
         ]
 
