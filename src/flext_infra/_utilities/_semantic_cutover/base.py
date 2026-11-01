@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from contextlib import closing
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r
+from flext_infra import c, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesWorkspaceSnapshot,
@@ -32,8 +32,6 @@ from flext_infra._utilities._semantic_cutover import (
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverBase(

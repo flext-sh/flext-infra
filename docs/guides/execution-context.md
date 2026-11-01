@@ -597,11 +597,12 @@ Every declared target retains an explicit source-planning outcome; independent
 targets continue. A failed publication or hook stores that original failed Result
 on its shared cohort outcomes only when no earlier native failure was retained.
 
-The existing per-repository execution boundary contains unexpected `Exception`
-values as native outcomes with their original object and traceback. Native SDK
-exception inheritance need not be replicated in a catch catalog. Cancellation
-and signal exceptions outside `Exception` propagate; expected domain outcomes
-continue through their explicit typed Result branches.
+No execution boundary converts an unexpected `Exception` into an outcome: the
+control phase of generation and every repository run of `mod` return typed
+Results for their declared failures, and any other exception escapes raw with
+its traceback to the CLI. The only conversion is a `mod` phase boundary's typed
+module failure (`u.Infra.MOD_MODULE_FAILURE_TYPES`), whose
+`c.Infra.MOD_FAILURE_MODULE_KEY` lets the batch apply quarantine that module.
 
 Incremental workspace indexing accepts its prior typed index and changed paths
 as one refresh request. Module evolution and package assembly remain in the
