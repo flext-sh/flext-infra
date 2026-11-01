@@ -59,11 +59,11 @@ class FlextInfraModelsDeps(
         native_sources: Sequence[str] = m.Field(
             default=(), description="Names with explicit native UV source declarations"
         )
-        overridden_sources: Sequence[str] = m.Field(
-            default=(),
+        override_references: Mapping[str, str] = m.Field(
+            default_factory=dict,
             description=(
-                "Names whose source the declared UV override elects; their "
-                "requirement lines carry no direct reference of their own"
+                "Direct reference each declared UV override elects, by canonical "
+                "name; every requirement line of that name carries exactly it"
             ),
         )
 

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraPytestClock
+from flext_infra import FlextInfraFlextInfraPytest
 from tests import c, tm, u
 
 
@@ -73,7 +73,7 @@ class TestsFlextInfraCProfileInterruption:
         """The flat public owner publishes readable invocation-owned evidence."""
         output = tmp_path / "command.pstats"
         tm.that(
-            FlextInfraPytestClock.profile_command(lambda: status, output),
+            FlextInfraFlextInfraPytest.profile_command(lambda: status, output),
             eq=status,
         )
         tm.that(
@@ -93,7 +93,7 @@ class TestsFlextInfraCProfileInterruption:
             raise failure
 
         with pytest.raises(RuntimeError) as raised:
-            FlextInfraPytestClock.profile_command(
+            FlextInfraFlextInfraPytest.profile_command(
                 command, tmp_path / "missing" / "command.pstats"
             )
         tm.ok(raised.value is failure)

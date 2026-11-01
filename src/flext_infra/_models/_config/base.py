@@ -10,6 +10,9 @@ from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
 from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
 from flext_infra._models._config.contexts import FlextInfraModelsConfigContexts
 from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra._models._config.external_cache import (
+    FlextInfraExternalCacheDirectorySpec,
+)
 from flext_infra._models._config.make import FlextInfraModelsConfigMake
 from flext_infra._models._config.provider import FlextInfraModelsConfigProvider
 from flext_infra._models._config.release import FlextInfraModelsConfigRelease
@@ -23,6 +26,7 @@ from flext_infra._models._config.workspace import FlextInfraModelsConfigWorkspac
 
 class FlextInfraModelsConfig(
     FlextInfraModelsConfigContract,
+    FlextInfraExternalCacheDirectorySpec,
     FlextInfraModelsConfigProvider,
     FlextInfraModelsConfigRender,
     FlextInfraModelsConfigRoot,

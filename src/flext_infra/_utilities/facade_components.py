@@ -16,8 +16,8 @@ import io
 import re
 import sys
 import tokenize
-from collections.abc import Callable, Generator, Mapping, Sequence
-from functools import cache, partial
+from collections.abc import Generator, Mapping, Sequence
+from functools import partial
 from importlib.metadata import packages_distributions
 from pathlib import Path
 
@@ -243,160 +243,75 @@ class FlextInfraUtilitiesFacadeComponents:
             Path, Sequence[tuple[Path, p.Infra.RopeSourceClass]]
         ],
     ) -> dict[Path, list[tuple[Path, str]]]:
-        """Elect domain owners against already-read family declarations.
+        """Elect each domain owner by declaration, never by inference.
+
+        Composed-part publication is single-owner: the public name of a
+        private ``_x`` domain is published by the module that composes its
+        parts by native MRO extension. That owner is the canonical sibling
+        ``x.py`` when it exists, else the one class of ``_x`` that no other
+        class declared in ``_x`` extends (native superclasses). A domain with
+        no such owner or several of them is a source defect that ``make mod``
+        repairs at its owner; generation never compensates for it.
 
         Returns:
-            Each requested domain with its maximal native owners.
+            Each requested domain with its declared owner.
+
+        Raises:
+            ValueError: If a domain declares no owner or several.
 
         """
         elected: dict[Path, list[tuple[Path, str]]] = {}
-        for parent in sorted({directory.parent for directory in directories}):
-            domains = sorted(
-                directory for directory in directories if directory.parent == parent
-            )
-            shared = family_declarations[parent]
-            owned = {
-                domain: cls.facade_component_declarations(project, domain)
-                for domain in domains
+        for domain in sorted(directories):
+            canonical = domain.parent / f"{domain.name.lstrip('_')}.py"
+            candidates = [
+                (path, owner)
+                for path, owner in family_declarations[domain.parent]
+                if path == canonical
+            ] or [
+                (path, owner)
+                for path, owner in cls.facade_component_declarations(project, domain)
+            ]
+            extended = {
+                id(ancestor)
+                for _path, owner in candidates
+                for ancestor in cls._native_ancestors(owner)
             }
-            bases_runtime = FlextInfraUtilitiesRopeSourceBasesRuntime
-            resolver_factory = bases_runtime.source_member_resolver_factory(
-                project,
-                sources={
-                    FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-                        owner.get_module(), source_project=project
-                    ): (path, owner.get_module().source_code)
-                    for path, owner in (
-                        *shared,
-                        *(item for items in owned.values() for item in items),
-                    )
-                },
-            )
-            observations = (
-                cache(
-                    partial(
-                        FlextInfraUtilitiesFacadeMembers.class_kind,
-                        resolver_factory=resolver_factory,
-                        source_project=project,
-                    )
-                ),
-                cache(
-                    partial(
-                        cls._composed_owner_suppliers,
-                        resolver_factory=resolver_factory,
-                        project=project,
-                    )
-                ),
-            )
-            for domain in domains:
-                elected[domain] = cls._domain_subfacade_owners(
-                    domain, (*shared, *owned[domain]), observations
+            owners = [
+                (path, owner.get_name())
+                for path, owner in candidates
+                if id(owner) not in extended
+            ]
+            if len(owners) != 1:
+                message = (
+                    f"Facade domain {domain} declares {len(owners)} owners "
+                    f"{[f'{path.name}:{name}' for path, name in owners]}; compose "
+                    f"its parts in one owner (canonical sibling {canonical.name}) "
+                    "with make mod"
                 )
+                raise ValueError(message)
+            elected[domain] = owners
         return elected
 
-    @classmethod
-    def _composed_owner_suppliers(
-        cls,
+    @staticmethod
+    def _native_ancestors(
         owner: p.Infra.RopeSourceClass,
-        *,
-        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
-        project: p.Infra.RopeProject,
     ) -> tuple[p.Infra.RopePyObject, ...]:
-        """Read the member suppliers of an owner that composes family classes.
+        """Return every native ancestor class of ``owner`` (excluding itself).
 
         Returns:
-            The composed member suppliers, or none for a non-composing owner.
+            The transitive native superclasses.
 
         """
-        if not cls.facade_composes_class(owner, source_project=project):
-            return ()
-        return tuple(
-            cls._composed_member_suppliers(
-                owner,
-                owner.get_module().get_source_binding_index(),
-                resolver_factory=resolver_factory,
-                project=project,
-            )
-        )
-
-    @classmethod
-    def _domain_subfacade_owners(
-        cls,
-        directory: Path,
-        declarations: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
-        observations: tuple[
-            Callable[[p.Infra.RopePyObject], c.Infra.FacadeMemberKind],
-            Callable[[p.Infra.RopeSourceClass], tuple[p.Infra.RopePyObject, ...]],
-        ],
-    ) -> list[tuple[Path, str]]:
-        """Elect one domain's owners from the shared family observations.
-
-        Returns:
-            Maximal native owners at the canonical sibling precedence.
-
-        """
-        kind, composed_suppliers = observations
-        types = FlextInfraUtilitiesRopeRuntimeTypes
-        canonical = directory.parent / f"{directory.name.lstrip('_')}.py"
-        elected: list[tuple[Path, p.Infra.RopeSourceClass]] = []
-        composed: dict[p.Infra.RopeSourceClass, frozenset[p.Infra.RopePyObject]] = {}
-        for path, owner in declarations:
-            if kind(owner) is not c.Infra.FacadeMemberKind.TYPE:
+        seen: dict[int, p.Infra.RopePyObject] = {}
+        pending = list(owner.get_superclasses())
+        while pending:
+            ancestor = pending.pop()
+            if id(ancestor) in seen:
                 continue
-            if path.parent != directory.parent and any(
-                types.py_function(scope.pyobject)
-                for scope in owner.get_scope().get_scopes()
-            ):
-                continue
-            suppliers = tuple(owner.get_superclasses())
-            member_suppliers: tuple[p.Infra.RopePyObject, ...] = ()
-            if not any(
-                types.py_class(supplier)
-                and (resource := supplier.get_module().get_resource()) is not None
-                and Path(resource.real_path).parent == directory
-                for supplier in suppliers
-            ):
-                member_suppliers = composed_suppliers(owner)
-                suppliers = (*suppliers, *member_suppliers)
-            if path == canonical:
-                suppliers = (*suppliers, *cls._component_callable_suppliers(owner))
-            origins = {
-                Path(resource.real_path).parent
-                for supplier in suppliers
-                if types.py_class(supplier)
-                and supplier is not owner
-                and (resource := supplier.get_module().get_resource()) is not None
-                and kind(supplier) is c.Infra.FacadeMemberKind.TYPE
-            }
-            if directory in origins and (
-                path == canonical
-                or len({origin for origin in origins if origin.name.startswith("_")})
-                == 1
-            ):
-                elected.append((path, owner))
-                composed[owner] = frozenset(
-                    ancestor
-                    for supplier in (owner, *member_suppliers)
-                    if types.py_class(supplier)
-                    for ancestor in supplier.get_mro()
-                )
-        if not elected:
-            return []
-        priority = max(
-            (path == canonical, path.parent == directory) for path, _ in elected
-        )
-        return [
-            (path, owner.get_name())
-            for path, owner in elected
-            if (path == canonical, path.parent == directory) == priority
-            and not any(
-                other is not owner
-                and owner in composed[other]
-                and other not in composed[owner]
-                for other_path, other in elected
-                if (other_path == canonical, other_path.parent == directory) == priority
-            )
-        ]
+            seen[id(ancestor)] = ancestor
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_class(ancestor):
+                pending.extend(ancestor.get_superclasses())
+        return tuple(seen.values())
 
     @staticmethod
     def _composed_member_suppliers(
@@ -445,60 +360,6 @@ class FlextInfraUtilitiesFacadeComponents:
                     member_suppliers.extend(nested.get_superclasses())
                     pending.append(nested)
         return member_suppliers
-
-    @staticmethod
-    def _component_callable_suppliers(
-        owner: p.Infra.RopeSourceClass,
-    ) -> Generator[p.Infra.RopeSourceClass]:
-        """Observe direct method delegation through the existing native index.
-
-        Yields:
-            Actual class receivers called in this owner's own method bodies.
-
-        Raises:
-            TypeError: If the native word regions are unavailable.
-
-        """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        types = FlextInfraUtilitiesRopeRuntimeTypes
-        module = owner.get_module()
-        words = runtime.runtime_callable("rope.base.worder", "Worder")(
-            module.source_code
-        )
-        if not isinstance(words, p.Infra.RopeWorder):
-            message = "Callable supplier election requires native word regions"
-            raise TypeError(message)
-        methods = {
-            scope.pyobject
-            for scope in owner.get_scope().get_scopes()
-            if types.py_function(scope.pyobject)
-        }
-        for fragment in module.get_source_binding_index().fragments:
-            context = fragment.context
-            if (
-                context.role != "function-body"
-                or context.structural_scope.pyobject not in methods
-            ):
-                continue
-            if words.get_primary_range(fragment.end - 1) != (
-                fragment.start,
-                fragment.end,
-            ):
-                continue
-            prefix, _member, offset = words.get_splitted_primary_before(fragment.end)
-            if not prefix or not words.is_a_function_being_called(offset):
-                continue
-            receiver = runtime.expression_name(context.environment, prefix)
-            called = runtime.expression_name(
-                context.environment, module.source_code[fragment.start : fragment.end]
-            )
-            if (
-                receiver is not None
-                and types.py_class(supplier := receiver.get_object())
-                and called is not None
-                and types.py_function(called.get_object())
-            ):
-                yield supplier
 
     @classmethod
     def render_type_facade(
@@ -1668,7 +1529,12 @@ class FlextInfraUtilitiesFacadeComponents:
             ):
                 continue
             published_name = provider.get_name()
-            if published_name in namespace.get_scope().get_defined_names():
+            defined = namespace.get_scope().get_defined_names().get(published_name)
+            if defined is not None:
+                # Two producers of one run reaching the same publication collapse
+                # on its identity; only a different binding is an occupation.
+                if cls._same_facade_target(defined.get_object(), provider):
+                    continue
                 return r[dict[str, str]].fail(
                     f"Occupied nominal facade publication: {path}:{published_name}"
                 )
@@ -2113,161 +1979,6 @@ class FlextInfraUtilitiesFacadeComponents:
         )
 
     @classmethod
-    def facade_component_retirements(
-        cls,
-        project: p.Infra.RopeProject,
-        paths: Sequence[Path],
-        *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
-        """Retire composed callable aliases after their real consumer closure.
-
-        A published alias that remains consumed or changes callable identity
-        escapes as the ``ValueError`` its validating owner raises.
-
-        Returns:
-            Exact native assignment edits with their original physical witnesses.
-
-        """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        publications: dict[
-            tuple[p.Infra.RopeClassObject, str], p.Infra.RopeClassObject
-        ] = {}
-        edits: list[m.Infra.SemanticMigrationEdit] = []
-        for path in paths:
-            # A module the candidate retires (a moved owner's old path) holds no
-            # published alias left to retire.
-            if not project.source_query(path, "isfile"):
-                continue
-            try:
-                module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
-                    project.get_pymodule(runtime.file_resource_at(project, path))
-                )
-            except rope.base.exceptions.ModuleSyntaxError:
-                # Conteúdo candidate inválido no overlay (staging do
-                # quoted-move): falha por arquivo — o rerun replaneja este
-                # path quando o staging assentar.
-                continue
-            if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
-                continue
-            retired = tuple(cls._composed_alias_retirements(project, path, module))
-            publications.update((key, target) for key, target, _rewrite in retired)
-            if retired:
-                edits.append(
-                    m.Infra.SemanticMigrationEdit(
-                        file_path=path,
-                        original_source=module.source_code,
-                        updated_source=FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-                            runtime.file_resource_at(project, path),
-                            module.source_code,
-                            [rewrite for _key, _target, rewrite in retired],
-                        ).new_contents,
-                    )
-                )
-        cls.assert_provider_publications_closed(project, publications)
-        declared = {plan.path: plan for plan in declared_files}
-        return tuple(
-            FlextInfraUtilitiesCodegenFilePlan.source_file_plan_from_edit(
-                Path(project.root.real_path),
-                edit,
-                source_project=project,
-                declared_files=declared,
-            )
-            for edit in edits
-        )
-
-    @classmethod
-    def _composed_alias_retirements(
-        cls,
-        project: p.Infra.RopeProject,
-        path: Path,
-        module: p.Infra.RopeSourceModule,
-    ) -> Generator[
-        tuple[
-            tuple[p.Infra.RopeClassObject, str],
-            p.Infra.RopeClassObject,
-            m.Infra.SourceRewrite,
-        ]
-    ]:
-        """Walk every class scope for assignments aliasing a composed ancestor.
-
-        Yields:
-            The publication key, its composed target and the assignment removal.
-
-        """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
-        index = module.get_source_binding_index()
-        for owner_scope in module.get_scope().get_scopes():
-            for scope in (owner_scope, *owner_scope.get_scopes()):
-                owner = scope.pyobject
-                if not types.py_class(owner):
-                    continue
-                ancestry = owner.get_mro()
-                for declaration in index.assignment_layouts(scope):
-                    if not declaration.targets:
-                        continue
-                    (assignment,) = tuple(
-                        assignment
-                        for assignment in index.assignment_layouts(
-                            scope,
-                            name=declaration.targets[0][0],
-                            resolve_values=True,
-                        )
-                        if assignment.region == declaration.region
-                    )
-                    target = cls._composed_alias_target(
-                        project, path, owner, ancestry, assignment
-                    )
-                    if target is None:
-                        continue
-                    yield (
-                        (owner, assignment.targets[0][0]),
-                        target,
-                        m.Infra.SourceRewrite(
-                            start=assignment.region[0],
-                            end=assignment.region[1],
-                            text="",
-                        ),
-                    )
-
-    @staticmethod
-    def _composed_alias_target(
-        project: p.Infra.RopeProject,
-        path: Path,
-        owner: p.Infra.RopeSourceClass,
-        ancestry: Sequence[p.Infra.RopePyObject],
-        assignment: p.Infra.RopeSourceAssignmentLayout,
-    ) -> p.Infra.RopeSourceClass | None:
-        """Prove one single-target assignment aliases a composed behavior provider.
-
-        Returns:
-            The aliased ancestor provider, or none for any other assignment.
-
-        Raises:
-            ValueError: A published alias changes callable identity.
-
-        """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
-        binding = assignment.value_binding
-        if binding is None or len(assignment.targets) != 1:
-            return None
-        target = binding.get_object()
-        if not types.py_class(target) or target not in ancestry[1:]:
-            return None
-        if not FlextInfraUtilitiesDeclarationPayload.utility_behavior_provider(
-            project, target
-        ):
-            return None
-        for name, member in target.get_attributes().items():
-            if name.startswith("_") or not types.py_function(member.get_object()):
-                continue
-            effective = owner.get_attributes().get(name)
-            if effective is None or effective.get_object() is not member.get_object():
-                message = f"Composed callable identity differs: {path}:{name}"
-                raise ValueError(message)
-        return target
-
-    @classmethod
     def facade_composes_class(
         cls,
         owner: p.Infra.RopeSourceClass,
@@ -2372,66 +2083,6 @@ class FlextInfraUtilitiesFacadeComponents:
                     )
                 )
         return tuple(plans)
-
-    @classmethod
-    def assert_provider_publications_closed(
-        cls,
-        source_project: p.Infra.RopeProject,
-        publications: Mapping[
-            tuple[p.Infra.RopeClassObject, str], p.Infra.RopeClassObject
-        ],
-    ) -> None:
-        """Reject surviving references before a composed provider loses its alias.
-
-        This observes all native contexts, including the load of a publication
-        inside an assignment, deletion or augmented-assignment mutation target.
-        It never rewrites those targets or elects another mutation owner.
-
-        Raises:
-            ValueError: A candidate still consumes a retiring provider publication.
-            TypeError: A native consumer does not provide a module declaration.
-
-        """
-        if not publications:
-            return
-        names = {name for _owner, name in publications}
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        for resource in source_project.get_python_files():
-            module = cls._consumer_module(source_project, Path(resource.real_path))
-            words = runtime.runtime_callable("rope.base.worder", "Worder")(
-                module.source_code
-            )
-            if not isinstance(words, p.Infra.RopeWorder):
-                message = "Publication closure requires native word regions"
-                raise TypeError(message)
-            for name in names:
-                finder = (
-                    FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
-                        source_project, name
-                    )
-                )
-                for occurrence in finder.find_occurrences(pymodule=module):
-                    _begin, end = occurrence.get_primary_range()
-                    prefix, attribute, offset = words.get_splitted_primary_before(end)
-                    if not prefix or attribute != name:
-                        continue
-                    context = module.get_source_binding_index().context_at(offset)
-                    receiver = runtime.expression_name(context.environment, prefix)
-                    if (
-                        receiver is None
-                        or not FlextInfraUtilitiesRopeRuntimeTypes.py_class(
-                            owner := receiver.get_object()
-                        )
-                    ):
-                        continue
-                    if any(
-                        (ancestor, name) in publications for ancestor in owner.get_mro()
-                    ):
-                        message = (
-                            "provider publication has a surviving consumer: "
-                            f"{resource.real_path}:{occurrence.lineno}:{name}"
-                        )
-                        raise ValueError(message)
 
     @classmethod
     def facade_component_references(

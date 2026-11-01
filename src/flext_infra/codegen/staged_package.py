@@ -225,6 +225,10 @@ class FlextInfraStagedPackage:
     ) -> p.Result[bool]:
         """Write the planned composition into an exclusively owned empty tree.
 
+        The tree is a throwaway candidate removed once its validator returns,
+        so each write keeps its atomic replace and observed-state precondition
+        but skips the durability syncs (``WriteDurability.SCRATCH``).
+
         Returns:
             Success after the writes, or their first original failure.
 
@@ -236,11 +240,15 @@ class FlextInfraStagedPackage:
             before = u.Cli.atomic_read_binary_file_state(path)
             if before.failure:
                 return r[bool].from_failure(before)
-            written = u.Cli.atomic_write_binary_file_guarded(
-                before.value, content, permission_mode=mode
+            u.Cli.write_atomic_state(
+                path,
+                content,
+                m.Cli.AtomicWriteOptions(
+                    expected_state=before.value,
+                    permission_mode=mode,
+                    durability=c.Cli.WriteDurability.SCRATCH,
+                ),
             )
-            if written.failure:
-                return r[bool].from_failure(written)
         return r[bool].ok(value=True)
 
     @classmethod

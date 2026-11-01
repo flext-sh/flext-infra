@@ -41,6 +41,10 @@ class FlextInfraModelsConfigRoot:
             FlextInfraModelsConfigStatic.SourceScanSpec,
             m.Field(description="Production-only source discovery contract"),
         ]
+        mutation_lock: Annotated[
+            FlextInfraModelsConfigStatic.MutationLockSpec,
+            m.Field(description="Bounded wait for a mutation scope lock"),
+        ]
         release: Annotated[
             FlextInfraModelsConfigRelease.ReleasePolicySpec,
             m.Field(description="Release protocol policy"),

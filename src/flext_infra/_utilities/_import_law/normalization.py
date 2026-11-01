@@ -907,7 +907,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                         "Own-family exports have competing bindings; use make mod",
                     )
                 routes[bound, *path] = route
-        cls._import_law_own_family_annotations(state.tree)
+        cls._import_law_own_family_annotations(state.tree, scope.file_path)
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
             scope.project_root,
             planned_sources={scope.file_path: source},
@@ -1068,11 +1068,16 @@ class FlextInfraUtilitiesImportLawNormalization(
             module, path, source, project=project, pymodule=published
         )
         if owner not in routes or module == state.scope.module:
-            message = "Own-family owner has no non-self lazy export; use make mod"
+            message = (
+                "Own-family owner has no non-self lazy export; use make mod: "
+                f"{state.scope.file_path} owner={owner} module={module}"
+            )
             raise ValueError(message)
 
-    @staticmethod
-    def _import_law_own_family_annotations(tree: ast.Module) -> None:
+    @classmethod
+    def _import_law_own_family_annotations(
+        cls, tree: ast.Module, file_path: Path
+    ) -> None:
         """Reject quoted annotations outside this bounded corrective category.
 
         Raises:
@@ -1091,10 +1096,66 @@ class FlextInfraUtilitiesImportLawNormalization(
             )
             if annotation is not None and any(
                 isinstance(part, ast.Constant) and isinstance(part.value, str)
-                for part in ast.walk(annotation)
+                for part in cls._type_expression_nodes(annotation)
             ):
-                message = "Own-family quoted annotations require make mod"
+                message = (
+                    "Own-family quoted annotations require make mod: "
+                    f"{file_path}:{annotation.lineno}"
+                )
                 raise ValueError(message)
+
+    @staticmethod
+    def _type_expression_nodes(annotation: ast.expr) -> Sequence[ast.AST]:
+        """Return the nodes of an annotation that are type expressions.
+
+        Call arguments (``Field(description="...")``) and ``Literal[...]``
+        members are values, never quoted forward references.
+
+        Returns:
+            The annotation's type-expression nodes.
+
+        """
+        nodes: list[ast.AST] = []
+        pending: list[ast.AST] = [annotation]
+        while pending:
+            node = pending.pop()
+            nodes.append(node)
+            if isinstance(node, ast.Call):
+                continue
+            if isinstance(node, ast.Subscript) and (
+                (isinstance(node.value, ast.Name) and node.value.id == "Literal")
+                or (
+                    isinstance(node.value, ast.Attribute)
+                    and node.value.attr == "Literal"
+                )
+            ):
+                continue
+            pending.extend(ast.iter_child_nodes(node))
+        return nodes
+
+    @classmethod
+    def _import_law_outside_boundary(
+        cls,
+        state: m.Infra.ImportLawPass,
+        node: ast.Import | ast.ImportFrom,
+        *,
+        runtime_only: bool,
+    ) -> bool:
+        """Return whether one import is outside the dependency boundary check.
+
+        A relative import is validated by the next pass after its absolute
+        rewrite; a type-checking import never executes, so it is outside a
+        runtime-only layer-zero boundary.
+
+        Returns:
+            Whether the boundary validator skips the import.
+
+        """
+        if isinstance(node, ast.ImportFrom) and node.level:
+            return True
+        return runtime_only and cls._import_law_inside_type_checking(
+            node, state.parents
+        )
 
     @classmethod
     def _import_law_validate_import_boundary(
@@ -1116,9 +1177,12 @@ class FlextInfraUtilitiesImportLawNormalization(
         runtime_only = role == "layer0" and cls.import_law_runtime_only_layer_zero(
             scope.module, namespace=scope.namespace
         )
+        runtime_only = role == "layer0" and cls.import_law_runtime_only_layer_zero(
+            scope.module, namespace=scope.namespace
+        )
         for node in cls._import_law_iter_imports(state.tree):
-            if isinstance(node, ast.ImportFrom) and node.level:
-                continue  # The next pass validates the absolute rewrite.
+            if cls._import_law_outside_boundary(state, node, runtime_only=runtime_only):
+                continue
             if runtime_only and cls._import_law_inside_type_checking(
                 node, state.parents
             ):

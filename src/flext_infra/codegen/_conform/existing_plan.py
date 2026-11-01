@@ -374,20 +374,16 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return self._projected_exports(root, cohort).map(
                 lambda exported: ((*cohort, *exported), (), tuple(exported))
             )
-        return self._converged_custom_sources(
-            root,
-            (codegen, target.make_profile.value),
-            cohort=cohort,
-            normalize_imports=contract.complete_governed,
+        return self._projected_custom_sources(
+            root, (codegen, target.make_profile.value), cohort=cohort
         )
 
-    def _converged_custom_sources(
+    def _projected_custom_sources(
         self,
         root: Path,
         configuration: tuple[m.Infra.CodegenConfigSpec, str],
         *,
         cohort: tuple[m.Infra.CodegenFilePlan, ...],
-        normalize_imports: bool,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None = None,
     ) -> p.Result[
         tuple[
@@ -396,21 +392,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             tuple[m.Infra.CodegenFilePlan, ...],
         ]
     ]:
-        """Render custom facades and initializers until they agree.
+        """Project a repository's custom artifacts in one ordered pass.
 
-        Facades resolve their owners through the initializers they see, and
-        the initializers re-planned over the projected facades may differ from
-        those. Facades are rendered again over the re-planned initializers
-        until both agree, so one generation publishes a fixed point. The
-        candidate's native package postorder handles recursive domains. Repeated
-        source identities detect cycles without imposing a family-count depth cap.
-        The complete lazy plan already supplied by this invocation seeds the
-        first round unless a foreign provider or another input changed. The
-        existing re-plan after facade effects remains the convergence proof.
-        A targeted facade uses the same component stage and fixed point for its
-        admitted package/family, without scheduling unrelated custom artifacts.
-        A package selection leaves the family absent and closes only that package's
-        recursive domains and proven source consumers through the same stages.
+        Generation projects authored declarations and never edits them: the
+        model protocol data contracts first, then the lazy exports over them,
+        then the family facades, then the exports over the facades. Each step
+        reads only what the earlier steps declared, so one pass is the fixed
+        point. Repairs, module moves, consumer rewiring and import
+        normalization transform authored sources and belong to ``make mod``.
 
         Returns:
             Projected files, custom files and initializers, or the first failure.
@@ -423,169 +412,39 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 tuple[m.Infra.CodegenFilePlan, ...],
             ]
         ]
-        prepared = self._custom_source_seed(
-            root, configuration[0], cohort, selection=selection
-        )
-        if prepared.failure:
-            return result_type.from_failure(prepared)
-        cohort, initializers = prepared.value[0], prepared.value[2]
-        previous: tuple[m.Infra.CodegenFilePlan, ...] = ()
-        custom_files = {plan.path: plan for plan in prepared.value[1]}
-        seen: set[tuple[tuple[Path, bytes | None], ...]] = set()
-        while True:
-            source_plans = {plan.path: plan for plan in (*cohort, *initializers)}
-            identity = tuple(
-                (path, plan.desired_content)
-                for path, plan in sorted(source_plans.items())
-            )
-            if identity in seen:
-                diverging = sorted(
-                    str(plan.path)
-                    for plan in initializers
-                    if not self._initializers_seen((plan,), previous)
-                )
-                return result_type.fail(
-                    "imports, custom facades and initializers repeat a source "
-                    f"candidate without convergence for {root}: " + ", ".join(diverging)
-                )
-            seen.add(identity)
-            custom_result = self._custom_candidate_sources(
-                root,
-                configuration,
-                tuple(source_plans.values()),
-                selection=selection,
-            )
-            if custom_result.failure:
-                return result_type.from_failure(custom_result)
-            projected_files = {
-                **source_plans,
-                **{plan.path: plan for plan in custom_result.value},
-            }
-            imports = (
-                self._planned_source_imports(
-                    root,
-                    tuple(projected_files.values()),
-                    files=tuple(projected_files) if selection is not None else None,
-                )
-                if normalize_imports
-                else r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
-            )
-            if imports.failure:
-                return result_type.from_failure(imports)
-            source_updates = (*custom_result.value, *imports.value)
-            projected_files.update((plan.path, plan) for plan in imports.value)
-            custom_files.update((plan.path, plan) for plan in source_updates)
-            if all(
-                plan.desired_content
-                == (
-                    source_plans[plan.path].desired_content
-                    if plan.path in source_plans
-                    else plan.before.content
-                )
-                for plan in source_updates
-            ):
-                # Facades read this candidate, whose initializer effects may
-                # differ from the checkout already. Only a new content effect
-                # invalidates the export plan that seeded this round.
-                break
-            exported = self._projected_exports(
-                root, tuple(projected_files.values()), selection=selection
-            )
-            if exported.failure:
-                return result_type.from_failure(exported)
-            projected_files.update((plan.path, plan) for plan in exported.value)
-            if not imports.value and self._initializers_seen(
-                exported.value, initializers
-            ):
-                initializers = tuple(
-                    plan for plan in exported.value if plan.project == root
-                )
-                break
-            previous, initializers = initializers, exported.value
-            cohort = tuple(projected_files.values())
-        return result_type.ok((
-            tuple(projected_files.values()),
-            tuple(custom_files.values()),
-            initializers,
-        ))
-
-    def _custom_source_seed(
-        self,
-        root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
-        cohort: tuple[m.Infra.CodegenFilePlan, ...],
-        *,
-        selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> p.Result[
-        tuple[
-            tuple[m.Infra.CodegenFilePlan, ...],
-            tuple[m.Infra.CodegenFilePlan, ...],
-            tuple[m.Infra.CodegenFilePlan, ...],
-        ]
-    ]:
-        """Prepare singleton effects and exports over their shared source cohort.
-
-        Returns:
-            The repaired cohort, source edits and initializers, or first failure.
-
-        """
-        result_type = r[
-            tuple[
-                tuple[m.Infra.CodegenFilePlan, ...],
-                tuple[m.Infra.CodegenFilePlan, ...],
-                tuple[m.Infra.CodegenFilePlan, ...],
-            ]
-        ]
-        repaired = (
-            self._singleton_model_sources(
-                root,
-                codegen,
-                cohort,
-                model_root=(
-                    None
-                    if selection is None
-                    else selection[0].parent
-                    if selection[1] is None
-                    else selection[0]
-                ),
-            )
-            if selection is None or selection[1] in {None, c.Infra.FacadeFamily.M}
-            else r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
-        )
-        if repaired.failure:
-            return result_type.from_failure(repaired)
-        cohort = tuple(
-            {plan.path: plan for plan in (*cohort, *repaired.value)}.values()
-        )
-        exported = self._custom_export_seed(root, cohort, selection=selection)
-        if exported.failure:
-            return result_type.from_failure(exported)
         protocols = (
-            self._model_protocol_sources(root, (*cohort, *exported.value))
+            self._model_protocol_sources(root, cohort)
             if selection is None
             else r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
         )
         if protocols.failure:
             return result_type.from_failure(protocols)
-        if protocols.value:
-            cohort = tuple(
-                {plan.path: plan for plan in (*cohort, *protocols.value)}.values()
-            )
-            exported = self._projected_exports(root, cohort, selection=selection)
-            if exported.failure:
-                return result_type.from_failure(exported)
+        staged = u.Infra.codegen_compose_file_plans(
+            (*cohort, *protocols.value), ordered=True
+        )
+        exported = self._custom_export_seed(root, staged, selection=selection)
+        if exported.failure:
+            return result_type.from_failure(exported)
+        staged = u.Infra.codegen_compose_file_plans(
+            (*staged, *exported.value), ordered=True
+        )
+        facades = self._custom_candidate_sources(
+            root, configuration, staged, selection=selection
+        )
+        if facades.failure:
+            return result_type.from_failure(facades)
+        staged = u.Infra.codegen_compose_file_plans(
+            (*staged, *facades.value), ordered=True
+        )
+        initializers = self._projected_exports(root, staged, selection=selection)
+        if initializers.failure:
+            return result_type.from_failure(initializers)
         return result_type.ok((
-            cohort,
-            (*repaired.value, *protocols.value),
-            tuple(
-                {
-                    plan.path: plan
-                    for plan in (
-                        *(plan for plan in cohort if plan.project == root),
-                        *exported.value,
-                    )
-                }.values()
+            u.Infra.codegen_compose_file_plans(
+                (*staged, *initializers.value), ordered=True
             ),
+            (*protocols.value, *facades.value),
+            initializers.value,
         ))
 
     def _model_protocol_sources(
@@ -631,7 +490,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 if (
                     layout is not None
                     and path.parent == layout.package_dir / family_directory
-                    and path.name.startswith("generated_models")
+                    and path.name.startswith(c.Infra.PROTOCOL_GENERATED_STEM)
                     and content.startswith(c.Infra.AUTOGEN_HEADER)
                     and path.relative_to(root) not in rendered_sources
                 ):
@@ -640,96 +499,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                         return result_type.from_failure(retired)
                     plans.append(retired.value)
         return result_type.ok(tuple(plans))
-
-    def _singleton_model_sources(
-        self,
-        root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-        *,
-        model_root: Path | None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-        """Converge namespace and entity repairs before validating their facade.
-
-        Returns:
-            Complete source effects retaining their original publication witnesses.
-
-        """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        declared = {plan.path: plan for plan in declared_files}
-        repaired: dict[Path, m.Infra.CodegenFilePlan] = {}
-        seen: set[tuple[tuple[Path, bytes | None], ...]] = set()
-        while True:
-            identity = tuple(
-                (path, plan.desired_content) for path, plan in sorted(declared.items())
-            )
-            if identity in seen:
-                return result_type.fail(
-                    f"model namespace/entity repair did not converge for {root}"
-                )
-            seen.add(identity)
-            epoch = self._singleton_model_source_epoch(
-                root, codegen, tuple(declared.values()), model_root=model_root
-            )
-            if epoch.failure:
-                return result_type.from_failure(epoch)
-            if not epoch.value:
-                return result_type.ok(tuple(repaired.values()))
-            declared.update((plan.path, plan) for plan in epoch.value)
-            repaired.update((plan.path, plan) for plan in epoch.value)
-
-    def _singleton_model_source_epoch(
-        self,
-        root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-        *,
-        model_root: Path | None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-        """Repair singleton model owners in the shared candidate before facades.
-
-        Returns:
-            Source and consumer edits retaining the original publication witnesses.
-
-        """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        snapshot = self.state.snapshot
-        if snapshot is None:
-            return result_type.fail(
-                "singleton model planning requires the authenticated run snapshot"
-            )
-        with (
-            self._source_view(root, declared_files=declared_files) as binding,
-            workspace_services.FlextInfraRopeWorkspace.open_workspace(
-                root,
-                rope_repository_root=Path(binding[0].root.real_path),
-                source_project=binding[0],
-                snapshot=snapshot,
-            ) as workspace,
-        ):
-            planned = u.Infra.plan_singleton_model_nesting(
-                workspace, binding[1], codegen, model_root=model_root
-            )
-            u.Cli.info(
-                f"  stage=singleton-model-candidate repository={root.name} "
-                f"model_root={model_root} sources={len(binding[1])} "
-                f"borrowed={workspace.rope_project is binding[0]} "
-                f"edits={'failed' if planned.failure else len(planned.value)}"
-            )
-            if planned.failure:
-                return result_type.from_failure(planned)
-            declared = {plan.path: plan for plan in declared_files}
-            return result_type.ok(
-                tuple(
-                    u.Infra.source_file_plan_from_edit(
-                        root,
-                        edit,
-                        source_project=binding[0],
-                        declared_files=declared,
-                    )
-                    for edit in planned.value
-                )
-            )
 
     def _custom_export_seed(
         self,
@@ -815,64 +584,9 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             outcome = ports.component_planner(
                 workspace,
                 declared_files=declared_files,
-                planners=(self._projected_exports, self._source_view),
                 selection=selection,
             )
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(outcome.files)
-
-    def _planned_source_imports(
-        self,
-        root: Path,
-        declared: tuple[m.Infra.CodegenFilePlan, ...],
-        *,
-        files: tuple[Path, ...] | None = None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-        """Plan imports through the caller's capability over the same candidate.
-
-        Selected component cohorts normalize their destinations and native move
-        consumers; the complete source mapping remains the reference authority.
-
-        Returns:
-            Import plans, or the original admission or semantic failure.
-
-        """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        ports, snapshot = self.state.ports, self.state.snapshot
-        if ports is None or snapshot is None:
-            return result_type.fail(
-                "complete generation requires caller-bound import planning "
-                "and an authenticated repository snapshot"
-            )
-        with self._source_view(root, declared_files=declared) as binding:
-            return ports.imports_planner(
-                root,
-                tuple(binding[1])
-                if files is None
-                else tuple(path for path in files if path in binding[1]),
-                sources=binding[1],
-                snapshot=snapshot,
-                declared_files=declared,
-            )
-
-    @staticmethod
-    def _initializers_seen(
-        exported: tuple[m.Infra.CodegenFilePlan, ...],
-        initializers: tuple[m.Infra.CodegenFilePlan, ...],
-    ) -> bool:
-        """Report whether re-planned initializers equal those the facades saw.
-
-        A destination without an overlaid initializer showed its current bytes.
-
-        Returns:
-            True when every re-planned initializer carries the bytes the facade
-            render read for that destination.
-
-        """
-        seen = {plan.path: plan.desired_content for plan in initializers}
-        return all(
-            plan.desired_content == seen.get(plan.path, plan.before.content)
-            for plan in exported
-        )
 
     def _projected_exports(
         self,

@@ -165,64 +165,79 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
         ids: set[int] = set()
         tree = state.tree
         for node in ast.walk(tree):
-            annotations: list[ast.expr] = []
-            if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
-                arguments = node.args
-                annotations.extend(
-                    argument.annotation
-                    for argument in (
-                        *arguments.posonlyargs,
-                        *arguments.args,
-                        *arguments.kwonlyargs,
-                        *((arguments.vararg,) if arguments.vararg else ()),
-                        *((arguments.kwarg,) if arguments.kwarg else ()),
-                    )
-                    if argument.annotation is not None
-                )
-                if node.returns is not None:
-                    annotations.append(node.returns)
-            # PEP 695/696 type-parameter bounds, constraints and defaults, and
-            # ``type`` alias values, are evaluated lazily by the language.
-            if isinstance(
-                node, (*c.Infra.AST_FUNCTION_TYPES, ast.ClassDef, ast.TypeAlias)
-            ):
-                for parameter in node.type_params:
-                    if (
-                        isinstance(parameter, ast.TypeVar)
-                        and parameter.bound is not None
-                    ):
-                        annotations.append(parameter.bound)
-                    if parameter.default_value is not None:
-                        annotations.append(parameter.default_value)
-            if isinstance(node, ast.TypeAlias):
-                annotations.append(node.value)
-            for annotation in annotations:
+            for annotation in cls._import_law_lazy_annotations(node):
                 ids.update(id(sub) for sub in ast.walk(annotation))
-        for statement in tree.body:
-            if isinstance(statement, ast.AnnAssign):
-                ids.update(id(sub) for sub in ast.walk(statement.annotation))
-        # A variable annotation whose nearest enclosing scope is a function is
-        # never evaluated (PEP 526), whatever the module's annotation mode.
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.AnnAssign):
-                continue
-            scope = state.parents.get(id(node))
-            while scope is not None and not isinstance(
-                scope, (*c.Infra.AST_FUNCTION_TYPES, ast.ClassDef)
+            if isinstance(node, ast.AnnAssign) and (
+                node in tree.body
+                or cls._import_law_is_classvar_annotation(node.annotation)
+                or cls._import_law_function_local(node, state.parents)
             ):
-                scope = state.parents.get(id(scope))
-            if isinstance(scope, c.Infra.AST_FUNCTION_TYPES):
-                ids.update(id(sub) for sub in ast.walk(node.annotation))
-        # ``ClassVar[...]`` members are excluded from Pydantic/dataclass field
-        # processing, so their class-body annotations are never evaluated at
-        # runtime and must not count as runtime reads of the binding.
-        for node in ast.walk(tree):
-            if isinstance(
-                node, ast.AnnAssign
-            ) and cls._import_law_is_classvar_annotation(node.annotation):
+                # Module-level annotations are deferred; ``ClassVar[...]``
+                # members are excluded from Pydantic/dataclass field
+                # processing; function-local annotations are never evaluated
+                # (PEP 526).
                 ids.update(id(sub) for sub in ast.walk(node.annotation))
         cls._import_law_collect_plain_namespace_annotations(state, ids)
         return frozenset(ids)
+
+    @staticmethod
+    def _import_law_lazy_annotations(node: ast.AST) -> Sequence[ast.expr]:
+        """Return one node's annotations the language never evaluates eagerly.
+
+        Function argument and return annotations, PEP 695/696 type-parameter
+        bounds and defaults, and ``type`` alias values.
+
+        Returns:
+            The node's lazily evaluated annotation expressions.
+
+        """
+        annotations: list[ast.expr] = []
+        if isinstance(node, c.Infra.AST_FUNCTION_TYPES):
+            arguments = node.args
+            annotations.extend(
+                argument.annotation
+                for argument in (
+                    *arguments.posonlyargs,
+                    *arguments.args,
+                    *arguments.kwonlyargs,
+                    *((arguments.vararg,) if arguments.vararg else ()),
+                    *((arguments.kwarg,) if arguments.kwarg else ()),
+                )
+                if argument.annotation is not None
+            )
+            if node.returns is not None:
+                annotations.append(node.returns)
+        if isinstance(node, (*c.Infra.AST_FUNCTION_TYPES, ast.ClassDef, ast.TypeAlias)):
+            for parameter in node.type_params:
+                if isinstance(parameter, ast.TypeVar) and parameter.bound:
+                    annotations.append(parameter.bound)
+                if (
+                    isinstance(
+                        parameter, (ast.TypeVar, ast.ParamSpec, ast.TypeVarTuple)
+                    )
+                    and parameter.default_value is not None
+                ):
+                    annotations.append(parameter.default_value)
+        if isinstance(node, ast.TypeAlias):
+            annotations.append(node.value)
+        return annotations
+
+    @staticmethod
+    def _import_law_function_local(
+        node: ast.AnnAssign, parents: Mapping[int, ast.AST]
+    ) -> bool:
+        """Return whether a variable annotation's nearest scope is a function.
+
+        Returns:
+            Whether the annotation lives in a function body.
+
+        """
+        scope = parents.get(id(node))
+        while scope is not None and not isinstance(
+            scope, (*c.Infra.AST_FUNCTION_TYPES, ast.ClassDef)
+        ):
+            scope = parents.get(id(scope))
+        return isinstance(scope, c.Infra.AST_FUNCTION_TYPES)
 
     @classmethod
     def _import_law_collect_plain_namespace_annotations(

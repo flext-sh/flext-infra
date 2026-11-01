@@ -760,11 +760,15 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 if native_sources is not None
                 else ()
             ),
-            overridden_sources=tuple(
-                canonicalize_name(Requirement(override).name)
-                for override in uv_resolution.override_dependencies
-                if isinstance(override, str) and Requirement(override).url
-            ),
+            override_references={
+                canonicalize_name(requirement.name): requirement.url
+                for requirement in (
+                    Requirement(override)
+                    for override in uv_resolution.override_dependencies
+                    if isinstance(override, str)
+                )
+                if requirement.url
+            },
         )
         return result.ok((
             source,

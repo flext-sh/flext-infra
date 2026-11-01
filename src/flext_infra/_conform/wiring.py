@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import codegen, docs, gates, m, r, u, validate
+from flext_infra import codegen, docs, gates, m, r, validate
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
@@ -64,7 +64,6 @@ class FlextInfraConformWiring:
             file_publisher=FlextInfraUtilitiesProtectedEditLinting,
             source_preview=codegen.FlextInfraStagedPackage(),
             candidate_validator=self.validate_codegen_candidate,
-            imports_planner=u.Infra.plan_import_normalization,
             component_planner=self.facade_component_planner,
         )
 
@@ -73,7 +72,6 @@ class FlextInfraConformWiring:
         workspace: p.Infra.RopeWorkspaceDsl,
         *,
         declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-        planners: tuple[p.Infra.SourceInitializerPlanner, p.Infra.SourceViewProvider],
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
         """Close facade cohorts through the session's own projection DSL.
@@ -84,7 +82,6 @@ class FlextInfraConformWiring:
         """
         return workspace.facade_projection(
             declared_files=declared_files,
-            planners=planners,
             selection=selection,
         )
 

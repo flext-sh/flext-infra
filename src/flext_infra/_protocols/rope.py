@@ -298,14 +298,17 @@ class FlextInfraProtocolsRope(Protocol):
             self,
             *,
             declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-            planners: tuple[
-                FlextInfraProtocolsBase.SourceInitializerPlanner,
-                FlextInfraProtocolsBase.SourceViewProvider,
-            ],
             selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
         ) -> m.Infra.CodegenRepositoryPlanOutcome:
-            """Plan coherent family, consumer and export effects in this session."""
+            """Plan the generated family facades in this session."""
             ...
+
+        def domain_owner_projection(
+            self,
+            *,
+            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+            initializer: FlextInfraProtocolsBase.SourceInitializerPlanner,
+        ) -> m.Infra.CodegenRepositoryPlanOutcome: ...
 
         @property
         def snapshot(self) -> FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot:
