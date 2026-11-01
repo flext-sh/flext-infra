@@ -188,24 +188,33 @@ class TestsFlextInfraCodegenConform:
     @pytest.mark.parametrize(
         "scenario", ["concurrent-edit", "lazy-failure", "docs-failure"]
     )
-    def test_public_apply_fails_without_overwriting_live_state(
+    def test_public_apply_failure_publishes_nothing(
         self,
         tmp_path: Path,
         conformed_template: Path,
         scenario: str,
     ) -> None:
-        """A failed apply keeps independent gains and never overwrites an edit."""
+        """A failed apply publishes nothing and never overwrites an edit.
+
+        The drifted Makefile belongs to the control cohort, which plans before
+        Python analysis; the lazy and docs refusals arise in later planning
+        and admission steps. Generation plans and admits everything before its
+        single publication, so a later refusal leaves every file of the tree
+        byte-identical, the drifted control file included.
+        """
         root, request, published, original = self._lifecycle_fixture(
             tmp_path,
             scenario,
             conformed_template,
         )
+        before = TestsFlextInfraConformSupport.project_tree(root)
         if scenario == "docs-failure":
             with pytest.raises(ValueError, match="Invalid JSON"):
                 FlextInfraCodegenConform.execute_request(
                     request, execution_context=infra
                 )
-            tm.fail(published.read_bytes() == original)
+            tm.that(published.read_bytes(), eq=original)
+            tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
             return
         if scenario == "lazy-failure":
             with u.Tests.raises(
@@ -214,7 +223,8 @@ class TestsFlextInfraCodegenConform:
                 FlextInfraCodegenConform.execute_request(
                     request, execution_context=infra
                 )
-            tm.fail(published.read_bytes() == original)
+            tm.that(published.read_bytes(), eq=original)
+            tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
             return
         planned = tm.ok(
             FlextInfraCodegenConform.Generate(repository_root=root).plan(request)

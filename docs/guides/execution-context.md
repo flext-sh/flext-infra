@@ -581,21 +581,17 @@ Internal phases use the active invocation's diagnostics without resetting them.
 Semantic API-alias rewrites return their original typed normalization failure;
 the common checked-edit boundary traverses these results before creating edits.
 An incomplete alias cohort never becomes a warning followed by successful output.
-The injected cohort-publication callbacks run after each admitted publication;
-their original failed Result retains the publication receipt. Global follow-ups
-run once only after every cohort succeeds. Control owners retain their mutable
-outcome by reference and mark a failed hook before dependent source analysis.
-The private publisher accepts an already composed, authenticated file-plan cohort
-for pre-Python controls. Supplying that cohort changes no request selector and
-retains normal admission, normalization, input verification and guarded publishing;
-it does not derive documentation or Python projections for the control operation.
-Failure metadata names the actual failed repository cohorts directly, allowing
-control outcomes to be updated without inferring ownership from written paths.
-Before source snapshots are opened, failed control outcomes block their producer
-and actual dependent closure through the existing workspace dependency graph.
-Every declared target retains an explicit source-planning outcome; independent
-targets continue. A failed publication or hook stores that original failed Result
-on its shared cohort outcomes only when no earlier native failure was retained.
+Generation publishes atomically: it plans and admits the complete request before
+its single publication. Complete generation plans the pre-Python control cohort
+first, so a control refusal surfaces before source analysis, then plans the full
+request from the same original tree that `check` compares and composes the control
+candidates under the full plan's final forms. No phase publishes a projection for
+a later phase to read back from disk. Every repository cohort is admitted before
+any effect, and the first admission failure, naming its cohort's repositories,
+rejects the whole request with nothing written. The admitted cohorts then publish
+through one publisher call; the injected cohort-publication callbacks and the
+global follow-ups run once after it, and a failed callback's Result retains the
+publication receipt.
 
 No execution boundary converts an unexpected `Exception` into an outcome: the
 control phase of generation and every repository run of `mod` return typed

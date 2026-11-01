@@ -35,9 +35,9 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         The parse-merge-dump composition drops every template comment, so
         this owner prefixes the one generated-file header (owner, adjustment
         rule, regeneration verb) and the render provenance on the formatted
-        source. The control cohort and the repository plan both publish
-        through it, so one run computes one projection and the second writer
-        finds nothing to change. A re-run reads the live file as data, so the
+        source. The control cohort and the repository plan both derive their
+        candidate through it, so the one composed publication of a run writes
+        a single final form. A re-run reads the live file as data, so the
         header never accumulates.
 
         Returns:
