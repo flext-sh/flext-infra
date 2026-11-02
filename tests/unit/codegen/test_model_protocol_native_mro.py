@@ -68,18 +68,19 @@ class TestsModelProtocolNativeMro:
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
             )
         destination = (package / "_protocols" / "payload.py").relative_to(root)
-        source = projected[destination]
-        tm.ok("title: str" in source)
-        tm.ok("m.Field" not in source)
-        tm.ok("TypeMetadata" not in source)
-        tm.ok(u.Cli.atomic_write_text_file(root / destination, source))
+        generated = projected[destination]
+        tm.ok("title: str" in generated)
+        tm.ok("m.Field" not in generated)
+        tm.ok("TypeMetadata" not in generated)
+        tm.ok(u.Cli.atomic_write_text_file(root / destination, generated))
         owner = u.derive_class_stem(package.name.replace("_", "-"))
         owner += "ProtocolsPayload"
+        module_name = package.name + "._protocols.payload"
         native_consumer(
             "from typing import get_type_hints, is_protocol\n"
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(package.parent)!r})\n"
-            f"module = importlib.import_module({(package.name + '._protocols.payload')!r})\n"
+            f"module = importlib.import_module({module_name!r})\n"
             f"owner = getattr(module, {owner!r})\n"
             "tm.ok(is_protocol(owner.Request))\n"
             "tm.that(get_type_hints(owner.Request), eq={'title': str})\n"

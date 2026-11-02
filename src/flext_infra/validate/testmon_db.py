@@ -14,7 +14,7 @@ from typing import Annotated, Self, override
 from flext_infra import m, p, r, s, u
 
 
-class FlextInfraTestmonDbInspector(s[m.Infra.TestmonCacheState]):
+class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
     """Checkpoint WAL, verify integrity, and compute saveability."""
 
     db_path: Annotated[Path, m.Field(description="Absolute .testmondata path.")]

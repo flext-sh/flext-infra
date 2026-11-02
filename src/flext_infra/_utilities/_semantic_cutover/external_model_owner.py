@@ -13,7 +13,6 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r
-from flext_infra.codemod._rename.symbols import FlextInfraCodemodRenameSymbols
 
 
 class FlextInfraUtilitiesSemanticCutoverExternalModelOwner:
@@ -41,6 +40,8 @@ class FlextInfraUtilitiesSemanticCutoverExternalModelOwner:
                 decisions.append(decision)
         if not decisions:
             return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
+        from flext_infra.codemod._rename.symbols import FlextInfraCodemodRenameSymbols
+
         updates, moves = FlextInfraCodemodRenameSymbols.plan_native_candidates(
             (workspace.rope_project,), sources, decisions
         )

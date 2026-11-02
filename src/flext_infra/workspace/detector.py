@@ -36,7 +36,7 @@ class FlextInfraWorkspaceDetector(
             physical runtime, or the first election or containment failure.
 
         """
-        result_type = r[m.Infra.WorkspaceRuntimeContext]
+        result_type = r[p.Infra.WorkspaceRuntimeContext]
         election = cls.runtime_election(repository_root)
         if election.failure:
             return result_type.from_failure(election)
@@ -61,7 +61,7 @@ class FlextInfraWorkspaceDetector(
             The elected runtime context, or the first election failure.
 
         """
-        result_type = r[m.Infra.WorkspaceRuntimeContext]
+        result_type = r[p.Infra.WorkspaceRuntimeContext]
         request = m.Infra.GitRepoRequest(repo_root=repository_root)
         identity = u.Infra.git_show_toplevel(request)
         if identity.failure:
@@ -184,12 +184,12 @@ class FlextInfraWorkspaceDetector(
         resolved_root = repository_root.expanduser().resolve()
         beads_path = cls._beads_path(resolved_root)
         if not beads_path.is_file():
-            return r[m.Infra.BeadsProjectSpec].fail(
+            return r[p.Infra.BeadsProjectSpec].fail(
                 f"missing required repository-local Beads configuration: {beads_path}",
             )
         loaded = u.Cli.config_load(beads_path, expand_env=False)
         if loaded.failure:
-            return r[m.Infra.BeadsProjectSpec].fail(
+            return r[p.Infra.BeadsProjectSpec].fail(
                 f"invalid repository-local Beads configuration ({beads_path}): "
                 f"{loaded.error or 'configuration load failed'}",
             )
@@ -198,11 +198,11 @@ class FlextInfraWorkspaceDetector(
             loaded.value.data,
         )
         if validated.failure:
-            return r[m.Infra.BeadsProjectSpec].fail_op(
+            return r[p.Infra.BeadsProjectSpec].fail_op(
                 f"Beads configuration model validation ({beads_path})",
                 validated.error,
             )
-        return r[m.Infra.BeadsProjectSpec].ok(validated.value)
+        return r[p.Infra.BeadsProjectSpec].ok(validated.value)
 
     @staticmethod
     def _git_origin_url(repository_root: Path) -> p.Result[str]:
@@ -348,7 +348,7 @@ class FlextInfraWorkspaceDetector(
         if metadata_path.exists() or metadata_path.is_symlink():
             metadata = u.Infra.read_project_metadata_state(repository_root)
             if metadata.failure:
-                return r[m.Infra.RepositoryRef].from_failure(metadata)
+                return r[p.Infra.RepositoryRef].from_failure(metadata)
             native_metadata = metadata.value
         if native_metadata is not None:
             project_name = native_metadata.metadata.project.name
@@ -356,7 +356,7 @@ class FlextInfraWorkspaceDetector(
         else:
             scaffold = cls._declared_scaffold_project(repository_root)
             if scaffold.failure:
-                return r[m.Infra.RepositoryRef].from_failure(scaffold)
+                return r[p.Infra.RepositoryRef].from_failure(scaffold)
             project_name = scaffold.value.constant_name
             # The explicit ProjectSpec declares the import package the existing
             # scaffold planner materializes; no PEP metadata exists yet.
@@ -367,11 +367,11 @@ class FlextInfraWorkspaceDetector(
             declared_url=declared_url,
         )
         if origin.failure:
-            return r[m.Infra.RepositoryRef].from_failure(origin)
+            return r[p.Infra.RepositoryRef].from_failure(origin)
         origin_url, provider_name = origin.value
         canonical_url = u.Infra.validate_git_remote_url(declared_url or origin_url)
         if canonical_url.failure:
-            return r[m.Infra.RepositoryRef].from_failure(canonical_url)
+            return r[p.Infra.RepositoryRef].from_failure(canonical_url)
         effective_url = canonical_url.value
         role = (
             c.Infra.MakeProfile.WORKSPACE
@@ -382,7 +382,7 @@ class FlextInfraWorkspaceDetector(
             origin_url,
         ).partition("/")
         if not separator or not repository_name:
-            return r[m.Infra.RepositoryRef].fail(
+            return r[p.Infra.RepositoryRef].fail(
                 f"Git origin does not identify a repository: {origin_url}",
             )
         # The manifest is the identity authority: the provider key is the one
@@ -390,7 +390,7 @@ class FlextInfraWorkspaceDetector(
         # just reconciled against the live origin, so no catalog may override
         # either. Native packaging declarations own participation; source
         # exports remain independently accountable to their actual check owner.
-        return r[m.Infra.RepositoryRef].ok(
+        return r[p.Infra.RepositoryRef].ok(
             m.Infra.RepositoryRef(
                 inputs=() if native_metadata is None else (native_metadata.source,),
                 name=repository_name,
@@ -431,7 +431,7 @@ class FlextInfraWorkspaceDetector(
             The declared project, or the original Git/configuration failure.
 
         """
-        result_type = r[m.Infra.ProjectSpec]
+        result_type = r[p.Infra.ProjectSpec]
         inputs = u.Infra.exact_worktree_root(repository_root).flat_map(
             lambda _: u.Infra.load_codegen_inputs(repository_root)
         )
@@ -461,7 +461,7 @@ class FlextInfraWorkspaceDetector(
             The declared project, or the typed declaration failure.
 
         """
-        result_type = r[m.Infra.ProjectSpec]
+        result_type = r[p.Infra.ProjectSpec]
         declaration = inputs.spec.repository
         if declaration.project is None:
             error = FileNotFoundError(
@@ -658,7 +658,7 @@ class FlextInfraWorkspaceDetector(
             m.Infra.GitSubmoduleDeclaration]``.
 
         """
-        result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
+        result_type = r[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
         contract = u.Infra.git_require_submodule_contract(declaration)
         if contract.failure:
             return result_type.from_failure(contract)
@@ -722,7 +722,7 @@ class FlextInfraWorkspaceDetector(
             Its observed identity, or the same native declaration for setup.
 
         """
-        result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
+        result_type = r[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
         if not (subproject_root / c.Infra.GIT_DIR).exists():
             if not context.allow_unprovisioned_members:
                 error = FileNotFoundError(
@@ -753,7 +753,7 @@ class FlextInfraWorkspaceDetector(
             The member reference carrying its own declared commands.
 
         """
-        result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
+        result_type = r[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
         routed = cls._beads_route_gate(subproject_root, context.workspace_beads)
         if routed.failure:
             return result_type.from_failure(routed)
@@ -817,7 +817,7 @@ class FlextInfraWorkspaceDetector(
             The member reference with its declared commands.
 
         """
-        result_type = r[m.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
+        result_type = r[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
         configured = cls._configured_repository_ref(
             inputs.spec,
             observed=repository,
@@ -838,7 +838,7 @@ class FlextInfraWorkspaceDetector(
             The declared bootstrap source.
 
         """
-        result_type = r[m.Infra.CodegenBootstrapSource]
+        result_type = r[p.Infra.CodegenBootstrapSource]
         project = declaration.project
         if project is None or project.flext_source is None:
             return result_type.fail(
@@ -873,10 +873,10 @@ class FlextInfraWorkspaceDetector(
         resolved_root = repository_root.expanduser().resolve()
         authenticated = cls._authenticated_identity(resolved_root)
         if authenticated.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(authenticated)
+            return r[p.Infra.WorkspaceSpec].from_failure(authenticated)
         resolved_inputs = cls._resolved_codegen_inputs(resolved_root, inputs)
         if resolved_inputs.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(resolved_inputs)
+            return r[p.Infra.WorkspaceSpec].from_failure(resolved_inputs)
         return cls._assembled_workspace_spec(
             resolved_root,
             authenticated.value,
@@ -904,7 +904,7 @@ class FlextInfraWorkspaceDetector(
             resolved_root / c.Infra.GITMODULES, required=False
         )
         if topology.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(topology)
+            return r[p.Infra.WorkspaceSpec].from_failure(topology)
         workspace = cls._resolved_workspace_topology(
             resolved_root,
             identity,
@@ -913,13 +913,13 @@ class FlextInfraWorkspaceDetector(
             allow_unprovisioned_members=allow_unprovisioned_members,
         )
         if workspace.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(workspace)
+            return r[p.Infra.WorkspaceSpec].from_failure(workspace)
         external_consumers = u.Infra.discover_external_consumers(
             resolved_root,
             inputs_value,
         )
         if external_consumers.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(external_consumers)
+            return r[p.Infra.WorkspaceSpec].from_failure(external_consumers)
         (workspace_beads, resolved_refs, name) = workspace.value
         observations = (
             topology.value,
@@ -929,14 +929,14 @@ class FlextInfraWorkspaceDetector(
         )
         verified = u.Cli.atomic_verify_binary_file_states(observations)
         if verified.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(verified)
+            return r[p.Infra.WorkspaceSpec].from_failure(verified)
         bootstrap_source: p.Infra.CodegenBootstrapSource | None = None
         if not (resolved_root / c.PYPROJECT_FILENAME).exists():
             bootstrap = cls._bootstrap_source(resolved_root, declaration)
             if bootstrap.failure:
-                return r[m.Infra.WorkspaceSpec].from_failure(bootstrap)
+                return r[p.Infra.WorkspaceSpec].from_failure(bootstrap)
             bootstrap_source = bootstrap.value
-        return r[m.Infra.WorkspaceSpec].ok(
+        return r[p.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 inputs=observations,
                 name=name,
@@ -970,7 +970,7 @@ class FlextInfraWorkspaceDetector(
 
         """
         if inputs is not None:
-            return r[m.Infra.CodegenInputs].ok(inputs)
+            return r[p.Infra.CodegenInputs].ok(inputs)
         return u.Infra.load_codegen_inputs(resolved_root)
 
     @classmethod
@@ -1046,7 +1046,7 @@ class FlextInfraWorkspaceDetector(
             The resulting ``(identity, manifest)`` pair.
 
         """
-        result_type = r[m.Infra.GitIdentityReport]
+        result_type = r[p.Infra.GitIdentityReport]
         if not resolved_root.is_dir():
             return result_type.fail(
                 f"repository root is not a directory: {resolved_root}",
@@ -1292,25 +1292,25 @@ class FlextInfraWorkspaceDetector(
         if workspace is None:
             loaded = cls.load_workspace_spec(resolved_root, inputs=inputs)
             if loaded.failure:
-                return r[m.Infra.RepositoryConformTarget].from_failure(loaded)
+                return r[p.Infra.RepositoryConformTarget].from_failure(loaded)
             workspace = loaded.value
         topology = cls._conform_topology(workspace, resolved_root)
         if topology.failure:
-            return r[m.Infra.RepositoryConformTarget].from_failure(topology)
+            return r[p.Infra.RepositoryConformTarget].from_failure(topology)
         verified = u.Cli.atomic_verify_binary_file_states((
             *topology.value,
             *workspace.repository.inputs,
         ))
         if verified.failure:
-            return r[m.Infra.RepositoryConformTarget].from_failure(verified)
+            return r[p.Infra.RepositoryConformTarget].from_failure(verified)
         canonical_project_name = workspace.repository.distribution
         if inputs is None:
             captured = u.Infra.load_codegen_inputs(resolved_root)
             if captured.failure:
-                return r[m.Infra.RepositoryConformTarget].from_failure(captured)
+                return r[p.Infra.RepositoryConformTarget].from_failure(captured)
             inputs = captured.value
         declaration = inputs.spec.repository
-        return r[m.Infra.RepositoryConformTarget].ok(
+        return r[p.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=workspace.repository,
                 root=resolved_root,

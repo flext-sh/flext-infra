@@ -14,7 +14,7 @@ from flext_infra.codegen import FlextInfraCodegenLazyInit
 
 
 class FlextInfraRefactorCensusRemoval(
-    FlextInfraProjectSelectionServiceBase[m.Infra.WorkspaceReport],
+    FlextInfraProjectSelectionServiceBase[p.Infra.WorkspaceReport],
 ):
     """Preview and apply the inventory's removal candidates through gates.
 

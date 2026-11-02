@@ -507,58 +507,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 The recursively unwrapped declared value type.
 
             Raises:
-                ValueError: If ``Annotated`` is shadowed or has no value type.
+                ValueError: If ``Annotated`` is ambiguous or has no value type.
 
             """
-            bindings: dict[str, str] = {}
-            canonical_modules = {"typing", "typing_extensions"}
-            for statement in tree.body:
-                if isinstance(statement, ast.ImportFrom):
-                    if statement.module not in canonical_modules:
-                        continue
-                    for alias in statement.names:
-                        if alias.name != "Annotated":
-                            continue
-                        name = alias.asname or alias.name
-                        previous = bindings.setdefault(name, "typing.Annotated")
-                        if previous != "typing.Annotated":
-                            msg = f"conflicting Annotated import in {tree}"
-                            raise ValueError(msg)
-                elif isinstance(statement, ast.Import):
-                    for alias in statement.names:
-                        if alias.name not in canonical_modules:
-                            continue
-                        module = alias.asname or alias.name.partition(".")[0]
-                        name = f"{module}.Annotated"
-                        previous = bindings.setdefault(name, "typing.Annotated")
-                        if previous != "typing.Annotated":
-                            msg = f"conflicting Annotated import in {tree}"
-                            raise ValueError(msg)
-            names = frozenset(bindings)
-            if names and any(
-                name in names
-                for statement in tree.body
-                if not isinstance(statement, ast.Import | ast.ImportFrom)
-                for name in cls._source_bound_names(statement)
-            ):
-                msg = "module shadows its Annotated import"
-                raise ValueError(msg)
-            roots = frozenset(name.partition(".")[0] for name in names)
-            if any(
-                bound in roots and not cls._source_typing_import(statement, bound)
-                for statement in tree.body
-                if isinstance(statement, ast.Import | ast.ImportFrom)
-                for bound in cls._source_bound_names(statement)
-            ):
-                msg = "module has an ambiguous Annotated import"
-                raise ValueError(msg)
-            if names and any(
-                name in names
-                for statement in model.body
-                for name in cls._source_bound_names(statement)
-            ):
-                msg = "model shadows its Annotated import"
-                raise ValueError(msg)
+            bindings = cls._source_annotated_bindings(tree, model)
             while isinstance(annotation, ast.Subscript):
                 name = ast.unparse(annotation.value)
                 if name not in bindings:
@@ -568,16 +520,61 @@ class FlextInfraUtilitiesModelsProtocol:
                     break
                 if not isinstance(annotation.slice, ast.Tuple):
                     msg = "Annotated field has no value type tuple"
-                    raise ValueError(msg)
+                    raise TypeError(msg)
                 if not annotation.slice.elts:
                     msg = "Annotated field has no value type"
-                    raise ValueError(msg)
+                    raise TypeError(msg)
                 annotation = annotation.slice.elts[0]
             return annotation
 
+        @classmethod
+        def _source_annotated_bindings(
+            cls, tree: ast.Module, model: ast.ClassDef
+        ) -> frozenset[str]:
+            """Resolve only imported ``typing.Annotated`` source spellings."""
+            modules = {"typing", "typing_extensions"}
+            bindings = {
+                alias.asname or alias.name
+                for statement in tree.body
+                if isinstance(statement, ast.ImportFrom)
+                and statement.module in modules
+                for alias in statement.names
+                if alias.name == "Annotated"
+            }
+            bindings.update(
+                f"{alias.asname or alias.name.partition('.')[0]}.Annotated"
+                for statement in tree.body
+                if isinstance(statement, ast.Import)
+                for alias in statement.names
+                if alias.name in modules
+            )
+            roots = frozenset(name.partition(".")[0] for name in bindings)
+            shadowed = {
+                name
+                for statement in (*tree.body, *model.body)
+                if not isinstance(statement, ast.Import | ast.ImportFrom)
+                for name in cls._source_bound_names(statement)
+            }
+            ambiguous_imports = {
+                name
+                for statement in tree.body
+                if isinstance(statement, ast.Import | ast.ImportFrom)
+                for name in cls._source_bound_names(statement)
+                if name in roots and not cls._source_typing_import(statement, name)
+            }
+            if roots.intersection(shadowed | ambiguous_imports):
+                msg = "Annotated import is shadowed or ambiguous"
+                raise ValueError(msg)
+            return frozenset(bindings)
+
         @staticmethod
         def _source_typing_import(statement: ast.stmt, name: str) -> bool:
-            """Prove one imported annotation provider from its source statement."""
+            """Prove one imported annotation provider from its source statement.
+
+            Returns:
+                Whether the statement binds ``name`` to ``typing.Annotated``.
+
+            """
             if isinstance(statement, ast.ImportFrom):
                 return statement.module in {"typing", "typing_extensions"} and any(
                     alias.name == "Annotated" and (alias.asname or alias.name) == name

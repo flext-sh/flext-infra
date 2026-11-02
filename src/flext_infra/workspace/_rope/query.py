@@ -17,7 +17,7 @@ from typing import ClassVar
 from flext_infra import c, m, p, s, t, u
 
 
-class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
+class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
     """Own the native Rope project, structural index, and read-only query caches."""
 
     _rope_repository_root: Path = m.PrivateAttr()

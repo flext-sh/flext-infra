@@ -12,7 +12,7 @@ from typing import Annotated, override
 from flext_infra import FlextInfraGitLanes, m, p, s, u
 
 
-class FlextInfraGitService(s[m.Infra.GitStatusReport]):
+class FlextInfraGitService(s[p.Infra.GitStatusReport]):
     """Thin public status reporting and lane admission use cases."""
 
     repository: Annotated[
@@ -30,11 +30,11 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
         return (self.repository or self.repository_root).expanduser().resolve()
 
     @override
-    def execute(self) -> p.Result[m.Infra.GitStatusReport]:
+    def execute(self) -> p.Result[p.Infra.GitStatusReport]:
         """Capture porcelain status for the selected repository.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitStatusReport]``.
+            The resulting ``p.Result[p.Infra.GitStatusReport]``.
 
         """
         return u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=self._repo()))
@@ -42,7 +42,7 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
     @staticmethod
     def verify_lane(
         request: p.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[m.Infra.GitOidReport]:
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Run the shared, effect-free lane admission owner.
 
         Returns:
@@ -55,13 +55,13 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
     def verify_lanes(
         cls,
         request: p.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[m.Infra.GitLaneReport]:
+    ) -> p.Result[p.Infra.GitLaneReport]:
         """Fail on stashes, merged-but-alive branches and orphan or merged worktrees.
 
         The one census evaluator owns the verdict; the service only publishes it.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitLaneReport]``.
+            The resulting ``p.Result[p.Infra.GitLaneReport]``.
 
         """
         return FlextInfraGitLanes.verify_lanes(request)
@@ -69,7 +69,7 @@ class FlextInfraGitService(s[m.Infra.GitStatusReport]):
     @staticmethod
     def lane_ownership(
         request: p.Infra.GitLaneOwnershipRequest,
-    ) -> p.Result[m.Infra.GitLaneOwnershipReceipt]:
+    ) -> p.Result[p.Infra.GitLaneOwnershipReceipt]:
         """Read authenticated prior ownership from an existing published checkpoint.
 
         Returns:
