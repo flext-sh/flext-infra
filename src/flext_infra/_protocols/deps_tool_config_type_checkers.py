@@ -6,8 +6,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Protocol, runtime_checkable
 
-from flext_infra import t
-from flext_infra._models import FlextInfraModelsDepsToolConfigLinters
+from flext_infra import p, t
 
 
 class FlextInfraProtocolsDepsToolConfigTypeCheckers:
@@ -19,11 +18,8 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
 
         root: t.NonEmptyStr
         rationale: t.NonEmptyStr
-        authorization: (
-            FlextInfraModelsDepsToolConfigLinters.TrackerAuthorization
-            | FlextInfraModelsDepsToolConfigLinters.OperatorAuthorization
-        )
-        changes: tuple[FlextInfraModelsDepsToolConfigLinters.DiagnosticRuleChange, ...]
+        authorization: p.Infra.TrackerAuthorization | p.Infra.OperatorAuthorization
+        changes: tuple[p.Infra.DiagnosticRuleChange, ...]
 
     @runtime_checkable
     class ExecutionEnvironment(Protocol):

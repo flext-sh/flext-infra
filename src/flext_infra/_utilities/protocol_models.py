@@ -208,6 +208,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if layout is None:
                 return result_type.ok({})
             package_dir, class_stem = layout
+            package_name = ".".join(package_dir.relative_to(self.repository_root / "src").parts)
             models_root = package_dir / "_models"
             if not self.project.source_query(models_root, "isdir"):
                 return result_type.ok({})
@@ -247,7 +248,9 @@ class FlextInfraUtilitiesModelsProtocol:
                         .parts
                     )
                 )
-                content = self._source_render_module(destination, owner, classes)
+                content = self._source_render_module(
+                    destination, owner, classes, package_name
+                )
                 rendered[destination.relative_to(self.repository_root)] = content
             return result_type.ok(rendered)
 
@@ -324,6 +327,7 @@ class FlextInfraUtilitiesModelsProtocol:
             destination: Path,
             owner: str,
             classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            package_name: str,
         ) -> str:
             """Render one same-path protocol mirror from its parsed declarations.
 
@@ -336,16 +340,19 @@ class FlextInfraUtilitiesModelsProtocol:
                 if self.project.source_query(destination, "isfile")
                 else None
             )
-            generated = self._source_generated_module(owner, classes)
+            generated = self._source_generated_module(owner, classes, package_name)
             if existing is None or existing.startswith(c.Infra.AUTOGEN_HEADER):
                 return generated
-            return self._source_extend_authored(existing, owner, classes, destination)
+            return self._source_extend_authored(
+                existing, owner, classes, destination, package_name
+            )
 
         @classmethod
         def _source_generated_module(
             cls,
             owner: str,
             classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            package_name: str,
         ) -> str:
             """Render canonical nested runtime-checkable contracts without imports.
 
@@ -359,7 +366,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 "",
                 "from __future__ import annotations",
                 "from typing import Protocol, runtime_checkable",
-                *cls.source_annotation_imports(classes),
+                *cls.source_annotation_imports(classes, package_name),
                 "",
                 "",
                 f"class {owner}:",
@@ -391,6 +398,7 @@ class FlextInfraUtilitiesModelsProtocol:
         def source_annotation_imports(
             cls,
             classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            package_name: str,
         ) -> list[str]:
             """Retain imported non-facade annotation providers from source.
 
@@ -406,6 +414,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 if isinstance(symbol, ast.Name)
             }
             imports: list[str] = []
+            if "p" in roots:
+                imports.append(f"from {package_name} import p")
             excluded = {"m", "p", "pydantic"}
             for statement in classes[0][2].body:
                 if isinstance(statement, ast.Import):
@@ -508,36 +518,107 @@ class FlextInfraUtilitiesModelsProtocol:
 
             Raises:
                 ValueError: If ``Annotated`` is ambiguous or has no value type.
+                TypeError: If the annotation has no tuple or value type.
 
             """
             bindings = cls._source_annotated_bindings(tree, model)
-            while isinstance(annotation, ast.Subscript):
-                name = ast.unparse(annotation.value)
-                if name not in bindings:
+            model_facade = cls._source_model_facade_binding(tree, model)
+
+            class Project(ast.NodeTransformer):
+                def visit_Attribute(self, node: ast.Attribute) -> ast.expr:
+                    root = node
+                    while isinstance(root.value, ast.Attribute):
+                        root = root.value
+                    if (
+                        isinstance(root.value, ast.Name)
+                        and root.value.id.startswith("FlextInfraModels")
+                    ):
+                        # Generated contracts use the stable public port facade,
+                        # never a concrete model-holder implementation class.
+                        return ast.copy_location(
+                            ast.parse(f"p.Infra.{node.attr}", mode="eval").body,
+                            node,
+                        )
+                    if (
+                        model_facade
+                        and isinstance(node.value, ast.Name)
+                        and node.value.id == "m"
+                    ):
+                        return ast.copy_location(
+                            ast.Attribute(
+                                value=ast.Name(id="p", ctx=ast.Load()),
+                                attr=node.attr,
+                                ctx=ast.Load(),
+                            ),
+                            node,
+                        )
+                    return self.generic_visit(node)
+
+                def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
+                    name = ast.unparse(node.value)
+                    if name in bindings:
+                        if not isinstance(node.slice, ast.Tuple):
+                            msg = "Annotated field has no value type tuple"
+                            raise TypeError(msg)
+                        if not node.slice.elts:
+                            msg = "Annotated field has no value type"
+                            raise TypeError(msg)
+                        return self.visit(node.slice.elts[0])
                     if name == "Annotated":
                         msg = "model uses unbound typing.Annotated"
                         raise ValueError(msg)
-                    break
-                if not isinstance(annotation.slice, ast.Tuple):
-                    msg = "Annotated field has no value type tuple"
-                    raise TypeError(msg)
-                if not annotation.slice.elts:
-                    msg = "Annotated field has no value type"
-                    raise TypeError(msg)
-                annotation = annotation.slice.elts[0]
-            return annotation
+                    if name.rpartition(".")[2] == "Literal":
+                        # Literal members are runtime payload, not type identities.
+                        return node
+                    return self.generic_visit(node)
+
+            return ast.fix_missing_locations(Project().visit(annotation))
+
+        @classmethod
+        def _source_model_facade_binding(
+            cls, tree: ast.Module, model: ast.ClassDef
+        ) -> bool:
+            """Whether the source binds ``m`` to a FLEXT model facade.
+
+            A local variable named ``m`` must not be converted accidentally. The
+            bootstrap has only source text, so it accepts the explicit public
+            facade import and rejects any local competing binding.
+            """
+            imported = any(
+                isinstance(statement, ast.ImportFrom)
+                and statement.module is not None
+                and statement.module.startswith("flext")
+                and any(
+                    alias.name == "m" and (alias.asname or alias.name) == "m"
+                    for alias in statement.names
+                )
+                for statement in tree.body
+            )
+            shadowed = any(
+                "m" in cls._source_bound_names(statement)
+                for statement in (*tree.body, *model.body)
+                if not isinstance(statement, ast.Import | ast.ImportFrom)
+            )
+            return imported and not shadowed
 
         @classmethod
         def _source_annotated_bindings(
             cls, tree: ast.Module, model: ast.ClassDef
         ) -> frozenset[str]:
-            """Resolve only imported ``typing.Annotated`` source spellings."""
+            """Resolve only imported ``typing.Annotated`` source spellings.
+
+            Returns:
+                Exact aliases imported from ``typing`` or ``typing_extensions``.
+
+            Raises:
+                ValueError: If a canonical import is shadowed or ambiguous.
+
+            """
             modules = {"typing", "typing_extensions"}
             bindings = {
                 alias.asname or alias.name
                 for statement in tree.body
-                if isinstance(statement, ast.ImportFrom)
-                and statement.module in modules
+                if isinstance(statement, ast.ImportFrom) and statement.module in modules
                 for alias in statement.names
                 if alias.name == "Annotated"
             }
@@ -622,6 +703,7 @@ class FlextInfraUtilitiesModelsProtocol:
             owner: str,
             classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
             destination: Path,
+            package_name: str,
         ) -> str:
             """Preserve authored contracts and append only missing nested ports.
 
@@ -698,6 +780,15 @@ class FlextInfraUtilitiesModelsProtocol:
             if not additions:
                 return source
             lines = source.splitlines(keepends=True)
+            additions_use_protocol_facade = any(
+                any(
+                    isinstance(name, ast.Name) and name.id == "p"
+                    for name in ast.walk(field.annotation)
+                )
+                for node, _path, _module in classes
+                if node.name not in authored
+                for field in cls.source_fields(node, classes)
+            )
             if "from typing import Protocol" not in source:
                 position = next(
                     (
@@ -710,6 +801,16 @@ class FlextInfraUtilitiesModelsProtocol:
                 lines.insert(
                     position, "from typing import Protocol, runtime_checkable\n"
                 )
+            if additions_use_protocol_facade and f"from {package_name} import p" not in source:
+                position = next(
+                    (
+                        index + 1
+                        for index, line in enumerate(lines)
+                        if line.startswith("from __future__ import")
+                    ),
+                    0,
+                )
+                lines.insert(position, f"from {package_name} import p\n")
             if holder.end_lineno is None:
                 message = (
                     f"authored protocol holder has no source extent: {destination}"

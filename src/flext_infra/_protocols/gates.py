@@ -7,8 +7,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Literal, Protocol, runtime_checkable
 
-from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsDeps
+from flext_infra import c, p, t
 from flext_infra._protocols import FlextInfraProtocolsCheck, FlextInfraProtocolsDeps
 
 
@@ -27,7 +26,7 @@ class FlextInfraProtocolsGates:
         """Structural data contract projected from the owning model."""
 
         name: str
-        files: tuple[FlextInfraModelsGates.SccFile, ...]
+        files: tuple[FlextInfraProtocolsGates.SccFile, ...]
 
     @runtime_checkable
     class DeptryError(Protocol):
@@ -48,9 +47,9 @@ class FlextInfraProtocolsGates:
     class DeptryDiagnostic(Protocol):
         """Structural data contract projected from the owning model."""
 
-        error: FlextInfraModelsGates.DeptryError
+        error: FlextInfraProtocolsGates.DeptryError
         module: str
-        location: FlextInfraModelsGates.DeptryLocation
+        location: FlextInfraProtocolsGates.DeptryLocation
 
     @runtime_checkable
     class GateContext(Protocol):
@@ -62,9 +61,7 @@ class FlextInfraProtocolsGates:
         reports_dir: Path
         apply_fixes: bool = ...
         check_only: bool = ...
-        runtime_dependency_inputs: (
-            FlextInfraModelsDeps.RuntimeDependencyInputs | None
-        ) = ...
+        runtime_dependency_inputs: p.Infra.RuntimeDependencyInputs | None = ...
         runtime_dependency_collector: (
             t.Port[FlextInfraProtocolsDeps.RuntimeDependencyCollector] | None
         ) = ...
@@ -74,9 +71,7 @@ class FlextInfraProtocolsGates:
         pyright_args: Sequence[str] = ...
         selected_files: tuple[Path, ...] = ...
         candidate_files: tuple[Path, ...] | None = ...
-        check_progress: (
-            Callable[[Path, FlextInfraModelsCheck.ProjectResult], None] | None
-        ) = ...
+        check_progress: Callable[[Path, p.Infra.ProjectResult], None] | None = ...
 
     @runtime_checkable
     class MypyDiagnostic(Protocol):
@@ -103,8 +98,8 @@ class FlextInfraProtocolsGates:
     class PyrightRange(Protocol):
         """Structural data contract projected from the owning model."""
 
-        start: FlextInfraModelsGates.PyrightPosition
-        end: FlextInfraModelsGates.PyrightPosition
+        start: FlextInfraProtocolsGates.PyrightPosition
+        end: FlextInfraProtocolsGates.PyrightPosition
 
     @runtime_checkable
     class PyrightDiagnostic(Protocol):
@@ -113,7 +108,7 @@ class FlextInfraProtocolsGates:
         file: str
         severity: Literal["error", "warning", "information"]
         message: t.NonEmptyStr
-        range: FlextInfraModelsGates.PyrightRange | None = ...
+        range: FlextInfraProtocolsGates.PyrightRange | None = ...
         rule: str | None = ...
 
     @runtime_checkable
@@ -132,8 +127,8 @@ class FlextInfraProtocolsGates:
 
         version: t.NonEmptyStr
         time: t.NonEmptyStr
-        general_diagnostics: Sequence[FlextInfraModelsGates.PyrightDiagnostic]
-        summary: FlextInfraModelsGates.PyrightSummary
+        general_diagnostics: Sequence[FlextInfraProtocolsGates.PyrightDiagnostic]
+        summary: FlextInfraProtocolsGates.PyrightSummary
 
     @runtime_checkable
     class PyreflyDiagnostic(Protocol):
@@ -154,7 +149,7 @@ class FlextInfraProtocolsGates:
     class PyreflyReport(Protocol):
         """Structural data contract projected from the owning model."""
 
-        errors: Sequence[FlextInfraModelsGates.PyreflyDiagnostic]
+        errors: Sequence[FlextInfraProtocolsGates.PyreflyDiagnostic]
 
     @runtime_checkable
     class GateReportEvidence(Protocol):
@@ -181,7 +176,7 @@ class FlextInfraProtocolsGates:
 
         phase: c.Infra.CheckPhase = ...
         requested_gates: t.StrTuple = ...
-        test_selection: FlextInfraModelsGates.GateTestIntent | None = ...
+        test_selection: FlextInfraProtocolsGates.GateTestIntent | None = ...
 
     @runtime_checkable
     class GateExecutionFacts(Protocol):
@@ -193,11 +188,11 @@ class FlextInfraProtocolsGates:
         command_digest: str
         process: m.Cli.ProcessOutcome
         native_outcome: c.Infra.ToolOutcome
-        intent: FlextInfraModelsGates.GateExecutionIntent
+        intent: FlextInfraProtocolsGates.GateExecutionIntent
         policy: c.Infra.GateAcceptancePolicy
         context_digest: str
         policy_digest: str
-        reports: tuple[FlextInfraModelsGates.GateReportEvidence, ...]
+        reports: tuple[FlextInfraProtocolsGates.GateReportEvidence, ...]
         result_digest: t.NonEmptyStr
         started_at: t.NonEmptyStr
         completed_at: t.NonEmptyStr
@@ -212,11 +207,11 @@ class FlextInfraProtocolsGates:
         command_digest: str
         process: m.Cli.ProcessOutcome
         native_outcome: c.Infra.ToolOutcome
-        intent: FlextInfraModelsGates.GateExecutionIntent
+        intent: FlextInfraProtocolsGates.GateExecutionIntent
         policy: c.Infra.GateAcceptancePolicy
         context_digest: str
         policy_digest: str
-        reports: tuple[FlextInfraModelsGates.GateReportEvidence, ...]
+        reports: tuple[FlextInfraProtocolsGates.GateReportEvidence, ...]
         result_digest: t.NonEmptyStr
         started_at: t.NonEmptyStr
         completed_at: t.NonEmptyStr
@@ -236,7 +231,7 @@ class FlextInfraProtocolsGates:
         repository_root: Path
         gate: t.NonEmptyStr
         command: t.StrTuple
-        intent: FlextInfraModelsGates.GateExecutionIntent
+        intent: FlextInfraProtocolsGates.GateExecutionIntent
         runtime_identity: str
 
     @runtime_checkable
@@ -245,7 +240,7 @@ class FlextInfraProtocolsGates:
 
         repository_root: Path
         gate: t.NonEmptyStr
-        intent: FlextInfraModelsGates.GateExecutionIntent
+        intent: FlextInfraProtocolsGates.GateExecutionIntent
         command: t.StrTuple
         repository: str | None
         commit_sha: str | None
@@ -271,9 +266,9 @@ class FlextInfraProtocolsGates:
     class GateCaptureFinishRequest(Protocol):
         """Structural data contract projected from the owning model."""
 
-        started: FlextInfraModelsGates.GateCaptureStart
+        started: FlextInfraProtocolsGates.GateCaptureStart
         process: m.Cli.ProcessOutcome
-        reports: tuple[FlextInfraModelsGates.GateReportEvidence, ...]
+        reports: tuple[FlextInfraProtocolsGates.GateReportEvidence, ...]
         report_root: Path
         runtime_identity: str
 
@@ -283,7 +278,7 @@ class FlextInfraProtocolsGates:
 
         process: m.Cli.ProcessOutcome
         receipt: Path | None
-        issues: tuple[FlextInfraModelsCheck.Issue, ...] = ...
+        issues: tuple[p.Infra.Issue, ...] = ...
 
     @runtime_checkable
     class GateAttestationPredicate(Protocol):
@@ -294,9 +289,9 @@ class FlextInfraProtocolsGates:
         signer: t.NonEmptyStr
         toolchain_digest: t.NonEmptyStr
         context_digest: str
-        receipt: FlextInfraModelsGates.GateReportEvidence
+        receipt: FlextInfraProtocolsGates.GateReportEvidence
         covered_gates: Sequence[str]
-        commands: tuple[FlextInfraModelsGates.GateCommandEvidence, ...]
+        commands: tuple[FlextInfraProtocolsGates.GateCommandEvidence, ...]
 
     @runtime_checkable
     class GateAttestationCreateRequest(Protocol):

@@ -7,12 +7,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, Literal, Protocol, runtime_checkable
 
-from flext_infra import t
-from flext_infra._models import (
-    FlextInfraModelsGitLaneInputs,
-    FlextInfraModelsGitLaneOwnership,
-)
-from flext_infra._models._git import FlextInfraModelsGitWorktreeState
+from flext_infra import p, t
 
 
 class FlextInfraProtocolsGit:
@@ -44,7 +39,7 @@ class FlextInfraProtocolsGit:
         inline_public_key: bool
         public_fingerprint: str | None
         allowed_signers_path: Path | None
-        observations: tuple[FlextInfraModelsGit.GitSigningConfigObservation, ...]
+        observations: tuple[FlextInfraProtocolsGit.GitSigningConfigObservation, ...]
 
     @runtime_checkable
     class GitLaneEvidence(Protocol):
@@ -52,10 +47,8 @@ class FlextInfraProtocolsGit:
 
         repo_root: Path
         captured_at: t.AwareDatetime
-        pull_requests: (
-            tuple[FlextInfraModelsGitLaneInputs.GitLanePullRequest, ...] | None
-        ) = ...
-        beads: tuple[FlextInfraModelsGitLaneOwnership.GitLaneBead, ...] | None = ...
+        pull_requests: tuple[p.Infra.GitLanePullRequest, ...] | None = ...
+        beads: tuple[p.Infra.GitLaneBead, ...] | None = ...
 
     @runtime_checkable
     class GitLaneReport(Protocol):
@@ -66,7 +59,7 @@ class FlextInfraProtocolsGit:
         integration_oid: str = ...
         inventory: tuple[str, ...] = ...
         findings: tuple[str, ...] = ...
-        violations: tuple[FlextInfraModelsGitLaneInputs.GitLaneViolation, ...] = ...
+        violations: tuple[p.Infra.GitLaneViolation, ...] = ...
 
     @runtime_checkable
     class GitLaneFacts(Protocol):
@@ -74,7 +67,7 @@ class FlextInfraProtocolsGit:
 
         repo_root: Path
         stash_oids: tuple[t.NonEmptyStr, ...] = ...
-        refs: tuple[FlextInfraModelsGitLaneInputs.GitLaneRef, ...] = ...
+        refs: tuple[p.Infra.GitLaneRef, ...] = ...
         read_errors: tuple[str, ...] = ...
 
     @runtime_checkable
@@ -143,7 +136,7 @@ class FlextInfraProtocolsGit:
         """Structural data contract projected from the owning model."""
 
         root: Path
-        entries: tuple[FlextInfraModelsGit.GitWorktreeEntry, ...]
+        entries: tuple[FlextInfraProtocolsGit.GitWorktreeEntry, ...]
         porcelain: str
 
     @runtime_checkable
@@ -246,7 +239,7 @@ class FlextInfraProtocolsGit:
         operation: Literal["verify", "create", "retire"] = ...
         candidate: t.NonEmptyStr = ...
         expected_tip: t.NonEmptyStr | None = ...
-        ownership: FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None = ...
+        ownership: p.Infra.GitLaneOwnershipReceipt | None = ...
 
     @runtime_checkable
     class GitRefHeadsRequest(Protocol):
@@ -368,7 +361,7 @@ class FlextInfraProtocolsGit:
         base: t.NonEmptyStr
         subject: t.NonEmptyStr
         body_file: Path
-        ownership: FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None = ...
+        ownership: p.Infra.GitLaneOwnershipReceipt | None = ...
 
     @runtime_checkable
     class GitIndexScope(Protocol):

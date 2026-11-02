@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
-from flext_infra import c
+from flext_infra import c, p
 
 """Application-level protocols for Rope-backed infra utilities.
 
@@ -528,10 +528,10 @@ class FlextInfraProtocolsRope(Protocol):
         end_byte: int
         expression: str
         access: Literal[module, "class", instance]
-        base: FlextInfraModelsRope.SourceClassReference
-        accessor: FlextInfraModelsRope.SourceClassReference
-        member: FlextInfraModelsRope.SourceClassReference
-        descriptor: FlextInfraModelsRope.SourceClassReference | None = ...
+        base: FlextInfraProtocolsRope.SourceClassReference
+        accessor: FlextInfraProtocolsRope.SourceClassReference
+        member: FlextInfraProtocolsRope.SourceClassReference
+        descriptor: FlextInfraProtocolsRope.SourceClassReference | None = ...
         project: t.Port[p.Infra.RopeProject] = ...
         native_base: t.Port[p.Infra.RopePyName] = ...
         native_accessor: t.Port[p.Infra.RopePyName] = ...
@@ -543,8 +543,8 @@ class FlextInfraProtocolsRope(Protocol):
         """Structural data contract projected from the owning model."""
 
         identity: str
-        bases: tuple[FlextInfraModelsRope.SourceClassReference, ...]
-        members: Mapping[str, FlextInfraModelsRope.SourceClassReference | None]
+        bases: tuple[FlextInfraProtocolsRope.SourceClassReference, ...]
+        members: Mapping[str, FlextInfraProtocolsRope.SourceClassReference | None]
 
     @runtime_checkable
     class SourceBindingCollectorSpec(Protocol):
@@ -557,10 +557,10 @@ class FlextInfraProtocolsRope(Protocol):
         allow_conditional: bool = ...
         source_owned: bool
         definitions: m.InstanceOf[
-            MutableMapping[str, FlextInfraModelsRope.SourceClassDefinition]
+            MutableMapping[str, FlextInfraProtocolsRope.SourceClassDefinition]
         ]
         lexical: m.InstanceOf[
-            MutableMapping[str, FlextInfraModelsRope.SourceClassReference | None]
+            MutableMapping[str, FlextInfraProtocolsRope.SourceClassReference | None]
         ]
 
     @runtime_checkable
@@ -627,7 +627,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         resource: t.Port[t.Infra.RopeResource]
         source: str
-        matches: Sequence[tuple[FlextInfraModelsRope.SymbolInfo, str, str]]
+        matches: Sequence[tuple[FlextInfraProtocolsRope.SymbolInfo, str, str]]
 
     @runtime_checkable
     class RopeModuleConvention(Protocol):
@@ -638,9 +638,9 @@ class FlextInfraProtocolsRope(Protocol):
         module_name: str
         package_name: str
         package_dir: Path
-        package_context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
-        module_policy: FlextInfraModelsCodegenFix.NamespaceModulePolicy
-        project_layout: FlextInfraModelsRope.RopeProjectLayout | None = ...
+        package_context: p.Infra.LazyInitPackageContext
+        module_policy: p.Infra.NamespaceModulePolicy
+        project_layout: FlextInfraProtocolsRope.RopeProjectLayout | None = ...
 
     @runtime_checkable
     class FacadeCensus(Protocol):

@@ -7,13 +7,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Literal, Protocol, runtime_checkable
 
-from flext_infra import c, t
-from flext_infra._models import FlextInfraModelsCheck, FlextInfraModelsRope
-from flext_infra._models._config import (
-    FlextInfraModelsConfig,
-    FlextInfraModelsConfigContexts,
-)
-from flext_infra._models._git import FlextInfraModelsGitIdentity
+from flext_infra import c, p, t
 
 
 class FlextInfraProtocolsWorkspace:
@@ -25,9 +19,9 @@ class FlextInfraProtocolsWorkspace:
 
         repository_root: Path = ...
         runtime_root: Path = ...
-        modules: tuple[FlextInfraModelsRope.SourceClassReference, ...] = ...
+        modules: tuple[p.Infra.SourceClassReference, ...] = ...
         import_roots: tuple[Path, ...] = ...
-        source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = ...
+        source_authority: FlextInfraProtocolsWorkspace.CodegenSourceAuthority = ...
         inputs: tuple[p.Cli.AtomicFileState, ...] = ...
 
     @runtime_checkable
@@ -75,7 +69,9 @@ class FlextInfraProtocolsWorkspace:
         """Structural data contract projected from the owning model."""
 
         native_tool_qualifications: tuple[p.Cli.ProcessNativeToolEvidence, ...] = ...
-        runtime_context: FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None = ...
+        runtime_context: (
+            FlextInfraProtocolsWorkspace.WorkspaceRuntimeContext | None
+        ) = ...
         root: Path
         executed: bool
         outcome: c.Infra.ToolOutcome | None
@@ -84,7 +80,7 @@ class FlextInfraProtocolsWorkspace:
         completed: bool | None = ...
         applicability: str = ...
         files: tuple[Path, ...] = ...
-        issues: tuple[FlextInfraModelsCheck.Issue, ...] = ...
+        issues: tuple[p.Infra.Issue, ...] = ...
 
     @runtime_checkable
     class WorkspaceOperationTarget(Protocol):
@@ -107,7 +103,7 @@ class FlextInfraProtocolsWorkspace:
         root: Path
         operation: t.NonEmptyStr
         scope: tuple[Path, ...]
-        receipts: tuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt, ...]
+        receipts: tuple[FlextInfraProtocolsWorkspace.WorkspaceOperationReceipt, ...]
         candidate_read_exit_code: int | None = ...
         candidate_sha: str | None = ...
 
@@ -116,9 +112,9 @@ class FlextInfraProtocolsWorkspace:
         """Structural data contract projected from the owning model."""
 
         integration_branch: str
-        workspace_beads: FlextInfraModelsConfig.BeadsProjectSpec | None = ...
+        workspace_beads: p.Infra.BeadsProjectSpec | None = ...
         allow_unprovisioned_members: bool = ...
-        declared_member: FlextInfraModelsConfigContexts.RepositoryRef | None = ...
+        declared_member: p.Infra.RepositoryRef | None = ...
 
     @runtime_checkable
     class EnvironmentContractViolation(Protocol):
@@ -132,11 +128,11 @@ class FlextInfraProtocolsWorkspace:
         """Structural data contract projected from the owning model."""
 
         cwd: Path
-        identity: FlextInfraModelsGitIdentity.GitIdentityReport | None = ...
-        workspace: FlextInfraModelsConfig.WorkspaceSpec | None = ...
-        target: FlextInfraModelsConfig.RepositoryConformTarget | None = ...
+        identity: p.Infra.GitIdentityReport | None = ...
+        workspace: p.Infra.WorkspaceSpec | None = ...
+        target: p.Infra.RepositoryConformTarget | None = ...
         governed: bool = ...
-        runtime: FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None = ...
+        runtime: FlextInfraProtocolsWorkspace.WorkspaceRuntimeContext | None = ...
 
     @runtime_checkable
     class DirectUrlDirectoryInfo(Protocol):
@@ -149,7 +145,7 @@ class FlextInfraProtocolsWorkspace:
         """Structural data contract projected from the owning model."""
 
         url: t.NonEmptyStr
-        dir_info: FlextInfraModelsWorkspace.DirectUrlDirectoryInfo
+        dir_info: FlextInfraProtocolsWorkspace.DirectUrlDirectoryInfo
 
     @runtime_checkable
     class FleetPullRequest(Protocol):
@@ -168,7 +164,7 @@ class FlextInfraProtocolsWorkspace:
         root: Path
         present: bool
         dirty_paths: Sequence[str]
-        open_pull_requests: tuple[FlextInfraModelsWorkspace.FleetPullRequest, ...]
+        open_pull_requests: tuple[FlextInfraProtocolsWorkspace.FleetPullRequest, ...]
         unmerged_branches: int
         lint_findings: t.NonNegativeInt | None
         pyrefly_findings: t.NonNegativeInt | None
@@ -185,7 +181,7 @@ class FlextInfraProtocolsWorkspace:
         schema_version: int
         workspace_root: Path
         workspace_name: str
-        repos: tuple[FlextInfraModelsWorkspace.FleetRepoGaps, ...]
+        repos: tuple[FlextInfraProtocolsWorkspace.FleetRepoGaps, ...]
 
 
 __all__: list[str] = [

@@ -5,14 +5,17 @@ This module deliberately imports only the Python standard library so it can repa
 
 Run it before the public CLI when legacy protocol source prevents package import::
 
-    python src/flext_infra/_protocols_bootstrap.py /path/to/flext-infra
+    python src/flext_infra/_protocols_bootstrap.py /path/to/flext-infra -- codegen generate
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
-import argparse
 import ast
 import itertools
+import sys
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -104,12 +107,68 @@ class _PydanticAnnotatedMetadataRemover(ast.NodeTransformer):
         )
 
 
-def _normalized_annotation(annotation: ast.expr) -> ast.expr | None:
+class _ModelReferenceRewriter(ast.NodeTransformer):
+    """Replace concrete model holders with structural protocol routes."""
+
+    def __init__(self, owner: str) -> None:
+        self.owner = owner
+        self.changed = False
+        self.requires_facade = False
+
+    def visit_Attribute(self, node: ast.Attribute) -> ast.expr:
+        node = self.generic_visit(node)
+        if (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Attribute)
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "m"
+            and node.value.attr == "Infra"
+        ):
+            self.changed = True
+            self.requires_facade = True
+            node.value.value.id = "p"
+            return node
+        if not (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id.startswith("FlextInfraModels")
+        ):
+            return node
+        self.changed = True
+        if node.value.id == self.owner.replace("Protocols", "Models"):
+            node.value.id = self.owner
+            return node
+        self.requires_facade = True
+        return ast.copy_location(
+            ast.Attribute(
+                value=ast.Attribute(
+                    value=ast.Name(id="p", ctx=ast.Load()),
+                    attr="Infra",
+                    ctx=ast.Load(),
+                ),
+                attr=node.attr,
+                ctx=ast.Load(),
+            ),
+            node,
+        )
+
+
+def _normalized_annotation(
+    annotation: ast.expr, owner: str
+) -> tuple[ast.expr | None, bool]:
     remover = _PydanticAnnotatedMetadataRemover()
-    normalized = remover.visit(
-        ast.fix_missing_locations(ast.parse(ast.unparse(annotation), mode="eval").body)
+    rewriter = _ModelReferenceRewriter(owner)
+    normalized = rewriter.visit(
+        remover.visit(
+            ast.fix_missing_locations(
+                ast.parse(ast.unparse(annotation), mode="eval").body
+            )
+        )
     )
-    return normalized if remover.changed else None
+    return (
+        normalized if remover.changed or rewriter.changed else None,
+        rewriter.requires_facade,
+    )
 
 
 def _protocol_classes(tree: ast.Module) -> Iterable[ast.ClassDef]:
@@ -187,6 +246,45 @@ def _remove_unused_m_imports(tree: ast.Module, offsets: Sequence[int]) -> list[_
     return patches
 
 
+def _has_infra_facade_import(tree: ast.Module) -> bool:
+    return any(
+        isinstance(node, ast.ImportFrom)
+        and node.module == "flext_infra"
+        and any((alias.asname or alias.name) == "p" for alias in node.names)
+        for node in tree.body
+    )
+
+
+def _annotation_patches(
+    tree: ast.Module, protocols: Sequence[ast.ClassDef], offsets: Sequence[int]
+) -> tuple[list[_Patch], bool]:
+    patches: list[_Patch] = []
+    requires_facade = False
+    owner = next(
+        (
+            node.name
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and "Protocols" in node.name
+        ),
+        "",
+    )
+    for protocol in protocols:
+        for statement in protocol.body:
+            if not isinstance(statement, ast.AnnAssign):
+                continue
+            replacement, needs_facade = _normalized_annotation(
+                statement.annotation, owner
+            )
+            requires_facade = requires_facade or needs_facade
+            if replacement is not None:
+                start, end = _span(statement.annotation, offsets)
+                patches.append(_Patch(start, end, ast.unparse(replacement)))
+            if statement.value is not None:
+                start, end = _span(statement.value, offsets)
+                patches.append(_Patch(start, end, "..."))
+    return patches, requires_facade
+
+
 def normalize_protocol_source(source: str, *, filename: str = "<protocol>") -> str:
     """Return source with Pydantic field syntax removed from ``Protocol`` bodies."""
     tree = ast.parse(source, filename=filename)
@@ -194,21 +292,15 @@ def normalize_protocol_source(source: str, *, filename: str = "<protocol>") -> s
     protocols = tuple(_protocol_classes(tree))
     if not protocols:
         return source
-    patches: list[_Patch] = []
-    missing_decorators: list[ast.ClassDef] = []
-    for protocol in protocols:
-        if not _has_runtime_checkable(protocol):
-            missing_decorators.append(protocol)
-        for statement in protocol.body:
-            if not isinstance(statement, ast.AnnAssign):
-                continue
-            replacement = _normalized_annotation(statement.annotation)
-            if replacement is not None:
-                start, end = _span(statement.annotation, offsets)
-                patches.append(_Patch(start, end, ast.unparse(replacement)))
-            if statement.value is not None:
-                start, end = _span(statement.value, offsets)
-                patches.append(_Patch(start, end, "..."))
+    patches, requires_facade = _annotation_patches(tree, protocols, offsets)
+    requires_facade = requires_facade or any(
+        isinstance(node, ast.Name) and node.id == "p"
+        for protocol in protocols
+        for node in ast.walk(protocol)
+    )
+    missing_decorators: list[ast.ClassDef] = [
+        protocol for protocol in protocols if not _has_runtime_checkable(protocol)
+    ]
     for protocol in missing_decorators:
         if protocol.lineno is None:
             msg = "Protocol class has no source location"
@@ -226,6 +318,9 @@ def normalize_protocol_source(source: str, *, filename: str = "<protocol>") -> s
                 insertion, insertion, f"{suffix}from typing import runtime_checkable\n"
             )
         )
+    if requires_facade and not _has_infra_facade_import(tree):
+        insertion = _import_insertion_offset(tree, offsets)
+        patches.append(_Patch(insertion, insertion, "\nfrom flext_infra import p\n"))
     if not patches:
         return source
     normalized = _apply_patches(source, patches)
@@ -267,13 +362,28 @@ def normalize_protocol_tree(repository_root: Path) -> tuple[Path, ...]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the source-only bootstrap and print the number of changed modules."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("repository_root", type=Path)
-    arguments = parser.parse_args(argv)
-    changed = normalize_protocol_tree(arguments.repository_root.resolve())
-    print(f"normalized protocol modules: {len(changed)}")
-    return 0
+    """Normalize protocol source, then optionally invoke the public CLI.
+
+    Returns:
+        The public CLI's exit status, or zero when only normalization was requested.
+
+    Raises:
+        ValueError: The repository-root argument is absent.
+
+    """
+    arguments = tuple(sys.argv[1:] if argv is None else argv)
+    if not arguments:
+        msg = "protocol bootstrap requires a repository root"
+        raise ValueError(msg)
+    root = Path(arguments[0]).resolve()
+    normalize_protocol_tree(root)
+    if len(arguments) == 1:
+        return 0
+    command = arguments[2:] if arguments[1] == "--" else arguments[1:]
+    sys.path.insert(0, str(root / "src"))
+    from flext_infra.cli import FlextInfraCli
+
+    return FlextInfraCli.infra_main(command)
 
 
 if __name__ == "__main__":

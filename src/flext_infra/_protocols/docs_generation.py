@@ -6,11 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal, Protocol, runtime_checkable
 
-from flext_infra import t
-from flext_infra._models._config import (
-    FlextInfraModelsConfigArtifact,
-    FlextInfraModelsConfigWorkspace,
-)
+from flext_infra import p, t
 
 
 class FlextInfraProtocolsDocsGeneration:
@@ -30,16 +26,14 @@ class FlextInfraProtocolsDocsGeneration:
     class DocScope(Protocol):
         """Structural data contract projected from the owning model."""
 
-        declared_files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = ...
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = ...
         name: t.NonEmptyStr
         path: Path
         report_dir: Path
         project_class: str = ...
         package_name: str = ...
         documentation_language: t.Infra.DocumentationLanguage = ...
-        governance_source: (
-            FlextInfraModelsConfigWorkspace.CodegenBootstrapSource | None
-        ) = ...
+        governance_source: p.Infra.CodegenBootstrapSource | None = ...
         repository_root_override: Path | None = ...
 
     @runtime_checkable
@@ -54,15 +48,15 @@ class FlextInfraProtocolsDocsGeneration:
     class DocsScopeArtifacts(Protocol):
         """Structural data contract projected from the owning model."""
 
-        scope: FlextInfraModelsDocsGeneration.DocScope
-        artifacts: tuple[FlextInfraModelsDocsGeneration.DocsRenderedArtifact, ...]
+        scope: FlextInfraProtocolsDocsGeneration.DocScope
+        artifacts: tuple[FlextInfraProtocolsDocsGeneration.DocsRenderedArtifact, ...]
 
     @runtime_checkable
     class DocsGenerationBundle(Protocol):
         """Structural data contract projected from the owning model."""
 
-        scopes: tuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts, ...]
-        metadata_files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = ...
+        scopes: tuple[FlextInfraProtocolsDocsGeneration.DocsScopeArtifacts, ...]
+        metadata_files: tuple[p.Infra.CodegenFilePlan, ...] = ...
         repository_root: Path
 
 

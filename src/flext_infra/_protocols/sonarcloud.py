@@ -22,7 +22,7 @@ class FlextInfraProtocolsSonarcloud:
     class SonarcloudSettingsValues(Protocol):
         """Structural data contract projected from the owning model."""
 
-        settings: tuple[FlextInfraModelsSonarcloud.SonarcloudSetting, ...]
+        settings: tuple[FlextInfraProtocolsSonarcloud.SonarcloudSetting, ...]
 
     @runtime_checkable
     class SonarcloudAuthentication(Protocol):
@@ -38,7 +38,9 @@ class FlextInfraProtocolsSonarcloud:
         timeout_seconds: t.PositiveInt
         project_key: t.NonEmptyStr
         setting_key: t.NonEmptyStr
-        field_values: tuple[FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue, ...]
+        field_values: tuple[
+            FlextInfraProtocolsSonarcloud.SonarcloudIssueFieldValue, ...
+        ]
 
     @runtime_checkable
     class SonarcloudSettingsWriteRequest(Protocol):

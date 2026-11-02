@@ -86,7 +86,7 @@ class FlextInfraProtocolsTransformers:
 
         has_future_annotations: bool
         aliases: frozenset[str]
-        span: FlextInfraModelsTransformers.HeaderSpan
+        span: FlextInfraProtocolsTransformers.HeaderSpan
 
     @runtime_checkable
     class FacadeNamespaceSite(Protocol):

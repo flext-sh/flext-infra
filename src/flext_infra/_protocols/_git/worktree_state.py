@@ -57,7 +57,7 @@ class FlextInfraProtocolsGitWorktreeState:
     class GitIndexFileState(Protocol):
         """Structural data contract projected from the owning model."""
 
-        entry: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None
+        entry: FlextInfraProtocolsGitWorktreeState.GitWorktreeIndexEntry | None
         content: bytes | None
 
     @runtime_checkable
@@ -65,7 +65,7 @@ class FlextInfraProtocolsGitWorktreeState:
         """Structural data contract projected from the owning model."""
 
         repo_root: Path
-        entry: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
+        entry: FlextInfraProtocolsGitWorktreeState.GitWorktreeIndexEntry
 
     @runtime_checkable
     class GitWorktreeObservedFile(Protocol):
@@ -98,22 +98,24 @@ class FlextInfraProtocolsGitWorktreeState:
         """Structural data contract projected from the owning model."""
 
         retained_commits: tuple[str, ...] = ...
-        head_entries: tuple[FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry, ...]
+        head_entries: tuple[
+            FlextInfraProtocolsGitWorktreeState.GitWorktreeIndexEntry, ...
+        ]
         repo_root: Path
         common_dir: Path
         head: str
         branch: str | None
         paths: tuple[Path, ...]
         index_entries: tuple[
-            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry, ...
+            FlextInfraProtocolsGitWorktreeState.GitWorktreeIndexEntry, ...
         ]
-        files: tuple[FlextInfraModelsGitWorktreeState.GitWorktreeFileState, ...]
+        files: tuple[FlextInfraProtocolsGitWorktreeState.GitWorktreeFileState, ...]
 
     @runtime_checkable
     class GitWorktreeStateCheckpoint(Protocol):
         """Structural data contract projected from the owning model."""
 
-        snapshot: FlextInfraModelsGitWorktreeState.GitWorktreeStateSnapshot
+        snapshot: FlextInfraProtocolsGitWorktreeState.GitWorktreeStateSnapshot
         checkpoint_ref: str
         index_commit: str
         worktree_commit: str
@@ -122,8 +124,10 @@ class FlextInfraProtocolsGitWorktreeState:
     class GitLaneOwnershipReceipt(Protocol):
         """Structural data contract projected from the owning model."""
 
-        checkpoint: FlextInfraModelsGitWorktreeState.GitWorktreeStateCheckpoint
-        publication: FlextInfraModelsGitWorktreeState.GitWorktreeCheckpointPublication
+        checkpoint: FlextInfraProtocolsGitWorktreeState.GitWorktreeStateCheckpoint
+        publication: (
+            FlextInfraProtocolsGitWorktreeState.GitWorktreeCheckpointPublication
+        )
 
 
 __all__: list[str] = [

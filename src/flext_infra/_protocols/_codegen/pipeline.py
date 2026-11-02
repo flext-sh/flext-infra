@@ -41,7 +41,7 @@ class FlextInfraProtocolsCodegenPipeline:
     class CodegenResult(Protocol):
         """Structural data contract projected from the owning model."""
 
-        plan: FlextInfraModelsCodegenPipeline.CodegenPlan
+        plan: FlextInfraProtocolsCodegenPipeline.CodegenPlan
         written_files: tuple[Path, ...] = ...
         errors: tuple[str, ...] = ...
 

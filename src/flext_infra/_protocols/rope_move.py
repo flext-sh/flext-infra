@@ -15,7 +15,7 @@ class FlextInfraProtocolsRopeMove:
     class ResolvedClassMove(Protocol):
         """Structural data contract projected from the owning model."""
 
-        request: FlextInfraModelsRopeMove.ClassMoveRequest
+        request: FlextInfraProtocolsRopeMove.ClassMoveRequest
         declaration: t.Port[t.Infra.RopePyName]
         origin_module: str
         target_module: str

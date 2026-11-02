@@ -56,7 +56,7 @@ class FlextInfraProtocolsWorktree:
         """Structural data contract projected from the owning model."""
 
         repo_roots: tuple[Path, ...]
-        policy: FlextInfraModelsWorktree.WorktreeFactsPolicy
+        policy: FlextInfraProtocolsWorktree.WorktreeFactsPolicy
         now: float
         activity_window_days: int
         bead_rows: tuple[t.JsonMapping, ...] = ...
@@ -118,15 +118,15 @@ class FlextInfraProtocolsWorktree:
         generated_at: datetime
         mode: str
         apply: bool
-        actions: tuple[FlextInfraModelsWorktree.PruneAction, ...] = ...
+        actions: tuple[FlextInfraProtocolsWorktree.PruneAction, ...] = ...
         total_reclaim_bytes: t.NonNegativeInt = ...
 
     @runtime_checkable
     class WorktreesReport(Protocol):
         """Structural data contract projected from the owning model."""
 
-        facts: tuple[FlextInfraModelsWorktree.WorktreeFact, ...] = ...
-        plan: FlextInfraModelsWorktree.PrunePlan | None = ...
+        facts: tuple[FlextInfraProtocolsWorktree.WorktreeFact, ...] = ...
+        plan: FlextInfraProtocolsWorktree.PrunePlan | None = ...
 
 
 __all__: list[str] = [

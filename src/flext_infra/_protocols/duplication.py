@@ -46,7 +46,7 @@ class FlextInfraProtocolsDuplication:
         reporters: Sequence[str]
         threshold: t.Percentage
         similarity: float
-        semantic: FlextInfraModelsDuplication.JscpdSemantic | None = ...
+        semantic: FlextInfraProtocolsDuplication.JscpdSemantic | None = ...
 
     @runtime_checkable
     class JscpdSemantic(Protocol):
@@ -70,23 +70,23 @@ class FlextInfraProtocolsDuplication:
         """Structural data contract projected from the owning model."""
 
         end: t.PositiveInt
-        end_location: FlextInfraModelsDuplication.JscpdLocation
+        end_location: FlextInfraProtocolsDuplication.JscpdLocation
         name: t.NonEmptyStr
         nodes: t.NonNegativeInt | None = ...
         start: t.NonNegativeInt
-        start_location: FlextInfraModelsDuplication.JscpdLocation
+        start_location: FlextInfraProtocolsDuplication.JscpdLocation
 
     @runtime_checkable
     class JscpdDuplicate(Protocol):
         """Structural data contract projected from the owning model."""
 
-        first_file: FlextInfraModelsDuplication.JscpdFile
+        first_file: FlextInfraProtocolsDuplication.JscpdFile
         format_name: t.NonEmptyStr
         fragment: t.NonEmptyStr
         is_new: t.StrictBool = ...
         kind: t.NonEmptyStr = ...
         lines: t.PositiveInt
-        second_file: FlextInfraModelsDuplication.JscpdFile
+        second_file: FlextInfraProtocolsDuplication.JscpdFile
         tokens: t.PositiveInt
         similarity: float | None = ...
         method: t.NonEmptyStr | None = ...
@@ -111,15 +111,15 @@ class FlextInfraProtocolsDuplication:
         """Structural data contract projected from the owning model."""
 
         detection_date: t.NonEmptyStr
-        formats: Mapping[str, FlextInfraModelsDuplication.JscpdStatisticsSummary]
-        total: FlextInfraModelsDuplication.JscpdStatisticsSummary
+        formats: Mapping[str, FlextInfraProtocolsDuplication.JscpdStatisticsSummary]
+        total: FlextInfraProtocolsDuplication.JscpdStatisticsSummary
 
     @runtime_checkable
     class JscpdReport(Protocol):
         """Structural data contract projected from the owning model."""
 
-        duplicates: Sequence[FlextInfraModelsDuplication.JscpdDuplicate]
-        statistics: FlextInfraModelsDuplication.JscpdStatistics
+        duplicates: Sequence[FlextInfraProtocolsDuplication.JscpdDuplicate]
+        statistics: FlextInfraProtocolsDuplication.JscpdStatistics
 
     @runtime_checkable
     class DuplicationSpanMeasure(Protocol):
@@ -162,10 +162,12 @@ class FlextInfraProtocolsDuplication:
         reason: t.NonEmptyStr = ...
         index: t.NonNegativeInt = ...
         canonical_index: t.NonNegativeInt = ...
-        candidate: FlextInfraModelsDuplication.JscpdDuplicate = ...
+        candidate: FlextInfraProtocolsDuplication.JscpdDuplicate = ...
         owned: bool = ...
         self_span: bool = ...
-        measures: tuple[FlextInfraModelsDuplication.DuplicationSpanMeasure, ...] = ...
+        measures: tuple[
+            FlextInfraProtocolsDuplication.DuplicationSpanMeasure, ...
+        ] = ...
 
     @runtime_checkable
     class DuplicationAssessment(Protocol):
@@ -173,9 +175,9 @@ class FlextInfraProtocolsDuplication:
 
         policy: Literal["structural-evidence-v1-raw-hard"] = ...
         raw_sha256: str = ...
-        report: FlextInfraModelsDuplication.JscpdReport = ...
+        report: FlextInfraProtocolsDuplication.JscpdReport = ...
         candidates: tuple[
-            FlextInfraModelsDuplication.DuplicationCandidateEvidence, ...
+            FlextInfraProtocolsDuplication.DuplicationCandidateEvidence, ...
         ] = ...
         min_lines: t.PositiveInt = ...
         min_tokens: t.PositiveInt = ...
@@ -191,7 +193,7 @@ class FlextInfraProtocolsDuplication:
         """Structural data contract projected from the owning model."""
 
         exit_code: t.NonNegativeInt
-        report: FlextInfraModelsDuplication.JscpdReport
+        report: FlextInfraProtocolsDuplication.JscpdReport
         stderr: str
         stdout: str
 
