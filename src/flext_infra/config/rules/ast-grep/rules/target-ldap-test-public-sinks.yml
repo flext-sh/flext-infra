@@ -50,7 +50,7 @@ rule:
 constraints:
   SINK:
     regex: '^(BaseSink|UsersSink|GroupsSink|OrganizationalUnitsSink)$'
-fix: p.TargetLdap.$SINK($$$ARGS)
+fix: m.TargetLdap.$SINK($$$ARGS)
 ---
 id: target-ldap-test-public-sink-contract
 language: Python
