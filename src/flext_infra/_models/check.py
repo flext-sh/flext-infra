@@ -376,7 +376,7 @@ class FlextInfraModelsCheck:
         """Exact native output paired with its atomically published runtime path."""
 
         raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
-            m.Field(description="Unmodified native output", exclude=True)
+            m.Field(description="Unmodified native output")
         )
         path: Path = m.Field(description="Durably published native output receipt")
 
@@ -416,7 +416,6 @@ class FlextInfraModelsCheck:
                     "In-memory native output; persisted once at raw_receipt rather "
                     "than duplicated inside serialized execution summaries"
                 ),
-                exclude=True,
                 validate_default=True,
             )
         )

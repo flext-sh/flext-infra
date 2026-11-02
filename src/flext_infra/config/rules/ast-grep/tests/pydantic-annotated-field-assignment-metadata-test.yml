@@ -1,0 +1,42 @@
+id: pydantic-annotated-field-assignment-metadata
+valid:
+  # Constraint-only and descriptive metadata stays in the Annotated type.
+  - |
+    class Settings(m.FrozenModel):
+        title: Annotated[str, m.Field(min_length=1, description="Display title")]
+  # An assignment-form field is already a fixed point.
+  - |
+    class Settings(m.FrozenModel):
+        output_path: Path = m.Field(alias="output-path", description="Output path")
+  # Class attributes and private state are not Pydantic fields.
+  - |
+    class Settings(m.FrozenModel):
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        _cache: Annotated[dict[str, str], m.Field(exclude=True)] = {}
+  # Retain existing defaults until a lossless rule moves them into Field(...).
+  - |
+    class Settings(m.FrozenModel):
+        report: Annotated[str | None, m.Field(alias="report-file")] = None
+invalid:
+  # An alias in metadata is structurally moved to the assigned Field value.
+  - |
+    class Settings(m.FrozenModel):
+        title: Annotated[str, m.Field(alias="display-title")]
+  # Preserve a nested generic type and every Field argument, including a default.
+  - |
+    class Settings(m.FrozenModel):
+        paths: Annotated[
+            dict[str, list[Path | None]],
+            m.Field(alias="output-paths", exclude=True, frozen=True, default_factory=dict),
+        ]
+  # Pydantic's alias variants and a Field default remain byte-for-byte payload.
+  - |
+    class Settings(m.FrozenModel):
+        report: Annotated[
+            tuple[str, ...] | None,
+            m.Field(
+                validation_alias="report-file",
+                serialization_alias="report",
+                default=None,
+            ),
+        ]

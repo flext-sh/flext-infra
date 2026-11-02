@@ -13,10 +13,17 @@ from __future__ import annotations
 import sys
 from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from inspect import getsource
 from pathlib import Path
-from typing import Annotated, get_type_hints, override
+from textwrap import dedent, indent
+from typing import Annotated, override
+
+from pydantic.warnings import UnsupportedFieldAttributeWarning
 
 from flext_infra import c, config, m, p, r, s, settings, t, u
+from flext_infra.workspace._environment.provenance_module_source import (
+    FlextInfraWorkspaceEnvironmentProvenanceModuleSource,
+)
 
 
 class FlextInfraValidateFreshImport(s[bool]):
@@ -167,7 +174,8 @@ class FlextInfraValidateFreshImport(s[bool]):
                     m.Infra.FreshImportProbe(
                         subject=f"{layout.package_name}: {group}/{name}={value}",
                         code=(
-                            c.Infra.FRESH_IMPORT_PRELUDE + f"EntryPoint(name={name!r}, "
+                            FlextInfraValidateFreshImport._probe_prelude()
+                            + f"EntryPoint(name={name!r}, "
                             f"value={value!r}, group={group!r}).load()\n" + origin_code
                         ),
                     ),
@@ -220,7 +228,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 )
                 + origin_code
                 + c.Infra.FRESH_IMPORT_EXPORT_RESOLVE_CODE.format(
-                    exports=tuple(plan.exports)
+                    exports=tuple(plan.exports), prefix=c.Infra.PKG_ROOT
                 )
                 for plan in owned
             )
@@ -230,12 +238,16 @@ class FlextInfraValidateFreshImport(s[bool]):
                     package=layout.package_name
                 )
                 + origin_code
-                + c.Infra.FRESH_IMPORT_EXPORT_RESOLVE_CODE.format(exports=())
+                + c.Infra.FRESH_IMPORT_EXPORT_RESOLVE_CODE.format(
+                    exports=(), prefix=c.Infra.PKG_ROOT
+                )
             )
         return r[m.Infra.FreshImportProbe].ok(
             m.Infra.FreshImportProbe(
                 subject=layout.package_name,
-                code=c.Infra.FRESH_IMPORT_PRELUDE + body + origin_code,
+                code=(
+                    FlextInfraValidateFreshImport._probe_prelude() + body + origin_code
+                ),
             ),
         )
 
@@ -259,10 +271,12 @@ class FlextInfraValidateFreshImport(s[bool]):
             probes.append(
                 m.Infra.FreshImportProbe(
                     subject=package,
-                    code=c.Infra.FRESH_IMPORT_PRELUDE
+                    code=FlextInfraValidateFreshImport._probe_prelude()
                     + c.Infra.FRESH_IMPORT_EXPORT_IMPORT_CODE.format(package=package)
                     + origin_code
-                    + c.Infra.FRESH_IMPORT_EXPORT_RESOLVE_CODE.format(exports=()),
+                    + c.Infra.FRESH_IMPORT_EXPORT_RESOLVE_CODE.format(
+                        exports=(), prefix=c.Infra.PKG_ROOT
+                    ),
                 ),
             )
         return r[MutableSequence[m.Infra.FreshImportProbe]].ok(probes)
@@ -340,7 +354,41 @@ class FlextInfraValidateFreshImport(s[bool]):
         )
 
     @staticmethod
-    def require_complete_models(module: t.RegistryModule) -> None:
+    def _probe_prelude() -> str:
+        """Project the installed check owners into the consumer's stdin probe.
+
+        Only canonical packaged source is transferred. The child needs the
+        runtime APIs of Core, never an installation of the Infra tool.
+
+        Returns:
+            The self-contained imports and unchanged validation definitions.
+
+        """
+        return (
+            "from __future__ import annotations\n"
+            + c.Infra.FRESH_IMPORT_PRELUDE
+            + "import os, sysconfig\n"
+            "from collections.abc import Iterable, Mapping, MutableSequence, Sequence\n"
+            "from contextlib import ExitStack\n"
+            "from importlib.machinery import BuiltinImporter, ExtensionFileLoader, "
+            "FrozenImporter, ModuleSpec\n"
+            "from sys import modules\n"
+            "from types import ModuleType\n"
+            "from pydantic.warnings import UnsupportedFieldAttributeWarning\n"
+            "from flext_core import c, p, r, t, u\n"
+            + getsource(FlextInfraWorkspaceEnvironmentProvenanceModuleSource)
+            + "\nclass FlextInfraValidateFreshImport:\n"
+            + "\n".join(
+                indent(dedent(getsource(method)), "    ")
+                for method in (
+                    FlextInfraValidateFreshImport.require_complete_models,
+                    FlextInfraValidateFreshImport._require_schema_fields,
+                )
+            )
+        )
+
+    @staticmethod
+    def require_complete_models(module: t.RegistryModule, prefix: str) -> None:
         """Fail when a pydantic class reachable from the exports cannot build.
 
         The walk starts at the module's declared exports (the facades and the
@@ -359,14 +407,14 @@ class FlextInfraValidateFreshImport(s[bool]):
         package = module.__name__.partition(".")[0]
         pending: MutableSequence[type] = [
             value
-            for name in getattr(module, c.Infra.DUNDER_ALL, ())
+            for name in getattr(module, "__all__", ())
             if isinstance(value := getattr(module, name), type)
         ]
         seen: set[type] = set()
         incomplete: MutableSequence[type] = []
         while pending:
             klass = pending.pop()
-            if klass in seen or not klass.__module__.startswith(c.Infra.PKG_ROOT):
+            if klass in seen or not klass.__module__.startswith(prefix):
                 continue
             seen.add(klass)
             if vars(klass).get("__pydantic_complete__") is False:
@@ -385,22 +433,23 @@ class FlextInfraValidateFreshImport(s[bool]):
             ),
             key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
         )
-        for klass in owned:
-            u.type_adapter(klass)
         FlextInfraValidateFreshImport._require_schema_fields(package, seen)
+        for klass in owned:
+            u.type_adapter(klass).rebuild(raise_errors=True)
 
     @staticmethod
     def _require_schema_fields(package: str, classes: Iterable[type]) -> None:
-        """Fail on the first field that only builds by ``arbitrary_types_allowed``.
+        """Fail on the first declared field without its own native schema.
 
-        Every model of the probed package that sets or inherits the flag has
-        each field type built without it, through the canonical type adapter.
+        Every model of the probed package has each field built independently,
+        including its validation metadata, through the canonical type adapter.
         A field type without a schema raises pydantic's own schema-generation
         error, which escapes unchanged with a note naming the model and field;
         its owner type (a ``t.Port`` or a validated ``t`` alias) is the fix.
 
         Raises:
             c.PydanticSchemaGenerationError: For the first such field.
+            UnsupportedFieldAttributeWarning: For field metadata on an alias.
 
         """
         models = sorted(
@@ -409,28 +458,34 @@ class FlextInfraValidateFreshImport(s[bool]):
                 for klass in classes
                 if klass.__module__.partition(".")[0] == package
                 and "__pydantic_fields__" in vars(klass)
-                and getattr(klass, "model_config", {}).get("arbitrary_types_allowed")
             ),
             key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
         )
         for klass in models:
             fields: Mapping[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
-            # A deferred model keeps its field annotations as forward
-            # references; the stdlib evaluator resolves them in the model's
-            # own module and class namespace, as pydantic does on build, and
-            # pydantic's own field split drops the field-level metadata.
-            hints = get_type_hints(klass, include_extras=True)
+            namespace = (
+                vars(sys.modules[klass.__module__])
+                | dict(vars(klass))
+                | {klass.__name__: klass}
+            )
             for name, info in fields.items():
                 if info.annotation is None:
                     continue
-                field_type = m.FieldInfo.from_annotation(hints[name]).annotation
                 try:
-                    u.type_adapter(field_type)
+                    u.type_adapter(info.rebuild_annotation()).rebuild(
+                        raise_errors=True, _types_namespace=namespace
+                    )
                 except c.PydanticSchemaGenerationError as exc:
                     exc.add_note(
                         f"{klass.__module__}.{klass.__qualname__}.{name} needs "
                         "arbitrary_types_allowed: declare its type through t.Port "
                         "or a validated t alias"
+                    )
+                    raise
+                except UnsupportedFieldAttributeWarning as exc:
+                    exc.add_note(
+                        f"{klass.__module__}.{klass.__qualname__}.{name} places "
+                        "field metadata inside an Annotated alias"
                     )
                     raise
 

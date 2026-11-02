@@ -16,9 +16,11 @@ from types import MappingProxyType
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeCorePyModule,
+    FlextInfraUtilitiesRopeRuntimeBase,
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesInventory,
 )
@@ -338,7 +340,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._active: set[str] = set()
             self._resolved_memo: MutableMapping[str, str] = {}
             self._ordering_ready = False
-            self._native_module_type = FlextInfraUtilitiesRopeRuntime.runtime_type(
+            self._native_module_type = FlextInfraUtilitiesRopeRuntimeBase.runtime_type(
                 "rope.base.builtins",
                 "BuiltinModule",
             )
@@ -464,7 +466,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             self._prepare_ordering()
-            typing_module = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+            typing_module = FlextInfraUtilitiesRopeRuntimeBase.require_semantic_module(
                 self._project.get_module("typing")
             )
             protocol = self._resolve(
@@ -499,7 +501,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return False
                 if any(
                     (
-                        binding := FlextInfraUtilitiesRopeRuntime.resolve_symbol(
+                        binding := FlextInfraUtilitiesRopeRuntimeModules.resolve_symbol(
                             scope.parent, decorator
                         )
                     )
@@ -600,7 +602,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 relative = alias_path.relative_to(root).as_posix()
                 if self._project.root.has_child(relative):
                     resource = self._project.get_resource(relative)
-                    FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                    FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                         resource, alias_path
                     ).read()
                 for alias, binding in (
@@ -727,10 +729,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             function_identity = self._function_object_identity(value)
             if function_identity is not None:
                 return function_identity
-            if not FlextInfraUtilitiesRopeRuntime.abstract_class(value):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
                 message = "Rope did not resolve a required base to a class"
                 raise TypeError(message)
-            if FlextInfraUtilitiesRopeRuntime.py_class(value):
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
                 return self._pyclass_identity(value)
             return self._deduplicated_external_identity(value)
 
@@ -748,7 +750,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 The constructed class identity, or None for other objects.
 
             """
-            if not FlextInfraUtilitiesRopeRuntime.py_function(value):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(value):
                 return None
             if value.get_name() not in {"TypedDict", "NamedTuple"}:
                 return None
@@ -771,7 +773,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             scope = value.get_scope()
             resource = module.get_resource()
             if (
-                not FlextInfraUtilitiesRopeRuntime.source_module(module)
+                not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
                 or resource is None
             ):
                 message = (
@@ -923,7 +925,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             if imported.resource is not None:
-                return FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                return FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                     self._project,
                     imported.resource,
                 )
@@ -943,7 +945,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 )
             else:
                 module = self._project.get_module(imported.module_name, folder)
-            return FlextInfraUtilitiesRopeRuntime.require_semantic_module(module)
+            return FlextInfraUtilitiesRopeRuntimeBase.require_semantic_module(module)
 
         @staticmethod
         def _provider_attribute_binding(
@@ -959,7 +961,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             try:
                 return module.get_attribute(name)
-            except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types() as exc:
+            except (
+                FlextInfraUtilitiesRopeRuntimeBase.rope_unresolved_error_types()
+            ) as exc:
                 resource = module.get_resource()
                 exc.add_note(
                     f"Provider base reference: {target}; source="
@@ -1066,7 +1070,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module_name = self._provider_name(module)
             target = f"{module_name}.{attributes[0]}"
             provider = module.get_module()
-            if not FlextInfraUtilitiesRopeRuntime.source_module(provider):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider):
                 if owned:
                     message = f"Project-owned provider is not source: {target}"
                     raise TypeError(message)
@@ -1275,7 +1279,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             binding = module.get_attributes().get(name)
             return (
-                FlextInfraUtilitiesRopeRuntime.imported_name(binding)
+                FlextInfraUtilitiesRopeRuntimeTypes.imported_name(binding)
                 and binding.imported_module.module_name == c.Infra.FUTURE_MODULE
             )
 
@@ -1351,21 +1355,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return self._external_reference(
                     target, attributes[1:], visiting | {target}, depth + 1
                 )
-            if outer is not None and outer.is_folder():
-                package = self._provider_name(module)
-                declaring = self._planned_child_declaration(package, attributes[0])
-                if declaring is not None:
-                    # The package initializer is not regenerated yet: exactly
-                    # one planned child declares the class it will publish.
-                    return self._resolve(
-                        m.Infra.SourceClassReference(
-                            target=declaring,
-                            attributes=attributes,
-                            qualified_base=target,
-                        ),
-                        visiting | {target},
-                        depth + 1,
-                    )
             captured = self._sources.get(self._provider_name(module))
             captured_state = "absent" if captured is None else f"len={len(captured[1])}"
             message = (
@@ -1474,129 +1463,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return self._provider_reference(
                     reexporter, attributes, visiting | {target}, depth + 1
                 )
-            moved = self._moved_class_module(module, name)
-            if moved is not None:
-                # An owner move dissolved the declaring part module into a
-                # staged sibling; the planned world is the SSOT for where the
-                # class now lives.
-                return self._provider_reference(
-                    moved, attributes, visiting | {target}, depth + 1
-                )
-            return None
-
-        def _planned_child_declaration(self, package: str, name: str) -> str | None:
-            """Elect the one planned module of a package tree declaring a class.
-
-            A generated package initializer publishes what its child modules
-            declare; until it is regenerated in the candidate, the planned
-            children (captured sources and every child module the candidate
-            view holds) are the authority for a name the package will publish.
-
-            Returns:
-                The declaring module name, or none when no planned module of the
-                package tree declares the class.
-
-            Raises:
-                ValueError: If more than one planned module declares the class.
-
-            """
-            prefix = f"{package}."
-            marker = f"class {name}"
-            types = FlextInfraUtilitiesRopeRuntime
-            # A capture whose module the candidate dissolved (a move source)
-            # declares nothing in the planned tree.
-            children = {
-                candidate_name: candidate_source
-                for candidate_name, (path, candidate_source) in self._sources.items()
-                if candidate_name.startswith(prefix)
-                and path.name != c.Infra.INIT_PY
-                and self._project.source_query(path, "isfile")
-            }
-            resource = self._project.find_module(package)
-            pending = (
-                [(Path(resource.real_path), prefix)]
-                if resource is not None and resource.is_folder()
-                else []
-            )
-            # The candidate view also holds planned modules no capture recorded
-            # (a generated module planned in this same pass); a subpackage
-            # republishes its own modules through its initializer.
-            while pending:
-                folder, dotted = pending.pop()
-                for child in self._project.source_children(folder):
-                    if self._project.source_query(child / c.Infra.INIT_PY, "isfile"):
-                        pending.append((child, f"{dotted}{child.name}."))
-                    elif (
-                        child.suffix == c.Infra.EXT_PYTHON
-                        and child.name != c.Infra.INIT_PY
-                        and self._project.source_query(child, "isfile")
-                    ):
-                        children.setdefault(
-                            f"{dotted}{child.stem}", self._project.source_text(child)
-                        )
-            declaring = tuple(
-                candidate_name
-                for candidate_name, candidate_source in sorted(children.items())
-                if marker in candidate_source
-                and types.defined_name(
-                    FlextInfraUtilitiesRopeRuntimeModules
-                    .build_string_module(
-                        self._project,
-                        candidate_source,
-                        resource=self._project.find_module(candidate_name),
-                    )
-                    .get_scope()
-                    .get_defined_names()
-                    .get(name)
-                )
-            )
-            if len(declaring) > 1:
-                message = f"Ambiguous planned child declarations: {package}.{name}"
-                raise ValueError(message)
-            return declaring[0] if declaring else None
-
-        def _moved_class_module(
-            self,
-            module: t.Infra.RopeSemanticModule,
-            name: str,
-        ) -> p.Infra.RopeSemanticModule | None:
-            """Elect the planned sibling module that defines a moved class.
-
-            An owner move dissolves the declaring part module; the planned
-            sibling modules of the same package are the only authority for
-            where the class lives after the dissolution.
-
-            Returns:
-                The staged semantic module defining the class, or none when no
-                planned sibling declares it.
-
-            """
-            module_name = module.get_name()
-            parent = module_name.rpartition(".")[0]
-            prefix = f"{parent}."
-            modules = FlextInfraUtilitiesRopeRuntimeModules
-            marker = f"class {name}"
-            for candidate_name, (_, candidate_source) in sorted(self._sources.items()):
-                if (
-                    not candidate_name.startswith(prefix)
-                    or candidate_name == module_name
-                    or candidate_name.endswith((".__init__", ".__version__"))
-                    or marker not in candidate_source
-                ):
-                    continue
-                candidate = modules.build_string_module(
-                    self._project,
-                    candidate_source,
-                    resource=self._project.find_module(candidate_name),
-                )
-                try:
-                    binding = candidate.get_attribute(name).get_object()
-                except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
-                    continue
-                if FlextInfraUtilitiesRopeRuntime.py_class(binding):
-                    return FlextInfraUtilitiesRopeRuntime.require_semantic_module(
-                        candidate
-                    )
             return None
 
         def _provider_name(
@@ -1675,7 +1541,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             declaring = module.get_module()
-            if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(declaring):
                 return None
             resource = declaring.get_resource()
             if resource is None:
@@ -1717,7 +1583,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             value = binding.get_object()
-            if remaining and FlextInfraUtilitiesRopeRuntime.instance_object(value):
+            if remaining and FlextInfraUtilitiesRopeRuntimeTypes.instance_object(value):
                 # Attribute access on a facade instance (``meltano.Tap``)
                 # reaches the class attribute through the instance's type.
                 value = value.get_type()
@@ -1742,14 +1608,14 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             declaring = module.get_module()
-            if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(declaring):
                 outer = module.get_resource()
                 if outer is None:
                     return {}
-                declaring = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                declaring = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                     self._project, outer
                 )
-                if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
+                if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(declaring):
                     message = "Source-backed provider has no native source module"
                     raise TypeError(message)
             resource = declaring.get_resource()
@@ -1790,7 +1656,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             resource = module.get_resource()
             if resource is None or name.startswith("_"):
                 return None
-            if not FlextInfraUtilitiesRopeRuntime.pymodule(module):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.pymodule(module):
                 message = "Rope source provider has no parsed module"
                 raise TypeError(message)
             tree = module.get_ast()
@@ -1811,7 +1677,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     "." * node.level + (node.module or ""),
                     package,
                 )
-                provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
+                provider = FlextInfraUtilitiesRopeRuntimeBase.require_semantic_module(
                     self._project.get_module(target)
                 )
                 if name in provider.get_attributes():
@@ -1911,7 +1777,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             if not self._project.source_query(source_path, "isfile"):
                 return None
             source = self._project.source_text(source_path)
-            provider = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+            provider = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 self._project,
                 self._project.get_file(
                     source_path.relative_to(
@@ -1919,7 +1785,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     ).as_posix()
                 )
                 if source_path.is_relative_to(Path(self._project.root.real_path))
-                else FlextInfraUtilitiesRopeRuntime.file_resource_at(
+                else FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
                     self._project, source_path
                 ),
             )
@@ -1958,13 +1824,13 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 module,
                 self._native_module_type,
             ):
-                module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                     self._project,
                     resource,
                 )
             try:
                 return self._provider_reference(
-                    FlextInfraUtilitiesRopeRuntime.require_semantic_module(module),
+                    FlextInfraUtilitiesRopeRuntimeBase.require_semantic_module(module),
                     attributes,
                     visiting,
                     depth,
@@ -2157,20 +2023,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         visiting | {key},
                         depth + 1,
                     ), []
-                declaring = self._planned_child_declaration(module, name)
-                if declaring is not None:
-                    # The package initializer has not been regenerated yet in
-                    # this candidate; it publishes its children's exports, and
-                    # exactly one planned child declares the class.
-                    return self._resolve(
-                        m.Infra.SourceClassReference(
-                            target=declaring,
-                            attributes=(name, *remaining),
-                            qualified_base=f"{module}.{name}",
-                        ),
-                        visiting | {key},
-                        depth + 1,
-                    ), []
                 message = (
                     f"Planned namespace has no module binding: {module}.{name}"
                     if bindings is None
@@ -2346,7 +2198,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     f"{identity}"
                 )
                 raise TypeError(message)
-            builtin_class = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            builtin_class = FlextInfraUtilitiesRopeRuntimeBase.runtime_callable(
                 "rope.base.builtins",
                 "BuiltinClass",
             )
@@ -2370,7 +2222,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 TypeError: If the constructed base is not a Rope class object.
 
             """
-            if not FlextInfraUtilitiesRopeRuntime.abstract_class(value):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
                 message = "Rope builtin base did not resolve to a class object"
                 raise TypeError(message)
             return value
@@ -2450,7 +2302,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 value = self._external[identity]
                 if isinstance(value, p.Infra.RopeBuiltinClass):
                     return self._external_identity(
-                        FlextInfraUtilitiesRopeRuntime.native_class_primary_base(
+                        FlextInfraUtilitiesRopeRuntimeModuleQueries.native_class_primary_base(
                             value.builtin,
                         ),
                     )

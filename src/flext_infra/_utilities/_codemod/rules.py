@@ -702,16 +702,11 @@ class FlextInfraUtilitiesCodemodRules(
             return r[m.Infra.CodemodRulePlan].fail(
                 "duplicate codemod rule IDs in selection",
             )
-        unknown = selected.difference(rule.id for rule in plan.rules).difference(
-            rule.partition_of for rule in plan.rules
-        )
+        unknown = selected.difference(rule.id for rule in plan.rules)
         if unknown:
             return r[m.Infra.CodemodRulePlan].fail(
                 "unknown codemod rule IDs: " + ", ".join(sorted(unknown)),
             )
-        selected = selected.union(
-            rule.id for rule in plan.rules if rule.partition_of in selected
-        )
         rulesets = tuple(
             ruleset.model_copy(
                 update={

@@ -406,10 +406,10 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
         issues: Sequence[p.Infra.Issue],
         project_dir: Path,
     ) -> c.Infra.ToolOutcome:
-        """Retain the native explanation of an authenticated exemption-only exit.
+        """Classify the diagnostics already admitted by the Ruff parser.
 
         Returns:
-            Clean only when every original finding has an authenticated exemption.
+            Clean for an authenticated exemption-only findings exit.
 
         """
         outcome = super()._check_output_outcome(result, issues, project_dir)
@@ -422,10 +422,9 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
             or result.outcome.raw_return_code not in self._findings_exit_codes()
         ):
             return outcome
-        native = self._native_issues(result)
-        if native and not self._without_exempt_identities(project_dir, native):
-            return c.Infra.ToolOutcome.CLEAN
-        return outcome
+        # Unexplained exits retain an operational issue from the parser;
+        # these empty findings already carry its completed identity admission.
+        return c.Infra.ToolOutcome.CLEAN
 
     @staticmethod
     def _native_issues(

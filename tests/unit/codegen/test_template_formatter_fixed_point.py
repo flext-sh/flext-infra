@@ -42,7 +42,7 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
                 "install_lazy_exports"
             ),
             exports_tuple="()",
-            lazy_export_mapping="    MappingProxyType({}),",
+            lazy_export_mapping="    {},",
         )
 
     @staticmethod
@@ -130,8 +130,9 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
 
         tm.that(
             rendered,
-            has="    MappingProxyType({}),\n    public_exports=__all__,\n)[0]",
+            has="    {},\n    public_exports=__all__,\n)[0]",
         )
+        tm.that(rendered, lacks="MappingProxyType")
 
     def test_lazy_root_preserves_module_documentation(self) -> None:
         """A package propagates exports without declaring a namespace class."""

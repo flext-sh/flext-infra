@@ -66,27 +66,27 @@ class FlextInfraModelsCodegenLazyInit:
         is_init: Annotated[bool, m.Field(description="Whether it is a package init")]
         members: Annotated[
             t.Port[dict[str, FlextInfraTypesBase.PythonMemberKind]],
-            m.Field(exclude=True, description="Bound names so far, in order"),
+            m.Field(description="Bound names so far, in order"),
         ]
         imports: Annotated[
             t.Port[dict[str, str]],
-            m.Field(exclude=True, description="Import targets so far"),
+            m.Field(description="Import targets so far"),
         ]
         classes: Annotated[
             t.Port[dict[str, Sequence[str]]],
-            m.Field(exclude=True, description="Class bases so far"),
+            m.Field(description="Class bases so far"),
         ]
         class_exports: Annotated[
             t.Port[dict[str, Sequence[str] | None]],
-            m.Field(exclude=True, description="Class-level exports so far"),
+            m.Field(description="Class-level exports so far"),
         ]
         values: Annotated[
             t.Port[dict[str, str]],
-            m.Field(exclude=True, description="Assigned value text so far"),
+            m.Field(description="Assigned value text so far"),
         ]
         exports: Annotated[
             t.Port[list[str | None]] | None,
-            m.Field(exclude=True, description="``__all__`` entries so far"),
+            m.Field(description="``__all__`` entries so far"),
         ] = None
 
     class PythonModelRun(m.ArbitraryTypesModel):
@@ -94,9 +94,7 @@ class FlextInfraModelsCodegenLazyInit:
 
         source_project: Annotated[
             t.Port[FlextInfraProtocolsWorkspaceSnapshot.RopeProject],
-            m.Field(
-                exclude=True, description="Source view every module is read through"
-            ),
+            m.Field(description="Source view every module is read through"),
         ]
         module_files: Annotated[
             Mapping[str, Path],
@@ -110,14 +108,12 @@ class FlextInfraModelsCodegenLazyInit:
                 ]
             ],
             m.Field(
-                exclude=True,
                 description="Facts of each parsed module, keyed by the run's parse",
             ),
         ]
         project_notices: Annotated[
             t.Port[dict[Path, tuple[FlextInfraTypesBase.DocumentationLanguage, str]]],
             m.Field(
-                exclude=True,
                 description=(
                     "Documentation language and copyright notice per owning "
                     "project root, read once per run"
@@ -320,24 +316,23 @@ class FlextInfraModelsCodegenLazyInit:
         ]
         plans: Annotated[
             t.Port[dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]],
-            m.Field(exclude=True, description="Decided plans, children first"),
+            m.Field(description="Decided plans, children first"),
         ]
         contexts: Annotated[
             t.Port[dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPackageContext]],
-            m.Field(exclude=True, description="Package contexts by directory"),
+            m.Field(description="Package contexts by directory"),
         ]
         parents: Annotated[
             t.Port[dict[Path, Sequence[str]]],
-            m.Field(exclude=True, description="Facade parents by package directory"),
+            m.Field(description="Facade parents by package directory"),
         ]
         declared: Annotated[
             t.Port[dict[str, frozenset[str]]],
-            m.Field(exclude=True, description="Declared facade letters by package"),
+            m.Field(description="Declared facade letters by package"),
         ]
         declarations: Annotated[
             t.Port[dict[tuple[str, str], tuple[str, bool]]],
             m.Field(
-                exclude=True,
                 description=(
                     "Declaring module and letter status per published "
                     "(package, name) whose route crosses only decided plans"
@@ -346,11 +341,11 @@ class FlextInfraModelsCodegenLazyInit:
         ]
         packages: Annotated[
             t.Port[dict[Path, str]],
-            m.Field(exclude=True, description="Declared public package by project"),
+            m.Field(description="Declared public package by project"),
         ]
         collisions: Annotated[
             t.Port[list[str]],
-            m.Field(exclude=True, description="Ambiguous export ownership findings"),
+            m.Field(description="Ambiguous export ownership findings"),
         ]
 
     class RopeProjectLayout(m.ContractModel):
@@ -416,7 +411,7 @@ class FlextInfraModelsCodegenLazyInit:
             description="Canonical rendered root ``__all__`` tuple.",
         )
         lazy_export_mapping: t.NonEmptyStr = m.Field(
-            description="Immutable elected export-to-target installer argument.",
+            description="Literal elected export-to-target installer argument.",
         )
 
     class QualityGateCheck(m.ArbitraryTypesModel):

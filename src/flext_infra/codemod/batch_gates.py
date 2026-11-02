@@ -1460,11 +1460,13 @@ class FlextInfraModGateEngine:
         root: Path,
         view_root: Path,
         candidate: m.Infra.StageSourcePlan,
+        *,
+        selection: Sequence[str] | m.Infra.CodemodRulePlan | None = None,
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan an immutable overlay with the original catalog and logical policy.
 
         Returns:
-            Full-catalog findings authenticated to candidate bytes and bindings.
+            Selected findings authenticated to candidate bytes and bindings.
 
         """
         root = root.resolve()
@@ -1472,8 +1474,11 @@ class FlextInfraModGateEngine:
         if captured.failure:
             return r[m.Infra.ModScanReport].from_failure(captured)
         view_root /= root.relative_to(candidate.workspace)
-        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
-            plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
+        if isinstance(selection, m.Infra.CodemodRulePlan):
+            plan = selection
+        else:
+            with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+                plan = u.Infra.codemod_rule_plan(snapshot, rule_ids=selection).unwrap()
         staged_plan = plan.model_copy(
             update={
                 "project_rule_ids": {

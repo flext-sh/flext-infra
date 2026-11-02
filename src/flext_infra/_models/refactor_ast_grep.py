@@ -107,8 +107,8 @@ class FlextInfraModelsRefactorGrep:
             t.NonEmptyStr | None,
             m.Field(
                 description=(
-                    "Catalog rule this generated partition renders; selecting "
-                    "that catalog id selects every partition of it"
+                    "Catalog rule this generated partition renders; retained for "
+                    "finding provenance, never selector aliasing"
                 ),
             ),
         ] = None

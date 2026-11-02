@@ -10,8 +10,9 @@ from collections.abc import Mapping, MutableMapping
 
 from flext_infra import m, t
 from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeCoreResources,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
@@ -43,7 +44,7 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
 
         """
         provider = cls.source_provider(request, provider=provider)
-        if not FlextInfraUtilitiesRopeRuntime.source_module(provider):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(provider):
             message = f"Captured file has no native source module: {request.path}"
             raise TypeError(message)
         parsed = provider.get_ast()
@@ -123,18 +124,18 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
                 )
                 raise failure
             return provider
-        resource = FlextInfraUtilitiesRopeCore.resolve_resource_from_path(
+        resource = FlextInfraUtilitiesRopeCoreResources.resolve_resource_from_path(
             request.project,
             request.path,
         )
         if resource is not None and resource.read() == request.source:
             native = request.project.get_pymodule(resource, force_errors=True)
-            if not FlextInfraUtilitiesRopeRuntime.source_module(native):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(native):
                 message = f"Captured file has no native source module: {request.path}"
                 raise TypeError(message)
             if native.source_code == request.source:
                 return native
-        return FlextInfraUtilitiesRopeRuntime.build_string_module(
+        return FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             request.project,
             request.source,
             resource=resource,

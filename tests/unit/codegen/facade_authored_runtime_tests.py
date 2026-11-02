@@ -61,6 +61,49 @@ class TestsFlextInfraGeneratedRuntime:
     """Execute generated candidates through their real public consumers."""
 
     @staticmethod
+    def test_utility_metaclass_remains_a_facade_base(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A metaclass hook is composition behavior, not nominal publication."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        directory = package / family.directory
+        directory.mkdir(parents=True, exist_ok=True)
+        sources = {
+            directory / "tree.py": (
+                "class Tree:\n"
+                "    @staticmethod\n"
+                "    def build(): return 'built'\n"
+                "__all__ = ['Tree']\n"
+            ),
+            directory / "meta.py": (
+                "class Meta(type):\n"
+                "    def __getattr__(cls, name):\n"
+                "        if name == 'Value': return cls.build()\n"
+                "        raise AttributeError(name)\n"
+                "__all__ = ['Meta']\n"
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                f"from {package.name}.{family.directory}.tree import Tree\n"
+                f"from {package.name}.{family.directory}.meta import Meta\n"
+                "class Utilities(Tree, Meta): pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+            package / c.Infra.INIT_PY: "from .utilities import u\n__all__ = ['u']\n",
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
+        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.UTILITIES_PY, rendered))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import u\n"
+            "assert u.Value == 'built'\n",
+            cwd=root,
+        )
+
+    @staticmethod
     def test_facade_imports_do_not_require_part_reexports(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,

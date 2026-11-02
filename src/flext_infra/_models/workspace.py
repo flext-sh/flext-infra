@@ -433,6 +433,14 @@ class FlextInfraModelsWorkspace:
                 ),
             ),
         ] = None
+        candidate_environment: Annotated[
+            Path | None,
+            m.Field(
+                description=(
+                    "Explicit prepared environment; absent selects the owned runtime"
+                )
+            ),
+        ] = None
 
     class FlextEditableSelection(m.ContractModel):
         """Typed receipt of the latest local `make setup FLEXT=<path>`."""
@@ -690,6 +698,12 @@ class FlextInfraModelsWorkspace:
         package_directories: Annotated[
             Mapping[str, tuple[Path, ...]],
             m.Field(description="Native package search locations by declared package"),
+        ]
+        package_distributions: Annotated[
+            Mapping[str, tuple[str, ...]],
+            m.Field(
+                description="Native installed distribution owners by import package"
+            ),
         ]
 
     class DirectUrlReceipt(m.ExternalContractModel):

@@ -450,12 +450,15 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         cls,
         root: Path,
         members: Sequence[Path],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> Generator[p.Infra.WorkspaceSnapshot]:
         """Open one repository engine with explicit nested inventory ownership.
 
         ``members`` separates nested checkout inventories. Only ``root`` elects
         the native project's source roots, so sibling internal packages cannot
-        replace this repository's bindings.
+        replace this repository's bindings. An injected engine is borrowed under
+        its original source-view barrier and is never closed by this snapshot.
 
         Yields:
             The snapshot every stage of the run reads.
@@ -463,7 +466,14 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         """
         root = root.resolve()
         member_roots = tuple(dict.fromkeys(member.resolve() for member in members))
-        with cls.workspace_overlay_project(root, (root,)) as project:
+        project_context = (
+            cls.workspace_overlay_project(root, (root,))
+            if source_project is None
+            else source_project.source_view(
+                declared_files=None, additional_source_folders=None
+            )
+        )
+        with project_context as project:
             yield m.Infra.WorkspaceSnapshot(
                 workspace_root=root,
                 members=member_roots,
@@ -506,7 +516,8 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         """
         member = member.resolve()
         view = snapshot.engine if project is None else project
-        listed = snapshot.python_files.get(member) if project is None else None
+        cacheable = project is None and not view.source_plans
+        listed = snapshot.python_files.get(member) if cacheable else None
         if listed is None:
             nested = tuple(
                 other
@@ -522,7 +533,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 )
                 if not any(path.is_relative_to(other) for other in nested)
             )
-            if project is None:
+            if cacheable:
                 snapshot.python_files[member] = listed
         return listed
 
@@ -672,7 +683,9 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         if member is None:
             msg = f"workspace file lies outside every member: {path}"
             raise ValueError(msg)
-        state = snapshot.engine.source_state(path, required=True)
+        # Publication retains physical absence for planned additions; the
+        # candidate byte read below still requires a source in the active view.
+        state = snapshot.engine.source_state(path, required=False)
         raw = snapshot.engine.source_bytes(path)
         source = m.Infra.WorkspaceSnapshotSource(
             path=path,

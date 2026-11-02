@@ -60,6 +60,59 @@
 
 ## Runtime is the authority
 
+Staged file materialization consumes the CLI pipeline worker setting from its
+declaring CLI settings owner. Infra settings declare only their own namespaced
+inputs; they do not duplicate or forward that provider-owned setting.
+
+Git porcelain is an external fixed-column protocol: leading status spaces are data.
+The Git status report preserves them at its typed field boundary, independently of
+the normal whitespace normalization of other contract strings. Fleet census path
+extraction consumes that unchanged protocol before applying its configured offset.
+
+Refactor-policy selection belongs to the existing project policy owner rather than
+file discovery. It delegates input loading to the managed-artifact owner. The native
+Rope method-transfer catalogue preserves its composed `u.Infra` public capability,
+repository override precedence, and configured default scan roots.
+
+Parameter retirement must preserve every native body binding. A used parameter
+without a declaration default cannot be removed through the SDK's default-inlining
+operation. Qualify the SDK's identity-bound replacement on the real consumer before
+adding a retirement declaration or capability; an unused-parameter abstraction
+does not address that migration.
+For an explicit replacement, the existing native Restructure request authenticates
+the exact parameter identity before rewriting its body references. The current
+Contracts owner stages those changes into its captured source view before native
+ChangeSignature removes the parameter and updates the complete caller population.
+
+Audit report publication accepts the JSON writer's Result before writing
+Markdown. A failed JSON destination must escape through the current Result
+boundary with its original exception; a successful audit cannot discard that
+failure or claim that both reports were published.
+
+The first bound source-map access captures membership and source values together
+through the same scoped discovery and native source view. A metadata-only key
+memo cannot separate that access from its original content observations: a file
+changed or deleted before later value access must not establish a second epoch.
+Unread bindings fail after closure; captured values remain available without
+another filesystem read. Performance repairs reuse authenticated original
+inventories rather than postponing their content observations.
+
+A selected package initializer is already an unconditional projection target.
+Affected-consumer election excludes that same destination before querying the
+bound source map; it still authenticates every other affected initializer through
+the original view. Planning retains the member's complete source and import
+observations before admission, and publication verifies that same read set.
+
+Generated-rule fingerprints serialize selected rule identifiers through the
+canonical JSON value contract while retaining their existing sorted JSON bytes.
+Generated facade bases are narrowed through the native class predicate before
+class-name queries; unresolved or non-class generated bases retain their existing
+reprojection treatment, and authored binding failures remain explicit.
+Provider classification composes native types in every family and structural
+protocols only in the protocol family; other declarations publish nominally.
+Metaclass ancestry uses the SDK's native `BuiltinType` identity instead of
+assuming every MRO entry exposes a class name and a non-null module.
+
 For the active complete facade-generator rewrite, resume from the branch-matched
 root plan, section `Handoff de retomada — 2026-10-30, chat 01a18a11`, at
 `.kilo/plans/2026-10-28-gen-mod-parametrization-performance/plan.md`, and Bead
@@ -198,6 +251,22 @@ lock drift (operator order 2026-10-24): `uv sync --frozen` installs the committe
 `uv.lock` without re-resolving or rewriting it, and plain `mise install` honors
 every `mise.lock` entry and records only missing ones. Check reports drift through
 `uv lock --check`; upgrade alone advances versions and writes the native locks.
+
+Within one Make evaluation or direnv activation, the shared readers authenticate
+the physical project and its Git root once. The bootstrap reader receives that
+Git root; the runtime reader receives the bootstrap root already elected from
+the original submodule declaration. These are distinct inputs, not aliases for
+one assumed repository root. Each reader still removes inherited Git selectors
+in its own subshell while retaining credential configuration. Native UV still
+elects the workspace and must satisfy both Git-scope and project containment.
+Make transports the roots through its override variables; direnv assigns them
+before local overrides can run. No context persists across activations.
+
+Mise election before workspace discovery and activation after `.envrc.local`
+remain separate: their roots and inherited environment can differ. The Git
+reader simplification does not remove Mise calls or establish a latency gain;
+qualify it through native root, attached-member, excluded-member and linked
+worktree activation, retaining malformed-marker and foreign-owner refusals.
 Upgrade always cures, even from a stale lock or a broken environment (tracker
 memories `operator-ruling-2026-10-02-repair-never-deadlocks` and
 `operator-ruling-2026-10-09-setup-always-upg-cures`; design D1, operator approval
@@ -273,20 +342,34 @@ Declared prerequisites of stage 6, open until they close:
   that carries it is published and the consumer's `make upg` locks it.
 
 A project source that no longer imports still has every lock written and
-installed. Before every frozen installation, setup and the executor sync compare
-the creator identity recorded in the environment (`make.environment_identity`)
-with the Mise-resolved uv and Python and recreate a divergent environment, or a
-directory without the marker, with native `uv venv --clear` (`--force` for the
-directory without the marker); `uv sync` alone keeps an environment whose
-interpreter still satisfies the request, and on a directory without the marker
-it would target the Mise base interpreter. uv caches each interpreter query by
-executable path and target timestamp, which recreation does not change, so every
-runtime and executor sync runs with native `--refresh` (measured 0.3 s on a
-current environment) and a query cached while the marker was absent never
-survives. Direnv
+installed. Every setup and executor installation prepares an invocation-owned
+native relocatable environment under the runtime's existing ignored state
+directory. Matching creator identities do not permit synchronizing the serving
+environment: a sync can remove dependencies before their replacements are ready.
+Frozen installation, editable binding, its environment-owned receipt and real
+Python/console validation precede one guarded atomic publication under the native
+environment lock. The previous environment remains recoverable; cleanup never
+removes a displaced environment after publication, including an interrupted swap.
+Unsupported publication capabilities fail before installation effects. No sync
+targets a directory without its native environment marker or a Mise base
+interpreter. This contract supersedes both in-place ``uv venv --clear`` and the
+matching-identity sync path. Native ``--refresh`` retains its interpreter-cache
+contract. Full native setup, interruption, relocation and cross-platform
+acceptance remain open until the original command proves them. Direnv
 exports no `UV_PROJECT` or `UV_PROJECT_ENVIRONMENT`. Each governed repository
 renders its own `.mise.toml` and commits its own `mise.lock`, and Mise resolves a
 member's tools from the member's lock.
+
+Native signature changes preserve each surviving parameter's annotation, defaults
+and return contract. The SDK's declaration renderer owns that preservation; caller
+adapters must not rebuild typed signatures or accept erased annotations. In
+particular, removing an unused injected dependency through `ArgumentRemover`
+retains the runtime `__annotations__` of every remaining parameter, while proxy
+call rendering continues to emit values without declaration annotations.
+Acceptance executes real positional and keyword callers before and after native
+body replacement and parameter retirement, and replans the resulting source to
+prove convergence. A parameter already absent from the current application proves
+only convergence; it does not qualify the SDK's caller argument mapping.
 The [projector bootstrap dependency cut](../../../docs/architecture/adr/018-generator-declarations.md#projector-bootstrap-dependency-cut)
 owns cold import repair. Elect the same projector and original planning models
 before the aggregate they repair, retaining public package imports. The former
@@ -319,6 +402,28 @@ that receipt names it and the run is not CI. A plain `make setup` restores the
 locked installs and removes the receipt, and CI rejects the input. This replaces
 `FLEXT_INFRA_EDITABLE_SUPPLIER_ROOT`, persisted supplier selection and the synthetic
 local/standalone/editable resolver, which are retired without a compatibility route.
+
+The existing editable request's `candidate_environment` is an explicit physical
+environment owned by the same runtime. Election, package observation, installation
+and receipt publication consume that selected path by reference. Native Rope
+`signature_additions` propagate it through the existing service calls; referencing
+the name without declaring and forwarding it is an incomplete migration and a
+runtime failure. Ordinary calls retain their declared runtime-environment default.
+This contract does not attest successful candidate provisioning or promotion.
+The selected FLEXT workspace's provider declarations own its import packages.
+External suppliers expose their packages through the elected interpreter's native
+`importlib.metadata.packages_distributions()` relation. Hatch editable installs do
+not necessarily expose that relation, so it does not replace the existing FLEXT
+provider declarations. A distribution can expose multiple packages; setup verifies
+all declared locations against its selected source. A missing declaration or
+competing selected owners fails admission. The documentation primary-package helper
+does not elect installed imports.
+The repository's `package` field is a participation flag, not an import name.
+FLEXT selections use the existing `editable_declared_packages` packaging owner,
+including its Hatch paths and source mappings; external suppliers retain the
+elected interpreter's native distribution-to-package relation.
+Distribution keys on both sides of that relation use the packaging owner's
+canonical name once; package import names retain their declared spelling.
 
 Native source declarations and locked consistency are the approved provisioning
 trust boundary. The stronger independently selected-supplier pre-install admission
@@ -846,6 +951,65 @@ same captured-source planner and guarded publisher own the resulting file effect
 No forwarding method, handwritten transplantation or second execution route is
 introduced. A completed transfer is a no-op only when the destination's native
 declaration owns the exact member and the original class no longer declares it.
+Instance transfers inject the existing captured expression resolver into Rope's
+native binding port. Rope owns getter, descriptor and source/destination identity
+admission; a separate adapter proof must not replace those checks or leave the
+native planner unable to consume the same lazy bindings. Qualification requires
+the original public transfer, including its negative cases.
+Attribute-read admission receives the existing typed source-member resolver from
+semantic contract orchestration, bound to that same captured project. The lower
+native adapter neither imports nor dynamically loads the source-base composition
+owner; this keeps runtime loading acyclic without weakening descriptor checks.
+Compiled-literal identity queries belong to the existing native matching owner;
+method transfer and signature propagation remain in the refactoring adapter.
+Ownership cutover uses the same native method batch and captured consumer closure,
+and its operation declaration is retired only after the resulting ownership and
+public runtime are qualified.
+
+The Algar acceptance run exposed a same-module transfer that initially failed in
+Rope before publication: moving `FlextTestsUtilitiesHandlerHelpers.create_handler_config`
+to its enclosing `FlextTestsUtilitiesFlextHandler` reported a conflicting import of
+that destination class. The native planner synthesized an import from the source
+module back into itself. The corrected SDK plans that transfer without the
+self-import; independent native tests also reject both bound and unbound global
+names that cannot retain their original identity. A successful plan does not
+prove published ownership or the consumer's global acceptance.
+Candidate import facts retain their logical source layer: a provider reached
+through original bytes and the same provider reached through proposed bytes can
+declare different dependencies. Physical input identity alone does not admit
+cross-layer reuse. Any removal of repeated parsing preserves both dependency
+closures, their discovery order, input witnesses and final CAS admission.
+
+The existing native class protocol declares `get_bases()` separately from
+`get_superclasses()`: the former retains unresolved-base witnesses, while the
+latter exposes resolved classes. Consumers retain that SDK distinction.
+
+Source-base analysis consumes the existing runtime leaf owners directly. It
+cannot depend on the aggregate runtime facade that also composes refactoring:
+that edge closes the refactoring-to-source-analysis import cycle. Native Rope
+binding identities elect the exported leaf owner for each consumed member;
+no reflective self-import or delayed import substitutes for that dependency cut.
+
+The cross-module transfer preview initially refused unused origin `__all__`
+imports. Whole-module import organization preserves export metadata, whereas a
+moved fragment needs only its own dependencies. Rope now elects references from
+the fragment through `ModuleImports.get_used_names`, including export names only
+when the fragment itself declares that metadata. Method transfers preserve
+`__future__`, explicit `__all__` reads and genuine destination conflicts; moving
+an export declaration preserves its named declarations. Native runtime probes and
+the movement/import suites verify those cases. A raw SDK preview still requires
+the normal private-import phase before its effects can enter the FLEXT tree.
+The transfer catalogue is YAML: its module/class pairs are sequences of exactly
+two nonempty strings. Strict ingress must accept the sequences produced by the
+native YAML parser while rejecting missing or extra pair members.
+Facade base resolution obtains the binding index from its already captured
+module; passing the same index separately duplicates an invariant and expands
+the resolver's interface without adding a dependency.
+Public Infra regression coverage for this SDK boundary uses real source projects:
+same-module nested-to-enclosing transfers retain method behavior and names,
+while occupied destinations, receiver dependencies and changed global bindings
+must refuse the complete plan without modifying any source. A planner result or
+an installed SDK version alone does not establish those contracts.
 
 Facade composition retains direct imports of discovered component declarations;
 the renderer does not redirect them through private-family package exports.
@@ -1456,6 +1620,17 @@ The Ruff parser authenticates each native result once and retains an operational
 diagnostic for an unexplained exit. Outcome classification consumes those same
 admitted remaining diagnostics; it does not parse the native report or repeat the
 semantic identity scan. Native error guards and the original receipt remain intact.
+Parser admission and native process failures remain separate decisions, avoiding
+an oversized compound predicate without removing any refusal condition.
+Each global target retains its pre-gate source identity in the digest-bound report.
+Independent native identity reads use the checker's configured concurrency bound
+and retain the caller's context. Results and failures are consumed in target order;
+every capture finishes before any gate starts, including when capture fails.
+Green-receipt admission compares that original repository identity and HEAD with
+the current state, rejects changed paths newer than the original gate checkpoint,
+and rejects symlink traversal. Report-destination CAS protects publication of the
+report itself; writing a green Markdown row does not establish source currentness.
+Repeating a semantic query is not a substitute for that receipt-admission guard.
 Receipt admission continues to consume that same phase-specific report and its
 original byte bindings, never a fabricated receipt or an older green invocation.
 
@@ -2329,11 +2504,11 @@ Staging elects changed-source roots before traversing their import closure. Each
 phase shares the same original read set, preserving first witnesses and ownership
 failures without recapturing sources to authorize the candidate.
 
-The conflict-marker gate consumes the explicit `GateContext.candidate_files` inventory
-of an authenticated candidate when its runtime owner is explicit. A staged source tree
-does not contain a Git index. Ordinary checkout checks retain the tracked and
-unpublished Git inventory; both routes reject an empty inventory and use the same
-marker scanner.
+The conflict-marker gate consumes `GateContext.candidate_files` when an authenticated
+candidate explicitly supplies that inventory. A staged source tree does not contain a
+Git index. An absent candidate inventory selects the tracked and unpublished Git
+inventory, regardless of which physical runtime owns the check; an explicitly empty
+candidate remains invalid. Both routes use the same marker scanner.
 
 ### Check engine contract
 
@@ -3721,6 +3896,30 @@ unfiltered SARIF coverage have been admitted, retaining the first-failure order 
 topology comparison and candidate freshness. The native checker remains the sole
 topology and applicable-gate planning owner; no caller-authored target inventory or
 optional planner fallback substitutes for it.
+Workspace routes retain the documentation module as a public dependency and resolve
+its validator and auditor only when the complete check selects documentation.
+Setup, provenance and generation discovery must not import unselected documentation
+services. This keeps the native producer reachable when it must reconcile a stale
+generated documentation namespace; the complete check still requires both services.
+CLI route selection follows the same boundary: validation and maintenance commands
+resolve only their selected route family. Documentation command construction still
+requires every declared documentation handler and fails on an invalid publication.
+The check request's repository elects its analyzer runtime through the native
+runtime owner. A CLI process started in another checkout cannot substitute its
+own interpreter or dependency graph for that declared target.
+Literal assignment metadata belongs to Rope's already parsed module. Reading
+`__all__` must not construct or complete its semantic binding index: the measured
+metadata query did not consume that index but forced every function body through
+it. The module owns the single query, retaining class metadata, alias and cycle
+semantics; native Rope refactoring propagates its consumer cutover.
+Split-package naming authenticates its actual composition owner. Family packages
+retain their facade-letter proof; a service split requires one locally declared,
+publicly exported class in a sibling module whose declared native import targets
+the split package and whose native direct base belongs to that captured package.
+A service remains a behavior owner, without
+acquiring a declaration-facade letter. Missing or competing roots fail before any
+native package move or publication.
+
 Bare `make check` uses the existing workspace capture route to execute the original
 checker once. It preserves that producer's native process outcome and owns an exclusive
 report base, then writes an immutable receipt when the original reports and execution
@@ -4440,6 +4639,9 @@ service that can run standalone opens its own snapshot only when none is injecte
 consumer opens a second snapshot or analysis project while one is bound. Generated
 rule builders pass the same snapshot to their classifiers and library-prefix discovery;
 they do not discard it before calling snapshot-owned package or layer queries.
+Declaration-scope ancestry and payload inspection also use that snapshot's original
+engine and frozen epoch. Opening another project rereads unbound source and repeats
+its layout work; re-entering `frozen_layout()` would clear the outer epoch on exit.
 The public `mod` composition preflights the selected repository references and
 uses the existing dependency-order owner before invoking each repository handler
 in the same process. Each rule plan contains only that repository's generated

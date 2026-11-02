@@ -11,7 +11,7 @@ import time
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from flext_cli import cli
 
@@ -29,7 +29,6 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
     _repository_root: Path
     _registry: FlextInfraGateRegistry
     _default_reports_dir: Path
-    _gate_logger: ClassVar[p.Logger] = u.fetch_logger(__name__)
 
     def _run_single_project(
         self,
@@ -440,7 +439,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         return cli.pipeline(
             (stage,),
             context=m.Cli.PipelineStageContext(repository_root=project_dir),
-            logger=self._gate_logger,
+            logger=self.logger,
         )
 
     def _make_gate_handler(
@@ -476,7 +475,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             gate_ctx = ctx.model_copy()
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
             gates_sink[gate_id] = execution
-            self._gate_logger.info(
+            self.logger.info(
                 "gate_executed",
                 project=project_name,
                 gate=gate_id,

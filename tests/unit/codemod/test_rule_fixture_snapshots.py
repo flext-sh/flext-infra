@@ -25,9 +25,9 @@ class TestsFlextInfraModRuleFixtureSnapshots:
     def _elected_rule(self, tmp_path: Path, name: str) -> tuple[str, frozenset[str]]:
         """Read the catalog rule a fixture file declares and its elected identities.
 
-        A partitioned catalog rule is elected through the partitions the
-        project's generated provider renders; selecting its catalog id
-        selects every one of them.
+        A partitioned catalog rule records the concrete partitions the
+        project's generated provider renders. Each partition is selected by
+        its own concrete identity; the catalog id is not a selector alias.
 
         Args:
             tmp_path: Provisioned workspace root consuming the provider.
@@ -120,8 +120,14 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         ):
             source = imports + declarations
             tm.ok(u.Cli.atomic_write_text_file(sample, source))
+            tm.fail(
+                FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=(rule_id,)),
+                has="unknown codemod rule IDs",
+            )
             report = tm.ok(
-                FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=(rule_id,))
+                FlextInfraModGateEngine.scan(
+                    tmp_path, fix=False, selection=tuple(elected)
+                )
             )
             names: list[str] = []
             with u.Infra.mod_native_readers(report.native_artifacts) as readers:
@@ -170,8 +176,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             encoding=c.DEFAULT_ENCODING
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        tm.fail(
+            FlextInfraModGateEngine.scan(root, fix=False, selection=(rule_id,)),
+            has="unknown codemod rule IDs",
+        )
         report = tm.ok(
-            FlextInfraModGateEngine.scan(root, fix=False, selection=(rule_id,))
+            FlextInfraModGateEngine.scan(root, fix=False, selection=tuple(elected))
         )
         names: list[str] = []
         with u.Infra.mod_native_readers(report.native_artifacts) as readers:
@@ -574,7 +584,8 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         catalogs = tuple(
             ruleset.config.parent
             for ruleset in plan.rulesets
-            if ruleset.config.is_relative_to(root)
+            if ruleset.provider != c.Infra.CODEMOD_GENERATED_PROVIDER
+            and ruleset.config.is_relative_to(root)
         )
         tm.that(len(catalogs), eq=1)
         return catalogs[0]

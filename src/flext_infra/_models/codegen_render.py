@@ -329,6 +329,12 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             t.NonEmptyStr,
             m.Field(description="Runtime-root-local development environment"),
         ] = c.Infra.ENVIRONMENT_DIRECTORY
+        environment_metadata: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Native environment marker required before publication"
+            ),
+        ] = c.Infra.ENVIRONMENT_METADATA
 
     class SonarcloudRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed only by the generated ``.sonarcloud.properties``."""

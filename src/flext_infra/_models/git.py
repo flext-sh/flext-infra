@@ -158,6 +158,7 @@ class FlextInfraModelsGit(
         repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         porcelain: Annotated[
             str,
+            t.StringConstraints(strip_whitespace=False),
             m.Field(description="Raw git status --porcelain output"),
         ]
         dirty: Annotated[bool, m.Field(description="Whether the worktree is dirty")]

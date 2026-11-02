@@ -400,7 +400,8 @@ class TestsFlextInfraModCliRoute:
             u.Cli.atomic_write_text_file(
                 config_path,
                 f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
-                f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\n",
+                f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\n"
+                "testConfigs: []\n",
             ),
         )
         tm.ok(
@@ -416,14 +417,8 @@ class TestsFlextInfraModCliRoute:
                     "id: rewire-first\n"
                     "language: Python\n"
                     "rule:\n"
-                    "  pattern: |\n"
-                    "    value = dict(\n"
-                    "      $ARGS\n"
-                    "    )\n"
-                    "fix: |\n"
-                    "  value = {\n"
-                    "    $ARGS\n"
-                    "  }\n"
+                    "  pattern: value = dict()\n"
+                    "fix: value = {}\n"
                     "severity: warning\n"
                 ),
             ),
@@ -435,10 +430,7 @@ class TestsFlextInfraModCliRoute:
                     "id: rewire-first-message\n"
                     "language: Python\n"
                     "rule:\n"
-                    "  pattern: |\n"
-                    "    value = dict(\n"
-                    "      $ARGS\n"
-                    "    )\n"
+                    "  pattern: value = dict()\n"
                     "severity: warning\n"
                 ),
             ),
@@ -453,7 +445,7 @@ class TestsFlextInfraModCliRoute:
                 "from __future__ import annotations\n\n\n"
                 f"class {stem}Sample:\n"
                 '    """Fixture namespace."""\n\n'
-                "    value = dict(\n        a=1,\n    )\n",
+                "    value = dict()\n",
             ),
         )
 
@@ -486,6 +478,29 @@ class TestsFlextInfraModCliRoute:
                 "rewire-first": str(first_rule.resolve()),
             },
         )
+        fixed = FlextInfraCli.infra_main([
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(mod_workspace),
+            "--rule",
+            "rewire-first",
+        ])
+        tm.that(fixed, eq=0)
+        tm.that(
+            (mod_workspace / "sample.py").read_text(encoding="utf-8"),
+            has="value = {",
+        )
+        verified = FlextInfraCli.infra_main([
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(mod_workspace),
+            "--check",
+            "--rule",
+            "rewire-first",
+        ])
+        tm.that(verified, eq=0)
 
     @staticmethod
     def test_scan_aggregates_every_local_rule_and_accepts_hint(

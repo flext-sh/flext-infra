@@ -372,12 +372,12 @@ print(
 
     @staticmethod
     @pytest.mark.parametrize("target_exists", [False, True])
-    def test_directed_initializer_rejects_banned_import_before_publication(
+    def test_directed_initializer_uses_literal_mapping_when_proxy_is_banned(
         tmp_path: Path,
         *,
         target_exists: bool,
     ) -> None:
-        """Native unrepairable diagnostics leave target bytes or absence unchanged."""
+        """A literal map keeps generated initializers independent of proxy imports."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         metadata = root / c.PYPROJECT_FILENAME
         document = tm.not_none(
@@ -408,20 +408,13 @@ print(
         )
         if not target_exists:
             destination.unlink()
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(destination, required=False),
-        )
         request = u.Tests.conform_request(
             root,
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        rejected = infra.codegen_conform(request)
-        tm.ok(rejected.failure)
-        tm.that(str(rejected.error), has="TID251")
-        tm.that(str(rejected.error), has="MappingProxyType")
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False)),
-            eq=before,
-        )
+        tm.ok(infra.codegen_conform(request))
+        generated = destination.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(generated, lacks="MappingProxyType")
+        tm.that(generated, has="install_lazy_exports(")

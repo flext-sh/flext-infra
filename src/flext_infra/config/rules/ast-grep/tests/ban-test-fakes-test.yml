@@ -61,6 +61,6 @@ invalid:
   class Recorder(p.Cli.Runner):
       pass
 - |
-  class TestsFlext#1:
+  class TestsFlext:
       class TomlReaderSequence(p.Infra.TomlReader):
           pass

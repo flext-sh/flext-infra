@@ -20,3 +20,21 @@ Infra:
           - "config/**/*.yml"
           - "src/**/*.j2"
         exclude_globs: []
+    owners:
+      - id: semantic:cutover
+        kind: semantic
+      - id: callback:import-normalization
+        kind: callback
+        callback: import-normalization
+      - id: callback:facade-components
+        kind: callback
+        callback: facade-components
+      - id: callback:namespace-relocations
+        kind: callback
+        callback: namespace-relocations
+      - id: callback:duplicate-apply
+        kind: callback
+        callback: duplicate-apply
+      - id: callback:accessor-rename
+        kind: callback
+        callback: accessor-rename

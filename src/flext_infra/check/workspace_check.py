@@ -7,8 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shlex
-import sys
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -155,7 +156,7 @@ class FlextInfraWorkspaceChecker(
         self,
         params: m.Infra.RunCommand,
     ) -> p.Result[m.Infra.CheckReportSummary]:
-        """Execute the native gates in the invoking runtime.
+        """Execute the native gates in the declared repository's owned runtime.
 
         Returns:
             The complete native checker result.
@@ -194,8 +195,10 @@ class FlextInfraWorkspaceChecker(
                 f"file-gate: source={selected_files[0]} gates={gates} "
                 "selection=CLI:check run --gates"
             )
+        runtime_root = u.Infra.runtime_owner_root(params.repository_root).unwrap()
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
+            runtime_root=runtime_root,
             reports_dir=params.reports_dir_path,
             apply_fixes=params.apply,
             check_only=params.check_only,
@@ -204,7 +207,9 @@ class FlextInfraWorkspaceChecker(
             pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
             runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
-                python=Path(sys.executable),
+                python=u.Infra.runtime_python(
+                    params.repository_root, runtime_root=runtime_root
+                ),
                 development_only=(),
             ),
             # Applicability and every gate of this invocation share each
@@ -719,7 +724,10 @@ class FlextInfraWorkspaceChecker(
         *,
         capture_identity: bool,
     ) -> p.Result[tuple[tuple[m.Infra.CheckProjectTarget, ...], m.Infra.GateContext]]:
-        """Capture pre-gate identities and reserve this invocation's report leaf.
+        """Capture ordered pre-gate identities before reserving the report leaf.
+
+        Independent native reads share the existing check worker bound. Every
+        worker joins before gates start or the original capture failure escapes.
 
         Returns:
             Original or identity-bearing targets and the exclusively owned context.
@@ -730,18 +738,22 @@ class FlextInfraWorkspaceChecker(
         ]
         if capture_identity:
             captured: list[m.Infra.CheckProjectTarget] = []
-            for target in targets:
-                identity = u.Infra.exact_worktree_root(target.path)
-                if identity.failure:
-                    return result_type.from_failure(identity)
-                captured.append(
-                    m.Infra.CheckProjectTarget(
-                        name=target.name,
-                        path=target.path,
-                        applicable_gates=target.applicable_gates,
-                        source_identity=identity.value,
-                    ),
+            with ThreadPoolExecutor(
+                max_workers=FlextInfraWorkspaceChecker._gate_parallelism(len(targets))
+            ) as pool:
+                futures = tuple(
+                    pool.submit(
+                        copy_context().run, u.Infra.exact_worktree_root, target.path
+                    )
+                    for target in targets
                 )
+                for target, future in zip(targets, futures, strict=True):
+                    identity = future.result()
+                    if identity.failure:
+                        return result_type.from_failure(identity)
+                    captured.append(
+                        target.model_copy(update={"source_identity": identity.value})
+                    )
             targets = tuple(captured)
         dir_ensure = u.Cli.ensure_dir(ctx.reports_dir)
         if dir_ensure.failure:

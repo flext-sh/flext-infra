@@ -917,7 +917,13 @@ class FlextInfraUtilitiesFacadeComponents:
         owner, namespace = resolved.value[0], resolved.value[1]
         index = module.get_source_binding_index()
         framed = cls._facade_namespace_bases(
-            module, index, namespace, path, directory=directory
+            module,
+            namespace,
+            path,
+            directory=directory,
+            declared_names=frozenset(
+                provider.get_name() for _path, provider in resolved.value[2]
+            ),
         )
         if framed.failure:
             return r[
@@ -1371,6 +1377,9 @@ class FlextInfraUtilitiesFacadeComponents:
             Every nested type class bound by an abstract parent attribute or a
             family-directory base, in declaration order.
 
+        Raises:
+            InconsistentHierarchyError: If ``not rendered``.
+
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
         rendered = owner.get_module().source_code.startswith(c.Infra.AUTOGEN_HEADER)
@@ -1417,11 +1426,11 @@ class FlextInfraUtilitiesFacadeComponents:
     @staticmethod
     def _facade_namespace_bases(
         module: p.Infra.RopeSourceModule,
-        index: p.Infra.RopeSourceBindingIndex,
         namespace: p.Infra.RopeSourceClass,
         path: Path,
         *,
         directory: Path,
+        declared_names: frozenset[str],
     ) -> p.Result[
         tuple[
             p.Infra.RopeSourceClassLayout,
@@ -1435,6 +1444,7 @@ class FlextInfraUtilitiesFacadeComponents:
             or the first base or namespace binding the facade cannot publish.
 
         """
+        index = module.get_source_binding_index()
         layout = index.class_layout(namespace.get_scope())
         source = module.source_code
         # A generated facade's base list is the previous projection; a base it
@@ -1442,21 +1452,9 @@ class FlextInfraUtilitiesFacadeComponents:
         rendered = source.startswith(c.Infra.AUTOGEN_HEADER)
         bases: list[tuple[str, p.Infra.RopePyObject]] = []
         for (start, end), binding in layout.base_bindings:
-            base = binding.get_object() if binding is not None else None
-            if rendered and (
-                binding is None
-                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base)
-            ):
-                continue
-            if (
-                rendered
-                and base is not None
-                and (base_module := base.get_module()) is not None
-                and (resource := base_module.get_resource()) is not None
-                and Path(resource.real_path).is_relative_to(directory)
-            ):
-                continue
             if binding is None:
+                if rendered:
+                    continue
                 message = f"Unresolved facade base: {path}:{source[start:end]}"
                 return r[
                     tuple[
@@ -1464,7 +1462,19 @@ class FlextInfraUtilitiesFacadeComponents:
                         list[tuple[str, p.Infra.RopePyObject]],
                     ]
                 ].fail(message)
-            bases.append((source[start:end], binding.get_object()))
+            base = binding.get_object()
+            if rendered:
+                if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base):
+                    continue
+                base_module = base.get_module()
+                resource = None if base_module is None else base_module.get_resource()
+                if (
+                    resource is not None
+                    and Path(resource.real_path).is_relative_to(directory)
+                    and base.get_name() in declared_names
+                ):
+                    continue
+            bases.append((source[start:end], base))
         return FlextInfraUtilitiesFacadeComponents._facade_namespace_bindings(
             module, index, namespace, path
         ).map(lambda _bound: (layout, bases))
@@ -1616,11 +1626,12 @@ class FlextInfraUtilitiesFacadeComponents:
             # it; composing it back would make the namespace its own ancestor.
             if provider is namespace or namespace in provider.get_mro()[1:]:
                 continue
-            if (
-                FlextInfraUtilitiesFacadeMembers.class_kind(
-                    provider, resolver_factory=resolver_factory, source_project=project
-                )
-                is not c.Infra.FacadeMemberKind.TYPE
+            kind = FlextInfraUtilitiesFacadeMembers.class_kind(
+                provider, resolver_factory=resolver_factory, source_project=project
+            )
+            if kind is not c.Infra.FacadeMemberKind.TYPE and (
+                family is not c.Infra.FacadeFamily.P
+                or kind is not c.Infra.FacadeMemberKind.PROTOCOL
             ):
                 nominal.append(provider)
                 continue
@@ -1664,6 +1675,16 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
+        if any(
+            isinstance(base, types.runtime_type("rope.base.builtins", "BuiltinType"))
+            for base in provider.get_mro()[1:]
+        ):
+            return False
+        if any(
+            types.py_class(scope.pyobject)
+            for scope in provider.get_scope().get_scopes()
+        ):
+            return False
         methods = tuple(
             scope.pyobject
             for scope in provider.get_scope().get_scopes()

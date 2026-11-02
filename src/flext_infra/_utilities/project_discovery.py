@@ -40,16 +40,21 @@ class FlextInfraUtilitiesProjectDiscovery(
             The resulting ``m.Infra.RefactorConfigSpec``.
 
         """
-        packaged = m.Infra.RefactorConfigSpec(
-            project_scan_dirs=config.Infra.source_scan.roots,
+        declared = (
+            FlextInfraUtilitiesProjectManagedArtifacts
+            .load_codegen_inputs(
+                repository_root,
+            )
+            .unwrap()
+            .spec.repository.refactor
         )
-        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-            repository_root,
-        ).unwrap()
-        repository = loaded.spec.repository
-        if repository.refactor is None:
-            return packaged
-        return repository.refactor
+        return (
+            declared
+            if declared is not None
+            else m.Infra.RefactorConfigSpec(
+                project_scan_dirs=config.Infra.source_scan.roots
+            )
+        )
 
     @classmethod
     def discover_project_roots(
@@ -1092,8 +1097,20 @@ class FlextInfraUtilitiesProjectDiscovery(
             The resulting ``Path``.
 
         """
-        return (
+        return cls.environment_python(
             cls.runtime_environment_dir(project_root, runtime_root=runtime_root)
+        )
+
+    @staticmethod
+    def environment_python(environment: Path) -> Path:
+        """Locate Python in one explicitly owned physical environment.
+
+        Returns:
+            Its native platform entrypoint, without changing environment ownership.
+
+        """
+        return (
+            environment
             / ("Scripts" if sys.platform == "win32" else "bin")
             / ("python.exe" if sys.platform == "win32" else c.Infra.PYTHON)
         )

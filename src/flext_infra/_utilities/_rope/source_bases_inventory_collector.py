@@ -20,7 +20,16 @@ from rope.base.pynames import ImportedModule
 from rope.base.pyobjectsdef import PyModule, PyPackage
 
 from flext_infra import c, m, p
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from flext_infra._utilities._rope.runtime_module_queries import (
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
+)
+from flext_infra._utilities._rope.runtime_modules import (
+    FlextInfraUtilitiesRopeRuntimeModules,
+)
+from flext_infra._utilities._rope.runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
 
 
 class FlextInfraUtilitiesRopeSourceBindingCollector:
@@ -312,7 +321,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 receiver.id not in visible or visible[receiver.id] is not None
             ):
                 return False
-            inferred = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            inferred = FlextInfraUtilitiesRopeRuntimeBase.runtime_callable(
                 "rope.base.evaluate", "eval_node"
             )(scope, receiver)
             if inferred is None:
@@ -320,7 +329,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             if not isinstance(inferred, p.Infra.RopePyName):
                 message = "Mutation receiver inference returned an invalid native name"
                 raise TypeError(message)
-            if not FlextInfraUtilitiesRopeRuntime.instance_object(
+            if not FlextInfraUtilitiesRopeRuntimeTypes.instance_object(
                 inferred.get_object()
             ):
                 return False
@@ -801,7 +810,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 len(present) == len(branches)
                 and reference is not None
                 and objects[0] is not None
-                and FlextInfraUtilitiesRopeRuntime.abstract_class(objects[0])
+                and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(objects[0])
                 and all(value is objects[0] for value in objects)
             ):
                 bindings[name] = reference
@@ -819,7 +828,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 reference
                 if reference is not None
                 and objects[0] is not None
-                and FlextInfraUtilitiesRopeRuntime.py_function(objects[0])
+                and FlextInfraUtilitiesRopeRuntimeTypes.py_function(objects[0])
                 and all(value is objects[0] for value in objects)
                 else None
             )
@@ -833,10 +842,12 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
         """
         return value is not None and (
-            FlextInfraUtilitiesRopeRuntime.py_function(value)
+            FlextInfraUtilitiesRopeRuntimeTypes.py_function(value)
             or (
-                FlextInfraUtilitiesRopeRuntime.instance_object(value)
-                and FlextInfraUtilitiesRopeRuntime.concrete_data_class(value.get_type())
+                FlextInfraUtilitiesRopeRuntimeTypes.instance_object(value)
+                and FlextInfraUtilitiesRopeRuntimeModuleQueries.concrete_data_class(
+                    value.get_type()
+                )
             )
         )
 
@@ -858,11 +869,11 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         if expression is not None and (
             reference is None or isinstance(expression, ast.Constant)
         ):
-            offset = FlextInfraUtilitiesRopeRuntime.source_offset(
+            offset = FlextInfraUtilitiesRopeRuntimeModuleQueries.source_offset(
                 spec.provider.source_code, expression
             )
             context = spec.provider.get_source_binding_index().context_at(offset)
-            inferred = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+            inferred = FlextInfraUtilitiesRopeRuntimeBase.runtime_callable(
                 "rope.base.evaluate", "eval_node"
             )(context.environment, expression)
             value = (
@@ -872,7 +883,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             )
             return (
                 value,
-                FlextInfraUtilitiesRopeRuntime.call_data_return_constraint(
+                FlextInfraUtilitiesRopeRuntimeModules.call_data_return_constraint(
                     spec.provider.pycore.project,
                     expression,
                     context.environment,
@@ -1051,11 +1062,11 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
             and not expression.keywords
         ):
             return cls._reference(expression, bindings, spec)
-        offset = FlextInfraUtilitiesRopeRuntime.source_offset(
+        offset = FlextInfraUtilitiesRopeRuntimeModuleQueries.source_offset(
             spec.provider.source_code, expression
         )
         context = spec.provider.get_source_binding_index().context_at(offset)
-        inferred = FlextInfraUtilitiesRopeRuntime.runtime_callable(
+        inferred = FlextInfraUtilitiesRopeRuntimeBase.runtime_callable(
             "rope.base.evaluate", "eval_node"
         )(context.environment, expression)
         if not isinstance(inferred, p.Infra.RopePyName):
@@ -1064,10 +1075,12 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 f"{ast.unparse(expression)}"
             )
             raise TypeError(message)
-        metaclass = FlextInfraUtilitiesRopeRuntime.require_class_object(
+        metaclass = FlextInfraUtilitiesRopeRuntimeBase.require_class_object(
             inferred.get_object(), f"{spec.module}:{ast.unparse(expression)}"
         )
-        identity = FlextInfraUtilitiesRopeRuntime.native_object_identity(metaclass)
+        identity = FlextInfraUtilitiesRopeRuntimeModules.native_object_identity(
+            metaclass
+        )
         module, separator, qualified_name = identity.partition("::")
         attributes = tuple(qualified_name.split("."))
         if not module or not separator or not all(attributes):

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
@@ -182,6 +182,68 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             str,
             m.Field(description="Fully qualified base spelling when resolved"),
         ] = ""
+
+    class RopeAttributeReadProof(m.ContractModel):
+        """Native, snapshot-bound evidence for one effect-free attribute read."""
+
+        source_path: Annotated[Path, m.Field(description="Captured source file")]
+        source_sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description="Digest of the complete captured source file",
+            ),
+        ]
+        start_byte: Annotated[
+            int,
+            m.Field(ge=0, description="Inclusive source UTF-8 byte position"),
+        ]
+        end_byte: Annotated[
+            int,
+            m.Field(gt=0, description="Exclusive source UTF-8 byte position"),
+        ]
+        expression: Annotated[
+            str,
+            m.Field(min_length=1, description="Native AST dump for the read"),
+        ]
+        access: Annotated[
+            Literal["module", "class", "instance"],
+            m.Field(description="Native receiver access category"),
+        ]
+        base: Annotated[
+            FlextInfraModelsRope.SourceClassReference,
+            m.Field(description="Native module or class identity of the receiver"),
+        ]
+        accessor: Annotated[
+            FlextInfraModelsRope.SourceClassReference,
+            m.Field(description="Native __getattribute__ declaration identity"),
+        ]
+        member: Annotated[
+            FlextInfraModelsRope.SourceClassReference,
+            m.Field(description="Native owner and identity of the requested member"),
+        ]
+        descriptor: Annotated[
+            FlextInfraModelsRope.SourceClassReference | None,
+            m.Field(
+                description="Builtin descriptor identity, or none for a plain value"
+            ),
+        ] = None
+        project: t.Port[p.Infra.RopeProject] = m.Field(
+            description="Exact captured native project that resolved the identities",
+        )
+        native_base: t.Port[p.Infra.RopePyName] = m.Field(
+            description="Native Rope binding of the attribute receiver type",
+        )
+        native_accessor: t.Port[p.Infra.RopePyName] = m.Field(
+            description="Native Rope binding of the proven builtin getter",
+        )
+        native_member: t.Port[p.Infra.RopePyName] = m.Field(
+            description="Native Rope binding selected by the captured C3 resolver",
+        )
+        native_descriptor: t.Port[p.Infra.RopePyName] | None = m.Field(
+            default=None,
+            description="Native Rope binding of the builtin descriptor, if present",
+        )
 
     class SourceClassDefinition(m.ContractModel):
         """One source declaration, preserving ordered bases and member shadowing."""

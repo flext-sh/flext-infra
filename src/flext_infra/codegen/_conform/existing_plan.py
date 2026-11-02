@@ -509,6 +509,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         if (
+            selection is not None
+            and self.state.provider_plans is not None
+            and cohort == self.state.provider_plans
+            and all(plan.project == root for plan in cohort)
+        ):
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(cohort)
+        if (
             selection is None
             and self.state.provider_plans is not None
             and not any(

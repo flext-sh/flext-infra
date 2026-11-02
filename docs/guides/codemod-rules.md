@@ -74,6 +74,20 @@ every loaded provider. A text rule may also name the projects it targets in
 
 ## Make verbs
 
+Declared `signature_additions` use native Rope `ChangeSignature` through the
+existing contract planner and guarded publisher. They propagate parameter and
+caller changes from the same authenticated source view, preserving public names
+and export declarations. Generated native output still passes through canonical
+formatting and the complete codemod lifecycle; a source change is not runtime or
+gate acceptance. Do not add a second command solely to bypass slow preflight.
+
+Distribution-name normalization uses `u.Infra.distribution_identity`. Its native
+Rope migration admits one-argument calls and the one-iterable `map` callback
+form, proving the original function and builtin identities. Native calls with
+`validate=True`, other keyword arguments or expanded arguments retain their
+original contract. The normalizer's own implementation module remains native;
+the migration never rewrites its backend into a recursive facade call.
+
 Common verbs are declared in
 `flext-infra/src/flext_infra/config/codegen.yaml` (`make.verbs`). Infra declares
 its owned snapshot operation in `flext-infra/config/codegen.yaml`
@@ -468,6 +482,8 @@ FLEXT-owned CPython AST and LibCST interpretation are being retired separately.
   adapter construction, `m.TypeAdapter(...)` and `t.TypeAdapter(...)` exercise the
   rewrite, while `u.type_adapter(...)` is a valid fixed point. Regenerate snapshots
   from those authored inputs; never repair stale labels by editing generated output.
+- A fixture that asserts a semantic class match must declare syntactically valid
+  Python; malformed-source scenarios are separate parser-boundary cases.
 
 ## Workflow
 

@@ -201,6 +201,8 @@ class FlextInfraCodemodSemanticApply(
         cls,
         root: Path,
         consumer_roots: tuple[Path, ...] = (),
+        *,
+        snapshot: p.Infra.WorkspaceSnapshot | None = None,
     ) -> p.Result[m.Infra.SemanticSourcePlan]:
         """Capture a native source campaign without creating a rename artifact.
 
@@ -209,7 +211,7 @@ class FlextInfraCodemodSemanticApply(
 
         """
         return cls._source_scopes(root, consumer_roots).flat_map(
-            lambda scopes: cls._source_closure(scopes).map(
+            lambda scopes: cls._source_closure(scopes, snapshot).map(
                 lambda candidate: m.Infra.SemanticSourcePlan(
                     candidate=candidate,
                     consumer_roots=scopes[1:],
@@ -566,13 +568,13 @@ class FlextInfraCodemodSemanticApply(
         sources: Mapping[Path, str],
         workspace: p.Infra.RopeWorkspaceDsl,
     ) -> tuple[tuple[Path, str], ...]:
-        """Select shallowest split packages owned by an actual facade declaration.
+        """Select shallowest split packages with an authenticated semantic owner.
 
         Returns:
             Initializer paths and semantic destination basenames for one wave.
 
         Raises:
-            ValueError: If split naming has no unambiguous facade responsibility.
+            ValueError: If split naming has no unambiguous semantic responsibility.
 
         """
         selected: list[tuple[Path, str]] = []
@@ -618,14 +620,74 @@ class FlextInfraCodemodSemanticApply(
                 for filename in family.file_names
                 if (facade := ancestor.parent / filename) in sources
             )
-            if not owned:
+            composition = (
+                owned
+                or FlextInfraCodemodSemanticApply._split_composition_owner(
+                    directory, sources, workspace
+                )
+            )
+            if not composition:
                 msg = (
                     f"unresolved semantic grouping: {directory}; split package "
-                    "has no authenticated facade declaration owner"
+                    "has no authenticated declaration or composition owner"
                 )
                 raise ValueError(msg)
             selected.append((path, f"_{basename}"))
         return tuple(selected)
+
+    @staticmethod
+    def _split_composition_owner(
+        directory: Path,
+        sources: Mapping[Path, str],
+        workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> bool:
+        """Authenticate one exported native composition root for a split package.
+
+        Returns:
+            Whether exactly one local public class composes a captured provider.
+
+        Raises:
+            ValueError: If competing local public classes claim the split package.
+
+        """
+        project = workspace.rope_project
+        owners: list[tuple[Path, str]] = []
+        for source in sources:
+            if (
+                source.parent != directory.parent
+                or source.suffix != c.Infra.EXT_PYTHON
+                or source.name == c.Infra.INIT_PY
+            ):
+                continue
+            resource = u.Infra.file_resource_at(project, source)
+            module = u.Infra.require_source_module(
+                project.get_pymodule(resource, force_errors=True)
+            )
+            package = module.get_name().rpartition(".")[0]
+            target = f"{package}.{directory.name}"
+            if not any(
+                imported == target or imported.startswith(f"{target}.")
+                for imported in u.Infra.resolve_declared_module_imports(
+                    project, resource
+                ).values()
+            ):
+                continue
+            for scope in u.Infra.declared_class_scopes(
+                module.get_scope(),
+                names=frozenset(u.Infra.public_export_names_source(module)),
+            ):
+                owner = u.Infra.require_class_object(scope.pyobject, str(source))
+                if any(
+                    u.Infra.py_class(base)
+                    and (resource := base.get_module().get_resource()) is not None
+                    and Path(resource.real_path).is_relative_to(directory)
+                    for base in owner.get_bases()
+                ):
+                    owners.append((source, owner.get_name()))
+        if len(owners) > 1:
+            msg = f"competing semantic composition roots for split package: {directory}"
+            raise ValueError(msg)
+        return bool(owners)
 
     @staticmethod
     def _source_scopes(

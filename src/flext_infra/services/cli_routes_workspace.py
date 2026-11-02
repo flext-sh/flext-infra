@@ -10,8 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import flext_infra
-from flext_infra import c, check, m, p, r, t, u, workspace
-from flext_infra.docs import FlextInfraDocAuditor, FlextInfraDocValidator
+from flext_infra import c, check, docs, m, p, r, t, u, workspace
 
 
 class FlextInfraWorkspaceRoutes:
@@ -154,7 +153,7 @@ class FlextInfraWorkspaceRoutes:
             )
             if lanes.failure:
                 return r[bool].from_failure(lanes)
-        for service in (FlextInfraDocValidator, FlextInfraDocAuditor):
+        for service in (docs.FlextInfraDocValidator, docs.FlextInfraDocAuditor):
             documented = service(
                 repository_root=root,
                 output_dir=make.docs.reports_dir,

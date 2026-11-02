@@ -28,7 +28,6 @@ class FlextInfraModelsCodegenTransaction:
         inputs: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
             m.Field(
-                exclude=True,
                 description="Original read-only observations consumed by this effect",
             ),
         ] = ()
@@ -114,7 +113,6 @@ class FlextInfraModelsCodegenTransaction:
                 default_factory=lambda: MappingProxyType[
                     Path, tuple[frozenset[str], frozenset[str]]
                 ]({}),
-                exclude=True,
                 description=(
                     "Captured runtime and typing import facts retained by reference"
                 ),

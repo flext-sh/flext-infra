@@ -35,26 +35,56 @@ class FlextInfraModelsCodemod:
         annotation: Annotated[
             t.NonEmptyStr, m.Field(description="Origin-owned annotation expression")
         ]
+        default: str | None = m.Field(
+            default=None,
+            description="Native default expression; absent requires every caller value",
+        )
         call_values: Annotated[
             Mapping[str, str],
             m.Field(description="Caller declaration identity to argument expression"),
         ]
 
+    class RopeSignatureRemoval(m.ContractModel):
+        """Replace exact parameter references before native signature retirement."""
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Stable operation identity")]
+        target: Annotated[
+            t.NonEmptyStr, m.Field(description="Native qualified function declaration")
+        ]
+        parameter: Annotated[
+            t.NonEmptyStr, m.Field(description="Existing parameter to retire")
+        ]
+        replacement: Annotated[
+            t.NonEmptyStr, m.Field(description="Explicit native body expression")
+        ]
+
     class RopeMethodTransfer(m.ContractModel):
-        """An existing class receiving native static or class declarations."""
+        """An existing class receiving a natively proven method declaration."""
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Stable transfer identity")]
         destination: Annotated[
-            tuple[t.NonEmptyStr, t.NonEmptyStr],
-            m.Field(description="Destination module and existing qualified class"),
+            Sequence[t.NonEmptyStr],
+            m.Field(
+                min_length=2,
+                max_length=2,
+                description="Destination module and existing qualified class",
+            ),
         ]
         methods: Annotated[
-            tuple[tuple[t.NonEmptyStr, t.NonEmptyStr], ...],
+            Sequence[
+                Annotated[Sequence[t.NonEmptyStr], m.Field(min_length=2, max_length=2)]
+            ],
             m.Field(
                 min_length=1,
                 description="Source module and qualified method pairs",
             ),
         ]
+        receiver_rewrites: Mapping[str, str] = m.Field(
+            default_factory=dict,
+            description=(
+                "Explicit self.member to injected receiver path for one instance method"
+            ),
+        )
 
     class ContractAdmissionOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Independent native admission selectors for one contract planning pass."""
@@ -70,6 +100,9 @@ class FlextInfraModelsCodemod:
         )
         method_transfers: Sequence[FlextInfraModelsCodemod.RopeMethodTransfer] = (
             m.Field(default=(), description="Native transfers in this same source pass")
+        )
+        signature_removals: Sequence[FlextInfraModelsCodemod.RopeSignatureRemoval] = (
+            m.Field(default=(), description="Native body and parameter retirements")
         )
 
     class AstGrepCapture(FlextInfraModelsBase.FrozenArbitrary):
@@ -475,6 +508,9 @@ class FlextInfraModelsCodemod:
         )
         method_transfers: Sequence[FlextInfraModelsCodemod.RopeMethodTransfer] = (
             m.Field(default=(), description="Ordered native method ownership transfers")
+        )
+        signature_removals: Sequence[FlextInfraModelsCodemod.RopeSignatureRemoval] = (
+            m.Field(default=(), description="Ordered native parameter retirements")
         )
 
     class ModFixtureDirectories(FlextInfraModelsBase.FrozenArbitrary):

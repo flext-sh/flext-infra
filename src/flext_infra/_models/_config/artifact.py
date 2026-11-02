@@ -1321,21 +1321,15 @@ class FlextInfraModelsConfigArtifact(
 
         target: Annotated[
             FlextInfraModelsConfigContexts.RepositoryConformTarget,
-            m.Field(
-                frozen=True, description="Conformance identity and root being rendered"
-            ),
+            m.Field(description="Conformance identity and root being rendered"),
         ]
         workspace: Annotated[
             FlextInfraModelsConfigWorkspace.WorkspaceSpec,
-            m.Field(
-                frozen=True, description="Workspace manifest governing the repository"
-            ),
+            m.Field(description="Workspace manifest governing the repository"),
         ]
         codegen: Annotated[
             FlextInfraModelsConfigArtifact.CodegenConfigSpec,
-            m.Field(
-                frozen=True, description="Codegen contract the repository renders under"
-            ),
+            m.Field(description="Codegen contract the repository renders under"),
         ]
         tooling_runtime: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext | None = (
             m.Field(
@@ -1345,14 +1339,12 @@ class FlextInfraModelsConfigArtifact(
         managed_artifacts: Annotated[
             FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsSnapshot,
             m.Field(
-                frozen=True,
                 description="Project managed-artifact catalog overlaid on renders",
             ),
         ]
         integration_branch: Annotated[
             str | None,
             m.Field(
-                frozen=True,
                 description=(
                     "Integration branch the repository integrates on, resolved "
                     "once per plan for the project context and every workflow; "
@@ -1378,14 +1370,12 @@ class FlextInfraModelsConfigArtifact(
         ports: Annotated[
             t.Port[FlextInfraProtocolsBase.CodegenConformPorts] | None,
             m.Field(
-                exclude=True,
                 description="Caller-bound capabilities shared by repository phases",
             ),
         ] = None
         provider_plans: Annotated[
             tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] | None,
             m.Field(
-                exclude=True,
                 description=(
                     "Original lazy plans of the selected cohort, supplied as "
                     "planning data; publication still requires live admission"
@@ -1395,7 +1385,6 @@ class FlextInfraModelsConfigArtifact(
         selected_inputs: Annotated[
             FlextInfraModelsConfigArtifact.CodegenInputs | None,
             m.Field(
-                exclude=True,
                 description="Invoking repository's already captured configuration",
             ),
         ] = None

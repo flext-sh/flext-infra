@@ -26,8 +26,8 @@ PROJECT_ROOT="$(cd "${PROJECT_ROOT}" && pwd -P)" || return $?
 # The shared native reader authenticates Git scope and asks governed UV about
 # membership. Activation observes the reader; it never provisions it.
 GIT_DISCOVERY_ROOT="$( {{ git_root_reader('"${PROJECT_ROOT}"') }} )"
-BOOTSTRAP_ROOT="$( {{ bootstrap_root_reader('"${PROJECT_ROOT}"') }} )"
-RUNTIME_ROOT="$( {{ runtime_root_reader('"${PROJECT_ROOT}"', uv_tool, toolchain.mise_selector, native_environment_unset) }} )"
+BOOTSTRAP_ROOT="$( {{ bootstrap_root_reader('"${PROJECT_ROOT}"', '"${GIT_DISCOVERY_ROOT}"') }} )"
+RUNTIME_ROOT="$( {{ runtime_root_reader('"${PROJECT_ROOT}"', '"${BOOTSTRAP_ROOT}"', uv_tool, native_environment_unset) }} )"
 watch_file "${PROJECT_ROOT}/pyproject.toml"
 watch_file "${RUNTIME_ROOT}/pyproject.toml"
 watch_file "${RUNTIME_ROOT}/uv.lock"

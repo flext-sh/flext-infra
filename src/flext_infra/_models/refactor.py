@@ -849,6 +849,17 @@ class FlextInfraModelsRefactor(
 
     # -- CSV-driven Rename Models ---------------------------------------------
 
+    class ModRuleRoute(m.ImmutableValueModel):
+        """One exact selected owner resolved before any mod source effects."""
+
+        selector: t.NonEmptyStr = m.Field(description="Exact ``--rule`` selector")
+        owner: Literal["ast", "text", "csv", "semantic", "callback"] = m.Field(
+            description="Elected owner family"
+        )
+        callback: str | None = m.Field(
+            default=None, description="Selected callback owner when applicable"
+        )
+
     class ModCommand(FlextInfraModelsMixins.ScopeMixin, m.ContractModel):
         """CLI request for the shared AST, semantic, and text codemod cascade.
 

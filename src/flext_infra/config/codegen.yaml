@@ -621,6 +621,7 @@ Infra:
       # Whole-composition prerequisites precede every other check gate.
       # A partial inventory or any diagnostic prevents subsequent phases.
       check_prerequisite_gates: [ lint, pyrefly ]
+      check_prerequisite_pyrefly_workers: 4
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -676,14 +677,6 @@ Infra:
       # parent directory is the superproject checkout, so a scratch "beside the
       # checkout" landed inside another repository and Git refused every test
       # fixture repository created there.
-      # Native creator identity of the runtime environment (pyvenv.cfg, written
-      # by uv). Setup recreates an environment created by another uv or Python
-      # than the declared toolchain; `uv sync` alone keeps it.
-      environment_identity:
-        marker_file: pyvenv.cfg
-        recreate_parameter: RECREATE
-        uv_key: uv
-        python_key: version_info
       # Isolated environment that runs `make upg`'s one residual flext-infra
       # step (the Mise platform-gap repair). Native uv syncs it from the
       # project's own frozen lock, the dependency group that pins flext-infra,
@@ -750,6 +743,9 @@ Infra:
       - PYTHONHOME
       - PYTHONPATH
       setup_timeout_seconds: 118
+      # The check route receives TERM at this deadline. The shared timeout
+      # grace then reserves the configured two seconds for reaping children.
+      check_timeout_seconds: 118
       ci:
         variable: CI
         value: Y

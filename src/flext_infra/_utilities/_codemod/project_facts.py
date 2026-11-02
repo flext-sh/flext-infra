@@ -594,47 +594,44 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             for module, (path, _text) in sources.items()
         }
         scopes: dict[str, set[str]] = {}
-        with (
-            FlextInfraUtilitiesRopeCore.open_project(root) as rope,
-            rope.frozen_layout(),
+        rope = snapshot.engine
+        reached = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_reaches(
+            rope,
+            sources,
+            tuple(
+                m.Infra.SourceClassReference(
+                    target=modules[relative],
+                    attributes=tuple(qualified.split(".")),
+                    qualified_base=f"{modules[relative]}.{qualified}",
+                )
+                for relative, qualified, _selector in questions
+            ),
+            tuple(
+                m.Infra.SourceClassReference(
+                    target=identity.rpartition(".")[0],
+                    attributes=(identity.rpartition(".")[2],),
+                    qualified_base=identity,
+                )
+                for identity in (
+                    c.Infra.PYDANTIC_MODEL_IDENTITY,
+                    c.Infra.PYDANTIC_SETTINGS_IDENTITY,
+                )
+            ),
+        )
+        for (relative, qualified, selector), anchors in zip(
+            questions, reached, strict=True
         ):
-            reached = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_reaches(
-                rope,
-                sources,
-                tuple(
-                    m.Infra.SourceClassReference(
-                        target=modules[relative],
-                        attributes=tuple(qualified.split(".")),
-                        qualified_base=f"{modules[relative]}.{qualified}",
-                    )
-                    for relative, qualified, _selector in questions
-                ),
-                tuple(
-                    m.Infra.SourceClassReference(
-                        target=identity.rpartition(".")[0],
-                        attributes=(identity.rpartition(".")[2],),
-                        qualified_base=identity,
-                    )
-                    for identity in (
-                        c.Infra.PYDANTIC_MODEL_IDENTITY,
-                        c.Infra.PYDANTIC_SETTINGS_IDENTITY,
-                    )
-                ),
-            )
-            for (relative, qualified, selector), anchors in zip(
-                questions, reached, strict=True
+            if c.Infra.PYDANTIC_MODEL_IDENTITY not in anchors:
+                continue
+            if selector.startswith(c.Infra.CODEMOD_PAYLOAD_CLASS_SCOPE_PREFIX) and (
+                c.Infra.PYDANTIC_SETTINGS_IDENTITY in anchors
+                or FlextInfraUtilitiesDeclarationPayload.payload_body(
+                    rope, root / relative, qualified
+                )
+                is None
             ):
-                if c.Infra.PYDANTIC_MODEL_IDENTITY not in anchors:
-                    continue
-                if selector.startswith(c.Infra.CODEMOD_PAYLOAD_CLASS_SCOPE_PREFIX) and (
-                    c.Infra.PYDANTIC_SETTINGS_IDENTITY in anchors
-                    or FlextInfraUtilitiesDeclarationPayload.payload_body(
-                        rope, root / relative, qualified
-                    )
-                    is None
-                ):
-                    continue
-                scopes.setdefault(selector, set()).add(relative)
+                continue
+            scopes.setdefault(selector, set()).add(relative)
         return {
             selector: tuple(sorted(found)) for selector, found in sorted(scopes.items())
         }

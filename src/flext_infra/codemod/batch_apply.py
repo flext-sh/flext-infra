@@ -578,7 +578,12 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             view_root: Path, _paths: Mapping[Path, Path]
         ) -> p.Result[m.Infra.ModScanReport]:
             del _paths
-            return FlextInfraModGateEngine.scan_candidate(root, view_root, candidate)
+            return FlextInfraModGateEngine.scan_candidate(
+                root,
+                view_root,
+                candidate,
+                selection=(self.rule_id,) if self.rule_id else None,
+            )
 
         return self.source_preview.preview_sources(
             candidate.workspace,
@@ -857,6 +862,8 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             The publication candidate or its first planning failure.
 
         """
+        if self.rule_id is not None:
+            return r[m.Infra.SemanticSourcePlan].ok(seed)
         callbacks = self._plan_phase_callbacks(root, seed, graph)
         if callbacks.failure:
             return callbacks
@@ -1017,6 +1024,8 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             candidate=syntax.value,
             consumer_roots=captured_seed.consumer_roots,
         )
+        if self.rule_id is not None:
+            return r[m.Infra.SemanticSourcePlan].ok(seed)
         text_preparation = self._plan_text_phase(
             root,
             seed,
@@ -1077,6 +1086,8 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 root, syntax, working
             )
         )
+        if self.rule_id is not None:
+            return r[m.Infra.SemanticSourcePlan].ok(seed)
         semantic = FlextInfraCodemodSemanticApply.plan_semantic_edits(
             root,
             FlextInfraModGateEngine.authored(semantic_preflight.value),

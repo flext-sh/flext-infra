@@ -97,6 +97,7 @@ class FlextInfraCodegenLazyInit(
                     and FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect(
                         plan
                     )
+                    and plan.path.parent / c.Infra.INIT_PY != destination
                     and plan.path.parent / c.Infra.INIT_PY in sources
                 }
                 files: dict[

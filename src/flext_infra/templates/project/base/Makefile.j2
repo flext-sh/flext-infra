@@ -21,7 +21,7 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     lane census (outside CI) and documentation. The commit hook token runs
     only the stage-derived commit gates. -#}
 {%- macro local_check_body() -%}
-{{ "\t" }}@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+{{ "\t" }}@FLEXT_INFRA_PROFILE=1 FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.check_timeout_seconds }}s $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run("fmt", " --scope $(GATE_SCOPE) --apply") }}
@@ -209,7 +209,7 @@ override GIT_DISCOVERY_ROOT := $(shell {{ git_root_reader('"$(MAKEFILE_ROOT)"', 
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot authenticate the physical Git boundary for $(MAKEFILE_ROOT))
 endif
-override BOOTSTRAP_ROOT := $(shell {{ bootstrap_root_reader('"$(MAKEFILE_ROOT)"', true) }})
+override BOOTSTRAP_ROOT := $(shell {{ bootstrap_root_reader('"$(MAKEFILE_ROOT)"', '"$(GIT_DISCOVERY_ROOT)"', true) }})
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical bootstrap scope for $(MAKEFILE_ROOT))
 endif
@@ -220,7 +220,7 @@ override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else ifeq ($(strip $(filter-out help _builtin-help _setup_native_prepare pre-upg post-upg,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else
-override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', uv_tool, mise_selector, make.native_environment_unset, true) }})
+override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', '"$(BOOTSTRAP_ROOT)"', uv_tool, make.native_environment_unset, true) }})
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
@@ -395,73 +395,58 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 		printf 'ERROR[setup] Mise-resolved Python is not executable: %s\n' "$$desired_python" >&2; \
 		exit 2; \
 	fi
-# `uv sync` keeps an environment whose interpreter still satisfies the request,
-# so one created by an older uv (or another Python) survives every setup. Setup
-# owns the runtime environment: it compares the creator identity uv recorded
-# (make.environment_identity) with the Mise-resolved uv and Python and, on any
-# divergence, recreates it through native `uv venv --clear` before the frozen
-# installation. A directory without the marker is not an environment (its
-# interpreter reports the base prefix, so an exact sync would rewrite the shared
-# Mise Python): it is recreated the same way, with native `--force`, because uv
-# refuses to clear a directory that is not a virtual environment. A current
-# environment is left untouched. uv caches each interpreter query by executable
-# path and the target binary's timestamp, which recreation does not change, so a
-# query made while the marker was absent would still report the base prefix:
-# every runtime and executor sync therefore runs with native `--refresh`, and a
-# poisoned interpreter cache never survives a sync.
-{% set identity = make.environment_identity -%}
-RECREATE_DIVERGENT_ENVIRONMENT = identity_file="$(1)/{{ identity.marker_file }}"; \
-	if [ -e "$(1)" ] && [ ! -f "$$identity_file" ]; then \
-		printf 'setup: recreating %s: no %s, so a sync would target the base interpreter\n' "$(1)" "{{ identity.marker_file }}"; \
-		$(UV) venv --clear --force --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$(1)"; \
-	elif [ -f "$$identity_file" ]; then \
-		mise_bin="$(MISE)"; \
-		uv_bin="$$( "$${mise_bin}" -C "$(RUNTIME_ROOT)" which "uv" )"; \
-		declared_uv="$$( "$${uv_bin}" self version --short )"; \
-		declared_python="$$( "$${desired_python}" --version | sed "s/^Python //" )"; \
-		created_uv="$$(sed -n 's/^{{ identity.uv_key }}[[:space:]]*=[[:space:]]*//p' "$$identity_file")"; \
-		created_python="$$(sed -n 's/^{{ identity.python_key }}[[:space:]]*=[[:space:]]*//p' "$$identity_file")"; \
-		if [ "$$created_uv" != "$$declared_uv" ] || [ "$$created_python" != "$$declared_python" ]; then \
-			printf 'setup: recreating %s: created by uv %s / Python %s, declared uv %s / Python %s\n' "$(1)" "$${created_uv:-<none>}" "$${created_python:-<none>}" "$$declared_uv" "$$declared_python"; \
-			$(UV) venv --clear --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$(1)"; \
+# Every installation is prepared under the existing ignored runtime state.
+# Its frozen packages, editable receipt and real consumers precede one atomic
+# publication; the displaced physical environment remains recoverable.
+PREPARE_ENVIRONMENT = install_target="$(1)"; install_stage=; install_candidate_origin=; \
+	install_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; install_lock="$$install_state/$(notdir $(1)).setup.lock"; \
+	if [ -L "$$install_target" ] || [ -L "$$install_state" ] || [ -L "$$install_lock" ]; then \
+		printf 'ERROR[setup] environment and publication lock must be physical paths\n' >&2; exit 2; \
+	fi; \
+	mkdir -p "$$install_state"; \
+	exec 9>"$$install_lock"; flock -x 9; \
+	mv --exchange --no-copy --help >/dev/null; \
+	install_origin=; \
+	if [ -e "$$install_target" ]; then install_origin="$$(stat -c '%d:%i' "$$install_target")"; fi; \
+	install_stage="$$(mktemp -d "$$install_state/setup.XXXXXXXX")"; \
+	install_environment="$$install_stage/{{ environment_directory }}"; \
+	trap 'install_status=$$?; trap - EXIT; if [ -n "$$install_stage" ] && { [ -z "$$install_candidate_origin" ] || [ ! -e "$$install_environment" ] || [ "$$(stat -c "%d:%i" "$$install_environment")" = "$$install_candidate_origin" ]; }; then rm -rf -- "$$install_stage"; fi; exit "$$install_status"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
+	printf 'setup: preparing %s for %s\n' "$$install_environment" "$$install_target"; \
+	$(UV) venv --relocatable --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$$install_environment"; \
+	install_candidate_origin="$$(stat -c '%d:%i' "$$install_environment")"; \
+	install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"
+PUBLISH_ENVIRONMENT = test -f "$$install_environment/{{ environment_metadata | default('pyvenv.cfg') }}"; \
+	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "candidate interpreter leaves its environment")' "$$install_environment"; \
+	"$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)" --help >/dev/null; \
+	if [ -n "$$install_origin" ]; then \
+		if [ -L "$$install_target" ] || [ "$$(stat -c '%d:%i' "$$install_target")" != "$$install_origin" ]; then \
+			printf 'ERROR[setup] environment changed during preparation: %s\n' "$$install_target" >&2; exit 2; \
 		fi; \
-	fi
-# Explicit recovery uses the same native creator when artifact ownership is
-# invalid despite matching interpreter identity. It never patches site-packages.
-# The upgrade executor retains automatic identity-based recreation only.
-RECREATE_DIVERGENT_RUNTIME = case "$(strip $({{ identity.recreate_parameter }}))" in \
-    ("") $(call RECREATE_DIVERGENT_ENVIRONMENT,$(RUNTIME_VENV)) ;; \
-    ({{ make.ci.value }}) \
-        if [ -L "$(RUNTIME_VENV)" ]; then printf 'ERROR[setup] runtime environment must not be a symlink\n' >&2; exit 2; fi; \
-        printf 'setup: explicitly recreating %s through native uv\n' "$(RUNTIME_VENV)"; \
-        $(UV) venv --clear --force --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$(RUNTIME_VENV)" ;; \
-    (*) printf 'ERROR[setup] {{ identity.recreate_parameter }} must be empty or {{ make.ci.value }}\n' >&2; exit 2 ;; \
-    esac
+		mv --exchange --no-copy -T "$$install_environment" "$$install_target"; \
+		printf 'setup: published %s; previous environment retained at %s\n' "$$install_target" "$$install_environment"; \
+	else \
+		mv --no-copy --no-clobber -T "$$install_environment" "$$install_target"; \
+		if [ -e "$$install_environment" ]; then printf 'ERROR[setup] environment appeared before publication\n' >&2; exit 2; fi; \
+		rmdir "$$install_stage"; \
+	fi; \
+	install_stage=; trap - EXIT HUP INT TERM; \
+	flock -u 9; exec 9>&-
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
 	$(RESOLVE_DESIRED_PYTHON); \
-	$(RECREATE_DIVERGENT_RUNTIME); \
+	$(call PREPARE_ENVIRONMENT,$(RUNTIME_VENV)); \
 	sync_args="$(SETUP_SYNC_ARGS)"; \
-	UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args --refresh; \
+	UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args --refresh; \
 	if [ -n "$(strip $(FLEXT))" ]; then \
 		if [ "$({{ make.ci.variable }})" = "{{ make.ci.value }}" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-		(cd "$(FLEXT)"; $(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --requirement "{{ bootstrap_requirements }}"); \
+		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --no-deps --requirement "{{ bootstrap_requirements }}"); \
 {%- if package %}
-		$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(RUNTIME_ROOT)"; \
+		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
 {%- endif %}
 	fi; \
-	$(FLEXT_EDITABLE_RECIPE)
-
-# `make setup FLEXT=<path>` (operator ruling 2026-10-24, tracker memory
-# operator-ruling-2026-10-24-setup-flext-editable-param): after the frozen
-# sync, flext-infra's typed selection owner reinstalls editable from <path>
-# every locked FLEXT distribution this environment installed that the FLEXT
-# workspace at <path> provides, and records exactly that selection in the
-# runtime's setup-operations receipt. A plain `make setup` restores the locked
-# installs and removes the receipt; CI installs only homologated frozen locks
-# and refuses FLEXT. The environment provenance gate admits an editable FLEXT
-# distribution only when that receipt names it, outside CI.
-FLEXT_EDITABLE_RECIPE = $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)")
+	env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} "$$install_python" -m flext_infra {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
+	$(PUBLISH_ENVIRONMENT)
 
 # The governed checkouts of this repository: itself (`.`) and every
 # initialized gitlink its .gitmodules declares without flext-managed = false.
@@ -591,8 +576,9 @@ override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH{% for variable in make.native_en
 # source; every lock is already written before it runs.
 # Native `--compile-bytecode` writes the .pyc at install time, so the first import
 # never compiles the stack (the host may export PYTHONDONTWRITEBYTECODE).
-SYNC_UPGRADE_EXECUTOR_RECIPE = $(call RECREATE_DIVERGENT_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
-	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$(FLEXT_INFRA_EXECUTOR_VENV)" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --compile-bytecode --link-mode {{ uv_link_mode }} --refresh
+SYNC_UPGRADE_EXECUTOR_RECIPE = $(call PREPARE_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --compile-bytecode --link-mode {{ uv_link_mode }} --refresh; \
+	$(PUBLISH_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
 # every member's declared extras and groups, without copying dependency graphs.

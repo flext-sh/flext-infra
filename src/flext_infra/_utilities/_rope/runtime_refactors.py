@@ -6,6 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+import builtins
+import hashlib
+import types as python_types
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import cast
@@ -16,6 +20,7 @@ from flext_infra import m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeMatching,
+    FlextInfraUtilitiesRopeRuntimeModuleQueries,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
@@ -85,11 +90,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         return r[p.AttributeProbe].ok(value)
 
     @classmethod
-    def literal_constant(cls, source: str) -> bool:
-        """Return whether native compilation proves a sole immutable primitive."""
-        return cls.compiled_constant(source).success
-
-    @classmethod
     def literal_string(cls, source: str) -> str | None:
         """Decode native string escapes without evaluating source callbacks.
 
@@ -102,6 +102,464 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             return None
         value = observed.value
         return value if type(value) is str else None
+
+    @classmethod
+    def attribute_read_proofs(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeResource,
+        function: p.Infra.RopeSourceFunction,
+        resolver: p.Infra.RopeSourceMemberResolver,
+    ) -> tuple[m.Infra.RopeAttributeReadProof, ...]:
+        """Prove attribute reads in declarations against one elected source view.
+
+        Imports use Rope's native identities, lazy exports use their literal
+        installer route, class members use the captured C3 resolver, and the
+        effective getter must be a builtin. Arbitrary descriptors refuse.
+
+        Returns:
+            Snapshot-bound evidence for every executed declaration attribute.
+
+        Raises:
+            TypeError: The native function has no function declaration AST.
+            ValueError: Any module, member, getter, descriptor, or source span is
+                unresolved or has non-builtin access behavior.
+
+        """
+        source = project.source_text(Path(resource.real_path))
+        if function.get_module().source_code != source:
+            message = "attribute proof source differs from the Rope snapshot"
+            raise ValueError(message)
+        method = function.get_ast()
+        if not isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            message = "attribute proof requires a native function declaration"
+            raise TypeError(message)
+        expressions: list[ast.expr] = [*method.decorator_list]
+        expressions.extend(method.args.defaults)
+        expressions.extend(
+            default for default in method.args.kw_defaults if default is not None
+        )
+        module = function.get_module()
+        future_annotations = any(
+            isinstance(node, ast.ImportFrom)
+            and node.module == "__future__"
+            and any(alias.name == "annotations" for alias in node.names)
+            for node in module.get_ast().body
+        )
+        if not future_annotations:
+            parameters = [
+                *method.args.posonlyargs,
+                *method.args.args,
+                *method.args.kwonlyargs,
+            ]
+            parameters.extend(
+                parameter
+                for parameter in (method.args.vararg, method.args.kwarg)
+                if parameter is not None
+            )
+            expressions.extend(
+                parameter.annotation
+                for parameter in parameters
+                if parameter.annotation is not None
+            )
+            if method.returns is not None:
+                expressions.append(method.returns)
+
+        scope = function.get_scope().parent
+        if scope is None:
+            message = "attribute proof requires the declaration's lexical scope"
+            raise ValueError(message)
+        proofs = []
+        seen: set[tuple[int, int, int | None, int | None]] = set()
+        for expression in expressions:
+            for node in ast.walk(expression):
+                if not isinstance(node, ast.Attribute):
+                    continue
+                span = (
+                    node.lineno,
+                    node.col_offset,
+                    node.end_lineno,
+                    node.end_col_offset,
+                )
+                if span in seen:
+                    continue
+                seen.add(span)
+                proofs.append(
+                    cls._attribute_read_proof(project, resolver, scope, resource, node)
+                )
+        return tuple(proofs)
+
+    @classmethod
+    def _attribute_read_proof(
+        cls,
+        project: p.Infra.RopeProject,
+        resolver: p.Infra.RopeSourceMemberResolver,
+        scope: p.Infra.RopeScope,
+        resource: p.Infra.RopeResource,
+        node: ast.Attribute,
+    ) -> m.Infra.RopeAttributeReadProof:
+        """Authenticate one member fetch and its effective access mechanism.
+
+        Returns:
+            The resulting ``m.Infra.RopeAttributeReadProof``.
+
+        Raises:
+            ValueError: If attribute read has no native Rope identity; or if attribute
+                access resolves to a non-builtin getter; or if class MRO and Rope
+                attribute bindings disagree; or if attribute receiver has no native
+                class identity; or if class access has an unresolved metaclass.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        base_name = cls._native_expression_binding(project, scope, node.value, resolver)
+        member_name = cls._native_expression_binding(project, scope, node, resolver)
+        if base_name is None or member_name is None:
+            msg = (
+                "attribute read has no native Rope identity: "
+                f"{ast.dump(node, include_attributes=False)}"
+            )
+            raise ValueError(msg)
+        base = base_name.get_object()
+
+        if types.pymodule(base):
+            access = "module"
+            base_reference = cls._attribute_reference(project, base)
+            native_base = base_name
+            member = runtime.qualified_name(
+                project, node.attr, module_name=base.get_name()
+            )
+        else:
+            owner = base.get_type() if types.instance_object(base) else base
+            if not types.abstract_class(owner):
+                msg = "attribute receiver has no native class identity"
+                raise ValueError(msg)
+            base_reference = cls._attribute_reference(project, owner)
+            native_base = (
+                runtime.qualified_name(
+                    project,
+                    ".".join(base_reference.attributes),
+                    module_name=base_reference.target,
+                )
+                if types.instance_object(base)
+                else base_name
+            )
+            member = resolver(f"{base_reference.qualified_base}.{node.attr}")
+            access = "instance" if types.instance_object(base) else "class"
+        accessor = cls._attribute_accessor(project, resolver, base)
+        if not runtime.same_name(member, member_name):
+            msg = "class MRO and Rope attribute bindings disagree"
+            raise ValueError(msg)
+        descriptor = cls._attribute_descriptor(member)
+        source = project.source_text(Path(resource.real_path))
+        span = cls._source_byte_range(source, node)
+        return m.Infra.RopeAttributeReadProof(
+            project=project,
+            source_path=Path(resource.real_path),
+            source_sha256=hashlib.sha256(source.encode("utf-8")).hexdigest(),
+            start_byte=span[0],
+            end_byte=span[1],
+            expression=ast.dump(node, include_attributes=False),
+            access=access,
+            base=base_reference,
+            accessor=cls._binding_reference(project, accessor, "__getattribute__"),
+            member=cls._binding_reference(project, member, node.attr),
+            descriptor=descriptor,
+            native_base=native_base,
+            native_accessor=accessor,
+            native_member=member,
+            native_descriptor=(
+                runtime.qualified_name(project, "staticmethod", module_name="builtins")
+                if descriptor is not None
+                else None
+            ),
+        )
+
+    @classmethod
+    def _attribute_accessor(
+        cls,
+        project: p.Infra.RopeProject,
+        resolver: p.Infra.RopeSourceMemberResolver,
+        base: p.Infra.RopePyObject,
+    ) -> p.Infra.RopePyName:
+        """Authenticate the exact builtin getter used by a native receiver.
+
+        Returns:
+            The captured binding of the effective builtin attribute getter.
+
+        Raises:
+            ValueError: A receiver or metaclass is unresolved, or its getter has
+                arbitrary execution behavior.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        if types.pymodule(base):
+            expression = "types.ModuleType.__getattribute__"
+            expected = python_types.ModuleType.__getattribute__
+        else:
+            instance = types.instance_object(base)
+            owner = base.get_type() if instance else base
+            if not types.abstract_class(owner):
+                message = "attribute receiver has no native class identity"
+                raise ValueError(message)
+            getter_owner = owner if instance else owner.get_metaclass()
+            if getter_owner is None or not types.abstract_class(getter_owner):
+                message = "class access has an unresolved metaclass"
+                raise ValueError(message)
+            expression = (
+                f"{cls._attribute_reference(project, getter_owner).qualified_base}"
+                ".__getattribute__"
+            )
+            expected = (
+                builtins.object.__getattribute__
+                if instance
+                else builtins.type.__getattribute__
+            )
+        accessor = resolver(expression)
+        if getattr(accessor.get_object(), "builtin", None) is not expected:
+            message = "attribute access resolves to a non-builtin getter"
+            raise ValueError(message)
+        return accessor
+
+    @classmethod
+    def _native_expression_binding(
+        cls,
+        project: p.Infra.RopeProject,
+        scope: p.Infra.RopeScope,
+        expression: ast.expr,
+        resolver: p.Infra.RopeSourceMemberResolver,
+    ) -> p.Infra.RopePyName | None:
+        """Resolve source imports, lazy aliases, and C3 members without execution.
+
+        Returns:
+            The resulting ``p.Infra.RopePyName | None``.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        evaluate = cls.runtime_callable("rope.base.evaluate", "eval_node")
+        observed = evaluate(scope, expression)
+        binding = observed if isinstance(observed, p.Infra.RopePyName) else None
+        if isinstance(expression, ast.Name) and types.imported_name(binding):
+            imported = binding.imported_module
+            if imported.module_name is not None and binding.imported_name:
+                try:
+                    return runtime.qualified_name(
+                        project,
+                        binding.imported_name,
+                        module_name=imported.module_name,
+                    )
+                except runtime.rope_unresolved_error_types():
+                    pass
+        if isinstance(expression, ast.Attribute):
+            base_binding = cls._native_expression_binding(
+                project, scope, expression.value, resolver
+            )
+            if base_binding is None:
+                return None
+            base = base_binding.get_object()
+            if types.pymodule(base):
+                try:
+                    return runtime.qualified_name(
+                        project, expression.attr, module_name=base.get_name()
+                    )
+                except runtime.rope_unresolved_error_types():
+                    return None
+            instance = types.instance_object(base)
+            owner = base.get_type() if instance else base
+            return (
+                resolver(
+                    f"{cls._attribute_reference(project, owner).qualified_base}."
+                    f"{expression.attr}"
+                )
+                if types.abstract_class(owner)
+                else None
+            )
+        return binding
+
+    @classmethod
+    def _attribute_reference(
+        cls, project: p.Infra.RopeProject, value: p.Infra.RopePyObject
+    ) -> m.Infra.SourceClassReference:
+        """Resolve a Rope class or module to its native fully qualified identity.
+
+        Returns:
+            The resulting ``m.Infra.SourceClassReference``.
+
+        Raises:
+            ValueError: If attribute receiver has no source class identity; or if
+                attribute receiver class has no source module; or if Rope class identity
+                differs from its source path; or if builtin Rope identity changed during
+                lookup.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        if types.instance_object(value):
+            value = value.get_type()
+        if types.pymodule(value):
+            name = value.get_name()
+            return m.Infra.SourceClassReference(
+                target=name, attributes=(), qualified_base=name
+            )
+        builtin = getattr(value, "builtin", None)
+        if builtin is not None:
+            module = getattr(builtin, "__module__", "builtins")
+            name = builtin.__qualname__
+            attributes = tuple(name.split("."))
+            identity = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                project, ".".join(attributes), module_name=module
+            )
+            if getattr(identity.get_object(), "builtin", None) is not builtin:
+                msg = "builtin Rope identity changed during lookup"
+                raise ValueError(msg)
+            return m.Infra.SourceClassReference(
+                target=module,
+                attributes=attributes,
+                qualified_base=".".join((module, *attributes)),
+            )
+        if not types.py_class(value):
+            msg = "attribute receiver has no source class identity"
+            raise ValueError(msg)
+        module = value.get_module()
+        if module is None:
+            msg = "attribute receiver class has no source module"
+            raise ValueError(msg)
+        attributes = []
+        scope = value.get_scope()
+        while scope is not None and scope.get_kind() == "Class":
+            attributes.insert(0, scope.pyobject.get_name())
+            scope = scope.parent
+        if not attributes:
+            attributes.append(value.get_name())
+        identity = runtime.qualified_name(
+            project,
+            ".".join(attributes),
+            module_name=module.get_name(),
+        )
+        if identity.get_object() is not value:
+            msg = "Rope class identity differs from its source path"
+            raise ValueError(msg)
+        qualified = ".".join((module.get_name(), *attributes))
+        return m.Infra.SourceClassReference(
+            target=module.get_name(),
+            attributes=tuple(attributes),
+            qualified_base=qualified,
+        )
+
+    @classmethod
+    def _binding_reference(
+        cls,
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        fallback_member: str,
+    ) -> m.Infra.SourceClassReference:
+        """Identify one resolved binding by its source owner or builtin path.
+
+        Returns:
+            The resulting ``m.Infra.SourceClassReference``.
+
+        Raises:
+            ValueError: If attribute binding has no native source definition.
+
+        """
+        supplier = FlextInfraUtilitiesRopeRuntimeModuleQueries.source_import_binding(
+            binding
+        )
+        if supplier is not None:
+            binding = supplier
+        value = binding.get_object()
+        if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
+            return cls._attribute_reference(project, value)
+        builtin = getattr(value, "builtin", None)
+        if builtin is not None:
+            module = getattr(builtin, "__module__", "builtins")
+            name = getattr(builtin, "__qualname__", fallback_member)
+            attributes = tuple(name.split("."))
+            return m.Infra.SourceClassReference(
+                target=module,
+                attributes=attributes,
+                qualified_base=".".join((module, *attributes)),
+            )
+        module, line = FlextInfraUtilitiesRopeRuntimeModuleQueries.definition_location(
+            binding
+        )
+        if (
+            not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module)
+            or line is None
+        ):
+            msg = "attribute binding has no native source definition"
+            raise ValueError(msg)
+        scope = module.get_scope().get_inner_scope_for_line(line)
+        owner = scope
+        while owner is not None and owner.get_kind() != "Class":
+            owner = owner.parent
+        if owner is None:
+            qualified = f"{module.get_name()}.{fallback_member}"
+            return m.Infra.SourceClassReference(
+                target=module.get_name(),
+                attributes=(fallback_member,),
+                qualified_base=qualified,
+            )
+        class_reference = cls._attribute_reference(project, owner.pyobject)
+        attributes = (*class_reference.attributes, fallback_member)
+        return m.Infra.SourceClassReference(
+            target=class_reference.target,
+            attributes=attributes,
+            qualified_base=".".join((class_reference.target, *attributes)),
+        )
+
+    @staticmethod
+    def _attribute_descriptor(
+        binding: p.Infra.RopePyName,
+    ) -> m.Infra.SourceClassReference | None:
+        """Admit source classes, plain constants, or builtin staticmethod only.
+
+        Returns:
+            The resulting ``m.Infra.SourceClassReference | None``.
+
+        Raises:
+            ValueError: If attribute value may invoke a custom descriptor.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        value = binding.get_object()
+        if types.pymodule(value) or types.abstract_class(value):
+            return None
+        if types.py_function(value) and value.get_kind() == "staticmethod":
+            return m.Infra.SourceClassReference(
+                target="builtins",
+                attributes=("staticmethod",),
+                qualified_base="builtins.staticmethod",
+            )
+        supplier = FlextInfraUtilitiesRopeRuntimeModuleQueries.source_import_binding(
+            binding
+        )
+        if types.assigned_name(supplier) and len(supplier.assignments) == 1:
+            assignment = supplier.assignments[0]
+            if isinstance(assignment.ast_node, ast.Constant):
+                return None
+        msg = "attribute value may invoke a custom descriptor"
+        raise ValueError(msg)
+
+    @staticmethod
+    def _source_byte_range(source: str, node: ast.Attribute) -> tuple[int, int]:
+        """Return the source-owned byte span, refusing absent AST endpoints.
+
+        Returns:
+            The inclusive start and exclusive end byte offsets.
+
+        Raises:
+            ValueError: The native attribute has no complete source span.
+
+        """
+        if node.end_lineno is None or node.end_col_offset is None:
+            message = "attribute read has no complete native source span"
+            raise ValueError(message)
+        lines = source.splitlines(keepends=True)
+        start = sum(len(line.encode("utf-8")) for line in lines[: node.lineno - 1])
+        end = sum(len(line.encode("utf-8")) for line in lines[: node.end_lineno - 1])
+        return start + node.col_offset, end + node.end_col_offset
 
     @classmethod
     def ignored_regions(
@@ -350,12 +808,14 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
 
         def call_value(
             caller: p.Infra.RopePyModule, occurrence: p.Infra.RopeOccurrence
-        ) -> str:
+        ) -> str | None:
             scope = caller.get_scope().get_inner_scope_for_line(occurrence.lineno)
             while scope is not None:
                 if scope.pyobject in callers:
                     return callers[scope.pyobject]
                 scope = scope.parent
+            if addition.default is not None:
+                return None
             message = (
                 f"{addition.id}: no native caller value for "
                 f"{caller.get_name()}:{occurrence.lineno}"
@@ -367,6 +827,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         )(
             0,
             addition.parameter,
+            default=addition.default,
             value=call_value,
             keyword_only=True,
             annotation=addition.annotation,
@@ -384,6 +845,126 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                 FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
                 for path in paths
             ],
+        )
+        if not isinstance(changes, p.Infra.RopeChangeSet):
+            message = "Rope ChangeSignature returned an invalid change set"
+            raise TypeError(message)
+        return changes
+
+    @classmethod
+    def signature_replacement_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        removal: m.Infra.RopeSignatureRemoval,
+        paths: Sequence[Path],
+    ) -> p.Infra.RopeChangeSet | None:
+        """Replace exact parameter reads through native semantic restructuring.
+
+        Returns:
+            Unapplied native changes, or None when the parameter is retired.
+
+        Raises:
+            ValueError: The target or its lexical scope cannot be resolved.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        target = runtime.qualified_name(project, removal.target).get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(target):
+            message = f"{removal.id}: signature target has no function source"
+            raise ValueError(message)
+        parameter = target.get_parameters().get(removal.parameter)
+        if parameter is None:
+            return None
+
+        def admitted(
+            module: p.Infra.RopePyModule, match: p.Infra.RopeContractMatch
+        ) -> bool:
+            node = match.get_ast(removal.parameter)
+            if not isinstance(node, ast.Name):
+                return False
+            scope = module.get_scope().get_inner_scope_for_line(node.lineno)
+            if not runtime.same_name(
+                parameter, runtime.expression_name(scope, node.id)
+            ):
+                return False
+            if not isinstance(node.ctx, ast.Load):
+                message = f"{removal.id}: parameter writes cannot be replaced"
+                raise TypeError(message)
+            if scope is not target.get_scope():
+                message = (
+                    f"{removal.id}: replacement escapes its declared lexical scope"
+                )
+                raise ValueError(message)
+            return True
+
+        return cls.restructure_changes(
+            project,
+            m.Infra.RopeRestructureRequest(
+                pattern=f"${{{removal.parameter}}}",
+                goal=removal.replacement,
+                arguments={removal.parameter: "exact"},
+                resources=tuple(
+                    runtime.file_resource_at(project, path) for path in paths
+                ),
+                match_filter=admitted,
+            ),
+        )
+
+    @classmethod
+    def signature_removal_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        removal: m.Infra.RopeSignatureRemoval,
+        paths: Sequence[Path],
+    ) -> p.Infra.RopeChangeSet | None:
+        """Retire a body-free parameter through native signature propagation.
+
+        Returns:
+            Unapplied native changes, or None when the parameter is retired.
+
+        Raises:
+            ValueError: The target is not a function or still reads its parameter.
+            TypeError: The SDK returns an invalid native change set.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        binding = runtime.qualified_name(project, removal.target)
+        target = binding.get_object()
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(target):
+            message = f"{removal.id}: signature target has no function source"
+            raise ValueError(message)
+        parameters = tuple(target.get_param_names())
+        if removal.parameter not in parameters:
+            return None
+        resource, offset = cls._declaration_position(
+            project, binding, paths, f"{removal.id}: signature declaration"
+        )
+        finder = cls.create_occurrence_finder(
+            project,
+            removal.parameter,
+            target.get_parameters()[removal.parameter],
+            imports=False,
+            in_hierarchy=False,
+        )
+        if any(
+            occurrence.lineno >= target.get_scope().get_body_start()
+            for occurrence in finder.find_occurrences(resource=resource)
+        ):
+            message = f"{removal.id}: parameter still has native body references"
+            raise ValueError(message)
+        change = cls.runtime_callable(
+            "rope.refactor.change_signature", "ArgumentRemover"
+        )(parameters.index(removal.parameter))
+        planner = cls.runtime_callable(
+            "rope.refactor.change_signature", "ChangeSignature"
+        )(project, resource, offset)
+        get_changes = getattr(planner, "get_changes", None)
+        if not callable(get_changes):
+            message = "Rope ChangeSignature exposes no native planning contract"
+            raise TypeError(message)
+        changes = get_changes(
+            [change],
+            resources=[runtime.file_resource_at(project, path) for path in paths],
         )
         if not isinstance(changes, p.Infra.RopeChangeSet):
             message = "Rope ChangeSignature returned an invalid change set"
@@ -434,6 +1015,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         project: p.Infra.RopeProject,
         transfer: m.Infra.RopeMethodTransfer,
         paths: Sequence[Path],
+        resolver: p.Infra.RopeSourceMemberResolver,
     ) -> p.Infra.RopeChangeSet | None:
         """Delegate existing-class method ownership to the native SDK batch.
 
@@ -442,6 +1024,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
 
         Raises:
             TypeError: A native owner or SDK result violates its typed contract.
+            ValueError: If ``len(moves) != 1``; or if ``transfer.receiver_rewrites``.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -459,21 +1042,61 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         moves = cls._method_transfer_moves(project, transfer, paths, owner)
         if not moves:
             return None
+        source_binding = cls.runtime_callable("rope.base.evaluate", "eval_location")(
+            project.get_pymodule(moves[0][0]), moves[0][1]
+        )
+        source_method = (
+            source_binding.get_object()
+            if isinstance(source_binding, p.Infra.RopePyName)
+            else None
+        )
+        if types.py_function(source_method) and source_method.get_kind() == "method":
+            if len(moves) != 1:
+                msg = (
+                    f"{transfer.id}: instance methods transfer one declaration at a "
+                    f"time"
+                )
+                raise ValueError(msg)
+            cls.attribute_read_proofs(
+                project,
+                moves[0][0],
+                source_method,
+                resolver,
+            )
+            planner_name = "get_instance_class_changes"
+        else:
+            if transfer.receiver_rewrites:
+                msg = f"{transfer.id}: receiver rewrites require an instance method"
+                raise ValueError(msg)
+            planner_name = "get_class_changes"
         planner = getattr(
             cls.runtime_type("rope.refactor.move", "MoveMethod"),
-            "get_class_changes",
+            planner_name,
             None,
         )
         if not callable(planner):
             message = "Rope MoveMethod exposes no native class-transfer contract"
             raise TypeError(message)
-        changes = planner(
-            project,
-            moves,
-            destination_resource,
-            destination_offset,
-            resources=[runtime.file_resource_at(project, path) for path in paths],
-        )
+        arguments = {
+            "resources": [runtime.file_resource_at(project, path) for path in paths]
+        }
+        if planner_name == "get_instance_class_changes":
+            changes = planner(
+                project,
+                moves,
+                destination_resource,
+                destination_offset,
+                receiver_rewrites=dict(transfer.receiver_rewrites),
+                **arguments,
+            )
+        else:
+            changes = planner(
+                project,
+                moves,
+                destination_resource,
+                destination_offset,
+                **arguments,
+            )
         if not isinstance(changes, p.Infra.RopeChangeSet):
             message = "Rope MoveMethod returned an invalid change set"
             raise TypeError(message)
@@ -527,10 +1150,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                 continue
             published = owner.get_attributes().get(name)
             settled = None if published is None else published.get_object()
+            enclosing = (
+                settled.get_scope().parent
+                if types.py_function(settled) and settled.get_name() == name
+                else None
+            )
             if (
-                not types.py_function(settled)
-                or settled.get_name() != name
-                or (enclosing := settled.get_scope().parent) is None
+                enclosing is None
                 or enclosing.pyobject is not owner
                 or (binding is not None and function is not settled)
             ):

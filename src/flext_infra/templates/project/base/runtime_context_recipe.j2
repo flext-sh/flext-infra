@@ -38,14 +38,19 @@ done; \
 if [ -e "{{ d }}{git_parent}/.git" ] || [ -L "{{ d }}{git_parent}/.git" ]; then git -C {{ directory }} rev-parse --resolve-git-dir "{{ d }}{git_parent}/.git" >/dev/null; fi;
 {%- endmacro %}
 
-{% macro git_discovery_context(project_root, make_syntax=false) -%}
+{% macro git_environment_context(make_syntax=false) -%}
 {% set d = "$$" if make_syntax else "$" -%}
 set -eu; \
 unset GIT_CEILING_DIRECTORIES; \
 git_local_keys="{{ d }}(git rev-parse --local-env-vars)"; \
 for git_local_key in {{ d }}{git_local_keys}; do \
 	case "{{ d }}{git_local_key}" in (GIT_CONFIG|GIT_CONFIG_PARAMETERS|GIT_CONFIG_COUNT) ;; (*) unset "{{ d }}{git_local_key}" ;; esac; \
-done; \
+done;
+{%- endmacro %}
+
+{% macro git_discovery_context(project_root, make_syntax=false) -%}
+{% set d = "$$" if make_syntax else "$" -%}
+{{ git_environment_context(make_syntax) }} \
 project_root={{ project_root }}; \
 case "{{ d }}{project_root}" in (/*) ;; (*) printf 'ERROR: workspace discovery requires an absolute project directory: %s\n' "{{ d }}{project_root}" >&2; exit 2 ;; esac; \
 project_root="{{ d }}(cd "{{ d }}{project_root}" && pwd -P)"; \
@@ -61,9 +66,14 @@ case "{{ d }}{project_root}/" in ("{{ d }}{git_root}/"*) ;; (*) printf 'ERROR: p
 printf '%s\n' "{{ d }}{git_root}"
 {%- endmacro %}
 
-{% macro bootstrap_root_reader(project_root, make_syntax=false) -%}
+{# The caller supplies the physical project and Git root already authenticated
+   by git_root_reader in this same evaluation; Git environment isolation remains
+   local to this reader's subshell. #}
+{% macro bootstrap_root_reader(project_root, git_root, make_syntax=false) -%}
 {% set d = "$$" if make_syntax else "$" -%}
-{{ git_discovery_context(project_root, make_syntax) }} \
+{{ git_environment_context(make_syntax) }} \
+project_root={{ project_root }}; \
+git_root={{ git_root }}; \
 attached="{{ d }}(git -C "{{ d }}{git_root}" rev-parse --show-superproject-working-tree)"; \
 if [ -n "{{ d }}{attached}" ] && [ -f "{{ d }}{attached}/pyproject.toml" ]; then \
 	attached="{{ d }}(cd "{{ d }}{attached}" && pwd -P)"; \
@@ -77,10 +87,13 @@ fi; \
 printf '%s\n' "{{ d }}{project_root}"
 {%- endmacro %}
 
-{% macro runtime_root_reader(project_root, uv_tool, mise_selector, native_environment_unset, make_syntax=false) -%}
+{# The bootstrap root is the prior reader's admitted result, which can differ
+   from both the project's Git root and the native UV workspace elected below. #}
+{% macro runtime_root_reader(project_root, bootstrap_root, uv_tool, native_environment_unset, make_syntax=false) -%}
 {% set d = "$$" if make_syntax else "$" -%}
-{{ git_discovery_context(project_root, make_syntax) }} \
-reader_root="{{ d }}( {{ bootstrap_root_reader(project_root, make_syntax) }} )"; \
+{{ git_environment_context(make_syntax) }} \
+project_root={{ project_root }}; \
+reader_root={{ bootstrap_root }}; \
 scope="{{ d }}(git -C "{{ d }}{reader_root}" rev-parse --show-toplevel)"; \
 scope="{{ d }}(cd "{{ d }}{scope}" && pwd -P)"; \
 unset MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE {{ native_environment_unset | join(" ") }}; \

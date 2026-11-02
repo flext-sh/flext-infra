@@ -41,7 +41,7 @@ class FlextInfraGatesConflictMarkers(FlextInfraGates):
             tuple(
                 path for path in ctx.candidate_files if path.is_relative_to(project_dir)
             )
-            if ctx.runtime_root is not None
+            if ctx.candidate_files is not None
             else u.Infra.git_source_scope_paths(project_dir)
         )
         if paths is None or not paths:

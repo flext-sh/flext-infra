@@ -649,33 +649,6 @@ class FlextInfraModelsConfigMake(
                     raise ValueError(msg)
                 return self
 
-        class EnvironmentIdentitySpec(FlextInfraModelsConfigContract.ConfigContract):
-            """Creator identity recorded by the native environment creator.
-
-            Setup reads these keys from the runtime environment's marker file
-            and compares them with the Mise-resolved uv and Python. A divergent
-            creator is recreated by native ``uv venv --clear`` before the frozen
-            installation, because ``uv sync`` keeps an environment whose
-            interpreter still satisfies the request.
-            """
-
-            marker_file: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Environment-relative creator marker file"),
-            ]
-            recreate_parameter: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Make input selecting explicit native recreation"),
-            ]
-            uv_key: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Marker key holding the creating uv version"),
-            ]
-            python_key: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Marker key holding the interpreter version"),
-            ]
-
         class ExecutorEnvironmentSpec(FlextInfraModelsConfigContract.ConfigContract):
             """Isolated environment running ``make upg``'s residual flext-infra step.
 
@@ -869,6 +842,15 @@ class FlextInfraModelsConfigMake(
                 gt=0, description="Native environment installation wall-time budget"
             ),
         ]
+        check_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description=(
+                    "Canonical Make check wall-time budget before forced child cleanup"
+                ),
+            ),
+        ]
         testmon_cache: Annotated[
             TestmonCacheSpec,
             m.Field(description="Adaptive testmon Actions cache policy"),
@@ -876,15 +858,6 @@ class FlextInfraModelsConfigMake(
         pytest_scratch: Annotated[
             PytestScratchSpec,
             m.Field(description="Scratch root declared by every pytest verb"),
-        ]
-        environment_identity: Annotated[
-            EnvironmentIdentitySpec,
-            m.Field(
-                description=(
-                    "Native creator identity setup compares with the declared "
-                    "toolchain before installing into the runtime environment"
-                )
-            ),
         ]
         executor_environment: Annotated[
             ExecutorEnvironmentSpec,
@@ -1004,6 +977,15 @@ class FlextInfraModelsConfigMake(
                 description=(
                     "Requested gates that must finish across every selected "
                     "repository before the remaining gates execute"
+                ),
+            ),
+        ]
+        check_prerequisite_pyrefly_workers: Annotated[
+            t.PositiveInt,
+            m.Field(
+                description=(
+                    "Bounded Pyrefly workers for primary admission while lint "
+                    "retains its own native concurrency"
                 ),
             ),
         ]

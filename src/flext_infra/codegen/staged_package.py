@@ -9,10 +9,13 @@ from __future__ import annotations
 import ast
 from collections import deque
 from collections.abc import Callable, Mapping, MutableMapping
+from functools import partial
 from os.path import commonpath
 from pathlib import Path
 from tempfile import TemporaryDirectory, gettempdir
 from types import MappingProxyType
+
+from flext_cli import settings
 
 from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -229,10 +232,38 @@ class FlextInfraStagedPackage:
             Success after the writes, or their first original failure.
 
         """
-        for path, content, mode in cls.source_writes(plan, root):
-            created = u.Cli.ensure_dir(path.parent)
+        writes = cls.source_writes(plan, root)
+        for parent in sorted({path.parent for path, _content, _mode in writes}):
+            created = u.Cli.ensure_dir(parent)
             if created.failure:
                 return r[bool].from_failure(created)
+        outcomes = u.Cli.run_in_signal_wave(
+            tuple(
+                partial(cls._materialize_one, path, content, mode)
+                for path, content, mode in writes
+            ),
+            max_workers=min(len(writes), settings.cli_pipeline_max_workers),
+        )
+        for outcome in outcomes:
+            if outcome.failure:
+                return r[bool].from_failure(outcome)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _materialize_one(
+        path: Path,
+        content: bytes,
+        mode: int,
+        wave: p.Cli.SignalWave,
+    ) -> p.Result[bool]:
+        """Atomically write one independent candidate input.
+
+        Returns:
+            The write result or the original filesystem failure.
+
+        """
+        _ = wave
+        try:
             u.Cli.write_atomic_state(
                 path,
                 content,
@@ -241,6 +272,8 @@ class FlextInfraStagedPackage:
                     durability=c.Cli.WriteDurability.SCRATCH,
                 ),
             )
+        except Exception as error:  # ruff: ignore[blind-except]
+            return r[bool].fail(str(error))
         return r[bool].ok(value=True)
 
     @classmethod

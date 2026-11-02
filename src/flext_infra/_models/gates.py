@@ -230,9 +230,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ] = ()
         candidate_files: Annotated[
-            tuple[Path, ...],
+            tuple[Path, ...] | None,
             m.Field(description="Complete sealed source-plan inventory for admission"),
-        ] = ()
+        ] = None
         check_progress: Annotated[
             Callable[[Path, FlextInfraModelsCheck.ProjectResult], None] | None,
             m.Field(

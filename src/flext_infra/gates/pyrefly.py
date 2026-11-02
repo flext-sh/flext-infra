@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -80,7 +79,7 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
         """Run Pyrefly against the project config, writing its JSON report file.
 
         Returns:
-            The Pyrefly invocation bound to ``sys.executable``.
+            The Pyrefly invocation bound to the declared native runtime.
 
         """
         json_file = self._native_report_path(project_dir, ctx)
@@ -96,11 +95,7 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
             "--config",
             c.PYPROJECT_FILENAME,
             "--python-interpreter-path",
-            (
-                sys.executable
-                if ctx.runtime_root is None
-                else str(u.Infra.runtime_python(ctx.runtime_root))
-            ),
+            str(u.Infra.runtime_python(project_dir, runtime_root=ctx.runtime_root)),
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "--min-severity",

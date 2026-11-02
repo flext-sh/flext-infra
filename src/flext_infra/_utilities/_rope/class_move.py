@@ -19,9 +19,12 @@ from flext_cli import u
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesProtectedEditLinting,
+    FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
@@ -1880,32 +1883,44 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             The resulting ``Path``.
 
         """
-        target_file, mover = cls._class_mover(request)
-        root = Path(request.rope_project.root.real_path).resolve()
         if not request.apply:
-            return target_file
-
-        # Only an authorized application establishes a destination family.
-        # Source identity and identifier resolution above are observational.
-        target_file.parent.mkdir(parents=True, exist_ok=True)
-        created_target = not target_file.exists()
-        move_completed = False
-        if created_target:
-            u.Cli.atomic_write_text_file(
-                target_file,
-                f"{c.Infra.FUTURE_ANNOTATIONS}\n",
-            ).unwrap()
-        try:
-            request.rope_project.validate()
-            target_resource = cls._resource(request.rope_project, root, target_file)
-            changes = mover.get_changes(target_resource)
-            cls._require_contained_changes(request.rope_project, changes)
-            request.rope_project.do(changes)
-            move_completed = True
-            return target_file
-        finally:
-            if created_target and not move_completed and target_file.exists():
-                target_file.unlink()
+            return cls._class_mover(request)[0]
+        project = request.rope_project
+        root = Path(project.root.real_path).resolve()
+        target_file = cls._owned_path(root, request.target_file)
+        snapshot = FlextInfraUtilitiesWorkspaceSnapshot
+        declared = snapshot.workspace_declared_sources(
+            root,
+            (),
+            {
+                target_file: (
+                    project.source_text(target_file)
+                    if project.source_query(target_file, "isfile")
+                    else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
+                )
+            },
+            source_project=project,
+        )
+        with snapshot.facade_source_project(
+            root, source_project=project, declared_files=declared
+        ) as (candidate, sources):
+            edits = cls.plan_class_move(
+                request.model_copy(update={"apply": False}), sources=sources
+            )
+            declarations = {plan.path: plan for plan in declared}
+            plans = tuple(
+                FlextInfraUtilitiesCodegenFilePlan.source_file_plan_from_edit(
+                    root,
+                    edit,
+                    source_project=candidate,
+                    declared_files=declarations,
+                )
+                for edit in edits
+            )
+        FlextInfraUtilitiesProtectedEditLinting.publish_codegen_plans(
+            root, plans
+        ).unwrap()
+        return target_file
 
     @classmethod
     def plan_class_move(

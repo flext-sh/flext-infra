@@ -38,6 +38,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
     FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._rope._analysis.exports import (
@@ -107,10 +108,12 @@ class FlextInfraUtilitiesSemanticContracts(
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Return source-authenticated edits for the normalization phase's rules."""
         additions: list[m.Infra.RopeSignatureAddition] = []
+        removals: list[m.Infra.RopeSignatureRemoval] = []
         transfers: list[m.Infra.RopeMethodTransfer] = []
         rules = cls.declared_contract_rules(
             workspace.repository_root,
             signature_additions=additions,
+            signature_removals=removals,
             method_transfers=transfers,
         )
         return cls.plan_contract_rules(
@@ -122,7 +125,9 @@ class FlextInfraUtilitiesSemanticContracts(
                 if rule.phase == c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
             ),
             options=m.Infra.ContractAdmissionOptions(
-                signature_additions=additions, method_transfers=transfers
+                signature_additions=additions,
+                signature_removals=removals,
+                method_transfers=transfers,
             ),
         )
 
@@ -133,6 +138,7 @@ class FlextInfraUtilitiesSemanticContracts(
         signature_additions: MutableSequence[m.Infra.RopeSignatureAddition]
         | None = None,
         method_transfers: MutableSequence[m.Infra.RopeMethodTransfer] | None = None,
+        signature_removals: MutableSequence[m.Infra.RopeSignatureRemoval] | None = None,
     ) -> Sequence[p.Infra.RopeContractRule]:
         """Load universal and elected repo rules with unique IDs and known families.
 
@@ -165,15 +171,22 @@ class FlextInfraUtilitiesSemanticContracts(
         )
         rules: MutableSequence[p.Infra.RopeContractRule] = []
         for catalogue, owner_root in catalogues:
-            FlextInfraUtilitiesSemanticContracts._extend_declared_contract_rules(
-                catalogue,
-                owner_root,
-                rules,
-                signature_additions,
-                method_transfers,
+            declared = (
+                FlextInfraUtilitiesSemanticContracts._extend_declared_contract_rules(
+                    catalogue,
+                    owner_root,
+                    rules,
+                )
             )
+            if signature_additions is not None:
+                signature_additions.extend(declared.signature_additions)
+            if signature_removals is not None:
+                signature_removals.extend(declared.signature_removals)
+            if method_transfers is not None:
+                method_transfers.extend(declared.method_transfers)
         ids = [rule.id for rule in rules]
         ids.extend(addition.id for addition in signature_additions or ())
+        ids.extend(removal.id for removal in signature_removals or ())
         ids.extend(transfer.id for transfer in method_transfers or ())
         if len(ids) != len(set(ids)):
             message = "duplicate Rope contract rule identities"
@@ -191,10 +204,11 @@ class FlextInfraUtilitiesSemanticContracts(
         catalogue: Path,
         owner_root: Path | None,
         rules: MutableSequence[p.Infra.RopeContractRule],
-        signature_additions: MutableSequence[m.Infra.RopeSignatureAddition] | None,
-        method_transfers: MutableSequence[m.Infra.RopeMethodTransfer] | None,
-    ) -> None:
+    ) -> m.Infra.RopeContractRules:
         """Decode one catalogue and admit only rules owned by its project.
+
+        Returns:
+            The same validated catalogue with its native operation declarations.
 
         Raises:
             ValueError: A declared ownership transfer is not project-owned.
@@ -210,13 +224,9 @@ class FlextInfraUtilitiesSemanticContracts(
             source_path=catalogue,
             metadata=m.Infra.RopeContractOrigin(owner_root=owner_root),
         )
-        if signature_additions is not None:
-            signature_additions.extend(declared.signature_additions)
         if declared.method_transfers and owner_root is None:
             message = "method ownership transfer requires its project catalogue"
             raise ValueError(message)
-        if method_transfers is not None:
-            method_transfers.extend(declared.method_transfers)
         for rule in declared.rules:
             if rule.ownership_transfer is not None and owner_root is None:
                 message = (
@@ -224,6 +234,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 )
                 raise ValueError(message)
             rules.append(rule)
+        return declared
 
     @classmethod
     def plan_contract_rules(
@@ -352,7 +363,11 @@ class FlextInfraUtilitiesSemanticContracts(
             rules
             or (
                 options is not None
-                and (options.signature_additions or options.method_transfers)
+                and (
+                    options.signature_additions
+                    or options.signature_removals
+                    or options.method_transfers
+                )
             )
         ):
             return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
@@ -1069,6 +1084,28 @@ class FlextInfraUtilitiesSemanticContracts(
                     ).unwrap(),
                     (working, applied),
                 )
+        for removal in options.signature_removals:
+            for planner in (
+                FlextInfraUtilitiesRopeRuntimeRefactors.signature_replacement_changes,
+                FlextInfraUtilitiesRopeRuntimeRefactors.signature_removal_changes,
+            ):
+                with workspace.rope_project.source_view(
+                    declared_files=cls._contract_source_plans(
+                        workspace.rope_project, working, applied
+                    ),
+                    additional_source_folders=None,
+                ) as project:
+                    changes = planner(project, removal, tuple(working))
+                    if changes is not None:
+                        cls._apply_contract_members(
+                            project,
+                            removal,
+                            FlextInfraUtilitiesRopeRuntimeRefactors.change_set_members(
+                                changes.changes,
+                                f"{removal.id}: invalid signature changes",
+                            ).unwrap(),
+                            (working, applied),
+                        )
         for transfer in options.method_transfers:
             with workspace.rope_project.source_view(
                 declared_files=cls._contract_source_plans(
@@ -1077,9 +1114,14 @@ class FlextInfraUtilitiesSemanticContracts(
                 additional_source_folders=None,
             ) as project:
                 changes = (
-                    FlextInfraUtilitiesRopeRuntimeRefactors.method_transfer_changes(
-                        project, transfer, tuple(working)
-                    )
+                    FlextInfraUtilitiesRopeRuntimeRefactors.method_transfer_changes
+                )(
+                    project,
+                    transfer,
+                    tuple(working),
+                    FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver(
+                        project, sources={}
+                    ),
                 )
                 if changes is not None:
                     cls._apply_contract_members(
@@ -1148,6 +1190,7 @@ class FlextInfraUtilitiesSemanticContracts(
         rule: (
             p.Infra.RopeContractRule
             | m.Infra.RopeSignatureAddition
+            | m.Infra.RopeSignatureRemoval
             | m.Infra.RopeMethodTransfer
         ),
         members: Sequence[p.Infra.RopeChangeContents],

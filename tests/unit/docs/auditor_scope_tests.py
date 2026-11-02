@@ -124,6 +124,27 @@ class TestsFlextInfraAuditorScope:
         tm.that(report.checks, has="forbidden-terms")
 
     @staticmethod
+    def test_audit_scope_propagates_json_report_write_failure(tmp_path: Path) -> None:
+        """A rejected JSON destination fails before writing a Markdown report."""
+        scope = m.Infra.DocScope(
+            name="test",
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
+        )
+        summary_path = scope.report_dir / c.Infra.DOCS_AUDIT_SUMMARY_FILENAME
+        summary_path.mkdir(parents=True)
+        with pytest.raises(
+            OSError,
+            match="atomic destination is not a regular file",
+        ) as error:
+            FlextInfraDocAuditor().audit_scope(
+                scope,
+                params=m.Infra.AuditScopeParams(check="forbidden-terms"),
+            )
+        tm.that(error.value.filename, eq=summary_path)
+        tm.fail((scope.report_dir / c.Infra.DOCS_AUDIT_REPORT_FILENAME).exists())
+
+    @staticmethod
     def test_audit_scope_without_issues_passes(tmp_path: Path) -> None:
         """An issue-free audit passes without opting into a mode.
 

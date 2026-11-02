@@ -278,6 +278,8 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         spec: m.Infra.CodegenAstGrepSpec,
+        *,
+        rule_ids: Sequence[str] | None = None,
     ) -> m.Infra.CodemodNativeGenerated:
         """Render every generated utility, then every rule document, in memory.
 
@@ -293,8 +295,10 @@ class FlextInfraUtilitiesCodemodNative:
             The project's generated utility and rule documents keyed by id.
 
         """
+        if rule_ids == ():
+            return m.Infra.CodemodNativeGenerated(utilities={}, rules={}, scopes={})
         root = project.resolve()
-        key = (root, cls._generated_key(snapshot, root, spec))
+        key = (root, cls._generated_key(snapshot, root, spec, rule_ids))
         rendered = snapshot.codemod_renderings.get(key)
         if rendered is None:
             scopes = cls.codemod_native_scopes(snapshot, root, spec.scopes)
@@ -304,6 +308,7 @@ class FlextInfraUtilitiesCodemodNative:
                     snapshot,
                     root,
                     spec,
+                    rule_ids=rule_ids,
                     facts={
                         c.Infra.CODEMOD_SCOPE_FACTS: m.Infra.CodemodScopeFacts(
                             scopes=scopes
@@ -320,6 +325,7 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         root: Path,
         spec: m.Infra.CodegenAstGrepSpec,
+        rule_ids: Sequence[str] | None,
     ) -> str:
         """Digest every input a generated rendering reads, from the snapshot.
 
@@ -329,6 +335,16 @@ class FlextInfraUtilitiesCodemodNative:
         """
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         digest = hashlib.sha256(spec.model_dump_json().encode(c.DEFAULT_ENCODING))
+        digest.update(b"\0")
+        selected_ids: t.JsonValue = (
+            None if rule_ids is None else list[t.JsonValue](sorted(rule_ids))
+        )
+        digest.update(
+            u.Cli
+            .json_dumps(selected_ids, sort_keys=True)
+            .unwrap()
+            .encode(c.DEFAULT_ENCODING)
+        )
         manifest = root / c.PYPROJECT_FILENAME
         for path in (
             *((manifest,) if manifest.is_file() else ()),
@@ -442,7 +458,27 @@ class FlextInfraUtilitiesCodemodNative:
             return r[m.Infra.CodemodRulePlan].fail(
                 "codemod rule planning requires one repository-owned snapshot"
             )
-        provider = cls.codemod_generated_provider(snapshot, root, spec)
+        if rule_ids is not None:
+            if not rule_ids or any(not rule_id.strip() for rule_id in rule_ids):
+                return r[m.Infra.CodemodRulePlan].fail(
+                    "codemod rule selection requires non-empty exact rule IDs",
+                )
+            if len(frozenset(rule_ids)) != len(rule_ids):
+                return r[m.Infra.CodemodRulePlan].fail(
+                    "duplicate codemod rule IDs in selection",
+                )
+        generated_rule_ids = (
+            None
+            if rule_ids is None
+            else tuple(
+                rule_id
+                for rule_id in rule_ids
+                if c.Infra.CODEMOD_GENERATED_ID_SEPARATOR in rule_id
+            )
+        )
+        provider = cls.codemod_generated_provider(
+            snapshot, root, spec, rule_ids=generated_rule_ids
+        )
         return FlextInfraUtilitiesCodemodRules.codemod_compose_rule_plan(
             root, {root: provider}, rule_ids=rule_ids
         )
@@ -474,6 +510,8 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         spec: m.Infra.CodegenAstGrepSpec,
+        *,
+        rule_ids: Sequence[str] | None = None,
     ) -> tuple[str, Path] | None:
         """Materialize the project's rendered rules as one native provider root.
 
@@ -494,7 +532,9 @@ class FlextInfraUtilitiesCodemodNative:
             OSError: If ``not final.is_dir()``.
 
         """
-        rendered = cls.codemod_native_generated(snapshot, project, spec)
+        rendered = cls.codemod_native_generated(
+            snapshot, project, spec, rule_ids=rule_ids
+        )
         if not rendered.rules and not rendered.utilities and not rendered.scopes:
             return None
         files: dict[Path, t.JsonMapping] = {
@@ -676,6 +716,7 @@ class FlextInfraUtilitiesCodemodNative:
         spec: m.Infra.CodegenAstGrepSpec,
         *,
         facts: Mapping[str, p.Model] | None = None,
+        rule_ids: Sequence[str] | None = None,
     ) -> Mapping[str, t.JsonMapping]:
         """Run every registered renderer and merge its rule documents by id.
 
@@ -691,11 +732,18 @@ class FlextInfraUtilitiesCodemodNative:
         """
         documents: dict[str, t.JsonMapping] = {}
         computed: dict[str, p.Model] = dict(facts or {})
+        selected = None if rule_ids is None else frozenset(rule_ids)
         for entry in spec.renderers:
+            if selected is not None and not cls._renderer_selects_rule_ids(
+                entry, selected
+            ):
+                continue
             with cls._producer_progress(entry.name, project):
                 rendered = cls.codemod_native_render(snapshot, project, entry, computed)
             shapes = cls._renderer_shapes(entry)
             for rule_id, document in rendered.items():
+                if selected is not None and rule_id not in selected:
+                    continue
                 shape = rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
                 if shape not in shapes:
                     msg = (
@@ -711,6 +759,30 @@ class FlextInfraUtilitiesCodemodNative:
                     raise ValueError(msg)
                 documents[rule_id] = document
         return MappingProxyType(dict(sorted(documents.items())))
+
+    @classmethod
+    def _renderer_selects_rule_ids(
+        cls,
+        entry: m.Infra.CodegenAstGrepRendererSpec,
+        rule_ids: frozenset[str],
+    ) -> bool:
+        """Whether an exact generated identity belongs to one renderer.
+
+        A generated identity qualifies its registered shape. A bare shape is a
+        catalog partition alias, so it is left for exact-plan validation to
+        reject rather than expanding into every rendered partition.
+
+        Returns:
+            Whether the renderer owns an exact selected generated identity.
+
+        """
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        shapes = {
+            rule_id.partition(separator)[0]
+            for rule_id in rule_ids
+            if separator in rule_id
+        }
+        return bool(shapes.intersection(cls._renderer_shapes(entry)))
 
     @classmethod
     def native_utilities(

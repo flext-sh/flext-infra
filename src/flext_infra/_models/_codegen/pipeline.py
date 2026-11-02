@@ -107,7 +107,6 @@ class FlextInfraModelsCodegenPipeline:
             FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
         ] = m.Field(
             default=(),
-            exclude=True,
             description="Original repository outcomes retained for coherent admission",
         )
 
@@ -174,13 +173,11 @@ class FlextInfraModelsCodegenPipeline:
 
         source_inputs: t.Port[dict[Path, m.Cli.AtomicFileState]] = m.Field(
             default_factory=dict[Path, m.Cli.AtomicFileState],
-            exclude=True,
             description="Original source witnesses retained after native planning",
         )
         source_imports: t.Port[dict[Path, tuple[frozenset[str], frozenset[str]]]] = (
             m.Field(
                 default_factory=dict[Path, tuple[frozenset[str], frozenset[str]]],
-                exclude=True,
                 description=(
                     "Original runtime and typing import facts of captured sources"
                 ),
@@ -189,7 +186,6 @@ class FlextInfraModelsCodegenPipeline:
 
         request: t.Port[p.Infra.CodegenGenerateRequest] | None = m.Field(
             default=None,
-            exclude=True,
             description="Validated projection request retained by reference",
         )
         provider_plans: tuple[FlextInfraModelsConfig.CodegenFilePlan, ...] | None = (
@@ -201,27 +197,22 @@ class FlextInfraModelsCodegenPipeline:
         )
         repository_root: Path = m.Field(
             default=Path(),
-            exclude=True,
             description="Generation tool repository",
         )
         initial_workspace: FlextInfraModelsConfig.WorkspaceSpec | None = m.Field(
             default=None,
-            exclude=True,
             description="Declared scaffold specification",
         )
         ports: t.Port[p.Infra.CodegenConformPorts] | None = m.Field(
             default=None,
-            exclude=True,
             description="Facade-bound docs planning",
         )
         docs_planner: t.Port[p.Infra.DocsArtifactPlanner] | None = m.Field(
             default=None,
-            exclude=True,
             description="Actual planner before effects",
         )
         snapshot: t.Port[p.Infra.WorkspaceSnapshot] | None = m.Field(
             default=None,
-            exclude=True,
             description=(
                 "The run's one workspace snapshot; present while repositories plan"
             ),

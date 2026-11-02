@@ -13,6 +13,7 @@ from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 
 if TYPE_CHECKING:
     import ast
+    from pathlib import Path
 
     from flext_core import p
 
@@ -126,6 +127,14 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     @runtime_checkable
     class RopeClassObject(RopeNamedObject, Protocol):
         """Superclass queries supplied by native abstract classes."""
+
+        def get_metaclass(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopePyObject | None: ...
+
+        def get_bases(
+            self,
+        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
 
         def get_mro(
             self,
@@ -542,6 +551,14 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeSourceBindingIndex(Protocol):
         """Native source binding index, including PEP 695 type parameters."""
 
+        def assignment_string_sequence(
+            self,
+            name: str,
+            scope: FlextInfraProtocolsRopeRuntime.RopeScope | None = None,
+            *,
+            class_metadata: bool = False,
+        ) -> tuple[str, ...] | None: ...
+
         def import_layouts(
             self,
         ) -> tuple[FlextInfraProtocolsRopeRuntime.RopeSourceImportLayout, ...]: ...
@@ -567,14 +584,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
             name: str | None = None,
             resolve_values: bool = False,
         ) -> tuple[FlextInfraProtocolsRopeRuntime.RopeSourceAssignmentLayout, ...]: ...
-
-        def assignment_string_sequence(
-            self,
-            name: str,
-            scope: FlextInfraProtocolsRopeRuntime.RopeScope | None = None,
-            *,
-            class_metadata: bool = False,
-        ) -> tuple[str, ...] | None: ...
 
         def context_at(
             self, offset: int
@@ -611,6 +620,57 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         def class_defers_annotations(
             self, qualified: m.Infra.SourceClassReference
         ) -> bool: ...
+
+    @runtime_checkable
+    class RopeAttributeReadProof(Protocol):
+        """Snapshot-bound native proof for an attribute read without effects."""
+
+        @property
+        def source_path(self) -> Path: ...
+
+        @property
+        def source_sha256(self) -> str: ...
+
+        @property
+        def start_byte(self) -> int: ...
+
+        @property
+        def end_byte(self) -> int: ...
+
+        @property
+        def expression(self) -> str: ...
+
+        @property
+        def access(self) -> Literal["module", "class", "instance"]: ...
+
+        @property
+        def base(self) -> m.Infra.SourceClassReference: ...
+
+        @property
+        def accessor(self) -> m.Infra.SourceClassReference: ...
+
+        @property
+        def member(self) -> m.Infra.SourceClassReference: ...
+
+        @property
+        def descriptor(self) -> m.Infra.SourceClassReference | None: ...
+
+        @property
+        def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
+
+        @property
+        def native_base(self) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
+
+        @property
+        def native_accessor(self) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
+
+        @property
+        def native_member(self) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
+
+        @property
+        def native_descriptor(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
 
     @runtime_checkable
     class RopeSemanticModule(RopeNamedObject, Protocol):

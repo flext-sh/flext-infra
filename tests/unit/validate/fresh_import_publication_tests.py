@@ -78,6 +78,40 @@ class TestsFlextInfraFreshImportPublication:
     """Prove fresh-import verification against the real publication contract."""
 
     @staticmethod
+    @pytest.mark.parametrize("linked", [False, True])
+    def test_namespace_requires_a_physical_directory_chain(
+        tmp_path: Path, suite_runtime_root: Path, *, linked: bool
+    ) -> None:
+        """Real namespace imports reject symlinked physical ancestry."""
+        source = tmp_path / c.Infra.DEFAULT_SRC_DIR
+        source.mkdir()
+        package = source / "flext_namespace_probe"
+        if linked:
+            target = tmp_path / "physical"
+            target.mkdir()
+            package.symlink_to(target, target_is_directory=True)
+        else:
+            package.mkdir()
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-namespace-probe"\nversion = "1.0"\n'
+            "[tool.hatch.build.targets.wheel]\n"
+            f'packages = ["src/{package.name}"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        u.Tests.declare_governed_kind(tmp_path)
+        tm.not_none(u.Infra.layout(tmp_path))
+        report = _probe_report(
+            tmp_path,
+            packages=(package.name,),
+            repository_roots=(tmp_path,),
+            runtime_root=suite_runtime_root,
+        )
+        tm.that(report.passed, eq=not linked, msg=str(report.violations))
+        if linked:
+            tm.that(report.violations[0], has="physical directory chain")
+            tm.that(report.violations[0], has="Traceback")
+
+    @staticmethod
     @pytest.mark.parametrize(
         ("content", "missing_export"),
         [
@@ -412,6 +446,7 @@ class TestsFlextInfraFreshImportPublication:
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
             encoding=c.DEFAULT_ENCODING,
         )
+        u.Tests.declare_governed_kind(tmp_path)
         publication = _probe_publication(
             package,
             init_path=initializer,

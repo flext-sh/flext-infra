@@ -427,16 +427,13 @@ class FlextInfraModelsConfigTemplates:
         )
 
         root: Annotated[Path, m.Field(description="Package-relative template root")]
-        catalog: Annotated[
-            Mapping[
-                t.NonEmptyStr,
-                FlextInfraModelsConfigTemplates.TemplateDeclarationSpec,
-            ],
-            m.Field(
-                alias="entries",
-                description="Ordered template bodies keyed by destination",
-            ),
-        ]
+        catalog: Mapping[
+            t.NonEmptyStr,
+            FlextInfraModelsConfigTemplates.TemplateDeclarationSpec,
+        ] = m.Field(
+            alias="entries",
+            description="Ordered template bodies keyed by destination",
+        )
 
         @cached_property
         def entries(

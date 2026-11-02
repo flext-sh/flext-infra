@@ -244,10 +244,6 @@ class TestsFlextInfraUtilitiesCodegen(
         )
         package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / package_name
         package_root.mkdir(parents=True)
-        (repository_root / "Makefile").write_text(
-            "check:\n\t@true\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
-        )
         (repository_root / c.PYPROJECT_FILENAME).write_text(
             (
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'

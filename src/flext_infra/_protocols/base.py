@@ -834,6 +834,21 @@ class FlextInfraProtocolsBase(Protocol):
         def rule_id(self) -> str | None: ...
 
     @runtime_checkable
+    class ModRuleOwnerRunner(Protocol):
+        """Pure semantic/callback owner planned by a focused mod route."""
+
+        name: str
+
+        def plan(
+            self,
+            root: Path,
+            preflight: m.Infra.ModScanReport,
+            rope_workspace: FlextInfraProtocolsRope.RopeWorkspaceDsl,
+            *,
+            sources: Mapping[Path, str],
+        ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]: ...
+
+    @runtime_checkable
     class WorkspaceEnvironmentContracts(Protocol):
         """Structural contract the direnv gate consumes for static lint.
 

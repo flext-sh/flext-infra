@@ -368,10 +368,10 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @classmethod
     def _lazy_init_mapping(cls, entries: t.LazyAliasMap) -> str:
-        """Render the installer's immutable export mapping as Ruff formats it.
+        """Render the installer's literal export mapping as Ruff formats it.
 
         Returns:
-            The ``MappingProxyType`` argument line(s).
+            The mapping argument line(s).
 
         """
         ordered = sorted(entries, key=cls.lazy_init_export_key)
@@ -382,10 +382,10 @@ class FlextInfraUtilitiesLazyInitRender:
             for name in ordered
             for module, attr in (entries[name],)
         )
-        compact = f"    MappingProxyType({{{inner}}}),"
+        compact = f"    {{{inner}}},"
         if len(compact) <= cls.lazy_init_width():
             return compact
-        lines = ["    MappingProxyType({"]
+        lines = ["    {"]
         indent = "        "
         for name in ordered:
             module, attr = entries[name]
@@ -412,7 +412,7 @@ class FlextInfraUtilitiesLazyInitRender:
                     f"{indent}),",
                 )
             )
-        lines.append("    }),")
+        lines.append("    },")
         return "\n".join(lines)
 
     @staticmethod
