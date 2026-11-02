@@ -20,7 +20,6 @@ if TYPE_CHECKING:
 
     from flext_core import t
 
-    from flext_infra import m
     from flext_infra._protocols import (
         FlextInfraProtocolsBase,
         FlextInfraProtocolsRopeRuntime,
@@ -105,7 +104,7 @@ class FlextInfraProtocolsRope(Protocol):
         def source_revision(self) -> str | None: ...
 
         @property
-        def scope(self) -> m.Infra.RopeContractScope | None: ...
+        def scope(self) -> p.Infra.RopeContractScope | None: ...
 
         @property
         def annotation_member_source(self) -> str | None: ...
@@ -277,16 +276,16 @@ class FlextInfraProtocolsRope(Protocol):
         def rope_project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
         @property
-        def workspace_index(self) -> m.Infra.RopeWorkspaceIndex: ...
+        def workspace_index(self) -> p.Infra.RopeWorkspaceIndex: ...
 
         def refresh(
             self,
             *,
             preserve_indexes: bool = False,
             validate_project: bool = True,
-        ) -> m.Infra.RopeWorkspaceSession: ...
+        ) -> p.Infra.RopeWorkspaceSession: ...
 
-        def reload(self) -> m.Infra.RopeWorkspaceSession: ...
+        def reload(self) -> p.Infra.RopeWorkspaceSession: ...
 
         def __enter__(self) -> Self: ...
 
@@ -306,18 +305,18 @@ class FlextInfraProtocolsRope(Protocol):
         def facade_projection(
             self,
             *,
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+            declared_files: tuple[p.Infra.CodegenFilePlan, ...],
             selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-        ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        ) -> p.Infra.CodegenRepositoryPlanOutcome:
             """Plan the generated family facades in this session."""
             ...
 
         def domain_owner_projection(
             self,
             *,
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+            declared_files: tuple[p.Infra.CodegenFilePlan, ...],
             initializer: FlextInfraProtocolsBase.SourceInitializerPlanner,
-        ) -> m.Infra.CodegenRepositoryPlanOutcome: ...
+        ) -> p.Infra.CodegenRepositoryPlanOutcome: ...
 
         @property
         def snapshot(self) -> FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot:
@@ -331,7 +330,7 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             rope_repository_root: Path | None = None,
             source_project: FlextInfraProtocolsRopeRuntime.RopeProject | None = None,
-            workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
+            workspace_index: p.Infra.RopeWorkspaceIndex | None = None,
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot
             | None = None,
         ) -> Self: ...
@@ -339,7 +338,7 @@ class FlextInfraProtocolsRope(Protocol):
         def bind_candidate(
             self,
             *,
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+            declared_files: tuple[p.Infra.CodegenFilePlan, ...],
             additional_source_folders: t.StrTuple | None = None,
         ) -> None:
             """Advance the same session's source candidate without physical writes."""
@@ -350,18 +349,18 @@ class FlextInfraProtocolsRope(Protocol):
             file_path: Path,
         ) -> FlextInfraProtocolsRopeRuntime.RopeFile | None: ...
 
-        def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None: ...
+        def module(self, file_path: Path) -> p.Infra.RopeModuleIndexEntry | None: ...
 
         def package(
             self,
             package_dir: Path,
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+        ) -> p.Infra.RopePackageIndexEntry | None: ...
 
         def modules(
             self,
             *,
             project_names: Sequence[str] | None = None,
-        ) -> Sequence[m.Infra.RopeModuleIndexEntry]: ...
+        ) -> Sequence[p.Infra.RopeModuleIndexEntry]: ...
 
         def source(self, file_path: Path) -> str: ...
 
@@ -377,16 +376,16 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             include_local_scopes: bool = True,
             include_references: bool = True,
-        ) -> Sequence[m.Infra.Object]: ...
+        ) -> Sequence[p.Infra.Object]: ...
 
         def projects(self) -> Sequence[FlextInfraProtocolsBase.ProjectInfo]: ...
 
-        def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None: ...
+        def layout(self, project_root: Path) -> p.Infra.RopeProjectLayout | None: ...
 
         def package_context(
             self,
             package_dir: Path,
-        ) -> m.Infra.LazyInitPackageContext: ...
+        ) -> p.Infra.LazyInitPackageContext: ...
 
         def policy(
             self,
@@ -394,14 +393,14 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             rel_path: Path | None = None,
             current_pkg: str = "",
-        ) -> m.Infra.NamespaceModulePolicy: ...
+        ) -> p.Infra.NamespaceModulePolicy: ...
 
         def convention(
             self,
             file_path: Path,
             *,
             rel_path: Path | None = None,
-        ) -> m.Infra.RopeModuleConvention: ...
+        ) -> p.Infra.RopeModuleConvention: ...
 
         def semantic(
             self, file_path: Path
@@ -411,7 +410,7 @@ class FlextInfraProtocolsRope(Protocol):
             self,
             file_path: Path,
             *,
-            export_options: m.Infra.ExportOptions | None = None,
+            export_options: p.Infra.ExportOptions | None = None,
         ) -> Sequence[str]: ...
 
     @runtime_checkable

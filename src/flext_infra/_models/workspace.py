@@ -46,10 +46,10 @@ class FlextInfraModelsWorkspace:
             )
         )
         optimize: int = m.Field(ge=0, le=2, description="Native compiler optimization")
-        inputs: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
+        inputs: tuple[p.Cli.AtomicFileReceipt, ...] = m.Field(
             description="Pinned source/resource/distribution/runtime byte identities"
         )
-        bootstrap_sources: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+        bootstrap_sources: tuple[p.Cli.AtomicFileState, ...] = m.Field(
             default=(),
             description=(
                 "Original buffered source candidates for atomic-reader bootstrap; "
@@ -57,7 +57,7 @@ class FlextInfraModelsWorkspace:
             ),
         )
         _source_birth: tuple[int, str] | None = m.PrivateAttr(default=None)
-        generator_trees: tuple[m.Cli.AtomicPhysicalTreeManifest, ...] = m.Field(
+        generator_trees: tuple[p.Cli.AtomicPhysicalTreeManifest, ...] = m.Field(
             description="Authenticated physical producer membership"
         )
         generator_modules: tuple[tuple[str, Path], ...] = m.Field(
@@ -77,7 +77,7 @@ class FlextInfraModelsWorkspace:
     class NativeCodeEvidence(m.Value):
         """Complete compiler bytes or an explicit nonportable-constant refusal."""
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             strict=True,
             ser_json_bytes="base64",
@@ -361,7 +361,7 @@ class FlextInfraModelsWorkspace:
         bindings: tuple[FlextInfraModelsWorkspace.NativeBindingEvidence, ...] = m.Field(
             description="Complete static native binding observations"
         )
-        executed_sources: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
+        executed_sources: tuple[p.Cli.AtomicFileReceipt, ...] = m.Field(
             default=(),
             description="Sources authenticated before compilation in the cold import",
         )
@@ -396,7 +396,7 @@ class FlextInfraModelsWorkspace:
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority for reference consumption, not publication",
         )
-        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[p.Cli.AtomicFileState, ...] = m.Field(
             description="Pinned source inputs checked before and after authentication",
             exclude=True,
         )
@@ -406,7 +406,7 @@ class FlextInfraModelsWorkspace:
     ):
         """One explicit repository target for read-only workspace operations."""
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
     class WorkspaceTestsRequest(WorkspaceRequest):
         """Select repositories for native persistent incremental tests."""
@@ -484,7 +484,7 @@ class FlextInfraModelsWorkspace:
             ),
         ]
         installation_inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 description="Native lock and physical environment states "
                 "captured after installation"
@@ -503,7 +503,7 @@ class FlextInfraModelsWorkspace:
         """Original in-process repository operation, with its observed effects."""
 
         native_tool_qualifications: Annotated[
-            tuple[m.Cli.ProcessNativeToolEvidence, ...],
+            tuple[p.Cli.ProcessNativeToolEvidence, ...],
             m.Field(description="Shared native qualification evidence."),
         ] = ()
         runtime_context: Annotated[
@@ -868,7 +868,7 @@ class FlextInfraModelsWorkspace:
         probes retain their independent presence and empty-value contracts.
         """
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         name: Annotated[str, m.Field(description="Repository name")]
         root: Annotated[Path, m.Field(description="Repository checkout root")]
@@ -936,7 +936,7 @@ class FlextInfraModelsWorkspace:
         byte-identical receipt, so a rerun is its own idempotence proof.
         """
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         schema_version: Annotated[
             int,
@@ -958,7 +958,7 @@ class FlextInfraModelsWorkspace:
     ):
         """Discovered project metadata for workspace operations."""
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             frozen=True,
             validate_default=False,
         )
@@ -996,7 +996,7 @@ class FlextInfraModelsWorkspace:
         mutable state.
         """
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             frozen=True,
             validate_default=False,
         )

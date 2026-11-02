@@ -151,7 +151,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             shortest,
         )
         return MappingProxyType({
-            letter: m.Infra.FacadeFamily(
+            letter: p.Infra.FacadeFamily(
                 letter=letter,
                 module=module,
                 suffix=name.removeprefix(stem),

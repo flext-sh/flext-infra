@@ -23,7 +23,7 @@ class FlextInfraModelsTransformers:
     class SemanticPublicationOptions(m.FrozenModel):
         """Caller-controlled gates and scope roots for one joint publication."""
 
-        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[p.Cli.AtomicFileState, ...] = m.Field(
             default=(),
             exclude=True,
             description="Original observations required by every publication effect",
@@ -33,7 +33,7 @@ class FlextInfraModelsTransformers:
             description="Consumer acceptance gate over the previewed view root",
         )
         plan_validator: (
-            Callable[[tuple[m.Cli.FileChange, ...]], p.Result[bool]] | None
+            Callable[[tuple[p.Cli.FileChange, ...]], p.Result[bool]] | None
         ) = m.Field(
             default=None,
             description=(

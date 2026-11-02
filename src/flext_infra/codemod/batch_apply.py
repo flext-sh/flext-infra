@@ -183,25 +183,32 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             if preview.failure:
                 return r[t.Cli.ResultValue].from_failure(preview)
         pending_count = pending.findings
-        text_pending = FlextInfraModTextGateEngine.scan(
-            self.repository_root,
-            fix=False,
-            validate_receipts=True,
-        ).unwrap()
-        pending_count += text_pending.findings
-        cycles = u.Infra.codemod_import_cycle_issues(self.repository_root)
-        pending_count += len(cycles)
-        renames_pending = self._pending_renames()
-        if renames_pending.failure:
-            return r[t.Cli.ResultValue].from_failure(renames_pending)
+        text_findings = 0
+        text_actionable = 0
+        cycles: tuple[Path, ...] = ()
+        renames_pending = r[int].ok(value=0)
+        if self.selected_rule_ids is None:
+            text_pending = FlextInfraModTextGateEngine.scan(
+                self.repository_root,
+                fix=False,
+                validate_receipts=True,
+            ).unwrap()
+            text_findings = text_pending.findings
+            text_actionable = text_pending.actionable
+            pending_count += text_findings
+            cycles = u.Infra.codemod_import_cycle_issues(self.repository_root)
+            pending_count += len(cycles)
+            renames_pending = self._pending_renames()
+            if renames_pending.failure:
+                return r[t.Cli.ResultValue].from_failure(renames_pending)
         if pending_count or renames_pending.value:
             return r[t.Cli.ResultValue].fail(
                 f"{pending.findings} pending ast-grep finding(s), "
                 f"{pending.actionable} actionable and "
                 f"{pending.detection_only} detection-only and "
                 f"{pending.non_actionable_with_fix} non-actionable with fix, plus "
-                f"{text_pending.findings} pending sed-by-list finding(s) "
-                f"({text_pending.actionable} actionable), "
+                f"{text_findings} pending sed-by-list finding(s) "
+                f"({text_actionable} actionable), "
                 f"{len(cycles)} module(s) in runtime import cycles and "
                 f"{renames_pending.value} pending CSV-rename occurrence(s), "
                 f"across {len(rules)} rule file(s)",

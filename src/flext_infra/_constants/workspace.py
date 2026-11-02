@@ -219,6 +219,10 @@ print(json.dumps({
     "Environment-owned receipt published atomically with its installed code."
     FLEXT_EDITABLE_ROUTE_NAME: ClassVar[str] = "flext-editable"
     "Workspace CLI verb setup runs to elect, install and record FLEXT editables."
+    FLEXT_EDITABLE_SNAPSHOT_BACKENDS: ClassVar[frozenset[str]] = frozenset({
+        "setuptools.build_meta",
+    })
+    "Declared PEP 660 backends whose selected strict mode snapshots file membership."
     FLEXT_EDITABLE_BUILD_SETTING: ClassVar[str] = "editable_mode=strict"
     (
         "PEP 517 setting for editable bindings: a path-based install that static"

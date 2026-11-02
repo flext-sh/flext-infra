@@ -260,7 +260,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self,
             destination: Path,
             source: str,
-            context: m.Infra.ModelProtocolRenderContext,
+            context: p.Infra.ModelProtocolRenderContext,
         ) -> str:
             """Append absent contracts without replacing authored bytes or interfaces.
 
@@ -348,9 +348,9 @@ class FlextInfraUtilitiesModelsProtocol:
         def _missing_contracts(
             self,
             holder: p.Infra.RopeSourceClass,
-            context: m.Infra.ModelProtocolRenderContext,
+            context: p.Infra.ModelProtocolRenderContext,
             destination: Path,
-        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
+        ) -> list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
             """Validate existing authored signatures before extending their holder.
 
             Returns:
@@ -360,7 +360,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: An authored contract has an incompatible signature.
 
             """
-            missing: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
+            missing: list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
             protocol_base = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()

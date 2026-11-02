@@ -173,9 +173,9 @@ class FlextInfraWorkspaceFlextEditable:
     ) -> p.Result[bool]:
         """Replace locked distributions with editable bindings of their sources.
 
-        A locked install leaves its package directory behind (uv renames only
-        the dist-info), and that stale directory shadows the editable source on
-        sys.path, so the locked distributions are removed first. The binding
+        Native UV builds the replacement before removing the current install,
+        retaining the prior distribution if the build fails. Reinstallation
+        refreshes strict editable file links as well as locked origins. The binding
         never discovers project configuration (``--no-config``): any
         ``[tool.uv] override-dependencies``, including the FLEXT workspace's
         own, would replace these explicit editable requests with the
@@ -184,31 +184,18 @@ class FlextInfraWorkspaceFlextEditable:
         source, never an import-hook finder only the interpreter follows.
 
         Returns:
-            Success once both native commands succeed; the first failure
+            Success once the native replacement succeeds; its original failure
             otherwise.
 
         """
-        uninstalled = u.Cli.run_live(
-            (
-                str(uv),
-                "pip",
-                "uninstall",
-                "--no-config",
-                "--python",
-                python,
-                *sources,
-            ),
-            cwd=runtime_root,
-            timeout=c.Infra.TIMEOUT_LONG,
-        )
-        if uninstalled.failure:
-            return r[bool].from_failure(uninstalled)
         installed = u.Cli.run_live(
             (
                 str(uv),
                 "pip",
                 "install",
                 "--no-config",
+                "--reinstall",
+                "--refresh",
                 "--python",
                 python,
                 "--no-deps",
@@ -252,10 +239,17 @@ class FlextInfraWorkspaceFlextEditable:
         )
         if pending.failure:
             return r[bool].from_failure(pending)
-        if pending.value:
-            bound = cls._bind_editables(
-                runtime_root, pending.value, python=python, uv=uv
+        sources = dict(pending.value)
+        for name, source in selection.distributions.items():
+            if name in sources:
+                continue
+            packaging = m.Infra.ProjectPackagingDeclaration.model_validate(
+                u.Infra.pyproject_payload(source / c.PYPROJECT_FILENAME)
             )
+            if packaging.build_backend in c.Infra.FLEXT_EDITABLE_SNAPSHOT_BACKENDS:
+                sources[name] = source
+        if sources:
+            bound = cls._bind_editables(runtime_root, sources, python=python, uv=uv)
             if bound.failure:
                 return bound
         checked = u.Cli.run_live(

@@ -16,6 +16,7 @@ from flext_cli import FlextCliProtocols
 from flext_infra._protocols import (
     FlextInfraProtocolsBase,
     FlextInfraProtocolsCheck,
+    FlextInfraProtocolsConfigWorkspace,
     FlextInfraProtocolsDeps,
     FlextInfraProtocolsDocs,
     FlextInfraProtocolsPromoted,
@@ -42,6 +43,7 @@ class FlextInfraProtocols(FlextCliProtocols):
         FlextInfraProtocolsRope,
         FlextInfraProtocolsBase,
         FlextInfraProtocolsWorkspaceSnapshot,
+        FlextInfraProtocolsConfigWorkspace,
     ):
         """Infra-specific structural protocol definitions."""
 

@@ -19,4 +19,4 @@ invalid:
   value = FlextInfraModelsWorkspace.ProjectInfo(name="project")
 - |
   from flext_infra import m
-  value: m.Infra.ProjectInfo = FlextInfraModelsWorkspace.ProjectInfo(name="project")
+  value: p.Infra.ProjectInfo = FlextInfraModelsWorkspace.ProjectInfo(name="project")

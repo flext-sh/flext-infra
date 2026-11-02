@@ -273,7 +273,7 @@ class TestsFlextInfraRopeContractCatalog:
         edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, (rule,)))
         tm.that(len(edits), eq=1)
         updated = edits[0].updated_source
-        tm.that(updated, contains="model: m.DcRecon.ModelType")
+        tm.that(updated, contains="model: p.DcRecon.ModelType")
         tm.that(updated, contains="quoted: 'm.DcRecon.ModelType'")
         tm.that(updated, contains="port: p.DcRecon.RealPort")
         tm.that(updated, contains="Literal['p.DcRecon.ModelType']")
@@ -357,7 +357,7 @@ class TestsFlextInfraRopeContractCatalog:
         if m_type_checking:
             tm.that(updated, contains="if TYPE_CHECKING:")
             tm.that(updated, contains="    from flext_test_project import m")
-        tm.that(updated, contains="model: m.DcRecon.ModelType")
+        tm.that(updated, contains="model: p.DcRecon.ModelType")
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         tm.that(
             tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, (rule,))),

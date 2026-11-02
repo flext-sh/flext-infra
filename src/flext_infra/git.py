@@ -44,7 +44,7 @@ class FlextInfraGitService(s[p.Infra.GitStatusReport]):
 
     @staticmethod
     def verify_lane(
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
     ) -> p.Result[p.Infra.GitOidReport]:
         """Run the shared, effect-free lane admission owner.
 
@@ -57,7 +57,7 @@ class FlextInfraGitService(s[p.Infra.GitStatusReport]):
     @classmethod
     def verify_lanes(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
     ) -> p.Result[p.Infra.GitLaneReport]:
         """Fail on stashes, merged-but-alive branches and orphan or merged worktrees.
 
@@ -71,7 +71,7 @@ class FlextInfraGitService(s[p.Infra.GitStatusReport]):
 
     @staticmethod
     def lane_ownership(
-        request: m.Infra.GitLaneOwnershipRequest,
+        request: p.Infra.GitLaneOwnershipRequest,
     ) -> p.Result[p.Infra.GitLaneOwnershipReceipt]:
         """Read authenticated prior ownership from an existing published checkpoint.
 

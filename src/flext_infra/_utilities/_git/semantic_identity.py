@@ -29,7 +29,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
     @classmethod
     def git_identity(
         cls,
-        request: m.Infra.GitRepoRequest,
+        request: p.Infra.GitRepoRequest,
     ) -> p.Result[p.Infra.GitIdentityReport]:
         """Return consolidated Git identity for one repository path.
 
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
     @classmethod
     def git_is_inside_work_tree(
         cls,
-        request: m.Infra.GitRepoRequest,
+        request: p.Infra.GitRepoRequest,
         *,
         search_parent_directories: bool = True,
     ) -> p.Result[p.Infra.GitBoolReport]:
@@ -302,7 +302,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         *,
         primary_root: Path,
         requested_path: Path | None = None,
-    ) -> m.Infra.GitIdentityReport:
+    ) -> p.Infra.GitIdentityReport:
         """Collect GitPython-native identity facts into one report.
 
         Returns:

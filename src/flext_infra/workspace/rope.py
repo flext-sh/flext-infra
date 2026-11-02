@@ -25,7 +25,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+    ) -> p.Infra.CodegenRepositoryPlanOutcome:
         """Plan dependency-closed facade cohorts through this native session.
 
         The first cohort failure stops the projection with its original cause.
@@ -68,7 +68,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         initializer: p.Infra.SourceInitializerPlanner,
-    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+    ) -> p.Infra.CodegenRepositoryPlanOutcome:
         """Relocate each private family domain's owner into its composing module.
 
         Composed-part publication is single-owner: the public name of a private
@@ -395,7 +395,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         self,
         domain: Path,
         directory: Path,
-        family: m.Infra.FacadeFamily,
+        family: p.Infra.FacadeFamily,
         target: Path,
     ) -> p.Result[str]:
         """Render the owner skeleton of an unowned domain destination.
@@ -488,7 +488,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         rope_repository_root: Path | None = None,
         source_project: p.Infra.RopeProject | None = None,
-        workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
+        workspace_index: p.Infra.RopeWorkspaceIndex | None = None,
         snapshot: p.Infra.WorkspaceSnapshot | None = None,
     ) -> Self:
         """Create one ready-to-use Rope workspace session.
@@ -540,10 +540,10 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             The resulting ``p.Result[p.Infra.RopeWorkspaceSession]``.
 
         """
-        snapshot: m.Infra.RopeWorkspaceSession = self.session_snapshot()
+        snapshot: p.Infra.RopeWorkspaceSession = self.session_snapshot()
         return r[p.Infra.RopeWorkspaceSession].ok(snapshot)
 
-    def session_snapshot(self) -> m.Infra.RopeWorkspaceSession:
+    def session_snapshot(self) -> p.Infra.RopeWorkspaceSession:
         """Return the current public Rope session state.
 
         Returns:
@@ -662,7 +662,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
 
     @staticmethod
     def _candidate_dependents(
-        index: m.Infra.RopeWorkspaceIndex | None,
+        index: p.Infra.RopeWorkspaceIndex | None,
         changed: Sequence[Path],
         imports: Mapping[str, tuple[Path, ...]],
     ) -> set[Path]:
@@ -716,7 +716,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         affected: set[Path],
         changed: Sequence[Path],
         *,
-        previous_index: m.Infra.RopeWorkspaceIndex | None,
+        previous_index: p.Infra.RopeWorkspaceIndex | None,
     ) -> None:
         """Discard per-view facts while retaining unchanged structural entries."""
         affected_names = {str(path) for path in affected}
@@ -750,7 +750,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     def _invalidation_roots(
         self,
         affected_names: set[str],
-        previous_index: m.Infra.RopeWorkspaceIndex | None,
+        previous_index: p.Infra.RopeWorkspaceIndex | None,
     ) -> set[Path]:
         """Collect project roots owning any affected module.
 
@@ -801,7 +801,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     def _codegen_projects_stale(
         self,
         changed: Sequence[Path],
-        previous_index: m.Infra.RopeWorkspaceIndex | None,
+        previous_index: p.Infra.RopeWorkspaceIndex | None,
     ) -> bool:
         """Decide whether derived codegen projects must be rebuilt.
 
@@ -822,7 +822,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         preserve_indexes: bool = False,
         validate_project: bool = True,
-    ) -> m.Infra.RopeWorkspaceSession:
+    ) -> p.Infra.RopeWorkspaceSession:
         """Invalidate Rope caches without reopening the Rope project.
 
         ``preserve_indexes=True`` is reserved for flows that temporarily wrote
@@ -853,7 +853,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             self._import_dependents_index = None
         return self.session_snapshot()
 
-    def reload(self) -> m.Infra.RopeWorkspaceSession:
+    def reload(self) -> p.Infra.RopeWorkspaceSession:
         """Reopen the shared Rope project and drop all transient caches.
 
         Returns:
@@ -878,7 +878,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             self._codegen_projects = tuple(projects_result.unwrap())
         return self._codegen_projects
 
-    def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None:
+    def layout(self, project_root: Path) -> p.Infra.RopeProjectLayout | None:
         """Return one centralized project layout contract for codegen pipelines.
 
         Returns:
@@ -893,7 +893,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             )
         return self._project_layout_cache[cache_key]
 
-    def package_context(self, package_dir: Path) -> m.Infra.LazyInitPackageContext:
+    def package_context(self, package_dir: Path) -> p.Infra.LazyInitPackageContext:
         """Return one centralized lazy-init package context for a package dir.
 
         Returns:
@@ -932,7 +932,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         rel_path: Path | None = None,
         current_pkg: str = "",
-    ) -> m.Infra.NamespaceModulePolicy:
+    ) -> p.Infra.NamespaceModulePolicy:
         """Return the centralized naming policy for one module path.
 
         Returns:
@@ -952,7 +952,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             if module_entry is not None and module_entry.project_root is not None
             else u.Infra.project_root(resolved_file)
         )
-        policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
+        policy: p.Infra.NamespaceModulePolicy = u.Infra.policy(
             resolved_file,
             rope_project=self.rope_project,
             rel_path=resolved_rel_path,
@@ -969,7 +969,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         file_path: Path,
         *,
         rel_path: Path | None = None,
-    ) -> m.Infra.RopeModuleConvention:
+    ) -> p.Infra.RopeModuleConvention:
         """Return one unified project/package/module convention contract.
 
         Returns:
@@ -1024,7 +1024,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         self,
         file_path: Path,
         *,
-        export_options: m.Infra.ExportOptions | None = None,
+        export_options: p.Infra.ExportOptions | None = None,
     ) -> Sequence[str]:
         """Return public export names for one module path from its parsed source.
 

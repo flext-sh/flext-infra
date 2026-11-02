@@ -179,7 +179,7 @@ class FlextInfraModelsDeps(
         """Calculated target requirements and unchanged diagnostic identities."""
 
         source: Annotated[
-            tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
+            tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
             m.Field(
                 min_length=1,
                 description="Production trees establishing applicability",

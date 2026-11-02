@@ -33,7 +33,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         class ModelProtocolContract(m.ContractModel):
             """One nested data contract within its declaring module."""
 
-            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
                 str_strip_whitespace=False,
             )
 
@@ -45,7 +45,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
                 description="Field declarations retaining their annotation metadata"
             )
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             str_strip_whitespace=False,
         )
 
@@ -406,7 +406,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     class MarkdownLintRenderSpec(m.ContractModel):
         """Validated tooling-only context for Markdown lint projections."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             strict=True,
@@ -424,7 +424,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     class QltyRenderSpec(m.ContractModel):
         """Validated context for the generated qlty repository configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             strict=True,
@@ -434,7 +434,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     class ModuleSkeletonRenderContext(m.ArbitraryTypesModel):
         """Native module inventory filling the canonical template's owned slots."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             str_strip_whitespace=False,
         )
@@ -544,7 +544,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     class TestModuleSkeletonRenderContext(m.ContractModel):
         """Validated context for one generated test facade skeleton."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             str_strip_whitespace=False,
@@ -570,7 +570,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     class MkdocsRenderContext(m.ContractModel):
         """Validated common context for a generated MkDocs configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             strict=True,

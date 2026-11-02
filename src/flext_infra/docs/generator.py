@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraDocGenerator(
-    FlextInfraDocServiceBase[m.Infra.DocsPhaseReports],
+    FlextInfraDocServiceBase[p.Infra.DocsPhaseReports],
     FlextInfraDocsGeneratorBundle,
 ):
     """Generate managed docs artifacts from package exports and docstrings."""
@@ -55,7 +55,7 @@ class FlextInfraDocGenerator(
             Published reports, or the original failure.
 
         """
-        report_type = r[Sequence[m.Infra.DocsPhaseReport]]
+        report_type = r[Sequence[p.Infra.DocsPhaseReport]]
         prepared = self._prepare_request(request)
         if prepared.failure:
             return report_type.from_failure(prepared)
@@ -127,7 +127,7 @@ class FlextInfraDocGenerator(
                 reason=report.reason,
             )
             reports.append(report)
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok(tuple(reports))
+        return r[Sequence[p.Infra.DocsPhaseReport]].ok(tuple(reports))
 
     @staticmethod
     def plan_files(

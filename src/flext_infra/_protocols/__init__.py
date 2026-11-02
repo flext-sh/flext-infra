@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_infra._protocols._config.workspace import (
+        FlextInfraProtocolsConfigWorkspace,
+    )
     from flext_infra._protocols.base import FlextInfraProtocolsBase
     from flext_infra._protocols.check import FlextInfraProtocolsCheck
     from flext_infra._protocols.deps import FlextInfraProtocolsDeps
@@ -28,6 +31,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraProtocolsBase",
     "FlextInfraProtocolsCheck",
+    "FlextInfraProtocolsConfigWorkspace",
     "FlextInfraProtocolsDeps",
     "FlextInfraProtocolsDocs",
     "FlextInfraProtocolsPromoted",
@@ -40,6 +44,7 @@ install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "FlextInfraProtocolsConfigWorkspace": "._config.workspace",
         "FlextInfraProtocolsBase": ".base",
         "FlextInfraProtocolsCheck": ".check",
         "FlextInfraProtocolsDeps": ".deps",

@@ -429,6 +429,20 @@ elected interpreter's native distribution-to-package relation.
 Distribution keys on both sides of that relation use the packaging owner's
 canonical name once; package import names retain their declared spelling.
 
+Setuptools' selected strict PEP 660 mode snapshots its public file links; an
+unchanged editable origin does not prove that newly added or removed files are
+represented. Setup therefore re-elects the authenticated selections whose declared
+backend produces that strict snapshot, while direct source-path editables retain
+their existing origin checks. This is an explicit rebuild policy, not a read-only
+prediction of backend package membership. The native UV install uses
+`--reinstall --refresh` and completes the build before replacing the prior install;
+setup never pre-uninstalls the selected distribution. Native source-copy experiments
+for Setuptools and Hatch preserved the complete installed file inventory and PEP 610
+record on build failure, removed old wheel package paths on successful conversion,
+and retained packaging exclusions. The strict snapshot experiment additionally
+proved real module addition and removal after reinstall.
+See the [Setuptools strict editable contract](https://setuptools.pypa.io/en/latest/userguide/development_mode.html#strict-editable-installs).
+
 Native source declarations and locked consistency are the approved provisioning
 trust boundary. The stronger independently selected-supplier pre-install admission
 is explicitly retired, not claimed equivalent to uv's lock check. Ordinary installed

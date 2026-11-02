@@ -284,7 +284,7 @@ class FlextInfraUtilitiesGitWorktreeRoots(FlextInfraUtilitiesGitRepo):
 
     @staticmethod
     def git_require_submodule_contract(
-        declaration: m.Infra.GitSubmoduleDeclaration,
+        declaration: p.Infra.GitSubmoduleDeclaration,
     ) -> p.Result[p.Infra.GitSubmoduleDeclaration]:
         """Require URL and branch on an already elected native declaration.
 

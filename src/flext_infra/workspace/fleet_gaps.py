@@ -87,7 +87,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
         workspace: p.Infra.WorkspaceSpec,
         member: p.Infra.RepositoryRef,
         quality: Mapping[tuple[Path, str], int],
-    ) -> m.Infra.FleetRepoGaps:
+    ) -> p.Infra.FleetRepoGaps:
         """Probe one declared member at its composed path.
 
         Returns:
@@ -106,9 +106,9 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
 
     def _external_consumer_row(
         self,
-        consumer: m.Infra.ExternalConsumerSpec,
+        consumer: p.Infra.ExternalConsumerSpec,
         quality: Mapping[tuple[Path, str], int],
-    ) -> m.Infra.FleetRepoGaps:
+    ) -> p.Infra.FleetRepoGaps:
         """Probe one declared external consumer at its absolute root.
 
         Returns:
@@ -129,7 +129,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
         name: str,
         declared: str | None,
         quality: Mapping[tuple[Path, str], int],
-    ) -> m.Infra.FleetRepoGaps:
+    ) -> p.Infra.FleetRepoGaps:
         """Assemble one row from the checkout's own Git, provider, and report facts.
 
         A missing checkout retains its presence fact. Unselected or unexecuted
@@ -362,7 +362,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
     def _receipt_counts(
         cls,
         path: Path,
-        summary: m.Infra.CheckReportSummary,
+        summary: p.Infra.CheckReportSummary,
         roots: frozenset[Path],
         counts: MutableMapping[tuple[Path, str], int],
     ) -> p.Result[bool]:
@@ -408,7 +408,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
     def _execution_proven(
         gate: str,
         project: str,
-        execution: m.Infra.GateExecution,
+        execution: p.Infra.GateExecution,
         path: Path,
     ) -> bool:
         """Whether one gate execution is a completed native run of this receipt.

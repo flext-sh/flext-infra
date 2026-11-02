@@ -513,12 +513,16 @@ class FlextInfraModHandlers:
             return codemod.FlextInfraModTextGateEngine.run(
                 root, apply=request.apply, rule_ids=(selector,)
             )
+        if ast_selected:
+            return FlextInfraModHandlers._execute_batch(
+                context, root, request, progress, None
+            )
         declared = FlextInfraModHandlers._declared_selection(
             context, root, request, progress, campaigns
         )
         return (
             declared
-            if declared is not None or ast_selected
+            if declared is not None
             else r[t.Cli.ResultValue].fail(
                 f"unknown refactor mod rule selector: {request.rule_id}"
             )

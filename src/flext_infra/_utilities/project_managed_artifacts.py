@@ -444,7 +444,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def project_codegen_inputs(
         cls,
         repository_root: Path,
-        captured: m.Infra.CodegenInputs,
+        captured: p.Infra.CodegenInputs,
         *,
         projections: tuple[p.Infra.CodegenLayerProjection, ...] = (),
         include_local: bool = True,
@@ -491,7 +491,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         def codegen_inputs(
             validated: tuple[p.Infra.CodegenConfigSpec, c.Infra.ProjectKind],
-        ) -> m.Infra.CodegenInputs:
+        ) -> p.Infra.CodegenInputs:
             spec, kind = validated
             return m.Infra.CodegenInputs(spec=spec, kind=kind, sources=captured.sources)
 
@@ -829,7 +829,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         return r[tuple[int, ...]].ok(cls._directory_state_key(state))
 
     @staticmethod
-    def empty_snapshot() -> m.Infra.ProjectManagedArtifactsSnapshot:
+    def empty_snapshot() -> p.Infra.ProjectManagedArtifactsSnapshot:
         """Return the explicit managed-artifact state for a future scaffold.
 
         Returns:
@@ -1104,7 +1104,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @staticmethod
     def _merge_gitignore(
         source: Path,
-        gitignore: m.Infra.ProjectGitignoreConfig | None,
+        gitignore: p.Infra.ProjectGitignoreConfig | None,
         patterns: list[str],
         blocks: list[p.Infra.ProjectGitignorePreservedBlock],
         markers: MutableMapping[str, Path],
@@ -1201,7 +1201,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @classmethod
     def compose_mise_toml_from_resolution(
         cls,
-        resolution: m.Infra.ProjectManagedArtifactsResolution,
+        resolution: p.Infra.ProjectManagedArtifactsResolution,
         rendered: str,
     ) -> p.Result[str]:
         """Add local tools from one caller-owned immutable parsed catalog.
