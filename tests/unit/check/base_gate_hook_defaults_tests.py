@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import pytest
 
-from flext_infra import config, gates, m, u
+from flext_infra import config, gates, m, p, u
 from tests import c, p, tm
 
 if TYPE_CHECKING:

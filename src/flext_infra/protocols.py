@@ -49,4 +49,4 @@ class FlextInfraProtocols(FlextCliProtocols):
 
 
 p = FlextInfraProtocols
-__all__: list[str] = ["FlextInfraProtocols", "FlextInfraProtocolsBase", "p"]
+__all__: list[str] = ["FlextInfraProtocols", "p"]

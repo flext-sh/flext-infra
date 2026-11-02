@@ -45,7 +45,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         exclude=True,
         description="Injected Rope workspace port",
     )
-    rename_inputs: tuple[p.Infra.ApplyRenamesInput, ...] = m.Field(
+    rename_inputs: tuple[t.Port[p.Infra.ApplyRenamesInput], ...] = m.Field(
         exclude=True,
         default=(),
         description="Typed declared CSV campaigns",

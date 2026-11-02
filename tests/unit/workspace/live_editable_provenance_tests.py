@@ -6,11 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 
 import pytest
 
+from flext_infra import FlextInfraCli
+from flext_infra.workspace import FlextInfraBindingService
 from tests import c, m, p, tm, u
 from tests.unit.codegen.test_make_bootstrap_publication import (
     TestsMakeBootstrapPublication as _BootstrapWorkspace,
@@ -173,6 +176,120 @@ class TestsLiveEditableProvenance:
             eq=True,
             msg=after.stdout + after.stderr,
         )
+
+    @staticmethod
+    def _select(root: Path) -> int:
+        """Run the public editable selection against the real workspace."""
+        return FlextInfraCli.infra_main([
+            "workspace",
+            c.Infra.FLEXT_EDITABLE_ROUTE_NAME,
+            "--repository-root",
+            str(root),
+            "--flext-root",
+            str(root),
+        ])
+
+    def test_strict_selection_refreshes_membership_without_preuninstall(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Native selection rebuilds links and retains the prior install on failure."""
+        root, members = self._workspace(tmp_path)
+        member = members[0]
+        package = u.Infra.project_package_name(member)
+        tm.that(self._select(root), eq=0)
+        module = member / "src" / package / "live_probe.py"
+        value = "strict-membership-source"
+        module.write_text(f"LIVE_VALUE = {value!r}\n", encoding=c.DEFAULT_ENCODING)
+        excluded = member / "excluded_source"
+        excluded.mkdir()
+        (excluded / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
+        tm.that(self._select(root), eq=0)
+        self._import(root, member, value)
+        receipt = root / c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH
+        admitted = receipt.read_bytes()
+        setup = member / "setup.py"
+        tm.that(setup.exists(), eq=False)
+        setup.write_text(
+            "raise RuntimeError('native editable build refused')\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.that(self._select(root), ne=0)
+        tm.that(receipt.read_bytes(), eq=admitted)
+        self._import(root, member, value)
+        setup.unlink()
+        module.unlink()
+        tm.that(self._select(root), eq=0)
+        observation = tm.ok(
+            u.Cli.run_raw(
+                (
+                    str(u.Infra.runtime_python(root)),
+                    "-I",
+                    "-c",
+                    (
+                        "import importlib.util,sys; "
+                        "assert importlib.util.find_spec(sys.argv[1]) is None; "
+                        "assert importlib.util.find_spec('excluded_source') is None; "
+                        "assert importlib.util.find_spec('setuptools') is None"
+                    ),
+                    f"{package}.live_probe",
+                ),
+                cwd=root,
+                options=m.Cli.ProcessOptions(
+                    remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                ),
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(observation.outcome),
+            eq=True,
+            msg=observation.stdout + observation.stderr,
+        )
+
+    def test_selection_rejects_duplicate_native_metadata_without_rebinding(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Two real installed metadata records never authorize source replacement."""
+        root, members = self._workspace(tmp_path)
+        tm.that(self._select(root), eq=0)
+        observed = tm.ok(
+            FlextInfraBindingService.consumer_package_environment(
+                consumer_root=root,
+                python=u.Infra.runtime_python(root),
+                packages=(),
+            )
+        )
+        paths = tuple(str(path) for path in observed.metadata_paths)
+        installed = u.installed_distributions(name=members[0].name, path=paths)
+        tm.that(len(installed), eq=1)
+        metadata = next(
+            Path(str(installed[0].locate_file(file)))
+            for file in tm.not_none(installed[0].files)
+            if file.name == "METADATA"
+        )
+        duplicate = metadata.parent.with_name(
+            metadata.parent.name.removesuffix(c.Infra.DIST_INFO_SUFFIX)
+            + "-duplicate"
+            + c.Infra.DIST_INFO_SUFFIX
+        )
+        states = tuple(
+            tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+            for path in (
+                metadata,
+                root / c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH,
+            )
+        )
+        shutil.copytree(metadata.parent, duplicate)
+        try:
+            tm.that(
+                len(u.installed_distributions(name=members[0].name, path=paths)),
+                eq=2,
+            )
+            tm.that(self._select(root), ne=0)
+            tm.ok(u.Cli.atomic_verify_binary_file_states(states))
+        finally:
+            shutil.rmtree(duplicate)
 
     @pytest.mark.parametrize("defect", ["origin", "backpointer", "foreign_editable"])
     def test_live_editable_origin_still_rejects_foreign_identity(

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-from flext_cli import m
+from flext_cli import m, p
 
 from flext_infra import t
 

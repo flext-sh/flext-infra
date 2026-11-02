@@ -34,7 +34,7 @@ def replacement(args):
         u.Tests.run_lazy_init_probe(
             """import importlib
 import threading
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -111,7 +111,7 @@ def replacement(value: int) -> None:
 """,
         )
         u.Tests.run_lazy_init_probe(
-            """from flext_infra import m
+            """from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -248,7 +248,7 @@ class Consumer:
         )
         u.Tests.run_lazy_init_probe(
             f"""from typing import get_args, get_origin
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -343,7 +343,7 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
             f"operation = {factory}\n",
         )
         u.Tests.run_lazy_init_probe(
-            f"""from flext_infra import m
+            f"""from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )

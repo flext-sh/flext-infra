@@ -23,6 +23,9 @@ Infra:
     owners:
       - id: semantic:cutover
         kind: semantic
+      - id: semantic:external-model-owner
+        kind: semantic
+        phase: external-model-owner
       - id: callback:import-normalization
         kind: callback
         callback: import-normalization

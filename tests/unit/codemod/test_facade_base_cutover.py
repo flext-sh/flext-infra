@@ -115,7 +115,7 @@ class TestsFlextInfraFacadeBaseCutover:
         """Resolve an imported module alias through its actual source identity."""
         child, sources = self._workspace(
             tmp_path,
-            """from parent_pkg import m
+            """from parent_pkg import m, p
 
 class ChildModels(m):
     pass

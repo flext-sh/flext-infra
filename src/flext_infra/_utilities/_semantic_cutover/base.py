@@ -29,6 +29,9 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticModelAliases,
 )
+from flext_infra._utilities._semantic_cutover.external_model_owner import (
+    FlextInfraUtilitiesSemanticCutoverExternalModelOwner,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,6 +39,7 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesSemanticCutoverBase(
     FlextInfraUtilitiesSemanticContracts,
+    FlextInfraUtilitiesSemanticCutoverExternalModelOwner,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticConstantConsumers,
     FlextInfraUtilitiesSemanticCutoverNesting,
@@ -123,6 +127,7 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         match phase:
             case (
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
+                | c.Infra.SemanticCutoverPhase.EXTERNAL_MODEL_OWNER
                 | c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
                 | c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
                 | c.Infra.SemanticCutoverPhase.COMPAT_ALIAS
@@ -291,6 +296,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
         dispatch = {
             c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION: lambda: (
                 cls._plan_behavior_and_declarations(rope_workspace, sources)
+            ),
+            c.Infra.SemanticCutoverPhase.EXTERNAL_MODEL_OWNER: lambda: (
+                cls._plan_external_model_owner(rope_workspace, sources)
             ),
             c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS: lambda: (
                 cls._plan_constant_consumers(rope_workspace, sources)

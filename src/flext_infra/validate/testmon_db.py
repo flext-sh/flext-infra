@@ -9,15 +9,12 @@ from __future__ import annotations
 import sqlite3
 from contextlib import closing
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Self, override
+from typing import Annotated, Self, override
 
-from flext_infra import m, r, s, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import m, p, r, s, u
 
 
-class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
+class FlextInfraTestmonDbInspector(s[m.Infra.TestmonCacheState]):
     """Checkpoint WAL, verify integrity, and compute saveability."""
 
     db_path: Annotated[Path, m.Field(description="Absolute .testmondata path.")]

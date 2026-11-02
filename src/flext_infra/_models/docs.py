@@ -10,9 +10,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m
+from flext_cli import m, p
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsDocsCollection,

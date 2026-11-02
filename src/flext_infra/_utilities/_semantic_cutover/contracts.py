@@ -1506,7 +1506,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 candidate,
                 candidate_file,
                 import_module,
-                ("m",),
+                (rule.goal.partition(".")[0],),
                 apply=False,
             )
         if imported is None:
@@ -1599,7 +1599,7 @@ class FlextInfraUtilitiesSemanticContracts(
         destination_path = f"{owner.target}.{member}"
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         destination = runtime.expression_name(scope, destination_path)
-        root_binding = runtime.expression_name(scope, "m")
+        root_binding = runtime.expression_name(scope, owner.target.partition(".")[0])
         if runtime.same_name(expected, destination):
             if isinstance(
                 root_binding, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
@@ -1638,10 +1638,10 @@ class FlextInfraUtilitiesSemanticContracts(
         scope: p.Infra.RopeScope,
         owner: FlextInfraUtilitiesSemanticContracts._AnnotationMemberOwner,
     ) -> bool:
-        """Authenticate the protocol namespace or prove its lexical absence.
+        """Authenticate the actual protocol namespace and native ancestry.
 
         Returns:
-            Whether the declared source owner is bound, or the source path is absent.
+            Whether the declared source owner or a native subclass is bound.
 
         Raises:
             ValueError: The lexical source path resolves to an unknown provider.
@@ -1658,19 +1658,7 @@ class FlextInfraUtilitiesSemanticContracts(
             if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(source_object):
                 return False
             return owner.source_owner in source_object.get_mro()
-        root = runtime.expression_name(scope, owner.source.partition(".")[0])
-        if root is None:
-            return True
-        unknown = runtime.runtime_callable("rope.base.pyobjects", "get_unknown")()
-        root_object = root.get_object()
-        if root_object is unknown:
-            message = f"{owner.rule.id}: source root is unknown"
-            raise ValueError(message)
-        nested = owner.source.partition(".")[2]
-        if nested not in root_object.get_attributes():
-            return True
-        message = f"{owner.rule.id}: source namespace {owner.source} is ambiguous"
-        raise ValueError(message)
+        return False
 
     @staticmethod
     def _annotation_member_import(

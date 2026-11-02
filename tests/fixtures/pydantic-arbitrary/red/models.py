@@ -9,7 +9,7 @@ from __future__ import annotations
 import threading
 from typing import Annotated
 
-from flext_core import m
+from flext_core import m, p
 
 
 class FixtureArbitrary(m.ArbitraryTypesModel):

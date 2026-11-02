@@ -2,8 +2,8 @@ id: fix-frozen-dataclass-with-bases-to-model
 snapshots:
   "from flext_core import m\n\n@dataclass(frozen=True)\nclass Point(Base):\n    x: int\n":
     fixed: |
-      from flext_core import m
-      
+      from flext_core import m, p
+
       class Point(Base, m.FrozenModel):
           x: int
     labels:
@@ -60,13 +60,13 @@ snapshots:
       style: secondary
       start: 50
       end: 79
-    - source: from flext_core import m
+    - source: from flext_core import m, p
       style: secondary
       start: 0
       end: 24
     - source: |
-        from flext_core import m
-        
+        from flext_core import m, p
+
         @dataclass(frozen=True)
         class Point(Base):
             x: int

@@ -521,6 +521,9 @@ class FlextInfraWorkspaceFlextEditable:
         pending: dict[str, Path] = {}
         for name, source in selection.distributions.items():
             matches = u.installed_distributions(name=name, path=metadata_paths)
+            if not matches:
+                pending[name] = source
+                continue
             if (
                 len(matches) == 1
                 and Path(str(matches[0].locate_file("")))
@@ -536,13 +539,6 @@ class FlextInfraWorkspaceFlextEditable:
                 environment_root=observed.value.prefix,
             )
             if installed.failure:
-                # A selected distribution with no installed metadata at all is
-                # simply pending (uv sync may have removed it between setups);
-                # only ambiguous or out-of-environment states are hard
-                # failures.
-                if "needs one installed distribution" in str(installed.error):
-                    pending[name] = source
-                    continue
                 return r.from_failure(installed)
             _distribution, _raw, receipt = installed.value
             if (

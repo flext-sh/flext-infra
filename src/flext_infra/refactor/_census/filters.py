@@ -10,7 +10,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping, Sequence
 from typing import ClassVar
 
-from flext_infra import m
+from flext_infra import m, p
 
 
 class FlextInfraRefactorCensusFilters:

@@ -15,7 +15,7 @@ snapshots:
       start: 32
       end: 33
     - source: |
-        from ai_hub import m
+        from ai_hub import m, p
 
         ADAPTER = m.TypeAdapter(int)
       style: secondary
@@ -57,7 +57,7 @@ snapshots:
       start: 36
       end: 37
     - source: |
-        from flext_core import m
+        from flext_core import m, p
 
         ADAPTER = m.TypeAdapter(int)
       style: secondary

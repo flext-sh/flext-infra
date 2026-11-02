@@ -20,7 +20,7 @@ from flext_infra.deps.phases import (
     FlextInfraToolTablesPhase,
 )
 from flext_infra.gates import FlextInfraGatesMypy
-from tests import c, e, m, t, tm, u
+from tests import c, e, m, p, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerToolTables:

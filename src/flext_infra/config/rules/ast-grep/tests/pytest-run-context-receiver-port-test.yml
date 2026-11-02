@@ -71,7 +71,7 @@ invalid:
     from __future__ import annotations
     from collections.abc import Callable
     from typing import TYPE_CHECKING, override
-    from flext_infra import m
+    from flext_infra import m, p
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
@@ -86,7 +86,7 @@ invalid:
     from __future__ import annotations
     from collections.abc import Callable
     from typing import TYPE_CHECKING
-    from flext_infra import m
+    from flext_infra import m, p
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:

@@ -52,7 +52,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     1. Every import lives at module level; ``try/except ImportError`` guards
        become plain imports.
-    2. Imports follow the tooling layer order (settings, config, c, t, p, m,
+    2. Imports follow the tooling layer order (settings, config, c, p, t, p, m,
        u, other, base, services, api, cli): a reverse import read only in
        annotations moves under ``if TYPE_CHECKING:``; a reverse import read
        at runtime keeps its place and its finding, for manual repair.

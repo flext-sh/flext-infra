@@ -8,17 +8,13 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraRefactorCensusRemoval(
-    FlextInfraProjectSelectionServiceBase[p.Infra.WorkspaceReport],
+    FlextInfraProjectSelectionServiceBase[m.Infra.WorkspaceReport],
 ):
     """Preview and apply the inventory's removal candidates through gates.
 

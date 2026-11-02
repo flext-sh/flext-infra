@@ -14,7 +14,7 @@ from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
-class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
+class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     """Report every declared repository's hygiene gaps from that repo's own facts.
 
     Each row observes only what the checkout itself publishes: its porcelain

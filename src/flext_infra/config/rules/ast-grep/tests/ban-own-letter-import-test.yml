@@ -30,7 +30,7 @@ invalid:
   from ai_hub import u as aliased
 - |
   def load() -> None:
-      from ai_hub import m
+      from ai_hub import m, p
 - |
   from typing import TYPE_CHECKING
   if TYPE_CHECKING:

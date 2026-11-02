@@ -24,7 +24,7 @@ snapshots:
       style: secondary
       start: 27
       end: 36
-    - source: from flext_cli import m
+    - source: from flext_cli import m, p
       style: secondary
       start: 22
       end: 45

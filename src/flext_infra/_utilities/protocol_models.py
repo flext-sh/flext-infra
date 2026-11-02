@@ -9,12 +9,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+import importlib
+import tomllib
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
 
 from flext_infra import c, config, m, p, r, t
+from flext_infra._protocols_bootstrap import normalize_protocol_tree
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesLazyInitRender,
@@ -33,6 +37,9 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities.workspace_snapshot import (
+    FlextInfraUtilitiesWorkspaceSnapshot,
+)
 
 
 class FlextInfraUtilitiesModelsProtocol:
@@ -49,16 +56,114 @@ class FlextInfraUtilitiesModelsProtocol:
             An absent declared facade/layout has no applicable projection.
 
         """
-        return cls._ModelProtocolProjection(workspace).sources()
+        return cls.protocol_model_sources_from_source(
+            workspace.repository_root, workspace.rope_project
+        )
+
+    @classmethod
+    def protocol_model_sources_from_source(
+        cls,
+        repository_root: Path,
+        source_project: p.Infra.RopeProject,
+    ) -> p.Result[Mapping[Path, str]]:
+        """Plan protocol mirrors directly from an overlaid source project.
+
+        This public bootstrap entry intentionally does not construct a Rope
+        workspace. Its source view can therefore inventory Pydantic declarations
+        whose annotations reference protocol facade members not generated yet.
+
+        Returns:
+            Relative protocol mirror sources, or the source inventory failure.
+
+        """
+        return cls._ModelProtocolProjection(repository_root, source_project).sources()
+
+    @classmethod
+    def bootstrap_protocol_model_sources(cls, repository_root: Path) -> p.Result[bool]:
+        """Publish source-derived protocol contracts before semantic admission.
+
+        The first public generation cannot use the normal workspace or identity
+        path: its Pydantic models may reference exactly the facade contracts this
+        operation creates. The normal executor retries its identity admission
+        after this bounded, atomic source bootstrap.
+
+        Returns:
+            Whether any source-derived protocol mirror was published.
+
+        """
+        root = repository_root.expanduser().resolve()
+        normalized = normalize_protocol_tree(root)
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            root
+        ) as binding:
+            planned = cls.protocol_model_sources_from_source(root, binding[0])
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        members: list[tuple[str, tuple[str, ...]]] = []
+        for relative, content in planned.value.items():
+            destination = root / relative
+            written = u.Cli.atomic_write_text_file(destination, content)
+            if written.failure:
+                return r[bool].from_failure(written)
+            tree = ast.parse(content, filename=str(destination))
+            holder = next(
+                (node for node in tree.body if isinstance(node, ast.ClassDef)), None
+            )
+            if holder is not None:
+                members.append((
+                    ".".join(
+                        relative.relative_to("src").with_suffix("").parts
+                        if relative.parts[0] == "src"
+                        else relative.with_suffix("").parts
+                    ),
+                    tuple(
+                        node.name
+                        for node in holder.body
+                        if isinstance(node, ast.ClassDef)
+                    ),
+                ))
+        cls._install_bootstrap_facade_members(members, root)
+        return r[bool].ok(value=bool(normalized or planned.value))
+
+    @staticmethod
+    def _install_bootstrap_facade_members(
+        members: list[tuple[str, tuple[str, ...]]], repository_root: Path
+    ) -> None:
+        """Bind published protocol members on the already-loaded public facade.
+
+        This is the live equivalent of lazy facade export wiring. It is confined
+        to the invocation that published the source contracts; ordinary codegen
+        regenerates the durable facade projection immediately afterwards.
+        """
+        package = repository_root / "src"
+        package_name = next(
+            path.name for path in package.iterdir() if (path / "protocols.py").is_file()
+        )
+        facade = importlib.import_module(f"{package_name}.protocols").p.Infra
+        for module_name, names in members:
+            module = importlib.import_module(module_name)
+            holder = next(
+                value
+                for value in vars(module).values()
+                if isinstance(value, type)
+                and value.__name__.startswith("Flext")
+                and "Protocols" in value.__name__
+            )
+            for name in names:
+                setattr(facade, name, getattr(holder, name))
 
     class _ModelProtocolProjection(
         FlextInfraUtilitiesSemanticCutover,
     ):
         """Bind declaring-module projection to one native source candidate."""
 
-        def __init__(self, workspace: p.Infra.RopeWorkspaceDsl) -> None:
-            self.workspace = workspace
-            self.project = workspace.rope_project
+        def __init__(
+            self,
+            repository_root: Path,
+            source_project: p.Infra.RopeProject,
+        ) -> None:
+            self.repository_root = repository_root
+            self.project = source_project
             self.models: dict[str, p.Infra.RopePyName] = {}
             self.destinations: dict[str, Path] = {}
             self.canonical_routes: dict[str, str] = {}
@@ -75,13 +180,546 @@ class FlextInfraUtilitiesModelsProtocol:
             self.member_cache: dict[str, p.Infra.RopePyName | None] = {}
 
         def sources(self) -> p.Result[Mapping[Path, str]]:
-            """Admit the native inventory, then render its protocol sources.
+            """Inventory declaring model sources before any semantic module opens.
 
             Returns:
                 Generated data contracts, or the inventory or render failure.
 
             """
-            return self._inventory().flat_map(lambda _: self.render())
+            # Pydantic evaluates annotations while Rope opens a semantic module.
+            # Bootstrap must therefore derive the first mirror from the overlaid
+            # source bytes, before a missing ``p`` facade member can make a model
+            # declaration unopenable.
+            return self._source_model_sources()
+
+        def _source_model_sources(self) -> p.Result[Mapping[Path, str]]:
+            """Project local Pydantic declarations using only the source view.
+
+            The source inventory deliberately does not consult ``m`` or ``p``.
+            Those facades are consumers of this projection and may be incomplete
+            during bootstrap.
+
+            Returns:
+                Same-path protocol mirror sources derived from local model files.
+
+            """
+            result_type = r[Mapping[Path, str]]
+            layout = self._source_layout()
+            if layout is None:
+                return result_type.ok({})
+            package_dir, class_stem = layout
+            models_root = package_dir / "_models"
+            if not self.project.source_query(models_root, "isdir"):
+                return result_type.ok({})
+            grouped: dict[
+                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
+            ] = {}
+            for directory, _children, files in self.project.source_walk(models_root):
+                for filename in sorted(files):
+                    source_path = directory / filename
+                    if (
+                        source_path.suffix != ".py"
+                        or source_path.name == c.Infra.INIT_PY
+                    ):
+                        continue
+                    tree = ast.parse(
+                        self.project.source_text(source_path), filename=str(source_path)
+                    )
+                    classes = self._source_model_classes(tree)
+                    if not classes:
+                        continue
+                    destination = (
+                        package_dir
+                        / "_protocols"
+                        / source_path.relative_to(models_root)
+                    )
+                    grouped[destination] = [(*entry, tree) for entry in classes]
+            rendered: dict[Path, str] = {}
+            for destination, classes in sorted(grouped.items()):
+                owner = (
+                    class_stem
+                    + "Protocols"
+                    + "".join(
+                        u.derive_class_stem(part.strip("_"))
+                        for part in destination
+                        .relative_to(package_dir / "_protocols")
+                        .with_suffix("")
+                        .parts
+                    )
+                )
+                content = self._source_render_module(destination, owner, classes)
+                rendered[destination.relative_to(self.repository_root)] = content
+            return result_type.ok(rendered)
+
+        def _source_layout(self) -> tuple[Path, str] | None:
+            """Discover the package solely from the overlaid pyproject source.
+
+            Returns:
+                The package directory and facade class stem, if source declares one.
+
+            """
+            manifest = self.repository_root / c.PYPROJECT_FILENAME
+            if not self.project.source_query(manifest, "isfile"):
+                return None
+            payload = tomllib.loads(self.project.source_text(manifest))
+            project = payload.get("project", {})
+            tool = payload.get("tool", {})
+            flext = tool.get("flext", {}) if isinstance(tool, dict) else {}
+            docs = flext.get("docs", {}) if isinstance(flext, dict) else {}
+            package_name = docs.get("package_name") if isinstance(docs, dict) else None
+            if not isinstance(package_name, str):
+                name = project.get("name") if isinstance(project, dict) else None
+                if not isinstance(name, str):
+                    return None
+                package_name = name.replace("-", "_")
+            package = Path(*package_name.split("."))
+            source_root = self.repository_root / "src"
+            package_dir = source_root / package
+            if not self.project.source_query(package_dir, "isdir"):
+                package_dir = self.repository_root / package
+            if not self.project.source_query(package_dir, "isdir"):
+                return None
+            return package_dir, u.derive_class_stem(package_name.replace("_", "-"))
+
+        @staticmethod
+        def _source_model_classes(
+            tree: ast.Module,
+        ) -> list[tuple[ast.ClassDef, tuple[str, ...]]]:
+            """Return nested model declarations detected from their source bases."""
+            classes: list[tuple[ast.ClassDef, tuple[str, ...]]] = []
+
+            def collect(body: list[ast.stmt], parents: tuple[str, ...]) -> None:
+                for statement in body:
+                    if not isinstance(statement, ast.ClassDef):
+                        continue
+                    classes.append((statement, (*parents, statement.name)))
+                    collect(statement.body, (*parents, statement.name))
+
+            collect(tree.body, ())
+            known: set[tuple[str, ...]] = set()
+            changed = True
+            model_bases = {
+                "BaseModel",
+                "ContractModel",
+                "FlexibleModel",
+                "RootModel",
+                "FrozenArbitrary",
+            }
+            while changed:
+                changed = False
+                for node, path in classes:
+                    bases = {
+                        ast.unparse(base).rpartition(".")[2] for base in node.bases
+                    }
+                    local = {(*path[:-1], base) for base in bases}
+                    if path not in known and (
+                        bool(bases & model_bases) or bool(local & known)
+                    ):
+                        known.add(path)
+                        changed = True
+            return [(node, path) for node, path in classes if path in known]
+
+        def _source_render_module(
+            self,
+            destination: Path,
+            owner: str,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+        ) -> str:
+            """Render one same-path protocol mirror from its parsed declarations.
+
+            Returns:
+                The generated module or authored source extended with missing ports.
+
+            """
+            existing = (
+                self.project.source_text(destination)
+                if self.project.source_query(destination, "isfile")
+                else None
+            )
+            generated = self._source_generated_module(owner, classes)
+            if existing is None or existing.startswith(c.Infra.AUTOGEN_HEADER):
+                return generated
+            return self._source_extend_authored(existing, owner, classes, destination)
+
+        @classmethod
+        def _source_generated_module(
+            cls,
+            owner: str,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+        ) -> str:
+            """Render canonical nested runtime-checkable contracts without imports.
+
+            Returns:
+                The full generated module source.
+
+            """
+            lines = [
+                c.Infra.AUTOGEN_HEADER,
+                '"""Source-derived structural model contracts."""',
+                "",
+                "from __future__ import annotations",
+                "from typing import Protocol, runtime_checkable",
+                *cls.source_annotation_imports(classes),
+                "",
+                "",
+                f"class {owner}:",
+                '    """Own the structural model contracts declared by this module."""',
+            ]
+            for node, _path, _tree in classes:
+                lines.extend((
+                    "",
+                    "    @runtime_checkable",
+                    f"    class {node.name}(Protocol):",
+                    (
+                        '        """Structural data contract projected from the '
+                        'owning model."""'
+                    ),
+                ))
+                fields = cls.source_fields(node, classes)
+                if fields:
+                    lines.extend(
+                        f"        {field.target.id}: {ast.unparse(field.annotation)}"
+                        for field in fields
+                        if isinstance(field.target, ast.Name)
+                    )
+                else:
+                    lines.append("        pass")
+            lines.extend(("", "", "__all__: list[str] = [", f'    "{owner}",', "]", ""))
+            return "\n".join(lines)
+
+        @classmethod
+        def source_annotation_imports(
+            cls,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+        ) -> list[str]:
+            """Retain imported non-facade annotation providers from source.
+
+            Returns:
+                Import statements needed by the source-derived field annotations.
+
+            """
+            roots = {
+                symbol.id
+                for node, _path, _tree in classes
+                for field in cls.source_fields(node, classes)
+                for symbol in ast.walk(field.annotation)
+                if isinstance(symbol, ast.Name)
+            }
+            imports: list[str] = []
+            excluded = {"m", "p", "pydantic"}
+            for statement in classes[0][2].body:
+                if isinstance(statement, ast.Import):
+                    names = [
+                        alias
+                        for alias in statement.names
+                        if (alias.asname or alias.name.partition(".")[0]) in roots
+                        and alias.name.partition(".")[0] not in excluded
+                    ]
+                    if names:
+                        imports.append(ast.unparse(ast.Import(names=names)))
+                elif isinstance(statement, ast.ImportFrom) and statement.module not in {
+                    "__future__",
+                    "pydantic",
+                }:
+                    names = [
+                        alias
+                        for alias in statement.names
+                        if (alias.asname or alias.name) in roots
+                        and (alias.asname or alias.name) not in excluded
+                    ]
+                    if names:
+                        imports.append(
+                            ast.unparse(
+                                ast.ImportFrom(
+                                    module=statement.module,
+                                    names=names,
+                                    level=statement.level,
+                                )
+                            )
+                        )
+            return imports
+
+        @classmethod
+        def source_fields(
+            cls,
+            node: ast.ClassDef,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+        ) -> list[ast.AnnAssign]:
+            """Collect inherited structural fields in Python base precedence.
+
+            Returns:
+                Effective model fields with Pydantic annotation metadata removed.
+
+            """
+            by_name = {
+                candidate.name: (candidate, tree) for candidate, _path, tree in classes
+            }
+
+            def collect(
+                candidate: ast.ClassDef, tree: ast.Module, seen: set[str]
+            ) -> dict[str, ast.AnnAssign]:
+                if candidate.name in seen:
+                    return {}
+                seen = {*seen, candidate.name}
+                fields: dict[str, ast.AnnAssign] = {}
+                for base in reversed(candidate.bases):
+                    parent = by_name.get(ast.unparse(base).rpartition(".")[2])
+                    if parent is not None:
+                        fields.update(collect(*parent, seen))
+                fields.update({
+                    statement.target.id: statement
+                    for statement in candidate.body
+                    if isinstance(statement, ast.AnnAssign)
+                    and isinstance(statement.target, ast.Name)
+                    and not statement.target.id.startswith("_")
+                    and statement.target.id != "model_config"
+                })
+                return {
+                    name: ast.AnnAssign(
+                        target=field.target,
+                        annotation=cls._source_structural_annotation(
+                            field.annotation, tree, candidate
+                        ),
+                        value=None,
+                        simple=field.simple,
+                    )
+                    for name, field in fields.items()
+                }
+
+            tree = next(tree for candidate, _path, tree in classes if candidate is node)
+            return list(collect(node, tree, set()).values())
+
+        @classmethod
+        def _source_structural_annotation(
+            cls,
+            annotation: ast.expr,
+            tree: ast.Module,
+            model: ast.ClassDef,
+        ) -> ast.expr:
+            """Drop ``Annotated`` metadata from a structural protocol field.
+
+            The semantic projector already treats ``Annotated`` as its value
+            type. Mirror that contract in the source bootstrap so Pydantic
+            ``Field`` metadata remains owned by ``m`` and is never evaluated
+            while importing a Protocol mirror.
+
+            Returns:
+                The recursively unwrapped declared value type.
+
+            Raises:
+                ValueError: If ``Annotated`` is shadowed or has no value type.
+
+            """
+            bindings: dict[str, str] = {}
+            canonical_modules = {"typing", "typing_extensions"}
+            for statement in tree.body:
+                if isinstance(statement, ast.ImportFrom):
+                    if statement.module not in canonical_modules:
+                        continue
+                    for alias in statement.names:
+                        if alias.name != "Annotated":
+                            continue
+                        name = alias.asname or alias.name
+                        previous = bindings.setdefault(name, "typing.Annotated")
+                        if previous != "typing.Annotated":
+                            msg = f"conflicting Annotated import in {tree}"
+                            raise ValueError(msg)
+                elif isinstance(statement, ast.Import):
+                    for alias in statement.names:
+                        if alias.name not in canonical_modules:
+                            continue
+                        module = alias.asname or alias.name.partition(".")[0]
+                        name = f"{module}.Annotated"
+                        previous = bindings.setdefault(name, "typing.Annotated")
+                        if previous != "typing.Annotated":
+                            msg = f"conflicting Annotated import in {tree}"
+                            raise ValueError(msg)
+            names = frozenset(bindings)
+            if names and any(
+                name in names
+                for statement in tree.body
+                if not isinstance(statement, ast.Import | ast.ImportFrom)
+                for name in cls._source_bound_names(statement)
+            ):
+                msg = "module shadows its Annotated import"
+                raise ValueError(msg)
+            roots = frozenset(name.partition(".")[0] for name in names)
+            if any(
+                bound in roots and not cls._source_typing_import(statement, bound)
+                for statement in tree.body
+                if isinstance(statement, ast.Import | ast.ImportFrom)
+                for bound in cls._source_bound_names(statement)
+            ):
+                msg = "module has an ambiguous Annotated import"
+                raise ValueError(msg)
+            if names and any(
+                name in names
+                for statement in model.body
+                for name in cls._source_bound_names(statement)
+            ):
+                msg = "model shadows its Annotated import"
+                raise ValueError(msg)
+            while isinstance(annotation, ast.Subscript):
+                name = ast.unparse(annotation.value)
+                if name not in bindings:
+                    if name == "Annotated":
+                        msg = "model uses unbound typing.Annotated"
+                        raise ValueError(msg)
+                    break
+                if not isinstance(annotation.slice, ast.Tuple):
+                    msg = "Annotated field has no value type tuple"
+                    raise ValueError(msg)
+                if not annotation.slice.elts:
+                    msg = "Annotated field has no value type"
+                    raise ValueError(msg)
+                annotation = annotation.slice.elts[0]
+            return annotation
+
+        @staticmethod
+        def _source_typing_import(statement: ast.stmt, name: str) -> bool:
+            """Prove one imported annotation provider from its source statement."""
+            if isinstance(statement, ast.ImportFrom):
+                return statement.module in {"typing", "typing_extensions"} and any(
+                    alias.name == "Annotated" and (alias.asname or alias.name) == name
+                    for alias in statement.names
+                )
+            if isinstance(statement, ast.Import):
+                return any(
+                    alias.name in {"typing", "typing_extensions"}
+                    and (alias.asname or alias.name.partition(".")[0]) == name
+                    for alias in statement.names
+                )
+            return False
+
+        @staticmethod
+        def _source_bound_names(statement: ast.stmt) -> frozenset[str]:
+            """Return names bound by one source statement without descending scopes."""
+            if isinstance(
+                statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+            ):
+                return frozenset({statement.name})
+            if isinstance(statement, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                targets = (
+                    statement.targets
+                    if isinstance(statement, ast.Assign)
+                    else [statement.target]
+                )
+                return frozenset(
+                    node.id
+                    for target in targets
+                    for node in ast.walk(target)
+                    if isinstance(node, ast.Name)
+                )
+            if isinstance(statement, (ast.Import, ast.ImportFrom)):
+                return frozenset(
+                    alias.asname or alias.name.partition(".")[0]
+                    for alias in statement.names
+                    if alias.name != "*"
+                )
+            return frozenset()
+
+        @classmethod
+        def _source_extend_authored(
+            cls,
+            source: str,
+            owner: str,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            destination: Path,
+        ) -> str:
+            """Preserve authored contracts and append only missing nested ports.
+
+            Returns:
+                The authored source with only absent contracts inserted.
+
+            Raises:
+                ValueError: The canonical holder is absent or a contract conflicts.
+
+            """
+            tree = ast.parse(source, filename=str(destination))
+            holder = next(
+                (
+                    node
+                    for node in tree.body
+                    if isinstance(node, ast.ClassDef) and node.name == owner
+                ),
+                None,
+            )
+            if holder is None:
+                message = (
+                    "authored protocol destination has no exported canonical holder "
+                    f"{owner}: {destination}"
+                )
+                raise ValueError(message)
+            authored = {
+                node.name: node
+                for node in holder.body
+                if isinstance(node, ast.ClassDef)
+            }
+            additions: list[str] = []
+            for node, _path, _module in classes:
+                present = authored.get(node.name)
+                fields = cls.source_fields(node, classes)
+                expected = {
+                    field.target.id: ast.unparse(field.annotation)
+                    for field in fields
+                    if isinstance(field.target, ast.Name)
+                }
+                if present is not None:
+                    actual = {
+                        field.target.id: ast.unparse(field.annotation)
+                        for field in present.body
+                        if isinstance(field, ast.AnnAssign)
+                        and isinstance(field.target, ast.Name)
+                    }
+                    if any(
+                        annotation != expected[name]
+                        for name, annotation in actual.items()
+                        if name in expected
+                    ):
+                        message = (
+                            "incompatible authored protocol contract "
+                            f"{owner}.{node.name}: {destination}"
+                        )
+                        raise ValueError(message)
+                    continue
+                additions.extend((
+                    "    @runtime_checkable",
+                    f"    class {node.name}(Protocol):",
+                    (
+                        '        """Structural data contract projected from the '
+                        'owning model."""'
+                    ),
+                ))
+                additions.extend(
+                    f"        {field.target.id}: {ast.unparse(field.annotation)}"
+                    for field in fields
+                    if isinstance(field.target, ast.Name)
+                )
+                if not fields:
+                    additions.append("        pass")
+                additions.append("")
+            if not additions:
+                return source
+            lines = source.splitlines(keepends=True)
+            if "from typing import Protocol" not in source:
+                position = next(
+                    (
+                        index + 1
+                        for index, line in enumerate(lines)
+                        if line.startswith("from __future__ import")
+                    ),
+                    0,
+                )
+                lines.insert(
+                    position, "from typing import Protocol, runtime_checkable\n"
+                )
+            if holder.end_lineno is None:
+                message = (
+                    f"authored protocol holder has no source extent: {destination}"
+                )
+                raise ValueError(message)
+            lines.insert(holder.end_lineno, "\n" + "\n".join(additions).rstrip() + "\n")
+            return "".join(lines)
 
         def render(self) -> p.Result[Mapping[Path, str]]:
             """Render the admitted native model inventory without publishing it.

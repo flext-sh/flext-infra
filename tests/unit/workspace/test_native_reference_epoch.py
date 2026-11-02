@@ -117,7 +117,7 @@ class TestsNativeReferenceEpoch:
             "    return inputs\n",
         )
         u.Tests.run_lazy_init_probe(
-            """from flext_infra import m
+            """from flext_infra import m, p
 from flext_tests import tm
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,

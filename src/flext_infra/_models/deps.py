@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m
+from flext_cli import m, p
 
 from flext_infra import p, t
 from flext_infra._models import (
@@ -179,7 +179,7 @@ class FlextInfraModelsDeps(
         """Calculated target requirements and unchanged diagnostic identities."""
 
         source: Annotated[
-            tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
+            tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
             m.Field(
                 min_length=1,
                 description="Production trees establishing applicability",

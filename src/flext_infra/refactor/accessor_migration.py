@@ -16,7 +16,7 @@ from flext_infra.refactor import FlextInfraRefactorAccessor
 
 
 class FlextInfraAccessorMigrationOrchestrator(
-    FlextInfraProjectSelectionServiceBase[p.Infra.AccessorMigrationReport],
+    FlextInfraProjectSelectionServiceBase[m.Infra.AccessorMigrationReport],
     m.Infra.ModuleSelectionMixin,
     m.Infra.NamespaceSelectionMixin,
     FlextInfraRefactorAccessor,

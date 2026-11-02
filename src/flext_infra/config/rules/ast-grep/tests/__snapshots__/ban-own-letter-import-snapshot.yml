@@ -10,7 +10,7 @@ snapshots:
       style: secondary
       start: 29
       end: 35
-    - source: from ai_hub import m
+    - source: from ai_hub import m, p
       style: secondary
       start: 24
       end: 44

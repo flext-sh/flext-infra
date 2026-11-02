@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from flext_cli import m
+from flext_cli import m, p
 
 
 class FlextInfraModelsGitWorktreeFacts:

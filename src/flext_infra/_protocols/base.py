@@ -178,6 +178,77 @@ class FlextInfraProtocolsBase(Protocol):
         def errors(self) -> tuple[str, ...]: ...
 
     @runtime_checkable
+    class ViolationsSweepReport(Protocol):
+        """Read-only receipt of a complete refactoring sweep."""
+
+        @property
+        def repository_root(self) -> Path: ...
+
+        @property
+        def completed_verbs(self) -> Sequence[str]: ...
+
+        @property
+        def failed_verb(self) -> str | None: ...
+
+    @runtime_checkable
+    class CodemodRule(Protocol):
+        """One elected ast-grep rule with immutable provider identity."""
+
+        @property
+        def id(self) -> str: ...
+
+        @property
+        def digest(self) -> str: ...
+
+        @property
+        def provider(self) -> str: ...
+
+        @property
+        def resource(self) -> Path: ...
+
+        @property
+        def fixable(self) -> bool: ...
+
+    @runtime_checkable
+    class CodemodRuleset(Protocol):
+        """One provider's exact elected native rule identities."""
+
+        @property
+        def provider(self) -> str: ...
+
+        @property
+        def config(self) -> Path: ...
+
+        @property
+        def rule_ids(self) -> Sequence[str]: ...
+
+        @property
+        def fixable_rule_ids(self) -> Sequence[str]: ...
+
+    @runtime_checkable
+    class CodemodRulePlan(Protocol):
+        """Dependency-ordered native rule plan for one repository."""
+
+        @property
+        def provider_order(self) -> Sequence[str]: ...
+
+        @property
+        def rules(self) -> Sequence[FlextInfraProtocolsBase.CodemodRule]: ...
+
+    @runtime_checkable
+    class ApplyRenamesInput(Protocol):
+        """Read-only validated CSV rename campaign declaration."""
+
+        @property
+        def csv(self) -> str: ...
+
+        @property
+        def roots(self) -> Sequence[str]: ...
+
+        @property
+        def rename_definitions(self) -> bool: ...
+
+    @runtime_checkable
     class CodegenExecutionContext(Protocol):
         """Actual caller runtime and its explicitly bound conform capabilities."""
 
@@ -1220,6 +1291,84 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
+
+    @runtime_checkable
+    class FrozenArbitrary(Protocol):
+        """Structural data contract projected from the owning model."""
+
+    @runtime_checkable
+    class ProcessExit(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def exit_code(self) -> int: ...
+
+        @property
+        def classification(self) -> str: ...
+
+    @runtime_checkable
+    class SummaryStats(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def verb(self) -> str: ...
+
+        @property
+        def total(self) -> int: ...
+
+        @property
+        def success(self) -> int: ...
+
+        @property
+        def failed(self) -> int: ...
+
+        @property
+        def skipped(self) -> int: ...
+
+        @property
+        def elapsed(self) -> float: ...
+
+    @runtime_checkable
+    class ProtectedSourceWriteRequest(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace(self) -> Path: ...
+
+        @property
+        def updated_source(self) -> str: ...
+
+        @property
+        def gates(self) -> Sequence[str] | None: ...
+
+    @runtime_checkable
+    class LintGateResult(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def tool_name(self) -> str: ...
+
+        @property
+        def errors(self) -> Sequence[str]: ...
+
+        @property
+        def output(self) -> p.Cli.CommandOutput | None: ...
+
+        @property
+        def execution_error(self) -> str | None: ...
+
+    @runtime_checkable
+    class TransformStep(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def detector(self) -> str: ...
+
+        @property
+        def transformer(self) -> str: ...
+
+        @property
+        def gates(self) -> str: ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsBase"]

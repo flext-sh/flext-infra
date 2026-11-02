@@ -13,7 +13,7 @@ from typing import Annotated, assert_never
 from flext_infra import c, m, p, s, u
 
 
-class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
+class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
     """Root of the conform chain: request state and toolchain policy projections.
 
     This is the only orchestrator for Make/toolchain/source conformance.

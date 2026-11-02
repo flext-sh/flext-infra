@@ -12,13 +12,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, u
 from flext_infra.gates import FlextInfraGates
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraGatesLocCap(FlextInfraGates):

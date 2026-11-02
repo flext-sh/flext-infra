@@ -5,7 +5,7 @@ valid:
 
   ADAPTER: p.TypeAdapter[int] = u.type_adapter(int)
 - |
-  from flext_core import m
+  from flext_core import m, p
 
   ADAPTER = m.TypeAdapter(int)
 - |
@@ -31,7 +31,7 @@ valid:
   ADAPTER = m.TypeAdapter(int)
 - |
   from project.adapters import u
-  from flext_core import m
+  from flext_core import m, p
 
   ADAPTER = m.TypeAdapter(int)
 invalid:

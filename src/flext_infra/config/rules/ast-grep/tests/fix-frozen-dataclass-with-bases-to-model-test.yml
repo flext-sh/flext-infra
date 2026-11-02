@@ -1,19 +1,19 @@
 id: fix-frozen-dataclass-with-bases-to-model
 valid:
-  - |
-    from flext_core import m
+- |
+  from flext_core import m, p
 
-    @dataclass(frozen=True)
-    class Point:
-        x: int
-  - |
-    @dataclass(frozen=True)
-    class Point(Base):
-        x: int
+  @dataclass(frozen=True)
+  class Point:
+      x: int
+- |
+  @dataclass(frozen=True)
+  class Point(Base):
+      x: int
 invalid:
-  - |
-    from flext_core import m
+- |
+  from flext_core import m, p
 
-    @dataclass(frozen=True)
-    class Point(Base):
-        x: int
+  @dataclass(frozen=True)
+  class Point(Base):
+      x: int

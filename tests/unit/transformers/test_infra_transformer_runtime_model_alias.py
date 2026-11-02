@@ -56,7 +56,7 @@ from collections.abc import (
     MutableSequence,
     Sequence,
 )
-from {c.Infra.PKG_CORE_UNDERSCORE} import m
+from {c.Infra.PKG_CORE_UNDERSCORE} import m, p
 
 class _Row(m.BaseModel):
     skills: tuple[str, ...]

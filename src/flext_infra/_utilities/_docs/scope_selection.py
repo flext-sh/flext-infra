@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 

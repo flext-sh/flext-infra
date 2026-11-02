@@ -11,7 +11,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-from flext_cli import m, t
+from flext_cli import m, p, t
 
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInit

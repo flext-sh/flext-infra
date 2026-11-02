@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+from collections.abc import Mapping, MutableSequence, Sequence
+from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
+
+from flext_infra import c
+
 """Application-level protocols for Rope-backed infra utilities.
 
 Concrete Rope objects are typed in ``t.Infra.Rope*``. This module keeps only
@@ -7,12 +14,6 @@ Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations
-
-from collections.abc import Mapping, MutableSequence, Sequence
-from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
-
-from flext_infra import c
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,6 +31,25 @@ if TYPE_CHECKING:
 @runtime_checkable
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
+
+    @runtime_checkable
+    class RopeWorkspaceSession(Protocol):
+        """Materialized state exposed by one Rope workspace session."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Resolved repository root requested by the caller."""
+            ...
+
+        @property
+        def rope_repository_root(self) -> Path:
+            """Canonical root used for the shared Rope project."""
+            ...
+
+        @property
+        def workspace_index(self) -> m.Infra.RopeWorkspaceIndex:
+            """Materialized index for the open session."""
+            ...
 
     @runtime_checkable
     class SourceRewrite(Protocol):
@@ -450,6 +470,189 @@ class FlextInfraProtocolsRope(Protocol):
             rope_project: FlextInfraProtocolsRopeRuntime.RopeProject,
             file_path: Path,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+
+    @runtime_checkable
+    class RopeRestructureRequest(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        pattern: t.NonEmptyStr = ...
+        goal: str = ...
+        arguments: Mapping[str, str | Sequence[str]] = ...
+        resources: Sequence[t.Port[p.Infra.RopeResource]] = ...
+        imports: Sequence[str] | Mapping[str, str] = ...
+        match_filter: t.Infra.RopeMatchFilter | None = ...
+
+    @runtime_checkable
+    class RopeSourceImport(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        import_info: t.Port[p.Infra.RopeFromImport]
+        start_line: int
+        start_offset: int
+        end_offset: int
+        source: str
+        type_checking_guarded: bool
+
+    @runtime_checkable
+    class SubscriptRebind(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        root_name: str
+        attribute: str | None = ...
+
+    @runtime_checkable
+    class ExportOptions(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        include_dunder: bool = ...
+        allow_main: bool = ...
+        allow_assignments: bool = ...
+        allow_functions: bool = ...
+        require_explicit_all: bool = ...
+
+    @runtime_checkable
+    class SourceClassReference(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        target: str
+        attributes: tuple[str, ...] = ...
+        qualified_base: str = ...
+
+    @runtime_checkable
+    class RopeAttributeReadProof(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        source_path: Path
+        source_sha256: str
+        start_byte: int
+        end_byte: int
+        expression: str
+        access: Literal[module, "class", instance]
+        base: FlextInfraModelsRope.SourceClassReference
+        accessor: FlextInfraModelsRope.SourceClassReference
+        member: FlextInfraModelsRope.SourceClassReference
+        descriptor: FlextInfraModelsRope.SourceClassReference | None = ...
+        project: t.Port[p.Infra.RopeProject] = ...
+        native_base: t.Port[p.Infra.RopePyName] = ...
+        native_accessor: t.Port[p.Infra.RopePyName] = ...
+        native_member: t.Port[p.Infra.RopePyName] = ...
+        native_descriptor: t.Port[p.Infra.RopePyName] | None = ...
+
+    @runtime_checkable
+    class SourceClassDefinition(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        identity: str
+        bases: tuple[FlextInfraModelsRope.SourceClassReference, ...]
+        members: Mapping[str, FlextInfraModelsRope.SourceClassReference | None]
+
+    @runtime_checkable
+    class SourceBindingCollectorSpec(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        module: t.NonEmptyStr
+        provider: m.InstanceOf[p.Infra.RopeSourceModule]
+        package: str
+        required_line: int | None = ...
+        allow_conditional: bool = ...
+        source_owned: bool
+        definitions: m.InstanceOf[
+            MutableMapping[str, FlextInfraModelsRope.SourceClassDefinition]
+        ]
+        lexical: m.InstanceOf[
+            MutableMapping[str, FlextInfraModelsRope.SourceClassReference | None]
+        ]
+
+    @runtime_checkable
+    class SourceBindingInventoryRequest(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        project: t.Port[t.Infra.RopeProject]
+        module: t.NonEmptyStr
+        path: Path
+        source: Annotated[str, t.StringConstraints(strip_whitespace=False)]
+        required_line: int | None = ...
+        allow_conditional: bool = ...
+
+    @runtime_checkable
+    class ScopeDefinition(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        name: str
+        kind: c.Infra.RopeScopeKind
+        is_module_level: bool
+
+    @runtime_checkable
+    class LogicalStatement(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        indent: int
+        end_line: int
+        start_offset: int
+        end_offset: int
+        category: c.Infra.StatementCategory
+        enclosing_kind: c.Infra.RopeScopeKind = ...
+        enclosing_name: str = ...
+        type_checking_guarded: bool = ...
+        text: Annotated[str, t.StringConstraints(strip_whitespace=False)] = ...
+
+    @runtime_checkable
+    class FamilyWrapperFlatten(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        project: t.Port[t.Infra.RopeProject]
+        owner_name: str
+        wrapper_name: str
+        wrapper: t.Port[t.Infra.RopePyName]
+        names: Mapping[str, str]
+
+    @runtime_checkable
+    class ConstantInfo(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        name: str
+        annotation: str = ...
+        value: str = ...
+
+    @runtime_checkable
+    class SymbolInfo(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        name: str
+        kind: str
+
+    @runtime_checkable
+    class ConsolidatorScannedFile(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        resource: t.Port[t.Infra.RopeResource]
+        source: str
+        matches: Sequence[tuple[FlextInfraModelsRope.SymbolInfo, str, str]]
+
+    @runtime_checkable
+    class RopeModuleConvention(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        file_path: Path
+        relative_path: Path
+        module_name: str
+        package_name: str
+        package_dir: Path
+        package_context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
+        module_policy: FlextInfraModelsCodegenFix.NamespaceModulePolicy
+        project_layout: FlextInfraModelsRope.RopeProjectLayout | None = ...
+
+    @runtime_checkable
+    class FacadeCensus(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        snapshot: t.Port[p.Infra.WorkspaceSnapshot]
+        project: Path
+        lineage: t.StrTuple
+        references: Mapping[str, frozenset[str]]
+        exposed: Mapping[str, frozenset[str]]
+        missing: Mapping[str, frozenset[str]]
+        claims: t.Port[t.Infra.FacadeComponentClaims]
 
 
 __all__: list[str] = ["FlextInfraProtocolsRope"]

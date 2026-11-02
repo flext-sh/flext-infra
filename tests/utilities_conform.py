@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import check, codegen, config, u
-from tests import TestsFlextInfraUtilitiesToml, c, m, t
+from tests import TestsFlextInfraUtilitiesToml, c, m, p, t
 
 
 class TestsFlextInfraUtilitiesConform:

@@ -9,9 +9,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, p
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsDepsToolConfigLinters,
     FlextInfraModelsDepsToolConfigTypeCheckers,

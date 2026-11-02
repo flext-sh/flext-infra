@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from flext_infra import FlextInfraConfig, c, config, m, t
+from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectManagedArtifacts,

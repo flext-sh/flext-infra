@@ -1,6 +1,6 @@
 id: ban-test-deep-module-import
 valid:
-- from flext_core import FlextCore, core, config, settings, c, t, p, m, u
+- from flext_core import FlextCore, core, config, settings, c, p, t, p, m, p, u
 - from flext_ldif import ldif
 - from flext_tests import tm
 - from flext_core.lazy import install_lazy_exports

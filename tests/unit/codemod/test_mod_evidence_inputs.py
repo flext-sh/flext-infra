@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCli, infra, m, t
+from flext_infra import FlextInfraCli, infra, m, p, t
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, p, tm, u
 

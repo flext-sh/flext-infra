@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
 
-from flext_cli import m
+from flext_cli import m, p
 
 from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsRefactorGrep

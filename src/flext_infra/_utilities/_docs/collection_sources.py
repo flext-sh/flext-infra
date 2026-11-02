@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import m
+from flext_infra import m, p
 
 
 class FlextInfraUtilitiesDocsCollectionSources:

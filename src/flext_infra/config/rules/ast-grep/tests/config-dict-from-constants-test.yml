@@ -15,7 +15,7 @@ valid:
 # `invalid` MUST match: the constants spelling in a module that imports `m`.
 invalid:
 - |
-  from flext_ldap import m
+  from flext_ldap import m, p
   from typing import ClassVar
   from algar_sample import c
   class C:

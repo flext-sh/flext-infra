@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import ClassVar, override
 from uuid import uuid4
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.gates import FlextInfraGates
 
 

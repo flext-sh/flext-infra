@@ -14,11 +14,10 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from operator import itemgetter
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import FlextInfraConfig, c, config, m, t
+from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesLintRecipes,
@@ -26,9 +25,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeState
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesLazyInitRender:

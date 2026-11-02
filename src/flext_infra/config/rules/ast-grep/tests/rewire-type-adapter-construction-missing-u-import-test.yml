@@ -22,7 +22,7 @@ valid:
   ADAPTER = u.type_adapter(int)
 invalid:
 - |
-  from ai_hub import m
+  from ai_hub import m, p
 
   ADAPTER = m.TypeAdapter(int)
 - |
@@ -30,7 +30,7 @@ invalid:
 
   ADAPTER = m.TypeAdapter(int)
 - |
-  from flext_core import m
+  from flext_core import m, p
 
   ADAPTER = m.TypeAdapter(int)
 - |

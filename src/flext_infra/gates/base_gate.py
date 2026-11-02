@@ -11,14 +11,11 @@ import sys
 import time
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, u
 from flext_infra._utilities._git import FlextInfraUtilitiesGitStateCheckpoint
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraGates:

@@ -441,6 +441,9 @@ for Setuptools and Hatch preserved the complete installed file inventory and PEP
 record on build failure, removed old wheel package paths on successful conversion,
 and retained packaging exclusions. The strict snapshot experiment additionally
 proved real module addition and removal after reinstall.
+Selection classifies absent installation metadata by its native zero-match count;
+multiple installed distributions remain an ambiguous provenance failure. Error-text
+matching cannot authorize rebinding an ambiguous installation.
 See the [Setuptools strict editable contract](https://setuptools.pypa.io/en/latest/userguide/development_mode.html#strict-editable-installs).
 
 Native source declarations and locked consistency are the approved provisioning

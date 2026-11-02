@@ -460,16 +460,8 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return result_type.fail(
                 "model protocol projection requires the authenticated run snapshot"
             )
-        with (
-            self._source_view(root, declared_files=declared_files) as binding,
-            workspace_services.FlextInfraRopeWorkspace.open_workspace(
-                root,
-                rope_repository_root=Path(binding[0].root.real_path),
-                source_project=binding[0],
-                snapshot=snapshot,
-            ) as workspace,
-        ):
-            rendered = u.Infra.protocol_model_sources(workspace)
+        with self._source_view(root, declared_files=declared_files) as binding:
+            rendered = u.Infra.protocol_model_sources_from_source(root, binding[0])
             if rendered.failure:
                 return result_type.from_failure(rendered)
             rendered_sources = rendered.value

@@ -314,6 +314,7 @@ class FlextInfraConstantsRefactor:
 
         DECLARATION_RELOCATION = "declaration-relocation"
         CLASS_NESTING = "class-nesting"
+        EXTERNAL_MODEL_OWNER = "external-model-owner"
         CONSTANT_CONSUMERS = FlextInfraConstantsCensus.CensusRule.CONSTANT_CONSUMERS
         CONTRACT_NORMALIZATION = "contract-normalization"
         COMPAT_ALIAS = "compat-alias"

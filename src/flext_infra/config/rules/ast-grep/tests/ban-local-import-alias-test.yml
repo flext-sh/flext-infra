@@ -2,7 +2,7 @@
 # runtime aliases of fixture-utils/local-alias.yml.
 id: ban-local-import-alias
 valid:
-- from ai_hub import m
+- from ai_hub import m, p
 - from ai_hub import m as m
 - from ai_hub.child import Owner as Owner
 - |

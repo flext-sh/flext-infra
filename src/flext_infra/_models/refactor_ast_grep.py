@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase
 
 

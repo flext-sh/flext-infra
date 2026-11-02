@@ -10,7 +10,7 @@ valid:
   class FlextInfraService(s):
       pass
 - |
-  from flext_cli import m
+  from flext_cli import m, p
   class FlextInfraModels(m):
       pass
 - |
@@ -35,7 +35,7 @@ invalid:
       pass
   c: type[FlextDbOracleConstants] = FlextDbOracleConstants
 - |
-  from flext_cli import m
+  from flext_cli import m, p
   class FlextMeltanoModels(m):
       pass
   m = FlextMeltanoModels
@@ -46,7 +46,7 @@ invalid:
   t: type[FlextInfraTypes] = FlextInfraTypes
 - |
   from flext_tests import FlextTestsModels
-  from flext_infra import m
+  from flext_infra import m, p
   class TestsFlextInfraModels(FlextTestsModels, m):
       pass
   m = TestsFlextInfraModels

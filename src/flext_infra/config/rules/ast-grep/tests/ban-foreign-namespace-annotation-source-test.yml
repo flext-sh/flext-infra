@@ -8,13 +8,13 @@ valid:
   if TYPE_CHECKING:
       from ai_hub import m, p, u
 # Runtime imports belong to ENFORCE-003 and its family documents.
-- from flext_cli import m
+- from flext_cli import m, p
 - |
   if TYPE_CHECKING:
       from rich import c
 - |
   if TYPE_CHECKING:
-      from flext_cli.models import m
+      from flext_cli.models import m, p
 - |
   if TYPE_CHECKING:
       from flext_cli import FlextCliModels
@@ -24,7 +24,7 @@ valid:
 invalid:
 - |
   if TYPE_CHECKING:
-      from flext_cli import m
+      from flext_cli import m, p
 - |
   if typing.TYPE_CHECKING:
       from flext_core import p, u

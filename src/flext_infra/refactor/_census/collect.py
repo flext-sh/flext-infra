@@ -6,16 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusProject,
     FlextInfraRefactorCensusRemoval,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraRefactorCensusCollect(

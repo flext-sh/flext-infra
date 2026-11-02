@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCli, codemod, m, t
+from flext_infra import FlextInfraCli, codemod, m, p, t
 from tests import c, p, tm, u
 
 

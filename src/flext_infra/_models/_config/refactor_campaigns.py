@@ -135,6 +135,7 @@ class FlextInfraModelsConfigRefactorCampaigns:
             ),
         ]
         kind: Literal["semantic", "callback"]
+        phase: str | None = None
         callback: str | None = None
 
         @m.model_validator(mode="after")
@@ -156,11 +157,24 @@ class FlextInfraModelsConfigRefactorCampaigns:
                 "accessor-rename",
             }
             if self.kind == "semantic":
-                if self.id != "semantic:cutover" or self.callback is not None:
-                    msg = "semantic owner must be semantic:cutover without callback"
+                phases = {
+                    "semantic:cutover": None,
+                    "semantic:external-model-owner": "external-model-owner",
+                }
+                if (
+                    self.id not in phases
+                    or self.phase != phases[self.id]
+                    or self.callback is not None
+                ):
+                    msg = (
+                        "semantic owner must declare its supported phase without "
+                        "callback"
+                    )
                     raise ValueError(msg)
             elif (
-                self.callback not in callbacks or self.id != f"callback:{self.callback}"
+                self.callback not in callbacks
+                or self.id != f"callback:{self.callback}"
+                or self.phase is not None
             ):
                 msg = "callback owner ID must name one declared callback"
                 raise ValueError(msg)

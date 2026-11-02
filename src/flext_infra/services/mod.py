@@ -327,6 +327,7 @@ class FlextInfraModHandlers:
         *,
         apply: bool,
         rope: p.Infra.RopeWorkspaceDsl,
+        phase: c.Infra.SemanticCutoverPhase | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Plan and converge semantic cutover without unrelated mod phases.
 
@@ -342,8 +343,18 @@ class FlextInfraModHandlers:
             sources = codemod.FlextInfraCodemodSemanticApply.source_inventory(
                 root, preflight.value, source_project=rope.rope_project
             )
-            edits = codemod.FlextInfraCodemodSemanticApply.plan_semantic_edits(
-                root, preflight.value, rope, sources
+            edits = (
+                flext_infra.u.Infra.plan_semantic_cutover(
+                    phase,
+                    rope_workspace=rope,
+                    sources=sources,
+                    findings=preflight.value.entries,
+                    import_normalizer=flext_infra.u.Infra.normalize_import_source,
+                )
+                if phase is not None
+                else codemod.FlextInfraCodemodSemanticApply.plan_semantic_edits(
+                    root, preflight.value, rope, sources
+                )
             )
             if edits.failure:
                 return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(edits)
@@ -360,7 +371,11 @@ class FlextInfraModHandlers:
             )
 
         return FlextInfraModHandlers._converge_selected(
-            root, plan, apply=apply, rope=rope, owner="semantic cutover"
+            root,
+            plan,
+            apply=apply,
+            rope=rope,
+            owner=phase.value if phase is not None else "semantic cutover",
         )
 
     @staticmethod
@@ -412,7 +427,14 @@ class FlextInfraModHandlers:
         with context.rope_workspace(root, structural_root) as rope:
             if owner.kind == "semantic":
                 return FlextInfraModHandlers._focused_semantic(
-                    root, apply=request.apply, rope=rope
+                    root,
+                    apply=request.apply,
+                    rope=rope,
+                    phase=(
+                        c.Infra.SemanticCutoverPhase(owner.phase)
+                        if owner.phase is not None
+                        else None
+                    ),
                 )
             if owner.callback is None:
                 return r[t.Cli.ResultValue].fail(
@@ -604,6 +626,17 @@ class FlextInfraModHandlers:
             return FlextInfraModHandlers._execute_batch(
                 self, root, request, progress, None
             )
+        if request.rule_id is not None:
+            with flext_infra.u.Infra.codemod_workspace_snapshot(root) as snapshot:
+                ast_rule = flext_infra.u.Infra.codemod_rule_plan(
+                    snapshot, rule_ids=(request.rule_id,)
+                )
+            if ast_rule.success:
+                return FlextInfraModHandlers._execute_batch(
+                    self, root, request, progress, None
+                )
+            if ast_rule.error_code != c.ErrorCode.NOT_FOUND:
+                return r[t.Cli.ResultValue].from_failure(ast_rule)
         selected = flext_infra.u.Infra.load_refactor_csv_campaigns(root)
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)

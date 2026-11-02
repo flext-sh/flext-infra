@@ -22,7 +22,7 @@ from flext_infra.codemod import (
 )
 
 
-class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
+class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
     """Run canonical repairs and reject introduced finding occurrences.
 
     Rule focus is validated against the elected plan, never passed to the full

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.gates.pyright import FlextInfraGatesPyright
 from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
 from flext_infra.gates.ruff_lint import FlextInfraGatesRuffLint

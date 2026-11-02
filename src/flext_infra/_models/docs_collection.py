@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, p
 
 from flext_infra import t
 from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact

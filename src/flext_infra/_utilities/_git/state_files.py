@@ -14,7 +14,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitWorktreeIO,

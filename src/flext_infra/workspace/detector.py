@@ -1296,7 +1296,7 @@ class FlextInfraWorkspaceDetector(
             workspace = loaded.value
         topology = cls._conform_topology(workspace, resolved_root)
         if topology.failure:
-                return r[m.Infra.RepositoryConformTarget].from_failure(topology)
+            return r[m.Infra.RepositoryConformTarget].from_failure(topology)
         verified = u.Cli.atomic_verify_binary_file_states((
             *topology.value,
             *workspace.repository.inputs,

@@ -46,10 +46,10 @@ class FlextInfraModelsWorkspace:
             )
         )
         optimize: int = m.Field(ge=0, le=2, description="Native compiler optimization")
-        inputs: tuple[p.Cli.AtomicFileReceipt, ...] = m.Field(
+        inputs: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
             description="Pinned source/resource/distribution/runtime byte identities"
         )
-        bootstrap_sources: tuple[p.Cli.AtomicFileState, ...] = m.Field(
+        bootstrap_sources: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             default=(),
             description=(
                 "Original buffered source candidates for atomic-reader bootstrap; "
@@ -57,7 +57,7 @@ class FlextInfraModelsWorkspace:
             ),
         )
         _source_birth: tuple[int, str] | None = m.PrivateAttr(default=None)
-        generator_trees: tuple[p.Cli.AtomicPhysicalTreeManifest, ...] = m.Field(
+        generator_trees: tuple[m.Cli.AtomicPhysicalTreeManifest, ...] = m.Field(
             description="Authenticated physical producer membership"
         )
         generator_modules: tuple[tuple[str, Path], ...] = m.Field(
@@ -361,7 +361,7 @@ class FlextInfraModelsWorkspace:
         bindings: tuple[FlextInfraModelsWorkspace.NativeBindingEvidence, ...] = m.Field(
             description="Complete static native binding observations"
         )
-        executed_sources: tuple[p.Cli.AtomicFileReceipt, ...] = m.Field(
+        executed_sources: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
             default=(),
             description="Sources authenticated before compilation in the cold import",
         )
@@ -396,7 +396,7 @@ class FlextInfraModelsWorkspace:
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority for reference consumption, not publication",
         )
-        inputs: tuple[p.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
             description="Pinned source inputs checked before and after authentication",
             exclude=True,
         )
@@ -484,7 +484,7 @@ class FlextInfraModelsWorkspace:
             ),
         ]
         installation_inputs: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(
                 description="Native lock and physical environment states "
                 "captured after installation"
@@ -503,7 +503,7 @@ class FlextInfraModelsWorkspace:
         """Original in-process repository operation, with its observed effects."""
 
         native_tool_qualifications: Annotated[
-            tuple[p.Cli.ProcessNativeToolEvidence, ...],
+            tuple[m.Cli.ProcessNativeToolEvidence, ...],
             m.Field(description="Shared native qualification evidence."),
         ] = ()
         runtime_context: Annotated[

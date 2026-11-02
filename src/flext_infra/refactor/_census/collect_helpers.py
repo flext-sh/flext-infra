@@ -7,15 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_cli import cli
 
-from flext_infra import config, m, u
+from flext_infra import config, m, p, u
 from flext_infra.refactor._census import FlextInfraRefactorCensusCollect
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,75 @@ from tests import p, tm, u
 
 class TestsModelProtocolNativeMro:
     """Compare generated contracts with the real Pydantic consumer."""
+
+    @staticmethod
+    def test_source_inventory_does_not_open_missing_protocol_model_facade(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The real repository plans before its incomplete facade is importable."""
+        root = Path(__file__).parents[3]
+        module_name = "flext_infra._models.workspace"
+        monkeypatch.setattr(infra, "rope_workspace", None)
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        destination = Path("src/flext_infra/_protocols/workspace.py")
+        tm.ok(destination in projected)
+        tm.ok("ProcessNativeToolEvidence" in projected[destination])
+        tm.ok(module_name not in sys.modules)
+
+    @staticmethod
+    def test_source_mirror_projects_field_annotations_without_field_metadata(
+        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
+    ) -> None:
+        """Protocol imports and type hints do not execute Pydantic Field metadata."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = {
+            package / "models.py": (
+                "class Models:\n    class Project:\n        pass\n"
+                "m = Models\n__all__ = ['Models', 'm']\n"
+            ),
+            package / "protocols.py": (
+                "class Protocols:\n    class Project:\n        pass\n"
+                "p = Protocols\n__all__ = ['Protocols', 'p']\n"
+            ),
+            package / "_models" / "payload.py": (
+                "from typing import Annotated as TypeMetadata\n"
+                "from flext_cli import m\n"
+                "from pydantic import BaseModel\n\n"
+                "class ModelsPayload:\n"
+                "    class Request(BaseModel):\n"
+                "        title: TypeMetadata[str, m.Field(description='title')]\n"
+            ),
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        destination = (package / "_protocols" / "payload.py").relative_to(root)
+        source = projected[destination]
+        tm.ok("title: str" in source)
+        tm.ok("m.Field" not in source)
+        tm.ok("TypeMetadata" not in source)
+        tm.ok(u.Cli.atomic_write_text_file(root / destination, source))
+        owner = u.derive_class_stem(package.name.replace("_", "-"))
+        owner += "ProtocolsPayload"
+        native_consumer(
+            "from typing import get_type_hints, is_protocol\n"
+            "from flext_tests import tm\n"
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"module = importlib.import_module({(package.name + '._protocols.payload')!r})\n"
+            f"owner = getattr(module, {owner!r})\n"
+            "tm.ok(is_protocol(owner.Request))\n"
+            "tm.that(get_type_hints(owner.Request), eq={'title': str})\n"
+            "tm.ok('m' not in vars(module))\n",
+            cwd=root,
+        )
 
     @staticmethod
     @pytest.mark.parametrize("bases", ["Left, Right", "Right, Left"])
