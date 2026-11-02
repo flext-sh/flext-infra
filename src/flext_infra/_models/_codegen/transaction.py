@@ -26,12 +26,16 @@ class FlextInfraModelsCodegenTransaction:
         """One managed file change plus its governed ownership metadata."""
 
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 description="Original read-only observations consumed by this effect",
             ),
         ] = ()
         project: Annotated[Path, m.Field(description="Physical owning project root")]
+        move_source: Annotated[
+            Path | None,
+            m.Field(description="Original source retired by this native resource move"),
+        ] = None
         owner: Annotated[
             str,
             m.Field(description="Canonical artifact owner, empty for scaffold files"),
@@ -77,6 +81,15 @@ class FlextInfraModelsCodegenTransaction:
             if self.path.suffix == ".pyi" and self.desired_content is not None:
                 msg = f"first-party .pyi publication is forbidden: {self.path}"
                 raise ValueError(msg)
+            if self.move_source is not None and (
+                not self.move_source.is_absolute()
+                or not self.move_source.is_relative_to(self.project)
+                or self.move_source == self.path
+                or self.before.content is not None
+                or self.desired_content is None
+            ):
+                msg = "native move provenance requires a distinct absent destination"
+                raise ValueError(msg)
             if self.index_before is not None and (
                 self.tracking != "runtime-local"
                 or self.index_before.path.is_absolute()
@@ -104,7 +117,7 @@ class FlextInfraModelsCodegenTransaction:
         declared_files: tuple[
             FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...
         ] = m.Field(default=(), description="Authenticated candidate file declarations")
-        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[p.Cli.AtomicFileState, ...] = m.Field(
             default=(),
             description="Original source observations whose layouts join the closure",
         )
@@ -162,7 +175,7 @@ class FlextInfraModelsCodegenTransaction:
         roots: tuple[Path, ...] = m.Field(
             description="Discovered project roots covering the pinned source closure"
         )
-        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[p.Cli.AtomicFileState, ...] = m.Field(
             description="Exact source and configuration observations"
         )
         updates: Mapping[Path, str | None] = m.Field(

@@ -430,7 +430,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     def _class_stem_scope(
         path: Path,
         root: Path,
-        layout: m.Infra.RopeProjectLayout,
+        layout: p.Infra.RopeProjectLayout,
         namespaces: Sequence[str],
     ) -> str:
         """Name the class-stem group of one module.
@@ -842,7 +842,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
     @staticmethod
     def _infra_catalog() -> tuple[
-        Sequence[m.Infra.CodemodRule],
+        Sequence[p.Infra.CodemodRule],
         Mapping[Path, Sequence[t.JsonMapping]],
     ]:
         """Read the packaged catalog's validated rules and parsed documents.
@@ -867,7 +867,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        facts: m.Infra.CodemodScopeFacts,
+        facts: p.Infra.CodemodScopeFacts,
     ) -> Mapping[str, t.JsonMapping]:
         """Render every partitioned catalog rule over the project's file groups.
 

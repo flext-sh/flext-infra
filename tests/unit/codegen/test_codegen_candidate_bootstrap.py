@@ -16,13 +16,13 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 def _write_candidate_targets(
     root: Path,
-    targets: Sequence[m.Infra.CandidateBootstrapTargetSpec],
+    targets: Sequence[p.Infra.CandidateBootstrapTargetSpec],
 ) -> Path:
     """Declare recovery targets through the repository's current config owner.
 

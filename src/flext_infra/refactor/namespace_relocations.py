@@ -76,7 +76,7 @@ class FlextInfraNamespaceRelocationCascade:
         cls,
         project_root: Path,
         py_files: Sequence[Path],
-        entries: Sequence[m.Infra.ModScanFinding],
+        entries: Sequence[p.Infra.ModScanFinding],
         *,
         scan_root: Path,
     ) -> tuple[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding], ...]:
@@ -147,7 +147,7 @@ class FlextInfraNamespaceRelocationCascade:
     @staticmethod
     def publish_plan(
         project_root: Path,
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
         *,
         gates: Sequence[str] | None = None,
     ) -> p.Result[bool]:
@@ -182,17 +182,17 @@ class FlextInfraNamespaceRelocationCascade:
 
     def plan(
         self,
-        request: m.Infra.NamespaceRelocationRequest,
+        request: p.Infra.NamespaceRelocationRequest,
         *,
         rope_project: p.Infra.RopeProject,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Compose native relocation effects without performing any Rope changes.
 
         Returns:
             The composed file plans, or the first planning failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         initialized = self._capture_relocation_state(request)
         if initialized.failure:
             return result_type.from_failure(initialized)
@@ -220,8 +220,8 @@ class FlextInfraNamespaceRelocationCascade:
 
     @staticmethod
     def _capture_relocation_state(
-        request: m.Infra.NamespaceRelocationRequest,
-    ) -> p.Result[m.Infra.NamespaceRelocationState]:
+        request: p.Infra.NamespaceRelocationRequest,
+    ) -> p.Result[p.Infra.NamespaceRelocationState]:
         """Bind the working bytes after checking every target selection.
 
         Returns:
@@ -232,14 +232,14 @@ class FlextInfraNamespaceRelocationCascade:
         for _relocation, finding in request.findings:
             path = request.project_root / finding.file
             if not path.is_relative_to(request.project_root) or path not in selected:
-                return r[m.Infra.NamespaceRelocationState].fail(
+                return r[p.Infra.NamespaceRelocationState].fail(
                     f"relocation declaration is outside its selected targets: {path}"
                 )
             if path not in request.sources:
-                return r[m.Infra.NamespaceRelocationState].fail(
+                return r[p.Infra.NamespaceRelocationState].fail(
                     f"relocation source lacks its working view: {path}"
                 )
-        return r[m.Infra.NamespaceRelocationState].ok(
+        return r[p.Infra.NamespaceRelocationState].ok(
             m.Infra.NamespaceRelocationState(
                 working=dict(request.sources), originals={}, modes={}
             )
@@ -247,7 +247,7 @@ class FlextInfraNamespaceRelocationCascade:
 
     @staticmethod
     def _relocate_imports(
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
         imports: Mapping[Path, Mapping[tuple[str, str], set[str]]],
     ) -> p.Result[bool]:
@@ -285,8 +285,8 @@ class FlextInfraNamespaceRelocationCascade:
 
     @staticmethod
     def _declaration_targets(
-        request: m.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
+        request: p.Infra.NamespaceRelocationRequest,
+        state: p.Infra.NamespaceRelocationState,
         names: Mapping[c.Infra.CodemodRelocation, Mapping[Path, set[str]]],
         classes: Sequence[tuple[Path, str, str, int]],
     ) -> p.Result[list[tuple[Path, str, Path]]]:
@@ -352,7 +352,7 @@ class FlextInfraNamespaceRelocationCascade:
 
     @staticmethod
     def _prepare_destinations(
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
         declarations: Sequence[tuple[Path, str, Path]],
     ) -> p.Result[bool]:
         """Seed each absent destination; an existing unread file fails.
@@ -383,8 +383,8 @@ class FlextInfraNamespaceRelocationCascade:
     @classmethod
     def _move_declarations(
         cls,
-        request: m.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
+        request: p.Infra.NamespaceRelocationRequest,
+        state: p.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
         declarations: Sequence[tuple[Path, str, Path]],
     ) -> p.Result[bool]:
@@ -436,8 +436,8 @@ class FlextInfraNamespaceRelocationCascade:
 
     @staticmethod
     def _relocation_snapshot(
-        request: m.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
+        request: p.Infra.NamespaceRelocationRequest,
+        state: p.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
     ) -> p.Infra.RopeProject:
         """Build one native snapshot of the current candidate, new files included.
@@ -498,17 +498,17 @@ class FlextInfraNamespaceRelocationCascade:
 
     @staticmethod
     def _relocation_plans(
-        request: m.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        request: p.Infra.NamespaceRelocationRequest,
+        state: p.Infra.NamespaceRelocationState,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Bind every changed candidate source to its destination state once.
 
         Returns:
             The relocation file plans, or the first destination read failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        plans: list[m.Infra.CodegenFilePlan] = []
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
+        plans: list[p.Infra.CodegenFilePlan] = []
         for path, source in state.working.items():
             if request.sources.get(path) == source:
                 continue
@@ -667,7 +667,7 @@ class FlextInfraNamespaceRelocationCascade:
         return names, spans, imports, classes
 
     @staticmethod
-    def _finding_lines(finding: m.Infra.ModScanFinding) -> tuple[int, int]:
+    def _finding_lines(finding: p.Infra.ModScanFinding) -> tuple[int, int]:
         """Return the 1-based inclusive line span of one finding.
 
         Returns:
@@ -692,7 +692,7 @@ class FlextInfraNamespaceRelocationCascade:
 
     @staticmethod
     def _captured(
-        finding: m.Infra.ModScanFinding,
+        finding: p.Infra.ModScanFinding,
         variable: str,
         readers: Mapping[Path, p.Cli.AtomicFileReader],
     ) -> str:

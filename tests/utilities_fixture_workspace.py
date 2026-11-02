@@ -202,7 +202,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         project_dir: Path,
         name: str,
         *,
-        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
+        extra_verbs: tuple[p.Infra.MakeVerbSpec, ...] = (),
         role: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
         declaration: StandaloneManifestDeclaration | None = None,
     ) -> Path:
@@ -332,7 +332,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
     def standalone_workspace(
         project_dir: Path,
         name: str = "flext-demo",
-    ) -> m.Infra.WorkspaceSpec:
+    ) -> p.Infra.WorkspaceSpec:
         """Materialize and load the canonical minimal standalone fixture.
 
         Returns:
@@ -403,7 +403,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         )
 
     @staticmethod
-    def required_beads(workspace: m.Infra.WorkspaceSpec) -> m.Infra.BeadsProjectSpec:
+    def required_beads(workspace: p.Infra.WorkspaceSpec) -> p.Infra.BeadsProjectSpec:
         """Return the ledger identity the observed loader must always resolve.
 
         Callers use this only for fixtures that explicitly enable Beads.

@@ -16,7 +16,7 @@ from shlex import quote
 import pytest
 
 from flext_infra import config, workspace
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen import test_mise_pin_bootstrap
 
 
@@ -349,7 +349,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     def _provisioned_native_venv(
         binary: Path,
         environment: Path,
-        native_options: m.Cli.ProcessOptions,
+        native_options: p.Cli.ProcessOptions,
     ) -> None:
         """Create a real native virtual environment with the managed binary.
 
@@ -378,7 +378,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         env: Mapping[str, str],
         *,
         cwd: Path,
-    ) -> m.Infra.WorkspaceRuntimeContext:
+    ) -> p.Infra.WorkspaceRuntimeContext:
         """Probe the native runtime context of one submitted project path.
 
         Args:

@@ -90,7 +90,7 @@ class FlextInfraUtilitiesFacadeComponents:
     @staticmethod
     def generate_module_skeleton(
         *,
-        context: m.Infra.ModuleSkeletonRenderContext,
+        context: p.Infra.ModuleSkeletonRenderContext,
     ) -> p.Result[str]:
         """Fill the existing module template with its validated native inventory.
 
@@ -1250,7 +1250,7 @@ class FlextInfraUtilitiesFacadeComponents:
         # this run re-derives from the family declarations: a base it no longer
         # resolves awaits that re-render instead of blocking it.
         rendered = project.source_text(path).startswith(c.Infra.AUTOGEN_HEADER)
-        proven: list[tuple[m.Infra.SourceClassReference]] = []
+        proven: list[tuple[p.Infra.SourceClassReference]] = []
         for reference, holder in cls._facade_class_references(
             FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
                 module, source_project=project
@@ -1336,7 +1336,7 @@ class FlextInfraUtilitiesFacadeComponents:
     def _facade_class_references(
         module_name: str,
         owner: p.Infra.RopeSourceClass,
-    ) -> Generator[tuple[m.Infra.SourceClassReference, p.Infra.RopeSourceClass]]:
+    ) -> Generator[tuple[p.Infra.SourceClassReference, p.Infra.RopeSourceClass]]:
         """Address the facade owner and every nested class by its declared path.
 
         Yields:
@@ -2429,8 +2429,8 @@ class FlextInfraUtilitiesFacadeComponents:
         root: Path,
         *,
         source_project: p.Infra.RopeProject,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Close native callable receiver rewrites over the composed candidate.
 
         The existing claims and lexical-call proof elect every replacement.
@@ -2446,7 +2446,7 @@ class FlextInfraUtilitiesFacadeComponents:
             return ()
         components = cls._component_methods(claims)
         declared = {plan.path: plan for plan in declared_files}
-        plans: list[m.Infra.CodegenFilePlan] = []
+        plans: list[p.Infra.CodegenFilePlan] = []
         for resource in source_project.get_python_files():
             path = Path(resource.real_path)
             module = cls._consumer_module(source_project, path)
@@ -2635,7 +2635,7 @@ class FlextInfraUtilitiesFacadeComponents:
         module: p.Infra.RopePyModule,
         claims: t.Infra.FacadeComponentClaims,
         components: Mapping[str, frozenset[str]],
-    ) -> Sequence[tuple[m.Infra.SourceRewrite, str, str]]:
+    ) -> Sequence[tuple[p.Infra.SourceRewrite, str, str]]:
         """Prove both the imported component and its lexical facade receiver.
 
         Callbacks consume the same native callable as call expressions. Both join
@@ -2669,7 +2669,7 @@ class FlextInfraUtilitiesFacadeComponents:
             message = "Component references require native word regions"
             raise TypeError(message)
         index = module.get_source_binding_index()
-        references: dict[tuple[int, int], tuple[m.Infra.SourceRewrite, str, str]] = {}
+        references: dict[tuple[int, int], tuple[p.Infra.SourceRewrite, str, str]] = {}
         for start, method in cls._claimed_name_offsets(source, methods):
             first, last = words.get_primary_range(start)
             prefix, name, offset = words.get_splitted_primary_before(last)
@@ -2880,7 +2880,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @staticmethod
     def _call_witness(
-        rewrite: m.Infra.SourceRewrite,
+        rewrite: p.Infra.SourceRewrite,
         original: str,
         module: p.Infra.RopePyModule,
     ) -> t.JsonDict:
@@ -2912,7 +2912,7 @@ class FlextInfraUtilitiesFacadeComponents:
         rule_id: str,
         relative: str,
         namespace: str,
-        calls: Sequence[tuple[m.Infra.SourceRewrite, str, str]],
+        calls: Sequence[tuple[p.Infra.SourceRewrite, str, str]],
         module: p.Infra.RopePyModule,
     ) -> t.JsonMapping:
         """Group native callable-load witnesses by file and public namespace.
@@ -2974,7 +2974,7 @@ class FlextInfraUtilitiesFacadeComponents:
     @classmethod
     def codemod_facade_census_facts(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> m.Infra.FacadeCensus:
+    ) -> p.Infra.FacadeCensus:
         """Read the project's facade census once from the injected snapshot.
 
         The member, ownership and component renderers of one rendering share
@@ -3021,7 +3021,7 @@ class FlextInfraUtilitiesFacadeComponents:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        census: m.Infra.FacadeCensus,
+        census: p.Infra.FacadeCensus,
     ) -> Mapping[str, t.JsonMapping]:
         """Render native-proven component calls through their bound public facade.
 
@@ -3052,7 +3052,7 @@ class FlextInfraUtilitiesFacadeComponents:
             snapshot, root
         ):
             module = cls._consumer_module(snapshot.engine, path)
-            groups: dict[str, list[tuple[m.Infra.SourceRewrite, str, str]]] = {}
+            groups: dict[str, list[tuple[p.Infra.SourceRewrite, str, str]]] = {}
             for witness in cls._component_calls(module, claims, components):
                 groups.setdefault(witness[2].rpartition(".")[0], []).append(witness)
             for namespace, calls in sorted(groups.items()):

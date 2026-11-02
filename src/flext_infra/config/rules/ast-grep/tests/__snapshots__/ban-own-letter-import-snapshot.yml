@@ -28,7 +28,7 @@ snapshots:
       style: secondary
       start: 0
       end: 20
-  "from ai_hub import c, t\n":
+  "from ai_hub import c, p, t\n":
     labels:
     - source: c
       style: primary
@@ -38,7 +38,7 @@ snapshots:
       style: secondary
       start: 5
       end: 11
-    - source: from ai_hub import c, t
+    - source: from ai_hub import c, p, t
       style: secondary
       start: 0
       end: 23

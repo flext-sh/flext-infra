@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import config, u
-from tests import c, m, p, r, t, tm
+from tests import c, p, r, t, tm
 
 
 class TestsFlextInfraUtilitiesToml:
@@ -74,7 +74,7 @@ class TestsFlextInfraUtilitiesToml:
         )
 
     @staticmethod
-    def codegen_file_text(plan: m.Infra.CodegenFilePlan) -> str:
+    def codegen_file_text(plan: p.Infra.CodegenFilePlan) -> str:
         """Decode the present text payload of a generated-file test plan.
 
         Returns:
@@ -153,7 +153,7 @@ class TestsFlextInfraUtilitiesToml:
         )
 
     @staticmethod
-    def tool_config_document() -> m.Infra.ToolConfigDocument:
+    def tool_config_document() -> p.Infra.ToolConfigDocument:
         # Tests consume the validated config singleton; the removed utility
         # loader must not survive as a hidden test path.
         """Provide the typed test helper `tool_config_document`.

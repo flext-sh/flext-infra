@@ -95,7 +95,7 @@ class FlextInfraModelsTransformers:
 
         # Why: source bytes must survive validation byte-exact;
         # the strict base strips whitespace, which corrupts CAS comparisons.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             str_strip_whitespace=False, arbitrary_types_allowed=True
         )
 
@@ -313,7 +313,7 @@ class FlextInfraModelsTransformers:
         wrapper's own docstring lines from the strip when present.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         header_start: Annotated[int, m.Field(description="First header line")]
         header_end: Annotated[int, m.Field(description="Last header line")]
@@ -352,7 +352,7 @@ class FlextInfraModelsTransformers:
         travel as one resolved contract.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         project: Annotated[
             t.Port[t.Infra.RopeProject],

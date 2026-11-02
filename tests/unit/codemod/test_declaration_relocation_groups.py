@@ -175,7 +175,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             )
         target = next(path for path in sources if path.parent.name == "_models")
         package = target.parent.parent
-        plans: list[m.Infra.SemanticFilePlan] = []
+        plans: list[p.Infra.SemanticFilePlan] = []
         for edit in edits:
             before = tm.ok(
                 u.Cli.atomic_read_binary_file_state(edit.file_path, required=True)

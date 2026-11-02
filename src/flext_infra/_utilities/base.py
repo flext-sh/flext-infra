@@ -14,11 +14,11 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, m, t
+from flext_infra import c, m
 from flext_infra._settings import FlextInfraSettings
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 if os.name != "nt":
     import pwd
@@ -64,7 +64,7 @@ class FlextInfraUtilitiesBase:
 
     @staticmethod
     def selected_check_gates(
-        make: m.Infra.MakeSpec,
+        make: p.Infra.MakeSpec,
         gate_set: c.Infra.CheckGateSet,
         *,
         phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
@@ -401,7 +401,7 @@ class FlextInfraUtilitiesBase:
                 str | None,
             ]
         ],
-    ) -> tuple[m.Cli.ResultCommandRoute, ...]:
+    ) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build a declarative CLI route table from its data rows.
 
         Each row is ``(name, help_text, model_cls, handler, success_message)``;

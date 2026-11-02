@@ -32,7 +32,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
     can_fix: ClassVar[bool] = True
 
     @override
-    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
+    def selected_for(self, project_dir: Path, ctx: p.Infra.GateContext) -> bool:
         """Select projects that declare dependencies (a pyproject exists).
 
         Returns:
@@ -46,8 +46,8 @@ class FlextInfraGatesDeps(FlextInfraGates):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Run deptry over the checkout and fail on any declared-surface gap.
 
         Native execution and report failures remain ERROR receipts, not findings.
@@ -150,8 +150,8 @@ class FlextInfraGatesDeps(FlextInfraGates):
     def fix(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Repair native-evidenced declarations under the shared mutation lease.
 
         Args:
@@ -235,7 +235,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
     def _prepare_report_dir(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Path:
         """Plan and create the private report directory for one deptry run.
 
@@ -268,7 +268,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
     def _capture_with_retry(
         project_dir: Path,
         report_dir: Path,
-    ) -> m.Infra.DeptryScan:
+    ) -> p.Infra.DeptryScan:
         """Capture the deptry scan, retrying transient concurrent-write races.
 
         Multi-agent worktrees mutate production sources while a scan runs; the
@@ -309,8 +309,8 @@ class FlextInfraGatesDeps(FlextInfraGates):
     def _scan(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> tuple[m.Infra.GateExecution, m.Infra.DeptryScan | None]:
+        ctx: p.Infra.GateContext,
+    ) -> tuple[p.Infra.GateExecution, m.Infra.DeptryScan | None]:
         """Capture and grade one native report for checking or guarded repair.
 
         Args:
@@ -324,9 +324,9 @@ class FlextInfraGatesDeps(FlextInfraGates):
         """
         started = time.monotonic()
         raw_output = ""
-        issues: tuple[m.Infra.Issue, ...] = ()
+        issues: tuple[p.Infra.Issue, ...] = ()
         outcome = c.Infra.ToolOutcome.ERROR
-        scan: m.Infra.DeptryScan | None = None
+        scan: p.Infra.DeptryScan | None = None
         try:
             report_dir = self._prepare_report_dir(project_dir, ctx)
             scan = self._capture_with_retry(project_dir, report_dir)

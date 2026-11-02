@@ -1,4 +1,14 @@
 rules:
+- id: pydantic-warning-canonical-fact
+  pattern: '${warning}'
+  goal: 'c.UnsupportedFieldAttributeWarning'
+  arguments:
+    warning: name=pydantic.warnings.UnsupportedFieldAttributeWarning
+  scope_kinds: [Function]
+  imports:
+    c: from flext_infra import c
+  bindings:
+    c.UnsupportedFieldAttributeWarning: flext_core._constants.pydantic.FlextConstantsPydantic.UnsupportedFieldAttributeWarning
 - id: distribution-identity-canonical-call
   pattern: '${normalize}(${name})'
   goal: 'u.Infra.distribution_identity(${name})'

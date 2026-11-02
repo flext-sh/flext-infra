@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
-from tests import m, tm
+from tests import m, p, tm
 
 
 class TestsFlextInfraDuplicationEvidence:
@@ -24,7 +24,7 @@ class TestsFlextInfraDuplicationEvidence:
         *,
         format_name: str = "python",
         mirror: bool = False,
-    ) -> m.Infra.JscpdReport:
+    ) -> p.Infra.JscpdReport:
         files = (root / "first.py", root / "second.py")
         for path in files:
             path.write_text(source, encoding="utf-8")
@@ -82,8 +82,8 @@ class TestsFlextInfraDuplicationEvidence:
     @staticmethod
     def _assess(
         root: Path,
-        report: m.Infra.JscpdReport,
-    ) -> m.Infra.DuplicationAssessment:
+        report: p.Infra.JscpdReport,
+    ) -> p.Infra.DuplicationAssessment:
         return FlextInfraDuplicationEvidence().assess(
             report,
             root,
@@ -273,7 +273,7 @@ class TestsFlextInfraDuplicationEvidence:
     @staticmethod
     def _cross_root_report(
         project: Path, external: Path, source: str
-    ) -> m.Infra.JscpdReport:
+    ) -> p.Infra.JscpdReport:
         """One clone whose sides live under different declared checkout roots.
 
         Returns:

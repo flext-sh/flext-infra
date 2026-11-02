@@ -31,8 +31,8 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_make_contract(
-        make: m.Infra.MakeSpec,
-    ) -> p.Result[m.Cli.AuthenticatedTemplateRender]:
+        make: p.Infra.MakeSpec,
+    ) -> p.Result[p.Cli.AuthenticatedTemplateRender]:
         """Render the typed command catalog with its original template observations.
 
         Returns:
@@ -48,7 +48,7 @@ class FlextInfraUtilitiesDocsRender:
     _MIN_REPO_PARTS: ClassVar[int] = 2
 
     @staticmethod
-    def docs_llms_index(context: m.Infra.DocsLlmsContext) -> str:
+    def docs_llms_index(context: p.Infra.DocsLlmsContext) -> str:
         """Render official references without fetching upstream documentation.
 
         Returns:
@@ -129,7 +129,7 @@ class FlextInfraUtilitiesDocsRender:
         )
 
     @staticmethod
-    def docs_markdown_line_length(tool_config: m.Infra.ToolConfigDocument) -> int:
+    def docs_markdown_line_length(tool_config: p.Infra.ToolConfigDocument) -> int:
         """Read the same prose width used by the formatter and Markdown gate.
 
         Returns:
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesDocsRender:
         path: str,
         *,
         is_dir: bool = False,
-        governance_source: m.Infra.CodegenBootstrapSource | None,
+        governance_source: p.Infra.CodegenBootstrapSource | None,
     ) -> str:
         """Return a resolvable governance link for README or project docs.
 
@@ -260,7 +260,7 @@ class FlextInfraUtilitiesDocsRender:
         return f"{prefix}/{path}"
 
     @staticmethod
-    def _governance_links(scope: m.Infra.DocScope) -> m.Infra.DocsGovernanceLinks:
+    def _governance_links(scope: p.Infra.DocScope) -> p.Infra.DocsGovernanceLinks:
         """Return the canonical governance pointers of one project scope.
 
         Returns:
@@ -309,7 +309,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_index(
-        scope: m.Infra.DocScope, contract: t.JsonMapping, *, width: int
+        scope: p.Infra.DocScope, contract: t.JsonMapping, *, width: int
     ) -> str:
         """Return the standard ``<project>/docs/index.md`` landing page.
 
@@ -340,7 +340,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_readme(
-        scope: m.Infra.DocScope, contract: t.JsonMapping, *, width: int
+        scope: p.Infra.DocScope, contract: t.JsonMapping, *, width: int
     ) -> str:
         """Return the canonical ``<project>/README.md`` (8-section structure).
 
@@ -380,7 +380,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_guides_index(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         guide_paths: Sequence[Path],
         width: int,
@@ -415,7 +415,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def api_readme(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         contract: t.JsonMapping,
         modules: Sequence[str],
         *,
@@ -446,7 +446,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_mkdocs(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         contract: t.JsonMapping,
     ) -> str:
         """Return the managed mkdocs.yml for a project scope.
@@ -490,7 +490,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_overview_page(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         contract: t.JsonMapping,
         modules: Sequence[str],
         *,
@@ -542,7 +542,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_modules_index(
-        scope: m.Infra.DocScope, modules: Sequence[str], *, width: int
+        scope: p.Infra.DocScope, modules: Sequence[str], *, width: int
     ) -> str:
         """Return the generated module index page for one project.
 
@@ -636,7 +636,7 @@ class FlextInfraUtilitiesDocsRender:
         contract: t.JsonMapping,
         *,
         project_count: int,
-        class_counts: Sequence[m.Infra.DocsClassCount],
+        class_counts: Sequence[p.Infra.DocsClassCount],
         width: int,
     ) -> str:
         """Return the generated root API overview page.
@@ -664,7 +664,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_root_projects_index(
-        entries: Sequence[m.Infra.DocsProjectIndexEntry], *, width: int
+        entries: Sequence[p.Infra.DocsProjectIndexEntry], *, width: int
     ) -> str:
         """Return the generated root index of per-project module pages.
 
@@ -679,7 +679,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_catalog_page(
-        entries: Sequence[m.Infra.DocsCatalogEntry],
+        entries: Sequence[p.Infra.DocsCatalogEntry],
         *,
         exclude_docs: Sequence[str] | None = None,
         width: int,

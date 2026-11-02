@@ -14,6 +14,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from operator import itemgetter
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 
@@ -25,6 +26,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeState
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesLazyInitRender:
@@ -43,7 +47,7 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @staticmethod
-    def lazy_init_project_root(run: m.Infra.PythonModelRun, pkg_dir: Path) -> Path:
+    def lazy_init_project_root(run: p.Infra.PythonModelRun, pkg_dir: Path) -> Path:
         """Return the nearest enclosing directory declaring a ``pyproject.toml``.
 
         Returns:
@@ -59,9 +63,9 @@ class FlextInfraUtilitiesLazyInitRender:
     @classmethod
     def lazy_init_render(
         cls,
-        plan: m.Infra.LazyInitPlan,
+        plan: p.Infra.LazyInitPlan,
         *,
-        model: m.Infra.PythonModelRun,
+        model: p.Infra.PythonModelRun,
         first_party: frozenset[str],
     ) -> str:
         """Render one written initializer.
@@ -111,9 +115,9 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @staticmethod
     def _lazy_init_docstring(
-        plan: m.Infra.LazyInitPlan,
+        plan: p.Infra.LazyInitPlan,
         project_root: Path,
-        model: m.Infra.PythonModelRun,
+        model: p.Infra.PythonModelRun,
     ) -> str:
         """Return the package docstring in the owning project's language.
 
@@ -135,7 +139,7 @@ class FlextInfraUtilitiesLazyInitRender:
                 declaration.spec.project.documentation_language
                 if declaration.spec.project is not None
                 else scope_state.docs_documentation_language({
-                    "documentation_language": m.Infra.ProjectSpec.model_fields[
+                    "documentation_language": p.Infra.ProjectSpec.model_fields[
                         "documentation_language"
                     ].get_default(),
                 })
@@ -233,7 +237,7 @@ class FlextInfraUtilitiesLazyInitRender:
     @classmethod
     def _lazy_init_eager_bindings(
         cls,
-        plan: m.Infra.LazyInitPlan,
+        plan: p.Infra.LazyInitPlan,
         first_party: frozenset[str],
     ) -> str:
         """Render eager dunder bindings that run after the lazy installer.

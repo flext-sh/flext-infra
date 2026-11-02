@@ -46,7 +46,7 @@ class TestsFlextInfraCodegenConform:
 
     @staticmethod
     def _declare_new_project(
-        root: Path, name: str, project: m.Infra.ProjectSpec
+        root: Path, name: str, project: p.Infra.ProjectSpec
     ) -> None:
         """Prepare Git and the target's typed declaration before initialization."""
         root.mkdir(parents=True, exist_ok=True)

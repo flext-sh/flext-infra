@@ -37,7 +37,7 @@ class FlextInfraWorkspaceRoutes:
 
     @staticmethod
     def _tests(
-        params: m.Infra.WorkspaceTestsRequest,
+        params: p.Infra.WorkspaceTestsRequest,
         *,
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
@@ -60,7 +60,7 @@ class FlextInfraWorkspaceRoutes:
 
     @classmethod
     def _tests_full(
-        cls, params: m.Infra.WorkspaceTestsRequest
+        cls, params: p.Infra.WorkspaceTestsRequest
     ) -> p.Cli.ErasedCommandResult:
         """Run one complete native suite without Testmon or an incremental pre-run.
 
@@ -100,7 +100,7 @@ class FlextInfraWorkspaceRoutes:
     @classmethod
     def _capture_gate(
         cls,
-        params: m.Infra.GateCaptureRequest,
+        params: p.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Retain the original checker process and return its unchanged status."""
         root = params.repository_root.expanduser().resolve()
@@ -110,7 +110,7 @@ class FlextInfraWorkspaceRoutes:
     @classmethod
     def _check(
         cls,
-        params: m.Infra.GateCaptureRequest,
+        params: p.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Run every read-only validation of the check verb in one process.
 
@@ -165,8 +165,8 @@ class FlextInfraWorkspaceRoutes:
 
     @staticmethod
     def _captured_gate_status(
-        params: m.Infra.GateCaptureRequest,
-        inputs: m.Infra.CodegenInputs,
+        params: p.Infra.GateCaptureRequest,
+        inputs: p.Infra.CodegenInputs,
     ) -> int:
         """Capture the original checker once and return its unchanged status.
 
@@ -202,7 +202,7 @@ class FlextInfraWorkspaceRoutes:
         return captured.process.raw_return_code
 
     @staticmethod
-    def release_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def release_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the release group's native model and handler bindings.
 
         Returns:
@@ -220,7 +220,7 @@ class FlextInfraWorkspaceRoutes:
         ))
 
     @classmethod
-    def workspace_routes(cls) -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def workspace_routes(cls) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the workspace group's native model and handler bindings.
 
         The routes that format their JSON payload stay explicit; every

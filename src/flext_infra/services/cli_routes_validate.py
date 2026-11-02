@@ -14,7 +14,7 @@ class FlextInfraValidationRoutes:
     """Own documentation, GitHub workflow, maintenance, and validation routes."""
 
     @staticmethod
-    def routes_for(group: str) -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def routes_for(group: str) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Construct only the selected public command family.
 
         Returns:

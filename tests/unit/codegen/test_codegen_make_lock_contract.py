@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, r, tm, u
+from tests import c, r, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -51,7 +51,7 @@ class TestsFlextInfraCodegenMakeLockContract:
         plan = u.Tests.conform_plan(root, workspace)
         tm.ok(
             u.Tests.materialize_codegen_plans(
-                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(plan.files)),
+                r[tuple[p.Infra.CodegenFilePlan, ...]].ok(tuple(plan.files)),
             ),
         )
 

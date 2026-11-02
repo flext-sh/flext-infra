@@ -32,7 +32,7 @@ class FlextInfraValidateLazyMapFreshness(FlextInfraProjectSelectionServiceBase[b
     """Flags ``__init__.py`` files whose lazy maps are out of sync with siblings."""
 
     @staticmethod
-    def build_report(repository_root: Path) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(repository_root: Path) -> p.Result[p.Infra.ValidationReport]:
         """Run the lazy-init generator in check-only mode, collect stale inits.
 
         Args:
@@ -46,7 +46,7 @@ class FlextInfraValidateLazyMapFreshness(FlextInfraProjectSelectionServiceBase[b
             repository_root=repository_root,
         ).plan_files()
         if planned.failure:
-            return r[m.Infra.ValidationReport].from_failure(planned)
+            return r[p.Infra.ValidationReport].from_failure(planned)
         modified = tuple(
             str(plan.path)
             for plan in planned.value
@@ -61,7 +61,7 @@ class FlextInfraValidateLazyMapFreshness(FlextInfraProjectSelectionServiceBase[b
             if passed
             else f"{len(violations)} stale __init__.py file(s) — run 'make gen'"
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=passed,
                 violations=violations,

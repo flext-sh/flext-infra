@@ -15,7 +15,7 @@ from pathlib import Path
 from flext_cli import u
 from typing_extensions import TypeForm
 
-from flext_infra import m, p, r, t
+from flext_infra import p, r, t
 
 
 class FlextInfraUtilitiesNativeTooling:
@@ -23,7 +23,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def native_tool_search_path_admission(
-        document: m.Infra.ToolConfigDocument,
+        document: p.Infra.ToolConfigDocument,
         repository_root: Path,
     ) -> p.Result[bool]:
         """Check rooted native search paths once, without copying the typed document.
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def diagnostic_exception_levels(
-        document: m.Infra.ToolConfigDocument,
+        document: p.Infra.ToolConfigDocument,
         checker: str,
         project_root: Path | None,
     ) -> Sequence[tuple[str, Mapping[str, str]]]:
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def native_tool_settings(
-        document: m.Infra.ToolConfigDocument, table: str
+        document: p.Infra.ToolConfigDocument, table: str
     ) -> t.JsonDict:
         """Read a declared native table without inventing an absent configuration.
 
@@ -163,7 +163,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def markdown_native_configuration(
-        markdown: m.Infra.MarkdownConfig,
+        markdown: p.Infra.MarkdownConfig,
         excludes: Sequence[str],
     ) -> str:
         """Render native Markdown tables from the common policy and overrides.
@@ -199,7 +199,7 @@ class FlextInfraUtilitiesNativeTooling:
         return u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(document))
 
     @staticmethod
-    def markdown_editor_configuration(markdown: m.Infra.MarkdownConfig) -> t.JsonDict:
+    def markdown_editor_configuration(markdown: p.Infra.MarkdownConfig) -> t.JsonDict:
         """Elect the editor-compatible policy from the common Markdown rules.
 
         Native rumdl rules and tables (``native_rules``/``native_settings``)
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def native_tool_configuration(
-        document: m.Infra.ToolConfigDocument, root: str
+        document: p.Infra.ToolConfigDocument, root: str
     ) -> t.JsonDict:
         """Compose a declared native root and its nested option tables.
 
@@ -243,7 +243,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def native_tool_setting[TValue](
-        document: m.Infra.ToolConfigDocument,
+        document: p.Infra.ToolConfigDocument,
         table: str,
         key: str,
         target: t.TypeForm[TValue],
@@ -260,7 +260,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def native_tool_strings(
-        document: m.Infra.ToolConfigDocument, table: str, key: str
+        document: p.Infra.ToolConfigDocument, table: str, key: str
     ) -> Sequence[str]:
         """Validate one native string-array option.
 

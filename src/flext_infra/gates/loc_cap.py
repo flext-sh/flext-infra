@@ -32,7 +32,7 @@ class FlextInfraGatesLocCap(FlextInfraGates):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Run scc over the project's Python directories, emitting per-file JSON.
@@ -55,12 +55,12 @@ class FlextInfraGatesLocCap(FlextInfraGates):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        ctx: p.Infra.GateContext,
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Parse scc JSON into one Issue per over-cap module.
 
         Returns:
-            The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, Sequence[p.Infra.Issue]]``.
 
         """
         del project_dir, ctx
@@ -85,7 +85,7 @@ class FlextInfraGatesLocCap(FlextInfraGates):
         return len(issues) == 0, issues
 
     @staticmethod
-    def _issue_for_over_cap(path: str, code: int, cap: int) -> m.Infra.Issue:
+    def _issue_for_over_cap(path: str, code: int, cap: int) -> p.Infra.Issue:
         """Build the ``LOC_CAP`` issue for one module past the SUPREME LAW cap.
 
         Returns:
@@ -106,14 +106,14 @@ class FlextInfraGatesLocCap(FlextInfraGates):
         cls,
         scc_json: str,
         cap: int,
-    ) -> tuple[m.Infra.Issue, ...]:
+    ) -> tuple[p.Infra.Issue, ...]:
         """Extract over-cap modules from an `scc --format json --by-file` payload.
 
         Generated and authored modules share the same configured ceiling.
         Parsing failures propagate.
 
         Returns:
-            The resulting ``tuple[m.Infra.Issue, ...],``.
+            The resulting ``tuple[p.Infra.Issue, ...],``.
 
         """
         report = m.Infra.SccReport.model_validate_json(scc_json, strict=True)

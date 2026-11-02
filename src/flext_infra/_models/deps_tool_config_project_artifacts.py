@@ -52,7 +52,7 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
         """One immutable YAML snapshot and its single parsed resolution."""
 
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(description="Ordered exact project configuration sources."),
         ]
         resolution: Annotated[

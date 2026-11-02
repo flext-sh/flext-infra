@@ -29,10 +29,10 @@ class TestsFlextInfraUtilitiesPromoted:
         *,
         path: Path,
         mutates: bool = True,
-        params: tuple[m.Infra.PromotedParam, ...] = (),
+        params: tuple[p.Infra.PromotedParam, ...] = (),
         verb: str = "probe",
         what: str = "all",
-    ) -> m.Infra.PromotedCommand:
+    ) -> p.Infra.PromotedCommand:
         """Build one real promoted command model for contract tests.
 
         Returns:

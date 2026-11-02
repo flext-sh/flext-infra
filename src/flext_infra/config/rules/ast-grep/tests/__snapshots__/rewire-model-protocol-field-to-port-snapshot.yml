@@ -12,11 +12,11 @@ snapshots:
       style: primary
       start: 64
       end: 80
-    - source: m.Value
+    - source: p.Value
       style: secondary
       start: 12
       end: 19
-    - source: m.Value
+    - source: p.Value
       style: secondary
       start: 12
       end: 19
@@ -113,11 +113,11 @@ snapshots:
       style: secondary
       start: 33
       end: 39
-    - source: m.Value
+    - source: p.Value
       style: secondary
       start: 13
       end: 20
-    - source: m.Value
+    - source: p.Value
       style: secondary
       start: 13
       end: 20
@@ -152,11 +152,11 @@ snapshots:
       style: primary
       start: 45
       end: 53
-    - source: m.Value
+    - source: p.Value
       style: secondary
       start: 13
       end: 20
-    - source: m.Value
+    - source: p.Value
       style: secondary
       start: 13
       end: 20
@@ -194,11 +194,11 @@ snapshots:
       style: primary
       start: 68
       end: 92
-    - source: m.Value
+    - source: p.Value
       style: secondary
       start: 12
       end: 19
-    - source: m.Value
+    - source: p.Value
       style: secondary
       start: 12
       end: 19

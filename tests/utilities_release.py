@@ -205,7 +205,7 @@ class TestsFlextInfraUtilitiesRelease:
     def run_release_main(
         repository_root: Path,
         *arguments: str,
-        ownership: m.Infra.GitLaneOwnershipReceipt | None = None,
+        ownership: p.Infra.GitLaneOwnershipReceipt | None = None,
     ) -> int:
         """Run the public release CLI against one real test workspace.
 
@@ -269,7 +269,7 @@ class TestsFlextInfraUtilitiesRelease:
         )
 
     @staticmethod
-    def release_build_report(repository_root: Path) -> m.Infra.BuildReport:
+    def release_build_report(repository_root: Path) -> p.Infra.BuildReport:
         """Read the strict build report the last build phase wrote.
 
         Returns:

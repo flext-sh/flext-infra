@@ -10,9 +10,9 @@ snapshots:
       style: secondary
       start: 5
       end: 14
-  from ai_hub._models.base import AiHubModelsBase:
+  from ai_hub._models.base import m.AiHub:
     labels:
-    - source: from ai_hub._models.base import AiHubModelsBase
+    - source: from ai_hub._models.base import m.AiHub
       style: primary
       start: 0
       end: 47

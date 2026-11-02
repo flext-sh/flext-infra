@@ -33,9 +33,9 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def runtime_dependency_plan(
-        scan: m.Infra.DeptryScan,
-        inputs: m.Infra.RuntimeDependencyInputs,
-    ) -> p.Result[m.Infra.RuntimeDependencyPlan]:
+        scan: p.Infra.DeptryScan,
+        inputs: p.Infra.RuntimeDependencyInputs,
+    ) -> p.Result[p.Infra.RuntimeDependencyPlan]:
         """Calculate native-evidenced changes from explicit supplier provenance.
 
         Preserve target-owned requirement strings, including their sources, extras
@@ -45,7 +45,7 @@ class FlextInfraUtilitiesDependencies(
             The target requirement changes and unresolved native import identities.
 
         """
-        result_type = r[m.Infra.RuntimeDependencyPlan]
+        result_type = r[p.Infra.RuntimeDependencyPlan]
         payload = FlextInfraUtilitiesDependencies._locked_environment_and_document(
             scan,
             inputs,
@@ -94,16 +94,16 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def _locked_environment_and_document(
-        scan: m.Infra.DeptryScan,
-        inputs: m.Infra.RuntimeDependencyInputs,
-    ) -> p.Result[tuple[m.Infra.LockedEnvironment, t.JsonMapping]]:
+        scan: p.Infra.DeptryScan,
+        inputs: p.Infra.RuntimeDependencyInputs,
+    ) -> p.Result[tuple[p.Infra.LockedEnvironment, t.JsonMapping]]:
         """Authenticate provenance and decode the lock and declaration payloads.
 
         Returns:
             The validated locked environment and native pyproject mapping.
 
         """
-        result_type = r[tuple[m.Infra.LockedEnvironment, t.JsonMapping]]
+        result_type = r[tuple[p.Infra.LockedEnvironment, t.JsonMapping]]
         target = inputs.target_root
         if (
             not target.is_absolute()
@@ -140,16 +140,16 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def _declared_runtime_requirements(
-        scan: m.Infra.DeptryScan,
+        scan: p.Infra.DeptryScan,
         document: t.JsonMapping,
-    ) -> p.Result[m.Infra.DepsToml.MemberRequirements]:
+    ) -> p.Result[p.Infra.DepsToml.MemberRequirements]:
         """Read the project table into its typed requirement declarations.
 
         Returns:
             The validated member requirements, or the declaration failure.
 
         """
-        result_type = r[m.Infra.DepsToml.MemberRequirements]
+        result_type = r[p.Infra.DepsToml.MemberRequirements]
         project = u.Cli.toml_mapping_child(document, c.Infra.PROJECT)
         if project is None:
             return result_type.fail(
@@ -165,9 +165,9 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def _validated_import_suppliers(
-        inputs: m.Infra.RuntimeDependencyInputs,
-        locked: m.Infra.LockedEnvironment,
-    ) -> p.Result[tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...]]:
+        inputs: p.Infra.RuntimeDependencyInputs,
+        locked: p.Infra.LockedEnvironment,
+    ) -> p.Result[tuple[tuple[p.Infra.RuntimeDependencyProvider, Requirement], ...]]:
         """Parse provider requirements and authenticate them against the lock.
 
         Returns:
@@ -175,7 +175,7 @@ class FlextInfraUtilitiesDependencies(
 
         """
         result_type = r[
-            tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...]
+            tuple[tuple[p.Infra.RuntimeDependencyProvider, Requirement], ...]
         ]
         suppliers = tuple(
             (provider, Requirement(provider.requirement))
@@ -198,9 +198,9 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def _runtime_selections(
-        scan: m.Infra.DeptryScan,
-        declarations: m.Infra.DepsToml.MemberRequirements,
-        suppliers: tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...],
+        scan: p.Infra.DeptryScan,
+        declarations: p.Infra.DepsToml.MemberRequirements,
+        suppliers: tuple[tuple[p.Infra.RuntimeDependencyProvider, Requirement], ...],
         *,
         development_only: t.StrTuple,
         used_without_import: t.StrTuple,
@@ -270,7 +270,7 @@ class FlextInfraUtilitiesDependencies(
     @classmethod
     def publish_runtime_dependency_plan(
         cls,
-        plan: m.Infra.RuntimeDependencyPlan,
+        plan: p.Infra.RuntimeDependencyPlan,
     ) -> p.Result[bool]:
         """Publish only the calculated runtime list against unchanged source states.
 
@@ -387,7 +387,7 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def project_development_requirements(
-        scaffold: m.Infra.ScaffoldProjectSpec,
+        scaffold: p.Infra.ScaffoldProjectSpec,
         *,
         distribution: str,
         kind: c.Infra.ProjectKind,
@@ -466,7 +466,7 @@ class FlextInfraUtilitiesDependencies(
         root: Path,
         repositories: Sequence[p.Infra.RepositoryRef],
         *,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+        planned_manifests: Sequence[p.Infra.CodegenFilePlan] = (),
     ) -> Sequence[str]:
         """Order declared packages by their actual runtime dependency graph.
 
@@ -488,7 +488,7 @@ class FlextInfraUtilitiesDependencies(
         root: Path,
         repositories: Sequence[p.Infra.RepositoryRef],
         *,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+        planned_manifests: Sequence[p.Infra.CodegenFilePlan] = (),
     ) -> Sequence[Sequence[str]]:
         """Group declared packages into runtime-dependency-first waves.
 
@@ -520,11 +520,11 @@ class FlextInfraUtilitiesDependencies(
     def workspace_bootstrap_requirements(
         cls,
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         distribution: str,
         *,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
-    ) -> p.Result[m.Infra.BootstrapRequirementsRenderSpec]:
+        planned_manifests: Sequence[p.Infra.CodegenFilePlan] = (),
+    ) -> p.Result[p.Infra.BootstrapRequirementsRenderSpec]:
         """Project the candidate closure while retaining original observations.
 
         Returns:
@@ -546,7 +546,7 @@ class FlextInfraUtilitiesDependencies(
         }
         return u.Cli.dag_closure(graph, frozenset((distribution,))).flat_map(
             lambda closed: u.Cli.dag_order({name: graph[name] for name in closed}).map(
-                lambda names: m.Infra.BootstrapRequirementsRenderSpec(
+                lambda names: p.Infra.BootstrapRequirementsRenderSpec(
                     # requirements files are not shell: shlex quoting breaks
                     # uv pip; PEP 508 direct reference + URL-encoded path is
                     # the portable form for pip and uv alike.
@@ -573,8 +573,8 @@ class FlextInfraUtilitiesDependencies(
         root: Path,
         repositories: Sequence[p.Infra.RepositoryRef],
         *,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
-        inputs: Sequence[m.Cli.AtomicFileState] = (),
+        planned_manifests: Sequence[p.Infra.CodegenFilePlan] = (),
+        inputs: Sequence[p.Cli.AtomicFileState] = (),
     ) -> Mapping[str, tuple[str, ...]]:
         """Read the declared local graph through the existing manifest owner.
 

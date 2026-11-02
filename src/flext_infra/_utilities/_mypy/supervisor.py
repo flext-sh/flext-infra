@@ -160,7 +160,7 @@ class FlextInfraUtilitiesMypySupervisor:
     @classmethod
     def run(
         cls,
-        invocation: m.Infra.MypyInvocation,
+        invocation: p.Infra.MypyInvocation,
         memory_bytes: int,
         timeout: int,
         kill_after: int,

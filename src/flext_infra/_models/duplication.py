@@ -26,7 +26,7 @@ class FlextInfraModelsDuplication:
         with no overrides table gets the same behavior as the workspace scan.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -94,7 +94,7 @@ class FlextInfraModelsDuplication:
         declared key that violates the schema fails loud.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -113,7 +113,7 @@ class FlextInfraModelsDuplication:
     class JscpdConfig(m.ContractModel):
         """Complete generated jscpd invocation configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -190,7 +190,7 @@ class FlextInfraModelsDuplication:
     class JscpdFile(m.ContractModel):
         """One side of a detected clone."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -221,7 +221,7 @@ class FlextInfraModelsDuplication:
     class JscpdDuplicate(m.ContractModel):
         """One complete two-sided clone from jscpd."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -279,7 +279,7 @@ class FlextInfraModelsDuplication:
     class JscpdStatisticsSummary(m.ContractModel):
         """Complete aggregate emitted for one format or the whole scan."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -329,7 +329,7 @@ class FlextInfraModelsDuplication:
     class JscpdStatistics(m.ContractModel):
         """Per-format and total statistics proving non-empty collection."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,

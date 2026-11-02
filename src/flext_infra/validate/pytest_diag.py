@@ -56,7 +56,7 @@ class FlextInfraPytestDiagExtractor(
     ] = None
 
     @classmethod
-    def _extract_report_events(cls, report_log: Path, diag: m.Infra.DiagResult) -> None:
+    def _extract_report_events(cls, report_log: Path, diag: p.Infra.DiagResult) -> None:
         """Read real test attempts and every warning independently of terminal text.
 
         Every reported node must show one setup and one teardown phase, plus a
@@ -72,7 +72,7 @@ class FlextInfraPytestDiagExtractor(
         if not lines:
             msg = f"pytest report log contains no events: {report_log}"
             raise ValueError(msg)
-        warnings: MutableSequence[m.Infra.PytestReportEvent] = []
+        warnings: MutableSequence[p.Infra.PytestReportEvent] = []
         for line in lines:
             event = m.Infra.PytestReportEvent.model_validate_json(line)
             if event.report_type == "WarningMessage":
@@ -101,8 +101,8 @@ class FlextInfraPytestDiagExtractor(
 
     @staticmethod
     def _record_case_event(
-        event: m.Infra.PytestReportEvent,
-        diag: m.Infra.DiagResult,
+        event: p.Infra.PytestReportEvent,
+        diag: p.Infra.DiagResult,
     ) -> None:
         if event.nodeid is None:
             return
@@ -125,8 +125,8 @@ class FlextInfraPytestDiagExtractor(
 
     @staticmethod
     def _record_markdown_properties(
-        event: m.Infra.PytestReportEvent,
-        diag: m.Infra.DiagResult,
+        event: p.Infra.PytestReportEvent,
+        diag: p.Infra.DiagResult,
     ) -> None:
         """Validate public properties once at their typed ingress boundary.
 
@@ -157,9 +157,9 @@ class FlextInfraPytestDiagExtractor(
 
     @staticmethod
     def _record_warning(
-        event: m.Infra.PytestReportEvent,
-        identity: m.Infra.PytestWarningEvent,
-        diag: m.Infra.DiagResult,
+        event: p.Infra.PytestReportEvent,
+        identity: p.Infra.PytestWarningEvent,
+        diag: p.Infra.DiagResult,
     ) -> None:
         if (event.category, event.filename, event.lineno, event.message) != (
             identity.category,
@@ -182,7 +182,7 @@ class FlextInfraPytestDiagExtractor(
         log_path: Path,
         *,
         report_log: Path,
-    ) -> p.Result[m.Infra.PytestDiagnostics]:
+    ) -> p.Result[p.Infra.PytestDiagnostics]:
         """Extract diagnostics from JUnit XML, pytest log and explicit report-log.
 
         Args:
@@ -198,13 +198,13 @@ class FlextInfraPytestDiagExtractor(
         diag = m.Infra.DiagResult()
         self._parse_xml(junit_path, diag)
         self._extract_report_events(report_log, diag)
-        return r[m.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
+        return r[p.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @classmethod
     def extract_report_log(
         cls,
         report_log: Path,
-    ) -> p.Result[m.Infra.PytestDiagnostics]:
+    ) -> p.Result[p.Infra.PytestDiagnostics]:
         """Read native event evidence without manufacturing JUnit test outcomes.
 
         Failed calls and failed setup, teardown or worker-crash phases retain
@@ -212,7 +212,7 @@ class FlextInfraPytestDiagExtractor(
         zero execution; original traceback bytes stay in the raw log.
 
         Returns:
-            The resulting ``p.Result[m.Infra.PytestDiagnostics]``.
+            The resulting ``p.Result[p.Infra.PytestDiagnostics]``.
 
         """
         diag = m.Infra.DiagResult()
@@ -227,7 +227,7 @@ class FlextInfraPytestDiagExtractor(
         return r.ok(cls._diagnostics_model(diag))
 
     @staticmethod
-    def _diagnostics_model(diag: m.Infra.DiagResult) -> m.Infra.PytestDiagnostics:
+    def _diagnostics_model(diag: p.Infra.DiagResult) -> p.Infra.PytestDiagnostics:
         """Convert mutable extraction state to the canonical diagnostics model.
 
         Returns:

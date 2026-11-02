@@ -12,11 +12,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from flext_infra.codegen import FlextInfraCodegenLazyInit
-from tests import p
 
 
 def expect_read_only_drift(

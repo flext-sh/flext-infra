@@ -59,7 +59,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
             self.bindings = bindings
             self.aliases: MutableMapping[tuple[str, int], str | None] = {}
             self.packages: set[str] = set()
-            self.edits: list[m.Infra.SourceRewrite] = []
+            self.edits: list[p.Infra.SourceRewrite] = []
             self.environ = runtime.qualified_name(project, "os.environ")
             self.environ_get = runtime.qualified_name(project, "os.environ.get")
             self.text = runtime.qualified_name(project, "builtins.str")
@@ -263,7 +263,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         *,
         source_project: p.Infra.RopeProject,
         owner_context: Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
             tree = ast.parse(source)
@@ -341,7 +341,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
     def _settings_owner_contexts(
         cls,
         repository_root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         source_project: p.Infra.RopeProject,
         dependency_codegen: Mapping[Path, m.Infra.CodegenInputs] | None,
     ) -> Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]]:
@@ -373,7 +373,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         owner_root: Path,
         source_project: p.Infra.RopeProject,
         repository_root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         dependency_codegen: Mapping[Path, m.Infra.CodegenInputs] | None,
     ) -> tuple[str, str, m.Infra.CodegenConfigSpec]:
         """Read the namespace and validate the exact policy inputs of one owner.

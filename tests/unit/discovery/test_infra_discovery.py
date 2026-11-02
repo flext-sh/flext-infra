@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraDiscoveryInfraDiscovery:
@@ -182,7 +182,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         """Test discover projects result type."""
         result = service.discover_projects(workspace_with_projects)
         tm.ok(result)
-        projects: Sequence[m.Infra.ProjectInfo] = result.value
+        projects: Sequence[p.Infra.ProjectInfo] = result.value
         for item in projects:
             tm.that(item, is_=m.Infra.ProjectInfo)
 

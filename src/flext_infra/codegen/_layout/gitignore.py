@@ -118,9 +118,9 @@ class FlextInfraCodegenLayoutGitignore:
     @staticmethod
     def _managed_profile(
         project_dir: Path,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         *,
-        inputs: m.Infra.CodegenInputs,
+        inputs: p.Infra.CodegenInputs,
     ) -> p.Result[c.Infra.MakeProfile | None]:
         """Make profile when the project is governed by a workspace.
 

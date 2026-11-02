@@ -24,11 +24,11 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def codegen_compose_file_plans(
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
         *,
         ordered: bool = False,
-        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        inputs: tuple[p.Cli.AtomicFileState, ...] = (),
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Compose effects and original inputs, advancing bytes for ordered phases.
 
         Returns:
@@ -53,6 +53,12 @@ class FlextInfraUtilitiesCodegenFilePlan:
                     ("policy", previous.policy == file.policy),
                     ("tracking", previous.tracking == file.tracking),
                     ("index_before", previous.index_before == file.index_before),
+                    (
+                        "move_source",
+                        previous.move_source is None
+                        or file.move_source is None
+                        or previous.move_source == file.move_source,
+                    ),
                     (
                         "desired_content",
                         ordered or previous.desired_content == file.desired_content,
@@ -84,23 +90,24 @@ class FlextInfraUtilitiesCodegenFilePlan:
             )
             combined_inputs = (*previous_inputs, *file.inputs, *inputs)
             selected = file if ordered else previous
+            move_source = (
+                file.move_source or previous.move_source
+                if selected.desired_content is not None
+                else None
+            )
             files[file.path] = (
                 selected
                 if selected.before is previous.before
                 and dependencies == selected.tracking_dependencies
                 and combined_inputs == selected.inputs
-                else m.Infra.CodegenFilePlan(
-                    project=selected.project,
-                    path=selected.path,
-                    before=previous.before,
-                    desired_content=selected.desired_content,
-                    desired_mode=selected.desired_mode,
-                    owner=selected.owner,
-                    policy=selected.policy,
-                    tracking=selected.tracking,
-                    index_before=selected.index_before,
-                    tracking_dependencies=dependencies,
-                    inputs=combined_inputs,
+                and move_source == selected.move_source
+                else selected.model_copy(
+                    update={
+                        "before": previous.before,
+                        "tracking_dependencies": dependencies,
+                        "inputs": combined_inputs,
+                        "move_source": move_source,
+                    }
                 )
             )
         return tuple(files.values())
@@ -109,7 +116,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
     def codegen_stage_file_plans(
         cls,
         index: MutableMapping[Path, m.Infra.CodegenFilePlan],
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
         *,
         ordered: bool = False,
     ) -> None:
@@ -123,7 +130,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
     @classmethod
     def codegen_duplicate_effect_diagnostic(
         cls,
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
     ) -> str:
         """Describe bounded duplicate declarations without exposing source bytes.
 
@@ -131,7 +138,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             Duplicate paths, ownership and exact in-memory byte digests.
 
         """
-        grouped: dict[Path, list[m.Infra.CodegenFilePlan]] = {}
+        grouped: dict[Path, list[p.Infra.CodegenFilePlan]] = {}
         for plan in plans:
             grouped.setdefault(plan.path, []).append(plan)
         duplicates = tuple(items for items in grouped.values() if len(items) > 1)
@@ -172,7 +179,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         *,
         source_project: p.Infra.RopeProject,
         declared_files: Mapping[Path, m.Infra.CodegenFilePlan],
-    ) -> m.Infra.CodegenFilePlan:
+    ) -> p.Infra.CodegenFilePlan:
         """Bind a semantic edit to its original candidate publication witness.
 
         Returns:
@@ -213,17 +220,12 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 desired_content=edit.updated_source.encode(c.DEFAULT_ENCODING),
                 desired_mode=mode,
             )
-        return m.Infra.CodegenFilePlan(
-            project=previous.project,
-            path=path,
-            before=before,
-            desired_content=edit.updated_source.encode(c.DEFAULT_ENCODING),
-            desired_mode=mode,
-            owner=previous.owner,
-            policy=previous.policy,
-            tracking=previous.tracking,
-            index_before=previous.index_before,
-            tracking_dependencies=previous.tracking_dependencies,
+        return previous.model_copy(
+            update={
+                "before": before,
+                "desired_content": edit.updated_source.encode(c.DEFAULT_ENCODING),
+                "desired_mode": mode,
+            }
         )
 
     @staticmethod
@@ -290,7 +292,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def atomic_file_state_differs(
-        before: m.Cli.AtomicFileState,
+        before: p.Cli.AtomicFileState,
         *,
         desired_content: bytes | None,
         desired_mode: int | None,
@@ -308,7 +310,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         return before.content != desired_content or before.mode != desired_mode
 
     @staticmethod
-    def codegen_file_requires_effect(plan: m.Infra.CodegenFilePlan) -> bool:
+    def codegen_file_requires_effect(plan: p.Infra.CodegenFilePlan) -> bool:
         """Whether publication must change a generated-file destination.
 
         Returns:
@@ -325,7 +327,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def codegen_fixed_point(
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
         *,
         subject: str,
     ) -> p.Result[bool]:
@@ -353,7 +355,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
 
     @staticmethod
     def codegen_file_drift_report(
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
         *,
         limit: int = 40,
     ) -> str:

@@ -30,7 +30,7 @@ class FlextInfraGatesRuffFormat(FlextInfraGatesRuffGate):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Build the format verdict command from the config-owned flags.
@@ -51,7 +51,7 @@ class FlextInfraGatesRuffFormat(FlextInfraGatesRuffGate):
     def _get_check_dirs(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """Format every project-owned Python root, or the project itself.
 
@@ -67,8 +67,8 @@ class FlextInfraGatesRuffFormat(FlextInfraGatesRuffGate):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        ctx: p.Infra.GateContext,
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Report each file Ruff would reformat once, from its check listing.
 
         Returns:
@@ -76,7 +76,7 @@ class FlextInfraGatesRuffFormat(FlextInfraGatesRuffGate):
 
         """
         del ctx
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: MutableSequence[p.Infra.Issue] = []
         if not u.Cli.process_succeeded(result.outcome) and result.stdout.strip():
             seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
@@ -119,7 +119,7 @@ class FlextInfraGatesRuffFormat(FlextInfraGatesRuffGate):
     def _build_fix_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
     ) -> Sequence[str]:
         """Build fix command.

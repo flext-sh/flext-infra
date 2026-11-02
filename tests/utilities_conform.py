@@ -77,7 +77,7 @@ class TestsFlextInfraUtilitiesConform:
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
         scope: c.Infra.CodegenConformScope = c.Infra.CodegenConformScope.SELF,
         mode: c.Infra.CodegenConformMode = c.Infra.CodegenConformMode.CHECK,
-    ) -> m.Infra.CodegenConformRequest:
+    ) -> p.Infra.CodegenConformRequest:
         """Build one codegen conform request; every default is the model's own.
 
         Returns:
@@ -94,11 +94,11 @@ class TestsFlextInfraUtilitiesConform:
     @staticmethod
     def conform_plan(
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         *,
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
         executor_root: Path | None = None,
-    ) -> m.Infra.CodegenPlan:
+    ) -> p.Infra.CodegenPlan:
         """Plan one fixture workspace through the public conform boundary.
 
         Returns:
@@ -121,7 +121,7 @@ class TestsFlextInfraUtilitiesConform:
         )
 
     @staticmethod
-    def conform_makefile_text(root: Path, workspace: m.Infra.WorkspaceSpec) -> str:
+    def conform_makefile_text(root: Path, workspace: p.Infra.WorkspaceSpec) -> str:
         """Render the root Makefile conform plans for one fixture workspace.
 
         Returns:

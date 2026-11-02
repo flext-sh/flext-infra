@@ -64,7 +64,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 custom_steps: str = ""
                 custom_post_steps: str = ""
                 has_devcontainer: bool = False
-                workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = ()
+                workspace_repositories: tuple[p.Infra.RepositoryRef, ...] = ()
                 cooldown_excluded_dependencies: tuple[t.NonEmptyStr, ...] = ()
 
             @staticmethod
@@ -83,7 +83,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 )
 
             @staticmethod
-            def synthetic_private_submodules() -> m.Infra.CiPrivateSubmodulesSpec:
+            def synthetic_private_submodules() -> p.Infra.CiPrivateSubmodulesSpec:
                 """One schema-valid deploy-key contract carrying zero org data.
 
                 The private-submodule init mechanism is proven against this
@@ -116,7 +116,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 repository_branch: t.NonEmptyStr,
                 ci_trigger_branches: tuple[t.NonEmptyStr, ...],
                 overrides: WorkflowRenderOverrides | None = None,
-            ) -> m.Infra.GithubWorkflowRenderSpec:
+            ) -> p.Infra.GithubWorkflowRenderSpec:
                 """Build the common strictly typed workflow rendering contract.
 
                 Returns:
@@ -238,8 +238,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             project_name: str = "fixture-project"
             package: bool = True
             examples_module: str | None = None
-            extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = ()
-            script_dispatch: m.Infra.ScriptDispatchSpec | None = None
+            extra_verbs: tuple[p.Infra.MakeVerbSpec, ...] = ()
+            script_dispatch: p.Infra.ScriptDispatchSpec | None = None
             version: str | None = None
 
         @staticmethod
@@ -373,7 +373,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             tm.that(paths <= {file.path for file in artifacts}, truth=True)
             tm.ok(
                 u.Tests.materialize_codegen_plans(
-                    r[tuple[m.Infra.CodegenFilePlan, ...]].ok(artifacts),
+                    r[tuple[p.Infra.CodegenFilePlan, ...]].ok(artifacts),
                 ),
             )
             if bootstrap:
@@ -483,7 +483,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             }
 
         @staticmethod
-        def command_receipt(path: Path) -> m.Cli.CommandOutput:
+        def command_receipt(path: Path) -> p.Cli.CommandOutput:
             """Read one recorded provisioning command outcome.
 
             Returns:
@@ -519,7 +519,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
         @staticmethod
         def materialize_docs_bundle(
-            bundle: m.Infra.DocsGenerationBundle,
+            bundle: p.Infra.DocsGenerationBundle,
         ) -> p.Result[bool]:
             """Publish one immutable docs bundle through the shared file-change owner.
 

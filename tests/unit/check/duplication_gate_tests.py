@@ -14,7 +14,7 @@ import pytest
 from flext_infra import config, t
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraGatesDuplication
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 @pytest.mark.usefixtures("_ci_context")
@@ -46,7 +46,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 """
 
     @staticmethod
-    def _ctx(root: Path) -> m.Infra.GateContext:
+    def _ctx(root: Path) -> p.Infra.GateContext:
         return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
 
     @staticmethod

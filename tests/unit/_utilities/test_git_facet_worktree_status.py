@@ -103,6 +103,10 @@ class TestsFlextInfraGitFacetWorktreeStatus:
             report.porcelain[c.Infra.GIT_PORCELAIN_PATH_OFFSET :],
             eq=changed_path.name,
         )
+        identity = tm.ok(
+            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=real_git_repo))
+        )
+        tm.that(identity.porcelain, eq=report.porcelain)
 
     @staticmethod
     def test_git_changed_paths_reports_tracked_and_untracked_files(

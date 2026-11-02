@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import m, tm, u
+from tests import m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -75,7 +75,7 @@ class TestsFlextInfraFreshImport:
     @staticmethod
     def test_empty_package_list_passes(v: FlextInfraValidateFreshImport) -> None:
         """Test empty package list passes."""
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=()))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(packages=()))
         tm.that(report, is_=m.Infra.ValidationReport)
         tm.ok(report.passed)
         tm.that(report.violations, length=0)
@@ -83,14 +83,14 @@ class TestsFlextInfraFreshImport:
     @staticmethod
     def test_stdlib_package_passes(v: FlextInfraValidateFreshImport) -> None:
         """Test stdlib package passes."""
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys",)))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys",)))
         tm.ok(report.passed)
         tm.that(report.violations, length=0)
 
     @staticmethod
     def test_nonexistent_package_fails(v: FlextInfraValidateFreshImport) -> None:
         """Test nonexistent package fails."""
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("nonexistent_pkg_xyz_abc_123",)),
         )
         tm.fail(report.passed)
@@ -102,7 +102,7 @@ class TestsFlextInfraFreshImport:
         v: FlextInfraValidateFreshImport,
     ) -> None:
         """Test mixed good and bad reports only bad."""
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("sys", "nonexistent_xyz_qqq", "os")),
         )
         tm.fail(report.passed)
@@ -114,7 +114,7 @@ class TestsFlextInfraFreshImport:
         v: FlextInfraValidateFreshImport,
     ) -> None:
         """Test stops at first causal failure."""
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("nonexistent_a_qqq", "nonexistent_b_qqq")),
         )
         tm.that(report.violations, length=1)
@@ -127,7 +127,7 @@ class TestsFlextInfraFreshImport:
         v: FlextInfraValidateFreshImport,
     ) -> None:
         """Test passing summary is human readable."""
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys", "os")))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys", "os")))
         tm.that(report.summary, has="import")
 
     @staticmethod
@@ -143,7 +143,7 @@ class TestsFlextInfraFreshImport:
             repository_root=tmp_path,
             runtime_root=suite_runtime_root,
         )
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             validator.build_report(packages=("demo_external",)),
         )
         tm.that(report.passed, eq=True, msg=str(report.violations))
@@ -151,7 +151,7 @@ class TestsFlextInfraFreshImport:
     @staticmethod
     def test_flext_core_imports_cleanly(v: FlextInfraValidateFreshImport) -> None:
         """Test flext core imports cleanly."""
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_core",)),
         )
         tm.that(report.passed, eq=True, msg=report.summary)
@@ -161,7 +161,7 @@ class TestsFlextInfraFreshImport:
         v: FlextInfraValidateFreshImport,
     ) -> None:
         """Test flext infra imports cleanly."""
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_infra",)),
         )
         tm.that(report.passed, eq=True, msg=report.summary)

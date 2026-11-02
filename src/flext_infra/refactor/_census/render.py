@@ -6,11 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from flext_infra import m
-
 
 class FlextInfraRefactorCensusRender:
     """Plain-text rendering of the census WorkspaceReport.
@@ -20,7 +15,7 @@ class FlextInfraRefactorCensusRender:
     """
 
     @staticmethod
-    def _render_workspace_report(report: m.Infra.WorkspaceReport) -> str:
+    def _render_workspace_report(report: p.Infra.WorkspaceReport) -> str:
         """Render workspace census report from typed model fields.
 
         Returns:
@@ -71,7 +66,7 @@ class FlextInfraRefactorCensusRender:
         return "\n".join(lines)
 
     @staticmethod
-    def render_text(report: m.Infra.WorkspaceReport) -> str:
+    def render_text(report: p.Infra.WorkspaceReport) -> str:
         """Render the canonical workspace census report.
 
         Returns:

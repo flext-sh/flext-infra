@@ -21,7 +21,7 @@ class FlextInfraDocCollector:
     """Publish only fully supported source associations."""
 
     @classmethod
-    def collect(cls, request: m.Infra.DocsCollectRequest) -> p.Result[bool]:
+    def collect(cls, request: p.Infra.DocsCollectRequest) -> p.Result[bool]:
         """Parse the configuration, collect sources, and publish their plans.
 
         Returns:
@@ -68,17 +68,17 @@ class FlextInfraDocCollector:
 
     @staticmethod
     def _configuration(
-        request: m.Infra.DocsCollectRequest,
+        request: p.Infra.DocsCollectRequest,
         *,
         inputs: MutableMapping[Path, m.Cli.AtomicFileState],
-    ) -> p.Result[m.Infra.PlanCollectionConfig]:
+    ) -> p.Result[p.Infra.PlanCollectionConfig]:
         """Require a physical root and parse the collection configuration.
 
         Returns:
             The parsed collection configuration, or the first failure.
 
         """
-        result_type = r[m.Infra.PlanCollectionConfig]
+        result_type = r[p.Infra.PlanCollectionConfig]
         root = request.repository_root
         if not root.is_absolute() or ".." in root.parts or root.resolve() != root:
             return result_type.fail(
@@ -112,7 +112,7 @@ class FlextInfraDocCollector:
 
     @staticmethod
     def _prune_bundle_directories(
-        bundle: m.Infra.PlanCollectionBundle,
+        bundle: p.Infra.PlanCollectionBundle,
     ) -> p.Result[bool]:
         """Delete the bundle's empty prunable directories.
 

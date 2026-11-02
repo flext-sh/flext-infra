@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 @runtime_checkable
@@ -25,9 +25,9 @@ class FlextInfraProtocolsDeps(Protocol):
         def __call__(
             self,
             project_root: Path,
-            scan: m.Infra.DeptryScan,
+            scan: p.Infra.DeptryScan,
             /,
-        ) -> p.Result[m.Infra.RuntimeDependencyInputs]:
+        ) -> p.Result[p.Infra.RuntimeDependencyInputs]:
             """Return the elected lock, supplier metadata and own applicability."""
             ...
 

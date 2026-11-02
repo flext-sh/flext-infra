@@ -15,12 +15,12 @@ class FlextInfraUtilitiesDocsGenerateSources:
 
     @staticmethod
     def scope_from_sources(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
-        metadata_projection: m.Infra.CodegenFilePlan | None = None,
-        governance_source: m.Infra.CodegenBootstrapSource | None = None,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-    ) -> m.Infra.DocScope:
+        metadata_projection: p.Infra.CodegenFilePlan | None = None,
+        governance_source: p.Infra.CodegenBootstrapSource | None = None,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+    ) -> p.Infra.DocScope:
         """Derive scope metadata, package identity and governance owner.
 
         Returns:

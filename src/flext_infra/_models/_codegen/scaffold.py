@@ -65,7 +65,7 @@ class FlextInfraModelsCodegenScaffold:
     class ScaffoldDirRequest(m.ArbitraryTypesModel):
         """Directory-level scaffold request and accumulation state."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
             revalidate_instances="never",
         )

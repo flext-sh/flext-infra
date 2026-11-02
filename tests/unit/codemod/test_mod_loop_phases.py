@@ -23,7 +23,7 @@ from flext_infra.codemod.loop import (
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 _FIRST_RENAME = FlextInfraAccessorMigrationOrchestrator.automated_rules()[0]
 _SOURCE_NAME = _FIRST_RENAME.source_name
@@ -41,7 +41,7 @@ class _RecordingProgress:
         """Record one progress line."""
         self.messages.append(message)
 
-    def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
+    def emit_rename(self, report: p.Infra.ApplyRenamesReport) -> None:
         """Record one rename campaign summary."""
         self.messages.append(f"rename occurrences={report.occurrences}")
 
@@ -121,7 +121,7 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
     """
     if not callback:
 
-        def automated(report: m.Infra.AccessorMigrationReport) -> bool:
+        def automated(report: p.Infra.AccessorMigrationReport) -> bool:
             return bool(report.automated_change_count)
 
         return infra.accessor_migrate(

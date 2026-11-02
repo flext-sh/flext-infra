@@ -24,9 +24,9 @@ snapshots:
       style: secondary
       start: 0
       end: 77
-  "from tests import tm\nassert (\n    tm.ok(result) == expected\n)\n":
+  "from tests import p, tm\nassert (\n    tm.ok(result) == expected\n)\n":
     fixed: |
-      from tests import tm
+      from tests import p, tm
       if (
           tm.ok(result) == expected
       ):
@@ -41,21 +41,21 @@ snapshots:
       style: primary
       start: 21
       end: 61
-    - source: from tests import tm
+    - source: from tests import p, tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import tm
+        from tests import p, tm
         assert (
             tm.ok(result) == expected
         )
       style: secondary
       start: 0
       end: 62
-  "from tests import tm\nassert 0 < count < limit\n":
+  "from tests import p, tm\nassert 0 < count < limit\n":
     fixed: |
-      from tests import tm
+      from tests import p, tm
       if 0 < count < limit:
           pass
       else:
@@ -65,19 +65,19 @@ snapshots:
       style: primary
       start: 21
       end: 45
-    - source: from tests import tm
+    - source: from tests import p, tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import tm
+        from tests import p, tm
         assert 0 < count < limit
       style: secondary
       start: 0
       end: 46
-  "from tests import tm\nassert len(lines) == _EXPECTED_LINES\n":
+  "from tests import p, tm\nassert len(lines) == _EXPECTED_LINES\n":
     fixed: |
-      from tests import tm
+      from tests import p, tm
       if len(lines) == _EXPECTED_LINES:
           pass
       else:
@@ -87,19 +87,19 @@ snapshots:
       style: primary
       start: 21
       end: 57
-    - source: from tests import tm
+    - source: from tests import p, tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import tm
+        from tests import p, tm
         assert len(lines) == _EXPECTED_LINES
       style: secondary
       start: 0
       end: 58
-  "from tests import tm\nassert path.is_file()\n":
+  "from tests import p, tm\nassert path.is_file()\n":
     fixed: |
-      from tests import tm
+      from tests import p, tm
       if path.is_file():
           pass
       else:
@@ -109,12 +109,12 @@ snapshots:
       style: primary
       start: 21
       end: 42
-    - source: from tests import tm
+    - source: from tests import p, tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import tm
+        from tests import p, tm
         assert path.is_file()
       style: secondary
       start: 0

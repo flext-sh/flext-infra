@@ -28,7 +28,7 @@ class FlextInfraCodegenRoutes:
         )
 
     @staticmethod
-    def check_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def check_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the check group's native model and handler bindings.
 
         Returns:
@@ -180,7 +180,7 @@ class FlextInfraCodegenRoutes:
         )
 
     @staticmethod
-    def deps_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def deps_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the dependency group's native model and handler bindings.
 
         Returns:

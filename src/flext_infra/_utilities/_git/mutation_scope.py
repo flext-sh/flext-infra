@@ -24,7 +24,7 @@ class FlextInfraUtilitiesGitMutationScope:
     """Classify absent Git ownership before opening any declared Git marker."""
 
     @staticmethod
-    def _git_mutation_scope(root: Path) -> m.Infra.GitMutationScope:
+    def _git_mutation_scope(root: Path) -> p.Infra.GitMutationScope:
         resolved = root.resolve(strict=True)
         if not resolved.is_dir():
             msg = f"mutation scope is not a physical directory: {root}"
@@ -58,19 +58,19 @@ class FlextInfraUtilitiesGitMutationScope:
     @classmethod
     def git_mutation_scope(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitMutationScope]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitMutationScope]:
         """Reject malformed declared Git roots; marker-free roots remain file scopes.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitMutationScope]``.
+            The resulting ``p.Result[p.Infra.GitMutationScope]``.
 
         """
         try:
             scope = cls._git_mutation_scope(request.repo_root)
         except (GitError, OSError, ValueError) as exc:
-            return r[m.Infra.GitMutationScope].fail(str(exc), exception=exc)
-        return r[m.Infra.GitMutationScope].ok(scope)
+            return r[p.Infra.GitMutationScope].fail(str(exc), exception=exc)
+        return r[p.Infra.GitMutationScope].ok(scope)
 
     @classmethod
     def mutation_lock_path(cls, root: Path) -> p.Result[Path]:
@@ -105,7 +105,7 @@ class FlextInfraUtilitiesGitMutationScope:
         return lock_path.with_name(lock_path.name + c.Infra.MUTATION_LOCK_HOLDER_SUFFIX)
 
     @classmethod
-    def mutation_lock_holder(cls, lock_path: Path) -> m.Infra.MutationLockHolder | None:
+    def mutation_lock_holder(cls, lock_path: Path) -> p.Infra.MutationLockHolder | None:
         """Read the last recorded holder of ``lock_path`` without touching the lock.
 
         The record is replaced atomically and never deleted, so a reader sees
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesGitMutationScope:
 
     @classmethod
     def _record_mutation_holder(
-        cls, lock_path: Path, holder: m.Infra.MutationLockHolder
+        cls, lock_path: Path, holder: p.Infra.MutationLockHolder
     ) -> None:
         u.Cli.write_atomic_state(
             cls.mutation_lock_holder_path(lock_path),

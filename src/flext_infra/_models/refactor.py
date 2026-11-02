@@ -390,7 +390,7 @@ class FlextInfraModelsRefactor(
             Sequence[str], m.Field(description="Governed Python scan scope")
         ]
         states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True,
                 description="Scan authentication states; receipts retain byte digests",
@@ -543,7 +543,7 @@ class FlextInfraModelsRefactor(
         Published for successful and partial failed repair sequences.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         schema_version: Annotated[
             int,
@@ -863,10 +863,11 @@ class FlextInfraModelsRefactor(
     class ModCommand(FlextInfraModelsMixins.ScopeMixin, m.ContractModel):
         """CLI request for the shared AST, semantic, and text codemod cascade.
 
-        ``refactor mod`` performs the transformation directly. Supplying one
-        ``--rule`` value selects one concrete catalog identity; selection
-        resolution happens before any scan or write. ``check`` and ``dry-run``
-        are the inspection modes; without them the invocation writes.
+        ``refactor mod`` performs the transformation directly. ``--rule``
+        selects one concrete owner route, while ``--rule-ids`` selects exact
+        ast-grep catalog identities; selection resolution happens before any
+        scan or write. ``check`` and ``dry-run`` are the inspection modes;
+        without them the invocation writes.
         """
 
         check: Annotated[bool, m.Field(description="Validate without writing")] = False
@@ -887,6 +888,44 @@ class FlextInfraModelsRefactor(
             alias="rule",
             description="One exact concrete codemod rule ID; omit for the full catalog",
         )
+        rule_ids: tuple[t.NonEmptyStr, ...] | None = m.Field(
+            default=None,
+            alias="rule-ids",
+            description=(
+                "Exact ast-grep catalog rule IDs; repeat --rule-ids for each "
+                "selection and omit for the full catalog"
+            ),
+        )
+
+        @m.field_validator("rule_ids", mode="before")
+        @classmethod
+        def normalize_rule_ids(cls, value: object) -> object:
+            """Accept one CLI occurrence as a one-item catalog selection.
+
+            Returns:
+                The CLI's scalar value wrapped as a tuple, or its repeated
+                option value unchanged for standard tuple validation.
+
+            """
+            if isinstance(value, str):
+                return (value,)
+            return tuple(value) if isinstance(value, list) else value
+
+        @m.model_validator(mode="after")
+        def exclusive_rule_selection(self) -> Self:
+            """Keep the owner selector and catalog selector unambiguous.
+
+            Returns:
+                The validated command.
+
+            Raises:
+                ValueError: If both selection surfaces are supplied.
+
+            """
+            if self.rule_id is not None and self.rule_ids is not None:
+                msg = "refactor mod accepts either rule or rule_ids, not both"
+                raise ValueError(msg)
+            return self
 
         @property
         def apply(self) -> bool:
@@ -991,7 +1030,7 @@ class FlextInfraModelsRefactor(
         ] = 0
         applied: Annotated[bool, m.Field(description="Whether changes were applied")]
         published_states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True,
                 description="Authenticated states of the acknowledged published paths",

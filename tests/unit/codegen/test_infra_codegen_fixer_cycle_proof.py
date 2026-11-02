@@ -18,10 +18,10 @@ import pytest
 
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenFixer
-from tests import m, tm, u
+from tests import p, tm, u
 
 
-def _reports_import_cycle(result: m.Infra.AutoFixResult) -> bool:
+def _reports_import_cycle(result: p.Infra.AutoFixResult) -> bool:
     """Return whether one auto-fix result reports an IMPORT-CYCLE skip."""
     return any(
         violation.rule == "IMPORT-CYCLE" for violation in result.violations_skipped
@@ -33,11 +33,11 @@ def _fix_workspace(
     tmp_path: Path,
     project: Path,
     package_name: str,
-) -> Sequence[m.Infra.AutoFixResult]:
+) -> Sequence[p.Infra.AutoFixResult]:
     """Provision one codegen checkout and return the fixer's workspace results.
 
     Returns:
-        The resulting ``Sequence[m.Infra.AutoFixResult]``.
+        The resulting ``Sequence[p.Infra.AutoFixResult]``.
 
     """
     u.Tests.declare_workspace_projects(tmp_path, (project.name,))

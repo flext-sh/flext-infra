@@ -26,7 +26,7 @@ class FlextInfraUtilitiesDocsBuild:
     """Reusable build helpers exposed through ``u.Infra``."""
 
     @staticmethod
-    def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> tuple[Path, ...]:
+    def docs_mkdocs_config_files(scope: p.Infra.DocScope) -> tuple[Path, ...]:
         """Return primary mkdocs.yml then optional product mkdocs.yaml.
 
         Returns:
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesDocsBuild:
         return tuple(configs)
 
     @staticmethod
-    def docs_run_mkdocs(scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
+    def docs_run_mkdocs(scope: p.Infra.DocScope) -> p.Infra.DocsPhaseReport:
         """Run MkDocs for primary yml and optional product yaml configs.
 
         Returns:
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsBuild:
                 site_dir="",
                 passed=False,
             )
-        primary_report: m.Infra.DocsPhaseReport | None = None
+        primary_report: p.Infra.DocsPhaseReport | None = None
         for settings in configs:
             suffix = "" if settings.suffix == ".yml" else "-product"
             report = FlextInfraUtilitiesDocsBuild._docs_run_one_mkdocs(
@@ -93,11 +93,11 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def _docs_run_one_mkdocs(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         settings: Path,
         site_suffix: str,
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Build one MkDocs config file into a site directory.
 
         MkDocs owns strict warning accounting; its first failure escapes.
@@ -144,12 +144,12 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def docs_serve_mkdocs(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         dev_addr: str,
         livereload: bool,
         strict: bool,
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Serve one scope through the MkDocs Python serve API (blocking).
 
         Returns:
@@ -183,8 +183,8 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def docs_write_build_reports(
-        scope: m.Infra.DocScope,
-        report: m.Infra.DocsPhaseReport,
+        scope: p.Infra.DocScope,
+        report: p.Infra.DocsPhaseReport,
     ) -> None:
         """Persist the standard build summary and markdown report."""
         _ = u.Cli.json_write(

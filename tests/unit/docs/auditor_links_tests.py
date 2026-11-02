@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests import m, tm, u
+from tests import m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -201,7 +201,7 @@ class TestsFlextInfraAuditorLinks:
         @staticmethod
         def github_owner(
             tmp_path: Path,
-        ) -> m.Infra.DocsGithubRepoSpec:
+        ) -> p.Infra.DocsGithubRepoSpec:
             """Publish the declared GitHub owner of the fixture repository.
 
             Returns:
@@ -229,7 +229,7 @@ class TestsFlextInfraAuditorLinks:
 
         @staticmethod
         def test_github_stale_organization(
-            tmp_path: Path, github_owner: m.Infra.DocsGithubRepoSpec
+            tmp_path: Path, github_owner: p.Infra.DocsGithubRepoSpec
         ) -> None:
             """Test github stale organization."""
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
@@ -250,7 +250,7 @@ class TestsFlextInfraAuditorLinks:
 
         @staticmethod
         def test_github_wrong_branch(
-            tmp_path: Path, github_owner: m.Infra.DocsGithubRepoSpec
+            tmp_path: Path, github_owner: p.Infra.DocsGithubRepoSpec
         ) -> None:
             """Test github wrong branch."""
             docs = tmp_path / "docs"
@@ -269,7 +269,7 @@ class TestsFlextInfraAuditorLinks:
 
         @staticmethod
         def test_github_rewrite_fix(
-            tmp_path: Path, github_owner: m.Infra.DocsGithubRepoSpec
+            tmp_path: Path, github_owner: p.Infra.DocsGithubRepoSpec
         ) -> None:
             """Test github rewrite fix."""
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))

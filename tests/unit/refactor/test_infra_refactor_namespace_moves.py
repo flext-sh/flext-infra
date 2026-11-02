@@ -14,12 +14,10 @@ import pytest
 from flext_infra import FlextInfraCli
 from flext_infra.transformers import FlextInfraTransformersSemantic
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-from tests import p
 
 
 @pytest.mark.slow
@@ -98,7 +96,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     @staticmethod
     def _module_move_inputs(
         project: p.Infra.RopeProject,
-    ) -> tuple[Mapping[Path, str], tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> tuple[Mapping[Path, str], tuple[p.Cli.AtomicFileState, ...]]:
         """Capture the actual public planner inputs once through atomic reads.
 
         Returns:
@@ -637,11 +635,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
 
     @classmethod
+    @pytest.mark.parametrize(
+        "changed", ["source", "destination", "retirement", "witness"]
+    )
     def test_module_move_stale_source_rejects_before_any_effect(
         cls,
         tmp_path: Path,
+        changed: str,
     ) -> None:
-        """A newer source remains intact and the planned destination stays absent."""
+        """An invalidated native move preserves every observed authorial owner."""
         root, _package, source, target = cls._module_move_workspace(tmp_path)
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
@@ -653,13 +655,30 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     inputs=(sources, states),
                 )
             )
-        newer = source.read_bytes() + b"\n# Newer authored work.\n"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                source,
-                newer.decode(c.DEFAULT_ENCODING),
-            ),
-        )
+        destination = next(plan for plan in plans if plan.path == target)
+        original = next(plan.before for plan in plans if plan.path == source)
+        tm.that(destination.move_source, eq=source)
+        tm.ok(original in destination.inputs)
+        expected_source = source.read_bytes()
+        expected_destination = None
+        if changed == "source":
+            expected_source += b"\n# Newer authored work.\n"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    source, expected_source.decode(c.DEFAULT_ENCODING)
+                )
+            )
+        elif changed == "destination":
+            target.parent.mkdir(parents=True)
+            expected_destination = b"# Destination owned by a concurrent writer.\n"
+            target.write_bytes(expected_destination)
+        elif changed == "retirement":
+            plans = tuple(plan for plan in plans if plan.path != source)
+        else:
+            plans = tuple(
+                plan.model_copy(update={"inputs": ()}) if plan.path == target else plan
+                for plan in plans
+            )
         tm.fail(
             FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
                 plans,
@@ -667,10 +686,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
             ),
         )
-        tm.that(source.read_bytes(), eq=newer)
-        tm.fail(target.parent.exists())
+        tm.that(source.read_bytes(), eq=expected_source)
+        if expected_destination is None:
+            tm.fail(target.parent.exists())
+        else:
+            tm.that(target.read_bytes(), eq=expected_destination)
         for state in states:
-            if state.path != source:
+            if changed != "source" or state.path != source:
                 tm.that(state.path.read_bytes(), eq=state.content)
 
     @classmethod
@@ -829,6 +851,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             f"Published = {class_name}\n",
             encoding="utf-8",
         )
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
         tm.that(
             FlextInfraCli().main([
                 "refactor",

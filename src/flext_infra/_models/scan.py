@@ -16,7 +16,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, p
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsCodemod,
@@ -238,7 +238,7 @@ class FlextInfraModelsScan:
     class ModScanCounts[FindingT: ModOccurrence](m.ArbitraryTypesModel):
         """Authenticated findings are the sole source of serialized scan counts."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         entries: Annotated[
             tuple[FindingT, ...],
@@ -310,10 +310,10 @@ class FlextInfraModelsScan:
         rule_plan: FlextInfraModelsRefactorGrep.CodemodRulePlan | None = m.Field(
             default=None, description="Actual rule plan consumed by the native scan"
         )
-        catalog_states: tuple[m.Cli.AtomicFileState, ...] | None = m.Field(
+        catalog_states: tuple[p.Cli.AtomicFileState, ...] | None = m.Field(
             default=None, description="Original rule and configuration input snapshots"
         )
-        native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
+        native_artifacts: tuple[p.Cli.AtomicFileReceipt, ...] = m.Field(
             description="Complete authenticated native output inventory"
         )
 
@@ -475,7 +475,7 @@ class FlextInfraModelsScan:
     class ModScanEvidence(ModScanCounts[ModScanFindingReference]):
         """Complete replace-on-run evidence for one public mod scan."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         schema_version: Annotated[
             int,
@@ -490,7 +490,7 @@ class FlextInfraModelsScan:
             FlextInfraModelsCodemod.CodemodBindingSnapshot,
             m.Field(description="Single authenticated inventory for all occurrences"),
         ]
-        native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
+        native_artifacts: tuple[p.Cli.AtomicFileReceipt, ...] = m.Field(
             min_length=1,
             description=(
                 "Durable native artifacts stored once for all occurrence references"

@@ -16,7 +16,7 @@ import pytest
 import flext_infra
 from flext_infra import config
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraClassNestingSuiteScope:
@@ -576,7 +576,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         )
         path.write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
         u.Tests.initialize_git_repo(root)
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
+        report: p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence] = (
             m.Infra.ModOccurrenceReport(
                 files=frozenset(),
                 entries=(),

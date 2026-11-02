@@ -53,14 +53,14 @@ class FlextInfraCodemodDuplicateApply(
         cls,
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        groups: Sequence[m.Infra.DuplicateGroup],
+        groups: Sequence[p.Infra.DuplicateGroup],
         *,
         apply: bool,
-    ) -> p.Result[m.Infra.DuplicateCureOutcome]:
+    ) -> p.Result[p.Infra.DuplicateCureOutcome]:
         """Plan every duplicate and publish only a complete trivial candidate.
 
         Returns:
-            The resulting ``p.Result[m.Infra.DuplicateCureOutcome]``.
+            The resulting ``p.Result[p.Infra.DuplicateCureOutcome]``.
 
         """
         planned = cls.plan_census(
@@ -73,10 +73,10 @@ class FlextInfraCodemodDuplicateApply(
             },
         )
         if planned.failure:
-            return r[m.Infra.DuplicateCureOutcome].from_failure(planned)
+            return r[p.Infra.DuplicateCureOutcome].from_failure(planned)
         outcome, deletions = planned.value
         if not apply or not outcome.edits or outcome.plans:
-            return r[m.Infra.DuplicateCureOutcome].ok(outcome)
+            return r[p.Infra.DuplicateCureOutcome].ok(outcome)
         published = cls._publish(
             root,
             rope_project=rope_workspace.rope_project,
@@ -85,19 +85,19 @@ class FlextInfraCodemodDuplicateApply(
             deletions=deletions,
         )
         if published.failure:
-            return r[m.Infra.DuplicateCureOutcome].from_failure(published)
-        return r[m.Infra.DuplicateCureOutcome].ok(outcome)
+            return r[p.Infra.DuplicateCureOutcome].from_failure(published)
+        return r[p.Infra.DuplicateCureOutcome].ok(outcome)
 
     @classmethod
     def plan_census(
         cls,
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        groups: Sequence[m.Infra.DuplicateGroup],
+        groups: Sequence[p.Infra.DuplicateGroup],
         *,
         sources: Mapping[Path, str],
     ) -> p.Result[
-        tuple[m.Infra.DuplicateCureOutcome, tuple[m.Infra.DuplicateDeletion, ...]]
+        tuple[p.Infra.DuplicateCureOutcome, tuple[p.Infra.DuplicateDeletion, ...]]
     ]:
         """Retain every native cure effect and manual diagnostic without publishing.
 
@@ -121,11 +121,11 @@ class FlextInfraCodemodDuplicateApply(
         cls,
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        groups: Sequence[m.Infra.DuplicateGroup],
+        groups: Sequence[p.Infra.DuplicateGroup],
         *,
         sources: Mapping[Path, str],
     ) -> p.Result[
-        tuple[m.Infra.DuplicateCureOutcome, tuple[m.Infra.DuplicateDeletion, ...]]
+        tuple[p.Infra.DuplicateCureOutcome, tuple[p.Infra.DuplicateDeletion, ...]]
     ]:
         """Elect cures and every residual diagnostic on one frozen native workspace.
 
@@ -138,7 +138,7 @@ class FlextInfraCodemodDuplicateApply(
                 return r[
                     tuple[
                         m.Infra.DuplicateCureOutcome,
-                        tuple[m.Infra.DuplicateDeletion, ...],
+                        tuple[p.Infra.DuplicateDeletion, ...],
                     ]
                 ].fail(
                     f"duplicate planning workspace differs from its "
@@ -146,9 +146,9 @@ class FlextInfraCodemodDuplicateApply(
                 )
         layers = cls._project_layers(root)
         working: MutableMapping[Path, str] = {}
-        edits: list[m.Infra.SemanticMigrationEdit] = []
-        plans: list[m.Infra.DuplicateCurePlan] = []
-        deletions: list[m.Infra.DuplicateDeletion] = []
+        edits: list[p.Infra.SemanticMigrationEdit] = []
+        plans: list[p.Infra.DuplicateCurePlan] = []
+        deletions: list[p.Infra.DuplicateDeletion] = []
         bindings = 0
         for group in groups:
             if any(
@@ -158,7 +158,7 @@ class FlextInfraCodemodDuplicateApply(
                 return r[
                     tuple[
                         m.Infra.DuplicateCureOutcome,
-                        tuple[m.Infra.DuplicateDeletion, ...],
+                        tuple[p.Infra.DuplicateDeletion, ...],
                     ]
                 ].fail(
                     f"duplicate declaration is outside its selected "
@@ -178,7 +178,7 @@ class FlextInfraCodemodDuplicateApply(
                     return r[
                         tuple[
                             m.Infra.DuplicateCureOutcome,
-                            tuple[m.Infra.DuplicateDeletion, ...],
+                            tuple[p.Infra.DuplicateDeletion, ...],
                         ]
                     ].fail(
                         f"duplicate effect is outside its immutable "
@@ -198,7 +198,7 @@ class FlextInfraCodemodDuplicateApply(
             bindings += sum(len(copy.consumer_files) for copy in planned.copies)
         plans.extend(cls._jscpd_plans(root, layers=layers))
         return r[
-            tuple[m.Infra.DuplicateCureOutcome, tuple[m.Infra.DuplicateDeletion, ...]]
+            tuple[p.Infra.DuplicateCureOutcome, tuple[p.Infra.DuplicateDeletion, ...]]
         ].ok((
             m.Infra.DuplicateCureOutcome(
                 edits=tuple(edits),
@@ -216,11 +216,11 @@ class FlextInfraCodemodDuplicateApply(
     def _plan_group(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        group: m.Infra.DuplicateGroup,
+        group: p.Infra.DuplicateGroup,
         *,
         layers: Mapping[Path, int],
         working: MutableMapping[Path, str],
-    ) -> m.Infra.DuplicateCurePlan | m.Infra.DuplicateGroupCure:
+    ) -> p.Infra.DuplicateCurePlan | m.Infra.DuplicateGroupCure:
         """Plan one group either as a trivial cure or as a manual plan.
 
         Returns:
@@ -240,7 +240,7 @@ class FlextInfraCodemodDuplicateApply(
                 definitions,
                 "owner module is already planned by another group in this run",
             )
-        edits: list[m.Infra.SemanticMigrationEdit] = []
+        edits: list[p.Infra.SemanticMigrationEdit] = []
         for copy in cure.copies:
             if copy is cure.owner:
                 continue
@@ -266,8 +266,8 @@ class FlextInfraCodemodDuplicateApply(
     def _trivial_blocker(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        group: m.Infra.DuplicateGroup,
-        definitions: Sequence[m.Infra.DuplicateDefinition],
+        group: p.Infra.DuplicateGroup,
+        definitions: Sequence[p.Infra.DuplicateDefinition],
     ) -> str | None:
         """Return why the group is outside the trivial contract, or ``None``.
 
@@ -293,7 +293,7 @@ class FlextInfraCodemodDuplicateApply(
     def _definition_blocker(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        definition: m.Infra.DuplicateDefinition,
+        definition: p.Infra.DuplicateDefinition,
     ) -> str | None:
         """Return why one definition is outside the trivial contract.
 
@@ -343,17 +343,17 @@ class FlextInfraCodemodDuplicateApply(
     def _definitions(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
-        group: m.Infra.DuplicateGroup,
+        group: p.Infra.DuplicateGroup,
         *,
         layers: Mapping[Path, int],
-    ) -> Sequence[m.Infra.DuplicateDefinition]:
+    ) -> Sequence[p.Infra.DuplicateDefinition]:
         """Read every group definition with its exact statement body.
 
         Returns:
             The resulting definitions ordered by file and line.
 
         """
-        definitions: list[m.Infra.DuplicateDefinition] = []
+        definitions: list[p.Infra.DuplicateDefinition] = []
         for item in group.definitions:
             path = Path(item.file_path).resolve()
             source = workspace.source(path)
@@ -385,8 +385,8 @@ class FlextInfraCodemodDuplicateApply(
     def _definition_statement(
         project: p.Infra.RopeProject,
         source: str,
-        item: m.Infra.Object,
-    ) -> m.Infra.LogicalStatement | None:
+        item: p.Infra.Object,
+    ) -> p.Infra.LogicalStatement | None:
         """Return the module-level statement that defines one inventory object.
 
         Returns:
@@ -431,7 +431,7 @@ class FlextInfraCodemodDuplicateApply(
         return statement
 
     @staticmethod
-    def _statement_body(statement: m.Infra.LogicalStatement | None, source: str) -> str:
+    def _statement_body(statement: p.Infra.LogicalStatement | None, source: str) -> str:
         """Return the exact source text of one definition statement.
 
         Returns:
@@ -444,7 +444,7 @@ class FlextInfraCodemodDuplicateApply(
 
     @staticmethod
     def _binding_is_unifiable(
-        module: p.Infra.RopePyModule, definition: m.Infra.DuplicateDefinition
+        module: p.Infra.RopePyModule, definition: p.Infra.DuplicateDefinition
     ) -> bool:
         """Return whether the definition name resolves to one module binding.
 
@@ -465,7 +465,7 @@ class FlextInfraCodemodDuplicateApply(
 
     @classmethod
     def _statement_is_pure(
-        cls, project: p.Infra.RopeProject, definition: m.Infra.DuplicateDefinition
+        cls, project: p.Infra.RopeProject, definition: p.Infra.DuplicateDefinition
     ) -> bool:
         """Return whether the statement is byte-identity-safe to unify.
 
@@ -525,7 +525,7 @@ class FlextInfraCodemodDuplicateApply(
     def _star_importers(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        group: m.Infra.DuplicateGroup,
+        group: p.Infra.DuplicateGroup,
     ) -> Sequence[str]:
         """Return the workspace modules that star-import a copy module.
 
@@ -561,8 +561,8 @@ class FlextInfraCodemodDuplicateApply(
     def _consumer_cure(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        definitions: Sequence[m.Infra.DuplicateDefinition],
-    ) -> m.Infra.DuplicateGroupCure | str:
+        definitions: Sequence[p.Infra.DuplicateDefinition],
+    ) -> p.Infra.DuplicateGroupCure | str:
         """Partition every copy's rope occurrences into rewritable consumers.
 
         Returns:
@@ -570,7 +570,7 @@ class FlextInfraCodemodDuplicateApply(
             consumer forms exceed the trivial contract.
 
         """
-        cure_copies: list[m.Infra.DuplicateCopyCure] = []
+        cure_copies: list[p.Infra.DuplicateCopyCure] = []
         for definition in definitions:
             located = cls._located_occurrences(rope_workspace, definition)
             if isinstance(located, str):
@@ -631,7 +631,7 @@ class FlextInfraCodemodDuplicateApply(
     def _located_occurrences(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        definition: m.Infra.DuplicateDefinition,
+        definition: p.Infra.DuplicateDefinition,
     ) -> Sequence[tuple[Path, int]] | str:
         """Locate every rope occurrence of one definition's binding.
 
@@ -729,10 +729,10 @@ class FlextInfraCodemodDuplicateApply(
     def _copy_edits(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        group: m.Infra.DuplicateGroup,
-        owner: m.Infra.DuplicateCopyCure,
-        copy: m.Infra.DuplicateCopyCure,
-    ) -> Sequence[m.Infra.SemanticMigrationEdit] | str:
+        group: p.Infra.DuplicateGroup,
+        owner: p.Infra.DuplicateCopyCure,
+        copy: p.Infra.DuplicateCopyCure,
+    ) -> Sequence[p.Infra.SemanticMigrationEdit] | str:
         """Plan one copy's deletion plus its consumer and in-module rebinds.
 
         Returns:
@@ -763,8 +763,8 @@ class FlextInfraCodemodDuplicateApply(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         name: str,
         owner_module: str,
-        copy: m.Infra.DuplicateCopyCure,
-    ) -> m.Infra.SemanticMigrationEdit | str:
+        copy: p.Infra.DuplicateCopyCure,
+    ) -> p.Infra.SemanticMigrationEdit | str:
         """Plan one copy module's statement deletion and its in-module rebind.
 
         Returns:
@@ -817,8 +817,8 @@ class FlextInfraCodemodDuplicateApply(
         *,
         name: str,
         owner_module: str,
-        copy: m.Infra.DuplicateCopyCure,
-    ) -> Sequence[m.Infra.SemanticMigrationEdit] | str:
+        copy: p.Infra.DuplicateCopyCure,
+    ) -> Sequence[p.Infra.SemanticMigrationEdit] | str:
         """Rebind every consumer import of one copy onto the owner module.
 
         Returns:
@@ -826,7 +826,7 @@ class FlextInfraCodemodDuplicateApply(
 
         """
         copy_module = copy.definition.item.module_name
-        edits: list[m.Infra.SemanticMigrationEdit] = []
+        edits: list[p.Infra.SemanticMigrationEdit] = []
         for consumer in copy.consumer_files:
             consumer_resource = rope_workspace.resource(consumer)
             if consumer_resource is None:
@@ -857,7 +857,7 @@ class FlextInfraCodemodDuplicateApply(
         project: p.Infra.RopeProject,
         resource: p.Infra.RopeResource,
         source: str,
-        definition: m.Infra.DuplicateDefinition,
+        definition: p.Infra.DuplicateDefinition,
     ) -> str | None:
         """Delete one definition statement from its module source.
 
@@ -901,7 +901,7 @@ class FlextInfraCodemodDuplicateApply(
     @staticmethod
     def _collect_working(
         working: MutableMapping[Path, str],
-        edits: Sequence[m.Infra.SemanticMigrationEdit],
+        edits: Sequence[p.Infra.SemanticMigrationEdit],
     ) -> None:
         """Compose validated edits into the shared working map.
 
@@ -930,8 +930,8 @@ class FlextInfraCodemodDuplicateApply(
         *,
         rope_project: p.Infra.RopeProject,
         working: Mapping[Path, str],
-        edits: Sequence[m.Infra.SemanticMigrationEdit],
-        deletions: Sequence[m.Infra.DuplicateDeletion],
+        edits: Sequence[p.Infra.SemanticMigrationEdit],
+        deletions: Sequence[p.Infra.DuplicateDeletion],
     ) -> p.Result[bool]:
         """Normalize every planned source and publish the journaled batch.
 
@@ -942,7 +942,7 @@ class FlextInfraCodemodDuplicateApply(
             ValueError: If source changed after semantic preflight.
 
         """
-        plans: list[m.Infra.CodegenFilePlan] = []
+        plans: list[p.Infra.CodegenFilePlan] = []
         for path in sorted(working):
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             original = next(
@@ -1001,7 +1001,7 @@ class FlextInfraCodemodDuplicateApply(
     @staticmethod
     def _publication_projects(
         root: Path,
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
     ) -> tuple[str, ...]:
         """Collect the governed projects affected by the publication batch.
 
@@ -1020,8 +1020,8 @@ class FlextInfraCodemodDuplicateApply(
     def _published_residue(
         cls,
         project: p.Infra.RopeProject,
-        edits: Sequence[m.Infra.SemanticMigrationEdit],
-        deletions: Sequence[m.Infra.DuplicateDeletion],
+        edits: Sequence[p.Infra.SemanticMigrationEdit],
+        deletions: Sequence[p.Infra.DuplicateDeletion],
     ) -> str | None:
         """Return the first planned rewrite the published sources contradict.
 
@@ -1070,10 +1070,10 @@ class FlextInfraCodemodDuplicateApply(
     @classmethod
     def _group_plan(
         cls,
-        group: m.Infra.DuplicateGroup,
-        definitions: Sequence[m.Infra.DuplicateDefinition],
+        group: p.Infra.DuplicateGroup,
+        definitions: Sequence[p.Infra.DuplicateDefinition],
         reason: str,
-    ) -> m.Infra.DuplicateCurePlan:
+    ) -> p.Infra.DuplicateCurePlan:
         """Build the manual assisted-cure plan of one non-trivial group.
 
         Returns:
@@ -1127,7 +1127,7 @@ class FlextInfraCodemodDuplicateApply(
         root: Path,
         *,
         layers: Mapping[Path, int],
-    ) -> tuple[m.Infra.DuplicateCurePlan, ...]:
+    ) -> tuple[p.Infra.DuplicateCurePlan, ...]:
         """Plan every semantic jscpd clone the engine does not auto-unify.
 
         Returns:
@@ -1153,7 +1153,7 @@ class FlextInfraCodemodDuplicateApply(
         if validated.failure:
             msg = f"jscpd report is not a typed report: {report_path}"
             raise ValueError(msg)
-        plans: list[m.Infra.DuplicateCurePlan] = []
+        plans: list[p.Infra.DuplicateCurePlan] = []
         seen: set[str] = set()
         for report_duplicate in validated.value.duplicates:
             plan = cls._semantic_clone_plan(
@@ -1168,11 +1168,11 @@ class FlextInfraCodemodDuplicateApply(
     @classmethod
     def _semantic_clone_plan(
         cls,
-        report_duplicate: m.Infra.JscpdDuplicate,
+        report_duplicate: p.Infra.JscpdDuplicate,
         *,
         seen: MutableSet[str],
         layers: Mapping[Path, int],
-    ) -> m.Infra.DuplicateCurePlan | None:
+    ) -> p.Infra.DuplicateCurePlan | None:
         """Plan one jscpd clone; jscpd's own passes own what counts as one.
 
         Returns:
@@ -1235,7 +1235,7 @@ class FlextInfraCodemodDuplicateApply(
         lines: int,
         owner_side: tuple[t.JsonMapping, str, str],
         other_side: tuple[t.JsonMapping, str, str],
-    ) -> m.Infra.DuplicateCurePlan:
+    ) -> p.Infra.DuplicateCurePlan:
         """Build one manual plan for a structural two-sided jscpd clone.
 
         Returns:

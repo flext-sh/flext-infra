@@ -19,7 +19,7 @@ from typing import override
 
 from flext_cli import cli
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, p, r, s, t, u
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 
 
@@ -65,8 +65,8 @@ class FlextInfraCodemodAstScan(s[t.Cli.ResultValue]):
     @staticmethod
     def _full_scan_outcome(
         root: Path,
-        planned: m.Infra.CodemodRulePlan,
-        ast_report: m.Infra.ModScanReport,
+        planned: p.Infra.CodemodRulePlan,
+        ast_report: p.Infra.ModScanReport,
     ) -> p.Result[t.Cli.ResultValue]:
         """Render both full-corpus cascades and refuse any remaining finding.
 
@@ -131,7 +131,7 @@ class FlextInfraCodemodAstScan(s[t.Cli.ResultValue]):
     def _converge(
         cls,
         root: Path,
-        current: m.Infra.ModScanReport,
+        current: p.Infra.ModScanReport,
     ) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades to a verified fixed point.
 

@@ -115,7 +115,7 @@ class FlextInfraPyprojectModernizerDocument(
         path: Path,
         *,
         source: str | None = None,
-    ) -> p.Result[m.Infra.PyprojectDocumentState]:
+    ) -> p.Result[p.Infra.PyprojectDocumentState]:
         """Parse one pyproject once into one validated plain payload state.
 
         Args:
@@ -123,15 +123,15 @@ class FlextInfraPyprojectModernizerDocument(
             source: Optional raw content of the pyproject file.
 
         Returns:
-            The resulting ``p.Result[m.Infra.PyprojectDocumentState]``.
+            The resulting ``p.Result[p.Infra.PyprojectDocumentState]``.
 
         Raises:
             ValueError: If the project document has no captured content.
 
 
         """
-        result_type = r[m.Infra.PyprojectDocumentState]
-        before: m.Cli.AtomicFileState | None = None
+        result_type = r[p.Infra.PyprojectDocumentState]
+        before: p.Cli.AtomicFileState | None = None
         if source is None:
             read = u.Cli.atomic_read_binary_file_state(path, required=True)
             if read.failure:
@@ -210,8 +210,8 @@ class FlextInfraPyprojectModernizerDocument(
 
     def _apply_source_migration(
         self,
-        state: m.Infra.PyprojectDocumentState,
-        source_migration: m.Infra.GitSourceReferenceMigration,
+        state: p.Infra.PyprojectDocumentState,
+        source_migration: p.Infra.GitSourceReferenceMigration,
     ) -> p.Result[Sequence[str]]:
         """Rewrite Git source references; produce the migration render.
 
@@ -238,12 +238,12 @@ class FlextInfraPyprojectModernizerDocument(
 
     def _process_document_state(
         self,
-        state: m.Infra.PyprojectDocumentState,
+        state: p.Infra.PyprojectDocumentState,
         *,
         canonical_dev: Sequence[str],
         dry_run: bool,
         skip_comments: bool,
-        source_migration: m.Infra.GitSourceReferenceMigration | None = None,
+        source_migration: p.Infra.GitSourceReferenceMigration | None = None,
     ) -> p.Result[Sequence[str]]:
         """Run every phase over one discovered state; write unless ``dry_run``.
 
@@ -301,7 +301,7 @@ class FlextInfraPyprojectModernizerDocument(
 
     def _render_declared_state(
         self,
-        state: m.Infra.PyprojectDocumentState,
+        state: p.Infra.PyprojectDocumentState,
         *,
         canonical_dev: Sequence[str],
         skip_comments: bool,
@@ -341,12 +341,12 @@ class FlextInfraPyprojectModernizerDocument(
 
     def _apply_document_phases(
         self,
-        state: m.Infra.PyprojectDocumentState,
+        state: p.Infra.PyprojectDocumentState,
         *,
         canonical_dev: Sequence[str],
-        topology: m.Infra.PyprojectDeclaredTopology,
-        codegen: m.Infra.CodegenConfigSpec,
-        tool_config: m.Infra.ToolConfigDocument | None = None,
+        topology: p.Infra.PyprojectDeclaredTopology,
+        codegen: p.Infra.CodegenConfigSpec,
+        tool_config: p.Infra.ToolConfigDocument | None = None,
     ) -> Sequence[str]:
         """Run every managed phase, in order, over one parsed payload.
 
@@ -465,7 +465,7 @@ class FlextInfraPyprojectModernizerDocument(
 
     def _render_document_state(
         self,
-        state: m.Infra.PyprojectDocumentState,
+        state: p.Infra.PyprojectDocumentState,
         changes: Sequence[str],
         *,
         skip_comments: bool,

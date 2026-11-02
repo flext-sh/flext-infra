@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
 
-from flext_infra import m, t
+from flext_infra import m, p, t
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCoreResources,
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -24,7 +24,7 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
     @classmethod
     def inventory(
         cls,
-        request: m.Infra.SourceBindingInventoryRequest,
+        request: p.Infra.SourceBindingInventoryRequest,
         definitions: MutableMapping[str, m.Infra.SourceClassDefinition],
         *,
         provider: t.Infra.RopePyModule | None = None,
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
 
     @staticmethod
     def source_provider(
-        request: m.Infra.SourceBindingInventoryRequest,
+        request: p.Infra.SourceBindingInventoryRequest,
         *,
         provider: t.Infra.RopePyModule | None = None,
     ) -> t.Infra.RopePyModule:

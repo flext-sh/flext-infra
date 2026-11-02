@@ -7,12 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, m, p, u
 
 
 class FlextInfraPromotedRegistry:

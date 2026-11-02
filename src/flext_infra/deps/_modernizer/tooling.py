@@ -28,8 +28,8 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         *,
         path: Path,
         format_source: bool = True,
-        topology: m.Infra.PyprojectDeclaredTopology,
-        codegen: m.Infra.CodegenConfigSpec,
+        topology: p.Infra.PyprojectDeclaredTopology,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply.
 
@@ -62,17 +62,17 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         source: str,
         *,
         path: Path,
-        topology: m.Infra.PyprojectDeclaredTopology,
-        codegen: m.Infra.CodegenConfigSpec,
-        tool_config: m.Infra.ToolConfigDocument | None = None,
-    ) -> p.Result[tuple[m.Infra.PyprojectDocumentState, Sequence[str]]]:
+        topology: p.Infra.PyprojectDeclaredTopology,
+        codegen: p.Infra.CodegenConfigSpec,
+        tool_config: p.Infra.ToolConfigDocument | None = None,
+    ) -> p.Result[tuple[p.Infra.PyprojectDocumentState, Sequence[str]]]:
         """Read and apply canonical phases before a consumer chooses rendering.
 
         Returns:
             The validated document state and its phase changes.
 
         """
-        result_type = r[tuple[m.Infra.PyprojectDocumentState, Sequence[str]]]
+        result_type = r[tuple[p.Infra.PyprojectDocumentState, Sequence[str]]]
         state = self._read_document_state(path, source=source)
         if state.failure:
             return result_type.from_failure(state)
@@ -89,18 +89,18 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
 
     def resolve_tooling_context(
         self,
-        request: m.Infra.ToolingContextRequest,
+        request: p.Infra.ToolingContextRequest,
         *,
         source_project: p.Infra.RopeProject | None = None,
         derive_runtime: bool = True,
-    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
+    ) -> p.Result[p.Infra.ToolingRuntimeContext]:
         """Resolve typed Jinja values from the seed conformed to one topology.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ToolingRuntimeContext]``.
+            The resulting ``p.Result[p.Infra.ToolingRuntimeContext]``.
 
         """
-        result_type = r[m.Infra.ToolingRuntimeContext]
+        result_type = r[p.Infra.ToolingRuntimeContext]
         selected = u.Infra.load_tooling_inputs(
             request.path.parent, source_project=source_project
         )
@@ -175,16 +175,16 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         payload: t.MutableJsonMapping,
         *,
         project_kind: str,
-        tool_config: m.Infra.ToolConfigDocument,
-        sources: tuple[m.Cli.AtomicFileState, ...] = (),
-    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
+        tool_config: p.Infra.ToolConfigDocument,
+        sources: tuple[p.Cli.AtomicFileState, ...] = (),
+    ) -> p.Result[p.Infra.ToolingRuntimeContext]:
         """Project every declared table from one conformed native document.
 
         Returns:
             One synchronized configuration fragment and its native table views.
 
         """
-        result_type = r[m.Infra.ToolingRuntimeContext]
+        result_type = r[p.Infra.ToolingRuntimeContext]
         options: MutableMapping[str, t.JsonMapping] = {}
         for table_path in tool_config.settings:
             table = u.Cli.toml_mapping_path(
@@ -245,9 +245,9 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
 
     def _conformed_seed_payload(
         self,
-        request: m.Infra.ToolingContextRequest,
+        request: p.Infra.ToolingContextRequest,
         *,
-        tool_config: m.Infra.ToolConfigDocument,
+        tool_config: p.Infra.ToolConfigDocument,
     ) -> p.Result[t.MutableJsonMapping]:
         """Conform a seeded native document before projecting its managed tables.
 

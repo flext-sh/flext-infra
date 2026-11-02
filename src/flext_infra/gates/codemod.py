@@ -15,13 +15,10 @@ import time
 from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
-from flext_infra import c, config, m, settings, u
+from flext_infra import c, config, m, p, settings, u
 from flext_infra.gates import FlextInfraGates
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraGatesCodemod(FlextInfraGates):
@@ -37,8 +34,8 @@ class FlextInfraGatesCodemod(FlextInfraGates):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Run ast-grep only on this repository's first-class source roots.
 
         Returns:
@@ -63,8 +60,8 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         self,
         files: Sequence[Path],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Scan every requested file against every elected provider ruleset.
 
         Returns:
@@ -90,10 +87,10 @@ class FlextInfraGatesCodemod(FlextInfraGates):
     def _execute_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
         started: float,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Keep whole-project and file-scoped scans on the same native contract.
 
         A whole-project scan excludes the repository's nonparticipant paths; a
@@ -130,9 +127,9 @@ class FlextInfraGatesCodemod(FlextInfraGates):
                 failure = "managed scanner resolution failed without a diagnostic"
                 raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, ctx, failure, started)
-        failures: list[m.Infra.Issue] = []
+        failures: list[p.Infra.Issue] = []
         raw_output: list[str] = []
-        found: list[m.Infra.AstGrepDiagnostic] = list(
+        found: list[p.Infra.AstGrepDiagnostic] = list(
             u.Infra.codemod_path_findings(
                 project_dir,
                 tuple((project_dir / target).absolute() for target in targets),
@@ -203,9 +200,9 @@ class FlextInfraGatesCodemod(FlextInfraGates):
     def _scan_ruleset(
         self,
         scope: tuple[Path, m.Infra.GateContext, Path, frozenset[str]],
-        ruleset: m.Infra.CodemodRuleset,
+        ruleset: p.Infra.CodemodRuleset,
         targets: Sequence[str],
-        sinks: tuple[list[m.Infra.AstGrepDiagnostic], list[m.Infra.Issue], list[str]],
+        sinks: tuple[list[p.Infra.AstGrepDiagnostic], list[p.Infra.Issue], list[str]],
     ) -> bool:
         """Scan one project's staged ruleset and collect its native report.
 
@@ -253,10 +250,10 @@ class FlextInfraGatesCodemod(FlextInfraGates):
     def _failure_gate_execution(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         failure: str,
         started: float,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Record one native codemod failure as a failed gate execution.
 
         Returns:
@@ -286,12 +283,12 @@ class FlextInfraGatesCodemod(FlextInfraGates):
     @staticmethod
     def _validated_scan_report(
         scan: p.Cli.CommandOutput,
-        ruleset: m.Infra.CodemodRuleset,
-    ) -> tuple[m.Infra.AstGrepReport, str]:
+        ruleset: p.Infra.CodemodRuleset,
+    ) -> tuple[p.Infra.AstGrepReport, str]:
         """Validate findings and derive their exact native terminal diagnostic.
 
         Returns:
-            The resulting ``tuple[m.Infra.AstGrepReport, str]``.
+            The resulting ``tuple[p.Infra.AstGrepReport, str]``.
 
         Raises:
             ValueError: If ``(scan.outcome.raw_return_code == 1) != bool(error_count)``;
@@ -322,7 +319,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
 
     @staticmethod
     def _scan_command(
-        ruleset: m.Infra.CodemodRuleset,
+        ruleset: p.Infra.CodemodRuleset,
         targets: Sequence[str],
         binary: Path,
         nonparticipants: frozenset[str] = frozenset(),
@@ -367,8 +364,8 @@ class FlextInfraGatesCodemod(FlextInfraGates):
 
     @staticmethod
     def _policy_issues(
-        found: Sequence[m.Infra.AstGrepDiagnostic],
-    ) -> Sequence[m.Infra.Issue]:
+        found: Sequence[p.Infra.AstGrepDiagnostic],
+    ) -> Sequence[p.Infra.Issue]:
         """Report every native finding: ast-grep alone decides the match.
 
         Returns:

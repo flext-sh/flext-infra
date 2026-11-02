@@ -9,7 +9,6 @@ from __future__ import annotations
 import ast
 import json
 import sys
-import typing
 from pathlib import Path
 
 import pytest
@@ -17,10 +16,7 @@ import pytest
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import c, tm, u
-
-if typing.TYPE_CHECKING:
-    from tests import p
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraSymbolicTextCutover:

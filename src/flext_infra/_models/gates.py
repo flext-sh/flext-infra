@@ -14,7 +14,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, p
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsCheck,
     FlextInfraModelsDeps,
@@ -130,7 +130,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Explicit runtime binary directory owning the scanner"),
         ]
         source: Annotated[
-            tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
+            tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
             m.Field(
                 min_length=1, description="Production trees consumed by the scanner"
             ),
@@ -164,7 +164,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = (
             c.Infra.CHECK_FAIL_FAST_DEFAULT
         )
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             arbitrary_types_allowed=True,
             populate_by_name=True,
@@ -430,7 +430,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateReportEvidence(m.ContractModel):
         """One original report bound to its repository-relative identity."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         path: Annotated[
             Path,
@@ -458,7 +458,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateTestIntent(m.ContractModel):
         """Portable original test selection bound to the execution proof."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         execution_mode: Annotated[
             c.Infra.PytestExecutionMode, m.Field(description="Native test operation")
@@ -516,7 +516,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateExecutionFacts(m.ContractModel):
         """Public original execution facts, excluding local machine identities."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         scope: Annotated[
             Literal["workspace"],
@@ -649,7 +649,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateCaptureStart(m.ContractModel):
         """Private candidate checkpoint preceding the original native process."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository_root: Annotated[Path, m.Field(description="Actual execution root")]
         gate: Annotated[t.NonEmptyStr, m.Field(description="Canonical stage identity")]
@@ -747,7 +747,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateAttestationPredicate(m.ContractModel):
         """Signed workspace execution, stored on an observational Git anchor."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             strict=False,
@@ -822,7 +822,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateAttestationCreateRequest(m.ContractModel):
         """Consume one original receipt and create its immutable signed stage proof."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         workspace: Annotated[str, m.Field(description="Git repository root")] = "."
         signer: Annotated[
@@ -868,7 +868,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateAttestationVerifyRequest(m.ContractModel):
         """Verify one original workspace receipt and its signed storage anchor."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         workspace: Annotated[str, m.Field(description="Git repository root")] = "."
         allowed_signers: Annotated[

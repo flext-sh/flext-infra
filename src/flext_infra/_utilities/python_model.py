@@ -35,7 +35,7 @@ class FlextInfraUtilitiesPythonModel:
             t.Infra.RopeNativeParsedModule, m.Infra.PythonModuleFacts
         ]
         | None = None,
-    ) -> m.Infra.PythonModelRun:
+    ) -> p.Infra.PythonModelRun:
         """Open one static model run with empty fact caches.
 
         Returns:
@@ -51,8 +51,8 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def python_model_module_at(
-        cls, run: m.Infra.PythonModelRun, path: Path, name: str
-    ) -> m.Infra.PythonModuleFacts:
+        cls, run: p.Infra.PythonModelRun, path: Path, name: str
+    ) -> p.Infra.PythonModuleFacts:
         """Return the facts of ``path`` under its dotted module name.
 
         The source project owns the one parse; its invalidation replaces the
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesPythonModel:
     @classmethod
     def _python_model_facts(
         cls, path: Path, name: str, tree: ast.Module
-    ) -> m.Infra.PythonModuleFacts:
+    ) -> p.Infra.PythonModuleFacts:
         """Derive one module's top-level facts from its syntax tree.
 
         Returns:
@@ -144,7 +144,7 @@ class FlextInfraUtilitiesPythonModel:
 
     @staticmethod
     def _python_model_bind(
-        draft: m.Infra.PythonModuleFactsDraft,
+        draft: p.Infra.PythonModuleFactsDraft,
         member: str,
         kind: t.Infra.PythonMemberKind,
     ) -> None:
@@ -156,7 +156,7 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def _python_model_on_import(
-        cls, draft: m.Infra.PythonModuleFactsDraft, node: ast.Import
+        cls, draft: p.Infra.PythonModuleFactsDraft, node: ast.Import
     ) -> None:
         """Bind each ``import`` name to its top package or its full alias path."""
         for alias in node.names:
@@ -167,7 +167,7 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def _python_model_on_import_from(
-        cls, draft: m.Infra.PythonModuleFactsDraft, node: ast.ImportFrom
+        cls, draft: p.Infra.PythonModuleFactsDraft, node: ast.ImportFrom
     ) -> None:
         """Bind each ``from`` import, skipping a package's own submodule import.
 
@@ -197,7 +197,7 @@ class FlextInfraUtilitiesPythonModel:
     @classmethod
     def _python_model_on_assign(
         cls,
-        draft: m.Infra.PythonModuleFactsDraft,
+        draft: p.Infra.PythonModuleFactsDraft,
         node: ast.Assign | ast.AnnAssign,
         parent: ast.AST,
     ) -> None:
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def _python_model_on_augment(
-        cls, draft: m.Infra.PythonModuleFactsDraft, node: ast.AugAssign
+        cls, draft: p.Infra.PythonModuleFactsDraft, node: ast.AugAssign
     ) -> None:
         """Extend a declared ``__all__`` by an ``__all__ += ...`` statement."""
         if (
@@ -372,8 +372,8 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def python_model_module(
-        cls, run: m.Infra.PythonModelRun, name: str
-    ) -> m.Infra.PythonModuleFacts | None:
+        cls, run: p.Infra.PythonModelRun, name: str
+    ) -> p.Infra.PythonModuleFacts | None:
         """Return the facts of the module a dotted name resolves to.
 
         Returns:
@@ -385,7 +385,7 @@ class FlextInfraUtilitiesPythonModel:
 
     @staticmethod
     def python_model_exports(
-        module: m.Infra.PythonModuleFacts,
+        module: p.Infra.PythonModuleFacts,
     ) -> Sequence[str] | None:
         """Return the explicit ``__all__`` names, ``None`` if absent.
 
@@ -406,7 +406,7 @@ class FlextInfraUtilitiesPythonModel:
 
     @staticmethod
     def python_model_implicit_exports(
-        module: m.Infra.PythonModuleFacts,
+        module: p.Infra.PythonModuleFacts,
     ) -> Sequence[str]:
         """Return the classes and assignments a module binds itself.
 
@@ -421,7 +421,7 @@ class FlextInfraUtilitiesPythonModel:
         )
 
     @staticmethod
-    def python_model_defines(module: m.Infra.PythonModuleFacts, name: str) -> bool:
+    def python_model_defines(module: p.Infra.PythonModuleFacts, name: str) -> bool:
         """Return whether a module binds ``name`` itself (not through an import).
 
         Returns:
@@ -431,7 +431,7 @@ class FlextInfraUtilitiesPythonModel:
         return module.members.get(name) not in {None, "alias"}
 
     @staticmethod
-    def python_model_value_root(module: m.Infra.PythonModuleFacts, name: str) -> str:
+    def python_model_value_root(module: p.Infra.PythonModuleFacts, name: str) -> str:
         """Return the root name of an attribute bound to a name or attribute chain.
 
         Returns:
@@ -442,7 +442,7 @@ class FlextInfraUtilitiesPythonModel:
         return parts[0] if all(part.isidentifier() for part in parts) else ""
 
     @staticmethod
-    def python_model_class_alias(module: m.Infra.PythonModuleFacts, name: str) -> str:
+    def python_model_class_alias(module: p.Infra.PythonModuleFacts, name: str) -> str:
         """Return the local class a module-level name is bound to (``c = Cls``).
 
         Returns:
@@ -453,7 +453,7 @@ class FlextInfraUtilitiesPythonModel:
         return target if target in module.classes else ""
 
     @classmethod
-    def python_model_letters(cls, module: m.Infra.PythonModuleFacts) -> frozenset[str]:
+    def python_model_letters(cls, module: p.Infra.PythonModuleFacts) -> frozenset[str]:
         """Return exported lower-case names bound to a class or imported name.
 
         Returns:
@@ -471,7 +471,7 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def python_model_facade_owner(
-        cls, module: m.Infra.PythonModuleFacts
+        cls, module: p.Infra.PythonModuleFacts
     ) -> tuple[str, str] | None:
         """Return the published ``(alias, class)`` facade pair of one module.
 
@@ -497,7 +497,7 @@ class FlextInfraUtilitiesPythonModel:
         return next(iter(owners), None)
 
     @classmethod
-    def python_model_resolve(cls, run: m.Infra.PythonModelRun, dotted: str) -> str:
+    def python_model_resolve(cls, run: p.Infra.PythonModelRun, dotted: str) -> str:
         """Resolve the defining identity through the invocation's native model.
 
         Returns:
@@ -548,7 +548,7 @@ class FlextInfraUtilitiesPythonModel:
 
     @classmethod
     def python_model_ancestors(
-        cls, run: m.Infra.PythonModelRun, dotted: str
+        cls, run: p.Infra.PythonModelRun, dotted: str
     ) -> frozenset[str]:
         """Read transitive class ancestry from the invocation's native objects.
 

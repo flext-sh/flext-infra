@@ -109,19 +109,19 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         """Source reads through the project's overlaid filesystem view."""
 
         @property
-        def source_plans(self) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
+        def source_plans(self) -> tuple[p.Infra.CodegenFilePlan, ...]: ...
 
         def source_view(
             self,
             *,
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = (),
+            declared_files: tuple[p.Infra.CodegenFilePlan, ...] | None = (),
             additional_source_folders: tuple[str, ...] | None = (),
             analysis_files: Mapping[Path, str] | None = None,
         ) -> AbstractContextManager[Self]: ...
 
         def source_state(
             self, path: Path, *, required: bool = True
-        ) -> m.Cli.AtomicFileState: ...
+        ) -> p.Cli.AtomicFileState: ...
 
         def source_owned(self, path: Path) -> bool: ...
 
@@ -233,7 +233,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
-        def state(self) -> m.Cli.AtomicFileState:
+        def state(self) -> p.Cli.AtomicFileState:
             """Authenticated state the run reads and publishes."""
             ...
 

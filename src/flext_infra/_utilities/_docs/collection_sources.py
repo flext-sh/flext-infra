@@ -21,7 +21,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
     @staticmethod
     def collection_configuration_digest(
-        configuration: m.Infra.PlanCollectionConfig,
+        configuration: p.Infra.PlanCollectionConfig,
     ) -> str:
         """Identify the typed associations without publishing provider roots.
 
@@ -33,7 +33,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
     @staticmethod
     def collection_revision_order(
-        revision: m.Infra.PlanCollectionRevision,
+        revision: p.Infra.PlanCollectionRevision,
     ) -> tuple[bool, str, str]:
         """Order current source references without inventing update timestamps.
 
@@ -75,7 +75,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
     @staticmethod
     def collection_source_root(
         root: Path,
-        source: m.Infra.PlanCollectionSource,
+        source: p.Infra.PlanCollectionSource,
     ) -> Path:
         """Resolve a declared source without allowing lexical parent traversal.
 
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         return selected if selected.is_absolute() else root / selected
 
     @staticmethod
-    def collection_validate_patterns(source: m.Infra.PlanCollectionSource) -> None:
+    def collection_validate_patterns(source: p.Infra.PlanCollectionSource) -> None:
         """Validate declared source selectors without accessing a provider.
 
         Raises:
@@ -109,7 +109,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
     def collection_source_files(
         cls,
         root: Path,
-        source: m.Infra.PlanCollectionSource,
+        source: p.Infra.PlanCollectionSource,
         excluded_outputs: tuple[Path, ...] = (),
     ) -> tuple[Path, ...]:
         """Inventory physical regular files, rejecting inaccessible sources.
@@ -164,7 +164,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         )
 
     @staticmethod
-    def collection_read(path: Path) -> m.Cli.AtomicFileState:
+    def collection_read(path: Path) -> p.Cli.AtomicFileState:
         """Capture one required regular source through the shared CAS owner.
 
         Returns:
@@ -184,7 +184,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
     def collection_capture(
         path: Path,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
-    ) -> m.Cli.AtomicFileState:
+    ) -> p.Cli.AtomicFileState:
         """Bind every influential read, including absence, to its first state.
 
         Returns:
@@ -206,13 +206,13 @@ class FlextInfraUtilitiesDocsCollectionSources:
     def collection_artifacts(
         cls,
         path: Path,
-        source: m.Infra.PlanCollectionSource,
+        source: p.Infra.PlanCollectionSource,
         excluded_outputs: tuple[Path, ...] = (),
-    ) -> tuple[m.Cli.AtomicFileState, ...]:
+    ) -> tuple[p.Cli.AtomicFileState, ...]:
         """Read the plan and its same-basename companion directory.
 
         Returns:
-            The resulting ``tuple[m.Cli.AtomicFileState, ...]``.
+            The resulting ``tuple[p.Cli.AtomicFileState, ...]``.
 
         Raises:
             ValueError: If plan companion is a symlink.
@@ -287,11 +287,11 @@ class FlextInfraUtilitiesDocsCollectionSources:
         canonical: Path,
         projection: Path | None,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
-    ) -> tuple[m.Infra.PlanCollectionManifest, tuple[Path, ...]]:
+    ) -> tuple[p.Infra.PlanCollectionManifest, tuple[Path, ...]]:
         """Exclude only outputs attested by the canonical generated manifest.
 
         Returns:
-            The resulting ``tuple[m.Infra.PlanCollectionManifest,
+            The resulting ``tuple[p.Infra.PlanCollectionManifest,
                 tuple[Path, ...]]``.
 
         """
@@ -329,7 +329,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
     @staticmethod
     def _validate_revision_locators(
-        manifest: m.Infra.PlanCollectionManifest,
+        manifest: p.Infra.PlanCollectionManifest,
     ) -> None:
         """Require every revision locator to stay relative and contained.
 
@@ -365,8 +365,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
     @staticmethod
     def _artifact_matches(
-        state: m.Cli.AtomicFileState,
-        artifact: m.Infra.PlanCollectionOwnedArtifact,
+        state: p.Cli.AtomicFileState,
+        artifact: p.Infra.PlanCollectionOwnedArtifact,
     ) -> bool:
         """Whether one captured output still matches its manifest digest.
 
@@ -382,7 +382,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
     def _verify_projected_artifact(
         cls,
         candidate: Path,
-        state: m.Cli.AtomicFileState,
+        state: p.Cli.AtomicFileState,
         roots: tuple[Path, Path | None],
         plans: set[Path],
         affected: set[Path],
@@ -421,7 +421,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
     def _classified_owned_outputs(
         cls,
         roots: tuple[Path, Path | None],
-        manifest: m.Infra.PlanCollectionManifest,
+        manifest: p.Infra.PlanCollectionManifest,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
         plans: set[Path],
         affected: set[Path],
@@ -462,7 +462,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         canonical: Path,
         projection: Path,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
-        before: m.Cli.AtomicFileState,
+        before: p.Cli.AtomicFileState,
     ) -> Path | None:
         """Verify the mirrored manifest matches the canonical bytes.
 

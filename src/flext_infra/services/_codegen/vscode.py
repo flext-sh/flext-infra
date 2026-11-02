@@ -35,7 +35,7 @@ class FlextInfraCodegenVscode:
     def load_vscode_spec(
         cls,
         repository_root: Path,
-    ) -> p.Result[m.Infra.CodegenVscodeSpec]:
+    ) -> p.Result[p.Infra.CodegenVscodeSpec]:
         """Resolve a repository's typed editor declaration using the strict loader.
 
         Returns:
@@ -43,13 +43,13 @@ class FlextInfraCodegenVscode:
 
         """
 
-        def editor_spec(inputs: m.Infra.CodegenInputs) -> m.Infra.CodegenVscodeSpec:
+        def editor_spec(inputs: p.Infra.CodegenInputs) -> p.Infra.CodegenVscodeSpec:
             return inputs.spec.vscode
 
         return u.Infra.load_codegen_inputs(repository_root).map(editor_spec)
 
     @staticmethod
-    def vscode_settings(spec: m.Infra.CodegenVscodeSpec) -> t.JsonMapping:
+    def vscode_settings(spec: p.Infra.CodegenVscodeSpec) -> t.JsonMapping:
         """Elect ordered declaration pairs without changing array order.
 
         Returns:
@@ -64,8 +64,8 @@ class FlextInfraCodegenVscode:
         repository_root: Path,
         settings: t.JsonMapping,
         *,
-        spec: m.Infra.CodegenVscodeSpec,
-    ) -> p.Result[m.Infra.CodegenVscodeDeclarationDelta]:
+        spec: p.Infra.CodegenVscodeSpec,
+    ) -> p.Result[p.Infra.CodegenVscodeDeclarationDelta]:
         """Extract portable project overrides through the existing editor owner.
 
         Derived settings and retired keys remain owned by their generators.
@@ -75,7 +75,7 @@ class FlextInfraCodegenVscode:
             Minimal overrides representable by the canonical configuration merge.
 
         """
-        result_type = r[m.Infra.CodegenVscodeDeclarationDelta]
+        result_type = r[p.Infra.CodegenVscodeDeclarationDelta]
         loaded = u.Infra.load_codegen_inputs(repository_root)
         if loaded.failure:
             return result_type.from_failure(loaded)
@@ -103,9 +103,9 @@ class FlextInfraCodegenVscode:
     def _portable_vscode_deltas(
         cls,
         portable: t.JsonMapping,
-        spec: m.Infra.CodegenVscodeSpec,
+        spec: p.Infra.CodegenVscodeSpec,
         expected: t.JsonMapping,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> p.Result[t.MutableJsonMapping]:
         """Extract complete values as pairs under the single settings owner.
 
@@ -131,9 +131,9 @@ class FlextInfraCodegenVscode:
 
     @staticmethod
     def compose_vscode_delta(
-        spec: m.Infra.CodegenVscodeSpec,
-        delta: m.Infra.CodegenVscodeDeclarationDelta,
-    ) -> p.Result[m.Infra.CodegenVscodeSpec]:
+        spec: p.Infra.CodegenVscodeSpec,
+        delta: p.Infra.CodegenVscodeDeclarationDelta,
+    ) -> p.Result[p.Infra.CodegenVscodeSpec]:
         """Compose a preview through the canonical deep-merge utility.
 
         Returns:
@@ -146,7 +146,7 @@ class FlextInfraCodegenVscode:
         merged = FlextStrictYamlConfigSource.merge_values(
             dict(baseline), dict(delta.values)
         )
-        return r[m.Infra.CodegenVscodeSpec].create_from_callable(
+        return r[p.Infra.CodegenVscodeSpec].create_from_callable(
             partial(m.Infra.CodegenVscodeSpec.model_validate, merged),
         )
 
@@ -155,8 +155,8 @@ class FlextInfraCodegenVscode:
         cls,
         repository_root: Path,
         *,
-        spec: m.Infra.CodegenVscodeSpec | None = None,
-        codegen: m.Infra.CodegenConfigSpec | None = None,
+        spec: p.Infra.CodegenVscodeSpec | None = None,
+        codegen: p.Infra.CodegenConfigSpec | None = None,
     ) -> p.Result[str]:
         """Return the canonical-merged ``settings.json`` document for one root.
 
@@ -352,8 +352,8 @@ class FlextInfraCodegenVscode:
         settings: t.MutableJsonMapping,
         repository_root: Path,
         *,
-        spec: m.Infra.CodegenVscodeSpec | None = None,
-        codegen: m.Infra.CodegenConfigSpec | None = None,
+        spec: p.Infra.CodegenVscodeSpec | None = None,
+        codegen: p.Infra.CodegenConfigSpec | None = None,
     ) -> p.Result[bool]:
         """Merge canonical codegen VS Code settings into one settings mapping.
 
@@ -424,7 +424,7 @@ class FlextInfraCodegenVscode:
     def _apply_declared_settings(
         cls,
         settings: t.MutableJsonMapping,
-        spec: m.Infra.CodegenVscodeSpec,
+        spec: p.Infra.CodegenVscodeSpec,
         repository_root: Path,
         token: str | None,
     ) -> bool:
@@ -458,7 +458,7 @@ class FlextInfraCodegenVscode:
     @staticmethod
     def _replace_artifact_maps(
         settings: t.MutableJsonMapping,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> bool:
         """Replace the artifact-owned exclude maps with their canonical values.
 
@@ -482,7 +482,7 @@ class FlextInfraCodegenVscode:
     @staticmethod
     def _strip_retired_map_keys(
         settings: t.MutableJsonMapping,
-        spec: m.Infra.CodegenVscodeSpec,
+        spec: p.Infra.CodegenVscodeSpec,
     ) -> bool:
         """Drop retired names from non-artifact maps the spec declares.
 
@@ -532,7 +532,7 @@ class FlextInfraCodegenVscode:
 
     @staticmethod
     def _artifact_settings(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> Mapping[str, Mapping[str, str | bool]]:
         """Project the declared artifact maps through their single editor owner.
 

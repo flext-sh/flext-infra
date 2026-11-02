@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
@@ -24,9 +24,9 @@ class FlextInfraWorkspaceCheckUnion:
 
     @staticmethod
     def _isolate_context(
-        ctx: m.Infra.GateContext,
-        target: m.Infra.CheckProjectTarget,
-    ) -> m.Infra.GateContext:
+        ctx: p.Infra.GateContext,
+        target: p.Infra.CheckProjectTarget,
+    ) -> p.Infra.GateContext:
         """Create a fresh GateContext scoped to a physical project path.
 
         Returns:
@@ -51,9 +51,9 @@ class FlextInfraWorkspaceCheckUnion:
 
     def _union_gate_ids(
         self,
-        projects: Sequence[m.Infra.CheckProjectTarget],
+        projects: Sequence[p.Infra.CheckProjectTarget],
         resolved_gates: Sequence[str],
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """Elect the gates whose tool runs once over every project's targets.
 
@@ -81,9 +81,9 @@ class FlextInfraWorkspaceCheckUnion:
 
     def _run_union_gates(
         self,
-        projects: Sequence[m.Infra.CheckProjectTarget],
+        projects: Sequence[p.Infra.CheckProjectTarget],
         union_gates: Sequence[str],
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Mapping[str, Mapping[Path, m.Infra.GateExecution]]:
         """Run every union gate once per configuration group, split per project.
 
@@ -101,7 +101,7 @@ class FlextInfraWorkspaceCheckUnion:
                 msg = f"{gate_id} gate not registered"
                 raise ValueError(msg)
             groups: MutableMapping[
-                str, MutableSequence[m.Infra.CheckProjectTarget]
+                str, MutableSequence[p.Infra.CheckProjectTarget]
             ] = {}
             for target in projects:
                 if gate_id in target.applicable_gates:
@@ -131,8 +131,8 @@ class FlextInfraWorkspaceCheckUnion:
 
     @staticmethod
     def _split_union_execution(
-        execution: m.Infra.GateExecution,
-        selected: Sequence[m.Infra.CheckProjectTarget],
+        execution: p.Infra.GateExecution,
+        selected: Sequence[p.Infra.CheckProjectTarget],
     ) -> Mapping[Path, m.Infra.GateExecution]:
         """Assign each finding of one union group to its deepest owning project.
 
@@ -155,7 +155,7 @@ class FlextInfraWorkspaceCheckUnion:
             reverse=True,
         )
         native_error = execution.outcome is c.Infra.ToolOutcome.ERROR
-        owned: MutableMapping[Path, MutableSequence[m.Infra.Issue]] = {
+        owned: MutableMapping[Path, MutableSequence[p.Infra.Issue]] = {
             target.path: [] for target in selected
         }
         for issue in execution.issues:
@@ -198,10 +198,10 @@ class FlextInfraWorkspaceCheckUnion:
 
     @staticmethod
     def _merged_union_result(
-        project_result: m.Infra.ProjectResult,
+        project_result: p.Infra.ProjectResult,
         resolved_gates: Sequence[str],
         union_executions: Mapping[str, m.Infra.GateExecution],
-    ) -> m.Infra.ProjectResult:
+    ) -> p.Infra.ProjectResult:
         """Report the union and per-project executions in declared gate order.
 
         Returns:

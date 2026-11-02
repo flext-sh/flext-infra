@@ -57,7 +57,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
         *,
         dry_run: bool = False,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> p.Result[Sequence[m.Infra.ScaffoldResult]]:
+    ) -> p.Result[Sequence[p.Infra.ScaffoldResult]]:
         """Scaffold missing base modules for all projects in workspace.
 
         Args:
@@ -73,7 +73,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
         else:
             discovered = u.Infra.projects(self.repository_root)
             if discovered.failure:
-                return r[Sequence[m.Infra.ScaffoldResult]].from_failure(discovered)
+                return r[Sequence[p.Infra.ScaffoldResult]].from_failure(discovered)
             selected_projects = tuple(discovered.value)
         return r.traverse(
             selected_projects,
@@ -85,7 +85,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
         project: p.Infra.ProjectInfo,
         *,
         dry_run: bool = False,
-    ) -> p.Result[m.Infra.ScaffoldResult]:
+    ) -> p.Result[p.Infra.ScaffoldResult]:
         """Scaffold missing base modules for a single project.
 
         Args:
@@ -110,11 +110,11 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
             ):
                 planned = self._scaffold_dir(request)
                 if planned.failure:
-                    return r[m.Infra.ScaffoldResult].from_failure(planned)
+                    return r[p.Infra.ScaffoldResult].from_failure(planned)
                 created, skipped = planned.value
                 files_created.extend(created)
                 files_skipped.extend(skipped)
-        return r[m.Infra.ScaffoldResult].ok(
+        return r[p.Infra.ScaffoldResult].ok(
             m.Infra.ScaffoldResult(
                 project=project_path.name,
                 files_created=files_created,
@@ -125,10 +125,10 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
     @staticmethod
     def _scaffold_dir_requests(
         project_path: Path,
-        project_layout: m.Infra.RopeProjectLayout,
+        project_layout: p.Infra.RopeProjectLayout,
         *,
         dry_run: bool,
-    ) -> tuple[m.Infra.ScaffoldDirRequest, ...]:
+    ) -> tuple[p.Infra.ScaffoldDirRequest, ...]:
         """Declare the scaffold request of every present project namespace.
 
         Returns:
@@ -192,7 +192,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
 
     @staticmethod
     def _scaffold_dir(
-        request: m.Infra.ScaffoldDirRequest,
+        request: p.Infra.ScaffoldDirRequest,
     ) -> p.Result[tuple[MutableSequence[str], MutableSequence[str]]]:
         """Generate missing modules in a directory and return file lists.
 

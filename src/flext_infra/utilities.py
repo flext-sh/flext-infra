@@ -59,7 +59,7 @@ class FlextInfraUtilities(flext_cli_u):
 
     Usage::
 
-        from flext_infra import m, u
+        from flext_infra import m, p, u
 
         u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=Path(".")))
         u.Cli.toml_read_json(path)

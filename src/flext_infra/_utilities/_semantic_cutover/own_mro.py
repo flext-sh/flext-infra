@@ -522,7 +522,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             if not isinstance(finder, p.Infra.RopeWorder):
                 msg = "Native word finder lacks its public contract"
                 raise TypeError(msg)
-            edits: list[m.Infra.SourceRewrite] = []
+            edits: list[p.Infra.SourceRewrite] = []
             scopes = tuple(
                 declaration
                 for method in sorted(methods)
@@ -563,7 +563,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         module: p.Infra.RopeSourceModule,
         scope: p.Infra.RopeScope,
         finder: p.Infra.RopeWorder,
-    ) -> m.Infra.SourceRewrite:
+    ) -> p.Infra.SourceRewrite:
         """Insert the receiver through the native function-header coordinates.
 
         Returns:

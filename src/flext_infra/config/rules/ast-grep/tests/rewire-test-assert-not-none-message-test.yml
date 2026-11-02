@@ -1,19 +1,19 @@
 id: rewire-test-assert-not-none-message
 valid:
-  - assert value is not None, "A value is required"
-  - |
-    from tests import tm
-    assert self.value is not None, "A value is required"
+- assert value is not None, "A value is required"
+- |
+  from tests import p, tm
+  assert self.value is not None, "A value is required"
 invalid:
-  - |
-    from flext_tests import tm
-    value = 1
-    def check():
-        assert value is not None, explain()
-  - |
-    from tests import tm
-    assert value is not None, "A value is required"
-  - |
-    from tests import tm
-    if not (value is not None):
-        raise AssertionError(report)
+- |
+  from flext_tests import tm
+  value = 1
+  def check():
+      assert value is not None, explain()
+- |
+  from tests import p, tm
+  assert value is not None, "A value is required"
+- |
+  from tests import p, tm
+  if not (value is not None):
+      raise AssertionError(report)

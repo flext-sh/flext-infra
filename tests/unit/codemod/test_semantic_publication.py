@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import codemod, infra, services
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraSemanticPublication:
@@ -204,7 +204,7 @@ class TestsFlextInfraSemanticPublication:
         kind: str = "callable",
         external_consumers: int = 0,
         executable: bool = False,
-    ) -> tuple[m.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]:
+    ) -> tuple[p.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]:
         """Build a native artifact against an independent physical runtime.
 
         Returns:

@@ -53,7 +53,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     @staticmethod
     def facade_original_sources(
         root: Path,
-        states: tuple[m.Cli.AtomicFileState, ...],
+        states: tuple[p.Cli.AtomicFileState, ...],
     ) -> Mapping[Path, str]:
         """Select owned Python observations without another read or discovery.
 
@@ -75,8 +75,8 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     @classmethod
     def candidate_python_sources(
         cls,
-        candidate: m.Infra.StageSourcePlan,
-        states: tuple[m.Cli.AtomicFileState, ...],
+        candidate: p.Infra.StageSourcePlan,
+        states: tuple[p.Cli.AtomicFileState, ...],
     ) -> MutableMapping[Path, str]:
         """Project source observations over the candidate's declared scopes.
 
@@ -204,7 +204,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         cls,
         root: Path,
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
         planned_sources: Mapping[Path, str | None] | None = None,
         project_roots: tuple[Path, ...] = (),
         source_project: p.Infra.RopeProject | None = None,
@@ -275,7 +275,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     def _workspace_planned_folders(
         root: Path,
         project_roots: tuple[Path, ...],
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         *,
         original_root: Path,
     ) -> tuple[str, ...]:
@@ -310,11 +310,11 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     @staticmethod
     def workspace_declared_sources(
         root: Path,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         planned_sources: Mapping[Path, str | None],
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Bind planned overrides to their original physical witnesses.
 
         Returns:
@@ -389,7 +389,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         root: Path,
         project_roots: tuple[Path, ...],
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
         additional_source_folders: tuple[str, ...] = (),
     ) -> Generator[p.Infra.RopeProject]:
         """Open the native source engine project that reads planned sources first.
@@ -675,10 +675,9 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         source = snapshot.sources.get(path)
         if source is not None:
             return source
-        member = max(
-            (root for root in snapshot.members if path.is_relative_to(root)),
-            key=lambda root: len(root.parts),
-            default=None,
+        member = next(
+            (root for root in (path, *path.parents) if root in snapshot.members),
+            None,
         )
         if member is None:
             msg = f"workspace file lies outside every member: {path}"

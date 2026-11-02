@@ -1169,7 +1169,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @staticmethod
     def facade_census_root(
-        census: m.Infra.FacadeCensus,
+        census: p.Infra.FacadeCensus,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
     ) -> Path:
@@ -1195,7 +1195,7 @@ class FlextInfraUtilitiesFacadeMembers:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        census: m.Infra.FacadeCensus,
+        census: p.Infra.FacadeCensus,
     ) -> Mapping[str, t.JsonMapping]:
         """Render the retirement and wrong-layer rules, one document per letter.
 
@@ -1341,7 +1341,7 @@ class FlextInfraUtilitiesFacadeMembers:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        census: m.Infra.FacadeCensus,
+        census: p.Infra.FacadeCensus,
     ) -> Mapping[str, t.JsonMapping]:
         """Render the one rule relocating every foreign facade reference.
 

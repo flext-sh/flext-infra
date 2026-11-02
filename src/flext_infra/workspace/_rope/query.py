@@ -17,7 +17,7 @@ from typing import ClassVar
 from flext_infra import c, m, p, s, t, u
 
 
-class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
+class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
     """Own the native Rope project, structural index, and read-only query caches."""
 
     _rope_repository_root: Path = m.PrivateAttr()
@@ -32,7 +32,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
     _view_project: t.Infra.RopeProject | None = m.PrivateAttr(
         default_factory=lambda: None,
     )
-    _workspace_index: m.Infra.RopeWorkspaceIndex | None = m.PrivateAttr(
+    _workspace_index: p.Infra.RopeWorkspaceIndex | None = m.PrivateAttr(
         default_factory=lambda: None,
     )
     _resource_cache: MutableMapping[str, t.Infra.RopeFile | None] = m.PrivateAttr(
@@ -102,7 +102,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         return rope_project
 
     @property
-    def workspace_index(self) -> m.Infra.RopeWorkspaceIndex:
+    def workspace_index(self) -> p.Infra.RopeWorkspaceIndex:
         """Cached workspace index for the shared Rope project."""
         workspace_index = self._workspace_index
         if workspace_index is None:
@@ -165,7 +165,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
             self._resource_for(file_path),
         )
 
-    def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None:
+    def module(self, file_path: Path) -> p.Infra.RopeModuleIndexEntry | None:
         """Return one indexed module entry for the requested file path.
 
         Returns:
@@ -181,12 +181,12 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         )
         if raw is None:
             return None
-        validated: m.Infra.RopeModuleIndexEntry = (
+        validated: p.Infra.RopeModuleIndexEntry = (
             m.Infra.RopeModuleIndexEntry.model_validate(raw)
         )
         return validated
 
-    def package(self, package_dir: Path) -> m.Infra.RopePackageIndexEntry | None:
+    def package(self, package_dir: Path) -> p.Infra.RopePackageIndexEntry | None:
         """Return one indexed package entry for the requested directory.
 
         Returns:
@@ -202,7 +202,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         )
         if raw is None:
             return None
-        validated: m.Infra.RopePackageIndexEntry = (
+        validated: p.Infra.RopePackageIndexEntry = (
             m.Infra.RopePackageIndexEntry.model_validate(raw)
         )
         return validated
@@ -211,7 +211,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         self,
         *,
         project_names: Sequence[str] | None = None,
-    ) -> Sequence[m.Infra.RopeModuleIndexEntry]:
+    ) -> Sequence[p.Infra.RopeModuleIndexEntry]:
         """Return path-sorted module entries, optionally only the named projects'.
 
         Returns:

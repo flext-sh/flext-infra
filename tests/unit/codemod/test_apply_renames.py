@@ -19,7 +19,7 @@ from flext_infra.codemod import (
     FlextInfraCodemodRename,
     FlextInfraCodemodSemanticApply,
 )
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 _SECOND_RECEIVER = 2
 _MIN_CHANGED_FILES = 2
@@ -615,7 +615,7 @@ class TestsFlextInfraApplyRenames:
         tm.that(path.read_text(), eq=source)
 
     @staticmethod
-    def _request(root: Path, *, apply: bool) -> m.Infra.ApplyRenamesInput:
+    def _request(root: Path, *, apply: bool) -> p.Infra.ApplyRenamesInput:
         return m.Infra.ApplyRenamesInput(
             csv=str(root / "renames.csv"),
             roots=(str(root),),

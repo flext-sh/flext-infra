@@ -18,7 +18,7 @@ snapshots:
               default=True,
           )
     labels:
-    - source: m.Field(True)
+    - source: p.Field(True)
       style: primary
       start: 44
       end: 57
@@ -49,7 +49,7 @@ snapshots:
           locations: tuple[str, ...] = m.Field((), description="Locations")
           receipt: Path | None = m.Field(None, description="Receipt")
     labels:
-    - source: m.Field("set", description="Operation")
+    - source: p.Field("set", description="Operation")
       style: primary
       start: 61
       end: 100

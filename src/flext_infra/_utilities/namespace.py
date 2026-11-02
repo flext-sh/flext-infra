@@ -177,7 +177,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @classmethod
-    def facade_family_declared_by(cls, file_name: str) -> m.Infra.FacadeFamily:
+    def facade_family_declared_by(cls, file_name: str) -> p.Infra.FacadeFamily:
         """Return the family whose facade module is ``file_name``.
 
         Returns:
@@ -239,7 +239,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     def runtime_module_names(
-        *, project_name: str, codegen: m.Infra.CodegenConfigSpec
+        *, project_name: str, codegen: p.Infra.CodegenConfigSpec
     ) -> Mapping[str, str]:
         """Resolve singleton roles to physical stems for exactly one project.
 
@@ -264,7 +264,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         file_name: str,
         *,
         project_name: str,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> str | None:
         """Return the sole public singleton owned by a sanctioned runtime module.
 
@@ -482,7 +482,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         *,
         project: p.Infra.ProjectInfo | None = None,
         rope_project: p.Infra.RopeProject | None = None,
-    ) -> m.Infra.RopeProjectLayout | None:
+    ) -> p.Infra.RopeProjectLayout | None:
         """Return the canonical project layout contract for one project root.
 
         Returns:
@@ -566,7 +566,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         file_path: Path,
         *,
         rope_project: t.Infra.RopeProject,
-        project_layout: m.Infra.RopeProjectLayout | None = None,
+        project_layout: p.Infra.RopeProjectLayout | None = None,
     ) -> tuple[str | None, str | None, str | None, Sequence[str]]:
         """Return (family_alias, expected_family, expected_alias, family_tokens).
 
@@ -688,7 +688,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         file_path: Path,
         *,
-        project_layout: m.Infra.RopeProjectLayout | None = None,
+        project_layout: p.Infra.RopeProjectLayout | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> str:
         """Derive the class-stem prefix for one file inside a project.
@@ -876,8 +876,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         rope_project: t.Infra.RopeProject,
         rel_path: Path | None = None,
         current_pkg: str = "",
-        project_layout: m.Infra.RopeProjectLayout | None = None,
-    ) -> m.Infra.NamespaceModulePolicy:
+        project_layout: p.Infra.RopeProjectLayout | None = None,
+    ) -> p.Infra.NamespaceModulePolicy:
         """Derive publication from existing declarations, without repair inference.
 
         Returns:
@@ -960,8 +960,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         rope_project: t.Infra.RopeProject,
         rel_path: Path | None = None,
         current_pkg: str = "",
-        project_layout: m.Infra.RopeProjectLayout | None = None,
-    ) -> m.Infra.NamespaceModulePolicy:
+        project_layout: p.Infra.RopeProjectLayout | None = None,
+    ) -> p.Infra.NamespaceModulePolicy:
         """Enrich publication declarations with repair and inherited-shape evidence.
 
         Returns:
@@ -1036,13 +1036,13 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         repository_root: Path,
         *,
-        projects: Sequence[m.Infra.ProjectInfo] | None = None,
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
         """Discover only projects that participate in codegen automation.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.ProjectInfo]]``.
+            The resulting ``p.Result[Sequence[p.Infra.ProjectInfo]]``.
 
         """
         if projects is None:
@@ -1051,7 +1051,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                 source_project=source_project,
             )
             if not projects_result.success:
-                return r[Sequence[m.Infra.ProjectInfo]].fail(
+                return r[Sequence[p.Infra.ProjectInfo]].fail(
                     projects_result.error or "project discovery failed",
                 )
             discovered = projects_result.unwrap()
@@ -1068,14 +1068,14 @@ class FlextInfraUtilitiesCodegenNamespace:
                 )
             )
         )
-        return r[Sequence[m.Infra.ProjectInfo]].ok(selected)
+        return r[Sequence[p.Infra.ProjectInfo]].ok(selected)
 
     @classmethod
     def normalize_canonical_facades(
         cls,
         *,
         pkg_dir: Path,
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
     ) -> None:
         """Normalize canonical facade base classes for codegen auto-fix."""
         for file_name, base_import, base_name in (
@@ -1100,7 +1100,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         file_path: Path,
         base_import: str,
         base_name: str,
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
     ) -> None:
         """Add the canonical flext-core base to a *baseless* facade class only.
 
@@ -1237,16 +1237,16 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         *,
         project_path: Path,
-        initial_violations: Sequence[m.Infra.CensusViolation],
-        remaining_violations: Sequence[m.Infra.CensusViolation],
+        initial_violations: Sequence[p.Infra.CensusViolation],
+        remaining_violations: Sequence[p.Infra.CensusViolation],
     ) -> tuple[
-        tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]
+        tuple[p.Infra.CensusViolation, ...], tuple[p.Infra.CensusViolation, ...]
     ]:
         """Split initial violations into fixed and still-skipped groups.
 
         Returns:
-            The resulting ``tuple[tuple[m.Infra.CensusViolation, ...],
-                tuple[m.Infra.CensusViolation, ...]]``.
+            The resulting ``tuple[tuple[p.Infra.CensusViolation, ...],
+                tuple[p.Infra.CensusViolation, ...]]``.
 
         """
         if not initial_violations:
@@ -1260,8 +1260,8 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
             for violation in remaining_violations
         )
-        fixed: MutableSequence[m.Infra.CensusViolation] = []
-        skipped: MutableSequence[m.Infra.CensusViolation] = []
+        fixed: MutableSequence[p.Infra.CensusViolation] = []
+        skipped: MutableSequence[p.Infra.CensusViolation] = []
         for violation in initial_violations:
             key = cls._build_violation_key(
                 violation=violation,
@@ -1291,10 +1291,10 @@ class FlextInfraUtilitiesCodegenNamespace:
     def _build_violation_key(
         cls,
         *,
-        violation: m.Infra.CensusViolation,
+        violation: p.Infra.CensusViolation,
         project_path: Path,
         source_cache: MutableMapping[str, Sequence[str]],
-    ) -> m.Infra.ViolationKey:
+    ) -> p.Infra.ViolationKey:
         """Build violation key.
 
         Returns:

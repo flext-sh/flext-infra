@@ -1,8 +1,7 @@
-"""Project consumed model data contracts from authenticated native sources.
+"""Project model data contracts by authenticated declaring source module.
 
-The current renderer still interprets legacy Tree nodes and selects consumed
-models. Both are open gaps against ADR-018's all-module native projection target;
-this implementation does not establish the completed protocol migration.
+The field renderer retains the existing native engine's expression nodes;
+discovery, identity and ancestry remain owned by that engine.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -29,6 +28,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
+from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
@@ -54,12 +54,14 @@ class FlextInfraUtilitiesModelsProtocol:
     class _ModelProtocolProjection(
         FlextInfraUtilitiesSemanticCutover,
     ):
-        """Bind the legacy consumed-model renderer to one source candidate."""
+        """Bind declaring-module projection to one native source candidate."""
 
         def __init__(self, workspace: p.Infra.RopeWorkspaceDsl) -> None:
             self.workspace = workspace
             self.project = workspace.rope_project
             self.models: dict[str, p.Infra.RopePyName] = {}
+            self.destinations: dict[str, Path] = {}
+            self.canonical_routes: dict[str, str] = {}
             self.facades: dict[str, p.Infra.RopePyName] = {}
             self.package: Path | None = None
             self.package_name = ""
@@ -108,29 +110,46 @@ class FlextInfraUtilitiesModelsProtocol:
                     )
                     imports[route] = self.imports
                     dependencies[route] = self.dependencies
-            rendered: dict[Path, str] = {}
+            grouped: dict[Path, list[str]] = {}
             for route in sorted(declarations):
-                path, source = self._render_route(
-                    route, declarations[route], imports[route], dependencies[route]
-                )
-                previous = rendered.setdefault(path, source)
-                if previous != source:
+                grouped.setdefault(self.destinations[route], []).append(route)
+            rendered: dict[Path, str] = {}
+            owners: dict[str, Path] = {}
+            for path, routes in sorted(grouped.items()):
+                owner = self.references[routes[0]].partition(".")[0]
+                previous = owners.setdefault(owner, path)
+                if previous != path:
                     return result_type.fail(
-                        f"competing native model protocol destinations: {path}"
+                        f"competing native model protocol holder {owner}: "
+                        f"{previous} and {path}"
                     )
+                names: dict[str, str] = {}
+                for route in routes:
+                    name = self._source_class(self.models[route]).get_name()
+                    previous_route = names.setdefault(name, route)
+                    if previous_route != route:
+                        return result_type.fail(
+                            f"competing model contracts {name}: {path}"
+                        )
+                rendered[path.relative_to(self.workspace.repository_root)] = (
+                    self._render_module(
+                        path, routes, declarations, imports, dependencies
+                    )
+                )
             return result_type.ok(rendered)
 
-        def _render_route(
+        def _render_module(
             self,
-            route: str,
-            declaration: list[t.Infra.AstStatement],
-            imports: dict[str, str],
-            dependencies: set[str],
-        ) -> tuple[Path, str]:
-            """Render one closed model under its generated protocol owner.
+            destination: Path,
+            routes: list[str],
+            declarations: dict[str, list[t.Infra.AstStatement]],
+            imports: dict[str, dict[str, str]],
+            dependencies: dict[str, set[str]],
+        ) -> str:
+            """Render all contracts from one declaring module under one holder.
 
             Returns:
-                The relative destination and generated source.
+                The generated or safely extended authored source.
 
             Raises:
                 ValueError: If no package was inventoried.
@@ -139,30 +158,31 @@ class FlextInfraUtilitiesModelsProtocol:
             if self.package is None:
                 message = "protocol projection has no inventoried package"
                 raise ValueError(message)
-            directory = self.package / (
-                FlextInfraUtilitiesCodegenNamespace.facade_families()["p"].directory
-            )
-            owner = self.references[route].partition(".")[0]
+            owner = self.references[routes[0]].partition(".")[0]
             siblings = tuple(
                 sorted(
                     {
                         self.references[dependency].partition(".")[0]
-                        for dependency in dependencies
+                        for route in routes
+                        for dependency in dependencies[route]
                     }
                     - {owner}
                 )
             )
-            token = route.replace(".", "_").lower()
-            destination = directory / (
-                f"{c.Infra.PROTOCOL_GENERATED_STEM}_{token}.py"
-                if token
-                else f"{c.Infra.PROTOCOL_GENERATED_STEM}.py"
-            )
-            selected_imports = dict(imports)
+            selected_imports: dict[str, str] = {}
+            for route in routes:
+                for name, statement in imports[route].items():
+                    previous = selected_imports.setdefault(name, statement)
+                    if previous != statement:
+                        message = (
+                            f"competing protocol module import {name}: {destination}"
+                        )
+                        raise ValueError(message)
             if siblings:
                 selected_imports["protocol"] = (
                     "from typing import TYPE_CHECKING, Protocol, runtime_checkable"
                 )
+            selected_imports.pop(owner, None)
             # Field extraction still supplies legacy expression nodes. Convert
             # them once at this boundary; module structure is template-owned.
             context = m.Infra.ModelProtocolRenderContext(
@@ -175,28 +195,24 @@ class FlextInfraUtilitiesModelsProtocol:
                 imports=tuple(sorted(set(selected_imports.values()))),
                 sibling_import_lines=tuple(
                     FlextInfraUtilitiesLazyInitRender.source_import_lines(
-                        "    ", f"{self.package_name}.{directory.name}", siblings
+                        "    ",
+                        f"{self.package_name}."
+                        f"{FlextInfraUtilitiesCodegenNamespace.facade_families()['p'].directory}",
+                        siblings,
                     )
                 )
                 if siblings
                 else (),
                 owner=owner,
-                name=route.rpartition(".")[2],
-                type_parameters=tuple(
-                    FlextInfraUtilitiesRopeAnalysis.Tree.unparse(
-                        FlextInfraUtilitiesRopeAnalysis.Tree.fix_missing_locations(
-                            parameter
-                        )
+                contracts=tuple(
+                    m.Infra.ModelProtocolRenderContext.ModelProtocolContract(
+                        name=self._source_class(self.models[route]).get_name(),
+                        type_parameters=self._declaration_text(
+                            self.type_parameters[route]
+                        ),
+                        declarations=self._declaration_text(declarations[route]),
                     )
-                    for parameter in self.type_parameters[route]
-                ),
-                declarations=tuple(
-                    FlextInfraUtilitiesRopeAnalysis.Tree.unparse(
-                        FlextInfraUtilitiesRopeAnalysis.Tree.fix_missing_locations(
-                            field
-                        )
-                    )
-                    for field in declaration
+                    for route in routes
                 ),
             )
             template = (
@@ -206,10 +222,250 @@ class FlextInfraUtilitiesModelsProtocol:
                 / c.Infra.TEMPLATE_MODEL_PROTOCOL
             )
             content = u.Cli.template_render(template, context).unwrap()
-            return (
-                destination.relative_to(self.workspace.repository_root),
-                content,
+            resource = self.workspace.resource(destination)
+            if resource is None:
+                return content
+            existing = self.project.source_text(destination)
+            if existing.startswith(c.Infra.AUTOGEN_HEADER):
+                # A general generation marker alone never proves this owner.
+                if not existing.startswith(content.split('"""', maxsplit=1)[0]) or (
+                    '"""Source-derived structural model contracts.' not in existing
+                ):
+                    message = (
+                        "protocol destination has unproven generated ownership: "
+                        f"{destination}"
+                    )
+                    raise ValueError(message)
+                return content
+            return self._extend_authored(destination, existing, context)
+
+        @staticmethod
+        def _declaration_text(
+            nodes: Sequence[t.Infra.AstStatement | t.Infra.AstTypeParameter],
+        ) -> tuple[str, ...]:
+            """Render the existing engine's expressions.
+
+            Returns:
+                Declaration text without reparsing model sources.
+
+            """
+            return tuple(
+                FlextInfraUtilitiesRopeAnalysis.Tree.unparse(
+                    FlextInfraUtilitiesRopeAnalysis.Tree.fix_missing_locations(node)
+                )
+                for node in nodes
             )
+
+        def _extend_authored(
+            self,
+            destination: Path,
+            source: str,
+            context: m.Infra.ModelProtocolRenderContext,
+        ) -> str:
+            """Append absent contracts without replacing authored bytes or interfaces.
+
+            Existing contracts must have the same projected data signature. Extra
+            authored methods remain untouched; ambiguous owners and import bindings
+            fail before any file plan is returned.
+
+            Returns:
+                The preserved source with absent contracts inserted.
+
+            Raises:
+                ValueError: The owner, contract, import or source extent conflicts.
+                TypeError: The owner has no native class declaration.
+
+            """
+            resource = self.workspace.resource(destination)
+            if resource is None:
+                message = f"authored protocol source is unavailable: {destination}"
+                raise ValueError(message)
+            module = self.require_semantic_module(
+                FlextInfraUtilitiesRopeCore.resolve_pymodule(self.project, resource)
+            )
+            binding = module.get_attributes().get(context.owner)
+            if binding is None or context.owner not in (
+                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(module)
+            ):
+                message = (
+                    "authored protocol destination has no exported canonical holder "
+                    f"{context.owner}: {destination}"
+                )
+                raise ValueError(message)
+            holder = self._source_class(binding)
+            if holder.get_module() is not module:
+                message = (
+                    "authored protocol holder is not declared in its mirror: "
+                    f"{context.owner}: {destination}"
+                )
+                raise ValueError(message)
+            missing = self._missing_contracts(holder, context, destination)
+            if not missing:
+                return source
+            template = (
+                FlextInfraUtilitiesGitignore.codegen_templates_root(
+                    config.Infra.codegen
+                )
+                / c.Infra.TEMPLATE_MODEL_PROTOCOL
+            )
+            rendered = u.Cli.template_render(
+                template, context.model_copy(update={"contracts": tuple(missing)})
+            ).unwrap()
+            additions = self._authored_additions(rendered, module)
+            lines = source.splitlines(keepends=True)
+            declaration = holder.get_ast()
+            if not isinstance(
+                declaration, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef
+            ):
+                message = (
+                    f"authored protocol holder has no class declaration: {destination}"
+                )
+                raise TypeError(message)
+            if declaration.col_offset or declaration.lineno == declaration.end_lineno:
+                message = (
+                    "authored protocol holder requires a multiline top-level suite: "
+                    f"{destination}"
+                )
+                raise ValueError(message)
+            if declaration.end_lineno is None:
+                message = (
+                    f"authored protocol holder has no source extent: {destination}"
+                )
+                raise ValueError(message)
+            lines.insert(declaration.end_lineno, "\n" + "\n".join(additions) + "\n")
+            imports = list(context.imports)
+            if context.sibling_import_lines:
+                imports.append(
+                    "if TYPE_CHECKING:\n" + "\n".join(context.sibling_import_lines)
+                )
+            position = FlextInfraUtilitiesRopeSource.find_import_insert_position(
+                source.splitlines(keepends=True), past_existing=False
+            )
+            imports = [statement for statement in imports if statement not in source]
+            lines.insert(position, "\n".join(imports) + "\n" if imports else "")
+            return "".join(lines)
+
+        def _missing_contracts(
+            self,
+            holder: p.Infra.RopeSourceClass,
+            context: m.Infra.ModelProtocolRenderContext,
+            destination: Path,
+        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
+            """Validate existing authored signatures before extending their holder.
+
+            Returns:
+                Only contracts absent from the authored holder.
+
+            Raises:
+                ValueError: An authored contract has an incompatible signature.
+
+            """
+            missing: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
+            protocol_base = self.qualified_name(
+                self.project, "Protocol", module_name="typing"
+            ).get_object()
+            for contract in context.contracts:
+                present = holder.get_attributes().get(contract.name)
+                if present is None:
+                    missing.append(contract)
+                    continue
+                if (
+                    protocol_base
+                    not in self.class_ancestry(self._source_class(present))
+                    or sorted(self._declaration_text(self._fields(present)))
+                    != sorted(contract.declarations)
+                    or self._declaration_text(self._type_parameters(present))
+                    != contract.type_parameters
+                ):
+                    message = (
+                        f"incompatible authored protocol contract "
+                        f"{context.owner}.{contract.name}: {destination}"
+                    )
+                    raise ValueError(message)
+            return missing
+
+        def _authored_additions(
+            self, rendered: str, module: p.Infra.RopeSourceModule
+        ) -> list[str]:
+            """Read template-owned class slots and authenticate import receivers.
+
+            Returns:
+                Template-rendered contract suites, retaining their indentation.
+
+            Raises:
+                ValueError: An import would replace an authored binding.
+
+            """
+            tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse(rendered)
+            self._normal_authored_imports(tree, module)
+            for statement in FlextInfraUtilitiesRopeAnalysis.Tree.walk(tree):
+                if (
+                    not isinstance(
+                        statement, FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom
+                    )
+                    or statement.module == "__future__"
+                ):
+                    continue
+                for alias in statement.names:
+                    receiver = alias.asname or alias.name
+                    existing = module.get_attributes().get(receiver)
+                    if existing is not None and not self.same_name(
+                        existing,
+                        self.qualified_name(
+                            self.project, alias.name, module_name=statement.module
+                        ),
+                    ):
+                        message = (
+                            f"authored protocol import collision {receiver}: "
+                            f"{module.get_name()}"
+                        )
+                        raise ValueError(message)
+            holder = next(
+                node
+                for node in tree.body
+                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef)
+            )
+            lines = rendered.splitlines(keepends=True)
+            return [
+                "".join(
+                    lines[
+                        min([
+                            node.lineno,
+                            *(item.lineno for item in node.decorator_list),
+                        ])
+                        - 1 : node.end_lineno
+                    ]
+                )
+                for node in holder.body
+                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef)
+            ]
+
+        def _normal_authored_imports(
+            self, tree: t.Infra.AstModule, module: p.Infra.RopeSourceModule
+        ) -> None:
+            """Authenticate normal imports as well as imported member receivers.
+
+            Raises:
+                ValueError: An import would replace an authored binding.
+
+            """
+            for statement in tree.body:
+                if not isinstance(
+                    statement, FlextInfraUtilitiesRopeAnalysis.Tree.Import
+                ):
+                    continue
+                for alias in statement.names:
+                    receiver = alias.asname or alias.name.partition(".")[0]
+                    existing = module.get_attributes().get(receiver)
+                    provider = alias.name if alias.asname else receiver
+                    if existing is not None and existing.get_object() is not (
+                        self.project.get_module(provider)
+                    ):
+                        message = (
+                            f"authored protocol import collision {receiver}: "
+                            f"{module.get_name()}"
+                        )
+                        raise ValueError(message)
 
         def _inventory(self) -> p.Result[bool]:
             """Admit native identities before deriving their protocol references.
@@ -233,13 +489,37 @@ class FlextInfraUtilitiesModelsProtocol:
             inventoried = self._inventory_models()
             if inventoried.failure:
                 return result_type.from_failure(inventoried)
-            for route in self.models:
-                namespace, _, leaf = route.rpartition(".")
+            families = FlextInfraUtilitiesCodegenNamespace.facade_families()
+            if self.package is None:
+                return result_type.fail("model protocol inventory lost its package")
+            model_directory = self.package / families["m"].directory
+            for route, binding in self.models.items():
+                if not self._owned(binding):
+                    continue
+                source = self._source_class(binding)
+                resource = source.get_module().get_resource()
+                if resource is None:
+                    return result_type.fail(
+                        f"model has no declaring source resource: {route}"
+                    )
+                path = Path(resource.real_path)
+                if (
+                    not path.is_relative_to(model_directory)
+                    or path.name == c.Infra.INIT_PY
+                ):
+                    continue
+                relative = path.relative_to(model_directory)
+                destination = self.package / families["p"].directory / relative
                 owner = (
-                    f"{self.class_stem}{namespace.replace('.', '')}"
-                    f"ProtocolsGeneratedModels{leaf}"
+                    self.class_stem
+                    + families["p"].suffix
+                    + "".join(
+                        u.derive_class_stem(part.strip("_"))
+                        for part in relative.with_suffix("").parts
+                    )
                 )
-                self.references[route] = f"{owner}.{leaf}"
+                self.destinations[route] = destination
+                self.references[route] = f"{owner}.{source.get_name()}"
             return result_type.ok(value=True)
 
         def _inventory_facades(self) -> None:
@@ -319,7 +599,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     canonical = self.class_assignment_binding(member)
                     if canonical is None:
                         return result_type.fail(
-                            f"model class alias has no canonical identity: m.{route}"
+                            f"model class alias has no canonical identity: p.{route}"
                         )
                     canonical_class = canonical.get_object()
                     if not self.py_class(canonical_class):
@@ -330,6 +610,78 @@ class FlextInfraUtilitiesModelsProtocol:
                     if registered.failure:
                         return result_type.from_failure(registered)
                     pending.append((f"{route}.", canonical, (*ancestors, value)))
+            return self._inventory_local_models(model_base)
+
+        def _inventory_local_models(
+            self, model_base: p.Infra.RopePyObject
+        ) -> p.Result[bool]:
+            """Inventory local declarations independently of facade consumption.
+
+            Returns:
+                Admission, or a competing local model identity failure.
+
+            Raises:
+                ValueError: An indexed source resource is unavailable.
+
+            """
+            result_type = r[bool]
+            if self.package is None:
+                return result_type.fail("local model inventory has no package")
+            # Published aliases are consumers, not the declaration inventory.
+            # Walk every local model source through its existing native module,
+            # including classes that have not yet reached the facade.
+            directory = self.package / (
+                FlextInfraUtilitiesCodegenNamespace.facade_families()["m"].directory
+            )
+            for entry in self.workspace.modules():
+                if not entry.file_path.is_relative_to(directory):
+                    continue
+                resource = self.workspace.resource(entry.file_path)
+                if resource is None:
+                    message = f"indexed model source is unavailable: {entry.file_path}"
+                    raise ValueError(message)
+                module = self.require_semantic_module(
+                    FlextInfraUtilitiesRopeCore.resolve_pymodule(self.project, resource)
+                )
+                registered = self._inventory_module_models(module, model_base)
+                if registered.failure:
+                    return result_type.from_failure(registered)
+            return result_type.ok(value=True)
+
+        def _inventory_module_models(
+            self,
+            module: p.Infra.RopeSourceModule,
+            model_base: p.Infra.RopePyObject,
+        ) -> p.Result[bool]:
+            """Walk native declarations while excluding inherited foreign bindings.
+
+            Returns:
+                Admission, or a competing local model identity failure.
+
+            """
+            result_type = r[bool]
+            candidates = list(module.get_attributes().values())
+            visited: set[int] = set()
+            while candidates:
+                binding = candidates.pop()
+                value = binding.get_object()
+                if not self.py_class(value) or id(value) in visited:
+                    continue
+                visited.add(id(value))
+                if value.get_module() is not module:
+                    continue
+                candidates.extend(value.get_attributes().values())
+                if model_base not in self.class_ancestry(value):
+                    continue
+                if any(
+                    self.same_name(binding, known) for known in self.models.values()
+                ):
+                    continue
+                registered = self._register_model(
+                    value.get_name(), binding, value, model_base
+                )
+                if registered.failure:
+                    return result_type.from_failure(registered)
             return result_type.ok(value=True)
 
         def _register_model(
@@ -353,51 +705,33 @@ class FlextInfraUtilitiesModelsProtocol:
             return result_type.ok(value=True)
 
         def _declared(self) -> set[str]:
-            """Select the model routes whose generated mirror already exists.
-
-            Generation projects declarations and never infers them: each
-            generated ``generated_models_<route token>`` module of this
-            package's protocol family declares its route, and the projection
-            re-renders it from the model's current fields. A route whose model
-            disappeared selects nothing, so its mirror is retired. Creating a
-            mirror from consumer usage is a source transformation owned by
-            ``make mod``.
+            """Select one route per local native declaration, never legacy tokens.
 
             Returns:
-                The declared model routes.
+                The canonical routes for all mirrored model declarations.
 
             Raises:
-                ValueError: If two model routes share one generated token.
+                ValueError: Distinct models compete for one protocol identity.
 
             """
-            if self.package is None:
-                return set()
-            directory = self.package / (
-                FlextInfraUtilitiesCodegenNamespace.facade_families()["p"].directory
-            )
-            tokens = {
-                entry.file_path.stem.removeprefix(
-                    c.Infra.PROTOCOL_GENERATED_STEM
-                ).removeprefix("_")
-                for entry in self.workspace.modules()
-                if entry.file_path.parent == directory
-                and entry.file_path.stem.startswith(c.Infra.PROTOCOL_GENERATED_STEM)
-                and self.project.source_text(entry.file_path).startswith(
-                    c.Infra.AUTOGEN_HEADER
-                )
-            }
             declared: dict[str, str] = {}
-            for route in self.models:
-                token = route.replace(".", "_").lower()
-                if token not in tokens:
-                    continue
-                previous = declared.setdefault(token, route)
-                if previous != route:
+            entities: dict[str, str] = {}
+            for route in sorted(self.destinations):
+                name = self._source_class(self.models[route]).get_name()
+                elected = entities.setdefault(name, route)
+                if not self.same_name(self.models[elected], self.models[route]):
                     message = (
-                        f"model routes {previous} and {route} share the generated "
-                        f"protocol token {token}"
+                        f"competing flat protocol entity {name}: {elected}, {route}"
                     )
                     raise ValueError(message)
+                previous = declared.setdefault(self.references[route], route)
+                if not self.same_name(self.models[previous], self.models[route]):
+                    message = (
+                        "competing model identities for protocol "
+                        f"{self.references[route]}"
+                    )
+                    raise ValueError(message)
+            self.canonical_routes = declared
             return set(declared.values())
 
         def _fields(self, binding: p.Infra.RopePyName) -> list[t.Infra.AstStatement]:
@@ -780,6 +1114,9 @@ class FlextInfraUtilitiesModelsProtocol:
             projected = self._model_annotation(node, scope, binding)
             if projected is not None:
                 return projected
+            port = self._protocol_annotation(binding)
+            if port is not None:
+                return port
             alias = (
                 self.annotation_alias_definition(binding)
                 if binding is not None
@@ -806,11 +1143,56 @@ class FlextInfraUtilitiesModelsProtocol:
                     ],
                 )
             source = FlextInfraUtilitiesRopeAnalysis.Tree.unparse(node)
+            self._require_nonmodel_annotation(binding, source)
             aliases = self._imports(source, scope)
             renamed = aliases.get(root, root)
             return FlextInfraUtilitiesRopeAnalysis.Tree.parse_expression_source(
                 f"{renamed}{source[len(root) :]}"
             )
+
+        def _require_nonmodel_annotation(
+            self, binding: p.Infra.RopePyName | None, source: str
+        ) -> None:
+            """Never retain a concrete model import as a substitute for its contract.
+
+            Raises:
+                ValueError: A concrete model has no admitted protocol identity.
+
+            """
+            if binding is None:
+                return
+            value = binding.get_object()
+            if not self.py_class(value):
+                return
+            model_base = self.qualified_name(
+                self.project, "BaseModel", module_name="pydantic"
+            ).get_object()
+            if model_base in self.class_ancestry(value):
+                message = (
+                    f"model annotation has no admitted protocol identity: {source}"
+                )
+                raise ValueError(message)
+
+        def _protocol_annotation(
+            self, binding: p.Infra.RopePyName | None
+        ) -> t.Infra.AstExpression | None:
+            """Retain a direct authored protocol identity, including local recursion.
+
+            Returns:
+                Its family-bound annotation, or no protocol declaration.
+
+            """
+            if binding is None:
+                return None
+            value = binding.get_object()
+            if not self.py_class(value) or not self._owned(binding):
+                return None
+            protocol_base = self.qualified_name(
+                self.project, "Protocol", module_name="typing"
+            ).get_object()
+            if protocol_base not in self.class_ancestry(value):
+                return None
+            return self._declared_port(binding, value.get_name())
 
         def _model_annotation(
             self,
@@ -827,6 +1209,9 @@ class FlextInfraUtilitiesModelsProtocol:
             Returns:
                 The projected dependency, or None for a non-model symbol or a
                 model declared outside this package.
+
+            Raises:
+                ValueError: A selected model has no mirrored local declaration.
 
             """
             for route, model in self.models.items():
@@ -846,20 +1231,35 @@ class FlextInfraUtilitiesModelsProtocol:
                     and self.same_name(model, binding)
                     and not self._owned(model)
                 ):
-                    return None
+                    port = self._member(self.facades["p"], route)
+                    if port is None:
+                        message = (
+                            "upstream model dependency has no published protocol: "
+                            f"{route}"
+                        )
+                        raise ValueError(message)
+                    return self._declared_port(port, route)
                 if future_port or (
                     binding is not None and self.same_name(model, binding)
                 ):
                     port = self._member(self.facades["p"], route)
                     owner = port.get_object().get_module() if port is not None else None
                     if (
-                        port is not None
+                        route not in self.references
+                        and port is not None
                         and self.source_module(owner)
                         and not owner.source_code.startswith(c.Infra.AUTOGEN_HEADER)
                     ):
                         return self._declared_port(port, route)
-                    self.selected.add(route)
-                    self.dependencies.add(route)
+                    if route not in self.references:
+                        message = (
+                            "model dependency has no local mirrored declaration: "
+                            f"{route}"
+                        )
+                        raise ValueError(message)
+                    selected = self.canonical_routes[self.references[route]]
+                    self.selected.add(selected)
+                    self.dependencies.add(selected)
                     return FlextInfraUtilitiesRopeAnalysis.Tree.parse_expression_source(
                         self.references[route]
                     )
@@ -893,6 +1293,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: If the authored port has no declaring resource.
 
             """
+            self._require_nonmodel_annotation(binding, route)
             inherited = self._inherited_port(binding, route)
             if inherited is not None:
                 return inherited

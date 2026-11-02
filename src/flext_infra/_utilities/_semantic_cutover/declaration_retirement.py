@@ -1063,7 +1063,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 path,
             )
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
-            changes: list[m.Infra.SourceRewrite] = []
+            changes: list[p.Infra.SourceRewrite] = []
             tree = module.get_ast()
             for node in ast.walk(tree):
                 rewrite = cls._retired_base_rewrite(
@@ -1083,7 +1083,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         entry: tuple[Path, str],
         node: ast.AST,
         container: p.Infra.RopePyName,
-    ) -> m.Infra.SourceRewrite | None:
+    ) -> p.Infra.SourceRewrite | None:
         if not isinstance(node, ast.ClassDef) or not node.bases:
             return None
         runtime = FlextInfraUtilitiesRopeRuntimeModules

@@ -34,7 +34,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     @classmethod
     def from_request(
         cls: type[Self],
-        request: m.Infra.CodegenGenerateRequest,
+        request: p.Infra.CodegenGenerateRequest,
         *,
         execution_context: p.Infra.CodegenExecutionContext | None,
         repository_root: t.Infra.Path | None = None,
@@ -279,7 +279,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _control_plan(
         self,
         request: p.Infra.CodegenGenerateRequest,
-    ) -> p.Result[m.Infra.CodegenPlan]:
+    ) -> p.Result[p.Infra.CodegenPlan]:
         """Plan the native file-only control cohort before Python inventory.
 
         Returns:
@@ -287,7 +287,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             first workspace, selection, seed or ordering failure.
 
         """
-        result_type = r[m.Infra.CodegenPlan]
+        result_type = r[p.Infra.CodegenPlan]
         root = request.root.expanduser().resolve()
         captured = u.Infra.load_codegen_inputs(root)
         if captured.failure:
@@ -350,7 +350,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
     @staticmethod
     def _control_identities(
-        selected: tuple[m.Infra.RepositoryRef, ...],
+        selected: tuple[p.Infra.RepositoryRef, ...],
     ) -> p.Result[dict[str, m.Infra.RepositoryRef]]:
         """Index the selected repositories by their unique distribution identity.
 
@@ -378,10 +378,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
     def _control_seed(
         self,
-        current_target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        current_target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        inputs: p.Infra.CodegenInputs,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan the invoking target's existing control files for a sourced workspace.
 
         Returns:
@@ -389,7 +389,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             FLEXT source, or the original planning failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         if workspace.flext_source is None:
             return result_type.ok(())
         initial = self._plan_existing_control(current_target, workspace, inputs)
@@ -400,10 +400,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     @staticmethod
     def _control_graph(
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        inputs: m.Infra.CodegenInputs,
-        selected: tuple[m.Infra.RepositoryRef, ...],
-        seed: tuple[m.Infra.CodegenFilePlan, ...],
+        workspace: p.Infra.WorkspaceSpec,
+        inputs: p.Infra.CodegenInputs,
+        selected: tuple[p.Infra.RepositoryRef, ...],
+        seed: tuple[p.Infra.CodegenFilePlan, ...],
     ) -> dict[str, tuple[str, ...]]:
         """Read the local dependency graph with its bootstrap executor edge.
 
@@ -437,8 +437,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
     def _control_outcome(
         self,
-        task: m.Infra.CodegenRepositoryPlanTask,
-    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+        task: p.Infra.CodegenRepositoryPlanTask,
+    ) -> p.Infra.CodegenRepositoryPlanOutcome:
         """Plan one control repository; its first failure stops the cohort.
 
         A success extends the provider plans visible to later repositories.
@@ -460,22 +460,22 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
     def _control_repository(
         self,
-        task: m.Infra.CodegenRepositoryPlanTask,
-    ) -> p.Result[m.Infra.CodegenRepositoryPlanOutcome]:
+        task: p.Infra.CodegenRepositoryPlanTask,
+    ) -> p.Result[p.Infra.CodegenRepositoryPlanOutcome]:
         """Resolve a control target through the existing metadata owners.
 
         Returns:
             The control target's planning outcome, or its first failure.
 
         """
-        result_type = r[m.Infra.CodegenRepositoryPlanOutcome]
+        result_type = r[p.Infra.CodegenRepositoryPlanOutcome]
         resolved = self._resolved_repository_root(
             task.root, task.workspace, task.current_target, task.repository
         )
         if resolved.failure:
             return result_type.from_failure(resolved)
         captured = (
-            r[m.Infra.CodegenInputs].ok(task.selected_inputs)
+            r[p.Infra.CodegenInputs].ok(task.selected_inputs)
             if task.selected_inputs is not None
             else u.Infra.load_codegen_inputs(resolved.value)
         )
@@ -517,7 +517,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _checked(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        plan: m.Infra.CodegenPlan,
+        plan: p.Infra.CodegenPlan,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Compare the injected publisher's normalized plan with the tree.
 
@@ -553,7 +553,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _planned(
         self,
         request: p.Infra.CodegenGenerateRequest,
-    ) -> p.Result[m.Infra.CodegenPlan]:
+    ) -> p.Result[p.Infra.CodegenPlan]:
         """Plan the request; a planning exception propagates with its traceback.
 
         Returns:
@@ -578,7 +578,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _published(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        plan: m.Infra.CodegenPlan,
+        plan: p.Infra.CodegenPlan,
         after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
         *,
         after_cohort_publication: tuple[
@@ -600,7 +600,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         result_type = r[p.Infra.CodegenResult]
         root = request.root.expanduser().resolve()
         selection: tuple[
-            tuple[m.Infra.CodegenPlan, tuple[m.Infra.CodegenFilePlan, ...] | None],
+            tuple[p.Infra.CodegenPlan, tuple[p.Infra.CodegenFilePlan, ...] | None],
             ...,
         ] = ((plan, None),)
         if plan.outcomes:
@@ -634,9 +634,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         self,
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
-        plan: m.Infra.CodegenPlan,
+        plan: p.Infra.CodegenPlan,
         ready: dict[str, m.Infra.RepositoryRef],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]] | None:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]] | None:
         """Fold ready-repository documentation into the published plan.
 
         A documentation planning failure aborts publication before any effect.
@@ -669,10 +669,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
         cohorts: tuple[
-            tuple[m.Infra.CodegenPlan, tuple[m.Infra.CodegenFilePlan, ...] | None],
+            tuple[p.Infra.CodegenPlan, tuple[p.Infra.CodegenFilePlan, ...] | None],
             ...,
         ],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Admit every cohort before any effect; the first refusal stops all.
 
         Each cohort carries its prepared files, or ``None`` to derive its
@@ -683,8 +683,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             admission failure naming its cohort's repositories.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        admitted: list[m.Infra.CodegenFilePlan] = []
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
+        admitted: list[p.Infra.CodegenFilePlan] = []
         for cohort, prepared_files in cohorts:
             files = self._admitted_cohort(
                 request, root, cohort, prepared_files=prepared_files
@@ -708,15 +708,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _publication_cohorts(
         cls,
         root: Path,
-        plan: m.Infra.CodegenPlan,
-    ) -> p.Result[tuple[m.Infra.CodegenPlan, ...]]:
+        plan: p.Infra.CodegenPlan,
+    ) -> p.Result[tuple[p.Infra.CodegenPlan, ...]]:
         """Close candidate effects over authenticated changed-file dependencies.
 
         Returns:
             Existing plan objects grouped by the native graph component owner.
 
         """
-        result_type = r[tuple[m.Infra.CodegenPlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenPlan, ...]]
         outcomes = {outcome.repository: outcome for outcome in plan.outcomes}
         repositories = {repository.name: repository for repository in plan.repositories}
         roots = {
@@ -745,7 +745,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     @classmethod
     def _cohort_dependency_edges(
         cls,
-        files: tuple[m.Infra.CodegenFilePlan, ...],
+        files: tuple[p.Infra.CodegenFilePlan, ...],
         projects: dict[Path, set[str]],
         outcomes: Mapping[str, m.Infra.CodegenRepositoryPlanOutcome],
     ) -> dict[str, set[str]]:
@@ -775,11 +775,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
     @staticmethod
     def _component_cohort_plans(
-        plan: m.Infra.CodegenPlan,
+        plan: p.Infra.CodegenPlan,
         repositories: dict[str, m.Infra.RepositoryRef],
         projects: dict[Path, set[str]],
         edges: dict[str, set[str]],
-    ) -> tuple[m.Infra.CodegenPlan, ...]:
+    ) -> tuple[p.Infra.CodegenPlan, ...]:
         """Group the plan's outcomes into one cohort per graph component.
 
         Returns:
@@ -810,10 +810,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         self,
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
-        plan: m.Infra.CodegenPlan,
+        plan: p.Infra.CodegenPlan,
         *,
-        prepared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        prepared_files: tuple[p.Infra.CodegenFilePlan, ...] | None = None,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Admit one cohort without any destination effect.
 
         Every planning diagnostic and cold-import failure rejects the cohort
@@ -836,8 +836,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _published_admitted(
         self,
         root: Path,
-        plan: m.Infra.CodegenPlan,
-        admitted: tuple[m.Infra.CodegenFilePlan, ...],
+        plan: p.Infra.CodegenPlan,
+        admitted: tuple[p.Infra.CodegenFilePlan, ...],
         *,
         publication_followups: tuple[
             Callable[[tuple[Path, ...]], p.Result[bool]], ...
@@ -912,10 +912,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _admitted_plans(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        plan: m.Infra.CodegenPlan,
+        plan: p.Infra.CodegenPlan,
         *,
-        prepared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        prepared_files: tuple[p.Infra.CodegenFilePlan, ...] | None = None,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Validate the normalized dependency cohort before accepting any effects.
 
         The native preview materializes original file declarations, including
@@ -926,7 +926,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The normalized plans, or the original planning or admission failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         ports = self.state.ports
         if ports is None:
             return result_type.fail(
@@ -975,16 +975,16 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     @staticmethod
     def _validated_source_plans(
         request: p.Infra.CodegenGenerateRequest,
-        files: tuple[m.Infra.CodegenFilePlan, ...],
-        run: m.Infra.CodegenConformState,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        files: tuple[p.Infra.CodegenFilePlan, ...],
+        run: p.Infra.CodegenConformState,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Admit the normalized candidate through its injected runtime validator.
 
         Returns:
             The unchanged normalized plans, or the original validation failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         if not any(file.path.suffix == c.Infra.EXT_PYTHON for file in files):
             return result_type.ok(files)
         ports, snapshot = run.ports, run.snapshot
@@ -1036,15 +1036,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _docs_plans(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        plan: m.Infra.CodegenPlan,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        plan: p.Infra.CodegenPlan,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Compose managed plans with their derived presentation and documentation.
 
         Returns:
             The complete candidate, retaining strict independent artifact admission.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         owned = tuple(
             # The docs selector names PROJECTS (what docs discovery indexes:
             # the distribution), not the repository catalog key (git slug).

@@ -21,7 +21,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     """Governed artifact rendering and project overlay composition."""
 
     _project_scope_active: bool = m.PrivateAttr(default=False)
-    _project_context: m.Infra.ProjectRenderContext | None = m.PrivateAttr(default=None)
+    _project_context: p.Infra.ProjectRenderContext | None = m.PrivateAttr(default=None)
 
     @contextmanager
     def project_render_scope(self) -> Generator[None]:
@@ -43,8 +43,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     @staticmethod
     def render_artifact_source(
-        codegen: m.Infra.CodegenConfigSpec,
-        entry: m.Infra.TemplateEntrySpec,
+        codegen: p.Infra.CodegenConfigSpec,
+        entry: p.Infra.TemplateEntrySpec,
         context: p.Model,
     ) -> p.Result[str]:
         """Read an explicit package resource or render a Jinja template.
@@ -64,17 +64,17 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     @staticmethod
     def _render_artifact_authenticated(
-        codegen: m.Infra.CodegenConfigSpec,
-        entry: m.Infra.TemplateEntrySpec,
+        codegen: p.Infra.CodegenConfigSpec,
+        entry: p.Infra.TemplateEntrySpec,
         context: p.Model,
-    ) -> p.Result[m.Cli.AuthenticatedTemplateRender]:
+    ) -> p.Result[p.Cli.AuthenticatedTemplateRender]:
         """Retain the original resource or Jinja observations with its text.
 
         Returns:
             The native authenticated payload, or the first read/render failure.
 
         """
-        result_type = r[m.Cli.AuthenticatedTemplateRender]
+        result_type = r[p.Cli.AuthenticatedTemplateRender]
         source = u.Infra.codegen_artifact_source(codegen, entry)
         if entry.source_kind == "resource":
             if entry.source_package is None:
@@ -90,7 +90,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     f"authenticated resource has no bytes: {source}"
                 )
             return result_type.create_from_callable(
-                lambda: m.Cli.AuthenticatedTemplateRender(
+                lambda: p.Cli.AuthenticatedTemplateRender(
                     rendered=content.decode(c.DEFAULT_ENCODING),
                     source_states=(captured.value,),
                 )
@@ -99,10 +99,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     @staticmethod
     def _artifact_dependency_plans(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         root: Path,
-        planned: Sequence[m.Infra.CodegenFilePlan],
-    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
+        planned: Sequence[p.Infra.CodegenFilePlan],
+    ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
         """Require every selected artifact's outputs in the same plan set.
 
         Args:
@@ -114,7 +114,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             The planned files, or the first artifact with unplanned dependencies.
 
         """
-        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
+        result_type = r[Sequence[p.Infra.CodegenFilePlan]]
         paths = {plan.path for plan in planned}
         for entry in codegen.templates.entries:
             if root / entry.destination not in paths or not entry.requires_artifacts:
@@ -135,11 +135,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     @staticmethod
     def planned_source_tooling(
-        render_inputs: m.Infra.CodegenRenderInputs,
-        planned: Sequence[m.Infra.CodegenFilePlan],
+        render_inputs: p.Infra.CodegenRenderInputs,
+        planned: Sequence[p.Infra.CodegenFilePlan],
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> m.Infra.ToolingRuntimeContext:
+    ) -> p.Infra.ToolingRuntimeContext:
         """Derive tooling from the Python sources the transaction will publish.
 
         Returns:
@@ -215,7 +215,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     @staticmethod
     def direct_sources(
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
         *,
         composed: str | None = None,
     ) -> p.Result[tuple[str, ...]]:
@@ -248,7 +248,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         destination: str,
         rendered: str,
         *,
-        render_inputs: m.Infra.CodegenRenderInputs | None = None,
+        render_inputs: p.Infra.CodegenRenderInputs | None = None,
     ) -> p.Result[str]:
         """Apply typed project overlays after canonical template rendering.
 
@@ -285,7 +285,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         cls,
         repository_root: Path,
         rendered: str,
-        render_inputs: m.Infra.CodegenRenderInputs | None,
+        render_inputs: p.Infra.CodegenRenderInputs | None,
     ) -> p.Result[str]:
         """Preserve the live gitignore's owned blocks in the render.
 
@@ -341,7 +341,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         cls,
         repository_root: Path,
         rendered: str,
-        render_inputs: m.Infra.CodegenRenderInputs | None,
+        render_inputs: p.Infra.CodegenRenderInputs | None,
     ) -> p.Result[str]:
         """Overlay, conform, and format the pyproject render.
 
@@ -382,7 +382,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         cls,
         repository_root: Path,
         rendered: str,
-        render_inputs: m.Infra.CodegenRenderInputs | None,
+        render_inputs: p.Infra.CodegenRenderInputs | None,
     ) -> p.Result[str]:
         """Compose the mise declaration from the resolved artifact catalog.
 
@@ -417,7 +417,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         cls,
         repository_root: Path,
         rendered: str,
-        _render_inputs: m.Infra.CodegenRenderInputs | None,
+        _render_inputs: p.Infra.CodegenRenderInputs | None,
     ) -> p.Result[str]:
         """Replace only the declared closure keys, retaining authored YAML.
 
@@ -470,14 +470,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     def _release_policy_render_inputs(
         cls,
         root: Path,
-    ) -> p.Result[m.Infra.ReleasePolicySpec]:
+    ) -> p.Result[p.Infra.ReleasePolicySpec]:
         """Select committed closure declarations, never local/private policy.
 
         Returns:
             The existing typed release policy.
 
         """
-        result_type = r[m.Infra.ReleasePolicySpec]
+        result_type = r[p.Infra.ReleasePolicySpec]
         owner = u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=root))
         if owner.failure:
             return result_type.from_failure(owner)
@@ -504,7 +504,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         return document.flat_map(cls._release_declaration).flat_map(
             lambda section: result_type.create_from_callable(
-                lambda: m.Infra.ReleasePolicySpec.model_validate({
+                lambda: p.Infra.ReleasePolicySpec.model_validate({
                     "build_constraints": config.Infra.release.build_constraints,
                     "maintenance_line": section.get("maintenance_line"),
                     "finalize_maintenance": section.get("finalize_maintenance", False),
@@ -514,8 +514,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     def _candidate_manifests(
         self,
-        planned: Sequence[m.Infra.CodegenFilePlan],
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        planned: Sequence[p.Infra.CodegenFilePlan],
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Compose provider and current-phase manifests with original witnesses.
 
         Returns:
@@ -533,9 +533,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     def _rendered_artifact_source(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
-        route: m.Infra.ArtifactRenderRoute,
-    ) -> p.Result[m.Cli.AuthenticatedTemplateRender]:
+        render_inputs: p.Infra.CodegenRenderInputs,
+        route: p.Infra.ArtifactRenderRoute,
+    ) -> p.Result[p.Cli.AuthenticatedTemplateRender]:
         """Resolve one artifact render route and render its template source.
 
         ``route.failure_prefix`` carries the only difference between the
@@ -576,7 +576,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
         )
         if artifact_context.failure:
-            return r[m.Cli.AuthenticatedTemplateRender].from_failure(artifact_context)
+            return r[p.Cli.AuthenticatedTemplateRender].from_failure(artifact_context)
         rendered = self._render_artifact_authenticated(
             render_inputs.codegen,
             entry,
@@ -595,7 +595,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             None,
         )
         if template is None or template.content is None:
-            return r[m.Cli.AuthenticatedTemplateRender].fail(
+            return r[p.Cli.AuthenticatedTemplateRender].fail(
                 f"rendered template has no original source observation: {source}"
             )
         return self._require_rendered_content(
@@ -608,11 +608,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     def _bootstrap_rendered_source(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
-        entry: m.Infra.TemplateEntrySpec,
+        render_inputs: p.Infra.CodegenRenderInputs,
+        entry: p.Infra.TemplateEntrySpec,
         *,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan],
-    ) -> p.Result[m.Cli.AuthenticatedTemplateRender]:
+        planned_manifests: Sequence[p.Infra.CodegenFilePlan],
+    ) -> p.Result[p.Cli.AuthenticatedTemplateRender]:
         """Render an executor-bootstrap artifact from its declared closure.
 
         Returns:
@@ -621,7 +621,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         distribution = entry.bootstrap_distribution
         if distribution is None:
-            return r[m.Cli.AuthenticatedTemplateRender].fail(
+            return r[p.Cli.AuthenticatedTemplateRender].fail(
                 "bootstrap artifact has no declared executor"
             )
         bootstrap = u.Infra.workspace_bootstrap_requirements(
@@ -631,7 +631,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             planned_manifests=planned_manifests,
         )
         if bootstrap.failure:
-            return r[m.Cli.AuthenticatedTemplateRender].from_failure(bootstrap)
+            return r[p.Cli.AuthenticatedTemplateRender].from_failure(bootstrap)
         return self._render_artifact_authenticated(
             render_inputs.codegen, entry, bootstrap.value
         )
@@ -681,10 +681,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     def _artifact_render_context(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
         *,
         destination: str,
-        project_context: m.Infra.ProjectRenderContext | None,
+        project_context: p.Infra.ProjectRenderContext | None,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input.
 
@@ -706,7 +706,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     def _repo_config_context(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
         destination: str,
     ) -> p.Result[p.Model] | None:
         """Resolve the repository-shaped config specs (gitignore/sonar/qlty/envrc).
@@ -780,7 +780,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     @classmethod
     def _static_spec_context(
         cls,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
         destination: str,
     ) -> p.Result[p.Model] | None:
         """Resolve the fleet-static and toolchain specs.
@@ -853,7 +853,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     @classmethod
     def _beads_context(
         cls,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
         destination: str,
     ) -> p.Result[p.Model] | None:
         """Resolve the Beads config and identity-marker specs.
@@ -910,7 +910,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     def _github_context(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
         destination: str,
     ) -> p.Result[p.Model] | None:
         """Resolve the GitHub workflow render spec for ``.github/`` targets.
@@ -1011,7 +1011,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
     def _ci_superproject(
         repository_root: Path,
         branch: str,
-    ) -> p.Result[m.Infra.CiSuperprojectCheckoutSpec] | None:
+    ) -> p.Result[p.Infra.CiSuperprojectCheckoutSpec] | None:
         """Elect the containing workspace an attached member's CI checks out.
 
         The native runtime owner decides membership: a repository elected by
@@ -1025,7 +1025,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             elects itself.
 
         """
-        result_type = r[m.Infra.CiSuperprojectCheckoutSpec]
+        result_type = r[p.Infra.CiSuperprojectCheckoutSpec]
         root = repository_root.resolve()
         runtime = u.Infra.runtime_owner_root(root)
         if runtime.failure:
@@ -1039,7 +1039,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if origin.failure:
             return result_type.from_failure(origin)
         return result_type.create_from_callable(
-            lambda: m.Infra.CiSuperprojectCheckoutSpec(
+            lambda: p.Infra.CiSuperprojectCheckoutSpec(
                 repository=u.Infra.git_remote_identity(origin.value.text),
                 ref=branch,
                 path=root.relative_to(workspace_root).as_posix(),
@@ -1048,7 +1048,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     def _makefile_group_context(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
         destination: str,
     ) -> p.Result[p.Model] | None:
         """Resolve the Makefile and custom-Make render specs.
@@ -1079,8 +1079,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     def _project_or_pass_context(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
-        project_context: m.Infra.ProjectRenderContext | None,
+        render_inputs: p.Infra.CodegenRenderInputs,
+        project_context: p.Infra.ProjectRenderContext | None,
     ) -> p.Result[p.Model]:
         """Pass a supplied project context through, or derive one on demand.
 
@@ -1101,14 +1101,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     def _makefile_render_spec(
         self,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[m.Infra.MakefileRenderSpec]:
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> p.Result[p.Infra.MakefileRenderSpec]:
         """Resolve Makefile inputs directly from the declared repository topology.
 
         Returns:
-            The resulting ``p.Result[m.Infra.MakefileRenderSpec]``.
+            The resulting ``p.Result[p.Infra.MakefileRenderSpec]``.
 
         """
         pytest = config.Infra.tooling.tools.pytest
@@ -1117,7 +1117,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if target.make_profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        return r[m.Infra.MakefileRenderSpec].ok(
+        return r[p.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
                 bootstrap_requirements=Path(
                     codegen.templates.bootstrap_entry.destination

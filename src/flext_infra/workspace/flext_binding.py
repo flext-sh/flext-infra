@@ -128,14 +128,14 @@ class FlextInfraBindingService:
         python: Path,
         packages: Sequence[str],
         candidate_environment: Path | None = None,
-    ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
+    ) -> p.Result[p.Infra.PythonEnvironmentObservation]:
         """Observe real package resolution and metadata in the elected Python.
 
         Returns:
             The observed package environment, or the first observation failure.
 
         """
-        result_type = r[m.Infra.PythonEnvironmentObservation]
+        result_type = r[p.Infra.PythonEnvironmentObservation]
         environment = FlextInfraBindingService._consumer_environment(
             consumer_root, python, candidate_environment=candidate_environment
         )
@@ -174,7 +174,7 @@ class FlextInfraBindingService:
     @staticmethod
     def _validated_package_facts(
         environment: Path,
-        facts: m.Infra.PythonEnvironmentObservation,
+        facts: p.Infra.PythonEnvironmentObservation,
     ) -> p.Result[bool]:
         """Validate the reported facts against the elected environment.
 
@@ -212,7 +212,7 @@ class FlextInfraBindingService:
     @staticmethod
     def _confirm_stable_environment(
         environment: Path,
-        physical: m.Cli.AtomicDirectoryChainPlan,
+        physical: p.Cli.AtomicDirectoryChainPlan,
     ) -> p.Result[bool]:
         """Require the elected environment identity to survive the observation.
 

@@ -15,7 +15,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraCodegenRepositoryRootScope:
@@ -385,7 +385,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        plan: m.Infra.CodegenPlan = tm.ok(
+        plan: p.Infra.CodegenPlan = tm.ok(
             FlextInfraCodegenConform.Generate(
                 repository_root=repository_root,
                 state=m.Infra.CodegenConformState(

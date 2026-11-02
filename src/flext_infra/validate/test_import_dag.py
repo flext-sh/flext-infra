@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool]):
     """Enforce directed imports between production, tests, and test facets."""
 
-    def build_report(self, repository_root: Path) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, repository_root: Path) -> p.Result[p.Infra.ValidationReport]:
         """Scan every governed project as an independent import unit.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ValidationReport]``.
+            The resulting ``p.Result[p.Infra.ValidationReport]``.
 
         """
         try:
@@ -36,13 +36,13 @@ class FlextInfraValidateTestImportDag(FlextInfraProjectSelectionServiceBase[bool
                 for violation in self._project_violations(project_root)
             )
         except OSError as exc:
-            return r[m.Infra.ValidationReport].fail_op("test-import-dag scan", exc)
+            return r[p.Infra.ValidationReport].fail_op("test-import-dag scan", exc)
         summary = (
             f"strict test import DAG respected ({len(roots)} project(s))"
             if not violations
             else f"{len(violations)} strict test import DAG violation(s)"
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=not violations,
                 violations=violations,

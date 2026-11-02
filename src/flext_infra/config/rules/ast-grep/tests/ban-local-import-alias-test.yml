@@ -2,22 +2,22 @@
 # runtime aliases of fixture-utils/local-alias.yml.
 id: ban-local-import-alias
 valid:
-  - from ai_hub import m
-  - from ai_hub import m as m
-  - from ai_hub.child import Owner as Owner
-  - |
-    if TYPE_CHECKING:
-        from ai_hub import _child as _child
-  - import ai_hub.models
-  # Another package's names are not the own package's.
-  - from flext_core import m as models
-  # The canonical letter binding under TYPE_CHECKING.
-  - |
-    if TYPE_CHECKING:
-        from ai_hub.models import AiHubModels as m
+- from ai_hub import m
+- from ai_hub import m as m
+- from ai_hub.child import Owner as Owner
+- |
+  if TYPE_CHECKING:
+      from ai_hub import _child as _child
+- import ai_hub.models
+# Another package's names are not the own package's.
+- from flext_core import m as models
+# The canonical letter binding under TYPE_CHECKING.
+- |
+  if TYPE_CHECKING:
+      from ai_hub.models import m.AiHub as m
 invalid:
-  - from ai_hub import m as models
-  - |
-    if TYPE_CHECKING:
-        from ai_hub import child as renamed
-  - import ai_hub.models as models
+- from ai_hub import m as models
+- |
+  if TYPE_CHECKING:
+      from ai_hub import child as renamed
+- import ai_hub.models as models

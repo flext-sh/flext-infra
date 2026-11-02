@@ -33,7 +33,7 @@ class FlextInfraUtilitiesProjectDiscovery(
     """Static helpers for discovering governed project roots in a workspace."""
 
     @classmethod
-    def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
+    def load_refactor_config(cls, repository_root: Path) -> p.Infra.RefactorConfigSpec:
         """Load declared refactor configuration, propagating invalid manifests.
 
         Returns:
@@ -206,7 +206,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         repository_root: Path,
         *,
         source_files: Sequence[Path] | None = None,
-        refactor_config: m.Infra.RefactorConfigSpec | None = None,
+        refactor_config: p.Infra.RefactorConfigSpec | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> Sequence[str]:
         """Return one repository's Python sources and owned stub-policy paths.
@@ -844,8 +844,8 @@ class FlextInfraUtilitiesProjectDiscovery(
 
     @staticmethod
     def mutable_flext_members(
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> Sequence[m.Infra.RepositoryRef]:
+        workspace: p.Infra.WorkspaceSpec,
+    ) -> Sequence[p.Infra.RepositoryRef]:
         """Return the declared members a workspace may settle or rewrite.
 
         A member qualifies by its declaration alone: an internal FLEXT kind,

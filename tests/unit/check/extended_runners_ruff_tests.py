@@ -15,7 +15,7 @@ from flext_infra import m
 from flext_infra.gates.pyright import FlextInfraGatesPyright
 from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
 from flext_infra.gates.ruff_lint import FlextInfraGatesRuffLint
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +25,7 @@ class TestsFlextInfraRealGateRunners:
     """Exercise real gate behavior through public gate APIs."""
 
     @staticmethod
-    def make_ctx(root: Path) -> m.Infra.GateContext:
+    def make_ctx(root: Path) -> p.Infra.GateContext:
         """Provide ``make_ctx``.
 
         Returns:

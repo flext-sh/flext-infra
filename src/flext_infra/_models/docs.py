@@ -77,7 +77,7 @@ class FlextInfraModelsDocs(
     class DocsGovernanceLinks(m.ContractModel):
         """Resolved governance pointers of one generated project page."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 
@@ -89,7 +89,7 @@ class FlextInfraModelsDocs(
     class DocsGuideEntry(m.ContractModel):
         """One guide row of a generated guides index."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 
@@ -99,7 +99,7 @@ class FlextInfraModelsDocs(
     class DocsModuleEntry(m.ContractModel):
         """One module page row of a generated module index."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 
@@ -109,7 +109,7 @@ class FlextInfraModelsDocs(
     class DocsPageContext(m.ContractModel):
         """Validated base context of every generated Markdown docs page."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 

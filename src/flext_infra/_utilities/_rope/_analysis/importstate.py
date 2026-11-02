@@ -251,7 +251,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> m.Infra.ModuleSemanticState:
+    ) -> p.Infra.ModuleSemanticState:
         """Return local classes plus declared and semantic imports in one pass.
 
         Uses rope's ``PyModule.get_attributes()`` for class discovery and
@@ -286,7 +286,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         return state
 
     @staticmethod
-    def _empty_module_semantic_state() -> m.Infra.ModuleSemanticState:
+    def _empty_module_semantic_state() -> p.Infra.ModuleSemanticState:
         """Return an empty semantic state.
 
         Returns:
@@ -305,7 +305,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
         pymodule: t.Infra.RopePyModule,
-    ) -> m.Infra.ModuleSemanticState:
+    ) -> p.Infra.ModuleSemanticState:
         """Build semantic state from one resolved Rope module.
 
         Returns:
@@ -341,7 +341,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         *,
         pymodule: t.Infra.RopePyModule,
         resource: t.Infra.RopeFile,
-    ) -> Sequence[m.Infra.ClassInfo]:
+    ) -> Sequence[p.Infra.ClassInfo]:
         """Return local class infos for one resolved Rope module.
 
         Returns:
@@ -351,7 +351,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             ValueError: If Rope's superclass lineage is incomplete or cyclic.
 
         """
-        class_infos: MutableSequence[m.Infra.ClassInfo] = []
+        class_infos: MutableSequence[p.Infra.ClassInfo] = []
         tree = pymodule.get_ast()
         declared_base_counts = {
             node.name: len(node.bases)
@@ -902,14 +902,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def resolve_class_info(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> Sequence[m.Infra.ClassInfo]:
+    ) -> Sequence[p.Infra.ClassInfo]:
         """Return ClassInfo (name, line, bases) for all classes in a module.
 
         Returns:
             ClassInfo (name, line, bases) for all classes in a module.
 
         """
-        class_infos: Sequence[m.Infra.ClassInfo] = (
+        class_infos: Sequence[p.Infra.ClassInfo] = (
             FlextInfraUtilitiesRopeAnalysisImportState.resolve_module_semantic_state(
                 rope_project,
                 resource,

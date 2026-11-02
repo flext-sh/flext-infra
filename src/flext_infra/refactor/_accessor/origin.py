@@ -37,7 +37,7 @@ class FlextInfraRefactorAccessorOrigin:
         self._bindings: dict[str, dict[str, list[p.Infra.RopePyName]]] = {}
         self._owners: dict[int, p.Infra.RopePyObject] = {}
         self._names: dict[int, str] = {}
-        self._introduced: dict[str, tuple[m.Infra.Object, ...]] = {}
+        self._introduced: dict[str, tuple[p.Infra.Object, ...]] = {}
         self._lineages: dict[int, tuple[p.Infra.RopePyObject, ...]] = {}
         self._namespace_owners: tuple[p.Infra.RopePyObject, ...] | None = None
         self._target_module: str | None = None
@@ -49,7 +49,7 @@ class FlextInfraRefactorAccessorOrigin:
             for rule in FlextInfraRefactorAccessorWarnings.automated_rules()
         )
 
-    def select_origin(self, params: m.Infra.AccessorMigrationInput) -> p.Result[bool]:
+    def select_origin(self, params: p.Infra.AccessorMigrationInput) -> p.Result[bool]:
         """Bind optional selectors at the existing typed planning boundary.
 
         Returns:
@@ -282,7 +282,7 @@ class FlextInfraRefactorAccessorOrigin:
         metadata = u.Infra.read_project_metadata_result(project_root).unwrap()
         module_name = u.Infra.module_name_for_file(py_file, project_root=project_root)
         bindings: dict[str, list[p.Infra.RopePyName]] = {}
-        introduced: list[m.Infra.Object] = []
+        introduced: list[p.Infra.Object] = []
         pending: list[tuple[p.Infra.RopeScope, tuple[str, ...]]] = [(scope, ())]
         while pending:
             current, chain = pending.pop()
@@ -320,8 +320,8 @@ class FlextInfraRefactorAccessorOrigin:
         py_file: Path,
         source: str,
         *,
-        rules: Sequence[m.Infra.AccessorMigrationRule],
-    ) -> tuple[m.Infra.AccessorMigrationChange, ...]:
+        rules: Sequence[p.Infra.AccessorMigrationRule],
+    ) -> tuple[p.Infra.AccessorMigrationChange, ...]:
         """Authenticate the snapshot and report selected introducing accessors.
 
         Returns:
@@ -338,7 +338,7 @@ class FlextInfraRefactorAccessorOrigin:
             msg = f"accessor discovery source differs from Rope snapshot: {py_file}"
             raise ValueError(msg)
         self._index(py_file)
-        warnings: list[m.Infra.AccessorMigrationChange] = []
+        warnings: list[p.Infra.AccessorMigrationChange] = []
         for declaration in self._introduced[str(py_file)]:
             if not self._declaration_selected(py_file, declaration):
                 continue
@@ -376,7 +376,7 @@ class FlextInfraRefactorAccessorOrigin:
             )
         return tuple(warnings)
 
-    def _declaration_selected(self, path: Path, item: m.Infra.Object) -> bool:
+    def _declaration_selected(self, path: Path, item: p.Infra.Object) -> bool:
         """Select declaring identities while retaining all their consumers.
 
         Returns:
@@ -717,7 +717,7 @@ class FlextInfraRefactorAccessorOrigin:
         tree: ast.Module,
         node: ast.Attribute,
         *,
-        rule: m.Infra.AccessorMigrationRule,
+        rule: p.Infra.AccessorMigrationRule,
     ) -> None:
         """Reject aliases that would capture the introduced public facade.
 

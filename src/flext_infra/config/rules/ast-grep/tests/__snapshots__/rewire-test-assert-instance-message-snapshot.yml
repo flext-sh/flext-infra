@@ -26,9 +26,9 @@ snapshots:
       style: secondary
       start: 0
       end: 95
-  "from tests import tm\nassert isinstance(value, Entry), \"An entry is required\"\n":
+  "from tests import p, tm\nassert isinstance(value, Entry), \"An entry is required\"\n":
     fixed: |
-      from tests import tm
+      from tests import p, tm
       if isinstance(value, Entry):
           pass
       else:
@@ -38,19 +38,19 @@ snapshots:
       style: primary
       start: 21
       end: 76
-    - source: from tests import tm
+    - source: from tests import p, tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import tm
+        from tests import p, tm
         assert isinstance(value, Entry), "An entry is required"
       style: secondary
       start: 0
       end: 77
-  "from tests import tm\nif not (isinstance(value, Entry)):\n    raise AssertionError(report)\n":
+  "from tests import p, tm\nif not (isinstance(value, Entry)):\n    raise AssertionError(report)\n":
     fixed: |
-      from tests import tm
+      from tests import p, tm
       if isinstance(value, Entry):
           pass
       else:
@@ -62,12 +62,12 @@ snapshots:
       style: primary
       start: 21
       end: 88
-    - source: from tests import tm
+    - source: from tests import p, tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import tm
+        from tests import p, tm
         if not (isinstance(value, Entry)):
             raise AssertionError(report)
       style: secondary

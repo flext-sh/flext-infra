@@ -26,12 +26,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     @staticmethod
     def resolve_render_inputs(
         *,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
-        tooling_runtime: m.Infra.ToolingRuntimeContext | None,
-        managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot,
-    ) -> m.Infra.CodegenRenderInputs:
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
+        tooling_runtime: p.Infra.ToolingRuntimeContext | None,
+        managed_artifacts: p.Infra.ProjectManagedArtifactsSnapshot,
+    ) -> p.Infra.CodegenRenderInputs:
         """Resolve every input shared by one repository's renders exactly once.
 
         The integration branch probes the manifest and, undeclared, the
@@ -60,7 +60,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
     @staticmethod
     def render_integration_branch(
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
     ) -> p.Result[str]:
         """Return the plan's integration branch, or the resolver's own failure.
 
@@ -79,9 +79,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     @staticmethod
     def _resolve_integration_branch(
         *,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> p.Result[str]:
         """Resolve the repository's integration branch from its declarations.
 
@@ -106,7 +106,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def conformed_pyproject_source(
         cls,
         source: str,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
     ) -> p.Result[str]:
         """Conform one pyproject source under the plan's render inputs.
 
@@ -134,7 +134,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 return r[str].from_failure(branch)
             workspace = workspace.model_copy(
                 update={
-                    "integration": m.Infra.WorkspaceIntegrationSpec(
+                    "integration": p.Infra.WorkspaceIntegrationSpec(
                         provider=workspace.repository.provider,
                         branch=branch.value,
                     ),
@@ -162,8 +162,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
     @staticmethod
     def _release_product_verbs(
-        repository: m.Infra.RepositoryRef,
-    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+        repository: p.Infra.RepositoryRef,
+    ) -> tuple[p.Infra.MakeVerbSpec, ...]:
         """Derive the opted-in product surface from the native release phases.
 
         Returns:
@@ -193,10 +193,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
     def _elected_extra_verbs(
         self,
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
         root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> tuple[p.Infra.MakeVerbSpec, ...]:
         """Compose authored commands and elected product capabilities once.
 
         Returns:
@@ -217,12 +217,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
     def make_render_context(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
-    ) -> p.Result[m.Infra.MakeRenderContext]:
+        render_inputs: p.Infra.CodegenRenderInputs,
+    ) -> p.Result[p.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile.
 
         Returns:
-            The resulting ``p.Result[m.Infra.MakeRenderContext]``.
+            The resulting ``p.Result[p.Infra.MakeRenderContext]``.
 
         """
         target = render_inputs.target
@@ -233,12 +233,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         profile = target.make_profile
         tooling_runtime = render_inputs.tooling_runtime
         if tooling_runtime is None:
-            return r[m.Infra.MakeRenderContext].fail(
+            return r[p.Infra.MakeRenderContext].fail(
                 "Make rendering requires resolved tooling context",
             )
         tooling = tooling_runtime.document
         if tooling is None:
-            return r[m.Infra.MakeRenderContext].fail(
+            return r[p.Infra.MakeRenderContext].fail(
                 "Make rendering requires the elected tooling document",
             )
         subprojects = (
@@ -262,8 +262,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
             )
         except ValueError as exc:
-            return r[m.Infra.MakeRenderContext].fail(str(exc), exception=exc)
-        return r[m.Infra.MakeRenderContext].ok(
+            return r[p.Infra.MakeRenderContext].fail(str(exc), exception=exc)
+        return r[p.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=tooling.tools.pytest,
                 release_verbs=self._release_product_verbs(repository),
@@ -299,19 +299,19 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
     @staticmethod
     def _project_spec_from_existing(
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
         repository_root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[m.Infra.ProjectSpec]:
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> p.Result[p.Infra.ProjectSpec]:
         """Derive scaffold ProjectSpec from live PEP 621 metadata for existing trees.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ProjectSpec]``.
+            The resulting ``p.Result[p.Infra.ProjectSpec]``.
 
         """
         metadata = u.Infra.read_project_metadata_result(repository_root)
         if metadata.failure:
-            return r[m.Infra.ProjectSpec].from_failure(metadata)
+            return r[p.Infra.ProjectSpec].from_failure(metadata)
         pep621 = metadata.value.project
         package_name = metadata.value.package_name
         class_stem = metadata.value.class_stem
@@ -322,11 +322,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             codegen.scaffold.project,
         )
         if identity.failure:
-            return r[m.Infra.ProjectSpec].from_failure(identity)
+            return r[p.Infra.ProjectSpec].from_failure(identity)
         author_name, license_id, year = identity.value
         author_email = pep621.authors[0].email if pep621.authors else None
         if not author_email:
-            return r[m.Infra.ProjectSpec].fail(
+            return r[p.Infra.ProjectSpec].fail(
                 f"existing pyproject is missing author email: {repository_root}",
             )
         homepage = pep621.urls.homepage or repository.url.removesuffix(c.GIT_DIR_NAME)
@@ -341,10 +341,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             or base.distribution in runtime_names
         )
         if not candidates:
-            return r[m.Infra.ProjectSpec].fail(
+            return r[p.Infra.ProjectSpec].fail(
                 f"declared dependencies expose no config base at {repository_root}",
             )
-        return r[m.Infra.ProjectSpec].ok(
+        return r[p.Infra.ProjectSpec].ok(
             m.Infra.ProjectSpec(
                 package_name=package_name,
                 class_stem=class_stem,
@@ -390,8 +390,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
     def _resolved_render_project(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
-    ) -> p.Result[m.Infra.ProjectSpec]:
+        render_inputs: p.Infra.CodegenRenderInputs,
+    ) -> p.Result[p.Infra.ProjectSpec]:
         """Resolve the render project, inheriting workspace namespace scope.
 
         Existing checkouts declare no scaffold metadata: derive the render
@@ -404,7 +404,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         project-level declaration stays the more specific owner.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ProjectSpec]``.
+            The resulting ``p.Result[p.Infra.ProjectSpec]``.
 
         """
         target = render_inputs.target
@@ -419,19 +419,19 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 codegen,
             )
             if derived.failure:
-                return r[m.Infra.ProjectSpec].from_failure(derived)
+                return r[p.Infra.ProjectSpec].from_failure(derived)
             project = derived.value
         if workspace.namespace_scan_dirs and not project.namespace_scan_dirs:
             project = project.model_copy(
                 update={"namespace_scan_dirs": workspace.namespace_scan_dirs},
             )
-        return r[m.Infra.ProjectSpec].ok(project)
+        return r[p.Infra.ProjectSpec].ok(project)
 
     @staticmethod
     def _validated_scaffold_project(
-        project: m.Infra.ProjectSpec,
-        render_inputs: m.Infra.CodegenRenderInputs,
-    ) -> p.Result[m.Infra.ProjectSpec]:
+        project: p.Infra.ProjectSpec,
+        render_inputs: p.Infra.CodegenRenderInputs,
+    ) -> p.Result[p.Infra.ProjectSpec]:
         """Validate the target's own license against supported artifact templates.
 
         The notice-identity owner applies the one supported-license rule the
@@ -441,7 +441,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             The original target declaration, with no runtime requirement injection.
 
         """
-        result_type = r[m.Infra.ProjectSpec]
+        result_type = r[p.Infra.ProjectSpec]
         identity = u.Infra.project_notice_identity(
             render_inputs.target.root,
             project,
@@ -454,8 +454,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     @classmethod
     def _integration_facts(
         cls,
-        render_inputs: m.Infra.CodegenRenderInputs,
-    ) -> p.Result[tuple[m.Infra.ProviderIdentitySpec, str, tuple[str, str]]]:
+        render_inputs: p.Infra.CodegenRenderInputs,
+    ) -> p.Result[tuple[p.Infra.ProviderIdentitySpec, str, tuple[str, str]]]:
         """Resolve the provider, integration branch, and FLEXT base URL.
 
         Internal flext-* floors render from the FLEXT line the checkout
@@ -464,12 +464,12 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         otherwise renders a mixed family and uv rejects conflicting URLs.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.ProviderIdentitySpec,
+            The resulting ``p.Result[tuple[p.Infra.ProviderIdentitySpec,
                 str, tuple[str, str]]]`` where the pair carries the FLEXT
                 base URL and branch.
 
         """
-        result_type = r[tuple[m.Infra.ProviderIdentitySpec, str, tuple[str, str]]]
+        result_type = r[tuple[p.Infra.ProviderIdentitySpec, str, tuple[str, str]]]
         repository_provider = u.Infra.repository_provider(
             render_inputs.target.repository,
         )
@@ -503,9 +503,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     def _development_dependencies(
         self,
         repository_root: Path,
-        repository: m.Infra.RepositoryRef,
-        codegen: m.Infra.CodegenConfigSpec,
-        project: m.Infra.ProjectSpec,
+        repository: p.Infra.RepositoryRef,
+        codegen: p.Infra.CodegenConfigSpec,
+        project: p.Infra.ProjectSpec,
     ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Resolve declared and composed development dependencies of one render.
 
@@ -543,14 +543,14 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
     def _project_render_context(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
+        render_inputs: p.Infra.CodegenRenderInputs,
         *,
         planned_data_files: Sequence[str] = (),
-    ) -> p.Result[m.Infra.ProjectRenderContext]:
+    ) -> p.Result[p.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ProjectRenderContext]``.
+            The resulting ``p.Result[p.Infra.ProjectRenderContext]``.
 
         """
         target = render_inputs.target
@@ -560,18 +560,18 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository_root = target.root
         project = self._validated_render_project(render_inputs)
         if project.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(project)
+            return r[p.Infra.ProjectRenderContext].from_failure(project)
         project = project.value
         dependencies = self._development_dependencies(
             repository_root, repository, codegen, project
         )
         if dependencies.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(dependencies)
+            return r[p.Infra.ProjectRenderContext].from_failure(dependencies)
         project_dependencies, development_dependencies = dependencies.value
         profile = target.make_profile
         tooling_runtime = render_inputs.tooling_runtime
         if tooling_runtime is None or tooling_runtime.document is None:
-            return r[m.Infra.ProjectRenderContext].fail(
+            return r[p.Infra.ProjectRenderContext].fail(
                 "Project rendering requires resolved tooling context"
                 if tooling_runtime is None
                 else "Project rendering requires the elected tooling document",
@@ -579,7 +579,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         tooling = tooling_runtime.document
         integration = self._integration_facts(render_inputs)
         if integration.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(integration)
+            return r[p.Infra.ProjectRenderContext].from_failure(integration)
         packaged_data_paths = self._resolved_packaged_data(
             repository_root,
             project,
@@ -592,8 +592,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         # typed initial version and the protocol owns every change after that.
         version = self._workspace_version(repository_root)
         if version.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(version)
-        return r[m.Infra.ProjectRenderContext].ok(
+            return r[p.Infra.ProjectRenderContext].from_failure(version)
+        return r[p.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 docs_audit=workspace.docs_audit,
                 dist=repository.distribution,
@@ -683,7 +683,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
     @staticmethod
     def _declared_dependency_facts(
         repository_root: Path,
-        project: m.Infra.ProjectSpec,
+        project: p.Infra.ProjectSpec,
         *,
         manifest_source: str | None = None,
     ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
@@ -772,8 +772,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 return result_type.fail(
                     f"captured project metadata is invalid: {repository_root}"
                 )
-            declared = r[m.Infra.DependencyManifestSpec].create_from_callable(
-                lambda: m.Infra.DependencyManifestSpec.model_validate(parsed)
+            declared = r[p.Infra.DependencyManifestSpec].create_from_callable(
+                lambda: p.Infra.DependencyManifestSpec.model_validate(parsed)
             )
             if declared.failure:
                 return result_type.from_failure(declared)
@@ -788,8 +788,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
     def _validated_render_project(
         self,
-        render_inputs: m.Infra.CodegenRenderInputs,
-    ) -> p.Result[m.Infra.ProjectSpec]:
+        render_inputs: p.Infra.CodegenRenderInputs,
+    ) -> p.Result[p.Infra.ProjectSpec]:
         """Resolve and validate the render project of one conform request.
 
         Args:
@@ -802,22 +802,22 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """
         resolved = self._resolved_render_project(render_inputs)
         if resolved.failure:
-            return r[m.Infra.ProjectSpec].from_failure(resolved)
+            return r[p.Infra.ProjectSpec].from_failure(resolved)
         validated = self._validated_scaffold_project(
             resolved.value,
             render_inputs,
         )
         if validated.failure:
-            return r[m.Infra.ProjectSpec].from_failure(validated)
-        return r[m.Infra.ProjectSpec].ok(validated.value)
+            return r[p.Infra.ProjectSpec].from_failure(validated)
+        return r[p.Infra.ProjectSpec].ok(validated.value)
 
     @staticmethod
     def _resolved_packaged_data(
         repository_root: Path,
-        project: m.Infra.ProjectSpec,
+        project: p.Infra.ProjectSpec,
         profile: c.Infra.MakeProfile,
         planned_data_files: Sequence[str],
-    ) -> m.Infra.PackagedDataSelection:
+    ) -> p.Infra.PackagedDataSelection:
         """Resolve the packaged data selection of the target make profile.
 
         A workspace-profile render owns no packaged data selection: workspace
@@ -843,7 +843,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         )
 
     @staticmethod
-    def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
+    def _repository_root_rel(workspace: p.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target.
 
         Returns:

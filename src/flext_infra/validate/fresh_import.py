@@ -49,32 +49,32 @@ class FlextInfraValidateFreshImport(s[bool]):
         self,
         packages: Sequence[str] = (),
         *,
-        publications: Sequence[m.Infra.LazyInitPlan] = (),
+        publications: Sequence[p.Infra.LazyInitPlan] = (),
         repository_roots: Sequence[Path] = (),
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Validate complete publications, stopping at the first causal failure.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ValidationReport]``.
+            The resulting ``p.Result[p.Infra.ValidationReport]``.
 
         """
         layouts_result = self._project_layouts(repository_roots)
         if layouts_result.failure:
-            return r[m.Infra.ValidationReport].from_failure(layouts_result)
+            return r[p.Infra.ValidationReport].from_failure(layouts_result)
         layouts = layouts_result.value
         origin_code = self._origin_code(layouts)
-        probes: MutableSequence[m.Infra.FreshImportProbe] = []
+        probes: MutableSequence[p.Infra.FreshImportProbe] = []
         for layout in layouts:
             built = self._layout_probes(layout, origin_code, publications)
             if built.failure:
-                return r[m.Infra.ValidationReport].from_failure(built)
+                return r[p.Infra.ValidationReport].from_failure(built)
             probes.extend(built.value)
         packaged = self._package_probes(packages, origin_code)
         if packaged.failure:
-            return r[m.Infra.ValidationReport].from_failure(packaged)
+            return r[p.Infra.ValidationReport].from_failure(packaged)
         probes.extend(packaged.value)
         if not probes:
-            return r[m.Infra.ValidationReport].ok(
+            return r[p.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(
                     passed=True,
                     violations=(),
@@ -86,25 +86,25 @@ class FlextInfraValidateFreshImport(s[bool]):
     @staticmethod
     def _project_layouts(
         repository_roots: Sequence[Path],
-    ) -> p.Result[tuple[m.Infra.RopeProjectLayout, ...]]:
+    ) -> p.Result[tuple[p.Infra.RopeProjectLayout, ...]]:
         """Resolve one Rope layout per requested repository root.
 
         Returns:
             The resulting project layouts.
 
         """
-        layouts: MutableSequence[m.Infra.RopeProjectLayout] = []
+        layouts: MutableSequence[p.Infra.RopeProjectLayout] = []
         for root in repository_roots:
             layout = u.Infra.layout(root)
             if layout is None:
-                return r[tuple[m.Infra.RopeProjectLayout, ...]].fail(
+                return r[tuple[p.Infra.RopeProjectLayout, ...]].fail(
                     f"fresh-import has no Python layout for {root}",
                 )
             layouts.append(layout)
-        return r[tuple[m.Infra.RopeProjectLayout, ...]].ok(tuple(layouts))
+        return r[tuple[p.Infra.RopeProjectLayout, ...]].ok(tuple(layouts))
 
     @staticmethod
-    def _origin_code(layouts: Sequence[m.Infra.RopeProjectLayout]) -> str:
+    def _origin_code(layouts: Sequence[p.Infra.RopeProjectLayout]) -> str:
         """Render the origin-containment guard code for the probed layouts.
 
         Returns:
@@ -122,10 +122,10 @@ class FlextInfraValidateFreshImport(s[bool]):
 
     def _layout_probes(
         self,
-        layout: m.Infra.RopeProjectLayout,
+        layout: p.Infra.RopeProjectLayout,
         origin_code: str,
-        publications: Sequence[m.Infra.LazyInitPlan],
-    ) -> p.Result[MutableSequence[m.Infra.FreshImportProbe]]:
+        publications: Sequence[p.Infra.LazyInitPlan],
+    ) -> p.Result[MutableSequence[p.Infra.FreshImportProbe]]:
         """Build one layout's entry-point and export probes.
 
         Returns:
@@ -134,26 +134,26 @@ class FlextInfraValidateFreshImport(s[bool]):
         """
         source = u.Cli.files_read_text(layout.project_root / c.PYPROJECT_FILENAME)
         if source.failure:
-            return r[MutableSequence[m.Infra.FreshImportProbe]].from_failure(source)
+            return r[MutableSequence[p.Infra.FreshImportProbe]].from_failure(source)
         payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
-            return r[MutableSequence[m.Infra.FreshImportProbe]].fail(
+            return r[MutableSequence[p.Infra.FreshImportProbe]].fail(
                 f"invalid published pyproject in {layout.project_root}",
             )
         metadata = m.Infra.FreshImportMetadata.model_validate(payload).project
         probes = self._entry_point_probes(layout, metadata, origin_code)
         export = self._export_probe(layout, origin_code, publications)
         if export.failure:
-            return r[MutableSequence[m.Infra.FreshImportProbe]].from_failure(export)
+            return r[MutableSequence[p.Infra.FreshImportProbe]].from_failure(export)
         probes.append(export.value)
-        return r[MutableSequence[m.Infra.FreshImportProbe]].ok(probes)
+        return r[MutableSequence[p.Infra.FreshImportProbe]].ok(probes)
 
     @staticmethod
     def _entry_point_probes(
-        layout: m.Infra.RopeProjectLayout,
-        metadata: m.Infra.FreshImportEntryPoints,
+        layout: p.Infra.RopeProjectLayout,
+        metadata: p.Infra.FreshImportEntryPoints,
         origin_code: str,
-    ) -> MutableSequence[m.Infra.FreshImportProbe]:
+    ) -> MutableSequence[p.Infra.FreshImportProbe]:
         """Build one probe per declared console, GUI, and entry point.
 
         Returns:
@@ -167,7 +167,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             groups.append(("gui_scripts", metadata.gui_scripts))
         if metadata.entry_points is not None:
             groups.extend(metadata.entry_points.items())
-        probes: MutableSequence[m.Infra.FreshImportProbe] = []
+        probes: MutableSequence[p.Infra.FreshImportProbe] = []
         for group, entries in groups:
             for name, value in entries.items():
                 probes.append(
@@ -184,10 +184,10 @@ class FlextInfraValidateFreshImport(s[bool]):
 
     @staticmethod
     def _export_probe(
-        layout: m.Infra.RopeProjectLayout,
+        layout: p.Infra.RopeProjectLayout,
         origin_code: str,
-        publications: Sequence[m.Infra.LazyInitPlan],
-    ) -> p.Result[m.Infra.FreshImportProbe]:
+        publications: Sequence[p.Infra.LazyInitPlan],
+    ) -> p.Result[p.Infra.FreshImportProbe]:
         """Build one layout's public-export probe from its plan contract.
 
         A publication plan describes a package the generation rewrote. The
@@ -219,7 +219,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 and plan.action != c.Infra.LazyInitAction.REMOVE
             )
             if not any(plan.context.pkg_dir == layout.package_dir for plan in owned):
-                return r[m.Infra.FreshImportProbe].fail(
+                return r[p.Infra.FreshImportProbe].fail(
                     f"missing public export contract for {layout.package_name}",
                 )
             body = "".join(
@@ -242,7 +242,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                     exports=(), prefix=c.Infra.PKG_ROOT
                 )
             )
-        return r[m.Infra.FreshImportProbe].ok(
+        return r[p.Infra.FreshImportProbe].ok(
             m.Infra.FreshImportProbe(
                 subject=layout.package_name,
                 code=(
@@ -255,17 +255,17 @@ class FlextInfraValidateFreshImport(s[bool]):
     def _package_probes(
         packages: Sequence[str],
         origin_code: str,
-    ) -> p.Result[MutableSequence[m.Infra.FreshImportProbe]]:
+    ) -> p.Result[MutableSequence[p.Infra.FreshImportProbe]]:
         """Build one whole-package import probe per declared package name.
 
         Returns:
             The resulting package probes.
 
         """
-        probes: MutableSequence[m.Infra.FreshImportProbe] = []
+        probes: MutableSequence[p.Infra.FreshImportProbe] = []
         for package in packages:
             if not c.Infra.PYTHON_IMPORT_NAME_RE.fullmatch(package):
-                return r[MutableSequence[m.Infra.FreshImportProbe]].fail(
+                return r[MutableSequence[p.Infra.FreshImportProbe]].fail(
                     f"{package}: not a valid Python package name",
                 )
             probes.append(
@@ -279,13 +279,13 @@ class FlextInfraValidateFreshImport(s[bool]):
                     ),
                 ),
             )
-        return r[MutableSequence[m.Infra.FreshImportProbe]].ok(probes)
+        return r[MutableSequence[p.Infra.FreshImportProbe]].ok(probes)
 
     def _execute_probes(
         self,
-        probes: Sequence[m.Infra.FreshImportProbe],
-        layouts: Sequence[m.Infra.RopeProjectLayout],
-    ) -> p.Result[m.Infra.ValidationReport]:
+        probes: Sequence[p.Infra.FreshImportProbe],
+        layouts: Sequence[p.Infra.RopeProjectLayout],
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Run every probe in the declared runtime and judge the outcomes.
 
         The probes execute the target checkout's code, so they run in the
@@ -295,7 +295,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         does not install.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ValidationReport]``.
+            The resulting ``p.Result[p.Infra.ValidationReport]``.
 
         """
         workers = config.Infra.codegen.fresh_import_workers
@@ -329,7 +329,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             outcomes = tuple(executor.map(run_probe, enumerate(probes)))
         for probe, smoke in zip(probes, outcomes, strict=True):
             if smoke.failure:
-                return r[m.Infra.ValidationReport].from_failure(smoke)
+                return r[p.Infra.ValidationReport].from_failure(smoke)
             output = smoke.value
             if u.Cli.process_succeeded(output.outcome):
                 continue
@@ -341,7 +341,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 f"{probe.subject}: {outcome.model_dump_json()}\n"
                 f"stdout:\n{output.stdout}\nstderr:\n{output.stderr}"
             )
-            return r[m.Infra.ValidationReport].ok(
+            return r[p.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(
                     passed=False,
                     violations=(detail,),
@@ -349,7 +349,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 ),
             )
         summary = f"{len(probes)} fresh-import probe(s) passed"
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(passed=True, violations=(), summary=summary),
         )
 
@@ -491,7 +491,7 @@ class FlextInfraValidateFreshImport(s[bool]):
 
     def execute_probe(
         self,
-        probe: m.Infra.FreshImportProbe,
+        probe: p.Infra.FreshImportProbe,
         *,
         source_roots: Sequence[Path] = (),
         profile_slot: int = 0,

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraCli, codegen, config, infra, workspace
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
@@ -25,7 +25,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
         root: Path,
         *,
         publishes_release: bool,
-    ) -> m.Infra.WorkspaceSpec:
+    ) -> p.Infra.WorkspaceSpec:
         """Declare release capability through the real repository manifest.
 
         Returns:

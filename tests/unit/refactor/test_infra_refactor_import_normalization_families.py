@@ -51,13 +51,13 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             )
         target = scripts / "run" / "media_source_stage.py"
         source = (
-            "from demo_pkg import c, m, u\n"
+            "from demo_pkg import c, m, p, u\n"
             "def stage(value: str) -> str:\n"
             "    return u.render(m.render(c.render(value)))\n"
         )
         target.write_text(source, encoding=c.DEFAULT_ENCODING)
         normalized = cls._normalize(project, target, source)
-        tm.that(normalized, has="from scripts import c, m, u")
+        tm.that(normalized, has="from scripts import c, m, p, u")
         target.write_text(normalized, encoding=c.DEFAULT_ENCODING)
         process = tm.ok(
             u.Cli.run(
@@ -166,7 +166,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                     "-c",
                     (
                         "from typing import get_type_hints; "
-                        "from flext_tests import m, tm; "
+                        "from flext_tests import m, p, tm; "
                         "from tests import c, m as local_m; "
                         "from tests.consumer import "
                         "ClassScope, build, local, local_models, sibling; "

@@ -22,7 +22,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectDiscovery,
-    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesProtectedEditLinting,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -53,9 +52,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         def __init__(
             self,
             sources: Mapping[Path, str],
-            states: tuple[m.Cli.AtomicFileState, ...],
+            states: tuple[p.Cli.AtomicFileState, ...],
             *,
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+            declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
         ) -> None:
             self.sources: Final = sources
             self.states: Final = MappingProxyType({
@@ -123,12 +122,12 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         def file_plans(
             self,
-            target_plan: m.Infra.CodegenFilePlan,
+            target_plan: p.Infra.CodegenFilePlan,
             source: Path,
             changed: Mapping[Path, str],
             *,
             resource_move: bool = False,
-        ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        ) -> tuple[p.Infra.CodegenFilePlan, ...]:
             """Build create/retire/consumer effects from the authenticated witnesses.
 
             Returns:
@@ -139,6 +138,18 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
             """
             root, target = target_plan.project, target_plan.path
+            declared_source = self.declared.get(source)
+            origin = (
+                declared_source.move_source
+                if declared_source is not None
+                and declared_source.move_source is not None
+                else source
+            )
+            original = (
+                self.declared[origin].before
+                if origin in self.declared
+                else self.states[origin]
+            )
             files = [
                 m.Infra.CodegenFilePlan(
                     project=root,
@@ -146,6 +157,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                     before=target_plan.before,
                     desired_content=changed[target].encode(c.DEFAULT_ENCODING),
                     desired_mode=target_plan.desired_mode,
+                    move_source=origin if original.content is not None else None,
+                    inputs=(original,),
                 ),
                 m.Infra.CodegenFilePlan(
                     project=root,
@@ -198,9 +211,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         destination_directory: Path | None = None,
         *,
         inputs: NativeSourceView
-        | tuple[Mapping[Path, str], tuple[m.Cli.AtomicFileState, ...]],
+        | tuple[Mapping[Path, str], tuple[p.Cli.AtomicFileState, ...]],
         destination_file: Path | None = None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan a module relocation without creating its destination.
 
         Native class relocation supplies reference edits. Complete module metadata
@@ -223,7 +236,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         )
         if destination_file is not None:
             if destination_directory is not None:
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                     "module move requires exactly one destination"
                 )
             return cls._plan_module_resource_move(
@@ -233,11 +246,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 view,
             )
         if view.declared:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 "candidate sources require an exact module resource move"
             )
         if destination_directory is None:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 "module move requires a destination"
             )
         return cls._plan_module_class_move(
@@ -251,7 +264,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source_file: Path,
         destination_directory: Path,
         view: NativeSourceView,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan the class-only module relocation into a destination directory.
 
         Returns:
@@ -263,7 +276,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source = cls._owned_path(root, root / source_file)
         target = cls._owned_path(root, root / destination_directory) / source.name
         if source == target:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 f"module move source and target are identical: {source}"
             )
         states = view.authenticate(source)
@@ -272,9 +285,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             rope_project, source, target, sources, states
         )
         if prepared.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(prepared)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(prepared)
         request, target_plan, proposed, virtual, source_module_name = prepared.value
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(
             view.file_plans(
                 target_plan,
                 source,
@@ -291,7 +304,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source_file: Path,
         destination_file: Path,
         view: NativeSourceView,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Compose native resource rename and move in lookup-only source views.
 
         Returns:
@@ -302,12 +315,12 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source = cls._owned_path(root, root / source_file)
         target = cls._owned_path(root, root / destination_file)
         if source == target:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 f"module move source and target are identical: {source}"
             )
         validation = cls._validate_module_resource_paths(root, source, target)
         if validation.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(validation)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(validation)
         return cls._module_resource_move_plans(project, root, (source, target), view)
 
     @staticmethod
@@ -347,7 +360,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         root: Path,
         paths: tuple[Path, Path],
         view: NativeSourceView,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Compose native resource changes and publication plans.
 
         Returns:
@@ -360,7 +373,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             Path(item.real_path).resolve() for item in project.get_python_files()
         }
         if not inventory.issubset(sources):
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 "module resource move requires the complete source inventory"
             )
         declared = view.declared
@@ -369,12 +382,12 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             declared[source].desired_mode if source in declared else states[source].mode
         )
         if mode is None:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 f"module source has no observed mode: {source}"
             )
         target_plan = cls._module_destination_plan(root, target, "", mode)
         if target.with_suffix("").exists():
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 f"module destination is occupied: {target.with_suffix('')}"
             )
         candidate = dict(sources)
@@ -387,12 +400,12 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             project, paths, candidate, virtual, mode
         )
         if intermediate.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(intermediate)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(intermediate)
         rewired = cls._module_barrel_consumers(
             project, (source, target), candidate, published
         )
         if rewired.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(rewired)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(rewired)
         changed = {
             path: text
             for path, text in candidate.items()
@@ -401,7 +414,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         changed.pop(
             intermediate.value if intermediate.value != target else source, None
         )
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(
             view.file_plans(
                 target_plan,
                 source,
@@ -554,7 +567,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         project: p.Infra.RopeProject,
         paths: tuple[Path, Path],
         candidate: MutableMapping[Path, str],
-        virtual: list[m.Infra.CodegenFilePlan],
+        virtual: list[p.Infra.CodegenFilePlan],
         mode: int,
     ) -> p.Result[Path]:
         """Compose lookup-only native Rename followed by native Move.
@@ -760,7 +773,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source: Path,
         target: Path,
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
     ) -> p.Result[bool]:
         """Rewire quoted type prefixes through the class-bound native move owner.
 
@@ -1440,7 +1453,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             m.Infra.ClassMoveRequest,
             m.Infra.CodegenFilePlan,
             dict[Path, str],
-            tuple[m.Infra.CodegenFilePlan, ...],
+            tuple[p.Infra.CodegenFilePlan, ...],
             str,
         ]
     ]:
@@ -1496,11 +1509,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @classmethod
     def _module_completed_changes(
         cls,
-        request: m.Infra.ClassMoveRequest,
+        request: p.Infra.ClassMoveRequest,
         source_module_name: str,
         sources: Mapping[Path, str],
         proposed: Mapping[Path, str],
-        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+        virtual: tuple[p.Infra.CodegenFilePlan, ...],
     ) -> dict[Path, str]:
         changed = cls._module_reference_changes(request, sources, proposed, virtual)
         candidate = dict(proposed)
@@ -1569,10 +1582,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @classmethod
     def _module_reexport_sources(
         cls,
-        request: m.Infra.ClassMoveRequest,
+        request: p.Infra.ClassMoveRequest,
         proposed: MutableMapping[Path, str],
         sources: Mapping[Path, str],
-        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+        virtual: tuple[p.Infra.CodegenFilePlan, ...],
         reexports: tuple[str, ...],
     ) -> p.Result[bool]:
         root = Path(request.rope_project.root.real_path).resolve()
@@ -1614,10 +1627,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @classmethod
     def _module_reference_changes(
         cls,
-        request: m.Infra.ClassMoveRequest,
+        request: p.Infra.ClassMoveRequest,
         sources: Mapping[Path, str],
         proposed: Mapping[Path, str],
-        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+        virtual: tuple[p.Infra.CodegenFilePlan, ...],
     ) -> dict[Path, str]:
         planned = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             request.rope_project,
@@ -1645,10 +1658,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @classmethod
     def _module_metadata_cleanup(
         cls,
-        request: m.Infra.ClassMoveRequest,
+        request: p.Infra.ClassMoveRequest,
         source_module_name: str,
         candidate: Mapping[Path, str],
-        virtual: tuple[m.Infra.CodegenFilePlan, ...],
+        virtual: tuple[p.Infra.CodegenFilePlan, ...],
     ) -> str | None:
         root = Path(request.rope_project.root.real_path).resolve()
         metadata_project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
@@ -1783,7 +1796,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         target: Path,
         source: str,
         mode: int,
-    ) -> m.Infra.CodegenFilePlan:
+    ) -> p.Infra.CodegenFilePlan:
         """Plan an absent destination file; publication creates its parents.
 
         Returns:
@@ -1831,52 +1844,26 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         target = destination / source.name
         if target.exists():
             raise FileExistsError(target)
-        rope_project.validate()
-        mover = FlextInfraUtilitiesRopeRuntime.create_move(
-            rope_project,
-            cls._resource(rope_project, root, source),
-            None,
-        )
-        changes = mover.get_changes(
-            rope_project.get_resource(destination.relative_to(root).as_posix()),
-        )
-        cls._require_contained_changes(rope_project, changes)
-        rope_project.do(changes)
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            root,
+            source_project=rope_project,
+            declared_files=rope_project.source_plans,
+        ) as (project, sources):
+            view = cls.NativeSourceView(
+                sources,
+                tuple(project.source_state(path, required=False) for path in sources),
+                declared_files=project.source_plans,
+            )
+            plans = cls.plan_module_move(
+                project, source, destination_file=target, inputs=view
+            ).unwrap()
+        FlextInfraUtilitiesProtectedEditLinting.publish_codegen_plans(
+            root, plans
+        ).unwrap()
         return target
 
-    @staticmethod
-    def _require_contained_changes(
-        rope_project: t.Infra.RopeProject,
-        changes: p.Infra.RopeChangeSet,
-    ) -> None:
-        """Admit a native change set only inside the Rope project's own root.
-
-        Every edited and moved resource goes through the containment owner,
-        which raises before Rope applies any effect.
-
-        Raises:
-            TypeError: If Rope returns an effect other than a content
-                replacement or a resource move.
-
-        """
-        targets: list[Path] = []
-        for change in changes.changes:
-            if isinstance(change, p.Infra.RopeChangeContents):
-                targets.append(Path(change.resource.real_path))
-            elif isinstance(change, p.Infra.RopeMoveResource):
-                targets.extend((
-                    Path(change.resource.real_path),
-                    Path(change.new_resource.real_path),
-                ))
-            else:
-                msg = f"unsupported Rope effect before apply: {type(change).__name__}"
-                raise TypeError(msg)
-        FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
-            Path(rope_project.root.real_path), tuple(targets)
-        )
-
     @classmethod
-    def move_class(cls, request: m.Infra.ClassMoveRequest) -> Path:
+    def move_class(cls, request: p.Infra.ClassMoveRequest) -> Path:
         """Move one top-level class or return its validated preview target.
 
         Returns:
@@ -1925,14 +1912,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @classmethod
     def plan_class_move(
         cls,
-        request: m.Infra.ClassMoveRequest,
+        request: p.Infra.ClassMoveRequest,
         *,
         sources: Mapping[Path, str],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
         """Preview one identity-preserving move inside a closed source inventory.
 
         Returns:
-            The resulting ``tuple[m.Infra.SemanticMigrationEdit, ...]``.
+            The resulting ``tuple[p.Infra.SemanticMigrationEdit, ...]``.
 
         Raises:
             TypeError: If class move planning produced a non-content effect.
@@ -1962,7 +1949,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             cls._resource(request.rope_project, root, target_file),
             resources=resources,
         )
-        edits: list[m.Infra.SemanticMigrationEdit] = []
+        edits: list[p.Infra.SemanticMigrationEdit] = []
         for change in changes.changes:
             if not isinstance(change, p.Infra.RopeChangeContents):
                 msg = "class move planning produced a non-content effect"
@@ -1985,7 +1972,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
     @classmethod
     def _class_mover(
         cls,
-        request: m.Infra.ClassMoveRequest,
+        request: p.Infra.ClassMoveRequest,
     ) -> tuple[Path, p.Infra.RopeMoveGlobal]:
         """Resolve both execution and planning from the exact original declaration.
 

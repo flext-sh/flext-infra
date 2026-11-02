@@ -35,7 +35,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
     @staticmethod
     def docs_github_repos(
         repository_root: Path,
-    ) -> tuple[m.Infra.DocsGithubRepoSpec, ...]:
+    ) -> tuple[p.Infra.DocsGithubRepoSpec, ...]:
         """Derive typed GitHub repositories from origin and .gitmodules.
 
         Returns:
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
                 message = f"documentation Git declaration has no branch: {member.path}"
                 raise ValueError(message)
             declarations.append((member.url, branch, root / member.path))
-        repositories: list[m.Infra.DocsGithubRepoSpec] = []
+        repositories: list[p.Infra.DocsGithubRepoSpec] = []
         for url, branch, checkout in declarations:
             canonical = FlextInfraUtilitiesGitRemote.canonical_origin_remote(url)
             if canonical.startswith("git@github.com:"):
@@ -133,7 +133,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
         repository: str,
         *,
         repository_root: Path,
-    ) -> m.Infra.DocsGithubRepoSpec | None:
+    ) -> p.Infra.DocsGithubRepoSpec | None:
         """Find one governed repo by organization and repository name.
 
         Returns:
@@ -341,14 +341,14 @@ class FlextInfraUtilitiesDocsGithubLinks:
         raw: str,
         target: str,
         repository_root: Path,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> Sequence[p.Infra.AuditIssue]:
         """Emit audit issues for stale or locally-missing GitHub doc URLs.
 
         Returns:
-            The resulting ``Sequence[m.Infra.AuditIssue]``.
+            The resulting ``Sequence[p.Infra.AuditIssue]``.
 
         """
-        issues: list[m.Infra.AuditIssue] = []
+        issues: list[p.Infra.AuditIssue] = []
         match = FlextInfraUtilitiesDocsGithubLinks.docs_parse_github_doc_url(target)
         if match is None:
             return issues

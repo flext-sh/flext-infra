@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import c, m, r, tm
+from tests import c, r, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
 from tests.utilities_git import TestsFlextInfraUtilitiesGit
@@ -204,7 +204,7 @@ class TestsFlextInfraUtilitiesDocsFixture:
     @staticmethod
     def prepare_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> m.Infra.DocsGenerationBundle:
+    ) -> p.Infra.DocsGenerationBundle:
         """Freeze one docs bundle.
 
         Returns:
@@ -218,11 +218,11 @@ class TestsFlextInfraUtilitiesDocsFixture:
     @staticmethod
     def plan_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Prepare one docs bundle and plan its files.
 
         Returns:
-            The resulting ``tuple[m.Infra.CodegenFilePlan, ...],``.
+            The resulting ``tuple[p.Infra.CodegenFilePlan, ...],``.
 
         """
         bundle = TestsFlextInfraUtilitiesDocsFixture.prepare_docs_bundle(generator)
@@ -233,16 +233,16 @@ class TestsFlextInfraUtilitiesDocsFixture:
     @staticmethod
     def publish_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Publish one planned docs bundle through the test transaction adapter.
 
         Returns:
-            The resulting ``tuple[m.Infra.CodegenFilePlan, ...],``.
+            The resulting ``tuple[p.Infra.CodegenFilePlan, ...],``.
 
         """
         plans = TestsFlextInfraUtilitiesDocsFixture.plan_docs_bundle(generator)
         published = TestsFlextInfraUtilitiesCodegen.materialize_codegen_plans(
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans),
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(plans),
         )
         tm.ok(published)
         return plans

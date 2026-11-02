@@ -12,7 +12,7 @@ import typing
 from collections.abc import Mapping, MutableMapping, Sequence
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 import pytest
 from flext_cli import u
@@ -30,9 +30,6 @@ from flext_infra._utilities._rope.runtime_types import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import m
 
 
 class FlextInfraUtilitiesSemanticCutoverNestingOwner:
@@ -298,7 +295,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     @classmethod
     def _test_module_owner(
         cls,
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         file_path: Path,
         classes: Mapping[str, ast.ClassDef],
         patterns: tuple[Sequence[str], Sequence[str]],
@@ -374,7 +371,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     @classmethod
     def _derived_test_owner(
         cls,
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         stem: str,
         prefix: str,
         patterns: Sequence[str],
@@ -878,7 +875,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     @classmethod
     def _module_owner(
         cls,
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         file_path: Path,
         classes: Mapping[str, ast.ClassDef],
         exports: frozenset[str],
@@ -949,7 +946,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
     @staticmethod
     def _ordinary_module_owner(
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         file_path: Path,
         classes: Mapping[str, ast.ClassDef],
         exports: frozenset[str],

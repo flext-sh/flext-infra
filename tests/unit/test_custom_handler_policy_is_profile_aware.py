@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm
+from tests import c, m, p, tm
 
 
 class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
@@ -21,7 +21,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     @staticmethod
     def test_every_declared_profile_has_a_custom_handler_policy() -> None:
         """Each Make profile declares the contract for its own custom surface."""
-        codegen_profiles: tuple[m.Infra.ProfileSpec, ...] = (
+        codegen_profiles: tuple[p.Infra.ProfileSpec, ...] = (
             config.Infra.codegen.profiles
         )
         declared = frozenset(

@@ -65,7 +65,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     def codemod_package_export_facts(
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-    ) -> m.Infra.CodemodPackageExportsFacts:
+    ) -> p.Infra.CodemodPackageExportsFacts:
         """Package facts: exports, directory and direct children of each package.
 
         Exports are the ``__all__`` each initializer declares, read through the
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     @classmethod
     def codemod_workspace_export_facts(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> m.Infra.CodemodPackageExportsFacts:
+    ) -> p.Infra.CodemodPackageExportsFacts:
         """Package facts of the project plus its declared provider packages.
 
         Provider rewire rules introduce facade letters and names that only
@@ -252,7 +252,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
     def _codemod_installed_package_exports(
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
-        run: m.Infra.PythonModelRun,
+        run: p.Infra.PythonModelRun,
         package: str,
     ) -> t.StrTuple | None:
         """Statically read one installed package initializer's ``__all__``.
@@ -374,7 +374,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
     @staticmethod
     def _codemod_declaring_packages(
-        facts: m.Infra.CodemodPackageExportsFacts,
+        facts: p.Infra.CodemodPackageExportsFacts,
     ) -> Mapping[str, t.StrTuple]:
         """Every public non-dunder name to the packages whose ``__all__`` declares it.
 
@@ -394,7 +394,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
     @classmethod
     def codemod_header_resolvable_names(
-        cls, facts: m.Infra.CodemodPackageExportsFacts
+        cls, facts: p.Infra.CodemodPackageExportsFacts
     ) -> Mapping[str, str]:
         """Names whose canonical package import is unambiguous from any module.
 
@@ -432,7 +432,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        facts: m.Infra.CodemodPackageExportsFacts,
+        facts: p.Infra.CodemodPackageExportsFacts,
     ) -> Mapping[str, t.JsonMapping]:
         """Insert the nearest declaring package's import for unbound names.
 
@@ -589,7 +589,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        facts: m.Infra.CodemodPackageExportsFacts,
+        facts: p.Infra.CodemodPackageExportsFacts,
     ) -> Mapping[str, t.JsonMapping]:
         """Reach a member through its package import, never a module object.
 
@@ -729,7 +729,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
     @staticmethod
     def _codemod_nearest_publisher(
-        facts: m.Infra.CodemodPackageExportsFacts, module: str, name: str
+        facts: p.Infra.CodemodPackageExportsFacts, module: str, name: str
     ) -> str | None:
         """Nearest package containing ``module`` whose ``__all__`` declares ``name``.
 
@@ -746,7 +746,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
     @classmethod
     def codemod_package_deep_import_rules(
-        cls, project: Path, facts: m.Infra.CodemodPackageExportsFacts
+        cls, project: Path, facts: p.Infra.CodemodPackageExportsFacts
     ) -> Mapping[str, t.JsonMapping]:
         """Rebind a one-name import from a module to its nearest publishing package.
 

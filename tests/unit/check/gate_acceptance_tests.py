@@ -211,7 +211,7 @@ class TestsFlextInfraGateAcceptance:
             schema = m.Infra.GateExecution.model_json_schema(mode=mode)
             issue_schema = m.Infra.Issue.model_json_schema(mode=mode)
             tm.that(
-                schema["$defs"][m.Infra.Issue.__name__]["properties"],
+                schema["$defs"][p.Infra.Issue.__name__]["properties"],
                 eq=issue_schema["properties"],
             )
         payload = execution.model_dump(mode="json", exclude_computed_fields=True)

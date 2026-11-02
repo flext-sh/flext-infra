@@ -27,11 +27,11 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         projects: Sequence[str] | None = None,
         output_dir: Path | None = None,
         apply: bool = False,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[p.Infra.DocsPhaseReport]]:
         """Run documentation fixes across project scopes.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocsPhaseReport]]``.
 
         Raises:
             ValueError: When a managed merge-policy file owns a selected path or a
@@ -46,12 +46,12 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                 output_dir=output_dir,
             ).prepare_bundle()
             if prepared.failure:
-                return r[Sequence[m.Infra.DocsPhaseReport]].from_failure(prepared)
+                return r[Sequence[p.Infra.DocsPhaseReport]].from_failure(prepared)
             bundle = prepared.value
             elected: list[
                 tuple[
                     m.Infra.DocScope,
-                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[p.Cli.AtomicFileState, ...],
                 ]
             ] = []
             # Every ownership boundary is checked before the first repair effect.
@@ -87,7 +87,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             plans = tuple(
                 (scope, *self._plan_scope(scope, sources)) for scope, sources in elected
             )
-            reports: list[m.Infra.DocsPhaseReport] = []
+            reports: list[p.Infra.DocsPhaseReport] = []
             for scope, files, items in plans:
                 for file in files:
                     if apply:
@@ -100,7 +100,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                             permission_mode=file.desired_mode,
                         ).unwrap()
                 reports.append(self._scope_report(scope, items, apply=apply))
-            return r[Sequence[m.Infra.DocsPhaseReport]].ok(tuple(reports))
+            return r[Sequence[p.Infra.DocsPhaseReport]].ok(tuple(reports))
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -123,11 +123,11 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
 
     @staticmethod
     def _plan_scope(
-        scope: m.Infra.DocScope,
-        sources: Sequence[m.Cli.AtomicFileState],
+        scope: p.Infra.DocScope,
+        sources: Sequence[p.Cli.AtomicFileState],
     ) -> tuple[
-        tuple[m.Infra.SemanticFilePlan, ...],
-        tuple[m.Infra.DocsPhaseItemModel, ...],
+        tuple[p.Infra.SemanticFilePlan, ...],
+        tuple[p.Infra.DocsPhaseItemModel, ...],
     ]:
         """Compose authored repairs against read bytes without publication.
 
@@ -138,8 +138,8 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             FileNotFoundError: When a selected source has no content.
 
         """
-        planned: list[m.Infra.SemanticFilePlan] = []
-        collected: list[m.Infra.DocsPhaseItemModel] = []
+        planned: list[p.Infra.SemanticFilePlan] = []
+        collected: list[p.Infra.DocsPhaseItemModel] = []
         for before in sources:
             if before.content is None:
                 raise FileNotFoundError(before.path)
@@ -177,11 +177,11 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
 
     def _scope_report(
         self,
-        scope: m.Infra.DocScope,
-        items: Sequence[m.Infra.DocsPhaseItemModel],
+        scope: p.Infra.DocScope,
+        items: Sequence[p.Infra.DocsPhaseItemModel],
         *,
         apply: bool,
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Report the existing authored repair semantics after publication.
 
         Returns:

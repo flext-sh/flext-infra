@@ -62,8 +62,8 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
             return result.fail(
                 f"member declaration lacks PEP 610 provenance: {distribution_name}",
             )
-        receipt = r[m.Infra.DirectUrlReceipt].create_from_callable(
-            lambda: m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
+        receipt = r[p.Infra.DirectUrlReceipt].create_from_callable(
+            lambda: p.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
         )
         if receipt.failure:
             return result.from_failure(receipt)
@@ -102,7 +102,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
     @staticmethod
     def _editable_url_verdict(
         distribution: str,
-        payload: m.Infra.DirectUrlReceipt,
+        payload: p.Infra.DirectUrlReceipt,
         expected_root: Path,
     ) -> p.Result[int]:
         """Bind one parsed editable receipt to its declared physical source.

@@ -19,12 +19,11 @@ from flext_infra.refactor import FlextInfraRefactorAccessor
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import p
 
 _RENAMES = {
     rule.source_name: rule.replacement_name
@@ -267,13 +266,13 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             "import sys\n"
             "sys.path.insert(0, sys.argv[1])\n"
             f"from {package.name} import consumer\n"
-            "from flext_infra import m, u\n"
+            "from flext_infra import m, p, u\n"
         )
         for index, rule in enumerate(rules):
             declaring = tm.not_none(rule.declaring_class).rsplit(".", maxsplit=1)[1]
             field = tm.not_none(rule.field)
             source += (
-                f"def migrated_{index}(value: m.Infra.{declaring}):\n"
+                f"def migrated_{index}(value: p.Infra.{declaring}):\n"
                 f"    return value.{rule.source_name}\n\n"
                 f"class PropertyOverride_{index}(m.Infra.{declaring}):\n"
                 "    @property\n"
@@ -302,9 +301,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 "'property_override_marker'\n"
             )
         source += (
-            "def optional(value: m.Infra.ProjectNamesOptionalMixin):\n"
+            "def optional(value: p.Infra.ProjectNamesOptionalMixin):\n"
             "    return value.project_names\n\n"
-            "def concrete(value: m.Infra.ProjectNamesListMixin):\n"
+            "def concrete(value: p.Infra.ProjectNamesListMixin):\n"
             "    return value.project_names\n\n"
             "def payload():\n"
             f"    return {tuple(rule.source_name for rule in rules)!r}\n"
@@ -417,7 +416,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             source = (
                 "from flext_infra import m\n\n"
                 f"class FieldOverride(m.Infra.{declaring}):\n"
-                f"    {field}: m.Infra.{declaring}.model_fields["
+                f"    {field}: p.Infra.{declaring}.model_fields["
                 f"{field!r}].annotation = None\n\n"
                 "def inherited(value: FieldOverride):\n"
                 f"    return value.{rule.source_name}\n"

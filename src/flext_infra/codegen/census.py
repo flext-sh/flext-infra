@@ -67,7 +67,7 @@ class FlextInfraCodegenCensus(s[str]):
         *,
         output_format: str = c.Cli.OutputFormats.JSON,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> p.Result[tuple[m.Infra.CensusReport, ...]]:
+    ) -> p.Result[tuple[p.Infra.CensusReport, ...]]:
         """Run census on all projects in workspace.
 
         Args:
@@ -88,11 +88,11 @@ class FlextInfraCodegenCensus(s[str]):
         workspace: Path,
         *,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> p.Result[tuple[m.Infra.CensusReport, ...]]:
+    ) -> p.Result[tuple[p.Infra.CensusReport, ...]]:
         """Census all projects in workspace using the standard path.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.CensusReport, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.CensusReport, ...]]``.
 
         """
         if projects is not None:
@@ -100,11 +100,11 @@ class FlextInfraCodegenCensus(s[str]):
         else:
             projects_result = u.Infra.projects(workspace)
             if projects_result.failure:
-                return r[tuple[m.Infra.CensusReport, ...]].from_failure(
+                return r[tuple[p.Infra.CensusReport, ...]].from_failure(
                     projects_result,
                 )
             selected_projects = tuple(projects_result.value)
-        reports: MutableSequence[m.Infra.CensusReport] = []
+        reports: MutableSequence[p.Infra.CensusReport] = []
         for project in selected_projects:
             project_root = project.path.resolve()
             validation = FlextInfraNamespaceValidator(
@@ -112,7 +112,7 @@ class FlextInfraCodegenCensus(s[str]):
             ).build_report()
             parsed = u.Infra.parse_namespace_validation(validation, project_root)
             if parsed.failure:
-                return r[tuple[m.Infra.CensusReport, ...]].from_failure(parsed)
+                return r[tuple[p.Infra.CensusReport, ...]].from_failure(parsed)
             violations = parsed.value
             reports.append(
                 m.Infra.CensusReport(
@@ -122,7 +122,7 @@ class FlextInfraCodegenCensus(s[str]):
                     fixable=u.count(violations, lambda violation: violation.fixable),
                 ),
             )
-        return r[tuple[m.Infra.CensusReport, ...]].ok(tuple(reports))
+        return r[tuple[p.Infra.CensusReport, ...]].ok(tuple(reports))
 
 
 __all__: list[str] = ["FlextInfraCodegenCensus"]

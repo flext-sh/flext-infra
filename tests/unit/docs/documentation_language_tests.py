@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraDocumentationLanguage:
@@ -20,7 +20,7 @@ class TestsFlextInfraDocumentationLanguage:
     @staticmethod
     def _scope(
         root: Path, language: t.Infra.DocumentationLanguage = "en"
-    ) -> m.Infra.DocScope:
+    ) -> p.Infra.DocScope:
         """Build one scope with captured governance identity.
 
         Returns:
@@ -40,7 +40,7 @@ class TestsFlextInfraDocumentationLanguage:
         )
 
     @staticmethod
-    def _pages(scope: m.Infra.DocScope) -> tuple[str, ...]:
+    def _pages(scope: p.Infra.DocScope) -> tuple[str, ...]:
         """Exercise project presentation renderers with unchanged source prose.
 
         Returns:
@@ -183,7 +183,7 @@ class TestsFlextInfraDocumentationLanguage:
         tmp_path: Path,
     ) -> None:
         """Refresh each scope from its own authenticated metadata, not a singleton."""
-        scopes: list[m.Infra.DocScope] = []
+        scopes: list[p.Infra.DocScope] = []
         for name, declaration in (
             ("pt", 'documentation_language = "pt-BR"\n'),
             ("en", ""),

@@ -53,7 +53,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
             )
         )
         legacy = package / "services" / "logging_integration.py"
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
+        report: p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence] = (
             m.Infra.ModOccurrenceReport(
                 files=frozenset({package / "logging_consumer.py"}), entries=()
             )
@@ -329,7 +329,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
     @staticmethod
     def _plan_logging_source_drift(
         root: Path,
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        report: p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence],
         legacy: Path,
         original: bytes,
     ) -> None:
@@ -356,7 +356,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
     def _publish_logging_transfer(
         root: Path,
         package: Path,
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        report: p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence],
     ) -> None:
         """Share native source facts, then prove publication and consumer behavior."""
         legacy = package / "services" / "logging_integration.py"

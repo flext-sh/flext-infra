@@ -19,7 +19,7 @@ from tests import c, m, p, tm, u
 class TestsFlextInfraUtilitiesformatting:
     @staticmethod
     def test_missing_native_width_never_invents_a_formatting_policy(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Missing owned configuration fails instead of fabricating a width."""
         document = tool_config_document.model_copy(

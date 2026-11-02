@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
         )
 
     @staticmethod
-    def docs_is_python_fence(fence: m.Cli.MarkdownFence) -> bool:
+    def docs_is_python_fence(fence: p.Cli.MarkdownFence) -> bool:
         """Select Python fences governed by executable documentation checks.
 
         Returns:
@@ -105,7 +105,7 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
         )
 
     @staticmethod
-    def iter_scope_markdown_files(scope: m.Infra.DocScope) -> Sequence[Path]:
+    def iter_scope_markdown_files(scope: p.Infra.DocScope) -> Sequence[Path]:
         """Collect the Markdown files governed by one documentation scope.
 
         Returns:
@@ -118,7 +118,7 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def scope_markdown_paths(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         candidates: Sequence[Path],
     ) -> Sequence[Path]:
         """Apply scope policy to already captured candidate paths.
@@ -178,10 +178,10 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def docs_write_phase_reports(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         phase: str,
-        table: m.Cli.TableRenderRequest,
+        table: p.Cli.TableRenderRequest,
         apply: bool,
     ) -> None:
         """Persist the phase summary and its corresponding Markdown report."""
@@ -211,9 +211,9 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
 
     @staticmethod
     def docs_write_fmt_reports(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
-        items: Sequence[m.Infra.DocsPhaseItemModel],
+        items: Sequence[p.Infra.DocsPhaseItemModel],
         apply: bool,
     ) -> None:
         """Persist the standard documentation formatting reports."""
@@ -234,12 +234,12 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
         *,
         projects: Sequence[str] | None,
         output_dir: Path | str,
-        handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+        handler: Callable[[p.Infra.DocScope], m.Infra.DocsPhaseReport],
+    ) -> p.Result[Sequence[p.Infra.DocsPhaseReport]]:
         """Run the selected handler over the elected documentation scopes.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocsPhaseReport]]``.
 
         """
         return FlextInfraUtilitiesDocsScopeBuild.build_scopes(

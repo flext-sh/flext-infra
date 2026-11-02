@@ -77,7 +77,7 @@ class FlextInfraModelsWorkspace:
     class NativeCodeEvidence(m.Value):
         """Complete compiler bytes or an explicit nonportable-constant refusal."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             strict=True,
             ser_json_bytes="base64",
@@ -406,7 +406,7 @@ class FlextInfraModelsWorkspace:
     ):
         """One explicit repository target for read-only workspace operations."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
     class WorkspaceTestsRequest(WorkspaceRequest):
         """Select repositories for native persistent incremental tests."""
@@ -868,7 +868,7 @@ class FlextInfraModelsWorkspace:
         probes retain their independent presence and empty-value contracts.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         name: Annotated[str, m.Field(description="Repository name")]
         root: Annotated[Path, m.Field(description="Repository checkout root")]
@@ -936,7 +936,7 @@ class FlextInfraModelsWorkspace:
         byte-identical receipt, so a rerun is its own idempotence proof.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         schema_version: Annotated[
             int,
@@ -958,7 +958,7 @@ class FlextInfraModelsWorkspace:
     ):
         """Discovered project metadata for workspace operations."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             frozen=True,
             validate_default=False,
         )
@@ -996,7 +996,7 @@ class FlextInfraModelsWorkspace:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             frozen=True,
             validate_default=False,
         )

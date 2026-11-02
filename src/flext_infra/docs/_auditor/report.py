@@ -16,13 +16,13 @@ class FlextInfraDocsAuditorReport:
 
     @staticmethod
     def _audit_report(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
-        issues: Sequence[m.Infra.AuditIssue],
+        issues: Sequence[p.Infra.AuditIssue],
         checks: Sequence[str],
-        params: m.Infra.AuditScopeParams,
-        docstring_coverage: m.Infra.DocstringCoverage | None = None,
-    ) -> m.Infra.DocsPhaseReport:
+        params: p.Infra.AuditScopeParams,
+        docstring_coverage: p.Infra.DocstringCoverage | None = None,
+    ) -> p.Infra.DocsPhaseReport:
         """Build the standard docs audit phase report.
 
         Returns:

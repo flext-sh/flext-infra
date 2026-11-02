@@ -21,7 +21,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDepsDetectionRunners):
     @staticmethod
     def classify_issues(
         issues: Sequence[t.JsonMapping],
-    ) -> m.Infra.DeptryIssueGroups:
+    ) -> p.Infra.DeptryIssueGroups:
         """Classify deptry issues by error code (DEP001-DEP004).
 
         Returns:
@@ -58,7 +58,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDepsDetectionRunners):
         self,
         project_name: str,
         deptry_issues: Sequence[t.JsonMapping],
-    ) -> m.Infra.ProjectDependencyReport:
+    ) -> p.Infra.ProjectDependencyReport:
         """Build a project dependency report from classified deptry issues.
 
         Returns:
@@ -111,7 +111,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDepsDetectionRunners):
         result = u.Infra.resolve_projects(repository_root, names)
         if result.failure:
             return r[Sequence[Path]].from_failure(result)
-        projects_info: Sequence[m.Infra.ProjectInfo] = result.value
+        projects_info: Sequence[p.Infra.ProjectInfo] = result.value
         projects = [
             project.path
             for project in projects_info

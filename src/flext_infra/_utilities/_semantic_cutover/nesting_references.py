@@ -200,7 +200,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         def _reject_ambiguous_alias(
             self,
             expression: str,
-            declarations: Sequence[tuple[m.Infra.LogicalStatement, int]],
+            declarations: Sequence[tuple[p.Infra.LogicalStatement, int]],
         ) -> None:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             if len(declarations) > 1:

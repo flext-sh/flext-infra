@@ -19,7 +19,7 @@ import keyword
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraEnsurePackagingPhase:
@@ -93,7 +93,7 @@ class FlextInfraEnsurePackagingPhase:
         package_name: str,
         declarations: Sequence[str],
         planned_files: Sequence[str] = (),
-    ) -> m.Infra.PackagedDataSelection:
+    ) -> p.Infra.PackagedDataSelection:
         """Validate existing inputs or exact future scaffold destinations.
 
         Returns:
@@ -168,7 +168,7 @@ class FlextInfraEnsurePackagingPhase:
     @staticmethod
     def resolve_data_excludes(
         project_dir: Path,
-        data: m.Infra.PackagedDataSelection,
+        data: p.Infra.PackagedDataSelection,
         declarations: Sequence[str],
     ) -> Sequence[str]:
         """Validate exact files omitted within declared distribution directories.
@@ -215,11 +215,11 @@ class FlextInfraEnsurePackagingPhase:
     def _phase(
         *,
         package_name: str,
-        data: m.Infra.PackagedDataSelection,
+        data: p.Infra.PackagedDataSelection,
         data_excludes: Sequence[str],
-        topology: m.Infra.PyprojectDeclaredTopology,
+        topology: p.Infra.PyprojectDeclaredTopology,
         project_declaration_resource: tuple[str, str] | None,
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    ) -> p.Infra.DepsToml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name.
 
         Package sources, their ``config/`` defaults and declared data reach the
@@ -430,7 +430,7 @@ class FlextInfraEnsurePackagingPhase:
         payload: t.MutableJsonMapping,
         *,
         path: Path,
-        topology: m.Infra.PyprojectDeclaredTopology,
+        topology: p.Infra.PyprojectDeclaredTopology,
     ) -> Sequence[str]:
         """Emit bounded build targets for a distributable project.
 

@@ -307,7 +307,7 @@ class FlextInfraModelsRefactorGrep:
     class AccessorMigrationRule(m.ContractModel):
         """Declarative origin-bound accessor transformation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         source_name: Annotated[
             t.NonEmptyStr,
@@ -388,7 +388,7 @@ class FlextInfraModelsRefactorGrep:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         lint_tools: tuple[str, ...] = m.Field(
@@ -431,7 +431,7 @@ class FlextInfraModelsRefactorGrep:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Repository root path")]
         dry_run: Annotated[bool, m.Field(description="Dry-run indicator")]

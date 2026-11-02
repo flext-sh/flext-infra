@@ -39,11 +39,11 @@ class FlextInfraRefactorCensusObjects:
 
     @staticmethod
     def _violation(
-        item: m.Infra.Object,
+        item: p.Infra.Object,
         *,
         kind: str,
         description: str,
-    ) -> m.Infra.Violation:
+    ) -> p.Infra.Violation:
         """Violation.
 
         Returns:
@@ -61,7 +61,7 @@ class FlextInfraRefactorCensusObjects:
         )
 
     @staticmethod
-    def unused(item: m.Infra.Object, *, source_project: p.Infra.RopeProject) -> bool:
+    def unused(item: p.Infra.Object, *, source_project: p.Infra.RopeProject) -> bool:
         """Report a public object with collected evidence of zero references.
 
         Returns:
@@ -81,7 +81,7 @@ class FlextInfraRefactorCensusObjects:
 
     @staticmethod
     def _is_published_export(
-        item: m.Infra.Object, *, source_project: p.Infra.RopeProject
+        item: p.Infra.Object, *, source_project: p.Infra.RopeProject
     ) -> bool:
         """Keep package ABI bindings even when Rope sees only typing imports.
 
@@ -118,7 +118,7 @@ class FlextInfraRefactorCensusObjects:
         return False
 
     @staticmethod
-    def _is_pytest_entry_point(item: m.Infra.Object) -> bool:
+    def _is_pytest_entry_point(item: p.Infra.Object) -> bool:
         """Return whether the object is a pytest entry point in a test module.
 
         Pytest discovers ``test_*`` callables in test modules and executes
@@ -139,11 +139,11 @@ class FlextInfraRefactorCensusObjects:
     @classmethod
     def _removal_candidate(
         cls,
-        item: m.Infra.Object,
+        item: p.Infra.Object,
         *,
         include_unused: bool,
         unused: bool,
-    ) -> m.Infra.RemovalCandidate | None:
+    ) -> p.Infra.RemovalCandidate | None:
         """Build a removal candidate for an object.
 
         Returns:
@@ -168,7 +168,7 @@ class FlextInfraRefactorCensusObjects:
         )
 
     @staticmethod
-    def _object_key(item: m.Infra.Object) -> str:
+    def _object_key(item: p.Infra.Object) -> str:
         """Object key.
 
         Returns:
@@ -180,12 +180,12 @@ class FlextInfraRefactorCensusObjects:
     @classmethod
     def _impact_map_results(
         cls,
-        report: m.Infra.WorkspaceReport,
-    ) -> tuple[m.Infra.Result, ...]:
+        report: p.Infra.WorkspaceReport,
+    ) -> tuple[p.Infra.Result, ...]:
         """Impact map results.
 
         Returns:
-            The resulting ``tuple[m.Infra.Result, ...],``.
+            The resulting ``tuple[p.Infra.Result, ...],``.
 
         """
         changes_by_file: MutableMapping[Path, list[str]] = defaultdict(list)
@@ -227,8 +227,8 @@ class FlextInfraRefactorCensusObjects:
 
     @staticmethod
     def _reference_sites(
-        candidate: m.Infra.RemovalCandidate,
-    ) -> tuple[m.Infra.ReferenceSite, ...]:
+        candidate: p.Infra.RemovalCandidate,
+    ) -> tuple[p.Infra.ReferenceSite, ...]:
         """Return all reference sites for a removal candidate.
 
         Returns:

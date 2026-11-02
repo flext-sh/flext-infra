@@ -59,7 +59,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         self, tmp_path: Path, scope: str
     ) -> tuple[
         list[Path],
-        list[m.Infra.RopeProjectLayout],
+        list[p.Infra.RopeProjectLayout],
         MutableMapping[Path, str],
         list[str],
     ]:
@@ -70,7 +70,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
 
         """
         roots: list[Path] = []
-        layouts: list[m.Infra.RopeProjectLayout] = []
+        layouts: list[p.Infra.RopeProjectLayout] = []
         desired: MutableMapping[Path, str] = {}
         scripts: list[str] = []
         for suffix in ("first", "second") if scope == "independent" else ("first",):
@@ -119,10 +119,10 @@ class UtilityFacadePlanning(UtilityFacadePublication):
     def _future_facade_plans(
         tmp_path: Path,
         scope: str,
-        layouts: list[m.Infra.RopeProjectLayout],
-        originals: tuple[m.Cli.AtomicFileState, ...],
-        plans: tuple[m.Infra.CodegenFilePlan, ...],
-    ) -> list[m.Infra.CodegenFilePlan]:
+        layouts: list[p.Infra.RopeProjectLayout],
+        originals: tuple[p.Cli.AtomicFileState, ...],
+        plans: tuple[p.Infra.CodegenFilePlan, ...],
+    ) -> list[p.Infra.CodegenFilePlan]:
         """Render future facades while proving collisions preserve originals.
 
         Returns:
@@ -130,7 +130,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
 
         """
         by_path = {state.path: state for state in originals}
-        facade_plans: list[m.Infra.CodegenFilePlan] = []
+        facade_plans: list[p.Infra.CodegenFilePlan] = []
         with u.Infra.facade_source_project(
             tmp_path,
             declared_files=plans,

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +25,7 @@ def _probe_publication(
     current_pkg: str | None = None,
     surface: str | None = None,
     exports: Sequence[str] = (),
-) -> m.Infra.LazyInitPlan:
+) -> p.Infra.LazyInitPlan:
     """Compose one generated-`__init__` publication probe.
 
     Returns:
@@ -52,10 +52,10 @@ def _probe_report(
     tmp_path: Path,
     *,
     packages: Sequence[str] = (),
-    publications: Sequence[m.Infra.LazyInitPlan] = (),
+    publications: Sequence[p.Infra.LazyInitPlan] = (),
     repository_roots: Sequence[Path] = (),
     runtime_root: Path,
-) -> m.Infra.ValidationReport:
+) -> p.Infra.ValidationReport:
     """Build one fresh-import report over the probe checkout.
 
     Returns:

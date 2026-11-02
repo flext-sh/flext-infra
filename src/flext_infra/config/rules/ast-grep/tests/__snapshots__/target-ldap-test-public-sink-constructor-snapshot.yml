@@ -2,7 +2,7 @@ id: target-ldap-test-public-sink-constructor
 snapshots:
   "Sinks.FlextModelsTargetLdap.BaseSink(target=target, stream_name=name, schema=schema, key_properties=keys)":
     fixed: >-
-      m.TargetLdap.BaseSink(target=target, stream_name=name, schema=schema,
+      p.TargetLdap.BaseSink(target=target, stream_name=name, schema=schema,
       key_properties=keys)
     labels:
     - source: >-
@@ -13,7 +13,7 @@ snapshots:
       end: 105
   "Sinks.FlextModelsTargetLdap.UsersSink(target=target, stream_name=name, schema=schema, key_properties=keys)":
     fixed: >-
-      m.TargetLdap.UsersSink(target=target, stream_name=name, schema=schema,
+      p.TargetLdap.UsersSink(target=target, stream_name=name, schema=schema,
       key_properties=keys)
     labels:
     - source: >-

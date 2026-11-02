@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import m
-from tests import tm, u
+from tests import p, tm, u
 
 
 class TestsFlextInfraGitStateCheckpoint:
@@ -18,8 +18,8 @@ class TestsFlextInfraGitStateCheckpoint:
     @staticmethod
     def _publish(
         parent: Path,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
-    ) -> m.Infra.GitWorktreeCheckpointPublication:
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
+    ) -> p.Infra.GitWorktreeCheckpointPublication:
         source = checkpoint.snapshot.repo_root
         remote = parent / "checkpoint-remote.git"
         u.Tests.git_run(source, "init", "--bare", str(remote))
@@ -35,7 +35,7 @@ class TestsFlextInfraGitStateCheckpoint:
         return execution.stdout
 
     @staticmethod
-    def _capture(parent: Path) -> m.Infra.GitWorktreeStateCheckpoint:
+    def _capture(parent: Path) -> p.Infra.GitWorktreeStateCheckpoint:
         source = u.Tests.git_repository(parent)
         tracked = source / "README.md"
         tracked.write_text("baseline\n", encoding="utf-8")
@@ -66,7 +66,7 @@ class TestsFlextInfraGitStateCheckpoint:
     @staticmethod
     def _lane(
         parent: Path,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
     ) -> Path:
         lane = parent / "lane"
         u.Tests.git_run(
@@ -249,7 +249,7 @@ class TestsFlextInfraGitStateCheckpoint:
         tm.ok(rejected.failure)
 
     @staticmethod
-    def _diverge_remote(checkpoint: m.Infra.GitWorktreeStateCheckpoint) -> str:
+    def _diverge_remote(checkpoint: p.Infra.GitWorktreeStateCheckpoint) -> str:
         """Force-move the published remote ref to an unrelated capture.
 
         Returns:
@@ -282,7 +282,7 @@ class TestsFlextInfraGitStateCheckpoint:
 
     @staticmethod
     def _remote_advertisement(
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
     ) -> str:
         return u.Tests.git_capture(
             checkpoint.snapshot.repo_root,

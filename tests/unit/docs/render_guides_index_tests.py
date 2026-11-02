@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from tests import m, tm, u
+from tests import m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +23,7 @@ class TestsFlextInfraDocsRenderGuidesIndex:
     """Regression tests for the generated guides index."""
 
     @staticmethod
-    def _scope(tmp_path: Path) -> m.Infra.DocScope:
+    def _scope(tmp_path: Path) -> p.Infra.DocScope:
         """Return one isolated doc scope rooted at the fixture directory.
 
         Returns:

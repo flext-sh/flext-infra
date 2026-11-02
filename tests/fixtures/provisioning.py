@@ -247,7 +247,7 @@ _FLEET_PROVISION = partial(
 @pytest.fixture(scope="session")
 def fleet_session_runtime(
     tmp_path_factory: pytest.TempPathFactory,
-    run_namespace: m.Tests.TestNamespace,
+    run_namespace: p.Tests.TestNamespace,
 ) -> Iterator[p.Tests.SessionRuntime]:
     """Own the distinct installed workspace seed through the shared runtime owner.
 

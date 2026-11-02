@@ -29,11 +29,11 @@ class FlextInfraRefactorCensusProject(
         self,
         project: str,
         *,
-        findings: m.Infra.ScanFindings,
+        findings: p.Infra.ScanFindings,
         duplicate_keys: frozenset[str],
-        scan_config: m.Infra.ScanConfig,
+        scan_config: p.Infra.ScanConfig,
         source_project: p.Infra.RopeProject,
-    ) -> m.Infra.ProjectReport:
+    ) -> p.Infra.ProjectReport:
         """Project report.
 
         Returns:
@@ -41,7 +41,7 @@ class FlextInfraRefactorCensusProject(
 
         """
         objects = tuple(findings.project_objects.get(project, ()))
-        violations: list[m.Infra.Violation] = []
+        violations: list[p.Infra.Violation] = []
         rule_names = scan_config.rule_names
         selected_rules = scan_config.selected_rules
         include_unused = self._include_rule(
@@ -60,7 +60,7 @@ class FlextInfraRefactorCensusProject(
             selected_rules=selected_rules,
         )
         unused_count = 0
-        removal_candidates: list[m.Infra.RemovalCandidate] = []
+        removal_candidates: list[p.Infra.RemovalCandidate] = []
         for item in objects:
             unused = self.unused(item, source_project=source_project)
             if include_duplicate and self._object_key(item) in duplicate_keys:

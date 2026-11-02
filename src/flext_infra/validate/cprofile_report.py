@@ -163,7 +163,7 @@ class FlextInfraCProfileReport(s[bool]):
         return profiles
 
     def _recorded_context(
-        self, parent: m.Infra.PytestRunContext
+        self, parent: p.Infra.PytestRunContext
     ) -> tuple[Path, m.Infra.PytestRunContext]:
         """Load the run context recorded beside the parent receipt.
 
@@ -195,7 +195,7 @@ class FlextInfraCProfileReport(s[bool]):
 
     @staticmethod
     def _is_full_suite(
-        parent: m.Infra.PytestRunContext,
+        parent: p.Infra.PytestRunContext,
         directory: Path,
         suite_outcome: Path,
     ) -> bool:
@@ -256,7 +256,7 @@ class FlextInfraCProfileReport(s[bool]):
     def _planned_profiles(
         self,
         directory: Path,
-        plan: m.Infra.PytestSelectionPlan,
+        plan: p.Infra.PytestSelectionPlan,
         *,
         suite: Path,
         suite_required: bool,
@@ -344,8 +344,8 @@ class FlextInfraCProfileReport(s[bool]):
     def _verify_profile_receipts(
         self,
         profiles: tuple[Path, ...],
-        parent: m.Infra.PytestRunContext,
-        context: m.Infra.PytestRunContext,
+        parent: p.Infra.PytestRunContext,
+        context: p.Infra.PytestRunContext,
     ) -> None:
         """Require every profile to carry its matching run receipt and digest.
 

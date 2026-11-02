@@ -56,7 +56,7 @@ class TestsFlextInfraRefactorImportNormalizationRuntimeReads(
             "class DemoDeclaration:\n"
             "    @runtime_checkable\n"
             "    class HasRecord(Protocol):\n"
-            "        record: m.DemoRecord\n",
+            "        record: p.DemoRecord\n",
         )
         tm.ok(
             u.Infra.normalize_import_source(
@@ -74,7 +74,7 @@ class TestsFlextInfraRefactorImportNormalizationRuntimeReads(
             "class DemoDeclaration:\n"
             "    @runtime_checkable\n"
             "    class Converts(Protocol):\n"
-            "        def to_model[U: m.DemoRecord](self, model: type[U]) -> U: ...\n",
+            "        def to_model[U: p.DemoRecord](self, model: type[U]) -> U: ...\n",
         )
         tm.ok(
             u.Infra.normalize_import_source(
@@ -92,7 +92,7 @@ class TestsFlextInfraRefactorImportNormalizationRuntimeReads(
             "class DemoDeclaration:\n"
             "    @staticmethod\n"
             "    def narrow(value: str) -> str:\n"
-            "        record: m.DemoRecord | None = None\n"
+            "        record: p.DemoRecord | None = None\n"
             "        return value if record is None else value\n",
         )
         tm.ok(

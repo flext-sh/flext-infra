@@ -49,7 +49,7 @@ class FlextInfraRefactorCensus(
             else None
         )
 
-    def build_report(self) -> m.Infra.WorkspaceReport:
+    def build_report(self) -> p.Infra.WorkspaceReport:
         """Inventory the selected modules and assemble the census report.
 
         Returns:

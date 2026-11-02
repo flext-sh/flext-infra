@@ -53,7 +53,7 @@ class TestsFlextInfraPromotedProcessBoundary:
 import sys
 from pathlib import Path
 
-from flext_infra import m, u
+from flext_infra import m, p, u
 
 raise SystemExit(
     u.Infra.promoted_run(

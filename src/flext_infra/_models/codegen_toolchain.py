@@ -20,7 +20,7 @@ class FlextInfraModelsCodegenToolchain:
     class MiseToolchainProjectLayout(m.ArbitraryTypesModel):
         """Stable paths needed to validate and recover one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         selector: Annotated[
             t.NonEmptyStr,
@@ -41,7 +41,7 @@ class FlextInfraModelsCodegenToolchain:
     class CodegenFileParticipant(m.ArbitraryTypesModel):
         """Explicit physical publication capability without Git or Mise ownership."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         selector: Annotated[
             str,
@@ -80,7 +80,7 @@ class FlextInfraModelsCodegenToolchain:
     class MiseToolchainWorkspaceLayout(m.ArbitraryTypesModel):
         """Stable recovery topology independent of mutable source contents."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         scope_root: Annotated[Path, m.Field(description="Resolved transaction scope")]
         state_root: Annotated[
@@ -131,7 +131,7 @@ class FlextInfraModelsCodegenToolchain:
     class MiseToolchainConfigState(m.ArbitraryTypesModel):
         """Current destination plus the exact planned Mise configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         before: Annotated[
             m.Cli.AtomicFileState,
@@ -155,14 +155,14 @@ class FlextInfraModelsCodegenToolchain:
             ),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(description="Ordered YAML states that produced the replacement"),
         ] = ()
 
     class MiseToolchainProjectState(m.ArbitraryTypesModel):
         """Immutable source and destination snapshot for one project layout."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout,
@@ -192,7 +192,7 @@ class FlextInfraModelsCodegenToolchain:
     class MiseToolchainWorkspacePlan(m.ArbitraryTypesModel):
         """One stable layout plus a coherent mutable-state snapshot."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainWorkspaceLayout,
@@ -205,11 +205,11 @@ class FlextInfraModelsCodegenToolchain:
 
         @m.computed_field
         @property
-        def sources(self) -> tuple[m.Cli.AtomicFileState, ...]:
+        def sources(self) -> tuple[p.Cli.AtomicFileState, ...]:
             """Every state the publication reads: the planned declarations.
 
             Returns:
-                The resulting ``tuple[m.Cli.AtomicFileState, ...],``.
+                The resulting ``tuple[p.Cli.AtomicFileState, ...],``.
 
             """
             return tuple(

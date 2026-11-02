@@ -1248,7 +1248,7 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(description="Validated project-specific tooling configuration."),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(description="Captured canonical and project configuration layers."),
         ]
 
@@ -1277,7 +1277,7 @@ class FlextInfraModelsDepsToolConfig(
             m.Field(description="Conformed native tables keyed by declared table path"),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True,
                 description="Original configuration layers bound to the render",

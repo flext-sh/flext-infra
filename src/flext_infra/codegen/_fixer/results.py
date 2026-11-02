@@ -9,13 +9,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.validate import FlextInfraNamespaceValidator
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraCodegenFixerResults:
@@ -24,7 +22,7 @@ class FlextInfraCodegenFixerResults:
     _fixer_log: ClassVar[p.Logger] = u.fetch_logger(__name__)
 
     @staticmethod
-    def _empty_result(project_name: str) -> m.Infra.AutoFixResult:
+    def _empty_result(project_name: str) -> p.Infra.AutoFixResult:
         """Empty result.
 
         Returns:
@@ -41,8 +39,8 @@ class FlextInfraCodegenFixerResults:
     @staticmethod
     def _build_result(
         project_name: str,
-        ctx: m.Infra.FixContext,
-    ) -> m.Infra.AutoFixResult:
+        ctx: p.Infra.FixContext,
+    ) -> p.Infra.AutoFixResult:
         """Build result.
 
         Returns:
@@ -58,13 +56,13 @@ class FlextInfraCodegenFixerResults:
 
     def _load_initial_violations(
         self,
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
         project_path: Path,
-    ) -> Sequence[m.Infra.CensusViolation]:
+    ) -> Sequence[p.Infra.CensusViolation]:
         """Read the initial namespace violations and record skip reason on failure.
 
         Returns:
-            The resulting ``Sequence[m.Infra.CensusViolation]``.
+            The resulting ``Sequence[p.Infra.CensusViolation]``.
 
         """
         initial_violations_result = u.Infra.parse_namespace_validation(
@@ -89,9 +87,9 @@ class FlextInfraCodegenFixerResults:
 
     @staticmethod
     def _classify_remaining_violations(
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
         project_path: Path,
-        initial_violations: Sequence[m.Infra.CensusViolation],
+        initial_violations: Sequence[p.Infra.CensusViolation],
     ) -> None:
         """Re-run validation and split outstanding violations into fixed vs skipped."""
         remaining_result = u.Infra.parse_namespace_validation(

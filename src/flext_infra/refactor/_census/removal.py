@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorCensusRemoval(
-    FlextInfraProjectSelectionServiceBase[m.Infra.WorkspaceReport],
+    FlextInfraProjectSelectionServiceBase[p.Infra.WorkspaceReport],
 ):
     """Preview and apply the inventory's removal candidates through gates.
 
@@ -39,30 +39,30 @@ class FlextInfraRefactorCensusRemoval(
     def _validated_project_reports(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
-        project_reports: tuple[m.Infra.ProjectReport, ...],
+        project_reports: tuple[p.Infra.ProjectReport, ...],
         *,
         source_preview: p.Infra.SourcePreview,
-    ) -> tuple[m.Infra.ProjectReport, ...]:
+    ) -> tuple[p.Infra.ProjectReport, ...]:
         """Keep only removal candidates that pass the configured dry-run gates.
 
         A gate rejection is reported as a ``preview_rejected`` finding of the
         project; with ``fail_fast`` it stops the census instead.
 
         Returns:
-            The resulting ``tuple[m.Infra.ProjectReport, ...],``.
+            The resulting ``tuple[p.Infra.ProjectReport, ...],``.
 
         Raises:
             RuntimeError: If removal preview rejected.
 
         """
-        validated_reports: list[m.Infra.ProjectReport] = []
+        validated_reports: list[p.Infra.ProjectReport] = []
         # Previews validate staged bytes, so the live source cache remains valid.
         source_cache: MutableMapping[Path, str] = {}
         for report in project_reports:
             if not report.removal_candidates:
                 validated_reports.append(report)
                 continue
-            validated_candidates: list[m.Infra.RemovalCandidate] = []
+            validated_candidates: list[p.Infra.RemovalCandidate] = []
             validated_violations = list(report.violations)
             for candidate in report.removal_candidates:
                 preview_result = u.Infra.preview_simple_removal_candidate(
@@ -112,7 +112,7 @@ class FlextInfraRefactorCensusRemoval(
     def _apply_removal_candidates(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
-        report: m.Infra.WorkspaceReport,
+        report: p.Infra.WorkspaceReport,
     ) -> bool:
         """Remove every candidate through its gates; a failed removal escapes.
 

@@ -32,7 +32,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
     def _get_check_dirs(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """Ruff always runs — never skip.
 
@@ -47,7 +47,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Lint read-only with the config-owned check flags.
@@ -67,7 +67,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
     def _build_fix_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
     ) -> Sequence[str]:
         """Build the explicit Ruff fix command.
@@ -80,7 +80,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
         return self._lint_command(ctx, targets, config.Infra.codegen.make.ruff.lint_fix)
 
     @override
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: p.Infra.GateContext) -> p.Infra.GateExecution:
         """Apply Ruff's own fixes, then the declared recipe of each finding left.
 
         The recipe phases are tooling data (``fix-recipe-phases``) applied in
@@ -190,7 +190,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
         by_file: Mapping[Path, Sequence[p.Infra.Issue]],
         recipes: Mapping[str, c.Infra.LintFixRecipe],
         *,
-        tooling: m.Infra.ToolConfigDocument,
+        tooling: p.Infra.ToolConfigDocument,
     ) -> None:
         """Repair every module of one phase, computing all before any write."""
         with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
@@ -205,7 +205,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
             )
             # A module the recipes cannot place stops the phase with nothing
             # written.
-            planned: MutableSequence[tuple[m.Cli.AtomicFileState, str]] = []
+            planned: MutableSequence[tuple[p.Cli.AtomicFileState, str]] = []
             for path, issues in sorted(by_file.items()):
                 before = u.Cli.atomic_read_binary_file_state(
                     path,
@@ -255,11 +255,11 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
     @staticmethod
     def _repaired_source(
         project_dir: Path,
-        before: m.Cli.AtomicFileState,
+        before: p.Cli.AtomicFileState,
         issues: Sequence[p.Infra.Issue],
         *,
         import_graph: Mapping[str, frozenset[str]],
-        tooling: m.Infra.ToolConfigDocument,
+        tooling: p.Infra.ToolConfigDocument,
     ) -> str:
         """Apply one module's recipes: whole-module rewrites, then planned edits.
 
@@ -345,7 +345,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
 
     def _lint_command(
         self,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
         mode_args: Sequence[str],
     ) -> Sequence[str]:
@@ -371,7 +371,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Parse Ruff's JSON report into findings named by their Ruff rule.
 
@@ -429,7 +429,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
     @staticmethod
     def _native_issues(
         result: p.Cli.CommandOutput,
-    ) -> MutableSequence[m.Infra.Issue]:
+    ) -> MutableSequence[p.Infra.Issue]:
         """Read original Ruff diagnostics before applying identity policy.
 
         Returns:
@@ -443,7 +443,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
             raise TypeError(msg)
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: MutableSequence[p.Infra.Issue] = []
         for entry in report:
             if not isinstance(entry, Mapping):
                 msg = f"Ruff JSON finding is not an object: {type(entry).__name__}"
@@ -464,8 +464,8 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
     @staticmethod
     def _without_exempt_identities(
         project_dir: Path,
-        issues: Sequence[m.Infra.Issue],
-    ) -> Sequence[m.Infra.Issue]:
+        issues: Sequence[p.Infra.Issue],
+    ) -> Sequence[p.Infra.Issue]:
         """Remove exactly the findings an authenticated identity exempts.
 
         The readonly-namespace owner authenticates each operator-decided

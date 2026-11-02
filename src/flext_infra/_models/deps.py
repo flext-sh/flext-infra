@@ -70,7 +70,7 @@ class FlextInfraModelsDeps(
     class ProjectPackagingDeclaration(m.ExternalContractModel):
         """Native packaging facts retained independently of Python export health."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             populate_by_name=True,
         )
         uv_package: Annotated[
@@ -125,7 +125,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 min_length=1, description="Authenticated distribution metadata states"
             ),
@@ -168,7 +168,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 min_length=1,
                 description="Native lock and production-source input states",
@@ -179,7 +179,7 @@ class FlextInfraModelsDeps(
         """Calculated target requirements and unchanged diagnostic identities."""
 
         source: Annotated[
-            tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
+            tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
             m.Field(
                 min_length=1,
                 description="Production trees establishing applicability",
@@ -202,7 +202,7 @@ class FlextInfraModelsDeps(
             m.Field(description="Missing or ambiguous import suppliers remaining red"),
         ]
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 description="Every metadata, lock and source state backing this plan"
             ),
@@ -329,7 +329,7 @@ class FlextInfraModelsDeps(
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_default=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
         before: Annotated[

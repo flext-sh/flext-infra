@@ -28,8 +28,8 @@ class FlextInfraGatesLayout(FlextInfraGates):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Report layout violations for ``project_dir`` from the layout SSOT.
 
         Returns:
@@ -39,7 +39,7 @@ class FlextInfraGatesLayout(FlextInfraGates):
         started = time.monotonic()
         engine = FlextInfraCodegenLayout()
         report = engine.check_project(project_dir)
-        report_findings: tuple[m.Infra.LayoutFinding, ...] = report.findings
+        report_findings: tuple[p.Infra.LayoutFinding, ...] = report.findings
         issues = tuple(
             m.Infra.Issue(
                 file=str(project_dir / finding.path),

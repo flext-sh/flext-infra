@@ -275,7 +275,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
     ) -> None:
         """Each owning project normalizes under only its own lint policy."""
         workspace = u.Tests.create_lazy_init_workspace(tmp_path)[0]
-        plans: list[m.Infra.CodegenFilePlan] = []
+        plans: list[p.Infra.CodegenFilePlan] = []
         for name, selected in (("first", "F"), ("second", "UP")):
             root, package = u.Tests.create_lazy_init_workspace(
                 workspace,
@@ -327,7 +327,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             b"class Facade:\n    Owner: TypeAlias = int\n"
         )
 
-        def plan(content: bytes, path: Path) -> m.Infra.CodegenFilePlan:
+        def plan(content: bytes, path: Path) -> p.Infra.CodegenFilePlan:
             return m.Infra.CodegenFilePlan(
                 project=root,
                 path=path,

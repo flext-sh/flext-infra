@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
@@ -20,7 +20,7 @@ pytestmark = [pytest.mark.slow]
 
 def _apply_custom_make_and_assert_clean(
     root: Path,
-    workspace: m.Infra.WorkspaceSpec,
+    workspace: p.Infra.WorkspaceSpec,
     custom_content: str,
     captured: pytest.CaptureFixture[str],
 ) -> None:
@@ -53,7 +53,7 @@ class TestsFlextInfraCodegenMakeContracts:
         custom = root / "custom.mk"
         content = ".PHONY: public-handler\npublic-handler:\n\t@true\n"
         tm.ok(u.Cli.atomic_write_text_file(custom, content))
-        policy: m.Infra.CustomHandlerPolicy = (
+        policy: p.Infra.CustomHandlerPolicy = (
             config.Infra.codegen.make.custom_handler_policies[
                 c.Infra.MakeProfile.STANDALONE
             ]
@@ -96,7 +96,7 @@ class TestsFlextInfraCodegenMakeContracts:
     @staticmethod
     def test_custom_make_rejects_unterminated_phony_continuation() -> None:
         """Fail closed when a multiline private-handler declaration is truncated."""
-        policy: m.Infra.CustomHandlerPolicy = (
+        policy: p.Infra.CustomHandlerPolicy = (
             config.Infra.codegen.make.custom_handler_policies[
                 c.Infra.MakeProfile.STANDALONE
             ]

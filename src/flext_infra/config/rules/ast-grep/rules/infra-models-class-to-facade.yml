@@ -1,12 +1,9 @@
 # A consumer names the models facade, never the concrete namespace class.
 #
-# `m.Infra.ProjectInfo` and `FlextInfraModelsWorkspace.ProjectInfo` are the same
-# object; the facade path is the one the project's typing law mandates, and it
-# is the only one that survives the class being moved between modules. The
-# models refactor did exactly that move and left consumers naming the concrete
-# class with no import for it, so the module raised NameError the first time
-# that line ran — invisible to a reader, because the expression looks perfectly
-# ordinary.
+# The protocol path is the typing contract; executable consumers retain the
+# concrete `m.Infra.*` model. This rule is deliberately constrained to a type
+# region so it cannot rewrite constructors, `Result[...]` operands, factories
+# or runtime metadata before the protocol projection exists.
 #
 # The declaring modules are excluded: there the name is a definition, not a
 # consumer reference. The receiver is narrowed before the module-wide import
@@ -32,9 +29,12 @@ rule:
       has:
         stopBy: end
         matches: m-imported-from-flext
+  - inside:
+      matches: semantic-type-context
 constraints:
   CLS:
     regex: "^FlextInfraModels[A-Z][A-Za-z0-9]*$"
-fix: m.Infra.$ATTR
+fix: p.Infra.$ATTR
 message: >-
-  Name the models facade (m.Infra.*), not the concrete namespace class; the concrete name breaks the moment the class changes module.
+  Name the protocol facade (p.Infra.*) in a type annotation; executable model
+  access remains m.Infra.*.

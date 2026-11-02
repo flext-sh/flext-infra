@@ -241,7 +241,7 @@ class TestsFlextInfraFamilyFlatten:
         references = (
             "from __future__ import annotations\n"
             f"from {package.name} import m\n\n"
-            f"def render() -> m.{project}.VerbReceipt.Stage:\n"
+            f"def render() -> p.{project}.VerbReceipt.Stage:\n"
             f"    return m.{project}.VerbReceipt.Stage()\n"
         )
         consumer.write_text(references, encoding="utf-8")

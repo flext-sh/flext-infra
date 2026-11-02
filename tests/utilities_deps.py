@@ -82,14 +82,14 @@ class TestsFlextInfraUtilitiesDeps:
     def detect_command(
         repository_root: Path,
         **overrides: t.JsonValue,
-    ) -> m.Infra.DetectCommand:
+    ) -> p.Infra.DetectCommand:
         """Create a validated dependency-detection command.
 
         Returns:
             The resulting ``m.Infra.DetectCommand``.
 
         """
-        validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
+        validated: p.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
             "repository_root": str(repository_root),
             **overrides,
         })

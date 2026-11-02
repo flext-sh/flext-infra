@@ -22,16 +22,16 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     def repository_kind_declaration_plans(
         cls,
         root: Path,
-        inputs: m.Infra.CodegenInputs,
+        inputs: p.Infra.CodegenInputs,
         kind: c.Infra.ProjectKind,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Publish an explicit kind only into the requested target's own source.
 
         Returns:
             The declaration plan, none when already declared, or the conflict.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         effective = inputs.spec.repository
         if "kind" in effective.model_fields_set and effective.kind != kind:
             return result_type.fail(
@@ -70,9 +70,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     def _declared_kind_plans(
         cls,
         own_path: Path,
-        inputs: m.Infra.CodegenInputs,
+        inputs: p.Infra.CodegenInputs,
         kind: c.Infra.ProjectKind,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]] | None:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]] | None:
         """Guard the target's own ``kind`` declaration.
 
         Returns:
@@ -85,7 +85,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             return None
         document = u.Infra.read_codegen_config_document(own.content)
         if document.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(document)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(document)
         declared = u.Cli.json_walk_path(
             document.value,
             ("Infra", "codegen", "repository", "kind"),
@@ -93,10 +93,10 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         if declared is None:
             return None
         if declared != kind.value:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 f"bootstrap kind conflicts with the target's declaration: {own_path}",
             )
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(())
 
     @classmethod
     def _codegen_declaration_plan(
@@ -104,14 +104,14 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         root: Path,
         path: Path,
         values: t.JsonMapping,
-    ) -> p.Result[m.Infra.CodegenFilePlan]:
+    ) -> p.Result[p.Infra.CodegenFilePlan]:
         """Merge project YAML through its canonical config primitive.
 
         Returns:
             The declaration plan preserving all unrelated configuration values.
 
         """
-        result_type = r[m.Infra.CodegenFilePlan]
+        result_type = r[p.Infra.CodegenFilePlan]
         project = root.expanduser().absolute()
         target = path.expanduser().absolute()
         before = u.Infra.codegen_target_snapshot(target)
@@ -145,8 +145,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     def repository_declaration_migration_plans(
         cls,
         root: Path,
-        inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        inputs: p.Infra.CodegenInputs,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Project self-owned declarations before retiring their input.
 
         This is an explicit migration operation, not a configuration source.
@@ -157,7 +157,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The own declaration and its retirement, or the first failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         legacy_path = u.Infra.workspace_manifest_path(root)
         project = inputs.spec.repository.project
         resource_owned = project is not None and any(
@@ -256,8 +256,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
 
     @staticmethod
     def _repository_declaration_admits(
-        own_source: m.Cli.AtomicFileState | None,
-        delta: m.Infra.RepositoryDeltaSpec,
+        own_source: p.Cli.AtomicFileState | None,
+        delta: p.Infra.RepositoryDeltaSpec,
     ) -> p.Result[bool] | None:
         """Check a captured own declaration against the migration delta.
 
@@ -276,7 +276,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     @staticmethod
     def _repository_declaration_compatible(
         content: bytes,
-        delta: m.Infra.RepositoryDeltaSpec,
+        delta: p.Infra.RepositoryDeltaSpec,
     ) -> p.Result[bool]:
         """Reject conflicts with explicitly captured repository declarations.
 
@@ -313,11 +313,11 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     def _repository_declaration_retirement_plans(
         cls,
         root: Path,
-        inputs: m.Infra.CodegenInputs,
-        captured: m.Cli.AtomicFileState,
-        delta: m.Infra.RepositoryDeltaSpec,
-        legacy: m.Infra.WorkspaceManifestSpec,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        inputs: p.Infra.CodegenInputs,
+        captured: p.Cli.AtomicFileState,
+        delta: p.Infra.RepositoryDeltaSpec,
+        legacy: p.Infra.WorkspaceManifestSpec,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Validate the projected declaration before planning input retirement.
 
         The input is retired unless its bytes are a declared resource.
@@ -326,7 +326,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The source declaration and its dependent retirement.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         layers = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -379,8 +379,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     @staticmethod
     def _retirement_admitted(
         root: Path,
-        inputs: m.Infra.CodegenInputs,
-        legacy: m.Infra.WorkspaceManifestSpec,
+        inputs: p.Infra.CodegenInputs,
+        legacy: p.Infra.WorkspaceManifestSpec,
     ) -> p.Result[bool]:
         """Admit manifest retirement only once its consumers are covered.
 
@@ -418,23 +418,23 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         rendered: str,
         *,
         mode: int = 0o644,
-        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
-    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        inputs: tuple[p.Cli.AtomicFileState, ...] = (),
+    ) -> p.Result[p.Infra.CodegenFilePlan]:
         """Snapshot one unowned target and bind it to exact desired bytes.
 
         ``inputs`` retains the original read-only observations by reference;
         the shared publisher verifies them before applying the desired effect.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
+            The resulting ``p.Result[p.Infra.CodegenFilePlan]``.
 
         """
         project = root.expanduser().absolute()
         path = (project / relative_path).absolute()
         before = u.Infra.codegen_target_snapshot(path)
         if before.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(before)
-        return r[m.Infra.CodegenFilePlan].ok(
+            return r[p.Infra.CodegenFilePlan].from_failure(before)
+        return r[p.Infra.CodegenFilePlan].ok(
             m.Infra.CodegenFilePlan(
                 project=project,
                 path=path,
@@ -451,16 +451,16 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         relative_path: str,
         rendered: str,
         *,
-        ownership: m.Infra.ManagedFileOwnership,
-        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
-    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        ownership: p.Infra.ManagedFileOwnership,
+        inputs: tuple[p.Cli.AtomicFileState, ...] = (),
+    ) -> p.Result[p.Infra.CodegenFilePlan]:
         """Snapshot one governed target bound to its declared ownership.
 
         The declared ownership supplies the exact permission bits, owner,
         policy and tracking of the planned effect.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
+            The resulting ``p.Result[p.Infra.CodegenFilePlan]``.
 
         """
         return FlextInfraCodegenConformFilePlans.file_plan(
@@ -479,10 +479,10 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     def uv_environment_plan(
         *,
         root: Path,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        config: m.Infra.CodegenConfigSpec,
-    ) -> m.Infra.UvEnvironmentPlan:
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        config: p.Infra.CodegenConfigSpec,
+    ) -> p.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv.
 
         Returns:
@@ -502,18 +502,18 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         )
 
     @staticmethod
-    def _absent_file_plan(root: Path, path: Path) -> p.Result[m.Infra.CodegenFilePlan]:
+    def _absent_file_plan(root: Path, path: Path) -> p.Result[p.Infra.CodegenFilePlan]:
         """Plan the removal of one retired projection.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
+            The resulting ``p.Result[p.Infra.CodegenFilePlan]``.
 
         """
         target = path.expanduser().absolute()
         before = u.Cli.atomic_read_binary_file_state(target, required=True)
         if before.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(before)
-        return r[m.Infra.CodegenFilePlan].ok(
+            return r[p.Infra.CodegenFilePlan].from_failure(before)
+        return r[p.Infra.CodegenFilePlan].ok(
             m.Infra.CodegenFilePlan(
                 project=root.expanduser().absolute(),
                 path=target,
@@ -525,7 +525,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
 
     @staticmethod
     def _retired_destinations(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> p.Result[tuple[Sequence[str], dict[str, str]]]:
         """Collect declared retired projections with their removal evidence.
 
@@ -557,8 +557,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         root: Path,
         profile: c.Infra.MakeProfile,
         *,
-        inputs: m.Infra.CodegenInputs | None = None,
-    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
+        inputs: p.Infra.CodegenInputs | None = None,
+    ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
         """Plan removal of generated projections this profile no longer renders.
 
         A projection retires either because its template entry excludes this
@@ -567,13 +567,13 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         a file carrying the generated marker is removed.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.CodegenFilePlan]]``.
+            The resulting ``p.Result[Sequence[p.Infra.CodegenFilePlan]]``.
 
         """
         if inputs is None:
             loaded = u.Infra.load_codegen_inputs(root)
             if loaded.failure:
-                return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(loaded)
+                return r[Sequence[p.Infra.CodegenFilePlan]].from_failure(loaded)
             inputs = loaded.value
         destinations: list[str] = [
             entry.destination
@@ -582,7 +582,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         ]
         collected = cls._retired_destinations(inputs.spec)
         if collected.failure:
-            return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(collected)
+            return r[Sequence[p.Infra.CodegenFilePlan]].from_failure(collected)
         extra_destinations, evidence_by_path = collected.value
         destinations.extend(extra_destinations)
         retired = cls._retired_destination_plans(
@@ -591,8 +591,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             evidence_by_path,
         )
         if retired.failure:
-            return r[Sequence[m.Infra.CodegenFilePlan]].from_failure(retired)
-        return r[Sequence[m.Infra.CodegenFilePlan]].ok(retired.value)
+            return r[Sequence[p.Infra.CodegenFilePlan]].from_failure(retired)
+        return r[Sequence[p.Infra.CodegenFilePlan]].ok(retired.value)
 
     @classmethod
     def _retired_destination_plans(
@@ -600,15 +600,15 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         root: Path,
         destinations: Sequence[str],
         evidence_by_path: dict[str, str],
-    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
+    ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
         """Plan removal of every still-present retired destination file.
 
         Returns:
             The absence plans.
 
         """
-        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
-        planned: list[m.Infra.CodegenFilePlan] = []
+        result_type = r[Sequence[p.Infra.CodegenFilePlan]]
+        planned: list[p.Infra.CodegenFilePlan] = []
         # A retired directory retires each file under it; the generated
         # marker (or declared evidence) below still guards every removal.
         candidates = (

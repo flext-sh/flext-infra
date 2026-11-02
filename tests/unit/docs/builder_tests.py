@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests import m, tm
+from tests import m, p, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,7 +38,7 @@ class TestsFlextInfraBuilder:
         tmp_path: Path,
     ) -> None:
         """Test build with valid scope returns success."""
-        reports: Sequence[m.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
+        reports: Sequence[p.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
         tm.that(len(reports), gte=0)
 
     @staticmethod

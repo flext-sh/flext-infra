@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraCodegenRenderPurityGolden:
@@ -129,6 +129,6 @@ class TestsFlextInfraCodegenRenderPurityGolden:
     def test_fixture_scaffold_year_is_the_production_ssot() -> None:
         """Fixture identity uses the same year declaration production renders."""
         year = config.Infra.codegen.scaffold.project.copyright_year
-        spec: m.Infra.ProjectSpec = u.Tests.project_spec("year-owner")
+        spec: p.Infra.ProjectSpec = u.Tests.project_spec("year-owner")
 
         tm.that(spec.year, eq=year)

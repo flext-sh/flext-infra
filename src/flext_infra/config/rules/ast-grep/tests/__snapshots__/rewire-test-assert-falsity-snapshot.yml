@@ -22,9 +22,9 @@ snapshots:
       style: secondary
       start: 0
       end: 65
-  "from tests import tm\nassert not any(item.dirty for item in items)\n":
+  "from tests import p, tm\nassert not any(item.dirty for item in items)\n":
     fixed: |
-      from tests import tm
+      from tests import p, tm
       if any(item.dirty for item in items):
           tm.reject()
     labels:
@@ -32,19 +32,19 @@ snapshots:
       style: primary
       start: 21
       end: 65
-    - source: from tests import tm
+    - source: from tests import p, tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import tm
+        from tests import p, tm
         assert not any(item.dirty for item in items)
       style: secondary
       start: 0
       end: 66
-  "from tests import tm\nassert not path.exists()\n":
+  "from tests import p, tm\nassert not path.exists()\n":
     fixed: |
-      from tests import tm
+      from tests import p, tm
       if path.exists():
           tm.reject()
     labels:
@@ -52,12 +52,12 @@ snapshots:
       style: primary
       start: 21
       end: 45
-    - source: from tests import tm
+    - source: from tests import p, tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import tm
+        from tests import p, tm
         assert not path.exists()
       style: secondary
       start: 0

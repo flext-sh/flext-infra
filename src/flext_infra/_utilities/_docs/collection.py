@@ -10,6 +10,7 @@ from collections.abc import MutableMapping, Sequence
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 
@@ -20,6 +21,9 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsRender,
 )
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources):
@@ -32,8 +36,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             self,
             canonical: Path,
             projection: Path | None,
-            manifest: m.Infra.PlanCollectionManifest,
-            configuration: m.Infra.PlanCollectionConfig,
+            manifest: p.Infra.PlanCollectionManifest,
+            configuration: p.Infra.PlanCollectionConfig,
             *,
             states: MutableMapping[Path, m.Cli.AtomicFileState],
         ) -> None:
@@ -50,7 +54,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             self.current_revisions: dict[
                 tuple[str, Path], m.Infra.PlanCollectionRevision
             ] = {}
-            self.coverage: list[m.Infra.PlanCollectionCoverage] = []
+            self.coverage: list[p.Infra.PlanCollectionCoverage] = []
             self.invalid_owned: MutableMapping[Path, str] = {}
 
         def absorb_owned_artifacts(self) -> None:
@@ -75,7 +79,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
 
         def absorb_artifacts(
             self,
-            artifacts: tuple[m.Cli.AtomicFileState, ...],
+            artifacts: tuple[p.Cli.AtomicFileState, ...],
         ) -> None:
             """Merge one path's collected states, rejecting concurrent change.
 
@@ -93,7 +97,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         def previous_revision(
             self,
             path: Path,
-        ) -> m.Infra.PlanCollectionRevision | None:
+        ) -> p.Infra.PlanCollectionRevision | None:
             """Return the recorded revision that owns one collected path.
 
             Returns:
@@ -115,7 +119,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 None,
             )
 
-        def record_revision(self, revision: m.Infra.PlanCollectionRevision) -> None:
+        def record_revision(self, revision: p.Infra.PlanCollectionRevision) -> None:
             """Select the observed current revision without rewriting its history.
 
             Raises:
@@ -138,7 +142,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
 
         def record_private(
             self,
-            source: m.Infra.PlanCollectionSource,
+            source: p.Infra.PlanCollectionSource,
             paths: tuple[Path, ...],
         ) -> None:
             """Record a private-inventory source's coverage."""
@@ -155,7 +159,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             )
 
         @staticmethod
-        def require_publishable(source: m.Infra.PlanCollectionSource) -> None:
+        def require_publishable(source: p.Infra.PlanCollectionSource) -> None:
             """Require a plan-artifacts publication approval.
 
             Raises:
@@ -168,7 +172,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
 
         def record_public(
             self,
-            source: m.Infra.PlanCollectionSource,
+            source: p.Infra.PlanCollectionSource,
             paths: tuple[Path, ...],
             *,
             source_root: Path,
@@ -201,11 +205,11 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 ),
             )
 
-        def sorted_revisions(self) -> list[m.Infra.PlanCollectionRevision]:
+        def sorted_revisions(self) -> list[p.Infra.PlanCollectionRevision]:
             """Return current observed revisions sorted by source time and identity.
 
             Returns:
-                The resulting ``list[m.Infra.PlanCollectionRevision]``.
+                The resulting ``list[p.Infra.PlanCollectionRevision]``.
 
             """
             current = {item.identity: item for item in self.current_revisions.values()}
@@ -233,7 +237,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             manifest_path = self.canonical / "collection-manifest.json"
             owned = {item.relative_path: item for item in self.manifest.artifacts}
             owned.update({
-                path.relative_to(self.canonical): m.Infra.PlanCollectionOwnedArtifact(
+                path.relative_to(self.canonical): p.Infra.PlanCollectionOwnedArtifact(
                     relative_path=path.relative_to(self.canonical),
                     digest=sha256(content).hexdigest(),
                 )
@@ -266,7 +270,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def _validated_collection_roots(
         cls,
         repository_root: Path,
-        configuration: m.Infra.PlanCollectionConfig,
+        configuration: p.Infra.PlanCollectionConfig,
     ) -> tuple[Path, Path, Path | None]:
         """Validate and resolve the collection canonical and projection roots.
 
@@ -300,7 +304,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
 
     @staticmethod
     def _require_unique_sources(
-        configuration: m.Infra.PlanCollectionConfig,
+        configuration: p.Infra.PlanCollectionConfig,
     ) -> None:
         """Require every collection source identity to be unique.
 
@@ -318,7 +322,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         root: Path,
         state: _CollectionState,
-    ) -> m.Infra.PlanCollectionBundle:
+    ) -> p.Infra.PlanCollectionBundle:
         """Plan removal-only effects when collection is disabled.
 
         Returns:
@@ -369,7 +373,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def _collect_source_paths(
         cls,
         source_root: Path,
-        source: m.Infra.PlanCollectionSource,
+        source: p.Infra.PlanCollectionSource,
         paths: tuple[Path, ...],
         state: _CollectionState,
         excluded_outputs: tuple[Path, ...],
@@ -398,7 +402,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def _collect_all_sources(
         cls,
         root: Path,
-        configuration: m.Infra.PlanCollectionConfig,
+        configuration: p.Infra.PlanCollectionConfig,
         state: _CollectionState,
         excluded_outputs: tuple[Path, ...],
     ) -> None:
@@ -430,7 +434,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
 
     @staticmethod
     def _collection_index_text(
-        revisions: Sequence[m.Infra.PlanCollectionRevision],
+        revisions: Sequence[p.Infra.PlanCollectionRevision],
         *,
         width: int,
     ) -> str:
@@ -505,8 +509,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         root: Path,
         state: _CollectionState,
-        revisions: Sequence[m.Infra.PlanCollectionRevision],
-    ) -> m.Infra.PlanCollectionBundle:
+        revisions: Sequence[p.Infra.PlanCollectionRevision],
+    ) -> p.Infra.PlanCollectionBundle:
         """Plan every desired output and assemble the collection bundle.
 
         Returns:
@@ -522,7 +526,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         state.mirror_projection()
         # Reuse the completed capture; each plan authenticates the same inputs.
         inputs = tuple(state.states.values())
-        plans: list[m.Infra.CodegenFilePlan] = []
+        plans: list[p.Infra.CodegenFilePlan] = []
         for path, content in sorted(state.desired.items()):
             owner = root if path.is_relative_to(canonical) else projection
             if owner is None:
@@ -549,10 +553,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def docs_collect_plan_files(
         cls,
         repository_root: Path,
-        configuration: m.Infra.PlanCollectionConfig,
+        configuration: p.Infra.PlanCollectionConfig,
         *,
-        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
-    ) -> m.Infra.PlanCollectionBundle:
+        inputs: tuple[p.Cli.AtomicFileState, ...] = (),
+    ) -> p.Infra.PlanCollectionBundle:
         """Capture sources before any canonical or home projection writes.
 
         Returns:
@@ -603,9 +607,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def docs_verify_plan_collection(
         cls,
         repository_root: Path,
-        configuration: m.Infra.PlanCollectionConfig,
+        configuration: p.Infra.PlanCollectionConfig,
         *,
-        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
+        inputs: tuple[p.Cli.AtomicFileState, ...] = (),
     ) -> bool:
         """Verify canonical evidence without collecting sources or writing output.
 
@@ -661,8 +665,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def _verify_collection_associations(
         cls,
         repository_root: Path,
-        configuration: m.Infra.PlanCollectionConfig,
-        manifest: m.Infra.PlanCollectionManifest,
+        configuration: p.Infra.PlanCollectionConfig,
+        manifest: p.Infra.PlanCollectionManifest,
     ) -> None:
         """Require the published source association and coverage proof.
 
@@ -704,7 +708,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def _verify_collection_index(
         cls,
         canonical: Path,
-        manifest: m.Infra.PlanCollectionManifest,
+        manifest: p.Infra.PlanCollectionManifest,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
         *,
         width: int,
@@ -733,9 +737,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     @classmethod
     def _verify_collected_revisions(
         cls,
-        source: m.Infra.PlanCollectionSource,
-        coverage: m.Infra.PlanCollectionCoverage,
-        manifest: m.Infra.PlanCollectionManifest,
+        source: p.Infra.PlanCollectionSource,
+        coverage: p.Infra.PlanCollectionCoverage,
+        manifest: p.Infra.PlanCollectionManifest,
     ) -> None:
         """Bind enumerated locator/digest pairs to immutable revision evidence.
 
@@ -772,7 +776,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def _verify_collection_artifacts(
         cls,
         canonical: Path,
-        manifest: m.Infra.PlanCollectionManifest,
+        manifest: p.Infra.PlanCollectionManifest,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
     ) -> None:
         """Verify every manifest-owned canonical file through its original snapshot.
@@ -807,7 +811,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def _verify_collection_revisions(
         cls,
         canonical: Path,
-        manifest: m.Infra.PlanCollectionManifest,
+        manifest: p.Infra.PlanCollectionManifest,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
     ) -> None:
         """Compare immutable provenance and incoming digests with their published owner.
@@ -876,11 +880,11 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         canonical: Path,
         source_root: Path,
-        source: m.Infra.PlanCollectionSource,
-        artifacts: tuple[m.Cli.AtomicFileState, ...],
+        source: p.Infra.PlanCollectionSource,
+        artifacts: tuple[p.Cli.AtomicFileState, ...],
         *,
-        previous: m.Infra.PlanCollectionRevision | None,
-    ) -> m.Infra.PlanCollectionRevision:
+        previous: p.Infra.PlanCollectionRevision | None,
+    ) -> p.Infra.PlanCollectionRevision:
         """Derive the revision one collected plan and its companions represent.
 
         ``artifacts`` starts with the plan itself, followed by its companion
@@ -944,12 +948,12 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     def _docs_collect_revision(
         cls,
         canonical: Path,
-        incoming_revision: m.Infra.PlanCollectionRevision,
-        artifacts: tuple[m.Cli.AtomicFileState, ...],
+        incoming_revision: p.Infra.PlanCollectionRevision,
+        artifacts: tuple[p.Cli.AtomicFileState, ...],
         desired: MutableMapping[Path, bytes],
         *,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
-    ) -> m.Infra.PlanCollectionRevision:
+    ) -> p.Infra.PlanCollectionRevision:
         """Keep curated canonical text intact while recording incoming revisions.
 
         Returns:

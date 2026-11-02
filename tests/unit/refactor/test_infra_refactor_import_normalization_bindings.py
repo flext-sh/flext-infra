@@ -654,7 +654,7 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
         project, package = cls._inherited_project(tmp_path)
         target = package / "services" / "worker.py"
         source = (
-            "from upstream_pkg import c, m, u\n"
+            "from upstream_pkg import c, m, p, u\n"
             "\n"
             "def run(value: str) -> str:\n"
             "    return u.render(m.render(c.render(value)))\n"
@@ -664,7 +664,7 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
         )
         target.write_text(source, encoding=c.DEFAULT_ENCODING)
         normalized = cls._normalize(project, target, source)
-        tm.that(normalized, has="from demo_pkg import c, m, u")
+        tm.that(normalized, has="from demo_pkg import c, m, p, u")
         tm.that(normalized, has="return m")
         target.write_text(normalized, encoding=c.DEFAULT_ENCODING)
         process = tm.ok(

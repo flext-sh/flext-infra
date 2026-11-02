@@ -3,7 +3,7 @@ snapshots:
   entity = m.Plugin.Entity.create(name="demo"):
     fixed: entity = m.Plugin.Entity(name="demo")
     labels:
-    - source: m.Plugin.Entity.create(name="demo")
+    - source: p.Plugin.Entity.create(name="demo")
       style: primary
       start: 9
       end: 44

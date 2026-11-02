@@ -42,16 +42,16 @@ class FlextInfraDocFormatter(FlextInfraDocServiceBase):
         projects: Sequence[str] | None = None,
         output_dir: Path | str | None = None,
         apply: bool = False,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[p.Infra.DocsPhaseReport]]:
         """Run markdown formatting across project scopes.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocsPhaseReport]]``.
 
         """
         gate_factory = self.format_gate
         if gate_factory is None:
-            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[p.Infra.DocsPhaseReport]].fail(
                 "docs formatting requires the facade-bound markdown format gate; "
                 "run it through FlextInfra.docs_format",
             )
@@ -87,11 +87,11 @@ class FlextInfraDocFormatter(FlextInfraDocServiceBase):
 
     def _format_scope(
         self,
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         apply: bool,
         gate_factory: p.Infra.MarkdownFormatGateFactory,
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Format one scope through the canonical markdown-format gate.
 
         Returns:

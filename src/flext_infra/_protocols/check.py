@@ -17,7 +17,7 @@ from flext_cli import p
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, t
+    from flext_infra import t
 
 
 @runtime_checkable
@@ -121,19 +121,19 @@ class FlextInfraProtocolsCheck(Protocol):
         def __call__(
             self,
             gates: Sequence[str],
-        ) -> p.Result[tuple[m.Infra.CheckProjectTarget, ...]]: ...
+        ) -> p.Result[tuple[p.Infra.CheckProjectTarget, ...]]: ...
 
     @runtime_checkable
     class PytestRunContextReceiver(Protocol):
         """Receive the runner's immutable Pydantic receipt through explicit DI."""
 
-        def __call__(self, context: m.Infra.PytestRunContext) -> None: ...
+        def __call__(self, context: p.Infra.PytestRunContext) -> None: ...
 
     @runtime_checkable
     class WorkspaceLoopOutcome(Protocol):
         """Public structural view of the workspace gate loop outcome."""
 
-        results: tuple[m.Infra.ProjectResult, ...]
+        results: tuple[p.Infra.ProjectResult, ...]
         failed: int
         total_elapsed: float
 

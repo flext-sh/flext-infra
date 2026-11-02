@@ -61,11 +61,11 @@ snapshots:
       style: secondary
       start: 25
       end: 35
-    - source: m.type_adapter
+    - source: p.type_adapter
       style: secondary
       start: 10
       end: 24
-    - source: m.type_adapter(t.Sequence[str])
+    - source: p.type_adapter(t.Sequence[str])
       style: secondary
       start: 10
       end: 41

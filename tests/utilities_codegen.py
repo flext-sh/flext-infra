@@ -38,7 +38,7 @@ class TestsFlextInfraUtilitiesCodegen(
         *,
         members: Sequence[str] = (),
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
-    ) -> m.Infra.CodegenPlan:
+    ) -> p.Infra.CodegenPlan:
         """Plan the artifacts conform renders for a fresh repository scaffold.
 
         Without members the fixture repository is standalone; each member
@@ -135,7 +135,7 @@ class TestsFlextInfraUtilitiesCodegen(
         )
 
     @staticmethod
-    def governed_project_plan(root: Path) -> m.Infra.CodegenPlan:
+    def governed_project_plan(root: Path) -> p.Infra.CodegenPlan:
         """Plan every declared artifact of one governed fixture project read-only.
 
         Returns:
@@ -188,7 +188,7 @@ class TestsFlextInfraUtilitiesCodegen(
         return m.Infra.CodegenPlan.model_validate(tm.ok(result))
 
     @staticmethod
-    def planned_text(plan: m.Infra.CodegenPlan, destination: str) -> str | None:
+    def planned_text(plan: p.Infra.CodegenPlan, destination: str) -> str | None:
         """Return the desired text of the plan entry ending with ``destination``.
 
         Returns:
@@ -403,7 +403,7 @@ class TestsFlextInfraUtilitiesCodegen(
 
     @staticmethod
     def lazy_init_effects(
-        planned: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
+        planned: p.Result[tuple[p.Infra.CodegenFilePlan, ...]],
     ) -> Sequence[str]:
         """Return the destinations a successful lazy-init plan would change.
 
@@ -459,7 +459,7 @@ class TestsFlextInfraUtilitiesCodegen(
 
     @staticmethod
     def materialize_codegen_plans(
-        planned: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
+        planned: p.Result[tuple[p.Infra.CodegenFilePlan, ...]],
     ) -> p.Result[bool]:
         """Publish immutable codegen plans only inside test workspaces.
 
@@ -488,7 +488,7 @@ class TestsFlextInfraUtilitiesCodegen(
 
     @staticmethod
     def _stage_changed_codegen_plans(
-        changed: tuple[m.Infra.CodegenFilePlan, ...],
+        changed: tuple[p.Infra.CodegenFilePlan, ...],
         project: Path,
     ) -> None:
         if not (project / c.GIT_DIR_NAME).exists():

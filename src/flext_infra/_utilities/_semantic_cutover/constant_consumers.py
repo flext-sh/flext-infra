@@ -88,7 +88,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     changes.setdefault(edit.file_path, []).extend(edit.changes)
                     if edit.retire_file:
                         retired.add(edit.file_path)
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -107,7 +107,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Retire flat facts only at equivalent explicit authored class owners.
 
         Returns:
@@ -129,7 +129,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     or (owner_module := facade.get_object().get_module()) is None
                 ):
                     return source, ()
-                edits: list[m.Infra.SourceRewrite] = []
+                edits: list[p.Infra.SourceRewrite] = []
                 for flat, destinations in cls._constant_destinations(
                     public, owner_module
                 ).items():
@@ -268,7 +268,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Resolve imported constants in one closed Rope graph.
 
         Returns:
@@ -670,7 +670,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         resource: p.Infra.RopeResource,
         source: str,
         package: str,
-        plan: tuple[tuple[m.Infra.SourceRewrite, ...], Mapping[int, set[str]]],
+        plan: tuple[tuple[p.Infra.SourceRewrite, ...], Mapping[int, set[str]]],
     ) -> str:
         """Apply correlated reference/removal edits through native import owners.
 
@@ -697,7 +697,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         module: p.Infra.RopePyModule,
         public: Mapping[str, p.Infra.RopePyName],
         path: Path,
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Qualify missing flat members beneath their proven published namespace.
 
         A missing terminal has no identity to compare. Only its resolved namespace
@@ -724,7 +724,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 public, owner_module
             )
         )
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
         qualified_facade = f"{owner_module.get_name()}.c"
         for flat, references in destinations.items():
             if flat in public:
@@ -836,7 +836,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _constant_definition_source(
         workspace: p.Infra.RopeWorkspaceDsl,
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> bool:
         """Exclude constants and configured layer-zero owners from consumer edits.
 
@@ -941,7 +941,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         statements: Sequence[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]],
         paths: Mapping[str, p.Infra.RopePyName],
         path: Path,
-    ) -> tuple[tuple[m.Infra.SourceRewrite, ...], Mapping[int, set[str]]]:
+    ) -> tuple[tuple[p.Infra.SourceRewrite, ...], Mapping[int, set[str]]]:
         """Plan every native reference before removing its import binding.
 
         Returns:
@@ -949,7 +949,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
-        rewrites: list[m.Infra.SourceRewrite] = []
+        rewrites: list[p.Infra.SourceRewrite] = []
         removals: MutableMapping[int, set[str]] = {}
         for info, statement in statements:
             for imported, alias in info.names_and_aliases:
@@ -984,7 +984,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         imported: tuple[str, p.Infra.RopePyName],
         reference: str,
         facade: p.Infra.RopePyName,
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Rewrite native imported occurrences without crossing local rebindings.
 
         Returns:
@@ -1010,7 +1010,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         if any(item.is_defined() for item in occurrences):
             return ()
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        rewrites: list[m.Infra.SourceRewrite] = []
+        rewrites: list[p.Infra.SourceRewrite] = []
         for occurrence in occurrences:
             scope = runtime.scope_at(module, occurrence.offset)
             existing = scope.lookup("c")
@@ -1047,7 +1047,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         if resource is None:
             message = "constant imports have no source resource"
             raise ValueError(message)
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
         emptied: set[int] = set()
         for _native_info, statement in cls._constant_imports(project, module):
             removed = removals.get(statement.line)
@@ -1089,9 +1089,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _empty_type_checking_suites(
         source: str,
-        edits: Sequence[m.Infra.SourceRewrite],
+        edits: Sequence[p.Infra.SourceRewrite],
         emptied: frozenset[int] | set[int],
-    ) -> list[m.Infra.SourceRewrite]:
+    ) -> list[p.Infra.SourceRewrite]:
         """Remove empty TYPE_CHECKING suites without stubs or comment loss.
 
         Returns:
@@ -1103,7 +1103,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         for index, guard in enumerate(statements):
             if guard.category != c.Infra.StatementCategory.IF_GUARD:
                 continue
-            body: list[m.Infra.LogicalStatement] = []
+            body: list[p.Infra.LogicalStatement] = []
             for statement in statements[index + 1 :]:
                 if statement.indent <= guard.indent:
                     break

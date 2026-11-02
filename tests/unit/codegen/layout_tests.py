@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import FlextInfraConfig, m
 from flext_infra.gates.layout import FlextInfraGatesLayout
-from tests import c, t, tm, u
+from tests import c, p, t, tm, u
 from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
 
 
@@ -21,7 +21,7 @@ class TestsFlextInfraCodegenLayout:
     """Test suite for the declarative project-layout engine."""
 
     @staticmethod
-    def _fresh_layout_report(project: Path) -> m.Infra.LayoutProjectReport:
+    def _fresh_layout_report(project: Path) -> p.Infra.LayoutProjectReport:
         """Load consumer-owned configuration in a new public-service process.
 
         Returns:

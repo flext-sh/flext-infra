@@ -110,7 +110,7 @@ class FlextInfraSkillValidator(
         *,
         mode: c.Infra.OperationMode = c.Infra.OperationMode.BASELINE,
         _project_filter: Sequence[str] | None = None,
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Validate a single skill across workspace projects.
 
         Args:
@@ -126,10 +126,10 @@ class FlextInfraSkillValidator(
         try:
             return self._build_skill_report(repository_root, skill_name, mode)
         except c.EXC_OS_RUNTIME_TYPE as exc:
-            return r[m.Infra.ValidationReport].fail_op("skill validation", exc)
+            return r[p.Infra.ValidationReport].fail_op("skill validation", exc)
 
     @staticmethod
-    def _missing_rules_report(skill_name: str) -> m.Infra.ValidationReport:
+    def _missing_rules_report(skill_name: str) -> p.Infra.ValidationReport:
         """Build the report returned when a skill lacks rules.yml.
 
         Returns:
@@ -173,7 +173,7 @@ class FlextInfraSkillValidator(
 
     def _evaluate_rules(
         self,
-        context: m.Infra.SkillRuleEvaluationContext,
+        context: p.Infra.SkillRuleEvaluationContext,
     ) -> tuple[t.IntMapping, Sequence[str]]:
         """Evaluate skill validation rules and return counts plus violations.
 
@@ -192,8 +192,8 @@ class FlextInfraSkillValidator(
 
     def _skill_report_model(
         self,
-        context: m.Infra.SkillReportContext,
-    ) -> m.Infra.ValidationReport:
+        context: p.Infra.SkillReportContext,
+    ) -> p.Infra.ValidationReport:
         """Build the canonical skill validation report model.
 
         Returns:
@@ -227,31 +227,31 @@ class FlextInfraSkillValidator(
         repository_root: Path,
         skill_name: str,
         mode: c.Infra.OperationMode,
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Build a skill validation report after path resolution.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ValidationReport]``.
+            The resulting ``p.Result[p.Infra.ValidationReport]``.
 
         """
         root = repository_root.resolve()
         skills_dir = root / c.Infra.SKILLS_DIR
         rules_path = skills_dir / skill_name / "rules.yml"
         if not rules_path.exists():
-            return r[m.Infra.ValidationReport].ok(
+            return r[p.Infra.ValidationReport].ok(
                 self._missing_rules_report(skill_name),
             )
         rules = u.Cli.yaml_load_mapping(rules_path)
         scan_targets_raw = rules.get("scan_targets", {})
         scan_targets = u.Cli.json_as_mapping(scan_targets_raw)
         if not scan_targets and scan_targets_raw not in ({}, None):
-            return r[m.Infra.ValidationReport].fail(
+            return r[p.Infra.ValidationReport].fail(
                 f"scan_targets must be a mapping: {rules_path}",
             )
         include_globs, exclude_globs = self._scan_globs(scan_targets)
         rules_list_result = self._rules_list(rules)
         if rules_list_result.failure:
-            return r[m.Infra.ValidationReport].from_failure(rules_list_result)
+            return r[p.Infra.ValidationReport].from_failure(rules_list_result)
         counts, violations = self._evaluate_rules(
             m.Infra.SkillRuleEvaluationContext(
                 rules_list=rules_list_result.value,
@@ -262,7 +262,7 @@ class FlextInfraSkillValidator(
                 exclude_globs=exclude_globs,
             ),
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             self._skill_report_model(
                 m.Infra.SkillReportContext(
                     rules=rules,

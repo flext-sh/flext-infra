@@ -25,7 +25,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         project_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> m.Infra.ProjectPyprojectState:
+    ) -> p.Infra.ProjectPyprojectState:
         """Return project state bound to the current file bytes.
 
         When the pyproject is absent or empty, the returned state carries
@@ -69,7 +69,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         root: Path,
         pyproject_path: Path,
         content: bytes | None,
-    ) -> m.Infra.ProjectPyprojectState:
+    ) -> p.Infra.ProjectPyprojectState:
         """Parse once per byte-identical canonical pyproject snapshot.
 
         Returns:
@@ -140,9 +140,9 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
     def project_state(
         project_root: Path,
         *,
-        metadata_projection: m.Infra.CodegenFilePlan | None = None,
+        metadata_projection: p.Infra.CodegenFilePlan | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> m.Infra.ProjectPyprojectState:
+    ) -> p.Infra.ProjectPyprojectState:
         """Return the shared state of the live or projected pyproject bytes.
 
         Returns:

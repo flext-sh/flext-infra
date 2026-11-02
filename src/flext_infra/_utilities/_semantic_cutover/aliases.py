@@ -306,7 +306,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
     def _api_alias_specs(
         cls,
         root: Path,
-        findings: Sequence[m.Infra.ModOccurrence],
+        findings: Sequence[p.Infra.ModOccurrence],
         service_aliases: Mapping[Path, Mapping[str, str]],
     ) -> p.Result[
         tuple[Mapping[Path, Mapping[str, str]], Mapping[str, Mapping[str, str]]]
@@ -359,13 +359,13 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-        findings: Sequence[m.Infra.ModOccurrence],
+        findings: Sequence[p.Infra.ModOccurrence],
         import_normalizer: p.Infra.SourceImportNormalizer | None,
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan local alias removal and binding-proven consumer rewrites atomically.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
 
         """
         root = workspace.repository_root
@@ -378,7 +378,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             service_aliases,
         )
         if specs.failure:
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].from_failure(specs)
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].from_failure(specs)
         specs_by_file, specs_by_module = specs.value
         service_projects = cls._service_alias_projects(service_aliases)
 
@@ -447,7 +447,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         tree: ast.Module,
         local_aliases: Mapping[str, str],
         active_modules: Mapping[str, Mapping[str, str]],
-    ) -> m.Infra.CompatibilityAliasRewritePlan | None:
+    ) -> p.Infra.CompatibilityAliasRewritePlan | None:
         """Bind one typed alias rewrite intent before executing its CST visitor.
 
         Returns:

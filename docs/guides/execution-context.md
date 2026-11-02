@@ -68,6 +68,9 @@ Git porcelain is an external fixed-column protocol: leading status spaces are da
 The Git status report preserves them at its typed field boundary, independently of
 the normal whitespace normalization of other contract strings. Fleet census path
 extraction consumes that unchanged protocol before applying its configured offset.
+The identity snapshot embedded in gate receipts preserves the same raw status
+columns when it receives the observation. Re-validating the snapshot must not
+strip a leading status space that the original status reader already preserved.
 
 Refactor-policy selection belongs to the existing project policy owner rather than
 file discovery. It delegates input loading to the managed-artifact owner. The native
@@ -396,7 +399,8 @@ setup reinstalls as editable, into that repository's own physical environment,
 every FLEXT distribution it installed from its lock and that the workspace at
 `<path>` provides (its root and each `.gitmodules` member). The typed owner
 `flext-infra workspace flext-editable` performs that selection and records it in
-`.reports/setup-operations/flext-editable-selection.json` under the runtime root.
+the environment-owned `flext-editable-selection.json` receipt at
+`c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH` under the runtime root.
 The environment provenance gate admits an editable FLEXT distribution only when
 that receipt names it and the run is not CI. A plain `make setup` restores the
 locked installs and removes the receipt, and CI rejects the input. This replaces
@@ -980,6 +984,12 @@ declare different dependencies. Physical input identity alone does not admit
 cross-layer reuse. Any removal of repeated parsing preserves both dependency
 closures, their discovery order, input witnesses and final CAS admission.
 
+The `infra-dedup.csv` campaign retires the obsolete
+`ENFORCEMENT_CANONICAL_ALIASES` migration row. Neither endpoint has a current
+declaration or consumer in the governed workspace; the row itself was the only
+remaining reference and stopped the real `csv:infra-dedup` dry-run during native
+destination admission. Active campaign destinations retain the same admission.
+
 The existing native class protocol declares `get_bases()` separately from
 `get_superclasses()`: the former retains unresolved-base witnesses, while the
 latter exposes resolved classes. Consumers retain that SDK distinction.
@@ -1113,6 +1123,13 @@ text-rule consumers reuse its validated output directly.
 Rope DSL closed operation and transform vocabularies belong to `c.Infra`;
 `m` validates the composed declarations, while `p` defines injected ports consumed
 through Pydantic `t.Port` fields.
+
+Rope aliases retain deferred references to the protocol layer rather than importing
+that layer while the type facade initializes. Their source imports are for type
+checking only. The actual `FacadeCensus.claims` dependency port still validates its
+original mapping and retains it by reference. Cold facade import and construction
+of that real model must prove the boundary; late imports, compatibility exports
+or removal of port validation cannot repair a dependency cycle.
 
 Family-base import enforcement covers both `from` imports and module imports,
 including aliases and imports inside `TYPE_CHECKING`. The semantic import owner
@@ -1596,6 +1613,11 @@ same-phase evidence refuses execution without electing an older success.
 Admission diagnostics identify the required phase and direct recovery to that
 same declared check phase. A bare complete check does not repair missing primary
 evidence, and diagnostics must not suggest that it does.
+Native checks emit bounded progress at selection, identity/report preparation,
+and prerequisite-wave boundaries before per-gate completion messages. These
+messages identify the stage reached by an interrupted producer; they do not
+represent acceptance, reduce the declared population, or replace its completed
+inventory and original exit status.
 Original invocation, policy, report digests, global topology and per-repository
 source identities remain mandatory; primary evidence never proves complete
 check or publication acceptance. Initial admission does not replace the final
@@ -2530,6 +2552,26 @@ ambient or process-global state:
   through the wave it receives, so an interrupt reaches every owned process group.
   Repairs and explicit fail-fast runs stay serial.
 
+Prerequisite waves construct their mutable project results with the existing
+`m.Infra.ProjectResult` model; the protocol namespace describes ports and does
+not own a constructible `ProjectResult`. The Core container likewise constructs
+`m.ServiceRegistration` for the command bus; `p` cannot instantiate that model.
+Core service configuration annotations use `m.ConfigDict`, the declared
+Pydantic configuration type; evaluating the nonexistent `p.ConfigDict` aborts
+service import before any quality gate can start.
+Rope workspace session payloads, candidate plans, layout records and census
+objects use their existing `m.Infra` declarations. Native Rope project,
+initializer planner and snapshot capabilities retain their `p.Infra` ports.
+Git reports, fleet reports and managed-artifact input records likewise use
+their declared models; invalid protocol references in runtime generic
+expressions can stop the CLI before the checker produces a report.
+
+The same identity boundary applies to CLI document rendering: `DocxRenderRequest`
+and its document, paragraph, run and font plans are models in `m.Cli`; renderer
+and document-object capabilities remain protocols in `p.Cli`. A model annotation
+must not be redirected to a protocol member that does not exist. The same rule
+applies to the XLSX color, font, fill, border, alignment and named-style models.
+
 Repair invocations execute their complete requested fixable-gate inventory in
 declared order, with the same applicability and explicit fail-fast policy. The
 read-only prerequisite partition must not strand pending repairs after an ordinary
@@ -3391,6 +3433,25 @@ and creates no profile. There is no common profiling verb or legacy alias.
 Make transport capture starts after settings admission and transport imports; those
 startup costs and Make/environment preflight are outside its raw statistics. Child
 process waits are parent wall time, not child CPU or evidence of child hot functions.
+Native compiled-module election reads each distribution's declared metadata. For
+PEP 376 records, the standard CSV reader selects extension paths before checking
+their existence through `Distribution.locate_file`; unrelated package files need
+no filesystem probe. Other metadata formats retain `Distribution.files`. Both
+routes preserve the complete provider population, extension-suffix ordering and
+actual file-existence admission; metadata optimization never trusts absent files.
+Snapshot source ownership elects the nearest governed ancestor from the existing
+authenticated member set. It walks each source's ancestry once instead of expanding
+that ancestry for every member; the deepest-owner result, outside-member refusal
+and complete source-state, content and digest admission remain unchanged.
+Pydantic warning and exception classes are native Core `c` facts. Fresh-import
+probes and their emitted child programs use that same owner, preserving the SDK
+warning identity, error filter, source note and re-raise. A new warning observation
+does not authorize a direct Pydantic dependency in Infra or a relaxed supplier gate.
+SDK annotation-owner repair authenticates the source protocol facade and its native
+ancestry before considering any member. Existing authored protocol members retain
+their identities. Destinations come from the declared narrow SDK bridge, including
+its actual native member bindings; an unavailable first-party model projection is
+never replaced by a concrete model merely because its spelling matches.
 Retain the existing immutable raw captures and termination checkpoints, rendering
 them only through the public `validate cprofile-report` owner. Bind evidence to the
 actual source, runtime, configuration, command and selected scope; an interrupted
@@ -4090,6 +4151,9 @@ new authority. An explicitly declared scaffold retains its admitted identity
 while no manifest exists; a manifest appearing afterward requires the existing
 workspace election to run again. Member observations are not reread to elect the
 local target. This reuse still requires qualification through the public command.
+Git declaration results use `m.Infra.GitSubmoduleDeclaration`, the existing parsed
+data contract. `p.Infra` describes runtime capabilities and does not declare that
+model; using it in a concrete Result specialization prevents discovery from running.
 
 ## Service foundation
 

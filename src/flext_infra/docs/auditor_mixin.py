@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, t, u
+from flext_infra import c, p, t, u
 
 if TYPE_CHECKING:
     from flext_infra import m
@@ -22,15 +22,15 @@ class FlextInfraDocAuditorMixin:
 
     @staticmethod
     def write_audit_reports(
-        scope: m.Infra.DocScope,
-        issues: Sequence[m.Infra.AuditIssue],
+        scope: p.Infra.DocScope,
+        issues: Sequence[p.Infra.AuditIssue],
         checks: t.Infra.StrSet,
         *,
-        docstring_coverage: m.Infra.DocstringCoverage | None = None,
+        docstring_coverage: p.Infra.DocstringCoverage | None = None,
         to_markdown_fn: Callable[
             [
                 m.Infra.DocScope,
-                Sequence[m.Infra.AuditIssue],
+                Sequence[p.Infra.AuditIssue],
                 m.Infra.DocstringCoverage | None,
             ],
             Sequence[str],

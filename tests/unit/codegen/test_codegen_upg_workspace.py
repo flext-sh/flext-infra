@@ -161,7 +161,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
         tm.that(len(artifacts), eq=2)
         tm.ok(
             u.Tests.materialize_codegen_plans(
-                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(artifacts),
+                r[tuple[p.Infra.CodegenFilePlan, ...]].ok(artifacts),
             ),
         )
         u.Tests.git_bootstrap(root, ("submodule", "deinit", "--force", "--all"))

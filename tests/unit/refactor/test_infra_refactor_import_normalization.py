@@ -532,7 +532,7 @@ class TestsFlextInfraRefactorImportNormalization(
         (family / "__init__.py").touch(exist_ok=True)
         module = family / "provider_boundary.py"
         source = (
-            "from flext_cli import m, u\n\n"
+            "from flext_cli import m, p, u\n\n"
             "ADAPTER: u.type_adapter[str] = u.type_adapter(str)\n"
         )
         normalized = tm.ok(

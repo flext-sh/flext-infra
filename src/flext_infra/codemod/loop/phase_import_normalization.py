@@ -56,7 +56,7 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
     @staticmethod
     def _planned_initializers(
         project_root: Path, snapshot: p.Infra.WorkspaceSnapshot
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan the lazy initializers this candidate publishes with its rewrites.
 
         Consumer routes are decided against the initializers the publication
@@ -74,7 +74,7 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
     @staticmethod
     def _publish(
         project_root: Path,
-        planned: Sequence[m.Infra.CodegenFilePlan],
+        planned: Sequence[p.Infra.CodegenFilePlan],
     ) -> p.Result[bool]:
         """Publish the planned batch with its lazy-init projections.
 
@@ -98,11 +98,11 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
     def plan(
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan target imports with all selected roots available for reads.
 
         Returns:
@@ -110,7 +110,7 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
 
         """
         del preflight
-        files: list[m.Infra.CodegenFilePlan] = []
+        files: list[p.Infra.CodegenFilePlan] = []
         for project_root in u.Infra.governed_project_roots(root):
             if not u.Infra.namespace_enabled(project_root):
                 continue
@@ -137,13 +137,13 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
             if planned.failure:
                 return planned
             files.extend(planned.value)
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(files))
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(tuple(files))
 
     @classmethod
     def apply(
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Normalize every governed project's source imports.

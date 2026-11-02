@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p
+from flext_infra import c, p
 from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
@@ -322,7 +322,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         module: p.Infra.RopePyModule,
         value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
-    ) -> Sequence[m.Infra.LogicalStatement] | None:
+    ) -> Sequence[p.Infra.LogicalStatement] | None:
         """Return the logical statements of one admitted payload body.
 
         Args:
@@ -464,7 +464,7 @@ class FlextInfraUtilitiesDeclarationPayload(
         cls,
         value: p.Infra.RopeNamedObject,
         scope: p.Infra.RopeScope,
-        statements: Sequence[m.Infra.LogicalStatement],
+        statements: Sequence[p.Infra.LogicalStatement],
     ) -> bool:
         """Reject class-body behavior using the existing Rope statement boundary.
 

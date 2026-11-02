@@ -49,7 +49,7 @@ class FlextInfraWorkspaceFlextEditable:
     @classmethod
     def execute_request(
         cls,
-        request: m.Infra.FlextEditableRequest,
+        request: p.Infra.FlextEditableRequest,
     ) -> p.Result[int]:
         """Record the selection of ``request.flext_root``, or remove it.
 
@@ -231,7 +231,7 @@ class FlextInfraWorkspaceFlextEditable:
     def _execute_pip_install(
         cls,
         runtime_root: Path,
-        selection: m.Infra.FlextEditableSelection,
+        selection: p.Infra.FlextEditableSelection,
         *,
         python: str,
         uv: Path,
@@ -290,7 +290,7 @@ class FlextInfraWorkspaceFlextEditable:
     def _install(
         cls,
         runtime_root: Path,
-        selection: m.Infra.FlextEditableSelection,
+        selection: p.Infra.FlextEditableSelection,
         *,
         candidate_environment: Path,
     ) -> p.Result[int]:
@@ -324,7 +324,7 @@ class FlextInfraWorkspaceFlextEditable:
     def _record_editable_selection(
         cls,
         runtime_root: Path,
-        selection: m.Infra.FlextEditableSelection,
+        selection: p.Infra.FlextEditableSelection,
         *,
         python: str,
         candidate_environment: Path,
@@ -384,9 +384,9 @@ class FlextInfraWorkspaceFlextEditable:
 
     @staticmethod
     def _editable_package_sources(
-        selection: m.Infra.FlextEditableSelection,
+        selection: p.Infra.FlextEditableSelection,
         provided: set[NormalizedName],
-        observed: m.Infra.PythonEnvironmentObservation,
+        observed: p.Infra.PythonEnvironmentObservation,
     ) -> p.Result[dict[str, Path]]:
         """Resolve each selected distribution's uniquely owned import packages.
 
@@ -432,14 +432,14 @@ class FlextInfraWorkspaceFlextEditable:
     @classmethod
     def _elect(
         cls, runtime_root: Path, flext_root: Path, *, candidate_environment: Path
-    ) -> p.Result[m.Infra.FlextEditableSelection]:
+    ) -> p.Result[p.Infra.FlextEditableSelection]:
         """Select the FLEXT distributions this environment installed from its lock.
 
         Returns:
             The selection naming each provided and installed distribution.
 
         """
-        result_type = r[m.Infra.FlextEditableSelection]
+        result_type = r[p.Infra.FlextEditableSelection]
         if not (flext_root / c.Infra.GITMODULES).is_file():
             return result_type.fail(
                 f"FLEXT={flext_root} is not a FLEXT workspace: no .gitmodules",
@@ -504,7 +504,7 @@ class FlextInfraWorkspaceFlextEditable:
     @staticmethod
     def _pending_sources(
         runtime_root: Path,
-        selection: m.Infra.FlextEditableSelection,
+        selection: p.Infra.FlextEditableSelection,
         *,
         candidate_environment: Path,
     ) -> p.Result[Mapping[str, Path]]:

@@ -162,7 +162,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         cls,
         source: str,
         words: p.Infra.RopeWorder,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
     ) -> set[tuple[int, int, int | None]]:
         """Resolve the annotation regions owned by one logical statement.
 
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     def _type_alias_regions(
         cls,
         source: str,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
     ) -> set[tuple[int, int, int | None]]:
         """Return the annotation region of one native ``type`` alias statement."""
         start = statement.start_offset + statement.indent
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         cls,
         source: str,
         words: p.Infra.RopeWorder,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
     ) -> set[tuple[int, int, int | None]]:
         """Return annotation regions of one native ``def``/``class`` declaration.
 
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         begin: int,
         end: int,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         *,
         include_defaults: bool,
     ) -> set[tuple[int, int, int | None]]:
@@ -585,15 +585,15 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         resource: p.Infra.RopeResource,
         source: str,
         *,
-        flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> tuple[bool, tuple[m.Infra.SourceRewrite, ...]]:
+        flatten: p.Infra.FamilyWrapperFlatten,
+    ) -> tuple[bool, tuple[p.Infra.SourceRewrite, ...]]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             flatten.project,
             FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource, resource.path
             ),
         )
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
         for begin, end, literal, scope in cls.quoted_type_regions(
             source, flatten.project, module
         ):
@@ -615,7 +615,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         _resource: p.Infra.RopeResource,
         scope: p.Infra.RopeScope,
         *,
-        flatten: m.Infra.FamilyWrapperFlatten,
+        flatten: p.Infra.FamilyWrapperFlatten,
     ) -> tuple[bool, str]:
         del _resource
         runtime = FlextInfraUtilitiesRopeRuntimeModules

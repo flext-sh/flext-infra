@@ -41,7 +41,7 @@ class FlextInfraCodegenLayout(
         selected = self._project_dirs()
         if selected.failure:
             return r[str].fail(selected.error or "project selection failed")
-        reports: MutableSequence[m.Infra.LayoutProjectReport] = []
+        reports: MutableSequence[p.Infra.LayoutProjectReport] = []
         for project_dir in selected.value:
             planned = self.plan_project(project_dir)
             if self.effective_dry_run:
@@ -73,7 +73,7 @@ class FlextInfraCodegenLayout(
                 return r[str].fail(f"layout violations: {'; '.join(blocking)}")
         return r[str].ok(output)
 
-    def check_project(self, project_dir: Path) -> m.Infra.LayoutProjectReport:
+    def check_project(self, project_dir: Path) -> p.Infra.LayoutProjectReport:
         """Report layout violations for one project without writing.
 
         Returns:
@@ -107,7 +107,7 @@ class FlextInfraCodegenLayout(
 
     def _render_output(
         self,
-        reports: Sequence[m.Infra.LayoutProjectReport],
+        reports: Sequence[p.Infra.LayoutProjectReport],
     ) -> str:
         """Render the text or JSON summary for the collected reports.
 

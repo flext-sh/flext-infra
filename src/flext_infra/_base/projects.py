@@ -48,7 +48,7 @@ class FlextInfraBaseProjects:
         """Run one docs phase across the resolved governed scopes.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocsPhaseReport]]``.
 
         """
         return u.Infra.run_scoped(

@@ -11,7 +11,7 @@ valid:
   # Class attributes and private state are not Pydantic fields.
   - |
     class Settings(m.FrozenModel):
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
         _cache: Annotated[dict[str, str], m.Field(exclude=True)] = {}
   # Retain existing defaults until a lossless rule moves them into Field(...).
   - |

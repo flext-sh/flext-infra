@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import m, u
-from tests import c, tm
+from flext_infra import m, p, u
+from tests import c, p, tm
 
 
 class TestsFlextInfraCodegenFilePlanState:
@@ -21,7 +21,7 @@ class TestsFlextInfraCodegenFilePlanState:
     _GATES: Mapping[str, Mapping[str, int]] = {"lint": {"time-seconds": 30}}
 
     @staticmethod
-    def _observed_state(root: Path, *, content: bytes) -> m.Cli.AtomicFileState:
+    def _observed_state(root: Path, *, content: bytes) -> p.Cli.AtomicFileState:
         """Read one real file through the canonical binary state owner.
 
         Returns:

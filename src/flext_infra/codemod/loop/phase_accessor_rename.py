@@ -30,7 +30,7 @@ class FlextInfraCodemodLoopPhaseAccessorRename(
     def apply(
         self,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Apply the rename catalog over the governed files of the repository.
@@ -53,7 +53,7 @@ class FlextInfraCodemodLoopPhaseAccessorRename(
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
         """Plan origin-owned accessors on a separate immutable working view.
 
         Returns:
@@ -62,7 +62,7 @@ class FlextInfraCodemodLoopPhaseAccessorRename(
         """
         snapshot = u.Infra.snapshot_project(rope_workspace.rope_project, sources)
         resolver = FlextInfraRefactorAccessorOrigin(snapshot)
-        edits: list[m.Infra.SemanticMigrationEdit] = []
+        edits: list[p.Infra.SemanticMigrationEdit] = []
         for py_file, source in sources.items():
             if not py_file.is_relative_to(root) or py_file.suffix not in {
                 c.Infra.EXT_PYTHON,
@@ -92,11 +92,11 @@ class FlextInfraCodemodLoopPhaseAccessorRename(
     def plan(
         self,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan accessor effects as final file plans.
 
         Returns:

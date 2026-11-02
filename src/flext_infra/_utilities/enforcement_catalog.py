@@ -42,7 +42,7 @@ class FlextInfraUtilitiesEnforcementCatalog:
     @staticmethod
     def enforcement_catalog(
         codemod_config: Path | None = None,
-    ) -> p.Result[m.Infra.EnforcementCatalog]:
+    ) -> p.Result[p.Infra.EnforcementCatalog]:
         """Derive the catalog from every owner's claims, failing on the first defect.
 
         Claims come from ast-grep rule ``metadata.enforce``, the Ruff rules'
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesEnforcementCatalog:
             The derived catalog, or the first duplicate or orphan claim.
 
         """
-        result = r[m.Infra.EnforcementCatalog]
+        result = r[p.Infra.EnforcementCatalog]
         package_root = type(config).ssot_config_dir().parent
         rules = FlextInfraUtilitiesCodemodRules.codemod_catalog_rules(
             c.Infra.PACKAGE_IMPORT_NAME,
@@ -80,8 +80,8 @@ class FlextInfraUtilitiesEnforcementCatalog:
 
     @staticmethod
     def _claims(
-        rules: Sequence[m.Infra.CodemodRule],
-    ) -> tuple[m.Infra.EnforcementClaim, ...]:
+        rules: Sequence[p.Infra.CodemodRule],
+    ) -> tuple[p.Infra.EnforcementClaim, ...]:
         """Collect every owner's claims in declaration order.
 
         Returns:
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesEnforcementCatalog:
         )
 
     @staticmethod
-    def _defect(claims: Sequence[m.Infra.EnforcementClaim]) -> str | None:
+    def _defect(claims: Sequence[p.Infra.EnforcementClaim]) -> str | None:
         """Describe the first duplicate or orphan claim.
 
         Returns:

@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.gates import FlextInfraGates
 
 
@@ -26,8 +26,8 @@ class FlextInfraGatesConflictMarkers(FlextInfraGates):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Check the owned Git inventory or a sealed candidate's physical tree.
 
         Returns:
@@ -57,8 +57,8 @@ class FlextInfraGatesConflictMarkers(FlextInfraGates):
         self,
         files: Sequence[Path],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Check the supplied owned files through the same scanner.
 
         Returns:
@@ -75,8 +75,8 @@ class FlextInfraGatesConflictMarkers(FlextInfraGates):
         self,
         paths: Sequence[Path],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Read literal file bytes and classify controls through the shared owner.
 
         Returns:
@@ -88,7 +88,7 @@ class FlextInfraGatesConflictMarkers(FlextInfraGates):
 
         """
         started = time.monotonic()
-        issues: list[m.Infra.Issue] = []
+        issues: list[p.Infra.Issue] = []
         root = project_dir.resolve()
         for path in paths:
             source = path if path.is_absolute() else project_dir / path

@@ -6,7 +6,7 @@ id: ban-foreign-namespace-annotation-source
 valid:
 - |
   if TYPE_CHECKING:
-      from ai_hub import m, u
+      from ai_hub import m, p, u
 # Runtime imports belong to ENFORCE-003 and its family documents.
 - from flext_cli import m
 - |

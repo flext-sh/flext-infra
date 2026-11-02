@@ -86,6 +86,19 @@ rules:
       ClassVar: typing.ClassVar
   - id: pydantic-adapter-construction
     phase: contract-normalization
+    # This Pydantic wave is intentionally closed. The native planner matches both
+    # the manifest distribution and Rope module identity, so similar models remain
+    # untouched until their own declarative migration is admitted.
+    scope: &pydantic_config_models_scope
+      targets:
+        - distribution: flext-grpc
+          module: flext_grpc.config_models
+        - distribution: flext-observability
+          module: flext_observability.config_models
+        - distribution: flext-dbt-ldap
+          module: flext_dbt_ldap.config_models
+        - distribution: flext-oracle-wms
+          module: flext_oracle_wms.config_models
     pattern: '${adapter}(${contract})'
     goal: 'u.type_adapter(t.TypeForm(${contract}))'
     arguments:
@@ -98,6 +111,7 @@ rules:
       t.TypeForm: typing_extensions.TypeForm
   - id: pydantic-required-field-metadata
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     reorders_annotation: true
     required_field: true
     call_target: field
@@ -115,6 +129,7 @@ rules:
       Annotated: typing.Annotated
   - id: pydantic-defaulted-field-metadata
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     reorders_annotation: true
     defaulted_field: true
     value_default: default
@@ -133,6 +148,7 @@ rules:
       Annotated: typing.Annotated
   - id: pydantic-unset-private-attribute
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     private_attribute: true
     call_target: field
     model_bases: [pydantic.BaseModel]
@@ -145,6 +161,7 @@ rules:
         - name=flext_core.FlextModels.PrivateAttr
   - id: pydantic-annotated-factory
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     factory_default: factory
     reorders_annotation: true
     model_bases: [pydantic.BaseModel]
@@ -157,6 +174,7 @@ rules:
         - name=flext_core.FlextModels.Field
   - id: pydantic-annotated-default
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     value_default: default
     reorders_annotation: true
     model_bases: [pydantic.BaseModel]
@@ -173,6 +191,7 @@ rules:
   # the inherited ``BaseModel.dict`` method.
   - id: pydantic-annotated-empty-factory
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     factory_default: collection
     readonly_contract: contract
     readonly_origins: &readonly_origins
@@ -204,6 +223,7 @@ rules:
       field: *pydantic_field_bindings
   - id: pydantic-annotated-empty-dict-factory
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     readonly_contract: contract
     readonly_origins: *readonly_origins
     model_bases: [pydantic.BaseModel]
@@ -218,6 +238,7 @@ rules:
       field: *pydantic_field_bindings
   - id: pydantic-empty-factory
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     factory_default: collection
     readonly_contract: contract
     readonly_origins: *readonly_origins
@@ -232,6 +253,7 @@ rules:
       field: *pydantic_field_bindings
   - id: pydantic-empty-dict-factory
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     readonly_contract: contract
     readonly_origins: *readonly_origins
     model_bases: [pydantic.BaseModel]
@@ -245,6 +267,7 @@ rules:
       field: *pydantic_field_bindings
   - id: pydantic-described-empty-factory
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     factory_default: collection
     readonly_contract: contract
     readonly_origins: *readonly_origins
@@ -259,6 +282,7 @@ rules:
       field: *pydantic_field_bindings
   - id: pydantic-described-empty-dict-factory
     phase: contract-normalization
+    scope: *pydantic_config_models_scope
     readonly_contract: contract
     readonly_origins: *readonly_origins
     model_bases: [pydantic.BaseModel]

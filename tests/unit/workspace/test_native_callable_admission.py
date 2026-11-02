@@ -148,7 +148,7 @@ assert native.compare(before, native.capture(selection).unwrap()).failure
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
 from git import Git
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -172,7 +172,7 @@ assert compared.success, compared.error
         """Reading a real manifest retains its metadata ingress model identity."""
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )

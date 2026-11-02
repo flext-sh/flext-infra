@@ -286,7 +286,7 @@ class FlextInfraModelsCore:
         from JSON strings; JSON serialization still publishes its string value.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         execution_mode: c.Infra.PytestExecutionMode = m.Field(
             description="Canonical test operation for this report directory",
@@ -421,7 +421,7 @@ class FlextInfraModelsCore:
     class PytestWarningEvent(m.Value):
         """Warning identity captured before report-log; every warning blocks."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(strict=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(strict=True)
 
         category: str = m.Field(description="Runtime warning class name")
         category_module: str = m.Field(description="Declaring warning module")

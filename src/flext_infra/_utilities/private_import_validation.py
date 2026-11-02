@@ -10,7 +10,6 @@ import ast
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import m
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
 
@@ -22,7 +21,7 @@ class FlextInfraUtilitiesPrivateImportValidation:
         source: str,
         *,
         file_path: Path,
-        plan: m.Infra.PrivateImportRewritePlan,
+        plan: p.Infra.PrivateImportRewritePlan,
         removals: Mapping[str, set[str]],
     ) -> None:
         """Require old imports/bindings gone and public imports present.

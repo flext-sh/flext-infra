@@ -37,7 +37,7 @@ class TestsFlextInfraPytestDiag:
         junit: Path,
         log: Path,
         *,
-        options: m.Tests.PytestDiagOptions | None = None,
+        options: p.Tests.PytestDiagOptions | None = None,
     ) -> FlextInfraPytestDiagExtractor:
         resolved = m.Tests.PytestDiagOptions() if options is None else options
         report_log = log.with_suffix(".jsonl")
@@ -81,7 +81,7 @@ class TestsFlextInfraPytestDiag:
         log = tmp_path / "log.txt"
         log.write_text("")
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        report: p.Infra.PytestDiagnostics = tm.ok(
             self._extractor(junit, log).extract(
                 junit,
                 log,
@@ -133,7 +133,7 @@ class TestsFlextInfraPytestDiag:
             "</testcase></testsuite></testsuites>",
         )
 
-        fail_report: m.Infra.PytestDiagnostics = tm.ok(
+        fail_report: p.Infra.PytestDiagnostics = tm.ok(
             self._extractor(fail_xml, log).extract(
                 fail_xml,
                 log,
@@ -152,7 +152,7 @@ class TestsFlextInfraPytestDiag:
             "</testcase></testsuite></testsuites>",
         )
 
-        err_report: m.Infra.PytestDiagnostics = tm.ok(
+        err_report: p.Infra.PytestDiagnostics = tm.ok(
             self._extractor(err_xml, log).extract(
                 err_xml,
                 log,
@@ -173,7 +173,7 @@ class TestsFlextInfraPytestDiag:
             "</testcase></testsuite></testsuites>",
         )
 
-        skip_report: m.Infra.PytestDiagnostics = tm.ok(
+        skip_report: p.Infra.PytestDiagnostics = tm.ok(
             self._extractor(skip_xml, log).extract(
                 skip_xml,
                 log,
@@ -189,7 +189,7 @@ class TestsFlextInfraPytestDiag:
             "</testsuite></testsuites>",
         )
 
-        slow_report: m.Infra.PytestDiagnostics = tm.ok(
+        slow_report: p.Infra.PytestDiagnostics = tm.ok(
             self._extractor(slow_xml, log).extract(
                 slow_xml,
                 log,
@@ -295,7 +295,7 @@ class TestsFlextInfraPytestDiag:
             "-- Docs: https://docs.pytest.org/\n",
         )
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        report: p.Infra.PytestDiagnostics = tm.ok(
             self._extractor(
                 junit,
                 log,
@@ -329,7 +329,7 @@ class TestsFlextInfraPytestDiag:
             '"filename":"test_case.py","lineno":10,"message":"first\\nsecond"}\n'
         )
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        report: p.Infra.PytestDiagnostics = tm.ok(
             self._extractor(
                 junit,
                 log,

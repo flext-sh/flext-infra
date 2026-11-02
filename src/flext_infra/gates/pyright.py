@@ -10,13 +10,11 @@ import sys
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraGatesPyright(FlextInfraGates):
@@ -32,7 +30,7 @@ class FlextInfraGatesPyright(FlextInfraGates):
     def _get_check_dirs(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """Use the project pyright config as SSOT when it exists.
 
@@ -48,7 +46,7 @@ class FlextInfraGatesPyright(FlextInfraGates):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Run Pyright on the workspace interpreter with its JSON report.
@@ -93,7 +91,7 @@ class FlextInfraGatesPyright(FlextInfraGates):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Grade Pyright's JSON report together with its own summary counts.
 
@@ -106,7 +104,7 @@ class FlextInfraGatesPyright(FlextInfraGates):
             return False, (
                 self._command_error_issue(result, c.Infra.PYRIGHT, str(project_dir)),
             )
-        validated: p.Result[m.Infra.PyrightReport] = u.validate_value(
+        validated: p.Result[p.Infra.PyrightReport] = u.validate_value(
             m.Infra.PyrightReport,
             result.stdout,
             from_json=True,

@@ -46,7 +46,7 @@ class TestsFlextInfraCodemodReverseImportLayers:
         module.write_text(
             '"""Service module of the package."""\n\n'
             "from __future__ import annotations\n\n"
-            "from layer_demo import c, s\n\n\n"
+            "from layer_demo import c, p, s\n\n\n"
             'class LayerDemoConsulta(s):\n    """Service."""\n\n    VALOR = c\n',
             encoding="utf-8",
         )

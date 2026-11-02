@@ -53,7 +53,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
     def _union_targets(
         self,
         project_dirs: Sequence[Path],
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         *,
         repair: bool,
     ) -> Sequence[str]:
@@ -115,7 +115,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
         """
         blocks = config.Infra.tooling.tools.markdown.projected_blocks
         spans: list[tuple[int, int]] = []
-        opened: tuple[m.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None
+        opened: tuple[p.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None
         opened = None
         for index, line in enumerate(lines):
             marker = line.strip()
@@ -233,8 +233,8 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
         path: Path,
         index: int,
         marker: str,
-        blocks: Sequence[m.Infra.MarkdownProjectedBlock],
-    ) -> tuple[m.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None:
+        blocks: Sequence[p.Infra.MarkdownProjectedBlock],
+    ) -> tuple[p.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None:
         """Open the declared block whose begin marker is ``marker``.
 
         Returns:
@@ -342,9 +342,9 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
     def _projected_round_trip(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         target: str,
-    ) -> tuple[m.Cli.AtomicFileState, str, m.Cli.CommandOutput, str]:
+    ) -> tuple[p.Cli.AtomicFileState, str, m.Cli.CommandOutput, str]:
         """Run the stdin pass over one file's lint view and splice its blocks.
 
         The file is observed once through the atomic reader, so its state is
@@ -414,11 +414,11 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
     def _execute_fix_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
         started: float,
         lock_owners: Sequence[Path],
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Repair projected files through their view; the rest in one disk pass.
 
         A file without a declared projected block keeps the single native
@@ -439,7 +439,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
             return super()._execute_fix_command(
                 project_dir, ctx, targets, started, lock_owners
             )
-        executions: list[m.Infra.GateExecution] = []
+        executions: list[p.Infra.GateExecution] = []
         plain = tuple(target for target in targets if target not in projected)
         if plain:
             executions.append(
@@ -447,7 +447,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
                     project_dir, ctx, plain, started, lock_owners
                 )
             )
-        plans: dict[Path, list[m.Infra.CodegenFilePlan]] = {}
+        plans: dict[Path, list[p.Infra.CodegenFilePlan]] = {}
         for target in targets:
             if target not in projected:
                 continue
@@ -479,10 +479,10 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
     def _merged_execution(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         started: float,
-        executions: Sequence[m.Infra.GateExecution],
-    ) -> m.Infra.GateExecution:
+        executions: Sequence[p.Infra.GateExecution],
+    ) -> p.Infra.GateExecution:
         """Join the disk pass and the projected passes into one execution.
 
         Returns:
@@ -584,7 +584,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
         )
 
     @override
-    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
+    def selected_for(self, project_dir: Path, ctx: p.Infra.GateContext) -> bool:
         """Only a project with governed Markdown selects a Markdown gate.
 
         Returns:
@@ -597,7 +597,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
     def _get_check_dirs(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """Return the governed Markdown paths relative to their repository.
 

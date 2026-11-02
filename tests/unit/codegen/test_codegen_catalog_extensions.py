@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 pytestmark = pytest.mark.slow
 
@@ -46,7 +46,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         *,
         path: str,
         role: c.Infra.MakeProfile,
-    ) -> m.Infra.RepositoryRef:
+    ) -> p.Infra.RepositoryRef:
         reference = u.Tests.repository_ref(name, path=Path(path), role=role)
         is_standalone = role is c.Infra.MakeProfile.STANDALONE
         return reference.model_copy(
@@ -56,7 +56,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
     @staticmethod
     def _member_remote(
         tmp_path: Path,
-        member: m.Infra.RepositoryRef,
+        member: p.Infra.RepositoryRef,
     ) -> tuple[Path, str]:
         """Publish one governed member source as a bare provider remote.
 
@@ -101,7 +101,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
 
     @staticmethod
     def _attach_member_submodule(
-        repository_root: Path, member: m.Infra.RepositoryRef, remote: tuple[Path, str]
+        repository_root: Path, member: p.Infra.RepositoryRef, remote: tuple[Path, str]
     ) -> Path:
         """Attach the governed member submodule and publish its remote ref.
 

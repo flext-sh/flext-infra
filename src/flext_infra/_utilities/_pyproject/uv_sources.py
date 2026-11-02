@@ -198,7 +198,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         document: t.Cli.TomlDocument,
         *,
         target_ref: str,
-    ) -> p.Result[tuple[m.Infra.GitSourceReferenceMigration, ...]]:
+    ) -> p.Result[tuple[p.Infra.GitSourceReferenceMigration, ...]]:
         """Elect one Git-ref migration per internal requirement off the line.
 
         Every declared internal requirement whose direct Git source names a
@@ -212,7 +212,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             invalid declared source.
 
         """
-        result_type = r[tuple[m.Infra.GitSourceReferenceMigration, ...]]
+        result_type = r[tuple[p.Infra.GitSourceReferenceMigration, ...]]
         lines = cls.document_requirement_lines(document)
         if lines.failure:
             return result_type.from_failure(lines)
@@ -250,7 +250,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         *,
         candidate_sources: Mapping[str, str],
         requirements: Sequence[str],
-        resolution: m.Infra.UvResolutionSpec,
+        resolution: p.Infra.UvResolutionSpec,
     ) -> None:
         """Publish declared, derived internal and candidate overrides once.
 
@@ -298,7 +298,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
 
     @staticmethod
     def _sync_uv_constraints(
-        uv: t.Cli.TomlTable, resolution: m.Infra.UvResolutionSpec
+        uv: t.Cli.TomlTable, resolution: p.Infra.UvResolutionSpec
     ) -> None:
         """Publish declared constraints and native linking, without cooldown copies."""
         constraints = tuple(resolution.constraint_dependencies)
@@ -312,7 +312,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
 
     @staticmethod
     def _sync_uv_environments(
-        uv: t.Cli.TomlTable, resolution: m.Infra.UvResolutionSpec
+        uv: t.Cli.TomlTable, resolution: p.Infra.UvResolutionSpec
     ) -> None:
         """Publish the environments declared by the native toolchain policy."""
         if resolution.environments:
@@ -326,9 +326,9 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         cls,
         document: t.Cli.TomlDocument,
         *,
-        resolution: m.Infra.UvResolutionSpec,
+        resolution: p.Infra.UvResolutionSpec,
         candidate_sources: Mapping[str, str],
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         local_requirements: Sequence[str],
     ) -> p.Result[bool]:
         """Publish native workspace membership without altering package requirements.

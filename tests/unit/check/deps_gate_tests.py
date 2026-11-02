@@ -20,7 +20,7 @@ from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraDepsGate:
@@ -74,7 +74,7 @@ class TestsFlextInfraDepsGate:
         return root
 
     @staticmethod
-    def _dependency_inputs(root: Path) -> m.Infra.RuntimeDependencyInputs:
+    def _dependency_inputs(root: Path) -> p.Infra.RuntimeDependencyInputs:
         """Capture a real installed supplier and a target-owned native lock input.
 
         Returns:

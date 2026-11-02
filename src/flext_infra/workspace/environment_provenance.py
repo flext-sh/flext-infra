@@ -67,7 +67,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         repository_root: Path,
         *,
         metadata_paths: Sequence[str] | None = None,
-    ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
+    ) -> p.Result[tuple[p.Infra.RepositoryRef, ...]]:
         """Elect declared mutable members with authenticated installed editables.
 
         Frozen or registry-installed dependencies remain libraries even when
@@ -81,7 +81,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         root = repository_root.expanduser().resolve()
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(root)
         if workspace.failure:
-            return r[tuple[m.Infra.RepositoryRef, ...]].from_failure(workspace)
+            return r[tuple[p.Infra.RepositoryRef, ...]].from_failure(workspace)
         repositories = tuple(
             repository
             for repository in u.Infra.mutable_flext_members(workspace.value)
@@ -90,16 +90,16 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         if metadata_paths is None and repositories:
             native = cls._observe_environment(root, repositories)
             if native.failure:
-                return r[tuple[m.Infra.RepositoryRef, ...]].from_failure(native)
+                return r[tuple[p.Infra.RepositoryRef, ...]].from_failure(native)
             metadata_paths = tuple(str(path) for path in native.value.metadata_paths)
-        selected: list[m.Infra.RepositoryRef] = []
+        selected: list[p.Infra.RepositoryRef] = []
         for repository in repositories:
             matches = u.installed_distributions(
                 name=repository.distribution,
                 path=metadata_paths,
             )
             if len(matches) != 1:
-                return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+                return r[tuple[p.Infra.RepositoryRef, ...]].fail(
                     "member provenance distribution count mismatch: "
                     f"distribution={repository.distribution} expected=1 "
                     f"actual={len(matches)}",
@@ -111,7 +111,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             if receipt.dir_info is None or not receipt.dir_info.editable:
                 continue
             if not repository.editable:
-                return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+                return r[tuple[p.Infra.RepositoryRef, ...]].fail(
                     f"member is installed editable against declaration: "
                     f"{repository.distribution}",
                 )
@@ -122,19 +122,19 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 receipt,
             )
             if authenticated.failure:
-                return r[tuple[m.Infra.RepositoryRef, ...]].from_failure(
+                return r[tuple[p.Infra.RepositoryRef, ...]].from_failure(
                     authenticated,
                 )
             selected.append(repository)
-        return r[tuple[m.Infra.RepositoryRef, ...]].ok(tuple(selected))
+        return r[tuple[p.Infra.RepositoryRef, ...]].ok(tuple(selected))
 
     @classmethod
     def validate_editable_installation(
         cls,
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
         resolved_root: Path,
         distribution: Distribution,
-        receipt: m.Infra.DirectUrlReceipt,
+        receipt: p.Infra.DirectUrlReceipt,
     ) -> p.Result[bool]:
         """Authenticate installation ownership without importing member code.
 
@@ -196,8 +196,8 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @staticmethod
     def _observe_environment(
         root: Path,
-        repositories: tuple[m.Infra.RepositoryRef, ...],
-    ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
+        repositories: tuple[p.Infra.RepositoryRef, ...],
+    ) -> p.Result[p.Infra.PythonEnvironmentObservation]:
         """Read package facts exclusively through the elected physical runtime.
 
         Args:
@@ -210,7 +210,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         """
         context = FlextInfraWorkspaceDetector.resolution_context(root)
         if context.failure:
-            return r[m.Infra.PythonEnvironmentObservation].from_failure(context)
+            return r[p.Infra.PythonEnvironmentObservation].from_failure(context)
         return FlextInfraBindingService.consumer_package_environment(
             consumer_root=root,
             python=u.Infra.runtime_python(
@@ -231,7 +231,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
         cls,
         distribution: str,
         expected_root: Path,
-        observation: m.Infra.PythonEnvironmentObservation | None,
+        observation: p.Infra.PythonEnvironmentObservation | None,
     ) -> p.Result[bool]:
         """Bind editable import election to the already observed owned runtime.
 
@@ -414,7 +414,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                     update={"path": Path()},
                 )
             )
-        observation: m.Infra.PythonEnvironmentObservation | None = None
+        observation: p.Infra.PythonEnvironmentObservation | None = None
         if metadata_paths is None:
             native = FlextInfraBindingService.consumer_package_environment(
                 consumer_root=repository_root,
@@ -453,11 +453,11 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     def _validate_required(
         cls,
         members: Mapping[str, m.Infra.RepositoryRef],
-        locked: m.Infra.LockedEnvironment,
-        context: m.Infra.WorkspaceRuntimeContext,
+        locked: p.Infra.LockedEnvironment,
+        context: p.Infra.WorkspaceRuntimeContext,
         *,
         metadata_paths: Sequence[str] | None,
-        observation: m.Infra.PythonEnvironmentObservation | None,
+        observation: p.Infra.PythonEnvironmentObservation | None,
     ) -> p.Result[int]:
         """Prove every declared member and natively sourced lock entry.
 
@@ -498,17 +498,17 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @staticmethod
     def _locked_installation(
         name: str,
-        locked: m.Infra.LockedEnvironment,
-        context: m.Infra.WorkspaceRuntimeContext,
+        locked: p.Infra.LockedEnvironment,
+        context: p.Infra.WorkspaceRuntimeContext,
         metadata_paths: Sequence[str] | None,
-    ) -> p.Result[tuple[m.Infra.LockedPackage, Distribution]]:
+    ) -> p.Result[tuple[p.Infra.LockedPackage, Distribution]]:
         """Bind one installed distribution inside the owned environment to its lock.
 
         Returns:
             The unique locked package and its installed distribution.
 
         """
-        result_type = r[tuple[m.Infra.LockedPackage, Distribution]]
+        result_type = r[tuple[p.Infra.LockedPackage, Distribution]]
         distributions = u.installed_distributions(name=name, path=metadata_paths)
         if len(distributions) != 1:
             return result_type.fail(
@@ -534,12 +534,12 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @classmethod
     def _validate_locked_provenance(
         cls,
-        item: m.Infra.LockedPackage,
+        item: p.Infra.LockedPackage,
         distribution: Distribution,
-        context: m.Infra.WorkspaceRuntimeContext,
+        context: p.Infra.WorkspaceRuntimeContext,
         *,
-        repository: m.Infra.RepositoryRef | None,
-        observation: m.Infra.PythonEnvironmentObservation | None = None,
+        repository: p.Infra.RepositoryRef | None,
+        observation: p.Infra.PythonEnvironmentObservation | None = None,
     ) -> p.Result[bool]:
         """Prove one locked dependency's installed origin and path containment.
 
@@ -599,12 +599,12 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @classmethod
     def validate_local_installation(
         cls,
-        item: m.Infra.LockedPackage,
-        context: m.Infra.WorkspaceRuntimeContext,
+        item: p.Infra.LockedPackage,
+        context: p.Infra.WorkspaceRuntimeContext,
         distribution: Distribution,
         *,
-        observation: m.Infra.PythonEnvironmentObservation | None,
-        repository: m.Infra.RepositoryRef | None,
+        observation: p.Infra.PythonEnvironmentObservation | None,
+        repository: p.Infra.RepositoryRef | None,
     ) -> p.Result[bool]:
         """Authenticate installed local sources without resolving dependencies.
 
@@ -651,11 +651,11 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @classmethod
     def _validate_editable_installation(
         cls,
-        item: m.Infra.LockedPackage,
+        item: p.Infra.LockedPackage,
         distribution: Distribution,
         expected_root: Path,
         raw: str,
-        observation: m.Infra.PythonEnvironmentObservation | None,
+        observation: p.Infra.PythonEnvironmentObservation | None,
     ) -> p.Result[bool]:
         """Authenticate an editable installation against its native lock entry.
 
@@ -698,9 +698,9 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @classmethod
     def _validate_workspace_build(
         cls,
-        item: m.Infra.LockedPackage,
-        repository: m.Infra.RepositoryRef,
-        context: m.Infra.WorkspaceRuntimeContext,
+        item: p.Infra.LockedPackage,
+        repository: p.Infra.RepositoryRef,
+        context: p.Infra.WorkspaceRuntimeContext,
         distribution: Distribution,
     ) -> p.Result[bool]:
         """Authenticate a workspace checkout before accepting its installed build.
@@ -735,8 +735,8 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @classmethod
     def _workspace_checkout_verdict(
         cls,
-        item: m.Infra.LockedPackage,
-        repository: m.Infra.RepositoryRef,
+        item: p.Infra.LockedPackage,
+        repository: p.Infra.RepositoryRef,
         repository_root: Path,
         resolution_root: Path,
         *,
@@ -800,7 +800,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
 
     @staticmethod
     def _workspace_gitlink_verdict(
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
         repository_root: Path,
         head_oid: str | None,
     ) -> p.Result[bool]:
@@ -893,7 +893,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     def locked_origin_verdict(
         cls,
         name: str,
-        item: m.Infra.LockedPackage,
+        item: p.Infra.LockedPackage,
         raw: str | None,
     ) -> p.Result[bool]:
         """Prove one locked dependency's PEP 610 origin against the lock entry.

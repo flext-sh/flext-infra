@@ -114,7 +114,7 @@ class FlextInfraCodegenConform:
         if targets.failure:
             return r[bool].from_failure(targets)
         kind = request.declaration_kind
-        files: list[m.Infra.CodegenFilePlan] = []
+        files: list[p.Infra.CodegenFilePlan] = []
         for target in targets.value:
             if target.managed is False or not (
                 u.Infra.workspace_manifest_path(target.root).is_file()
@@ -155,7 +155,7 @@ class FlextInfraCodegenConform:
     @staticmethod
     def _kind_projections(
         root: Path, kind: c.Infra.ProjectKind | None
-    ) -> tuple[m.Infra.CodegenLayerProjection, ...]:
+    ) -> tuple[p.Infra.CodegenLayerProjection, ...]:
         """Project an explicitly requested kind onto the target's own layer.
 
         Kind bootstrap is the one flow that reads a repository before its own

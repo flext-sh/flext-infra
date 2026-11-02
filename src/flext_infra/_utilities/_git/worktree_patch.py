@@ -10,7 +10,7 @@ from pathlib import Path
 
 from git import GitCommandError
 
-from flext_infra import c, m, p, r
+from flext_infra import c, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitWorktreeIO,
@@ -48,7 +48,7 @@ class FlextInfraUtilitiesGitWorktreePatch(FlextInfraUtilitiesGitRepo):
         return r[bool].ok(value=True)
 
     @classmethod
-    def git_check_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+    def git_check_patch(cls, delta: p.Infra.RepositoryDelta) -> p.Result[bool]:
         """Forward-check one operation patch against the live source worktree.
 
         Returns:
@@ -58,7 +58,7 @@ class FlextInfraUtilitiesGitWorktreePatch(FlextInfraUtilitiesGitRepo):
         return cls._git_check_patch_at(delta.source_root, delta.patch, reverse=False)
 
     @classmethod
-    def git_check_isolated_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+    def git_check_isolated_patch(cls, delta: p.Infra.RepositoryDelta) -> p.Result[bool]:
         """Reverse-check that the isolated worktree contains the patch target.
 
         Returns:
@@ -68,7 +68,7 @@ class FlextInfraUtilitiesGitWorktreePatch(FlextInfraUtilitiesGitRepo):
         return cls._git_check_patch_at(delta.worktree_root, delta.patch, reverse=True)
 
     @classmethod
-    def _git_source_has_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+    def _git_source_has_patch(cls, delta: p.Infra.RepositoryDelta) -> p.Result[bool]:
         """Return success when the live source already contains the patch target.
 
         Returns:
@@ -144,7 +144,7 @@ class FlextInfraUtilitiesGitWorktreePatch(FlextInfraUtilitiesGitRepo):
     @classmethod
     def _git_apply_with_ignored_additions(
         cls,
-        delta: m.Infra.RepositoryDelta,
+        delta: p.Infra.RepositoryDelta,
     ) -> p.Result[bool]:
         """Apply additions over existing ignored projections with rollback.
 
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesGitWorktreePatch(FlextInfraUtilitiesGitRepo):
         return r[bool].ok(value=True)
 
     @classmethod
-    def git_apply_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+    def git_apply_patch(cls, delta: p.Infra.RepositoryDelta) -> p.Result[bool]:
         """Forward-check and idempotently converge one source operation patch.
 
         Returns:

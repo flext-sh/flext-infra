@@ -82,7 +82,7 @@ class FlextInfraUtilitiesCodegen(
         )
 
     @staticmethod
-    def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:
+    def envrc_render_spec() -> p.Infra.EnvrcRenderSpec:
         """Return the sole typed context every generated ``.envrc`` renders from.
 
         Returns:
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesCodegen(
     @staticmethod
     def generate_test_module_skeleton(
         *,
-        context: m.Infra.TestModuleSkeletonRenderContext,
+        context: p.Infra.TestModuleSkeletonRenderContext,
     ) -> str:
         """Render one canonical test facade skeleton from its validated context.
 

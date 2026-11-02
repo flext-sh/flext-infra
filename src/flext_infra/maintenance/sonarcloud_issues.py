@@ -103,7 +103,7 @@ class FlextInfraMaintenanceSonarcloudIssues(
         token: t.SecretStr,
         key: str,
         branch_value: str,
-    ) -> p.Result[Sequence[m.Infra.SonarcloudIssue]]:
+    ) -> p.Result[Sequence[p.Infra.SonarcloudIssue]]:
         """Read every search page with complete-accounting guarantees.
 
         Returns:
@@ -111,7 +111,7 @@ class FlextInfraMaintenanceSonarcloudIssues(
 
         """
         sonarcloud = config.Infra.codegen.sonarcloud
-        findings: list[m.Infra.SonarcloudIssue] = []
+        findings: list[p.Infra.SonarcloudIssue] = []
         seen: set[str] = set()
         page = 1
         total: int | None = None
@@ -127,14 +127,14 @@ class FlextInfraMaintenanceSonarcloudIssues(
                 ),
             )
             if body.failure:
-                return r[Sequence[m.Infra.SonarcloudIssue]].from_failure(body)
+                return r[Sequence[p.Infra.SonarcloudIssue]].from_failure(body)
             parsed = u.validate_value(
                 m.Infra.SonarcloudIssueSearch,
                 body.value,
                 from_json=True,
             )
             if parsed.failure:
-                return r[Sequence[m.Infra.SonarcloudIssue]].from_failure(parsed)
+                return r[Sequence[p.Infra.SonarcloudIssue]].from_failure(parsed)
             response = parsed.value
             page_verdict = self._page_verdict(
                 response,
@@ -147,25 +147,25 @@ class FlextInfraMaintenanceSonarcloudIssues(
             total = response.paging.total
             for issue in response.issues:
                 if issue.key in seen:
-                    return r[Sequence[m.Infra.SonarcloudIssue]].fail(
+                    return r[Sequence[p.Infra.SonarcloudIssue]].fail(
                         f"SonarCloud repeated issue {issue.key}",
                     )
                 seen.add(issue.key)
                 findings.append(issue)
             if len(findings) > total:
-                return r[Sequence[m.Infra.SonarcloudIssue]].fail(
+                return r[Sequence[p.Infra.SonarcloudIssue]].fail(
                     "SonarCloud returned more issues than its total",
                 )
             page += 1
-        return r[Sequence[m.Infra.SonarcloudIssue]].ok(findings)
+        return r[Sequence[p.Infra.SonarcloudIssue]].ok(findings)
 
     @staticmethod
     def _page_verdict(
-        response: m.Infra.SonarcloudIssueSearch,
-        findings: Sequence[m.Infra.SonarcloudIssue],
+        response: p.Infra.SonarcloudIssueSearch,
+        findings: Sequence[p.Infra.SonarcloudIssue],
         page: int,
         total: int | None,
-    ) -> p.Result[Sequence[m.Infra.SonarcloudIssue]] | None:
+    ) -> p.Result[Sequence[p.Infra.SonarcloudIssue]] | None:
         """Judge one search page against the paging and completeness contract.
 
         Returns:
@@ -173,25 +173,25 @@ class FlextInfraMaintenanceSonarcloudIssues(
 
         """
         if response.paging.page_index != page:
-            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[p.Infra.SonarcloudIssue]].fail(
                 f"SonarCloud returned page {response.paging.page_index}; "
                 f"requested {page}",
             )
         if total is not None and response.paging.total != total:
-            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[p.Infra.SonarcloudIssue]].fail(
                 "SonarCloud issue total changed while reading pages",
             )
         if response.paging.total >= c.Infra.SONARCLOUD_ISSUES_SEARCH_LIMIT:
-            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[p.Infra.SonarcloudIssue]].fail(
                 "SonarCloud issue search reached its result-window limit; "
                 "the issue set cannot be reported as complete",
             )
         if len(response.issues) > response.paging.page_size:
-            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[p.Infra.SonarcloudIssue]].fail(
                 "SonarCloud returned more issues than its page size",
             )
         if not response.issues and (total is None or len(findings) < total):
-            return r[Sequence[m.Infra.SonarcloudIssue]].fail(
+            return r[Sequence[p.Infra.SonarcloudIssue]].fail(
                 "SonarCloud returned an empty page before its total",
             )
         return None

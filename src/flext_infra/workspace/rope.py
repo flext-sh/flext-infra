@@ -23,7 +23,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     def facade_projection(
         self,
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
         """Plan dependency-closed facade cohorts through this native session.
@@ -66,7 +66,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     def domain_owner_projection(
         self,
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         initializer: p.Infra.SourceInitializerPlanner,
     ) -> m.Infra.CodegenRepositoryPlanOutcome:
         """Relocate each private family domain's owner into its composing module.
@@ -171,7 +171,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             if u.Infra.facade_component_declarations(project, directory):
                 u.Infra.codegen_raise_failure(
                     directory,
-                    r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                    r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                         f"Family declarations have no facade: {directory}"
                     ),
                 )
@@ -271,7 +271,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             u.Infra.codegen_raise_failure(scope, exports)
         self._projection_stage(exports.value)
 
-    def _projection_stage(self, plans: Sequence[m.Infra.CodegenFilePlan]) -> None:
+    def _projection_stage(self, plans: Sequence[p.Infra.CodegenFilePlan]) -> None:
         """Advance the existing candidate while preserving physical witnesses."""
         self.bind_candidate(
             declared_files=u.Infra.codegen_compose_file_plans(
@@ -450,7 +450,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         default_factory=lambda: None,
     )
     _candidate_scope: ExitStack | None = m.PrivateAttr(default=None)
-    _candidate_files: tuple[m.Infra.CodegenFilePlan, ...] = m.PrivateAttr(default=())
+    _candidate_files: tuple[p.Infra.CodegenFilePlan, ...] = m.PrivateAttr(default=())
     _candidate_source_folders: t.StrTuple | None = m.PrivateAttr(default=None)
     _project_layout_cache: MutableMapping[str, m.Infra.RopeProjectLayout | None] = (
         m.PrivateAttr(default_factory=dict[str, m.Infra.RopeProjectLayout | None])
@@ -469,10 +469,8 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     )
     _module_object_cache: MutableMapping[
         tuple[str, bool, bool],
-        tuple[m.Infra.Object, ...],
-    ] = m.PrivateAttr(
-        default_factory=dict[tuple[str, bool, bool], tuple[m.Infra.Object, ...]]
-    )
+        tuple[p.Infra.Object, ...],
+    ] = m.PrivateAttr(default_factory=dict)
 
     @override
     def model_post_init(self, __context: Mapping[str, t.Scalar] | None, /) -> None:
@@ -535,15 +533,15 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         return workspace
 
     @override
-    def execute(self) -> p.Result[m.Infra.RopeWorkspaceSession]:
+    def execute(self) -> p.Result[p.Infra.RopeWorkspaceSession]:
         """Materialize the public Rope session snapshot.
 
         Returns:
-            The resulting ``p.Result[m.Infra.RopeWorkspaceSession]``.
+            The resulting ``p.Result[p.Infra.RopeWorkspaceSession]``.
 
         """
         snapshot: m.Infra.RopeWorkspaceSession = self.session_snapshot()
-        return r[m.Infra.RopeWorkspaceSession].ok(snapshot)
+        return r[p.Infra.RopeWorkspaceSession].ok(snapshot)
 
     def session_snapshot(self) -> m.Infra.RopeWorkspaceSession:
         """Return the current public Rope session state.
@@ -561,7 +559,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     def bind_candidate(
         self,
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         additional_source_folders: t.StrTuple | None = None,
     ) -> None:
         """Advance this session to authenticated planned bytes without disk effects.
@@ -1105,7 +1103,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> Sequence[m.Infra.Object]:
+    ) -> Sequence[p.Infra.Object]:
         """Return Rope-only discovered objects for one module path.
 
         Returns:

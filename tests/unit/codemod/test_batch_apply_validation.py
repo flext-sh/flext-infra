@@ -19,7 +19,7 @@ from flext_infra.codemod import (
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
 )
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraCodemodBatchApplyValidation:
@@ -40,7 +40,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 self.validated = True
 
         @staticmethod
-        def emit_rename(report: m.Infra.ApplyRenamesReport) -> None:
+        def emit_rename(report: p.Infra.ApplyRenamesReport) -> None:
             """Accept the public campaign progress contract."""
             _ = report
 
@@ -249,7 +249,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
     @staticmethod
     def _report(
         path: Path, rule_id: str
-    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
+    ) -> p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence]:
         """Build one actionable ast-grep finding report.
 
         Returns:

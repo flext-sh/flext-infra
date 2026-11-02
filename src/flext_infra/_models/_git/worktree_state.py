@@ -19,7 +19,7 @@ class FlextInfraModelsGitWorktreeState:
     class GitMutationScope(m.ContractModel):
         """Physical file scope and its optional validated Git worktree owner."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         root: Annotated[Path, m.Field(description="Physical requested mutation root")]
         git_dir: Annotated[
             Path | None,
@@ -33,7 +33,7 @@ class FlextInfraModelsGitWorktreeState:
     class MutationLockHolder(m.ContractModel):
         """Writer that holds one mutation scope's lock, recorded beside it."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         pid: Annotated[int, m.Field(description="Process that holds the lock")]
         operation: Annotated[
             str, m.Field(description="Operation the holder runs under the lock")
@@ -50,7 +50,7 @@ class FlextInfraModelsGitWorktreeState:
     class GitWorktreeCheckpointPublication(m.ContractModel):
         """Exact credential-free endpoint and durable remote checkpoint proof."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         remote_name: Annotated[
             str,
             m.Field(description="Configured remote used for publication"),
@@ -71,7 +71,7 @@ class FlextInfraModelsGitWorktreeState:
     class GitWorktreeStateRequest(m.ContractModel):
         """Literal repository-relative owned paths; directories select subtrees."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         retained_commits: Annotated[
             tuple[str, ...],
             m.Field(
@@ -90,7 +90,7 @@ class FlextInfraModelsGitWorktreeState:
     class GitWorktreeIndexEntry(m.ContractModel):
         """One stage-zero Git index entry."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         path: Annotated[Path, m.Field(description="Repository-relative index path")]
         mode: Annotated[str, m.Field(description="Git octal index entry mode")]
         oid: Annotated[
@@ -128,7 +128,7 @@ class FlextInfraModelsGitWorktreeState:
         git mode string, and the exact permission bits.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         content: Annotated[
             bytes | None,
             m.Field(
@@ -146,7 +146,7 @@ class FlextInfraModelsGitWorktreeState:
     class GitWorktreeFileState(m.ContractModel):
         """Exact working bytes and permissions, including symlink link text."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         path: Annotated[Path, m.Field(description="Repository-relative working path")]
         mode: Annotated[
             str,
@@ -166,7 +166,7 @@ class FlextInfraModelsGitWorktreeState:
     class GitWorktreeObservedContent(m.ContractModel):
         """Observed working bytes with their filesystem state before hashing."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         path: Annotated[Path, m.Field(description="Repository-relative working path")]
         content: Annotated[
             bytes | None,
@@ -184,7 +184,7 @@ class FlextInfraModelsGitWorktreeState:
     class GitWorktreeStateSnapshot(m.ContractModel):
         """Scoped source identity and both independently measured layers."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         retained_commits: Annotated[
             tuple[str, ...],
             m.Field(
@@ -228,7 +228,7 @@ class FlextInfraModelsGitWorktreeState:
     class GitWorktreeStateCheckpoint(m.ContractModel):
         """Reachable commits retain both original layers after save and GC."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         snapshot: Annotated[
             FlextInfraModelsGitWorktreeState.GitWorktreeStateSnapshot,
             m.Field(description="Original immutable ownership and state evidence"),

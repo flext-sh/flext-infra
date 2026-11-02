@@ -51,7 +51,7 @@ class FlextInfraModelsConfigRepository:
     class ProjectSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid")
 
         flext_source: Annotated[
             t.NonEmptyStr | None,
@@ -289,10 +289,10 @@ class FlextInfraModelsConfigRepository:
     class RepositoryRef(FlextInfraModelsConfigContract.ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True, description="Original identity and policy observations"
             ),
@@ -422,7 +422,7 @@ class FlextInfraModelsConfigRepository:
     class RepositoryConformTarget(FlextInfraModelsConfigContract.ConfigContract):
         """Runtime-derived conformance identity for one repository."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
             FlextInfraModelsConfigRepository.RepositoryRef,
@@ -443,7 +443,7 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Repository-rooted resolved editor declarations"),
         ] = None
         vscode_sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True, description="Exact consulted editor declaration inputs"
             ),

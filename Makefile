@@ -1387,10 +1387,14 @@ _builtin_gen_scope_all: _builtin_require_interpreter
 	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
 	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(basename $(PROJECT_ROOT)/.reports/codegen/gen.pstats)-scope.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
 
-# Structural rewrites use the target's existing semantic operation; the
-# operation performs the transformation directly (no apply mode, no rule selector).
+# Structural rewrites use the target's existing semantic operation. RULE_IDS is
+# an explicit, whitespace-separated ast-grep catalog selection; omitting it
+# preserves the complete-catalog route.
 _builtin_mod_apply: _builtin_require_environment
-	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/refactor/mod.pstats" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"
+	@set -eu; \
+	set -- --repository-root "$(PROJECT_ROOT)"; \
+	for rule_id in $(strip $(RULE_IDS)); do set -- "$$@" --rule-ids "$$rule_id"; done; \
+	FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/refactor/mod.pstats" $(PROJECT_FLEXT_INFRA) refactor mod "$$@"
 
 # Public operations invoke only their own canonical implementation.
 _builtin-build: _builtin_build_artifacts

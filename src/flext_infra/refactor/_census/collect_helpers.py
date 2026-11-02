@@ -25,9 +25,9 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
     implementation and project-selection state used by ``_collect_report``.
     """
 
-    model_config: ClassVar[m.ConfigDict] = m.Infra.CensusOptions.model_config
+    model_config: ClassVar[p.ConfigDict] = m.Infra.CensusOptions.model_config
 
-    options: m.Infra.CensusOptions = m.Field(
+    options: p.Infra.CensusOptions = m.Field(
         default_factory=m.Infra.CensusOptions,
         description="Validated census filters and report destinations",
     )
@@ -45,7 +45,7 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
         return "unused" in rule_names
 
     @staticmethod
-    def production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:
+    def production_module(module: p.Infra.RopeModuleIndexEntry) -> bool:
         """Return whether a module belongs to one configured production root.
 
         Returns:
@@ -67,7 +67,7 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
         rope: p.Infra.RopeWorkspaceDsl,
         *,
         source_preview: p.Infra.SourcePreview,
-    ) -> m.Infra.WorkspaceReport:
+    ) -> p.Infra.WorkspaceReport:
         """Inventory the selected modules then assemble the census report.
 
         Returns:

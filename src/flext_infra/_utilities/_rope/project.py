@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import csv
 import sys
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
@@ -65,9 +66,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         def __init__(
             self,
-            plans: tuple[m.Infra.CodegenFilePlan, ...],
+            plans: tuple[p.Infra.CodegenFilePlan, ...],
             *,
-            observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
+            observations: tuple[p.Cli.AtomicFileState, ...] | None = None,
             source_roots: tuple[Path, ...] = (),
             dependency_roots: tuple[Path, ...] = (),
             captures: tuple[
@@ -101,7 +102,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             )
             self.select_source_roots(source_roots)
             self._closed_observations = observations is not None
-            self.plans: tuple[m.Infra.CodegenFilePlan, ...] = ()
+            self.plans: tuple[p.Infra.CodegenFilePlan, ...] = ()
             self.analysis: Mapping[Path, bytes] = {}
             if captures is not None:
                 (
@@ -140,7 +141,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 self._closed_observations,
             )
 
-        def _record_observation(self, state: m.Cli.AtomicFileState) -> None:
+        def _record_observation(self, state: p.Cli.AtomicFileState) -> None:
             """Retain one witness and its original filesystem membership.
 
             Raises:
@@ -168,7 +169,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         def bind_reads(
             self,
             *,
-            observations: tuple[m.Cli.AtomicFileState, ...] | None,
+            observations: tuple[p.Cli.AtomicFileState, ...] | None,
             dependency_roots: tuple[str, ...],
         ) -> None:
             """Close captured reads, then pin the elected dependency roots.
@@ -305,7 +306,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         def replace(
             self,
-            plans: tuple[m.Infra.CodegenFilePlan, ...],
+            plans: tuple[p.Infra.CodegenFilePlan, ...],
             analysis: Mapping[Path, bytes] | None = None,
         ) -> tuple[tuple[Path, bool, bool], ...]:
             """Change only candidate deltas, retaining authenticated preimages.
@@ -398,7 +399,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         def _selected_plans(
             self,
-            plans: tuple[m.Infra.CodegenFilePlan, ...],
+            plans: tuple[p.Infra.CodegenFilePlan, ...],
             views: Mapping[Path, bytes],
         ) -> dict[Path, m.Infra.CodegenFilePlan]:
             """Select one consistent candidate plan per physical path.
@@ -589,7 +590,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
         def source_state(
             self, path: Path, *, required: bool = True
-        ) -> m.Cli.AtomicFileState:
+        ) -> p.Cli.AtomicFileState:
             """Retain the physical witness shared by source reads and publication.
 
             Returns:
@@ -658,7 +659,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
     def source_state(
         self, path: Path, *, required: bool = True
-    ) -> m.Cli.AtomicFileState:
+    ) -> p.Cli.AtomicFileState:
         """Observe the source view's physical publication witness.
 
         Returns:
@@ -671,7 +672,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         return u.Cli.atomic_read_binary_file_state(path, required=required).unwrap()
 
     @property
-    def source_plans(self) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    def source_plans(self) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Expose the current candidate without copying its original witnesses.
 
         Returns:
@@ -717,7 +718,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     def source_view(
         self,
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] | None = (),
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] | None = (),
         additional_source_folders: tuple[str, ...] | None = (),
         analysis_files: Mapping[Path, str] | None = None,
     ) -> Generator[Self]:
@@ -790,7 +791,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
     def _set_source_view(
         self,
-        plans: tuple[m.Infra.CodegenFilePlan, ...],
+        plans: tuple[p.Infra.CodegenFilePlan, ...],
         folders: tuple[str, ...],
         analysis: Mapping[Path, bytes] | None,
     ) -> None:
@@ -1074,20 +1075,24 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         for distribution in metadata.distributions(
             path=[folder for folder, _ in state]
         ):
-            # A record that names no extension suffix declares no compiled
-            # module; only the remaining distributions pay ``files`` parsing.
             record = distribution.read_text("RECORD")
-            if record is not None and not any(item in record for item in suffixes):
+            if record is not None and not any(suffix in record for suffix in suffixes):
                 continue
-            for file in distribution.files or ():
-                spelled = file.as_posix()
+            declared = (
+                (row[0] for row in csv.reader(record.splitlines()))
+                if record is not None
+                else (file.as_posix() for file in distribution.files or ())
+            )
+            for spelled in declared:
                 suffix = next(
                     (item for item in suffixes if spelled.endswith(item)), None
                 )
                 if suffix is None:
                     continue
                 parts = spelled.removesuffix(suffix).split("/")
-                if all(part.isidentifier() for part in parts):
+                if all(part.isidentifier() for part in parts) and (
+                    distribution.locate_file(spelled).exists()
+                ):
                     names.add(".".join(parts))
         return tuple(sorted(names))
 
@@ -1176,8 +1181,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         live: p.Infra.RopeProject,
         *,
         election: p.Infra.RopeProjectElection,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-        observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+        observations: tuple[p.Cli.AtomicFileState, ...] | None = None,
         additional_source_folders: tuple[str, ...] = (),
     ) -> Self:
         """Bind authenticated reads to an overlaid view of ``live``'s tree.
@@ -1237,8 +1242,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         self,
         *,
         election: p.Infra.RopeProjectElection,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-        observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+        observations: tuple[p.Cli.AtomicFileState, ...] | None = None,
         additional_source_folders: tuple[str, ...] = (),
     ) -> Self:
         """Bind authenticated reads to this overlaid native analysis project.
@@ -1288,7 +1293,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     def _validate_source_folders(
         root: Path,
         folders: tuple[str, ...],
-        plans: tuple[m.Infra.CodegenFilePlan, ...],
+        plans: tuple[p.Infra.CodegenFilePlan, ...],
     ) -> None:
         """Reject roots without physical or proposed source membership.
 

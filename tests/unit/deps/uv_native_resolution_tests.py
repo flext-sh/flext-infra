@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraUvNativeResolution:
@@ -106,7 +106,7 @@ class TestsFlextInfraUvNativeResolution:
     @staticmethod
     def _conformed_alias_document(
         root: Path,
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
     ) -> str:
         """Conform the authored alias fixture without merging dependency tiers.
 
@@ -141,7 +141,7 @@ class TestsFlextInfraUvNativeResolution:
     def _resolved_identity_lock(
         directory: Path,
         view: t.Cli.TomlDocument,
-    ) -> m.Infra.LockedEnvironment:
+    ) -> p.Infra.LockedEnvironment:
         """Write the resolution view and resolve its native identity lock.
 
         Args:

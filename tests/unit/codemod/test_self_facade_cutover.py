@@ -274,7 +274,7 @@ class TestsFlextInfraSelfFacadeCutover:
             module = f"{tier}.models"
         source = (
             "from __future__ import annotations\n"
-            "from flext_core import m, t\n"
+            "from flext_core import m, p, t\n"
             f"type Bag[T] = t.{'MutableSequence' if mutable else 'Sequence'}[T]\n"
             "class Consumer(m.ContractModel):\n"
             '    """Consumer-owned collection declaration."""\n'
@@ -482,7 +482,7 @@ class TestsFlextInfraSelfFacadeCutover:
         consumer = package / "models.py"
         source = (
             "from __future__ import annotations\n"
-            "from flext_core import m, t\n"
+            "from flext_core import m, p, t\n"
             "class Outer:\n"
             "    class Child(m.ContractModel):\n"
             "        value: str\n"
@@ -554,7 +554,7 @@ class TestsFlextInfraSelfFacadeCutover:
             "from typing import Protocol, runtime_checkable\n"
             "from pydantic import (BaseModel, ConfigDict, Field, "
             "PydanticSchemaGenerationError)\n"
-            "from flext_core import m, t\n"
+            "from flext_core import m, p, t\n"
             "@runtime_checkable\n"
             "class Capability(Protocol):\n    value: str\n"
             "STRICT_REJECTED = False\n"

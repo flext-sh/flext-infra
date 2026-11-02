@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, t, u
 from flext_infra._pytest import FlextInfraPytestCollection
 from flext_infra.validate._pytest_runner import FlextInfraPytestRunnerBase
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
@@ -324,7 +324,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     def build_command(
         self,
         report_dir: Path,
-        selection_plan: m.Infra.PytestSelectionPlan | None = None,
+        selection_plan: p.Infra.PytestSelectionPlan | None = None,
         *,
         serialize: bool = False,
         execution_mode: c.Infra.PytestExecutionMode = (

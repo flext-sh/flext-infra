@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,7 @@ from flext_cli import u
 
 import flext_infra
 from flext_infra import c, codemod, m, r, t
+from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseAccessorRename,
     FlextInfraCodemodLoopPhaseDuplicateApply,
@@ -29,12 +31,76 @@ class FlextInfraModHandlers:
     """Compose the existing mod executor using the API's injected capabilities."""
 
     @staticmethod
+    def _mod_semantic_rule(
+        context: p.Infra.ModExecutionContext,
+        root: Path,
+        request: p.Infra.ModRequest,
+        selected: p.Infra.RopeContractRules,
+        catalogue_inputs: tuple[p.Cli.AtomicFileState, ...],
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Plan one declared semantic identity on the existing authenticated owner.
+
+        Returns:
+            The native planning/publication failure, pending preview, or acceptance.
+
+        """
+        outcome = r[t.Cli.ResultValue]
+        structural_root = flext_infra.u.Infra.import_project_roots(root)[0].resolve()
+        with context.rope_workspace(root, structural_root) as workspace:
+            seed = codemod.FlextInfraCodemodSemanticApply.build_source_plan(
+                root, request.consumer_roots, snapshot=workspace.snapshot
+            )
+            if seed.failure:
+                return outcome.from_failure(seed)
+            candidate = seed.value.candidate
+            planned = flext_infra.u.Infra.plan_contract_rules(
+                workspace,
+                flext_infra.u.Infra.candidate_python_sources(
+                    candidate, candidate.inputs
+                ),
+                selected.rules,
+                options=m.Infra.ContractAdmissionOptions(
+                    signature_additions=selected.signature_additions,
+                    signature_removals=selected.signature_removals,
+                    method_transfers=selected.method_transfers,
+                ),
+            )
+            if planned.failure:
+                return outcome.from_failure(planned)
+            staged = FlextInfraStagedPackage.plan_sources(
+                candidate.workspace,
+                {edit.file_path: edit.updated_source for edit in planned.value},
+                options=m.Infra.StageSourceOptions(
+                    snapshot=workspace.snapshot,
+                    workspaces=candidate.workspaces,
+                    inputs=(*candidate.inputs, *catalogue_inputs),
+                    modes=candidate.modes,
+                ),
+            )
+            if staged.failure:
+                return outcome.from_failure(staged)
+            published = codemod.FlextInfraCodemodSemanticApply.publish_candidate(
+                root,
+                m.Infra.SemanticSourcePlan(
+                    candidate=staged.value, consumer_roots=seed.value.consumer_roots
+                ),
+                publish=request.apply,
+            )
+        if published.failure:
+            return outcome.from_failure(published)
+        if not request.apply and published.value:
+            return outcome.fail(
+                f"{request.rule_id}: {len(published.value)} pending semantic file(s)"
+            )
+        return outcome.ok(value=True)
+
+    @staticmethod
     def _semantic_decisions_request(
         root: Path,
         decisions: Path,
         output: Path | None,
         request: p.Infra.ModRequest,
-    ) -> tuple[m.Infra.SemanticRenamePlanCommand, m.Cli.AtomicFileState]:
+    ) -> tuple[p.Infra.SemanticRenamePlanCommand, m.Cli.AtomicFileState]:
         """Validate configured decisions at their required-content boundary.
 
         Returns:
@@ -74,9 +140,9 @@ class FlextInfraModHandlers:
     def _campaign_scope_failure(
         root: Path,
         config_dir: Path,
-        campaigns_config: m.Infra.RefactorCsvCampaignsSpec,
+        campaigns_config: p.Infra.RefactorCsvCampaignsSpec,
     ) -> p.Result[t.Cli.ResultValue] | None:
-        """Reject declared campaigns whose drivers or roots escape their boundary.
+        """Reject declared CSV campaigns that escape their boundary.
 
         Returns:
             The first boundary failure, or ``None`` when every campaign is contained.
@@ -110,11 +176,16 @@ class FlextInfraModHandlers:
     @staticmethod
     def _campaign_input(
         root: Path,
-        declared: m.Infra.RenameCampaignSpec,
+        declared: p.Infra.RenameCampaignSpec,
         *,
         apply: bool,
-    ) -> m.Infra.ApplyRenamesInput:
-        """Bind one declared CSV campaign to this invocation's write mode."""
+    ) -> p.Infra.ApplyRenamesInput:
+        """Bind one declared CSV campaign to this invocation's write mode.
+
+        Returns:
+            The native request retaining every declared campaign option.
+
+        """
         config_dir = root / c.CONFIG_DIR_NAME
         return m.Infra.ApplyRenamesInput(
             repository_root=root,
@@ -132,12 +203,17 @@ class FlextInfraModHandlers:
     @staticmethod
     def _focused_csv(
         root: Path,
-        declared: m.Infra.RenameCampaignSpec,
+        declared: p.Infra.RenameCampaignSpec,
         *,
         apply: bool,
         progress: p.Infra.ModProgress,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Inspect or converge exactly one CSV campaign, never its siblings."""
+        """Inspect or converge exactly one CSV campaign, never its siblings.
+
+        Returns:
+            The original rename failure or converged campaign acceptance.
+
+        """
         runner = codemod.FlextInfraApplyRenames()
         first = runner.run(
             FlextInfraModHandlers._campaign_input(root, declared, apply=apply)
@@ -162,7 +238,12 @@ class FlextInfraModHandlers:
         name: str,
         rope_project: p.Infra.RopeProject,
     ) -> p.Infra.ModRuleOwnerRunner:
-        """Construct the one callback explicitly admitted by configuration."""
+        """Construct the one callback explicitly admitted by configuration.
+
+        Returns:
+            The configured native owner bound to the elected project.
+
+        """
         callbacks: dict[str, p.Infra.ModRuleOwnerRunner] = {
             "import-normalization": FlextInfraCodemodLoopPhaseImportNormalization(),
             "facade-components": FlextInfraCodemodLoopPhaseFacadeComponents(),
@@ -173,6 +254,46 @@ class FlextInfraModHandlers:
         return callbacks[name]
 
     @staticmethod
+    def _converge_selected(
+        root: Path,
+        plan: Callable[[], p.Result[tuple[p.Infra.CodegenFilePlan, ...]]],
+        *,
+        apply: bool,
+        rope: p.Infra.RopeWorkspaceDsl,
+        owner: str,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Publish and replan one selected owner through the existing lifecycle.
+
+        Returns:
+            The original failure, pending preview, or converged acceptance.
+
+        """
+        outcome = r[t.Cli.ResultValue]
+        planned = plan()
+        if planned.failure:
+            return outcome.from_failure(planned)
+        if not planned.value:
+            return outcome.ok(value=True)
+        if not apply:
+            return outcome.fail(
+                f"mod: selected {owner} proposes {len(planned.value)} file change(s)"
+            )
+        published = flext_infra.u.Infra.publish_codegen_plans(root, planned.value)
+        if published.failure:
+            return outcome.from_failure(published)
+        rope.refresh()
+        residual = plan()
+        if residual.failure:
+            return outcome.from_failure(residual)
+        return (
+            outcome.fail(
+                f"mod: selected {owner} retains {len(residual.value)} file change(s)"
+            )
+            if residual.value
+            else outcome.ok(value=True)
+        )
+
+    @staticmethod
     def _focused_callback(
         root: Path,
         callback: p.Infra.ModRuleOwnerRunner,
@@ -180,40 +301,25 @@ class FlextInfraModHandlers:
         apply: bool,
         rope: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Plan and converge one callback without global mod triage."""
+        """Plan and converge one callback without global mod triage.
 
-        def plan() -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        Returns:
+            The callback's original failure or converged native effects.
+
+        """
+
+        def plan() -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
             preflight = codemod.FlextInfraModGateEngine.scan(root, fix=False)
             if preflight.failure:
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(preflight)
+                return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(preflight)
             sources = codemod.FlextInfraCodemodSemanticApply.source_inventory(
-                root, preflight.value
+                root, preflight.value, source_project=rope.rope_project
             )
             return callback.plan(root, preflight.value, rope, sources=sources)
 
-        planned = plan()
-        if planned.failure:
-            return r[t.Cli.ResultValue].from_failure(planned)
-        if not planned.value:
-            return r[t.Cli.ResultValue].ok(value=True)
-        if not apply:
-            return r[t.Cli.ResultValue].fail(
-                f"mod: selected callback {callback.name} proposes "
-                f"{len(planned.value)} file change(s)"
-            )
-        published = flext_infra.u.Infra.publish_codegen_plans(root, planned.value)
-        if published.failure:
-            return r[t.Cli.ResultValue].from_failure(published)
-        rope.refresh()
-        residual = plan()
-        if residual.failure:
-            return r[t.Cli.ResultValue].from_failure(residual)
-        if residual.value:
-            return r[t.Cli.ResultValue].fail(
-                f"mod: selected callback {callback.name} retains "
-                f"{len(residual.value)} file change(s)"
-            )
-        return r[t.Cli.ResultValue].ok(value=True)
+        return FlextInfraModHandlers._converge_selected(
+            root, plan, apply=apply, rope=rope, owner=f"callback {callback.name}"
+        )
 
     @staticmethod
     def _focused_semantic(
@@ -222,12 +328,17 @@ class FlextInfraModHandlers:
         apply: bool,
         rope: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Plan and converge semantic cutover without unrelated mod phases."""
+        """Plan and converge semantic cutover without unrelated mod phases.
 
-        def plan() -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        Returns:
+            The semantic owner's original failure or converged native effects.
+
+        """
+
+        def plan() -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
             preflight = codemod.FlextInfraModGateEngine.scan(root, fix=False)
             if preflight.failure:
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(preflight)
+                return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(preflight)
             sources = codemod.FlextInfraCodemodSemanticApply.source_inventory(
                 root, preflight.value, source_project=rope.rope_project
             )
@@ -235,8 +346,8 @@ class FlextInfraModHandlers:
                 root, preflight.value, rope, sources
             )
             if edits.failure:
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(edits)
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(
+                return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(edits)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(
                 tuple(
                     flext_infra.u.Infra.source_file_plan_from_edit(
                         root,
@@ -248,28 +359,228 @@ class FlextInfraModHandlers:
                 )
             )
 
-        planned = plan()
-        if planned.failure:
-            return r[t.Cli.ResultValue].from_failure(planned)
-        if not planned.value:
-            return r[t.Cli.ResultValue].ok(value=True)
-        if not apply:
-            return r[t.Cli.ResultValue].fail(
-                f"mod: selected semantic cutover proposes {len(planned.value)} file change(s)"
+        return FlextInfraModHandlers._converge_selected(
+            root, plan, apply=apply, rope=rope, owner="semantic cutover"
+        )
+
+    @staticmethod
+    def _declared_selection(
+        context: p.Infra.ModExecutionContext,
+        root: Path,
+        request: p.Infra.ModRequest,
+        progress: p.Infra.ModProgress,
+        campaigns: p.Infra.RefactorCsvCampaignsSpec,
+    ) -> p.Result[t.Cli.ResultValue] | None:
+        """Dispatch one validated campaign or owner without reclassifying rules.
+
+        Returns:
+            The selected owner's result, or None when no declaration matches.
+
+        """
+        campaign = next(
+            (item for item in campaigns.campaigns if item.id == request.rule_id), None
+        )
+        if campaign is not None:
+            boundary = FlextInfraModHandlers._campaign_scope_failure(
+                root,
+                root / c.CONFIG_DIR_NAME,
+                m.Infra.RefactorCsvCampaignsSpec(
+                    campaigns=(campaign,),
+                    owners=campaigns.owners,
+                    semantic_plan=campaigns.semantic_plan,
+                    semantic_decisions=campaigns.semantic_decisions,
+                ),
             )
-        published = flext_infra.u.Infra.publish_codegen_plans(root, planned.value)
-        if published.failure:
-            return r[t.Cli.ResultValue].from_failure(published)
-        rope.refresh()
-        residual = plan()
-        if residual.failure:
-            return r[t.Cli.ResultValue].from_failure(residual)
-        if residual.value:
-            return r[t.Cli.ResultValue].fail(
-                "mod: selected semantic cutover retains "
-                f"{len(residual.value)} file change(s)"
+            return (
+                boundary
+                if boundary is not None
+                else FlextInfraModHandlers._focused_csv(
+                    root, campaign, apply=request.apply, progress=progress
+                )
             )
-        return r[t.Cli.ResultValue].ok(value=True)
+        owner = next(
+            (item for item in campaigns.owners if item.id == request.rule_id), None
+        )
+        if owner is None:
+            return None
+        if request.rename_plan is not None or campaigns.semantic_decisions:
+            return r[t.Cli.ResultValue].fail(
+                "selected semantic/callback owner conflicts with rename plan or "
+                "decisions"
+            )
+        structural_root = flext_infra.u.Infra.import_project_roots(root)[0].resolve()
+        with context.rope_workspace(root, structural_root) as rope:
+            if owner.kind == "semantic":
+                return FlextInfraModHandlers._focused_semantic(
+                    root, apply=request.apply, rope=rope
+                )
+            if owner.callback is None:
+                return r[t.Cli.ResultValue].fail(
+                    "declared callback owner has no callback"
+                )
+            return FlextInfraModHandlers._focused_callback(
+                root,
+                FlextInfraModHandlers._callback(owner.callback, rope.rope_project),
+                apply=request.apply,
+                rope=rope,
+            )
+
+    @staticmethod
+    def _selected_rule(
+        context: p.Infra.ModExecutionContext,
+        root: Path,
+        request: p.Infra.ModRequest,
+        progress: p.Infra.ModProgress,
+        campaigns: p.Infra.RefactorCsvCampaignsSpec,
+    ) -> p.Result[t.Cli.ResultValue] | None:
+        """Resolve every declared rule domain before dispatching a unique identity.
+
+        Returns:
+            A selected result, or None for the existing AST batch executor.
+
+        Raises:
+            ValueError: The request has no rule identity to select.
+
+        """
+        selector = request.rule_id
+        if selector is None:
+            message = "selected-rule execution requires a rule identity"
+            raise ValueError(message)
+        text_rules = codemod.FlextInfraModTextGateEngine.load_rules(root)
+        if text_rules.failure:
+            return r[t.Cli.ResultValue].from_failure(text_rules)
+        with flext_infra.u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            ast_rules = flext_infra.u.Infra.codemod_rule_plan(
+                snapshot, rule_ids=(selector,)
+            )
+        if ast_rules.failure and ast_rules.error_code != c.ErrorCode.NOT_FOUND:
+            return r[t.Cli.ResultValue].from_failure(ast_rules)
+        additions: list[p.Infra.RopeSignatureAddition] = []
+        removals: list[p.Infra.RopeSignatureRemoval] = []
+        transfers: list[p.Infra.RopeMethodTransfer] = []
+        catalogue_inputs: list[p.Cli.AtomicFileState] = []
+        rules = flext_infra.u.Infra.declared_contract_rules(
+            root,
+            signature_additions=additions,
+            signature_removals=removals,
+            method_transfers=transfers,
+            catalogue_inputs=catalogue_inputs,
+        )
+        native = m.Infra.RopeContractRules(
+            rules=tuple(rule for rule in rules if rule.id == request.rule_id),
+            signature_additions=tuple(
+                rule for rule in additions if rule.id == request.rule_id
+            ),
+            signature_removals=tuple(
+                rule for rule in removals if rule.id == request.rule_id
+            ),
+            method_transfers=tuple(
+                rule for rule in transfers if rule.id == request.rule_id
+            ),
+        )
+        native_selected = bool(
+            native.rules
+            or native.signature_additions
+            or native.signature_removals
+            or native.method_transfers
+        )
+        ast_selected = ast_rules.success
+        text_selected = request.rule_id in {rule.rule_id for rule in text_rules.value}
+        if (
+            sum((
+                native_selected,
+                ast_selected,
+                text_selected,
+                any(item.id == request.rule_id for item in campaigns.campaigns),
+                any(item.id == request.rule_id for item in campaigns.owners),
+            ))
+            > 1
+        ):
+            return r[t.Cli.ResultValue].fail(
+                f"ambiguous refactor mod rule selector {request.rule_id}"
+            )
+        if native_selected:
+            return (
+                r[t.Cli.ResultValue].fail(
+                    "a semantic rule cannot also consume a rename plan"
+                )
+                if request.rename_plan is not None
+                else FlextInfraModHandlers._mod_semantic_rule(
+                    context, root, request, native, tuple(catalogue_inputs)
+                )
+            )
+        if text_selected:
+            return codemod.FlextInfraModTextGateEngine.run(
+                root, apply=request.apply, rule_ids=(selector,)
+            )
+        declared = FlextInfraModHandlers._declared_selection(
+            context, root, request, progress, campaigns
+        )
+        return (
+            declared
+            if declared is not None or ast_selected
+            else r[t.Cli.ResultValue].fail(
+                f"unknown refactor mod rule selector: {request.rule_id}"
+            )
+        )
+
+    @staticmethod
+    def _execute_batch(
+        context: p.Infra.ModExecutionContext,
+        root: Path,
+        request: p.Infra.ModRequest,
+        progress: p.Infra.ModProgress,
+        campaigns: p.Infra.RefactorCsvCampaignsSpec | None,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Compose the existing batch once for the selected native scope.
+
+        Returns:
+            The original executor result over the same captured workspace.
+
+        """
+        structural_root = flext_infra.u.Infra.import_project_roots(root)[0].resolve()
+        source_preview = context.source_preview(structural_root)
+        with context.rope_workspace(root, structural_root) as rope:
+            return codemod.FlextInfraCodemodBatchApply(
+                workspace_factory=context.rope_workspace,
+                source_preview=source_preview,
+                repository_root=root,
+                consumer_roots=request.consumer_roots,
+                rule_id=request.rule_id,
+                rule_ids=request.rule_ids,
+                rename_plan=(
+                    request.rename_plan or campaigns.semantic_plan
+                    if campaigns is not None
+                    else None
+                ),
+                apply_changes=request.apply,
+                check_only=request.check,
+                dry_run=request.dry_run_mode,
+                rename_runner=codemod.FlextInfraApplyRenames(),
+                progress=progress,
+                rope=rope,
+                rename_inputs=(
+                    tuple(
+                        FlextInfraModHandlers._campaign_input(
+                            root, declared, apply=request.apply
+                        )
+                        for declared in campaigns.campaigns
+                    )
+                    if campaigns is not None
+                    else ()
+                ),
+                phase_callbacks=(
+                    (
+                        FlextInfraCodemodLoopPhaseImportNormalization(),
+                        FlextInfraCodemodLoopPhaseFacadeComponents(),
+                        FlextInfraCodemodLoopPhaseNamespaceRelocation(),
+                        FlextInfraCodemodLoopPhaseDuplicateApply(),
+                        FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project),
+                    )
+                    if campaigns is not None
+                    else ()
+                ),
+            ).execute()
 
     def mod(
         self: p.Infra.ModExecutionContext,
@@ -285,76 +596,20 @@ class FlextInfraModHandlers:
         root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
             request.repository_root
         )
+        if request.rule_ids is not None:
+            return FlextInfraModHandlers._execute_batch(
+                self, root, request, progress, None
+            )
         selected = flext_infra.u.Infra.load_refactor_csv_campaigns(root)
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)
         campaigns_config = selected.value
         if request.rule_id is not None:
-            text_rules = codemod.FlextInfraModTextGateEngine.load_rules(root)
-            if text_rules.failure:
-                return r[t.Cli.ResultValue].from_failure(text_rules)
-            campaign = next(
-                (
-                    item
-                    for item in campaigns_config.campaigns
-                    if item.id == request.rule_id
-                ),
-                None,
+            routed = FlextInfraModHandlers._selected_rule(
+                self, root, request, progress, campaigns_config
             )
-            owner = next(
-                (
-                    item
-                    for item in campaigns_config.owners
-                    if item.id == request.rule_id
-                ),
-                None,
-            )
-            sources = sum((
-                request.rule_id in {rule.rule_id for rule in text_rules.value},
-                campaign is not None,
-                owner is not None,
-            ))
-            if sources > 1:
-                return r[t.Cli.ResultValue].fail(
-                    f"ambiguous refactor mod rule selector {request.rule_id}"
-                )
-            if request.rule_id in {rule.rule_id for rule in text_rules.value}:
-                return codemod.FlextInfraModTextGateEngine.run(
-                    root, apply=request.apply, rule_ids=(request.rule_id,)
-                )
-            if campaign is not None:
-                scope_failure = FlextInfraModHandlers._campaign_scope_failure(
-                    root,
-                    root / c.CONFIG_DIR_NAME,
-                    campaigns_config.model_copy(update={"campaigns": (campaign,)}),
-                )
-                if scope_failure is not None:
-                    return scope_failure
-                return FlextInfraModHandlers._focused_csv(
-                    root, campaign, apply=request.apply, progress=progress
-                )
-            if owner is not None:
-                if (
-                    request.rename_plan is not None
-                    or campaigns_config.semantic_decisions
-                ):
-                    return r[t.Cli.ResultValue].fail(
-                        "selected semantic/callback owner conflicts with rename plan or decisions"
-                    )
-                structural_root = flext_infra.u.Infra.import_project_roots(root)[
-                    0
-                ].resolve()
-                with self.rope_workspace(root, structural_root) as rope:
-                    if owner.kind == "semantic":
-                        return FlextInfraModHandlers._focused_semantic(
-                            root, apply=request.apply, rope=rope
-                        )
-                    callback = FlextInfraModHandlers._callback(
-                        owner.callback or "", rope.rope_project
-                    )
-                    return FlextInfraModHandlers._focused_callback(
-                        root, callback, apply=request.apply, rope=rope
-                    )
+            if routed is not None:
+                return routed
         rename_plan = request.rename_plan or campaigns_config.semantic_plan
         if campaigns_config.semantic_decisions is not None:
             configured = FlextInfraModHandlers._semantic_decisions_request(
@@ -372,46 +627,9 @@ class FlextInfraModHandlers:
         )
         if scope_failure is not None:
             return scope_failure
-        campaigns = tuple(
-            m.Infra.ApplyRenamesInput(
-                repository_root=root,
-                csv=str(config_dir / declared.csv),
-                roots=tuple(str((root / value).resolve()) for value in declared.roots)
-                or (str(root),),
-                apply=request.apply,
-                bindings=declared.bindings,
-                rename_definitions=declared.rename_definitions,
-                text_globs=declared.text_globs,
-                python_documentation=declared.python_documentation,
-                exclude_globs=declared.exclude_globs,
-            )
-            for declared in campaigns_config.campaigns
+        return FlextInfraModHandlers._execute_batch(
+            self, root, request, progress, campaigns_config
         )
-        structural_root = flext_infra.u.Infra.import_project_roots(root)[0].resolve()
-        source_preview = self.source_preview(structural_root)
-        with self.rope_workspace(root, structural_root) as rope:
-            return codemod.FlextInfraCodemodBatchApply(
-                workspace_factory=self.rope_workspace,
-                source_preview=source_preview,
-                repository_root=root,
-                consumer_roots=request.consumer_roots,
-                rule_id=request.rule_id,
-                rename_plan=rename_plan,
-                apply_changes=request.apply,
-                check_only=request.check,
-                dry_run=request.dry_run_mode,
-                rename_runner=codemod.FlextInfraApplyRenames(),
-                progress=progress,
-                rope=rope,
-                rename_inputs=campaigns,
-                phase_callbacks=(
-                    FlextInfraCodemodLoopPhaseImportNormalization(),
-                    FlextInfraCodemodLoopPhaseFacadeComponents(),
-                    FlextInfraCodemodLoopPhaseNamespaceRelocation(),
-                    FlextInfraCodemodLoopPhaseDuplicateApply(),
-                    FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project),
-                ),
-            ).execute()
 
 
 __all__: list[str] = ["FlextInfraModHandlers"]

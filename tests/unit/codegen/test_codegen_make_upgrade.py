@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, r, tm, u
+from tests import c, r, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
@@ -574,7 +574,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
         tm.ok(
             u.Tests.materialize_codegen_plans(
-                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plan.files),
+                r[tuple[p.Infra.CodegenFilePlan, ...]].ok(plan.files),
             ),
         )
         u.Tests.commit_git_changes(source, "render independent upgrade consumer")

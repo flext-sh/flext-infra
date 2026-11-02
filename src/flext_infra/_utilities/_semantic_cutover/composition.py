@@ -44,7 +44,7 @@ class FlextInfraUtilitiesSemanticComposition(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan authored MRO dispatch, utility alias retirement and every consumer.
 
         Returns:
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesSemanticComposition(
                         *consumers.values(),
                     ),
                 )
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -309,7 +309,7 @@ class FlextInfraUtilitiesSemanticComposition(
     def _retired_statement_rewrites(
         source: str,
         retired: AbstractSet[tuple[int, int]],
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Plan whole-line removal of every retired alias declaration.
 
         Returns:
@@ -332,7 +332,7 @@ class FlextInfraUtilitiesSemanticComposition(
     def _class_base_rewrites(
         source: str,
         bases: Mapping[int, Sequence[str]],
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Plan appending composed bases to their authenticated declarations.
 
         Returns:
@@ -357,7 +357,7 @@ class FlextInfraUtilitiesSemanticComposition(
         project: p.Infra.RopeProject,
         path: Path,
         source: str,
-        edits: tuple[m.Infra.SourceRewrite, ...],
+        edits: tuple[p.Infra.SourceRewrite, ...],
     ) -> str:
         """Apply every authenticated composition edit in one change transaction.
 
@@ -378,7 +378,7 @@ class FlextInfraUtilitiesSemanticComposition(
         lines: Sequence[str],
         declaration: ast.ClassDef,
         additions: Sequence[str],
-    ) -> m.Infra.SourceRewrite:
+    ) -> p.Infra.SourceRewrite:
         """Plan appending composed bases to one class declaration header.
 
         Returns:

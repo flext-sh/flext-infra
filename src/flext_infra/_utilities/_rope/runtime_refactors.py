@@ -110,7 +110,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         resource: p.Infra.RopeResource,
         function: p.Infra.RopeSourceFunction,
         resolver: p.Infra.RopeSourceMemberResolver,
-    ) -> tuple[m.Infra.RopeAttributeReadProof, ...]:
+    ) -> tuple[p.Infra.RopeAttributeReadProof, ...]:
         """Prove attribute reads in declarations against one elected source view.
 
         Imports use Rope's native identities, lazy exports use their literal
@@ -197,7 +197,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         scope: p.Infra.RopeScope,
         resource: p.Infra.RopeResource,
         node: ast.Attribute,
-    ) -> m.Infra.RopeAttributeReadProof:
+    ) -> p.Infra.RopeAttributeReadProof:
         """Authenticate one member fetch and its effective access mechanism.
 
         Returns:
@@ -380,7 +380,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     @classmethod
     def _attribute_reference(
         cls, project: p.Infra.RopeProject, value: p.Infra.RopePyObject
-    ) -> m.Infra.SourceClassReference:
+    ) -> p.Infra.SourceClassReference:
         """Resolve a Rope class or module to its native fully qualified identity.
 
         Returns:
@@ -453,7 +453,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         project: p.Infra.RopeProject,
         binding: p.Infra.RopePyName,
         fallback_member: str,
-    ) -> m.Infra.SourceClassReference:
+    ) -> p.Infra.SourceClassReference:
         """Identify one resolved binding by its source owner or builtin path.
 
         Returns:
@@ -512,7 +512,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     @staticmethod
     def _attribute_descriptor(
         binding: p.Infra.RopePyName,
-    ) -> m.Infra.SourceClassReference | None:
+    ) -> p.Infra.SourceClassReference | None:
         """Admit source classes, plain constants, or builtin staticmethod only.
 
         Returns:
@@ -610,15 +610,15 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def unwrap_class_rewrites(
         cls,
         source: str,
-        layout: m.Infra.ClassBlockLayout,
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+        layout: p.Infra.ClassBlockLayout,
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Remove one Rope-resolved header without changing literal payloads.
 
         The body statements own the dedent width and the wrapper docstring, so
         both derive from the logical facts instead of being passed alongside.
 
         Returns:
-            The resulting ``tuple[m.Infra.SourceRewrite, ...],``.
+            The resulting ``tuple[p.Infra.SourceRewrite, ...],``.
 
         Raises:
             TypeError: If Rope's source lines do not satisfy their public contract.
@@ -770,7 +770,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def signature_addition_changes(
         cls,
         project: p.Infra.RopeProject,
-        addition: m.Infra.RopeSignatureAddition,
+        addition: p.Infra.RopeSignatureAddition,
         paths: Sequence[Path],
     ) -> p.Infra.RopeChangeSet:
         """Propagate one required keyword through native declaration identities.
@@ -855,7 +855,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def signature_replacement_changes(
         cls,
         project: p.Infra.RopeProject,
-        removal: m.Infra.RopeSignatureRemoval,
+        removal: p.Infra.RopeSignatureRemoval,
         paths: Sequence[Path],
     ) -> p.Infra.RopeChangeSet | None:
         """Replace exact parameter reads through native semantic restructuring.
@@ -914,7 +914,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def signature_removal_changes(
         cls,
         project: p.Infra.RopeProject,
-        removal: m.Infra.RopeSignatureRemoval,
+        removal: p.Infra.RopeSignatureRemoval,
         paths: Sequence[Path],
     ) -> p.Infra.RopeChangeSet | None:
         """Retire a body-free parameter through native signature propagation.
@@ -1013,7 +1013,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def method_transfer_changes(
         cls,
         project: p.Infra.RopeProject,
-        transfer: m.Infra.RopeMethodTransfer,
+        transfer: p.Infra.RopeMethodTransfer,
         paths: Sequence[Path],
         resolver: p.Infra.RopeSourceMemberResolver,
     ) -> p.Infra.RopeChangeSet | None:
@@ -1087,6 +1087,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                 destination_resource,
                 destination_offset,
                 receiver_rewrites=dict(transfer.receiver_rewrites),
+                resolve_binding=lambda scope, node: cls._native_expression_binding(
+                    project, scope, node, resolver
+                ),
                 **arguments,
             )
         else:
@@ -1106,7 +1109,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def _method_transfer_moves(
         cls,
         project: p.Infra.RopeProject,
-        transfer: m.Infra.RopeMethodTransfer,
+        transfer: p.Infra.RopeMethodTransfer,
         paths: Sequence[Path],
         owner: p.Infra.RopeSourceClass,
     ) -> list[tuple[p.Infra.RopeResource, int, str]]:
@@ -1168,7 +1171,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
     def restructure_changes(
         cls,
         rope_project: p.Infra.RopeProject,
-        request: m.Infra.RopeRestructureRequest,
+        request: p.Infra.RopeRestructureRequest,
     ) -> p.Infra.RopeChangeSet:
         """Plan Rope 1.14 semantic changes without invoking Project.do.
 
@@ -1224,7 +1227,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         offset: int | None,
         new_name: str,
         *,
-        options: m.Infra.RopeRenameOptions,
+        options: p.Infra.RopeRenameOptions,
     ) -> t.Infra.RopeChangeSet:
         renamer_factory = cls.runtime_callable("rope.refactor.rename", "Rename")
         renamer = renamer_factory(rope_project, resource, offset)

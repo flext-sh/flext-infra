@@ -949,7 +949,7 @@ class FlextInfraUtilitiesDocsApi:
         contract: t.JsonMapping,
         *,
         rope_project: p.Infra.RopeProject,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> Sequence[p.Infra.AuditIssue]:
         """Return audit issues for public modules and exports missing docstrings.
 
         Returns:
@@ -979,7 +979,7 @@ class FlextInfraUtilitiesDocsApi:
         contract: t.JsonMapping,
         *,
         rope_project: p.Infra.RopeProject,
-    ) -> m.Infra.DocstringCoverage:
+    ) -> p.Infra.DocstringCoverage:
         """Aggregate docstring coverage over every public target.
 
         ``percent`` is computed here (behavior lives in ``u``); the model is a

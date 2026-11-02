@@ -8,15 +8,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, Self
+from typing import Annotated, ClassVar, Self
 
 from flext_cli import m, u
+from packaging.utils import canonicalize_name
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraModelsCodemod:
@@ -130,19 +128,19 @@ class FlextInfraModelsCodemod:
         """Closed descriptor-authenticated sources used by occurrence admission."""
 
         states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(description="Consumer and resolved Python import-owner inputs"),
         ]
 
         @m.field_validator("states")
         @classmethod
         def unique_inputs(
-            cls, states: tuple[m.Cli.AtomicFileState, ...]
-        ) -> tuple[m.Cli.AtomicFileState, ...]:
+            cls, states: tuple[p.Cli.AtomicFileState, ...]
+        ) -> tuple[p.Cli.AtomicFileState, ...]:
             """Store each authenticated input once; conflicting identities fail.
 
             Returns:
-                The resulting ``tuple[m.Cli.AtomicFileState, ...]``.
+                The resulting ``tuple[p.Cli.AtomicFileState, ...]``.
 
             Raises:
                 ValueError: If binding source snapshots disagree.
@@ -163,7 +161,7 @@ class FlextInfraModelsCodemod:
         the complete payload remains in the gate's raw scanner output.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(strict=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(strict=True)
 
         file: Annotated[str, m.Field(min_length=1, description="Reported source path")]
         rule_id: Annotated[
@@ -280,6 +278,49 @@ class FlextInfraModelsCodemod:
             description="Elected repository root, or None for packaged policy"
         )
 
+    class RopeContractScopeTarget(m.ContractModel):
+        """One exact distribution and module admitted by a contract rule."""
+
+        distribution: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical PEP 503 distribution identity"),
+        ]
+        module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact dotted Python module identity"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_identity(self) -> Self:
+            if canonicalize_name(self.distribution) != self.distribution:
+                msg = (
+                    "contract scope distribution must use its canonical PEP 503 "
+                    "identity"
+                )
+                raise ValueError(msg)
+            if any(not part.isidentifier() for part in self.module.split(".")):
+                msg = "contract scope module must be a dotted Python identifier"
+                raise ValueError(msg)
+            return self
+
+    class RopeContractScope(m.ContractModel):
+        """Closed rule target set; unlisted source modules are never candidates."""
+
+        targets: Annotated[
+            Sequence[FlextInfraModelsCodemod.RopeContractScopeTarget],
+            m.Field(min_length=1, description="Exact distribution/module target pairs"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _unique_targets(self) -> Self:
+            identities = tuple(
+                (item.distribution, item.module) for item in self.targets
+            )
+            if len(identities) != len(set(identities)):
+                msg = "contract scope targets must be unique"
+                raise ValueError(msg)
+            return self
+
     class RopeContractRule(m.ContractModel):
         """Identity-constrained native Rope restructuring of a Python contract."""
 
@@ -332,6 +373,23 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Explicit Git revision authenticating retired provider "
             "declarations",
+        )
+        scope: FlextInfraModelsCodemod.RopeContractScope | None = m.Field(
+            default=None,
+            description=(
+                "Closed distribution/module admission set; absent keeps the rule "
+                "universal"
+            ),
+        )
+        annotation_only: bool = m.Field(
+            default=False,
+            description="Admit matches only inside declared type annotations",
+        )
+        annotation_member_source: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description=(
+                "Exact source namespace admitted for a proven annotation member move"
+            ),
         )
         phase: t.DocumentInput[c.Infra.SemanticCutoverPhase] = m.Field(
             default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
@@ -451,8 +509,53 @@ class FlextInfraModelsCodemod:
             description="Native module/member retired after receiver transfer",
         )
 
+        def _validate_annotation_member_template(self) -> None:
+            """Require a precise source template and authenticated target owner.
+
+            Raises:
+                ValueError: The annotation rule cannot prove its target member owner.
+
+            """
+            if self.annotation_member_source is None:
+                return
+            member = ".${member}"
+            target = self.goal.removesuffix(member)
+            owner = self.bindings.get(target)
+            source_owner = self.bindings.get(self.annotation_member_source)
+            valid = (
+                self.annotation_only
+                and self.operation == c.Infra.RopeContractOperation.RESTRUCTURE
+                and self.pattern == "${receiver}.${member}"
+                and self.goal.endswith(member)
+                and self.goal.count(member) == 1
+                and "${" not in target
+                and self.scope is not None
+                and all(
+                    part.isidentifier()
+                    for value in (
+                        self.annotation_member_source,
+                        target,
+                        owner or "",
+                        source_owner or "",
+                    )
+                    for part in value.split(".")
+                )
+                and owner is not None
+                and source_owner is not None
+            )
+            if not valid:
+                msg = "annotation member rules require a native source and bound target"
+                raise ValueError(msg)
+
         @m.model_validator(mode="after")
         def _validate_call_target(self) -> Self:
+            self._validate_annotation_member_template()
+            if (
+                self.annotation_only
+                and self.operation != c.Infra.RopeContractOperation.RESTRUCTURE
+            ):
+                msg = "annotation-only rules require native restructure"
+                raise ValueError(msg)
             for capture in (self.value_default, self.factory_default):
                 if capture is not None and f"${{{capture}}}" not in self.pattern:
                     msg = "native default proof must name a pattern capture"

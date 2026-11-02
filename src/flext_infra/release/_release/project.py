@@ -20,15 +20,15 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
 
     def _build_project(
         self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        policy: m.Infra.BuildPolicy,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+        policy: p.Infra.BuildPolicy,
         target: tuple[str, Path],
         versions: Mapping[str, str],
-    ) -> p.Result[m.Infra.BuildRecord]:
+    ) -> p.Result[p.Infra.BuildRecord]:
         """Build one project; its fail-loud error becomes its failed, logged record.
 
         Returns:
-            The resulting ``p.Result[m.Infra.BuildRecord]``.
+            The resulting ``p.Result[p.Infra.BuildRecord]``.
 
         """
         name = target[0]
@@ -43,7 +43,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
                     Path(temporary),
                 )
         except OSError as exc:
-            built = r[m.Infra.BuildRecord].fail_op(
+            built = r[p.Infra.BuildRecord].fail_op(
                 f"manage temporary release build for {name}",
                 exc,
             )
@@ -57,16 +57,16 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
 
     def _build_staged(
         self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        policy: m.Infra.BuildPolicy,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+        policy: p.Infra.BuildPolicy,
         target: tuple[str, Path],
         versions: Mapping[str, str],
         temporary: Path,
-    ) -> p.Result[m.Infra.BuildRecord]:
+    ) -> p.Result[p.Infra.BuildRecord]:
         """Stage, render, build, validate and persist one project in ``temporary``.
 
         Returns:
-            The resulting ``p.Result[m.Infra.BuildRecord]``.
+            The resulting ``p.Result[p.Infra.BuildRecord]``.
 
         """
         name, path = target
@@ -79,11 +79,11 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         )
         prepared = self._stage_release_source(path, stage, policy, version, versions)
         if prepared.failure:
-            return r[m.Infra.BuildRecord].from_failure(prepared)
+            return r[p.Infra.BuildRecord].from_failure(prepared)
         staged, rendered, boundary = prepared.value
         written = self._write_release_metadata(name, stage, output_dir, rendered)
         if written.failure:
-            return r[m.Infra.BuildRecord].from_failure(written)
+            return r[p.Infra.BuildRecord].from_failure(written)
         if ctx.dry_run:
             return self._write_release_text(
                 log,
@@ -96,7 +96,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
             source_date_epoch=staged[0].source_date_epoch,
         )
         if build.failure:
-            return r[m.Infra.BuildRecord].from_failure(build)
+            return r[p.Infra.BuildRecord].from_failure(build)
         failed = self._logged_build_verdict(build.value, log, target, staged)
         if failed is not None:
             return failed
@@ -125,17 +125,17 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         self,
         path: Path,
         stage: Path,
-        policy: m.Infra.BuildPolicy,
+        policy: p.Infra.BuildPolicy,
         version: str,
         versions: Mapping[str, str],
-    ) -> p.Result[tuple[tuple[m.Infra.SourceSnapshot, str], str, Sequence[str]]]:
+    ) -> p.Result[tuple[tuple[p.Infra.SourceSnapshot, str], str, Sequence[str]]]:
         """Stage, render, and boundary-check one project's release source.
 
         Returns:
             The resulting ``(staged, rendered, boundary_roots)`` triple.
 
         """
-        result_type = r[tuple[tuple[m.Infra.SourceSnapshot, str], str, Sequence[str]]]
+        result_type = r[tuple[tuple[p.Infra.SourceSnapshot, str], str, Sequence[str]]]
         staged = self._stage_source(path, stage, Path(policy.gitleaks_policy_path))
         if staged.failure:
             return result_type.from_failure(staged)
@@ -188,8 +188,8 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         build: p.Cli.CommandOutput,
         log: Path,
         target: tuple[str, Path],
-        staged: tuple[m.Infra.SourceSnapshot, str],
-    ) -> p.Result[m.Infra.BuildRecord] | None:
+        staged: tuple[p.Infra.SourceSnapshot, str],
+    ) -> p.Result[p.Infra.BuildRecord] | None:
         """Write the build log and return its failed record, or ``None`` on success.
 
         Returns:
@@ -199,9 +199,9 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         output = (build.stdout + "\n" + build.stderr).strip()
         logged = self._write_release_text(log, output + "\n")
         if logged.failure:
-            return r[m.Infra.BuildRecord].from_failure(logged)
+            return r[p.Infra.BuildRecord].from_failure(logged)
         if not u.Cli.process_succeeded(build.outcome):
-            return r[m.Infra.BuildRecord].ok(
+            return r[p.Infra.BuildRecord].ok(
                 self._record(
                     target,
                     log,
@@ -216,7 +216,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         stage: Path,
         *,
         dist: Path,
-        policy: m.Infra.BuildPolicy,
+        policy: p.Infra.BuildPolicy,
         source_date_epoch: int,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run the isolated release build of one staged source tree.
@@ -253,17 +253,17 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
         cls,
         dist: Path,
         destination: Path,
-        expectation: m.Infra.ArtifactExpectation,
-    ) -> p.Result[tuple[m.Infra.BuildArtifact, ...]]:
+        expectation: p.Infra.ArtifactExpectation,
+    ) -> p.Result[tuple[p.Infra.BuildArtifact, ...]]:
         """Validate exactly one wheel and one sdist, then persist the set atomically.
 
         An existing set is immutable: it is accepted only byte for byte.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.BuildArtifact], ...],``.
+            The resulting ``p.Result[tuple[p.Infra.BuildArtifact], ...],``.
 
         """
-        result_type = r[tuple[m.Infra.BuildArtifact, ...]]
+        result_type = r[tuple[p.Infra.BuildArtifact, ...]]
         try:
             entries = tuple(sorted(dist.iterdir()))
         except OSError as exc:
@@ -281,7 +281,7 @@ class FlextInfraReleaseReleaseProject(FlextInfraReleaseReleaseMetadata):
                 f"expected one wheel and one sdist, found "
                 f"{len(wheels)} wheel(s) and {len(sdists)} sdist(s)",
             )
-        built: MutableSequence[m.Infra.BuildArtifact] = []
+        built: MutableSequence[p.Infra.BuildArtifact] = []
         for source in sources:
             validated = cls._validate_artifact(source, expectation)
             if validated.failure:

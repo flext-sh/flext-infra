@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra.gates.direnv import FlextInfraGatesDirenv
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
-from tests import c, m, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +23,7 @@ class TestsFlextInfraDirenvGate:
     """Tests for ``FlextInfraGatesDirenv``."""
 
     @staticmethod
-    def allowed_check(root: Path) -> m.Infra.GateExecution:
+    def allowed_check(root: Path) -> p.Infra.GateExecution:
         """Check one workspace whose ``.envrc`` the real direnv approved.
 
         Returns:
@@ -41,7 +41,7 @@ class TestsFlextInfraDirenvGate:
         root: Path,
         envrc: str,
         code: str,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Write ``envrc``, run the gate, and require it to fail with ``code``.
 
         Returns:
@@ -58,7 +58,7 @@ class TestsFlextInfraDirenvGate:
         return execution
 
     @staticmethod
-    def issue_codes(execution: m.Infra.GateExecution) -> Sequence[str]:
+    def issue_codes(execution: p.Infra.GateExecution) -> Sequence[str]:
         """Return the issue codes one gate execution reported, in order.
 
         Returns:
@@ -69,7 +69,7 @@ class TestsFlextInfraDirenvGate:
 
     @staticmethod
     def messages(
-        violations: tuple[m.Infra.EnvironmentContractViolation, ...],
+        violations: tuple[p.Infra.EnvironmentContractViolation, ...],
     ) -> Sequence[str]:
         """Render typed violations exactly as the gate reports them.
 

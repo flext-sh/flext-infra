@@ -57,7 +57,7 @@ class FlextInfraUtilitiesDocsFix:
 
     @staticmethod
     def fix_python_codeblocks(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         path: Path,
         content: str,
@@ -87,7 +87,7 @@ class FlextInfraUtilitiesDocsFix:
             f"{rel}#block.py",
             "-",
         )
-        replacements: MutableMapping[m.Cli.MarkdownFence, tuple[str, str]] = {}
+        replacements: MutableMapping[p.Cli.MarkdownFence, tuple[str, str]] = {}
         for fence in filter(
             FlextInfraUtilitiesDocsBase.docs_is_python_fence,
             u.Cli.markdown_fences(content),
@@ -176,9 +176,9 @@ class FlextInfraUtilitiesDocsFix:
 
     @staticmethod
     def docs_write_fix_reports(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
-        items: Sequence[m.Infra.DocsPhaseItemModel],
+        items: Sequence[p.Infra.DocsPhaseItemModel],
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""

@@ -101,18 +101,18 @@ snapshots:
       style: secondary
       start: 38
       end: 56
-  "from flext_core import FlextModels, m\nclass AiHubModels(FlextModels):\n    pass\nm = AiHubModels\n__all__ = [\"AiHubModels\", \"m\"]\n":
+  "from flext_core import FlextModels, m\nclass m.AiHub(FlextModels):\n    pass\nm = m.AiHub = [\"m.AiHub", \"m\"]\n":
     labels:
-    - source: m = AiHubModels
+    - source: m = m.AiHub
       style: primary
       start: 79
       end: 94
     - source: |
         from flext_core import FlextModels, m
-        class AiHubModels(FlextModels):
+        class m.AiHub(FlextModels):
             pass
-        m = AiHubModels
-        __all__ = ["AiHubModels", "m"]
+        m = m.AiHub
+        __all__ = ["m.AiHub", "m"]
       style: secondary
       start: 0
       end: 126
@@ -120,7 +120,7 @@ snapshots:
       style: secondary
       start: 79
       end: 80
-    - source: m = AiHubModels
+    - source: m = m.AiHub
       style: secondary
       start: 79
       end: 94

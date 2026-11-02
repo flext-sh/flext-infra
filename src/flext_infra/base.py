@@ -12,7 +12,7 @@ from typing import Self, override
 from flext_cli import m, p, r
 from flext_core import FlextService
 
-from flext_infra import c, settings
+from flext_infra import c, p, settings
 from flext_infra._base import FlextInfraBasePayload
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._protocols import FlextInfraProtocolsBase

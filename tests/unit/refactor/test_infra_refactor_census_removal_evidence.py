@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import infra
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests import m, tm
+from tests import m, p, tm
 
 
 class TestsFlextInfraRefactorCensusRemovalEvidence:
@@ -22,7 +22,7 @@ class TestsFlextInfraRefactorCensusRemovalEvidence:
         name: str,
         references_count: int,
         evidence_collected: bool,
-    ) -> m.Infra.Object:
+    ) -> p.Infra.Object:
         """Build one census record with the classification inputs under test.
 
         Args:

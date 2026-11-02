@@ -1,7 +1,7 @@
 id: rewire-type-adapter-construction-missing-u-import
 valid:
 - |
-  from flext_core import m, u
+  from flext_core import m, p, u
 
   ADAPTER = u.type_adapter(int)
 - |
@@ -9,15 +9,15 @@ valid:
 
   ADAPTER = TypeAdapter(int)
 - |
-  from ai_hub import m, u
+  from ai_hub import m, p, u
 
   ADAPTER = u.type_adapter(int)
 - |
-  from tests import m, u
+  from tests import m, p, u
 
   ADAPTER = u.type_adapter(int)
 - |
-  from . import m, u
+  from . import m, p, u
 
   ADAPTER = u.type_adapter(int)
 invalid:
@@ -26,7 +26,7 @@ invalid:
 
   ADAPTER = m.TypeAdapter(int)
 - |
-  from ai_hub import m, u as utilities
+  from ai_hub import m, p, u as utilities
 
   ADAPTER = m.TypeAdapter(int)
 - |

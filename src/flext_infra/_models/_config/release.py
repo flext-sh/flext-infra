@@ -130,7 +130,7 @@ class FlextInfraModelsConfigRelease:
 
         # The bump map is consumed as enum members by the strict release plan,
         # so the contract base's value coercion is switched off here.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             strict=False,
             frozen=True,
             extra="forbid",

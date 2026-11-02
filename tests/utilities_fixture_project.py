@@ -13,7 +13,7 @@ from pathlib import Path
 from packaging.utils import canonicalize_name
 
 from flext_infra import config, u
-from tests import c, m, t, tm
+from tests import c, m, p, t, tm
 
 # Fixture scenario data, declared here and nowhere else: flext-infra ships no
 # provider registry, so a test that needs a provider declares the one it means
@@ -45,7 +45,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
         name: str = "test-project",
         package_name: str = "test_project",
         traits: ProjectInfoTraits | None = None,
-    ) -> m.Infra.ProjectInfo:
+    ) -> p.Infra.ProjectInfo:
         """Provide the typed test helper `create_project_info`.
 
         Returns:
@@ -67,7 +67,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
         )
 
     @staticmethod
-    def provider(name: str = FIXTURE_PROVIDER_NAME) -> m.Infra.ProviderIdentitySpec:
+    def provider(name: str = FIXTURE_PROVIDER_NAME) -> p.Infra.ProviderIdentitySpec:
         """Return the declared fixture provider identity for one provider key.
 
         Returns:
@@ -118,7 +118,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
         )
 
     @staticmethod
-    def integration() -> m.Infra.WorkspaceIntegrationSpec:
+    def integration() -> p.Infra.WorkspaceIntegrationSpec:
         """Return the fixture's declared integration line (provider + branch).
 
         Returns:
@@ -133,11 +133,11 @@ class TestsFlextInfraUtilitiesProjectFixture:
 
     @staticmethod
     def workspace_spec(
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
         *,
-        project: m.Infra.ProjectSpec | None = None,
-        subprojects: tuple[m.Infra.RepositoryRef, ...] = (),
-    ) -> m.Infra.WorkspaceSpec:
+        project: p.Infra.ProjectSpec | None = None,
+        subprojects: tuple[p.Infra.RepositoryRef, ...] = (),
+    ) -> p.Infra.WorkspaceSpec:
         """Build the workspace one fixture repository declares.
 
         Identity, Beads and the integration line are all derived from the
@@ -169,7 +169,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
         *,
         role: c.Infra.MakeProfile | None = None,
         path: Path | None = None,
-    ) -> m.Infra.RepositoryRef:
+    ) -> p.Infra.RepositoryRef:
         """Build a repository reference from the declared fixture provider.
 
         flext-infra owns no catalog of projects, so a test that needs a
@@ -208,7 +208,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
         )
 
     @staticmethod
-    def beads_project(name: str) -> m.Infra.BeadsProjectSpec:
+    def beads_project(name: str) -> p.Infra.BeadsProjectSpec:
         """Build portable Beads identity for one repository fixture.
 
         Returns:
@@ -223,7 +223,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
         )
 
     @staticmethod
-    def project_spec(name: str, *, cli_module: bool = True) -> m.Infra.ProjectSpec:
+    def project_spec(name: str, *, cli_module: bool = True) -> p.Infra.ProjectSpec:
         """Build deterministic scaffold metadata for one project fixture.
 
         Returns:

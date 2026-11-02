@@ -262,7 +262,7 @@ class FlextInfraModelsGit(
         arbitrary pair; there is no separate pair verb.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         ancestor: Annotated[t.NonEmptyStr, m.Field(description="Candidate ancestor")]
         descendant: Annotated[
@@ -388,7 +388,7 @@ class FlextInfraModelsGit(
         Namespaces include ``refs/heads`` and ``refs/remotes/origin``.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         namespace: Annotated[t.NonEmptyStr, m.Field(description="Ref namespace")]
 

@@ -107,9 +107,9 @@ class FlextInfraReleaseReleaseBoundary(FlextInfraProjectSelectionServiceBase[boo
         log: Path,
         *,
         exit_code: int,
-        artifacts: Sequence[m.Infra.BuildArtifact] = (),
-        source: tuple[m.Infra.SourceSnapshot, str] | None = None,
-    ) -> m.Infra.BuildRecord:
+        artifacts: Sequence[p.Infra.BuildArtifact] = (),
+        source: tuple[p.Infra.SourceSnapshot, str] | None = None,
+    ) -> p.Infra.BuildRecord:
         """Model one strict build record with absolute paths.
 
         ``target`` is the release target (project name, project path);

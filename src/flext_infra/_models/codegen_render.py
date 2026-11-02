@@ -28,7 +28,22 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     """Typed render contexts for generated codegen artifacts."""
 
     class ModelProtocolRenderContext(m.ContractModel):
-        """Exact declaration text supplied to the protocol module template."""
+        """Exact declarations supplied to one mirrored protocol module."""
+
+        class ModelProtocolContract(m.ContractModel):
+            """One nested data contract within its declaring module."""
+
+            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+                str_strip_whitespace=False,
+            )
+
+            name: t.NonEmptyStr = m.Field(description="The nested structural contract")
+            type_parameters: tuple[str, ...] = m.Field(
+                description="Complete parameter declarations with bounds and defaults"
+            )
+            declarations: tuple[str, ...] = m.Field(
+                description="Field declarations retaining their annotation metadata"
+            )
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             str_strip_whitespace=False,
@@ -41,12 +56,8 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             description="Canonical import lines for referenced protocol owners"
         )
         owner: t.NonEmptyStr = m.Field(description="The declaring protocol namespace")
-        name: t.NonEmptyStr = m.Field(description="The nested structural contract")
-        type_parameters: tuple[str, ...] = m.Field(
-            description="Complete parameter declarations with bounds and defaults"
-        )
-        declarations: tuple[str, ...] = m.Field(
-            description="Field declarations retaining their annotation metadata"
+        contracts: tuple[ModelProtocolContract, ...] = m.Field(
+            description="All data contracts declared by the corresponding model module"
         )
 
     class GithubWorkflowRenderSpec(FlextInfraModelsConfigContract.ConfigContract):

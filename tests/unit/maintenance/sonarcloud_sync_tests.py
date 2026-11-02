@@ -20,7 +20,7 @@ import pytest
 
 from flext_infra import config, m
 from flext_infra.maintenance import FlextInfraMaintenanceSonarcloud
-from tests import c, t, tm, u
+from tests import c, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,7 +33,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
     _REPOSITORY = "example-repo"
 
     @staticmethod
-    def _spec(count: int | None = None) -> m.Infra.SonarcloudSpec:
+    def _spec(count: int | None = None) -> p.Infra.SonarcloudSpec:
         """Use the current SSOT or validate a different exclusion cardinality.
 
         Returns:
@@ -81,7 +81,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         return tm.ok(u.Cli.json_dumps({"settings": settings}))
 
     @staticmethod
-    def _pairs(spec: m.Infra.SonarcloudSpec) -> tuple[tuple[str, str], ...]:
+    def _pairs(spec: p.Infra.SonarcloudSpec) -> tuple[tuple[str, str], ...]:
         """Read expectations from the exact typed config the service receives.
 
         Returns:

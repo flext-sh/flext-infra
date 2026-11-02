@@ -2,28 +2,28 @@
 # family-base file scope is resolved only in a native stage.
 id: ban-family-base-own-import
 valid:
-  - |
-    from ai_hub._models._base.aihubmodelsbase_part_03 import AiHubModelsBasePart
-  - |
-    import ai_hub._models._base.aihubmodelsbase_part_03
-  - |
-    import ai_hub._models._base.aihubmodelsbase_part_03 as model_part
-  # Another package is no own module.
-  - |
-    from flext_infra import t
-  # The family's public compose module is the sanctioned static surface.
-  - |
-    from ai_hub.models import AiHubModels
+- |
+  from ai_hub._models._base.aihubmodelsbase_part_03 import m.AiHub
+- |
+  import ai_hub._models._base.aihubmodelsbase_part_03
+- |
+  import ai_hub._models._base.aihubmodelsbase_part_03 as model_part
+# Another package is no own module.
+- |
+  from flext_infra import t
+# The family's public compose module is the sanctioned static surface.
+- |
+  from ai_hub.models import m.AiHub
 invalid:
-  - |
-    if TYPE_CHECKING:
-        from ai_hub import t
-  - |
-    import ai_hub
-  - |
-    import ai_hub._settings
-  - |
-    import ai_hub._constants.make as make
-  - |
-    if TYPE_CHECKING:
-        import ai_hub._models
+- |
+  if TYPE_CHECKING:
+      from ai_hub import t
+- |
+  import ai_hub
+- |
+  import ai_hub._settings
+- |
+  import ai_hub._constants.make as make
+- |
+  if TYPE_CHECKING:
+      import ai_hub._models

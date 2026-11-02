@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from flext_core import p
 
-    from flext_infra import m, t
+    from flext_infra import m, p, t
 
 
 @runtime_checkable
@@ -608,17 +608,17 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
 
         def class_order(
-            self, declarations: Sequence[m.Infra.SourceClassReference]
+            self, declarations: Sequence[p.Infra.SourceClassReference]
         ) -> t.StrTuple: ...
 
         def class_reaches(
             self,
-            declarations: Sequence[m.Infra.SourceClassReference],
-            anchors: Sequence[m.Infra.SourceClassReference],
+            declarations: Sequence[p.Infra.SourceClassReference],
+            anchors: Sequence[p.Infra.SourceClassReference],
         ) -> tuple[frozenset[str], ...]: ...
 
         def class_defers_annotations(
-            self, qualified: m.Infra.SourceClassReference
+            self, qualified: p.Infra.SourceClassReference
         ) -> bool: ...
 
     @runtime_checkable
@@ -644,16 +644,16 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         def access(self) -> Literal["module", "class", "instance"]: ...
 
         @property
-        def base(self) -> m.Infra.SourceClassReference: ...
+        def base(self) -> p.Infra.SourceClassReference: ...
 
         @property
-        def accessor(self) -> m.Infra.SourceClassReference: ...
+        def accessor(self) -> p.Infra.SourceClassReference: ...
 
         @property
-        def member(self) -> m.Infra.SourceClassReference: ...
+        def member(self) -> p.Infra.SourceClassReference: ...
 
         @property
-        def descriptor(self) -> m.Infra.SourceClassReference | None: ...
+        def descriptor(self) -> p.Infra.SourceClassReference | None: ...
 
         @property
         def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...

@@ -16,7 +16,7 @@ from packaging.requirements import Requirement
 
 from flext_infra import FlextInfraConfig
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 from tests.unit.pyproject_conform_topology_support import (
     TestsFlextInfraPyprojectConformTopologySupport,
 )
@@ -253,7 +253,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
         other_member = self._member_ref("acme-charts", "apps/acme-charts")
         workspace = self._workspace(flext_member, other_member).model_copy(
             update={
-                "integration": m.Infra.WorkspaceIntegrationSpec(
+                "integration": p.Infra.WorkspaceIntegrationSpec(
                     provider=u.Tests.integration().provider,
                     branch=workspace_line,
                 ),
@@ -614,7 +614,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
             eq=False,
         )
 
-    def _assert_direct_source(self, rendered: str, ref: m.Infra.RepositoryRef) -> None:
+    def _assert_direct_source(self, rendered: str, ref: p.Infra.RepositoryRef) -> None:
         """Assert the canonical standalone output: one direct Git requirement."""
         dependencies = u.Tests.toml_strings_at(rendered, "project", "dependencies")
         tm.that(dependencies, eq=(self._inline_requirement(ref),))

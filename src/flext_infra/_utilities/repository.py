@@ -44,7 +44,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     def rewrite_git_requirement_reference(
         cls,
         requirement: str,
-        migration: m.Infra.GitSourceReferenceMigration,
+        migration: p.Infra.GitSourceReferenceMigration,
     ) -> p.Result[str]:
         """Replace a selected explicit Git ref without changing requirement semantics.
 
@@ -109,7 +109,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     def _rewritten_requirement_arrays(
         cls,
         requirements: Sequence[t.JsonValue],
-        migration: m.Infra.GitSourceReferenceMigration,
+        migration: p.Infra.GitSourceReferenceMigration,
     ) -> p.Result[Sequence[str]]:
         """Rewrite every selected Git reference inside the dependency arrays.
 
@@ -177,7 +177,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     def _rewritten_git_source_tables(
         cls,
         tables: Sequence[t.MutableJsonMapping],
-        migration: m.Infra.GitSourceReferenceMigration,
+        migration: p.Infra.GitSourceReferenceMigration,
     ) -> p.Result[Sequence[str]]:
         """Rewrite every selected Git reference inside the native source tables.
 
@@ -206,7 +206,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     def rewrite_git_source_references(
         cls,
         payload: t.MutableJsonMapping,
-        migration: m.Infra.GitSourceReferenceMigration,
+        migration: p.Infra.GitSourceReferenceMigration,
     ) -> p.Result[Sequence[str]]:
         """Migrate only dependency arrays and native UV/Poetry Git source tables.
 
@@ -235,7 +235,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         cls,
         name: str,
         source: t.MutableJsonMapping,
-        migration: m.Infra.GitSourceReferenceMigration,
+        migration: p.Infra.GitSourceReferenceMigration,
     ) -> p.Result[Sequence[str]]:
         """Retain a native source table's selector type and all other fields.
 
@@ -272,9 +272,9 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     def configured_repository_ref(
         cls,
         *,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         repository_root: Path,
-    ) -> p.Result[m.Infra.RepositoryRef]:
+    ) -> p.Result[p.Infra.RepositoryRef]:
         """Detect one reference for the infrastructure distribution.
 
         The URL is detected — never looked up in a catalog — from the first
@@ -285,7 +285,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         checkout that declares none fails loudly.
 
         Returns:
-            The resulting ``p.Result[m.Infra.RepositoryRef]``.
+            The resulting ``p.Result[p.Infra.RepositoryRef]``.
 
         """
         source = codegen.infra_repository
@@ -295,8 +295,8 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
             repository_root=repository_root,
         )
         if line.failure:
-            return r[m.Infra.RepositoryRef].from_failure(line)
-        return r[m.Infra.RepositoryRef].ok(
+            return r[p.Infra.RepositoryRef].from_failure(line)
+        return r[p.Infra.RepositoryRef].ok(
             m.Infra.RepositoryRef(
                 name=distribution,
                 distribution=distribution,
@@ -316,10 +316,10 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     def flext_integration_line(
         cls,
         *,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         repository_root: Path,
-        bootstrap_source: m.Infra.CodegenBootstrapSource | None = None,
-    ) -> p.Result[m.Infra.WorkspaceIntegrationSpec]:
+        bootstrap_source: p.Infra.CodegenBootstrapSource | None = None,
+    ) -> p.Result[p.Infra.WorkspaceIntegrationSpec]:
         """Detect the FLEXT line (provider base URL and branch) a checkout consumes.
 
         The line is a fact of the exact infrastructure dependency, never of
@@ -340,7 +340,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         provider identity never fabricates one) and detection still runs.
 
         Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceIntegrationSpec]``.
+            The resulting ``p.Result[p.Infra.WorkspaceIntegrationSpec]``.
 
         """
         source = codegen.infra_repository
@@ -348,12 +348,12 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         policy_branch = codegen.branch_policy.integration_branch
         if bootstrap_source is not None:
             if (repository_root / c.PYPROJECT_FILENAME).exists():
-                return r[m.Infra.WorkspaceIntegrationSpec].fail(
+                return r[p.Infra.WorkspaceIntegrationSpec].fail(
                     "bootstrap provenance cannot replace existing project sources",
                 )
             canonical = cls._canonical_https_url(bootstrap_source.url)
             if canonical.failure:
-                return r[m.Infra.WorkspaceIntegrationSpec].from_failure(canonical)
+                return r[p.Infra.WorkspaceIntegrationSpec].from_failure(canonical)
             detected = r[tuple[str, str]].ok((canonical.value, bootstrap_source.ref))
         else:
             detected = cls._detected_infra_source(
@@ -362,7 +362,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
                 policy_branch=policy_branch,
             )
         if detected.failure:
-            return r[m.Infra.WorkspaceIntegrationSpec].from_failure(detected)
+            return r[p.Infra.WorkspaceIntegrationSpec].from_failure(detected)
         url, ref = detected.value
         # The detected source arrives in either canonical form (with or
         # without the .git suffix — GitHub checkouts omit it); normalize
@@ -370,7 +370,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         normalized_url = url.removesuffix(c.GIT_DIR_NAME)
         suffix = f"/{distribution}"
         if not normalized_url.endswith(suffix):
-            return r[m.Infra.WorkspaceIntegrationSpec].fail(
+            return r[p.Infra.WorkspaceIntegrationSpec].fail(
                 f"infrastructure source must be the {distribution} repository: {url}",
             )
         organization, separator, _ = (
@@ -379,10 +379,10 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
             ).partition("/")
         )
         if not separator:
-            return r[m.Infra.WorkspaceIntegrationSpec].fail(
+            return r[p.Infra.WorkspaceIntegrationSpec].fail(
                 f"infrastructure source must name an owner and repository: {url}",
             )
-        return r[m.Infra.WorkspaceIntegrationSpec].ok(
+        return r[p.Infra.WorkspaceIntegrationSpec].ok(
             m.Infra.WorkspaceIntegrationSpec(
                 provider=source.provider,
                 branch=ref,
@@ -395,10 +395,10 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     def flext_integration_line_for_checkout(
         cls,
         *,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         repository_root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> p.Result[m.Infra.WorkspaceIntegrationSpec]:
+        workspace: p.Infra.WorkspaceSpec,
+    ) -> p.Result[p.Infra.WorkspaceIntegrationSpec]:
         """Resolve the FLEXT line for one workspace checkout.
 
         The single owner of the bootstrap provenance decision every line
@@ -408,7 +408,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         the checkout itself.
 
         Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceIntegrationSpec]``.
+            The resulting ``p.Result[p.Infra.WorkspaceIntegrationSpec]``.
 
         """
         return cls.flext_integration_line(
@@ -813,7 +813,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     @staticmethod
     def repository_provider(
         repository: p.Infra.RepositoryRef,
-    ) -> p.Result[m.Infra.ProviderIdentitySpec]:
+    ) -> p.Result[p.Infra.ProviderIdentitySpec]:
         """Detect the provider identity a repository declares for itself.
 
         The name is the key the repository's own manifest declares and the
@@ -822,7 +822,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         is matched against configured rows and no branch is fabricated here.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ProviderIdentitySpec]``.
+            The resulting ``p.Result[p.Infra.ProviderIdentitySpec]``.
 
         """
         url = repository.url.strip()
@@ -832,14 +832,14 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
             ).partition("/")
         )
         if not separator:
-            return r[m.Infra.ProviderIdentitySpec].fail(
+            return r[p.Infra.ProviderIdentitySpec].fail(
                 f"repository url must name an owner and repository: {url}",
             )
         if not url.startswith("https://"):
-            return r[m.Infra.ProviderIdentitySpec].fail(
+            return r[p.Infra.ProviderIdentitySpec].fail(
                 f"provider identity requires a canonical HTTPS declaration url: {url}",
             )
-        return r[m.Infra.ProviderIdentitySpec].ok(
+        return r[p.Infra.ProviderIdentitySpec].ok(
             m.Infra.ProviderIdentitySpec(
                 name=repository.provider,
                 organization=organization,
@@ -878,8 +878,8 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
     def _captured_codegen_inputs(
         cls,
         repository_root: Path,
-        inputs: m.Infra.CodegenInputs | None,
-    ) -> p.Result[m.Infra.CodegenInputs]:
+        inputs: p.Infra.CodegenInputs | None,
+    ) -> p.Result[p.Infra.CodegenInputs]:
         """Load the repository codegen inputs when the caller passed none.
 
         Args:
@@ -891,18 +891,18 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
 
         """
         if inputs is not None:
-            return r[m.Infra.CodegenInputs].ok(inputs)
+            return r[p.Infra.CodegenInputs].ok(inputs)
         captured = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
             repository_root,
         )
         if captured.failure:
-            return r[m.Infra.CodegenInputs].from_failure(captured)
-        return r[m.Infra.CodegenInputs].ok(captured.value)
+            return r[p.Infra.CodegenInputs].from_failure(captured)
+        return r[p.Infra.CodegenInputs].ok(captured.value)
 
     @classmethod
     def _submodule_integration_branch(
         cls,
-        identity: m.Infra.GitIdentityReport,
+        identity: p.Infra.GitIdentityReport,
         superproject_root: Path,
     ) -> p.Result[str]:
         """Resolve the integration branch declared for one managed member.
@@ -989,7 +989,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         *,
         policy_branch: str,
         declared: str | None = None,
-        inputs: m.Infra.CodegenInputs | None = None,
+        inputs: p.Infra.CodegenInputs | None = None,
     ) -> p.Result[str]:
         """Return the integration branch one repository integrates on.
 

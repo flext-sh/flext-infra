@@ -11,7 +11,7 @@ from functools import lru_cache
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, r
+from flext_infra import c, config, p, r
 from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
@@ -159,7 +159,7 @@ class FlextInfraUtilitiesManagedConflicts:
         return any(section == item or section.startswith(f"{item}.") for item in owned)
 
     @staticmethod
-    def pyproject_managed_file() -> p.Result[m.Infra.ManagedFileSpec]:
+    def pyproject_managed_file() -> p.Result[p.Infra.ManagedFileSpec]:
         """Return the pyproject ManagedFileSpec. Missing declaration is a bug.
 
         Returns:
@@ -168,8 +168,8 @@ class FlextInfraUtilitiesManagedConflicts:
         """
         for item in config.Infra.codegen.managed_file_specs:
             if item.path.as_posix() == c.PYPROJECT_FILENAME:
-                return r[m.Infra.ManagedFileSpec].ok(item)
-        return r[m.Infra.ManagedFileSpec].fail(
+                return r[p.Infra.ManagedFileSpec].ok(item)
+        return r[p.Infra.ManagedFileSpec].fail(
             f"codegen.yaml templates.entries must own {c.PYPROJECT_FILENAME}",
         )
 

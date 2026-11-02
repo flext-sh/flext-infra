@@ -18,7 +18,7 @@ files:
 message: Bind the canonical model and protocol facades for sink consumers.
 rule:
   all:
-  - pattern: from tests import tm
+  - pattern: from tests import p, tm
   - inside:
       kind: module
       has:
@@ -50,7 +50,7 @@ rule:
 constraints:
   SINK:
     regex: '^(BaseSink|UsersSink|GroupsSink|OrganizationalUnitsSink)$'
-fix: m.TargetLdap.$SINK($$$ARGS)
+fix: p.TargetLdap.$SINK($$$ARGS)
 ---
 id: target-ldap-test-public-sink-contract
 language: Python

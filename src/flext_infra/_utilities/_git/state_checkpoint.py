@@ -39,7 +39,7 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
     @classmethod
     def _state_require_original(
         cls,
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
     ) -> None:
         actual = cls._state_snapshot(
             m.Infra.GitWorktreeStateRequest(
@@ -55,9 +55,9 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
     @classmethod
     def _state_checkpoint(
         cls,
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
         checkpoint_ref: str,
-    ) -> m.Infra.GitWorktreeStateCheckpoint:
+    ) -> p.Infra.GitWorktreeStateCheckpoint:
 
         cls._state_require_original(snapshot)
         repo = cls._repo(snapshot.repo_root)
@@ -138,25 +138,25 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
     @classmethod
     def git_checkpoint_worktree_state(
         cls,
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
         checkpoint_ref: str,
-    ) -> p.Result[m.Infra.GitWorktreeStateCheckpoint]:
+    ) -> p.Result[p.Infra.GitWorktreeStateCheckpoint]:
         """Create a dedicated checkpoint, or verify an identical prior receipt.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitWorktreeStateCheckpoint]``.
+            The resulting ``p.Result[p.Infra.GitWorktreeStateCheckpoint]``.
 
         """
         try:
             checkpoint = cls._state_checkpoint(snapshot, checkpoint_ref)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitWorktreeStateCheckpoint].fail(str(exc), exception=exc)
-        return r[m.Infra.GitWorktreeStateCheckpoint].ok(checkpoint)
+            return r[p.Infra.GitWorktreeStateCheckpoint].fail(str(exc), exception=exc)
+        return r[p.Infra.GitWorktreeStateCheckpoint].ok(checkpoint)
 
     @classmethod
     def _state_verify_saved(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
         destination_root: Path,
         saved_commit: str,
     ) -> None:
@@ -184,7 +184,7 @@ class FlextInfraUtilitiesGitStateCheckpoint(FlextInfraUtilitiesGitStateTrees):
     @classmethod
     def git_verify_worktree_checkpoint_commit(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
         destination_root: Path,
         saved_commit: str,
     ) -> p.Result[bool]:

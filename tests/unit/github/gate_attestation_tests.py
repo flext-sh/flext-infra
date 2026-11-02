@@ -20,14 +20,14 @@ from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraGithubGateAttestation:
     """Behavior tests for local SSH-signed gate attestations."""
 
     @staticmethod
-    def _context(root: Path) -> m.Infra.WorkspaceRuntimeContext:
+    def _context(root: Path) -> p.Infra.WorkspaceRuntimeContext:
         """Elect the runtime context at the workspace boundary for the root.
 
         Returns:
@@ -481,7 +481,7 @@ class TestsFlextInfraGithubGateAttestation:
             repository_root=tmp_path,
             gates=c.Infra.LINT,
         )
-        observed: list[m.Infra.GateCommandEvidence] = []
+        observed: list[p.Infra.GateCommandEvidence] = []
         for policy in c.Infra.GateAcceptancePolicy:
             declaration.write_text(
                 "Infra:\n  codegen:\n    make:\n"
@@ -709,7 +709,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
 
     @classmethod
-    def _request(cls, root: Path) -> m.Infra.GateAttestationCreateRequest:
+    def _request(cls, root: Path) -> p.Infra.GateAttestationCreateRequest:
         """Consume the receipt automatically emitted by the original Make run.
 
         Returns:
@@ -745,7 +745,7 @@ class TestsFlextInfraGithubGateAttestation:
         allowed_signers: Path,
         receipt: Path,
         *gates: str,
-    ) -> p.Result[m.Infra.GateAttestationReport]:
+    ) -> p.Result[p.Infra.GateAttestationReport]:
         evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
         return u.Infra.git_verify_gate_attestation(
             m.Infra.GateAttestationVerifyRequest(
@@ -979,7 +979,7 @@ class TestsFlextInfraGithubGateAttestation:
         updated = source.model_copy(
             update={
                 "command_digest": command_digest,
-                "process": m.Cli.ProcessOutcome.model_validate(
+                "process": p.Cli.ProcessOutcome.model_validate(
                     interrupted.outcome,
                     from_attributes=True,
                 ),

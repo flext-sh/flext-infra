@@ -22,8 +22,8 @@ class FlextInfraCodemodRenameSources:
 
     @staticmethod
     def rename_selections(
-        artifact: m.Infra.SemanticRenamePlan,
-    ) -> m.Infra.SemanticRenameSelections:
+        artifact: p.Infra.SemanticRenamePlan,
+    ) -> p.Infra.SemanticRenameSelections:
         """Reconstruct execution intent without treating artifacts as rule authority.
 
         Returns:
@@ -55,9 +55,9 @@ class FlextInfraCodemodRenameSources:
 
     @staticmethod
     def compose_candidate(
-        candidate: m.Infra.SemanticSourcePlan,
-        plans: Sequence[m.Infra.CodegenFilePlan],
-    ) -> p.Result[m.Infra.SemanticSourcePlan]:
+        candidate: p.Infra.SemanticSourcePlan,
+        plans: Sequence[p.Infra.CodegenFilePlan],
+    ) -> p.Result[p.Infra.SemanticSourcePlan]:
         """Fold phase file plans into the staged candidate view.
 
         Returns:
@@ -70,7 +70,7 @@ class FlextInfraCodemodRenameSources:
         modes = dict(candidate.candidate.modes)
         for effect in plans:
             if effect.before != known.setdefault(effect.path, effect.before):
-                return r[m.Infra.SemanticSourcePlan].fail(
+                return r[p.Infra.SemanticSourcePlan].fail(
                     f"phase replaced original physical evidence: {effect.path}"
                 )
             if effect.desired_content is None:
@@ -89,7 +89,7 @@ class FlextInfraCodemodRenameSources:
                 inputs=tuple(known.values()),
             ),
         ).map(
-            lambda stage: m.Infra.SemanticSourcePlan(
+            lambda stage: p.Infra.SemanticSourcePlan(
                 candidate=stage, consumer_roots=candidate.consumer_roots
             )
         )
@@ -191,7 +191,7 @@ class FlextInfraCodemodRenameSources:
     @staticmethod
     def inventory(
         roots: Sequence[Path],
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         *,
         needles: frozenset[str] | None = None,
         python_sources: bool = True,
@@ -239,7 +239,7 @@ class FlextInfraCodemodRenameSources:
 
     @staticmethod
     def exclusions(
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
     ) -> tuple[tuple[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]]:
         """Resolve the declared exclusions every inventory pass shares.
 
@@ -274,7 +274,7 @@ class FlextInfraCodemodRenameSources:
         path: Path,
         root: Path,
         roots: Sequence[Path],
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         exclusions: tuple[
             tuple[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]
         ],
@@ -308,7 +308,7 @@ class FlextInfraCodemodRenameSources:
     def _source_state(
         path: Path,
         templates: frozenset[Path],
-    ) -> m.Cli.AtomicFileState | None:
+    ) -> p.Cli.AtomicFileState | None:
         """Authenticate one rename source, skipping generated and driver data.
 
         Returns:
@@ -341,7 +341,7 @@ class FlextInfraCodemodRenameSources:
         pairs: Sequence[tuple[str, str]],
         *,
         start: int = 0,
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         replacements = dict(pairs)
         pattern = re.compile(
             r"\b(?:" + "|".join(re.escape(old) for old in replacements) + r")\b",
@@ -360,11 +360,11 @@ class FlextInfraCodemodRenameSources:
         cls,
         source: str,
         pairs: Sequence[tuple[str, str]],
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Select real docstrings and comments; executable literals retain bytes.
 
         Returns:
-            The resulting ``tuple[m.Infra.SourceRewrite, ...]``.
+            The resulting ``tuple[p.Infra.SourceRewrite, ...]``.
 
         Raises:
             ValueError: If Python docstring lacks an authenticated source span.
@@ -400,7 +400,7 @@ class FlextInfraCodemodRenameSources:
                     (value.lineno, column),
                     (value.end_lineno, end_column),
                 ))
-        edits: MutableSequence[m.Infra.SourceRewrite] = []
+        edits: MutableSequence[p.Infra.SourceRewrite] = []
         for token in tokenize.generate_tokens(io.StringIO(source).readline):
             if token.type == tokenize.COMMENT or (
                 token.type == tokenize.STRING

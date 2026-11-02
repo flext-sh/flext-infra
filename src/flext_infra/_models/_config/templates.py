@@ -128,7 +128,7 @@ class FlextInfraModelsConfigTemplates:
             m.Field(description="Strictly parsed and ordered configuration document"),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True,
                 description="Exact physical files consulted by this document",

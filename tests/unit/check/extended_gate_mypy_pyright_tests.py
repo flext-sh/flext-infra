@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import FlextInfraCli, check, config, gates
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -106,7 +106,7 @@ class TestsFlextInfraTypeGates:
     @staticmethod
     def checker_context(
         tmp_path: Path,
-    ) -> m.Infra.GateContext:
+    ) -> p.Infra.GateContext:
         """Configure the existing real package for native checker execution.
 
         Returns:
@@ -134,7 +134,7 @@ class TestsFlextInfraTypeGates:
         ["native-plugin-output", "    native-plugin-output", "Deferral trace:"],
     )
     def test_mypy_preserves_malformed_native_output(
-        checker_context: m.Infra.GateContext,
+        checker_context: p.Infra.GateContext,
         plugin_output: str,
     ) -> None:
         """Unexpected plugin output remains a causal, visible tool failure."""
@@ -175,7 +175,7 @@ class TestsFlextInfraTypeGates:
         sorted(c.Infra.TYPE_CHECKER_GATES),
     )
     def test_public_literal_file_checker_preserves_native_findings_policy(
-        checker_context: m.Infra.GateContext,
+        checker_context: p.Infra.GateContext,
         gate: str,
     ) -> None:
         """Native findings survive while acceptance follows the typed SSOT policy."""
@@ -225,7 +225,7 @@ class TestsFlextInfraTypeGates:
         ],
     )
     def test_mypy_public_service_payload_bound(
-        checker_context: m.Infra.GateContext,
+        checker_context: p.Infra.GateContext,
         module: str,
         service: str,
     ) -> None:
@@ -293,7 +293,7 @@ class TestsFlextInfraTypeGates:
     @staticmethod
     @pytest.mark.slow
     def test_mypy_preserves_protocol_member_diagnostics(
-        checker_context: m.Infra.GateContext,
+        checker_context: p.Infra.GateContext,
     ) -> None:
         """Native protocol conflict details remain visible in reported issues."""
         project = checker_context.repository_root
@@ -326,7 +326,7 @@ class TestsFlextInfraTypeGates:
         ],
     )
     def test_real_check_and_repair(
-        checker_context: m.Infra.GateContext,
+        checker_context: p.Infra.GateContext,
         gate_class: type[gates.FlextInfraGates],
     ) -> None:
         """Test real check and repair."""
@@ -399,7 +399,7 @@ class TestsFlextInfraTypeGates:
     @staticmethod
     @pytest.mark.slow
     def test_failed_pyrefly_cannot_reuse_previous_report(
-        checker_context: m.Infra.GateContext,
+        checker_context: p.Infra.GateContext,
     ) -> None:
         """Test failed pyrefly cannot reuse previous report."""
         project = checker_context.repository_root
@@ -435,7 +435,7 @@ class TestsFlextInfraTypeGates:
         ],
     )
     def test_explicit_files_keep_selected_scope(
-        checker_context: m.Infra.GateContext,
+        checker_context: p.Infra.GateContext,
         gate_class: type[gates.FlextInfraGates],
     ) -> None:
         """Test explicit files keep selected scope."""
@@ -512,7 +512,7 @@ class TestsFlextInfraTypeGates:
     @pytest.mark.parametrize("payload", ["", " ", "not JSON", "{}", "[]", "null"])
     @pytest.mark.parametrize(
         "report_model",
-        [m.Infra.MypyDiagnostic, m.Infra.PyrightReport, m.Infra.PyreflyReport],
+        [p.Infra.MypyDiagnostic, m.Infra.PyrightReport, m.Infra.PyreflyReport],
     )
     def test_invalid_native_report(
         report_model: type[

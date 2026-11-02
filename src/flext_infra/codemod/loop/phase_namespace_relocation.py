@@ -25,11 +25,11 @@ class FlextInfraCodemodLoopPhaseNamespaceRelocation:
     @staticmethod
     def plan(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan selected declarations while retaining the full reference readscope.
 
         Returns:
@@ -64,7 +64,7 @@ class FlextInfraCodemodLoopPhaseNamespaceRelocation:
                 return planned
             for plan in planned.value:
                 if plan.desired_content is None:
-                    return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                    return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                         f"declaration relocation unexpectedly retired "
                         f"a module: {plan.path}"
                     )
@@ -82,12 +82,12 @@ class FlextInfraCodemodLoopPhaseNamespaceRelocation:
                     )
                 )
                 working[plan.path] = plan.desired_content.decode(c.DEFAULT_ENCODING)
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(effects.values()))
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(tuple(effects.values()))
 
     @staticmethod
     def apply(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Run every declared relocation the preflight captured, per project.

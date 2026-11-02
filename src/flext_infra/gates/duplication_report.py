@@ -21,7 +21,7 @@ class FlextInfraDuplicationReport:
     gate_id: ClassVar[str]
 
     @staticmethod
-    def _failure_issue(message: str | None) -> m.Infra.Issue:
+    def _failure_issue(message: str | None) -> p.Infra.Issue:
         """Represent malformed or absent jscpd output as a blocking issue.
 
         Returns:
@@ -41,19 +41,19 @@ class FlextInfraDuplicationReport:
     def _issues_from_report(
         cls,
         project_dir: Path,
-        report: m.Infra.JscpdReport | None,
-    ) -> p.Result[tuple[m.Infra.Issue, ...]]:
+        report: p.Infra.JscpdReport | None,
+    ) -> p.Result[tuple[p.Infra.Issue, ...]]:
         """Extract one Issue per clone side that falls inside ``project_dir``.
 
         jscpd can emit both A->B and B->A for one clone; one finding is
         published per unordered span pair.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.Issue, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.Issue, ...]]``.
 
         """
         if report is None:
-            return r[tuple[m.Infra.Issue, ...]].fail(
+            return r[tuple[p.Infra.Issue, ...]].fail(
                 f"duplication scan did not produce its required JSON report "
                 f"for project {project_dir.name}",
             )
@@ -63,7 +63,7 @@ class FlextInfraDuplicationReport:
             owned = cls._owned_clone_issue(duplicate, project_dir)
             if owned is not None:
                 issues.setdefault(owned[0], owned[1])
-        return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues.values()))
+        return r[tuple[p.Infra.Issue, ...]].ok(tuple(issues.values()))
 
     @classmethod
     def _owned_clone_issue(
@@ -133,7 +133,7 @@ class FlextInfraDuplicationReport:
         own_side: t.JsonMapping,
         other_name: str,
         root: Path,
-    ) -> m.Infra.Issue:
+    ) -> p.Infra.Issue:
         """Map one clone side inside ``root`` to a strict error.
 
         Returns:

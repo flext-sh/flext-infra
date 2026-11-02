@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 if TYPE_CHECKING:
     from flext_infra.deps import FlextInfraExtraPathsManager
@@ -20,9 +20,9 @@ class FlextInfraEnsurePyreflyConfigPhase:
 
     def __init__(
         self,
-        tool_config: m.Infra.ToolConfigDocument,
+        tool_config: p.Infra.ToolConfigDocument,
         *,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Store tool configuration used when enforcing pyrefly project settings."""
         self._tool_config = tool_config
@@ -31,9 +31,9 @@ class FlextInfraEnsurePyreflyConfigPhase:
     def _phase(
         self,
         *,
-        context: m.Infra.PyprojectAnalyzerContext,
+        context: p.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    ) -> p.Infra.DepsToml.PhaseConfig:
         """Build the canonical pyrefly phase definition.
 
         Returns:
@@ -124,7 +124,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         self,
         payload: t.MutableJsonMapping,
         *,
-        context: m.Infra.PyprojectAnalyzerContext,
+        context: p.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None = None,
     ) -> Sequence[str]:
         """Apply canonical pyrefly settings to one normalized payload.

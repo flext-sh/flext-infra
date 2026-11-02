@@ -9,13 +9,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraGatesPyrefly(FlextInfraGates):
@@ -37,7 +35,7 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
     def _native_report_path(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Path:
         """Resolve the JSON report this gate replaces before every run.
 
@@ -58,7 +56,7 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
     def _get_check_dirs(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """Check only local Python roots to avoid scanning dependency trees.
 
@@ -73,7 +71,7 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Run Pyrefly against the project config, writing its JSON report file.
@@ -109,7 +107,7 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
     def _evidence_output(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         result: p.Cli.CommandOutput,
     ) -> str:
         """Publish the tool streams plus the native JSON report this gate owns.
@@ -132,7 +130,7 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Read Pyrefly's freshly written JSON report file into findings.
 
@@ -145,7 +143,7 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
             return False, (
                 self._command_error_issue(result, c.Infra.PYREFLY, str(json_file)),
             )
-        validated: p.Result[m.Infra.PyreflyReport] = u.validate_value(
+        validated: p.Result[p.Infra.PyreflyReport] = u.validate_value(
             m.Infra.PyreflyReport,
             json_file.read_text(encoding="utf-8"),
             from_json=True,

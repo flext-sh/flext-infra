@@ -12,12 +12,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.validate.test_import_dag import FlextInfraValidateTestImportDag
-from tests import c, tm
+from tests import c, p, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from tests import m, p
 
 
 class TestsFlextInfraImportDag:
@@ -58,7 +56,7 @@ class TestsFlextInfraImportDag:
     ) -> None:
         """Test forbidden edges fail."""
         project = self._project(tmp_path, {source: imported})
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )
         tm.fail(report.passed)
@@ -84,7 +82,7 @@ class TestsFlextInfraImportDag:
             tmp_path,
             {source: (scenario / f"{case}.py").read_text(encoding=c.DEFAULT_ENCODING)},
         )
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )
         tm.fail(report.passed)
@@ -98,7 +96,7 @@ class TestsFlextInfraImportDag:
             tmp_path,
             {f"tests/fixtures/scenario/{name}": "invalid Python artifact"},
         )
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )
         tm.fail(report.passed)
@@ -112,7 +110,7 @@ class TestsFlextInfraImportDag:
             artifact = project / relative
             artifact.parent.mkdir(parents=True, exist_ok=True)
             artifact.write_bytes(b"\xff\xfe\x00")
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )
         tm.ok(report.passed)
@@ -137,7 +135,7 @@ class TestsFlextInfraImportDag:
                 ),
             },
         )
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project),
         )
         tm.ok(report.passed)

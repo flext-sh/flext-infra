@@ -163,8 +163,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @classmethod
     def normalized_codegen_changes(
         cls,
-        plans: Sequence[m.Infra.CodegenFilePlan],
-    ) -> p.Result[tuple[m.Cli.FileChange, ...]]:
+        plans: Sequence[p.Infra.CodegenFilePlan],
+    ) -> p.Result[tuple[p.Cli.FileChange, ...]]:
         """Normalize Python destinations once; pass every other plan through.
 
         Check and publication share this view, so they never disagree. A plan
@@ -175,7 +175,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The file changes with normalized Python bytes, or the first failure.
 
         """
-        result_type = r[tuple[m.Cli.FileChange, ...]]
+        result_type = r[tuple[p.Cli.FileChange, ...]]
         staged_settings = cls._staged_ruff_settings(plans)
         # A plan that keeps its bytes changed nothing, so it has nothing to
         # normalize; only rewritten or new sources go through ruff. Each file's
@@ -188,6 +188,29 @@ class FlextInfraUtilitiesProtectedEditLinting:
             and plan.desired_mode is not None
             and plan.desired_content != plan.before.content
         ]
+        retired = {plan.path: plan for plan in plans if plan.desired_content is None}
+        before_sources: dict[Path, str | None] = {}
+        for plan in pending:
+            original = plan.before
+            if plan.move_source is not None:
+                source = retired.get(plan.move_source)
+                if (
+                    source is None
+                    or source.project != plan.project
+                    or source.before.content is None
+                    or source.before.mode is None
+                    or source.before not in plan.inputs
+                ):
+                    return result_type.fail(
+                        "native move requires its captured paired source retirement: "
+                        f"{plan.move_source} -> {plan.path}"
+                    )
+                original = source.before
+            before_sources[plan.path] = (
+                None
+                if original.content is None
+                else original.content.decode(c.DEFAULT_ENCODING)
+            )
         normalized: dict[Path, str] = {}
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=config.Infra.codegen.lint_snapshot_workers
@@ -198,11 +221,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     plan.project,
                     plan.path,
                     (plan.desired_content or b"").decode(c.DEFAULT_ENCODING),
-                    before_source=(
-                        None
-                        if plan.before.content is None
-                        else plan.before.content.decode(c.DEFAULT_ENCODING)
-                    ),
+                    before_source=before_sources[plan.path],
                     settings=staged_settings.get(plan.project, ()),
                 ): plan.path
                 for plan in pending
@@ -231,7 +250,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def publish_codegen_plans(
         cls,
         root: Path,
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
     ) -> p.Result[tuple[Path, ...]]:
         """Publish generated plans through the shared file-change publisher.
 
@@ -253,8 +272,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def publish_normalized_codegen_plans(
         cls,
         root: Path,
-        plans: Sequence[m.Infra.CodegenFilePlan],
-        changes: Sequence[m.Cli.FileChange],
+        plans: Sequence[p.Infra.CodegenFilePlan],
+        changes: Sequence[p.Cli.FileChange],
     ) -> p.Result[tuple[Path, ...]]:
         """Publish plans whose Python bytes the caller already normalized.
 
@@ -308,8 +327,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @classmethod
     def _publish_verified_plans(
         cls,
-        plans: Sequence[m.Infra.CodegenFilePlan],
-        changes: Sequence[m.Cli.FileChange],
+        plans: Sequence[p.Infra.CodegenFilePlan],
+        changes: Sequence[p.Cli.FileChange],
         lock_path: Path,
         result_type: type[p.Result[tuple[Path, ...]]],
     ) -> p.Result[tuple[Path, ...]]:
@@ -338,7 +357,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @classmethod
     def _retire_published_index_entries(
         cls,
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
     ) -> p.Result[bool]:
         """Retire runtime-local index entries replaced by published plans.
 
@@ -361,7 +380,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @staticmethod
     def _prune_emptied_directories(
         lock_path: Path,
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
         published: tuple[Path, ...],
     ) -> p.Result[bool]:
         """Remove the directories a published deletion left empty.
@@ -457,7 +476,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @classmethod
     def _staged_ruff_settings(
         cls,
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
     ) -> Mapping[Path, Sequence[str]]:
         """Render each staged pyproject's Ruff table as ``--config`` overrides.
 
@@ -1161,7 +1180,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file: Path,
         workspace: Path,
         selected_tools: t.StrSequencePairTuple,
-    ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
+    ) -> t.Infra.LintSnapshot[p.Infra.LintGateResult]:
         """Execute selected lint tools.
 
         Returns:
@@ -1173,7 +1192,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         # Running any one of them ahead of the pool made a snapshot cost that
         # gate's full wall clock PLUS the slowest of the rest, instead of just
         # the slowest. Measured: 8 snapshots x 4 gates at 0.297s each.
-        results: list[m.Infra.LintGateResult] = []
+        results: list[p.Infra.LintGateResult] = []
         if not selected_tools:
             return cls._lint_snapshot_from_results(())
 
@@ -1243,7 +1262,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         tool_name: str,
         template: Sequence[str],
         source: str | None = None,
-    ) -> m.Infra.LintGateResult:
+    ) -> p.Infra.LintGateResult:
         """Run one lint gate and return a validated result model.
 
         Returns:
@@ -1288,7 +1307,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def lint_gate_result(
         tool_name: str,
         executed: p.Result[p.Cli.CommandOutput],
-    ) -> m.Infra.LintGateResult:
+    ) -> p.Infra.LintGateResult:
         """Retain the native receipt without turning an absent report into success.
 
         A process that never produced a native outcome stops the gate at once:
@@ -1472,7 +1491,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def lint_execution_errors(
-        snapshot: t.Infra.LintSnapshot[m.Infra.LintGateResult],
+        snapshot: t.Infra.LintSnapshot[p.Infra.LintGateResult],
     ) -> Sequence[str]:
         """Return execution failures independently of diagnostic occurrence deltas.
 
@@ -1488,8 +1507,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def _lint_snapshot_from_results(
-        results: Sequence[m.Infra.LintGateResult],
-    ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
+        results: Sequence[p.Infra.LintGateResult],
+    ) -> t.Infra.LintSnapshot[p.Infra.LintGateResult]:
         """Convert validated lint gate results into the public snapshot contract.
 
         Returns:
@@ -1506,7 +1525,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         gates: Sequence[str] | None = None,
         source: str | None = None,
-    ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
+    ) -> t.Infra.LintSnapshot[p.Infra.LintGateResult]:
         """Run selected tools, or uncached Ruff on candidate source at *py_file*.
 
         Candidate stdin retains the destination's filename and configuration;
@@ -1546,7 +1565,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         workspace: Path,
         *,
         gates: Sequence[str] | None = None,
-    ) -> MutableMapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]]:
+    ) -> MutableMapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]]:
         """Validate files in order while each file runs its tools concurrently.
 
         Returns:
@@ -1561,7 +1580,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             return {path: cls.lint_snapshot(path, workspace, gates=gates)}
 
         snapshots_by_path: MutableMapping[
-            Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]
+            Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]
         ] = {}
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=max(
@@ -1579,8 +1598,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def lint_new_errors(
-        before: t.Infra.LintSnapshot[m.Infra.LintGateResult],
-        after: t.Infra.LintSnapshot[m.Infra.LintGateResult],
+        before: t.Infra.LintSnapshot[p.Infra.LintGateResult],
+        after: t.Infra.LintSnapshot[p.Infra.LintGateResult],
     ) -> t.Infra.LintSnapshot[Sequence[str]]:
         """Return introduced diagnostic occurrences, ignoring shifted coordinates.
 

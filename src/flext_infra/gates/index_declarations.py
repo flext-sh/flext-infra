@@ -31,7 +31,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import m, r, u
+from flext_infra import r, u
 from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
@@ -49,8 +49,8 @@ class FlextInfraGatesIndexDeclarations(FlextInfraGates):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Report every index entry the repository's declarations contradict.
 
         Returns:

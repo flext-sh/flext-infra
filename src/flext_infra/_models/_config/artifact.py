@@ -508,7 +508,7 @@ class FlextInfraModelsConfigArtifact(
     class CodegenConfigSpec(CodegenArtifactScopeSpec):
         """Fully modeled content of ``config/codegen.yaml``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid")
 
         runtime_module_overrides: Annotated[
             Mapping[
@@ -1147,7 +1147,7 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(
                 exclude=True, description="Exact consulted configuration input states"
             ),
@@ -1170,7 +1170,7 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(exclude=True, description="Exact consulted config input states"),
         ] = ()
 
@@ -1211,7 +1211,7 @@ class FlextInfraModelsConfigArtifact(
     class CodegenGenerateRequest(FlextInfraModelsConfigContract.ConfigContract):
         """Validated projection inputs for ``flext-infra codegen generate``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
         root: Annotated[Path, m.Field(description="Repository or workspace root")]
         what: Annotated[
             c.Infra.CodegenConformSurface,

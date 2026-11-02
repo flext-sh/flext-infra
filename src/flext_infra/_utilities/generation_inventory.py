@@ -18,7 +18,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r
+from flext_infra import c, p, r
 from flext_infra._utilities import FlextInfraUtilitiesIterationDirectory
 
 
@@ -28,7 +28,7 @@ class FlextInfraGenerationSource:
 
     path: Path
     member: Path
-    state: m.Cli.AtomicFileState
+    state: p.Cli.AtomicFileState
     digest: str
     text: str
     tree: ast.Module

@@ -272,7 +272,7 @@ class FlextInfraModelsCodegenFix:
     class ViolationKey(m.ContractModel):
         """Content-stable violation identifier — resilient to line shifts."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         module: Annotated[str, m.Field(description="Module containing the violation")]
         rule: Annotated[str, m.Field(description="Rule that was violated")]

@@ -457,7 +457,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
         initializer = package / c.Infra.INIT_PY
         initializer.write_text("", encoding="utf-8")
         original = initializer.read_bytes()
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
+        report: p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence] = (
             m.Infra.ModOccurrenceReport(
                 files=frozenset(),
                 entries=(),
@@ -548,7 +548,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
         )
         tm.that(warmed, has=f"from {package.name} import DeclaredService\n")
         candidate = original_source.replace(previous.stem, current.stem)
-        plans: list[m.Infra.SemanticFilePlan] = []
+        plans: list[p.Infra.SemanticFilePlan] = []
         for path in (previous, current):
             before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             outgoing: Sequence[str] = ["DeclaredService"] if path == previous else []

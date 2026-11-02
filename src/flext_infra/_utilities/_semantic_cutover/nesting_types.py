@@ -40,7 +40,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
         protected: tuple[int, int] | None = None,
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
             project,
             source,
@@ -48,7 +48,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
                 resource, resource.path
             ),
         )
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
         tree = ast.parse(source)
         generic_scopes = tuple(
             node

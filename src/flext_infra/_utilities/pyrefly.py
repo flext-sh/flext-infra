@@ -16,8 +16,6 @@ from flext_infra import c
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m
-
 
 class FlextInfraUtilitiesPyrefly:
     """Own target selection shared by quality gates and refactor automation."""
@@ -70,7 +68,7 @@ class FlextInfraUtilitiesPyrefly:
     def pyrefly_project_excludes(
         declared_globs: Sequence[str],
         *,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> Sequence[str]:
         """Compose Pyrefly exclusions with the shared analysis artifact catalog.
 

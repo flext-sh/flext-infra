@@ -18,7 +18,7 @@ class FlextInfraUtilitiesTransformerHeaderParser:
     """Parse module-header boundaries without normalizing tokenizer failures."""
 
     @classmethod
-    def _parse_header(cls, source: str) -> m.Infra.HeaderInfo:
+    def _parse_header(cls, source: str) -> p.Infra.HeaderInfo:
         """Parse a module header and let the first tokenizer exception escape.
 
         Returns:

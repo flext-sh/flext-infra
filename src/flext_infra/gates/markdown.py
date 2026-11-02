@@ -33,7 +33,7 @@ class FlextInfraGatesMarkdown(FlextInfraMarkdownGateBase):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Lint the collected Markdown files read-only, through their lint view.
@@ -54,10 +54,10 @@ class FlextInfraGatesMarkdown(FlextInfraMarkdownGateBase):
     def _execute_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
         started: float,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Run the read-only lint over every target's projected-block view.
 
         The check command reads its targets from stdin, so the invocation
@@ -79,7 +79,7 @@ class FlextInfraGatesMarkdown(FlextInfraMarkdownGateBase):
     def _build_fix_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
     ) -> Sequence[str]:
         """Repair fixable findings and return the linter's residual verdict.
@@ -108,16 +108,16 @@ class FlextInfraGatesMarkdown(FlextInfraMarkdownGateBase):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        ctx: p.Infra.GateContext,
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Parse rumdl output, discarding lines marking already-applied fixes.
 
         Returns:
-            The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, Sequence[p.Infra.Issue]]``.
 
         """
         del ctx
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: MutableSequence[p.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
             if not match:

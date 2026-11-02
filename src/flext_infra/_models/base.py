@@ -21,7 +21,7 @@ class FlextInfraModelsBase:
     class CommandContext(m.ArbitraryTypesModel):
         """Mutable command data shared by infra services and CLI schemas."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             validate_by_name=True,
             validate_by_alias=True,
         )
@@ -153,7 +153,7 @@ class FlextInfraModelsBase:
     class FrozenArbitrary(m.ContractModel):
         """Strict immutable payloads preserving exact text and enum identities."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             str_strip_whitespace=False,
             use_enum_values=False,
         )

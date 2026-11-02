@@ -27,7 +27,7 @@ class TestsFlextInfraDepsModernizerPyright:
     @staticmethod
     @pytest.mark.parametrize("mode", ["basic", c.ParserBooleanToken.OFF])
     def test_native_options_cannot_weaken_strict_analysis(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
         mode: str,
     ) -> None:
         """Native option deltas cannot weaken the required analysis contract."""
@@ -48,7 +48,7 @@ class TestsFlextInfraDepsModernizerPyright:
 
     @staticmethod
     def test_native_pairs_can_restore_strict_analysis(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """The final native pair elects the analysis mode before validation."""
         expected = u.Infra.native_tool_settings(tool_config_document, c.Infra.PYRIGHT)[
@@ -77,7 +77,7 @@ class TestsFlextInfraDepsModernizerPyright:
 
     @staticmethod
     def test_generic_pairs_preserve_types_and_semantic_array_order(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """New tool options round-trip through native TOML without new fields."""
         additions: Sequence[tuple[str, t.JsonValue]] = (
@@ -119,7 +119,7 @@ class TestsFlextInfraDepsModernizerPyright:
 
     @staticmethod
     def test_editor_projection_preserves_other_tables_and_converges(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """The editor projection replaces stale environment bindings and converges."""
         source = (
@@ -152,8 +152,8 @@ class TestsFlextInfraDepsModernizerPyright:
 
     @staticmethod
     def _applied(
-        tool_config_document: m.Infra.ToolConfigDocument,
-        context: m.Infra.PyprojectAnalyzerContext,
+        tool_config_document: p.Infra.ToolConfigDocument,
+        context: p.Infra.PyprojectAnalyzerContext,
     ) -> t.JsonMapping:
         """Apply the phase twice to an empty payload; return the converged table.
 
@@ -275,7 +275,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_root_config_sets_expected_execution_environments(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Render only roots owned by the workspace repository itself."""
         pyright_rules = tool_config_document.tools.pyright
@@ -366,7 +366,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_root_config_includes_member_src_paths(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Workspace root execution environments include every member src path.
 
@@ -428,7 +428,7 @@ class TestsFlextInfraDepsModernizerPyright:
 
     def test_declared_repository_config_sets_expected_execution_environments(
         self,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Render every configured standalone analyzer environment."""
         pyright_rules = tool_config_document.tools.pyright
@@ -467,7 +467,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_package_parent_environment_preserves_strict_included_namespace(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
         *,
         is_root: bool,
     ) -> None:
@@ -527,7 +527,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_project_config_uses_canonical_typings_and_fixture_excludes(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Render typed paths and config-owned fixture exclusions."""
         rules = tool_config_document.tools.pyright.path_rules
@@ -574,7 +574,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_existing_standalone_uses_complete_declared_roots(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Declared future roots survive alongside existing source discovery."""
         rules = tool_config_document.tools.pyright.path_rules
@@ -605,7 +605,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_existing_standalone_complete_empty_roots_keep_owned_sources(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """An empty scaffold declaration cannot hide existing owned Python."""
         rules = tool_config_document.tools.pyright.path_rules
@@ -791,7 +791,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_workspace_shares_analysis_with_member_local_environments(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """One analyzer includes members without merging their package roots."""
         rules = tool_config_document.tools.pyright.path_rules
@@ -827,7 +827,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_expected_envs_cover_every_analyzer_python_root(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """The phase includes modules but emits environments only for directories.
 

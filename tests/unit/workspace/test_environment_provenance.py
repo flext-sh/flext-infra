@@ -476,7 +476,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         *,
         direct_root: Path | None = None,
         source_root: Path | None = None,
-        receipt: m.Infra.DirectUrlReceipt | None = None,
+        receipt: p.Infra.DirectUrlReceipt | None = None,
     ) -> p.Result[int]:
         """Read real distribution metadata without changing the active environment.
 

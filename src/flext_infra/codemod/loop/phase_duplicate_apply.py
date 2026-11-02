@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r
+from flext_infra import c, r
 from flext_infra.codemod.duplicate_apply import FlextInfraCodemodDuplicateApply
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusCollectHelpers,
@@ -37,7 +37,7 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
     @staticmethod
     def apply(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Cure the trivial duplicate groups of the current source state.
@@ -68,11 +68,11 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
     @staticmethod
     def plan(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan the trivial duplicate cures; a structural duplicate fails loud.
 
         Returns:
@@ -87,10 +87,10 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
             sources=sources,
         )
         if planned.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(planned)
         outcome, _deletions = planned.value
         if outcome.plans:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 "\n".join(plan.reason for plan in outcome.plans),
                 error_code=c.Infra.ToolOutcome.ERROR.value,
             )
@@ -101,14 +101,14 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
     @staticmethod
     def _duplicate_groups(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> tuple[m.Infra.DuplicateGroup, ...]:
+    ) -> tuple[p.Infra.DuplicateGroup, ...]:
         """Rebuild the workspace duplicate groups from the Rope inventory.
 
         Returns:
-            The resulting ``tuple[m.Infra.DuplicateGroup, ...]``.
+            The resulting ``tuple[p.Infra.DuplicateGroup, ...]``.
 
         """
-        project_objects: dict[str, list[m.Infra.Object]] = {}
+        project_objects: dict[str, list[p.Infra.Object]] = {}
         for module in rope_workspace.modules():
             if not FlextInfraRefactorCensusCollectHelpers.production_module(
                 module,

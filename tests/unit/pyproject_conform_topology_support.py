@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraPyprojectConformTopologySupport:
@@ -19,7 +19,7 @@ class TestsFlextInfraPyprojectConformTopologySupport:
 
     @staticmethod
     def _conform_options(
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
     ) -> u.Infra.PyprojectConformOptions:
         """Bind the conform inputs to the workspace's detected integration line.
 
@@ -29,7 +29,7 @@ class TestsFlextInfraPyprojectConformTopologySupport:
         """
         return u.Infra.PyprojectConformOptions(flext_line=workspace.integration)
 
-    def _member_ref(self, distribution: str, path: str) -> m.Infra.RepositoryRef:
+    def _member_ref(self, distribution: str, path: str) -> p.Infra.RepositoryRef:
         """Declare one standalone-capable member through the provider contract.
 
         Returns:
@@ -44,9 +44,9 @@ class TestsFlextInfraPyprojectConformTopologySupport:
 
     @staticmethod
     def _workspace(
-        *members: m.Infra.RepositoryRef,
+        *members: p.Infra.RepositoryRef,
         role: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE,
-    ) -> m.Infra.WorkspaceSpec:
+    ) -> p.Infra.WorkspaceSpec:
         """Compose one workspace fixture from its declared member references.
 
         Returns:
@@ -59,7 +59,7 @@ class TestsFlextInfraPyprojectConformTopologySupport:
         )
 
     @staticmethod
-    def _inline_requirement(ref: m.Infra.RepositoryRef) -> str:
+    def _inline_requirement(ref: p.Infra.RepositoryRef) -> str:
         """Render the direct-source form derived from the declared fixture branch.
 
         Returns:
@@ -69,7 +69,7 @@ class TestsFlextInfraPyprojectConformTopologySupport:
         return f"{ref.distribution} @ git+{ref.url}@{u.Tests.provider_branch()}"
 
     @staticmethod
-    def _toolchain_resolution() -> m.Infra.UvResolutionSpec:
+    def _toolchain_resolution() -> p.Infra.UvResolutionSpec:
         """Declare the fleet toolchain's uv resolver keys with no exclusions.
 
         Returns:
@@ -87,7 +87,7 @@ class TestsFlextInfraPyprojectConformTopologySupport:
     def _conform(
         source: str,
         *,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         options: u.Infra.PyprojectConformOptions | None = None,
     ) -> str:
         """Conform one document through the public owner with standard inputs.
@@ -109,7 +109,7 @@ class TestsFlextInfraPyprojectConformTopologySupport:
     def _conform_integration(
         self,
         source: str,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
     ) -> str:
         """Conform without captured member declarations.
 

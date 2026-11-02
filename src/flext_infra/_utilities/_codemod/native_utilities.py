@@ -277,10 +277,10 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
+        spec: p.Infra.CodegenAstGrepSpec,
         *,
         rule_ids: Sequence[str] | None = None,
-    ) -> m.Infra.CodemodNativeGenerated:
+    ) -> p.Infra.CodemodNativeGenerated:
         """Render every generated utility, then every rule document, in memory.
 
         Renderers run after the producers because rendered rules reference the
@@ -310,7 +310,7 @@ class FlextInfraUtilitiesCodemodNative:
                     spec,
                     rule_ids=rule_ids,
                     facts={
-                        c.Infra.CODEMOD_SCOPE_FACTS: m.Infra.CodemodScopeFacts(
+                        c.Infra.CODEMOD_SCOPE_FACTS: p.Infra.CodemodScopeFacts(
                             scopes=scopes
                         )
                     },
@@ -324,7 +324,7 @@ class FlextInfraUtilitiesCodemodNative:
     def _generated_key(
         snapshot: p.Infra.WorkspaceSnapshot,
         root: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
+        spec: p.Infra.CodegenAstGrepSpec,
         rule_ids: Sequence[str] | None,
     ) -> str:
         """Digest every input a generated rendering reads, from the snapshot.
@@ -363,7 +363,7 @@ class FlextInfraUtilitiesCodemodNative:
     @classmethod
     def codemod_scope_facts(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> m.Infra.CodemodScopeFacts:
+    ) -> p.Infra.CodemodScopeFacts:
         """Compute the project's file scopes as the facts of scoped renderers.
 
         A generation computes them once and seeds every renderer with them.
@@ -441,7 +441,7 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         *,
         rule_ids: Sequence[str] | None = None,
-    ) -> p.Result[m.Infra.CodemodRulePlan]:
+    ) -> p.Result[p.Infra.CodemodRulePlan]:
         """Build the sole executable rule plan for check and mutation.
 
         The caller injects its single repository snapshot. The public workspace
@@ -449,22 +449,22 @@ class FlextInfraUtilitiesCodemodNative:
         and scopes never merge with a sibling's project plan.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodemodRulePlan]``.
+            The resulting ``p.Result[p.Infra.CodemodRulePlan]``.
 
         """
         spec = config.Infra.codegen.ast_grep
         root = snapshot.workspace_root.resolve()
         if snapshot.members != (root,):
-            return r[m.Infra.CodemodRulePlan].fail(
+            return r[p.Infra.CodemodRulePlan].fail(
                 "codemod rule planning requires one repository-owned snapshot"
             )
         if rule_ids is not None:
             if not rule_ids or any(not rule_id.strip() for rule_id in rule_ids):
-                return r[m.Infra.CodemodRulePlan].fail(
+                return r[p.Infra.CodemodRulePlan].fail(
                     "codemod rule selection requires non-empty exact rule IDs",
                 )
             if len(frozenset(rule_ids)) != len(rule_ids):
-                return r[m.Infra.CodemodRulePlan].fail(
+                return r[p.Infra.CodemodRulePlan].fail(
                     "duplicate codemod rule IDs in selection",
                 )
         generated_rule_ids = (
@@ -485,7 +485,7 @@ class FlextInfraUtilitiesCodemodNative:
 
     @staticmethod
     def codemod_fixture_resources(
-        plan: m.Infra.CodemodRulePlan,
+        plan: p.Infra.CodemodRulePlan,
     ) -> tuple[Path, ...]:
         """Return the authored rule files whose catalogs own rule fixtures.
 
@@ -509,7 +509,7 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
+        spec: p.Infra.CodegenAstGrepSpec,
         *,
         rule_ids: Sequence[str] | None = None,
     ) -> tuple[str, Path] | None:
@@ -646,7 +646,7 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        entry: m.Infra.CodegenAstGrepRendererSpec,
+        entry: p.Infra.CodegenAstGrepRendererSpec,
         facts: dict[str, p.Model],
     ) -> Mapping[str, t.JsonMapping]:
         """Run one renderer, passing its facts model computed once per generation.
@@ -685,7 +685,7 @@ class FlextInfraUtilitiesCodemodNative:
 
     @classmethod
     def _renderer_shapes(
-        cls, entry: m.Infra.CodegenAstGrepRendererSpec
+        cls, entry: p.Infra.CodegenAstGrepRendererSpec
     ) -> frozenset[str]:
         """Read a renderer's registered shapes, declared or derived.
 
@@ -713,7 +713,7 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
+        spec: p.Infra.CodegenAstGrepSpec,
         *,
         facts: Mapping[str, p.Model] | None = None,
         rule_ids: Sequence[str] | None = None,
@@ -763,7 +763,7 @@ class FlextInfraUtilitiesCodemodNative:
     @classmethod
     def _renderer_selects_rule_ids(
         cls,
-        entry: m.Infra.CodegenAstGrepRendererSpec,
+        entry: p.Infra.CodegenAstGrepRendererSpec,
         rule_ids: frozenset[str],
     ) -> bool:
         """Whether an exact generated identity belongs to one renderer.

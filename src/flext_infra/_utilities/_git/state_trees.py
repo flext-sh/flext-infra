@@ -27,7 +27,7 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
         root: Path,
         commit: str,
         paths: Sequence[Path],
-    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
+    ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
         if not paths:
             return ()
         repo = cls._repo(root)
@@ -37,7 +37,7 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
         ):
             repo.git.read_tree(commit)
             raw = repo.git.ls_files("--stage", "-z", "--", *cls._state_pathspecs(paths))
-        entries: list[m.Infra.GitWorktreeIndexEntry] = []
+        entries: list[p.Infra.GitWorktreeIndexEntry] = []
         for row in raw.split("\0"):
             if row:
                 metadata, path = row.split("\t", 1)
@@ -52,7 +52,7 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
         cls,
         root: Path,
         removed: Sequence[Path],
-        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
+        entries: Sequence[p.Infra.GitWorktreeIndexEntry],
         *,
         index_file: Path | None = None,
     ) -> None:
@@ -81,7 +81,7 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
         root: Path,
         base: str,
         paths: Sequence[Path],
-        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
+        entries: Sequence[p.Infra.GitWorktreeIndexEntry],
     ) -> Generator[Path]:
         """Select an isolated index containing only the explicit scoped effects.
 
@@ -118,8 +118,8 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
     @classmethod
     def _state_tree(
         cls,
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
-        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
+        entries: Sequence[p.Infra.GitWorktreeIndexEntry],
     ) -> str:
         """Write the captured tree through the same isolated-index owner.
 
@@ -146,8 +146,8 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
     @classmethod
     def _state_working_entries(
         cls,
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
-    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
+    ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
         return tuple(
             m.Infra.GitWorktreeIndexEntry(path=file.path, mode=file.mode, oid=file.oid)
             for file in snapshot.files
@@ -156,7 +156,7 @@ class FlextInfraUtilitiesGitStateTrees(FlextInfraUtilitiesGitStateSnapshot):
     @classmethod
     def _state_validate_checkpoint(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
     ) -> None:
         snapshot = checkpoint.snapshot
         repo = cls._repo(snapshot.repo_root)

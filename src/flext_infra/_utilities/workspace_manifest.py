@@ -32,8 +32,8 @@ class FlextInfraUtilitiesWorkspaceManifest:
 
     @staticmethod
     def repository_declaration_delta(
-        legacy: m.Infra.WorkspaceManifestSpec,
-    ) -> p.Result[m.Infra.RepositoryDeltaSpec]:
+        legacy: p.Infra.WorkspaceManifestSpec,
+    ) -> p.Result[p.Infra.RepositoryDeltaSpec]:
         """Extract only self-owned declarations for an explicit migration.
 
         This operation describes migration input. Runtime discovery must consume
@@ -45,7 +45,7 @@ class FlextInfraUtilitiesWorkspaceManifest:
             The validated declaration belonging to the document's own repository.
 
         """
-        result_type = r[m.Infra.RepositoryDeltaSpec]
+        result_type = r[p.Infra.RepositoryDeltaSpec]
         fields = set(m.Infra.RepositoryDeltaSpec.model_fields)
         values = legacy.model_dump(
             mode="json",
@@ -96,21 +96,21 @@ class FlextInfraUtilitiesWorkspaceManifest:
     def load_workspace_manifest(
         cls,
         repository_root: Path,
-    ) -> p.Result[Sequence[m.Infra.WorkspaceManifestSpec]]:
+    ) -> p.Result[Sequence[p.Infra.WorkspaceManifestSpec]]:
         """Load the checkout's own workspace manifest as a 0-or-1 sequence.
 
         Absence is an EMPTY sequence — success payloads are never ``None``.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.WorkspaceManifestSpec]]``.
+            The resulting ``p.Result[Sequence[p.Infra.WorkspaceManifestSpec]]``.
 
         """
         manifest_path = cls.workspace_manifest_path(repository_root)
         if not manifest_path.is_file():
-            return r[Sequence[m.Infra.WorkspaceManifestSpec]].ok(())
+            return r[Sequence[p.Infra.WorkspaceManifestSpec]].ok(())
         text = u.Cli.files_read_text(manifest_path)
         if text.failure:
-            return r[Sequence[m.Infra.WorkspaceManifestSpec]].fail(
+            return r[Sequence[p.Infra.WorkspaceManifestSpec]].fail(
                 f"invalid workspace manifest ({manifest_path}): {text.error}",
             )
         return cls._parsed_workspace_manifest(text.value, str(manifest_path))
@@ -120,31 +120,31 @@ class FlextInfraUtilitiesWorkspaceManifest:
     def _parsed_workspace_manifest(
         text: str,
         manifest_path: str,
-    ) -> p.Result[Sequence[m.Infra.WorkspaceManifestSpec]]:
+    ) -> p.Result[Sequence[p.Infra.WorkspaceManifestSpec]]:
         """Parse and validate one manifest text once per exact content.
 
         The key is the exact file text, so an edited manifest is a new key,
         never a stale spec.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.WorkspaceManifestSpec]]``.
+            The resulting ``p.Result[Sequence[p.Infra.WorkspaceManifestSpec]]``.
 
         """
         loaded = u.Cli.yaml_parse(text)
         if loaded.failure:
-            return r[Sequence[m.Infra.WorkspaceManifestSpec]].fail(
+            return r[Sequence[p.Infra.WorkspaceManifestSpec]].fail(
                 f"invalid workspace manifest ({manifest_path}): {loaded.error}",
             )
-        validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
+        validated: p.Result[p.Infra.WorkspaceManifestSpec] = u.validate_value(
             m.Infra.WorkspaceManifestSpec,
             loaded.value,
         )
         if validated.failure:
-            return r[Sequence[m.Infra.WorkspaceManifestSpec]].fail_op(
+            return r[Sequence[p.Infra.WorkspaceManifestSpec]].fail_op(
                 f"workspace manifest model validation ({manifest_path})",
                 validated.error,
             )
-        return r[Sequence[m.Infra.WorkspaceManifestSpec]].ok((validated.value,))
+        return r[Sequence[p.Infra.WorkspaceManifestSpec]].ok((validated.value,))
 
     @classmethod
     def fleet_umbrella(cls, repository_root: Path) -> bool:

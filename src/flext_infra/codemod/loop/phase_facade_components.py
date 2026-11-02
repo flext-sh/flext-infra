@@ -34,11 +34,11 @@ class FlextInfraCodemodLoopPhaseFacadeComponents:
     @staticmethod
     def plan(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan domain owners, model nesting, then the consumers they compose.
 
         Returns:
@@ -46,9 +46,9 @@ class FlextInfraCodemodLoopPhaseFacadeComponents:
 
         """
         del preflight
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         project = rope_workspace.rope_project
-        files: list[m.Infra.CodegenFilePlan] = []
+        files: list[p.Infra.CodegenFilePlan] = []
         for project_root in u.Infra.governed_project_roots(root):
             if not u.Infra.namespace_enabled(project_root):
                 continue
@@ -87,7 +87,7 @@ class FlextInfraCodemodLoopPhaseFacadeComponents:
     def apply(
         cls,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Publish the planned nesting and consumers with their lazy exports.

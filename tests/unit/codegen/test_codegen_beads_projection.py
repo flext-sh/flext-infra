@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import codegen, config, workspace
-from tests import c, m, t, tm, u
+from tests import c, p, t, tm, u
 
 
 class TestsFlextInfraCodegenBeadsProjection:
@@ -99,7 +99,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         )
 
     @staticmethod
-    def _standalone_governed_plan(root: Path) -> m.Infra.CodegenPlan:
+    def _standalone_governed_plan(root: Path) -> p.Infra.CodegenPlan:
         """Plan a standalone fixture with city participation disabled.
 
         Returns:
@@ -124,7 +124,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         return u.Tests.governed_project_plan(root)
 
     @staticmethod
-    def _planned_envrc_local_entry(root: Path) -> m.Infra.CodegenFilePlan | None:
+    def _planned_envrc_local_entry(root: Path) -> p.Infra.CodegenFilePlan | None:
         """Return the planned local activation artifact.
 
         Returns:

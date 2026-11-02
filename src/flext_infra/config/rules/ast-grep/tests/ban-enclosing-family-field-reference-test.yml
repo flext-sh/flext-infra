@@ -16,7 +16,7 @@ valid:
   - |
     class Infra:
         class Report(Base):
-            facade: m.Infra.Report | None = None
+            facade: p.Infra.Report | None = None
 invalid:
   - |
     class FlextInfraModelsDepsToml:

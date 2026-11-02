@@ -576,7 +576,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             "from typing import TYPE_CHECKING\n\n"
             "if TYPE_CHECKING:\n"
             f"    {private_import}\n\n"
-            "metadata: m.Metadata\n"
+            "metadata: p.Metadata\n"
         )
 
         updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
@@ -684,7 +684,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             "from typing import TYPE_CHECKING\n\n"
             "if TYPE_CHECKING:\n"
             "    from flext_sample import FlextModelsSample as m\n\n"
-            "value: m.Metadata\n"
+            "value: p.Metadata\n"
             "model: mp.BaseModel\n"
         )
 
@@ -693,7 +693,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         tm.that(updated.count("from flext_sample import m"), eq=1)
         tm.that(updated, lacks="FlextModelsSample as m")
         tm.that(updated, lacks=private_import)
-        tm.that(updated, has="model: m.Pydantic.BaseModel")
+        tm.that(updated, has="model: p.Pydantic.BaseModel")
 
     def test_preserves_valid_relative_private_import(self, tmp_path: Path) -> None:
         """Leave an already-relative same-owner import outside the finding set."""

@@ -172,7 +172,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenanceCallables:
 
     @staticmethod
     def test_real_checkout_runtime_uses_declared_source(
-        live_repository: m.Infra.RepositoryRef,
+        live_repository: p.Infra.RepositoryRef,
     ) -> None:
         """Authenticate each real public import resolver without fake packages."""
         checkout = tm.ok(

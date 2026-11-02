@@ -19,7 +19,7 @@ class FlextInfraModelsSonarcloud:
     class SonarcloudIssueFieldValue(m.ContractModel):
         """One ``sonar.issue.ignore.multicriteria`` entry as the API spells it."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -50,7 +50,7 @@ class FlextInfraModelsSonarcloud:
         Unread metadata is ignored rather than forbidden.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             populate_by_name=True,
         )
         key: Annotated[t.NonEmptyStr, m.Field(description="Setting key")]

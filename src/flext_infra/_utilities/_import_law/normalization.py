@@ -98,9 +98,9 @@ class FlextInfraUtilitiesImportLawNormalization(
         files: Sequence[Path],
         *,
         sources: Mapping[Path, str],
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         snapshot: p.Infra.WorkspaceSnapshot,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan import rewrites at this phase's declared result boundary.
 
         A typed failure of ``u.Infra.MOD_MODULE_FAILURE_TYPES`` born for
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             snapshot=snapshot,
         )
         if attempt.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(attempt)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(attempt)
         return attempt.value
 
     @classmethod
@@ -133,16 +133,16 @@ class FlextInfraUtilitiesImportLawNormalization(
         files: Sequence[Path],
         *,
         sources: Mapping[Path, str],
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         snapshot: p.Infra.WorkspaceSnapshot,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan import rewrites against the working sources.
 
         Returns:
             One plan per rewritten file, or the first planning failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         root = project_root.resolve()
         with ExitStack() as stack:
             source_project = FlextInfraUtilitiesRopeRuntime.snapshot_project(
@@ -278,7 +278,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             p.Infra.RopeSourceMemberResolver,
         ],
         runtime_diagnostics: MutableMapping[str, t.StrTuple] | None = None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Normalize one elected cohort through its shared source resolver.
 
         Args:
@@ -296,8 +296,8 @@ class FlextInfraUtilitiesImportLawNormalization(
         """
         project_root, files = location
         source_project, import_graph, member_resolver = native
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        plans: list[m.Infra.CodegenFilePlan] = []
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
+        plans: list[p.Infra.CodegenFilePlan] = []
         for path in files:
             source = sources[path]
             if source.startswith(c.Infra.AUTOGEN_HEADER):
@@ -315,7 +315,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                 continue
             normalized_source = normalized.value
             before = (
-                r[m.Cli.AtomicFileState].ok(snapshot.sources[path].state)
+                r[p.Cli.AtomicFileState].ok(snapshot.sources[path].state)
                 if path in snapshot.sources
                 else FlextInfraUtilitiesCodegenFilePlan.codegen_target_snapshot(path)
             )
@@ -470,7 +470,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         ],
         *,
         member_resolver: p.Infra.RopeSourceMemberResolver | None,
-    ) -> p.Result[tuple[m.Infra.ImportLawPass | None, str]]:
+    ) -> p.Result[tuple[p.Infra.ImportLawPass | None, str]]:
         """Elect the namespace, authenticate the candidate and build one pass.
 
         Returns:
@@ -490,7 +490,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             )
         )
         if located is None:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].ok(
+            return r[tuple[p.Infra.ImportLawPass | None, str]].ok(
                 value=(None, source),
             )
         namespace_dir, module = located
@@ -501,23 +501,23 @@ class FlextInfraUtilitiesImportLawNormalization(
             project_root, namespace, sources=sources, source_project=inputs[2]
         )
         if root_exports is None:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].fail(
+            return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
                 f"{namespace_dir} is a namespace without an owned package init",
             )
         if import_graph is None:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].fail(
+            return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
                 "import normalization requires its captured runtime graph",
             )
         project = inputs[2]
         if project is None:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].fail(
+            return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
                 "Import normalization requires its bound native source project",
             )
         candidate = cls._import_law_candidate_module(
             project, file_path, source, namespace
         )
         if candidate.failure:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].from_failure(candidate)
+            return r[tuple[p.Infra.ImportLawPass | None, str]].from_failure(candidate)
         current = candidate.value
         tree = ast.parse(current, filename=str(file_path))
         parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
@@ -555,16 +555,16 @@ class FlextInfraUtilitiesImportLawNormalization(
                 tree, parents, module, member_resolver
             ),
         )
-        return r[tuple[m.Infra.ImportLawPass | None, str]].ok(value=(state, current))
+        return r[tuple[p.Infra.ImportLawPass | None, str]].ok(value=(state, current))
 
     @classmethod
     def _import_law_refreshed_tree(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         current: str,
         *,
         member_resolver: p.Infra.RopeSourceMemberResolver | None,
-    ) -> m.Infra.ImportLawPass:
+    ) -> p.Infra.ImportLawPass:
         """Re-parse the evolved candidate so the next pass owns its live lines.
 
         The pass state's tree, parent map and bindings describe the source
@@ -682,7 +682,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _import_law_runtime_diagnostics(
-        cls, state: m.Infra.ImportLawPass
+        cls, state: p.Infra.ImportLawPass
     ) -> t.StrTuple:
         """Describe the existing classifier's reads without changing placement.
 
@@ -724,7 +724,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_one_pass(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         source: str,
         *,
         sources: Mapping[Path, str] | None = None,
@@ -762,7 +762,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_first_rewrite(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         source: str,
         *,
         sources: Mapping[Path, str] | None,
@@ -834,7 +834,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @staticmethod
     def _import_law_validate_transition(
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         candidate: str,
         edits: Sequence[tuple[int, int, Sequence[str]]],
     ) -> p.Result[bool]:
@@ -859,7 +859,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_own_family_candidate(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         source: str,
         *,
         member_resolver: p.Infra.RopeSourceMemberResolver | None,
@@ -925,7 +925,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _import_law_own_family_imports(
-        cls, state: m.Infra.ImportLawPass
+        cls, state: p.Infra.ImportLawPass
     ) -> Mapping[str, tuple[str, str]]:
         """Elect root imports that the existing own-family boundary rejects.
 
@@ -968,7 +968,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_own_family_route(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         qualified: str,
         member: str,
         *,
@@ -1038,7 +1038,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @staticmethod
     def _import_law_own_family_publication(
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         project: p.Infra.RopeProject,
         module: str,
         owner: str,
@@ -1136,7 +1136,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_outside_boundary(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
         *,
         runtime_only: bool,
@@ -1159,7 +1159,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _import_law_validate_import_boundary(
-        cls, state: m.Infra.ImportLawPass
+        cls, state: p.Infra.ImportLawPass
     ) -> p.Result[bool]:
         """Reject forbidden dependencies before hoisting, deferral or routing.
 
@@ -1256,7 +1256,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def import_law_layer_zero_helper(
-        cls, state: m.Infra.ImportLawPass, target: str
+        cls, state: p.Infra.ImportLawPass, target: str
     ) -> bool:
         """Prove an own helper against the complete native candidate dependency graph.
 
@@ -1291,7 +1291,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _layer_zero_module_edges(
-        cls, state: m.Infra.ImportLawPass, module: str
+        cls, state: p.Infra.ImportLawPass, module: str
     ) -> frozenset[str] | None:
         """Resolve one module's authenticated foundation dependencies.
 
@@ -1347,7 +1347,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _import_law_layer_zero_edges(
-        cls, state: m.Infra.ImportLawPass, module: str, tree: ast.Module
+        cls, state: p.Infra.ImportLawPass, module: str, tree: ast.Module
     ) -> frozenset[str] | None:
         """Read native helper dependencies, including type-checking-only imports.
 

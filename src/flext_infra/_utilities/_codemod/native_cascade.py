@@ -57,7 +57,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         ).unwrap()
 
     @staticmethod
-    def codemod_native_eligible(rule: m.Infra.CodemodRule) -> bool:
+    def codemod_native_eligible(rule: p.Infra.CodemodRule) -> bool:
         """Whether ast-grep alone applies the rule: a fix and no engine step.
 
         Returns:
@@ -82,7 +82,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         return shape if separator else None
 
     @classmethod
-    def _stage_claims(cls, stage: m.Infra.ModStageConfig, rule_id: str) -> bool:
+    def _stage_claims(cls, stage: p.Infra.ModStageConfig, rule_id: str) -> bool:
         """Whether a native stage owns one rule id.
 
         A stage with shapes owns exactly those generated shapes; the catalog
@@ -103,9 +103,9 @@ class FlextInfraUtilitiesCodemodNativeCascade:
     def codemod_native_stage(
         cls,
         project: Path,
-        plan: m.Infra.CodemodRulePlan,
-        stage: m.Infra.ModStageConfig,
-    ) -> m.Infra.CodemodRuleset | None:
+        plan: p.Infra.CodemodRulePlan,
+        stage: p.Infra.ModStageConfig,
+    ) -> p.Infra.CodemodRuleset | None:
         """Write one stage's native configuration under the project's reports.
 
         The stage directory holds the elected rules the stage owns, catalog
@@ -168,7 +168,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
 
     @classmethod
     def _run_native_stage(
-        cls, preview: Path, binary: Path, ruleset: m.Infra.CodemodRuleset
+        cls, preview: Path, binary: Path, ruleset: p.Infra.CodemodRuleset
     ) -> None:
         """Apply one staged ruleset with ast-grep's own ``--update-all``.
 
@@ -195,7 +195,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
     def _run_ruff_stage(
         project: Path,
         preview: Path,
-        stage: m.Infra.ModStageConfig,
+        stage: p.Infra.ModStageConfig,
         originals: Mapping[Path, bytes],
     ) -> None:
         """Repair the selected Ruff codes on every source the cascade changed.
@@ -238,7 +238,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
     def native_cascade(
         cls,
         project: Path,
-        plan: m.Infra.CodemodRulePlan,
+        plan: p.Infra.CodemodRulePlan,
         sources: Mapping[Path, bytes],
     ) -> Mapping[Path, bytes]:
         """Run every declared stage over a staged preview to its fixed point.

@@ -30,7 +30,7 @@ class TestsFlextInfraSemanticPhaseContract:
         """Utility-owned factories preserve model defaults and JSON round-trips."""
         consumer = tmp_path / "declaration_factory_consumer.py"
         consumer.write_text(
-            "from flext_core import m, t, u\n"
+            "from flext_core import m, p, t, u\n"
             "from typing_extensions import TypeForm\n"
             "type Bag[T] = MutableSequence[T]\n"
             "class Consumer(m.ContractModel):\n"

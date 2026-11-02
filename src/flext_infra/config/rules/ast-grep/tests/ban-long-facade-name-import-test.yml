@@ -1,6 +1,6 @@
 id: ban-long-facade-name-import
 valid:
-- "from flext_core import c, m, t, u"
+- "from flext_core import c, m, p, t, u"
 - "from flext_core import FlextService, FlextSettings"
 - "from flext_core.models import m"
 - "from flext_infra._utilities._semantic_cutover import FlextInfraTypesUtilitiesSemanticNesting"

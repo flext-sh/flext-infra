@@ -260,7 +260,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             return scope.get_defined_names().get(member)
 
         def _source_class_binding(
-            self, qualified: m.Infra.SourceClassReference
+            self, qualified: p.Infra.SourceClassReference
         ) -> p.Infra.RopePyName:
             """Resolve the native class declaration before reading its members.
 
@@ -361,7 +361,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def class_order(
             self,
-            declarations: Sequence[m.Infra.SourceClassReference],
+            declarations: Sequence[p.Infra.SourceClassReference],
         ) -> t.StrTuple:
             """Order declared owners from their authoritative source ancestry.
 
@@ -433,8 +433,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def class_reaches(
             self,
-            declarations: Sequence[m.Infra.SourceClassReference],
-            anchors: Sequence[m.Infra.SourceClassReference],
+            declarations: Sequence[p.Infra.SourceClassReference],
+            anchors: Sequence[p.Infra.SourceClassReference],
         ) -> tuple[frozenset[str], ...]:
             """Report which anchors each declaration's source C3 ancestry holds.
 
@@ -454,7 +454,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             )
 
         def class_defers_annotations(
-            self, qualified: m.Infra.SourceClassReference
+            self, qualified: p.Infra.SourceClassReference
         ) -> bool:
             """Prove ordinary class construction through authenticated ancestry.
 
@@ -1172,7 +1172,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module_name: str,
             resource: p.Infra.RopeResource,
             name: str,
-        ) -> m.Infra.SourceClassReference | None:
+        ) -> p.Infra.SourceClassReference | None:
             """Read the core installer's declared route when inventory shadows it.
 
             The literal ``install_lazy_exports`` mapping is the declaration
@@ -1523,7 +1523,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module: t.Infra.RopeSemanticModule,
             binding: p.Infra.RopeImportedName,
             attributes: t.StrTuple,
-        ) -> m.Infra.SourceClassReference | None:
+        ) -> p.Infra.SourceClassReference | None:
             """Resolve completed source bindings before forwarding native imports.
 
             Captured providers retain their planned bytes; uncaptured providers
@@ -1764,7 +1764,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module_name: str,
             resource: p.Infra.RopeResource,
             name: str,
-        ) -> m.Infra.SourceClassReference | None:
+        ) -> p.Infra.SourceClassReference | None:
             """Read one export from the same native candidate and source resource.
 
             Returns:
@@ -1848,7 +1848,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def _resolve(
             self,
-            reference: m.Infra.SourceClassReference,
+            reference: p.Infra.SourceClassReference,
             visiting: frozenset[str] = frozenset(),
             depth: int = 0,
         ) -> str:
@@ -1904,7 +1904,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
         def _alias_rewritten_target(
             self,
-            reference: m.Infra.SourceClassReference,
+            reference: p.Infra.SourceClassReference,
         ) -> tuple[str, t.StrTuple]:
             """Rewrite facade-qualified targets through the lazy alias map.
 
@@ -2121,7 +2121,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self,
             module: str,
             name: str,
-        ) -> m.Infra.SourceClassReference | None:
+        ) -> p.Infra.SourceClassReference | None:
             """Resolve one planned base through the initializer's lazy SSOT.
 
             The literal ``install_lazy_exports`` mapping is read from the
@@ -2329,7 +2329,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             message = f"Missing inherited class member: {identity}.{name}"
             raise ValueError(message)
 
-        def _root_reference(self, root: str) -> m.Infra.SourceClassReference:
+        def _root_reference(self, root: str) -> p.Infra.SourceClassReference:
             """Split one configured root into its reference parts.
 
             Returns:
@@ -2357,7 +2357,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         cls,
         project: p.Infra.RopeProject,
         sources: Mapping[str, tuple[Path, str]],
-        declarations: Sequence[m.Infra.SourceClassReference],
+        declarations: Sequence[p.Infra.SourceClassReference],
     ) -> t.StrTuple:
         """Order declared owners by their strict source-backed C3.
 
@@ -2375,7 +2375,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         cls,
         project: p.Infra.RopeProject,
         sources: Mapping[str, tuple[Path, str]],
-        groups: Sequence[Sequence[m.Infra.SourceClassReference]],
+        groups: Sequence[Sequence[p.Infra.SourceClassReference]],
     ) -> tuple[t.StrTuple, ...]:
         """Order several declaration groups through one source resolver.
 
@@ -2395,8 +2395,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         cls,
         project: p.Infra.RopeProject,
         sources: Mapping[str, tuple[Path, str]],
-        declarations: Sequence[m.Infra.SourceClassReference],
-        anchors: Sequence[m.Infra.SourceClassReference],
+        declarations: Sequence[p.Infra.SourceClassReference],
+        anchors: Sequence[p.Infra.SourceClassReference],
     ) -> tuple[frozenset[str], ...]:
         """Answer which anchors every declaration inherits, in one resolver.
 

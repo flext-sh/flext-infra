@@ -26,7 +26,7 @@ from flext_infra._utilities._semantic_cutover import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesSemanticCutoverModelFields(
@@ -398,11 +398,11 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         sources: Mapping[Path, str],
         *,
         source_project: p.Infra.RopeProject,
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Inspect all sources, including direct access emitted by older rules.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
 
         """
         return cls._semantic_edits(

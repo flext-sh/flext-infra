@@ -628,7 +628,7 @@ class TestsFlextInfraDocsGenerator:
             eq=True,
         )
         published = u.Tests.materialize_codegen_plans(
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(initial),
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(initial),
         )
         tm.ok(published)
 
@@ -662,7 +662,7 @@ class TestsFlextInfraDocsGenerator:
             eq=True,
         )
         published = u.Tests.materialize_codegen_plans(
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(stale_plans),
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(stale_plans),
         )
         tm.ok(published)
         tm.fail(stale.exists())

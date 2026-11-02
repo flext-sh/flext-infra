@@ -22,7 +22,7 @@ class TestsFlextInfraPyprojectConformSupport:
         *,
         role: c.Infra.MakeProfile,
         path: str,
-    ) -> m.Infra.RepositoryRef:
+    ) -> p.Infra.RepositoryRef:
         provider = u.Tests.provider()
         return m.Infra.RepositoryRef(
             name=distribution,
@@ -42,7 +42,7 @@ class TestsFlextInfraPyprojectConformSupport:
         self,
         *,
         role: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE,
-    ) -> m.Infra.WorkspaceSpec:
+    ) -> p.Infra.WorkspaceSpec:
         return u.Tests.workspace_spec(
             self._repository("workspace", role=role, path="."),
             subprojects=(
@@ -61,7 +61,7 @@ class TestsFlextInfraPyprojectConformSupport:
     @staticmethod
     def _uv_resolution(
         toolchain: p.Infra.ToolchainSpec,
-    ) -> m.Infra.UvResolutionSpec:
+    ) -> p.Infra.UvResolutionSpec:
         """Route the toolchain's uv resolver keys the way conform declares them.
 
         Returns:

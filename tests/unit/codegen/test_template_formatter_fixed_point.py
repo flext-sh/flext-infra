@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraTemplateFormatterFixedPoint:
@@ -33,7 +33,7 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
     )
 
     @staticmethod
-    def _empty_root_render() -> m.Infra.LazyInitRootRender:
+    def _empty_root_render() -> p.Infra.LazyInitRootRender:
         return m.Infra.LazyInitRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring='"""Tests package."""',
@@ -48,9 +48,9 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
     @staticmethod
     def _workflow_spec(
         *,
-        workspace_repositories: tuple[m.Infra.RepositoryRef, ...],
+        workspace_repositories: tuple[p.Infra.RepositoryRef, ...],
         has_devcontainer: bool,
-    ) -> m.Infra.GithubWorkflowRenderSpec:
+    ) -> p.Infra.GithubWorkflowRenderSpec:
         return u.CodegenTestSupport.Ci.workflow_spec(
             dist="demo",
             make_profile=c.Infra.MakeProfile.STANDALONE,

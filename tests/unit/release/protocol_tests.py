@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -140,7 +140,7 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(TestsFlextInfraReleaseProtocol._plan(workspace).next, eq="7.4.7")
 
     @staticmethod
-    def _plan(workspace: Path) -> m.Infra.ReleasePlan:
+    def _plan(workspace: Path) -> p.Infra.ReleasePlan:
         """Read the plan receipt the last ``plan`` phase wrote.
 
         Returns:
@@ -280,7 +280,7 @@ class TestsFlextInfraReleaseProtocol:
             ),
         )
 
-    def _planned_release(self, workspace: Path) -> m.Infra.ReleasePlan:
+    def _planned_release(self, workspace: Path) -> p.Infra.ReleasePlan:
         """Run the plan phase once and return its receipt.
 
         Returns:
@@ -354,7 +354,7 @@ class TestsFlextInfraReleaseProtocol:
     def _apply_release_version(
         workspace: Path,
         integration: str,
-        ownership: m.Infra.GitLaneOwnershipReceipt,
+        ownership: p.Infra.GitLaneOwnershipReceipt,
     ) -> None:
         """Stamp the release version once and return to the integration branch."""
         tm.that(

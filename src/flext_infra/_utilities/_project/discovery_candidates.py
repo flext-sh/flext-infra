@@ -23,7 +23,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
     def repository_operation_targets(
         root: Path,
         scope: c.Infra.CodegenConformScope,
-    ) -> p.Result[Sequence[m.Infra.WorkspaceOperationTarget]]:
+    ) -> p.Result[Sequence[p.Infra.WorkspaceOperationTarget]]:
         """Retain declared roots, including missing checkouts, in discovery order.
 
         Returns:
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
 
         """
         resolved = root.expanduser().resolve()
-        result_type = r[Sequence[m.Infra.WorkspaceOperationTarget]]
+        result_type = r[Sequence[p.Infra.WorkspaceOperationTarget]]
         if not resolved.is_dir():
             return result_type.fail(f"operation root does not exist: {resolved}")
         target = m.Infra.WorkspaceOperationTarget(root=resolved)
@@ -59,7 +59,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
         repository_root: Path,
         *,
         scan_dirs: frozenset[str] | None = None,
-        declarations: tuple[m.Infra.GitSubmoduleDeclaration, ...] | None = None,
+        declarations: tuple[p.Infra.GitSubmoduleDeclaration, ...] | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> Sequence[Path]:
         """Elect candidates and exclusions from one current Git declaration read.
@@ -152,7 +152,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidates(
         cls,
         repository_root: Path,
         *,
-        declarations: tuple[m.Infra.GitSubmoduleDeclaration, ...] | None = None,
+        declarations: tuple[p.Infra.GitSubmoduleDeclaration, ...] | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> frozenset[str]:
         """Derive exclusions from this invocation's Git declarations, never a cache.

@@ -28,7 +28,7 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
     @staticmethod
     def _accumulate_lint_totals(
         totals: MutableMapping[str, int],
-        snapshot: t.Infra.LintSnapshot[m.Infra.LintGateResult],
+        snapshot: t.Infra.LintSnapshot[p.Infra.LintGateResult],
     ) -> None:
         """Accumulate lint totals."""
         for tool, receipt in snapshot.items():
@@ -37,7 +37,7 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
     @staticmethod
     def _captured_source_states(
         py_files: Sequence[Path],
-        inputs: tuple[m.Cli.AtomicFileState, ...],
+        inputs: tuple[p.Cli.AtomicFileState, ...],
     ) -> p.Result[Mapping[Path, m.Cli.AtomicFileState]]:
         """Authenticate preflight snapshots against the sources read now.
 
@@ -72,12 +72,12 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
         rope_project: t.Infra.RopeProject,
         py_files: Sequence[Path],
         *,
-        params: m.Infra.AccessorMigrationInput,
-        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
+        params: p.Infra.AccessorMigrationInput,
+        inputs: tuple[p.Cli.AtomicFileState, ...] = (),
     ) -> p.Result[
         tuple[
-            Sequence[m.Infra.SemanticFilePlan],
-            Sequence[m.Infra.AccessorMigrationFile],
+            Sequence[p.Infra.SemanticFilePlan],
+            Sequence[p.Infra.AccessorMigrationFile],
         ]
     ]:
         """Capture the original sources and plan all rewrites without effects.
@@ -88,16 +88,16 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
         """
         result_type = r[
             tuple[
-                Sequence[m.Infra.SemanticFilePlan],
-                Sequence[m.Infra.AccessorMigrationFile],
+                Sequence[p.Infra.SemanticFilePlan],
+                Sequence[p.Infra.AccessorMigrationFile],
             ]
         ]
         captured = self._captured_source_states(py_files, inputs)
         if captured.failure:
             return result_type.from_failure(captured)
         states = captured.value
-        reports: list[m.Infra.AccessorMigrationFile] = []
-        plans: list[m.Infra.SemanticFilePlan] = []
+        reports: list[p.Infra.AccessorMigrationFile] = []
+        plans: list[p.Infra.SemanticFilePlan] = []
         resolver = FlextInfraRefactorAccessorOrigin(rope_project)
         selected = resolver.select_origin(params)
         if selected.failure:
@@ -148,17 +148,17 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
         rope_project: t.Infra.RopeProject,
         py_files: Sequence[Path],
         *,
-        params: m.Infra.AccessorMigrationInput,
+        params: p.Infra.AccessorMigrationInput,
         source_preview: p.Infra.SourcePreview,
-        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
-    ) -> p.Result[Sequence[m.Infra.AccessorMigrationFile]]:
+        inputs: tuple[p.Cli.AtomicFileState, ...] = (),
+    ) -> p.Result[Sequence[p.Infra.AccessorMigrationFile]]:
         """Validate the whole coupled candidate before its single publication.
 
         Returns:
             Measured per-file evidence or the original protected failure.
 
         """
-        result_type = r[Sequence[m.Infra.AccessorMigrationFile]]
+        result_type = r[Sequence[p.Infra.AccessorMigrationFile]]
         planned = self._plan_files(rope_project, py_files, params=params, inputs=inputs)
         if planned.failure:
             return result_type.from_failure(planned)
@@ -195,13 +195,13 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
 
     @staticmethod
     def _candidate_reports(
-        reports: Sequence[m.Infra.AccessorMigrationFile],
+        reports: Sequence[p.Infra.AccessorMigrationFile],
         evidence: tuple[
-            Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
-            Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+            Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
+            Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
         ],
         gates: Sequence[str],
-    ) -> Sequence[m.Infra.AccessorMigrationFile]:
+    ) -> Sequence[p.Infra.AccessorMigrationFile]:
         """Attach the measured batch evidence to the existing report model.
 
         Returns:
@@ -227,13 +227,13 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
 
     @staticmethod
     def validate_candidate(
-        plan: m.Infra.StageSourcePlan,
+        plan: p.Infra.StageSourcePlan,
         source_preview: p.Infra.SourcePreview,
         gates: Sequence[str],
     ) -> p.Result[
         tuple[
-            Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
-            Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+            Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
+            Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
         ]
     ]:
         """Validate changed and unchanged Python consumers in one staged view.
@@ -262,7 +262,7 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
         def validate(
             view_root: Path,
             candidates: Mapping[Path, Path],
-        ) -> Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]]:
+        ) -> Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]]:
             staged_paths = {
                 path: candidates.get(path, view_root / path.relative_to(plan.workspace))
                 for path in dict.fromkeys((*paths, *plan.updates))
@@ -299,8 +299,8 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
         if previewed.failure:
             return r[
                 tuple[
-                    Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
-                    Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+                    Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
+                    Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
                 ]
             ].from_failure(previewed)
         execution_errors = tuple(
@@ -319,8 +319,8 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
         )
         result_type = r[
             tuple[
-                Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
-                Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+                Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
+                Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
             ]
         ]
         if errors:
@@ -347,7 +347,7 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
         return "".join(diff_lines)
 
     @staticmethod
-    def render_text(report: m.Infra.AccessorMigrationReport) -> str:
+    def render_text(report: p.Infra.AccessorMigrationReport) -> str:
         """Render an accessor migration report as CLI text.
 
         Returns:

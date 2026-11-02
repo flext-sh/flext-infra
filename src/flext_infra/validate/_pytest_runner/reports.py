@@ -26,7 +26,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
     @staticmethod
     def _reconcile_markdown(
         report_dir: Path,
-        diagnostics: m.Infra.PytestDiagnostics,
+        diagnostics: p.Infra.PytestDiagnostics,
         *,
         cache_hit: bool,
     ) -> bool:
@@ -112,7 +112,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         return not violations
 
     @staticmethod
-    def _write_run_context(report_dir: Path, context: m.Infra.PytestRunContext) -> None:
+    def _write_run_context(report_dir: Path, context: p.Infra.PytestRunContext) -> None:
         """Name the mode and database before any subprocess can fail."""
         u.Cli.atomic_write_text_file(
             report_dir / "run-context.json",
@@ -166,11 +166,11 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         *,
         cache_restored: bool,
         reported_count: int,
-    ) -> p.Result[m.Infra.TestmonRunAccounting]:
+    ) -> p.Result[p.Infra.TestmonRunAccounting]:
         """Parse typed executed/deselected accounting from durable artifacts.
 
         Returns:
-            The resulting ``p.Result[m.Infra.TestmonRunAccounting]``.
+            The resulting ``p.Result[p.Infra.TestmonRunAccounting]``.
 
         Raises:
             FileNotFoundError: If ``not junit.exists()``.
@@ -200,7 +200,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         deselected = 0
         inventory_count = None
         owns_no_tests = False
-        selection_plan: m.Infra.PytestSelectionPlan | None = None
+        selection_plan: p.Infra.PytestSelectionPlan | None = None
         # Incremental and full operations both publish their observed inventory.
         # Only incremental execution owns a selection database.
         if context.testmon_db is not None or (
@@ -245,8 +245,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
     @staticmethod
     def _selected_inventory(
         log: Path,
-        context: m.Infra.PytestRunContext,
-        selection_plan: m.Infra.PytestSelectionPlan | None,
+        context: p.Infra.PytestRunContext,
+        selection_plan: p.Infra.PytestSelectionPlan | None,
     ) -> tuple[int, int | None]:
         """Reconcile the executed selection against the collection inventory.
 
@@ -299,11 +299,11 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         # file and full requests execute their complete in-scope inventory.
         return (inventory_count - len(selected.node_ids), inventory_count)
 
-    def _diagnostics(self, report_dir: Path) -> p.Result[m.Infra.PytestDiagnostics]:
+    def _diagnostics(self, report_dir: Path) -> p.Result[p.Infra.PytestDiagnostics]:
         """Extract diagnostics through the canonical typed service.
 
         Returns:
-            The resulting ``p.Result[m.Infra.PytestDiagnostics]``.
+            The resulting ``p.Result[p.Infra.PytestDiagnostics]``.
 
         """
         extractor = FlextInfraPytestDiagExtractor(
@@ -321,7 +321,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
     @staticmethod
     def _read_collection_diagnostics(
         report_log: Path,
-    ) -> m.Infra.PytestDiagnostics:
+    ) -> p.Infra.PytestDiagnostics:
         """Read and retain the collection's native typed evidence.
 
         Returns:
@@ -379,7 +379,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             or outcome.forwarded_signal is not None
             or outcome.raw_return_code < 0
         )
-        diagnostics: m.Infra.PytestDiagnostics | None = None
+        diagnostics: p.Infra.PytestDiagnostics | None = None
         if interrupted:
             diagnostic_summary = "diagnostics=incomplete\n"
         else:
@@ -439,8 +439,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         self,
         report_dir: Path,
         *,
-        context: m.Infra.PytestRunContext,
-        suite: m.Infra.PytestDiagnostics,
+        context: p.Infra.PytestRunContext,
+        suite: p.Infra.PytestDiagnostics,
     ) -> tuple[tuple[str, m.Infra.PytestDiagnostics], ...]:
         """Read each subprocess receipt once in execution order.
 
@@ -525,7 +525,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
     @staticmethod
     def _write_diagnostics(
         report_dir: Path,
-        diagnostics: m.Infra.PytestDiagnostics,
+        diagnostics: p.Infra.PytestDiagnostics,
         *,
         phases: tuple[tuple[str, m.Infra.PytestDiagnostics], ...],
     ) -> None:

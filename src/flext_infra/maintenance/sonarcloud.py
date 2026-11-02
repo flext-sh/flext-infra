@@ -31,13 +31,13 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
 
     @staticmethod
     def settings_plan(
-        sonarcloud: m.Infra.SonarcloudSpec,
+        sonarcloud: p.Infra.SonarcloudSpec,
         project_key: str,
-    ) -> p.Result[m.Infra.SonarcloudSettingsPlan]:
+    ) -> p.Result[p.Infra.SonarcloudSettingsPlan]:
         """Build the complete server state one project must carry.
 
         Returns:
-            The resulting ``p.Result[m.Infra.SonarcloudSettingsPlan]``.
+            The resulting ``p.Result[p.Infra.SonarcloudSettingsPlan]``.
 
         """
         # model_validate by field name: the constructor signature type checkers
@@ -50,10 +50,10 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
             for exclusion in sonarcloud.issue_exclusions
         )
         if len(frozenset(values)) != len(values):
-            return r[m.Infra.SonarcloudSettingsPlan].fail(
+            return r[p.Infra.SonarcloudSettingsPlan].fail(
                 "codegen.sonarcloud.issue_exclusions repeats a rule/resource pair",
             )
-        return r[m.Infra.SonarcloudSettingsPlan].ok(
+        return r[p.Infra.SonarcloudSettingsPlan].ok(
             m.Infra.SonarcloudSettingsPlan(
                 api_url=sonarcloud.api_url,
                 timeout_seconds=sonarcloud.api_timeout_seconds,
@@ -65,8 +65,8 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
 
     @staticmethod
     def settings_write_request(
-        plan: m.Infra.SonarcloudSettingsPlan,
-    ) -> m.Infra.SonarcloudSettingsWriteRequest:
+        plan: p.Infra.SonarcloudSettingsPlan,
+    ) -> p.Infra.SonarcloudSettingsWriteRequest:
         """Select reset for an empty SSOT or set for its complete property set.
 
         Returns:
@@ -92,13 +92,13 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
 
     @staticmethod
     def current_field_values(
-        plan: m.Infra.SonarcloudSettingsPlan,
-        current: m.Infra.SonarcloudSettingsValues,
-    ) -> tuple[m.Infra.SonarcloudIssueFieldValue, ...]:
+        plan: p.Infra.SonarcloudSettingsPlan,
+        current: p.Infra.SonarcloudSettingsValues,
+    ) -> tuple[p.Infra.SonarcloudIssueFieldValue, ...]:
         """Read effective entries without excluding values inherited from a parent.
 
         Returns:
-            The resulting ``tuple[m.Infra.SonarcloudIssueFieldValue, ...],``.
+            The resulting ``tuple[p.Infra.SonarcloudIssueFieldValue, ...],``.
 
         """
         return tuple(
@@ -111,8 +111,8 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
     @classmethod
     def in_sync_with(
         cls,
-        plan: m.Infra.SonarcloudSettingsPlan,
-        current: m.Infra.SonarcloudSettingsValues,
+        plan: p.Infra.SonarcloudSettingsPlan,
+        current: p.Infra.SonarcloudSettingsValues,
     ) -> bool:
         """Require every SSOT entry exactly once, regardless of server ordering.
 
@@ -128,13 +128,13 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
     @classmethod
     def _server_values(
         cls,
-        plan: m.Infra.SonarcloudSettingsPlan,
+        plan: p.Infra.SonarcloudSettingsPlan,
         token: t.SecretStr,
-    ) -> p.Result[m.Infra.SonarcloudSettingsValues]:
+    ) -> p.Result[p.Infra.SonarcloudSettingsValues]:
         """Read the project's current value of the plan's setting.
 
         Returns:
-            The resulting ``p.Result[m.Infra.SonarcloudSettingsValues]``.
+            The resulting ``p.Result[p.Infra.SonarcloudSettingsValues]``.
 
         """
         body = cls.call(
@@ -148,7 +148,7 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
             ),
         )
         if body.failure:
-            return r[m.Infra.SonarcloudSettingsValues].from_failure(body)
+            return r[p.Infra.SonarcloudSettingsValues].from_failure(body)
         return u.validate_value(
             m.Infra.SonarcloudSettingsValues,
             body.value,
@@ -157,7 +157,7 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
 
     def _write_settings(
         self,
-        plan: m.Infra.SonarcloudSettingsPlan,
+        plan: p.Infra.SonarcloudSettingsPlan,
         token: t.SecretStr,
     ) -> p.Result[bool]:
         """Write the SSOT settings, then prove the server readback holds them.
@@ -194,8 +194,8 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
 
     def _readback_divergence(
         self,
-        plan: m.Infra.SonarcloudSettingsPlan,
-        readback: m.Infra.SonarcloudSettingsValues,
+        plan: p.Infra.SonarcloudSettingsPlan,
+        readback: p.Infra.SonarcloudSettingsValues,
     ) -> p.Result[bool] | None:
         """Report the divergent server state after a write, or ``None`` when synced.
 
@@ -216,7 +216,7 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
 
     def _authenticate(
         self,
-        plan: m.Infra.SonarcloudSettingsPlan,
+        plan: p.Infra.SonarcloudSettingsPlan,
         token: t.SecretStr,
     ) -> p.Result[bool]:
         """Prove the configured token against SonarCloud's auth validate endpoint.
@@ -274,7 +274,7 @@ class FlextInfraMaintenanceSonarcloud(FlextInfraMaintenanceSonarcloudClient[bool
 
     def _converge(
         self,
-        plan: m.Infra.SonarcloudSettingsPlan,
+        plan: p.Infra.SonarcloudSettingsPlan,
         token: t.SecretStr,
     ) -> p.Result[bool]:
         """Authenticate, read the server value, and write only on divergence.

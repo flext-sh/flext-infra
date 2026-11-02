@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
@@ -27,8 +27,8 @@ class FlextInfraGatesEnforcementCatalog(FlextInfraGates):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Derive the catalog from its owners and report the first defect.
 
         Returns:

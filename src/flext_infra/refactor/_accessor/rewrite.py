@@ -12,7 +12,7 @@ from operator import itemgetter
 from tokenize import NAME, generate_tokens
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.refactor._accessor import (
     FlextInfraRefactorAccessorExpression,
     FlextInfraRefactorAccessorOrigin,
@@ -43,7 +43,7 @@ class FlextInfraRefactorAccessorRewrite(
         source: str,
         *,
         resolver: FlextInfraRefactorAccessorOrigin,
-    ) -> tuple[str, Sequence[m.Infra.AccessorMigrationChange]]:
+    ) -> tuple[str, Sequence[p.Infra.AccessorMigrationChange]]:
         """Apply the declared semantic migrations.
 
         Returns:
@@ -83,17 +83,17 @@ class FlextInfraRefactorAccessorRewrite(
         cls,
         source: str,
         *,
-        rules: Sequence[m.Infra.AccessorMigrationRule],
+        rules: Sequence[p.Infra.AccessorMigrationRule],
         file_path: Path,
         resolver: FlextInfraRefactorAccessorOrigin,
-    ) -> tuple[str, Sequence[m.Infra.AccessorMigrationChange]]:
+    ) -> tuple[str, Sequence[p.Infra.AccessorMigrationChange]]:
         """Resolve every catalog occurrence against the unchanged Rope source.
 
         Returns:
             The proposed source and actual rename or review receipts.
 
         """
-        token_changes: MutableSequence[m.Infra.AccessorMigrationChange] = []
+        token_changes: MutableSequence[p.Infra.AccessorMigrationChange] = []
         rewrite_ranges: MutableSequence[tuple[int, int, str]] = []
         rules_by_name = {rule.source_name: rule for rule in rules}
         skipped_by_definition: MutableMapping[tuple[str, str], int] = {}

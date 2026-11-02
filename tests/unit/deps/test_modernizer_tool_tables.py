@@ -31,7 +31,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         tmp_path: Path,
         source: str = "",
         *,
-        tool_config: m.Infra.ToolConfigDocument | None = None,
+        tool_config: p.Infra.ToolConfigDocument | None = None,
     ) -> tuple[t.MutableJsonMapping, Sequence[str]]:
         """Apply the phase to one named project payload; return payload and changes.
 

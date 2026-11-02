@@ -223,7 +223,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             )
 
     @staticmethod
-    def mypy_deadline_limit() -> m.Infra.MypyResourceLimit:
+    def mypy_deadline_limit() -> p.Infra.MypyResourceLimit:
         """Reserve harness startup and cleanup inside the configured slow budget.
 
         Returns:
@@ -265,7 +265,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             u.Cli.run(("/bin/kill", "-KILL", pid), timeout=timeout).unwrap()
 
     @staticmethod
-    def mypy_workload(root: Path, plugin_body: str = "") -> m.Infra.MypyInvocation:
+    def mypy_workload(root: Path, plugin_body: str = "") -> p.Infra.MypyInvocation:
         """Create a real checker project with an optional workload plugin.
 
         Returns:

@@ -79,7 +79,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Field(exclude=True, description="Original declarations consumed here"),
         ]
 

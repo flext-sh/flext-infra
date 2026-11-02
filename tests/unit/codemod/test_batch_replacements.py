@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraCli, codemod, m, t
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraBatchReplacements:
@@ -21,7 +21,7 @@ class TestsFlextInfraBatchReplacements:
     @staticmethod
     def _scanned_consumer(
         root: Path,
-    ) -> tuple[m.Infra.ModScanReport, Path]:
+    ) -> tuple[p.Infra.ModScanReport, Path]:
         """Scan a real public consumer against a locally declared rewrite.
 
         Returns:
@@ -110,7 +110,7 @@ class TestsFlextInfraBatchReplacements:
         generated: bool = False,
         replacement: bytes = b"after",
         matched: bytes = b"before",
-    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
+    ) -> p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence]:
         policy = path.parent / c.PYPROJECT_FILENAME
         if not policy.exists():
             policy.write_text(
@@ -171,7 +171,7 @@ class TestsFlextInfraBatchReplacements:
                 "text": statement.decode(),
                 "replacement": 'value = "after"',
                 "range": {"byteOffset": offsets},
-                "replacement_offsets": m.Infra.ModReplacementOffsets.model_validate(
+                "replacement_offsets": p.Infra.ModReplacementOffsets.model_validate(
                     offsets
                 ),
             }

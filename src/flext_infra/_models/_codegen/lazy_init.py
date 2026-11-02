@@ -388,7 +388,7 @@ class FlextInfraModelsCodegenLazyInit:
     class LazyInitRootRender(m.ArbitraryTypesModel):
         """Template context for one lazy public root ``__init__.py``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")

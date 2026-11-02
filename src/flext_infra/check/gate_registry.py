@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, p, r, t
 from flext_infra.gates import (
     FlextInfraGatesBandit,
     FlextInfraGatesCodemod,
@@ -49,7 +49,7 @@ class FlextInfraGateRegistry:
         self,
         *,
         runners: Mapping[str, p.Cli.CommandRunner] | None = None,
-        project_gates: Sequence[m.Infra.MakeProjectCheckGateSpec] = (),
+        project_gates: Sequence[p.Infra.MakeProjectCheckGateSpec] = (),
     ) -> None:
         """Build the gate-id to gate-class mapping used by check execution.
 
@@ -99,7 +99,7 @@ class FlextInfraGateRegistry:
         self,
         gate_ids: Sequence[str],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> t.StrTuple:
         """Elect applicability through each registered gate's existing owner.
 
