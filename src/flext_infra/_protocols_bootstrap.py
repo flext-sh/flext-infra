@@ -46,6 +46,15 @@ def _is_pydantic_field(node: ast.expr) -> bool:
     )
 
 
+def _is_model_metadata(node: ast.expr) -> bool:
+    return _is_pydantic_field(node) or (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "m"
+    )
+
+
 def _is_annotated(node: ast.expr) -> bool:
     return (isinstance(node, ast.Name) and node.id == "Annotated") or (
         isinstance(node, ast.Attribute) and node.attr == "Annotated"
@@ -91,7 +100,7 @@ class _PydanticAnnotatedMetadataRemover(ast.NodeTransformer):
         ):
             return node
         value, *metadata = node.slice.elts
-        retained = [item for item in metadata if not _is_pydantic_field(item)]
+        retained = [item for item in metadata if not _is_model_metadata(item)]
         if len(retained) == len(metadata):
             return node
         self.changed = True
@@ -269,17 +278,33 @@ def _annotation_patches(
         "",
     )
     for protocol in protocols:
-        for statement in protocol.body:
-            if not isinstance(statement, ast.AnnAssign):
-                continue
-            replacement, needs_facade = _normalized_annotation(
-                statement.annotation, owner
-            )
+        annotations: list[ast.expr] = []
+        for candidate in ast.walk(protocol):
+            if isinstance(candidate, ast.AnnAssign):
+                annotations.append(candidate.annotation)
+            elif isinstance(candidate, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if candidate.returns is not None:
+                    annotations.append(candidate.returns)
+                annotations.extend(
+                    argument.annotation
+                    for argument in (
+                        *candidate.args.posonlyargs,
+                        *candidate.args.args,
+                        *candidate.args.kwonlyargs,
+                    )
+                    if argument.annotation is not None
+                )
+        unique_annotations = {
+            _span(annotation, offsets): annotation for annotation in annotations
+        }
+        for annotation in unique_annotations.values():
+            replacement, needs_facade = _normalized_annotation(annotation, owner)
             requires_facade = requires_facade or needs_facade
             if replacement is not None:
-                start, end = _span(statement.annotation, offsets)
+                start, end = _span(annotation, offsets)
                 patches.append(_Patch(start, end, ast.unparse(replacement)))
-            if statement.value is not None:
+        for statement in protocol.body:
+            if isinstance(statement, ast.AnnAssign) and statement.value is not None:
                 start, end = _span(statement.value, offsets)
                 patches.append(_Patch(start, end, "..."))
     return patches, requires_facade
@@ -361,6 +386,72 @@ def normalize_protocol_tree(repository_root: Path) -> tuple[Path, ...]:
     return tuple(changed)
 
 
+def _protocol_holders(package_root: Path) -> tuple[tuple[str, str], ...]:
+    holders: list[tuple[str, str]] = []
+    for path in sorted(package_root.rglob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        holder = next(
+            (
+                node.name
+                for node in tree.body
+                if isinstance(node, ast.ClassDef) and "Protocols" in node.name
+            ),
+            None,
+        )
+        if holder is not None:
+            module = "." + ".".join(
+                path.relative_to(package_root).with_suffix("").parts
+            )
+            holders.append((holder, module))
+    return tuple(holders)
+
+
+def publish_protocol_facades(repository_root: Path) -> None:
+    """Publish lazy protocol exports and the aggregate ``p.Infra`` source facade."""
+    package = repository_root / "src" / "flext_infra"
+    protocol_root = package / "_protocols"
+    holders = _protocol_holders(protocol_root)
+    exports = ",\n    ".join(f'"{holder}"' for holder, _module in holders)
+    mappings = ",\n        ".join(
+        f'"{holder}": "{module}"' for holder, module in holders
+    )
+    imports = "\n".join(
+        f"from flext_infra._protocols{module} import {holder}"
+        for holder, module in holders
+    )
+    bases = ",\n        ".join(holder for holder, _module in holders)
+    protocol_root.joinpath("__init__.py").write_text(
+        "# AUTO-GENERATED FILE - Source bootstrap protocol exports.\n"
+        '"""Lazy protocol mirror exports."""\n\n'
+        "from __future__ import annotations\n\n"
+        "from types import MappingProxyType\n\n"
+        "from flext_core.lazy import install_lazy_exports\n\n"
+        f"__all__: tuple[str, ...] = (\n    {exports},\n)\n\n"
+        "install_lazy_exports(__name__, globals(), MappingProxyType({\n"
+        f"        {mappings},\n"
+        "    }), public_exports=__all__)\n",
+        encoding="utf-8",
+    )
+    package.joinpath("protocols.py").write_text(
+        "# AUTO-GENERATED FILE - Source bootstrap protocol facade.\n"
+        '"""Structural contracts projected from source model declarations."""\n\n'
+        "from __future__ import annotations\n\n"
+        "from flext_cli import FlextCliProtocols\n"
+        f"{imports}\n\n\n"
+        "class FlextInfraProtocols(FlextCliProtocols):\n"
+        '    """Structural contracts for flext-infra."""\n\n'
+        "    class Infra(\n"
+        f"        {bases},\n"
+        "    ):\n"
+        '        """Aggregate source-derived protocol contracts."""\n\n'
+        "p = FlextInfraProtocols\n"
+        '__all__: list[str] = ["FlextInfraProtocols", "p"]\n',
+        encoding="utf-8",
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Normalize protocol source, then optionally invoke the public CLI.
 
@@ -377,6 +468,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError(msg)
     root = Path(arguments[0]).resolve()
     normalize_protocol_tree(root)
+    publish_protocol_facades(root)
     if len(arguments) == 1:
         return 0
     command = arguments[2:] if arguments[1] == "--" else arguments[1:]

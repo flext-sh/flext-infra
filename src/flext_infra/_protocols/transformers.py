@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraProtocolsTransformers:
@@ -27,7 +27,7 @@ class FlextInfraProtocolsTransformers:
 
         project: Path
         path: Path
-        before: m.Cli.AtomicFileState
+        before: p.Cli.AtomicFileState
         desired_content: bytes | None
         desired_mode: int | None
         changes: tuple[str, ...] = ...

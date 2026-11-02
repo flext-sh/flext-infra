@@ -1,6 +1,6 @@
 """Promoted-command protocol contracts for flext-infra.
 
-Structural contracts for the frozen models in ``m.Infra.Promoted*`` — leaf
+Structural contracts for the frozen models in ``p.Infra.Promoted*`` — leaf
 code annotates with these protocols, never with the concrete models.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.

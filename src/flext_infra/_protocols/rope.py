@@ -47,7 +47,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
         @property
-        def workspace_index(self) -> m.Infra.RopeWorkspaceIndex:
+        def workspace_index(self) -> p.Infra.RopeWorkspaceIndex:
             """Materialized index for the open session."""
             ...
 
@@ -322,6 +322,8 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeWorkspaceDsl(RopeSessionLifecycleDsl, Protocol):
         """Public DSL contract for one shared Rope workspace session."""
 
+        semantic_rename_planner: p.Infra.NativeSemanticRenamePlanner | None
+
         def facade_projection(
             self,
             *,
@@ -551,15 +553,15 @@ class FlextInfraProtocolsRope(Protocol):
         """Structural data contract projected from the owning model."""
 
         module: t.NonEmptyStr
-        provider: m.InstanceOf[p.Infra.RopeSourceModule]
+        provider: p.InstanceOf[p.Infra.RopeSourceModule]
         package: str
         required_line: int | None = ...
         allow_conditional: bool = ...
         source_owned: bool
-        definitions: m.InstanceOf[
+        definitions: p.InstanceOf[
             MutableMapping[str, FlextInfraProtocolsRope.SourceClassDefinition]
         ]
-        lexical: m.InstanceOf[
+        lexical: p.InstanceOf[
             MutableMapping[str, FlextInfraProtocolsRope.SourceClassReference | None]
         ]
 

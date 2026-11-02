@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraProtocolsCodegenPipeline:

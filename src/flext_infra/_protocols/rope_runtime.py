@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, runtime_checkable
 
+from flext_infra import p
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 
 if TYPE_CHECKING:
@@ -604,7 +605,7 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         """Member lookup and class ordering bound to one captured source view."""
 
         def __call__(
-            self, qualified: str | m.Infra.SourceClassReference, /
+            self, qualified: str | p.Infra.SourceClassReference, /
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
 
         def class_order(

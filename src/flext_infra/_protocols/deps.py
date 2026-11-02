@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from flext_infra import p
+
 """Structural contracts for dependency-analysis collaborators.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -13,7 +15,7 @@ SPDX-License-Identifier: MIT
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import t
 
 
 @runtime_checkable

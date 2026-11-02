@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Protocol, runtime_checkable
 
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraProtocolsDepsToolConfig:

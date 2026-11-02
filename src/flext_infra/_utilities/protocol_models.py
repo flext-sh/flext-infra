@@ -56,9 +56,11 @@ class FlextInfraUtilitiesModelsProtocol:
             An absent declared facade/layout has no applicable projection.
 
         """
-        return cls.protocol_model_sources_from_source(
-            workspace.repository_root, workspace.rope_project
-        )
+        return cls._ModelProtocolProjection(
+            workspace.repository_root,
+            workspace.rope_project,
+            workspace=workspace,
+        ).render()
 
     @classmethod
     def protocol_model_sources_from_source(
@@ -161,9 +163,12 @@ class FlextInfraUtilitiesModelsProtocol:
             self,
             repository_root: Path,
             source_project: p.Infra.RopeProject,
+            *,
+            workspace: p.Infra.RopeWorkspaceDsl | None = None,
         ) -> None:
             self.repository_root = repository_root
             self.project = source_project
+            self._workspace = workspace
             self.models: dict[str, p.Infra.RopePyName] = {}
             self.destinations: dict[str, Path] = {}
             self.canonical_routes: dict[str, str] = {}
@@ -178,6 +183,19 @@ class FlextInfraUtilitiesModelsProtocol:
             self.type_parameters: dict[str, list[t.Infra.AstTypeParameter]] = {}
             self.dependencies: set[str] = set()
             self.member_cache: dict[str, p.Infra.RopePyName | None] = {}
+
+        @property
+        def workspace(self) -> p.Infra.RopeWorkspaceDsl:
+            """Return the semantic workspace required by the full projector.
+
+            Raises:
+                RuntimeError: The source-only bootstrap has no Rope workspace.
+
+            """
+            if self._workspace is None:
+                message = "semantic protocol projection requires a Rope workspace"
+                raise RuntimeError(message)
+            return self._workspace
 
         def sources(self) -> p.Result[Mapping[Path, str]]:
             """Inventory declaring model sources before any semantic module opens.
@@ -207,8 +225,7 @@ class FlextInfraUtilitiesModelsProtocol:
             layout = self._source_layout()
             if layout is None:
                 return result_type.ok({})
-            package_dir, class_stem = layout
-            package_name = ".".join(package_dir.relative_to(self.repository_root / "src").parts)
+            package_dir, class_stem, package_name = layout
             models_root = package_dir / "_models"
             if not self.project.source_query(models_root, "isdir"):
                 return result_type.ok({})
@@ -254,7 +271,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 rendered[destination.relative_to(self.repository_root)] = content
             return result_type.ok(rendered)
 
-        def _source_layout(self) -> tuple[Path, str] | None:
+        def _source_layout(self) -> tuple[Path, str, str] | None:
             """Discover the package solely from the overlaid pyproject source.
 
             Returns:
@@ -282,7 +299,11 @@ class FlextInfraUtilitiesModelsProtocol:
                 package_dir = self.repository_root / package
             if not self.project.source_query(package_dir, "isdir"):
                 return None
-            return package_dir, u.derive_class_stem(package_name.replace("_", "-"))
+            return (
+                package_dir,
+                u.derive_class_stem(package_name.replace("_", "-")),
+                package_name,
+            )
 
         @staticmethod
         def _source_model_classes(
@@ -415,7 +436,7 @@ class FlextInfraUtilitiesModelsProtocol:
             }
             imports: list[str] = []
             if "p" in roots:
-                imports.append(f"from {package_name} import p")
+                imports.append(f"from {package_name}.protocols import p")
             excluded = {"m", "p", "pydantic"}
             for statement in classes[0][2].body:
                 if isinstance(statement, ast.Import):
@@ -529,9 +550,8 @@ class FlextInfraUtilitiesModelsProtocol:
                     root = node
                     while isinstance(root.value, ast.Attribute):
                         root = root.value
-                    if (
-                        isinstance(root.value, ast.Name)
-                        and root.value.id.startswith("FlextInfraModels")
+                    if isinstance(root.value, ast.Name) and root.value.id.startswith(
+                        "FlextInfraModels"
                     ):
                         # Generated contracts use the stable public port facade,
                         # never a concrete model-holder implementation class.
@@ -801,7 +821,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 lines.insert(
                     position, "from typing import Protocol, runtime_checkable\n"
                 )
-            if additions_use_protocol_facade and f"from {package_name} import p" not in source:
+            protocol_import = f"from {package_name}.protocols import p"
+            if additions_use_protocol_facade and protocol_import not in source:
                 position = next(
                     (
                         index + 1
@@ -810,7 +831,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     ),
                     0,
                 )
-                lines.insert(position, f"from {package_name} import p\n")
+                lines.insert(position, f"{protocol_import}\n")
             if holder.end_lineno is None:
                 message = (
                     f"authored protocol holder has no source extent: {destination}"
@@ -996,7 +1017,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self,
             destination: Path,
             source: str,
-            context: p.Infra.ModelProtocolRenderContext,
+            context: m.Infra.ModelProtocolRenderContext,
         ) -> str:
             """Append absent contracts without replacing authored bytes or interfaces.
 
@@ -1016,7 +1037,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if resource is None:
                 message = f"authored protocol source is unavailable: {destination}"
                 raise ValueError(message)
-            module = self.require_semantic_module(
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                 FlextInfraUtilitiesRopeCore.resolve_pymodule(self.project, resource)
             )
             binding = module.get_attributes().get(context.owner)
@@ -1084,9 +1105,9 @@ class FlextInfraUtilitiesModelsProtocol:
         def _missing_contracts(
             self,
             holder: p.Infra.RopeSourceClass,
-            context: p.Infra.ModelProtocolRenderContext,
+            context: m.Infra.ModelProtocolRenderContext,
             destination: Path,
-        ) -> list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
+        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
             """Validate existing authored signatures before extending their holder.
 
             Returns:
@@ -1096,7 +1117,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: An authored contract has an incompatible signature.
 
             """
-            missing: list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
+            missing: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
             protocol_base = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
@@ -1132,13 +1153,11 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: An import would replace an authored binding.
 
             """
-            tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse(rendered)
+            tree = ast.parse(rendered)
             self._normal_authored_imports(tree, module)
-            for statement in FlextInfraUtilitiesRopeAnalysis.Tree.walk(tree):
+            for statement in ast.walk(tree):
                 if (
-                    not isinstance(
-                        statement, FlextInfraUtilitiesRopeAnalysis.Tree.ImportFrom
-                    )
+                    not isinstance(statement, ast.ImportFrom)
                     or statement.module == "__future__"
                 ):
                     continue
@@ -1156,11 +1175,7 @@ class FlextInfraUtilitiesModelsProtocol:
                             f"{module.get_name()}"
                         )
                         raise ValueError(message)
-            holder = next(
-                node
-                for node in tree.body
-                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef)
-            )
+            holder = next(node for node in tree.body if isinstance(node, ast.ClassDef))
             lines = rendered.splitlines(keepends=True)
             return [
                 "".join(
@@ -1173,7 +1188,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     ]
                 )
                 for node in holder.body
-                if isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef)
+                if isinstance(node, ast.ClassDef)
             ]
 
         def _normal_authored_imports(

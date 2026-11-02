@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import p
 
-from flext_infra import c
+from flext_infra import c, p
 
 """Protocol for workspace check outcomes.
 

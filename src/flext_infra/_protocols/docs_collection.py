@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Literal, Protocol, runtime_checkable
+from typing import Literal, Protocol, runtime_checkable
 
 from flext_infra import t
 
@@ -24,12 +24,7 @@ class FlextInfraProtocolsDocsCollection:
 
         id: str
         provider: t.NonEmptyStr = ...
-        root: Annotated[
-            Path,
-            m.BeforeValidator(
-                lambda value: Path(value) if isinstance(value, str) else value
-            ),
-        ]
+        root: Path
         adapter: Literal["files", "private-inventory"] = ...
         driver: t.NonEmptyStr = ...
         driver_version: t.NonEmptyStr = ...
@@ -44,18 +39,8 @@ class FlextInfraProtocolsDocsCollection:
         """Structural data contract projected from the owning model."""
 
         enabled: bool = ...
-        canonical_dir: Annotated[
-            Path,
-            m.BeforeValidator(
-                lambda value: Path(value) if isinstance(value, str) else value
-            ),
-        ]
-        projection_root: Annotated[
-            Path | None,
-            m.BeforeValidator(
-                lambda value: Path(value) if isinstance(value, str) else value
-            ),
-        ] = ...
+        canonical_dir: Path
+        projection_root: Path | None = ...
         sources: tuple[
             FlextInfraProtocolsDocsCollection.PlanCollectionSource, ...
         ] = ...

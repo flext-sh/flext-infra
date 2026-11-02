@@ -10,10 +10,12 @@ from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, Literal, Protocol, Self, runtime_checkable
 
+from flext_infra import p
+
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import m, t
 
 
 @runtime_checkable
@@ -318,7 +320,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def python_module_facts(
             self,
-        ) -> MutableMapping[t.Infra.RopeNativeParsedModule, m.Infra.PythonModuleFacts]:
+        ) -> MutableMapping[t.Infra.RopeNativeParsedModule, p.Infra.PythonModuleFacts]:
             """Static facts keyed by the original engine's parsed module."""
             ...
 
@@ -402,7 +404,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def codemod_renderings(
             self,
-        ) -> MutableMapping[tuple[Path, str], m.Infra.CodemodNativeGenerated]:
+        ) -> MutableMapping[tuple[Path, str], p.Infra.CodemodNativeGenerated]:
             """Native codemod rendering per member root and render-input digest."""
             ...
 

@@ -27,7 +27,7 @@ class FlextInfraProtocolsGit:
         scope: str | None
         origin: str | None
         value: str | None = ...
-        process: m.Cli.ProcessOutcome
+        process: p.Cli.ProcessOutcome
 
     @runtime_checkable
     class GitSigningIdentityReport(Protocol):

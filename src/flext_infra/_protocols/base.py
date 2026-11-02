@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import p, t
 
+from flext_infra import p
+
 if TYPE_CHECKING:
     from flext_infra import c
     from flext_infra._protocols import (
@@ -417,6 +419,21 @@ class FlextInfraProtocolsBase(Protocol):
             self,
             declaration: p.Infra.Object,
         ) -> p.Infra.SemanticRenameDecision | None: ...
+
+    @runtime_checkable
+    class NativeSemanticRenamePlanner(Protocol):
+        """Native rename capabilities supplied by the application composition root."""
+
+        def inventoried_declaration(
+            self, workspace: p.Infra.RopeWorkspaceDsl, qualified_name: str
+        ) -> p.Infra.Object: ...
+
+        def plan_native_candidates(
+            self,
+            projects: Sequence[p.Infra.RopeProject],
+            sources: Mapping[Path, str],
+            decisions: Sequence[p.Infra.SemanticRenameDecision],
+        ) -> tuple[Mapping[Path, str | None], tuple[tuple[Path, Path], ...]]: ...
 
     @runtime_checkable
     class GateAttestationRuntimeContext(Protocol):

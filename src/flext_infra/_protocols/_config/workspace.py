@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
+from flext_infra import p
 from flext_infra._constants.config import FlextInfraConstantsConfig
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 # Copyright (c) 2026 FLEXT Team. All rights reserved.
 # SPDX-License-Identifier: MIT

@@ -20,6 +20,14 @@ from flext_infra import c, m, p, s, t, u
 class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
     """Own the native Rope project, structural index, and read-only query caches."""
 
+    semantic_rename_planner: t.Port[p.Infra.NativeSemanticRenamePlanner] | None = (
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Application-owned native rename planner",
+        )
+    )
+
     _rope_repository_root: Path = m.PrivateAttr()
     _rope_project: t.Infra.RopeProject | None = m.PrivateAttr(
         default_factory=lambda: None,

@@ -4,6 +4,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from flext_infra import p
+
 """Structural documentation contracts for exact model transport.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -13,8 +15,6 @@ SPDX-License-Identifier: MIT
 
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
-
-    from flext_infra import p
 
 
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): protocols mirror

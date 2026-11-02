@@ -1,58 +1,101 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra. Protocols package.
-
-Copyright (c) 2026 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+# AUTO-GENERATED FILE - Source bootstrap protocol exports.
+"""Lazy protocol mirror exports."""
 
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
 
-if TYPE_CHECKING:
-    from flext_infra._protocols._config.workspace import (
-        FlextInfraProtocolsConfigWorkspace,
-    )
-    from flext_infra._protocols.base import FlextInfraProtocolsBase
-    from flext_infra._protocols.check import FlextInfraProtocolsCheck
-    from flext_infra._protocols.deps import FlextInfraProtocolsDeps
-    from flext_infra._protocols.docs import FlextInfraProtocolsDocs
-    from flext_infra._protocols.promoted import FlextInfraProtocolsPromoted
-    from flext_infra._protocols.rope import FlextInfraProtocolsRope
-    from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
-    from flext_infra._protocols.workspace_snapshot import (
-        FlextInfraProtocolsWorkspaceSnapshot,
-    )
-
-
 __all__: tuple[str, ...] = (
     "FlextInfraProtocolsBase",
+    "FlextInfraProtocolsCensus",
     "FlextInfraProtocolsCheck",
+    "FlextInfraProtocolsCodegenFix",
+    "FlextInfraProtocolsCodegenLazyInit",
+    "FlextInfraProtocolsCodegenPipeline",
+    "FlextInfraProtocolsCodegenRender",
+    "FlextInfraProtocolsCodegenTransaction",
+    "FlextInfraProtocolsCodemod",
     "FlextInfraProtocolsConfigWorkspace",
     "FlextInfraProtocolsDeps",
+    "FlextInfraProtocolsDepsToml",
+    "FlextInfraProtocolsDepsToolConfig",
+    "FlextInfraProtocolsDepsToolConfigLinters",
+    "FlextInfraProtocolsDepsToolConfigTypeCheckers",
     "FlextInfraProtocolsDocs",
+    "FlextInfraProtocolsDocsCollection",
+    "FlextInfraProtocolsDocsGeneration",
+    "FlextInfraProtocolsDuplication",
+    "FlextInfraProtocolsGates",
+    "FlextInfraProtocolsGit",
+    "FlextInfraProtocolsGitIdentity",
+    "FlextInfraProtocolsGitLaneInputs",
+    "FlextInfraProtocolsGitWorktreeFacts",
+    "FlextInfraProtocolsGitWorktreeState",
+    "FlextInfraProtocolsMiseToolchainBase",
+    "FlextInfraProtocolsMixins",
     "FlextInfraProtocolsPromoted",
+    "FlextInfraProtocolsRefactor",
+    "FlextInfraProtocolsRefactorAstGrep",
+    "FlextInfraProtocolsRefactorNamespaceEnforcer",
     "FlextInfraProtocolsRope",
+    "FlextInfraProtocolsRopeMove",
     "FlextInfraProtocolsRopeRuntime",
+    "FlextInfraProtocolsScan",
+    "FlextInfraProtocolsSonarcloud",
+    "FlextInfraProtocolsTransformers",
+    "FlextInfraProtocolsValidate",
+    "FlextInfraProtocolsWorkspace",
     "FlextInfraProtocolsWorkspaceSnapshot",
+    "FlextInfraProtocolsWorktree",
 )
 
 install_lazy_exports(
     __name__,
     globals(),
     MappingProxyType({
+        "FlextInfraProtocolsCodegenFix": "._codegen.fix",
+        "FlextInfraProtocolsCodegenLazyInit": "._codegen.lazy_init",
+        "FlextInfraProtocolsCodegenPipeline": "._codegen.pipeline",
+        "FlextInfraProtocolsCodegenTransaction": "._codegen.transaction",
         "FlextInfraProtocolsConfigWorkspace": "._config.workspace",
+        "FlextInfraProtocolsGitIdentity": "._git.identity",
+        "FlextInfraProtocolsGitWorktreeFacts": "._git.worktree_facts",
+        "FlextInfraProtocolsGitWorktreeState": "._git.worktree_state",
         "FlextInfraProtocolsBase": ".base",
+        "FlextInfraProtocolsCensus": ".census",
         "FlextInfraProtocolsCheck": ".check",
+        "FlextInfraProtocolsCodegenRender": ".codegen_render",
+        "FlextInfraProtocolsCodemod": ".codemod",
         "FlextInfraProtocolsDeps": ".deps",
+        "FlextInfraProtocolsDepsToml": ".deps_toml",
+        "FlextInfraProtocolsDepsToolConfig": ".deps_tool_config",
+        "FlextInfraProtocolsDepsToolConfigLinters": ".deps_tool_config_linters",
+        "FlextInfraProtocolsDepsToolConfigTypeCheckers": ".deps_tool_config_type_checkers",
         "FlextInfraProtocolsDocs": ".docs",
+        "FlextInfraProtocolsDocsCollection": ".docs_collection",
+        "FlextInfraProtocolsDocsGeneration": ".docs_generation",
+        "FlextInfraProtocolsDuplication": ".duplication",
+        "FlextInfraProtocolsGates": ".gates",
+        "FlextInfraProtocolsGit": ".git",
+        "FlextInfraProtocolsGitLaneInputs": ".git_lane_inputs",
+        "FlextInfraProtocolsMiseToolchainBase": ".mise_toolchain_base",
+        "FlextInfraProtocolsMixins": ".mixins",
         "FlextInfraProtocolsPromoted": ".promoted",
+        "FlextInfraProtocolsRefactor": ".refactor",
+        "FlextInfraProtocolsRefactorAstGrep": ".refactor_ast_grep",
+        "FlextInfraProtocolsRefactorNamespaceEnforcer": ".refactor_namespace_enforcer",
         "FlextInfraProtocolsRope": ".rope",
+        "FlextInfraProtocolsRopeMove": ".rope_move",
         "FlextInfraProtocolsRopeRuntime": ".rope_runtime",
+        "FlextInfraProtocolsScan": ".scan",
+        "FlextInfraProtocolsSonarcloud": ".sonarcloud",
+        "FlextInfraProtocolsTransformers": ".transformers",
+        "FlextInfraProtocolsValidate": ".validate",
+        "FlextInfraProtocolsWorkspace": ".workspace",
         "FlextInfraProtocolsWorkspaceSnapshot": ".workspace_snapshot",
+        "FlextInfraProtocolsWorktree": ".worktree",
     }),
     public_exports=__all__,
 )

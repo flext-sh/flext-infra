@@ -186,7 +186,7 @@ class FlextInfraProtocolsGates:
         runtime_identity: str
         gate: t.NonEmptyStr
         command_digest: str
-        process: m.Cli.ProcessOutcome
+        process: p.Cli.ProcessOutcome
         native_outcome: c.Infra.ToolOutcome
         intent: FlextInfraProtocolsGates.GateExecutionIntent
         policy: c.Infra.GateAcceptancePolicy
@@ -205,7 +205,7 @@ class FlextInfraProtocolsGates:
         runtime_identity: str
         gate: t.NonEmptyStr
         command_digest: str
-        process: m.Cli.ProcessOutcome
+        process: p.Cli.ProcessOutcome
         native_outcome: c.Infra.ToolOutcome
         intent: FlextInfraProtocolsGates.GateExecutionIntent
         policy: c.Infra.GateAcceptancePolicy
@@ -267,7 +267,7 @@ class FlextInfraProtocolsGates:
         """Structural data contract projected from the owning model."""
 
         started: FlextInfraProtocolsGates.GateCaptureStart
-        process: m.Cli.ProcessOutcome
+        process: p.Cli.ProcessOutcome
         reports: tuple[FlextInfraProtocolsGates.GateReportEvidence, ...]
         report_root: Path
         runtime_identity: str
@@ -276,7 +276,7 @@ class FlextInfraProtocolsGates:
     class GateCaptureReport(Protocol):
         """Structural data contract projected from the owning model."""
 
-        process: m.Cli.ProcessOutcome
+        process: p.Cli.ProcessOutcome
         receipt: Path | None
         issues: tuple[p.Infra.Issue, ...] = ...
 

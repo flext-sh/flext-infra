@@ -48,16 +48,25 @@ class TestsModelProtocolNativeMro:
                 "m = Models\n__all__ = ['Models', 'm']\n"
             ),
             package / "protocols.py": (
-                "class Protocols:\n    class Project:\n        pass\n"
+                "class Protocols:\n"
+                "    class Project:\n        pass\n"
+                "    class Cli:\n"
+                "        class AtomicFileState:\n            pass\n"
+                "    class Infra:\n"
+                "        class WorkspaceThing:\n            pass\n"
                 "p = Protocols\n__all__ = ['Protocols', 'p']\n"
             ),
             package / "_models" / "payload.py": (
                 "from typing import Annotated as TypeMetadata\n"
                 "from flext_cli import m\n"
                 "from pydantic import BaseModel\n\n"
+                "class FlextInfraModelsWorkspace:\n"
+                "    class WorkspaceThing:\n        pass\n\n"
                 "class ModelsPayload:\n"
                 "    class Request(BaseModel):\n"
                 "        title: TypeMetadata[str, m.Field(description='title')]\n"
+                "        receipt: TypeMetadata[m.Cli.AtomicFileState | None, m.Field()]\n"
+                "        workspace: FlextInfraModelsWorkspace.WorkspaceThing\n"
             ),
         }
         for path, source in sources.items():
@@ -70,7 +79,12 @@ class TestsModelProtocolNativeMro:
         destination = (package / "_protocols" / "payload.py").relative_to(root)
         generated = projected[destination]
         tm.ok("title: str" in generated)
+        tm.ok("receipt: p.Cli.AtomicFileState | None" in generated)
+        tm.ok("workspace: p.Infra.WorkspaceThing" in generated)
+        tm.ok(f"from {package.name}.protocols import p" in generated)
         tm.ok("m.Field" not in generated)
+        tm.ok("m.Cli" not in generated)
+        tm.ok("FlextInfraModelsWorkspace" not in generated)
         tm.ok("TypeMetadata" not in generated)
         tm.ok(u.Cli.atomic_write_text_file(root / destination, generated))
         owner = u.derive_class_stem(package.name.replace("_", "-"))
@@ -83,7 +97,11 @@ class TestsModelProtocolNativeMro:
             f"module = importlib.import_module({module_name!r})\n"
             f"owner = getattr(module, {owner!r})\n"
             "tm.ok(is_protocol(owner.Request))\n"
-            "tm.that(get_type_hints(owner.Request), eq={'title': str})\n"
+            "tm.that(get_type_hints(owner.Request), eq={\n"
+            "    'title': str,\n"
+            "    'receipt': module.p.Cli.AtomicFileState | None,\n"
+            "    'workspace': module.p.Infra.WorkspaceThing,\n"
+            "})\n"
             "tm.ok('m' not in vars(module))\n",
             cwd=root,
         )
