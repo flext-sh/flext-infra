@@ -9,6 +9,7 @@ severity: error
 files:
   - "src/**/*.py"
   - "tests/**/*.py"
+  - "examples/**/*.py"
 rule:
   pattern: "model_config: ClassVar[$OWNER.$CONFIG] = $VAL"
 constraints:
@@ -32,6 +33,7 @@ severity: error
 files:
   - "src/**/*.py"
   - "tests/**/*.py"
+  - "examples/**/*.py"
 rule:
   pattern: "model_config: ClassVar[c.$CONFIG] = c.$CONFIG($$$ARGS)"
   inside:

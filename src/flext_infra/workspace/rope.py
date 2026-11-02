@@ -68,6 +68,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         initializer: p.Infra.SourceInitializerPlanner,
+        selection: tuple[Path, c.Infra.FacadeFamily | None] | None = None,
     ) -> p.Infra.CodegenRepositoryPlanOutcome:
         """Relocate each private family domain's owner into its composing module.
 
@@ -78,7 +79,10 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         facades.
 
         Returns:
-            The source effects of every seeded and rendered domain owner.
+            The source effects of every seeded and rendered selected domain owner.
+
+        Raises:
+            ValueError: If selection leaves the workspace or has no native owner.
 
         """
         root, project = self.repository_root, self.rope_project
@@ -93,10 +97,41 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             )
             if path.is_relative_to(root)
         )
-        for package in sorted({
-            path.parent for path in paths if path.name == c.Infra.INIT_PY
-        }):
-            for letter, family in u.Infra.facade_families().items():
+        families = u.Infra.facade_families()
+        if selection is not None:
+            destination, selected = selection
+            if not destination.is_relative_to(root):
+                message = f"domain selection leaves workspace: {destination}"
+                raise ValueError(message)
+            if selected is not None:
+                elected = u.Infra.facade_module_path(
+                    destination.parent, selected.value, project=project
+                )
+                if elected is None or (
+                    elected.success and elected.value != destination
+                ):
+                    message = f"domain selection has no matching facade: {destination}"
+                    raise ValueError(message)
+                if elected.failure:
+                    u.Infra.codegen_raise_failure(destination, elected)
+                families = {selected.value: families[selected.value]}
+            elif destination.name != c.Infra.INIT_PY or destination not in paths:
+                message = f"domain selection has no native initializer: {destination}"
+                raise ValueError(message)
+        packages = (
+            (selection[0].parent,)
+            if selection is not None and selection[1] is not None
+            else sorted({
+                path.parent
+                for path in paths
+                if path.name == c.Infra.INIT_PY
+                and (
+                    selection is None or path.parent.is_relative_to(selection[0].parent)
+                )
+            })
+        )
+        for package in packages:
+            for letter, family in families.items():
                 directory = package / family.directory
                 if not project.source_query(directory, "isdir"):
                     continue
@@ -130,7 +165,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
                     (directory, family, c.Infra.FacadeFamily(letter)),
                     observed,
                     initializer=initializer,
-                    selection=None,
+                    selection=selection,
                 )
         return m.Infra.CodegenRepositoryPlanOutcome(
             repository=layout.project_name if layout is not None else root.as_posix(),
@@ -143,7 +178,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
 
     def _projection_family(
         self,
-        item: tuple[Path, str, m.Infra.FacadeFamily],
+        item: tuple[Path, str, p.Infra.FacadeFamily],
         *,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
     ) -> None:
@@ -182,7 +217,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
 
     def _projection_domains(
         self,
-        item: tuple[Path, m.Infra.FacadeFamily, c.Infra.FacadeFamily],
+        item: tuple[Path, p.Infra.FacadeFamily, c.Infra.FacadeFamily],
         observed: Mapping[Path, Sequence[tuple[Path, str]]],
         *,
         initializer: p.Infra.SourceInitializerPlanner,
@@ -208,7 +243,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     def _projection_depth(
         self,
         cohort: tuple[
-            tuple[Path, Path, m.Infra.FacadeFamily, Sequence[tuple[Path, str]]], ...
+            tuple[Path, Path, p.Infra.FacadeFamily, Sequence[tuple[Path, str]]], ...
         ],
         selected: c.Infra.FacadeFamily,
         *,
@@ -292,7 +327,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
 
     def _projection_seed(
         self,
-        item: tuple[Path, Path, m.Infra.FacadeFamily, Sequence[tuple[Path, str]]],
+        item: tuple[Path, Path, p.Infra.FacadeFamily, Sequence[tuple[Path, str]]],
     ) -> p.Result[tuple[Path, Path, str]]:
         """Preserve observed ownership while following authenticated source moves.
 
@@ -452,20 +487,18 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     _candidate_scope: ExitStack | None = m.PrivateAttr(default=None)
     _candidate_files: tuple[p.Infra.CodegenFilePlan, ...] = m.PrivateAttr(default=())
     _candidate_source_folders: t.StrTuple | None = m.PrivateAttr(default=None)
-    _project_layout_cache: MutableMapping[str, m.Infra.RopeProjectLayout | None] = (
-        m.PrivateAttr(default_factory=dict[str, m.Infra.RopeProjectLayout | None])
+    _project_layout_cache: MutableMapping[str, p.Infra.RopeProjectLayout | None] = (
+        m.PrivateAttr(default_factory=dict)
     )
-    _package_context_cache: MutableMapping[str, m.Infra.LazyInitPackageContext] = (
-        m.PrivateAttr(default_factory=dict[str, m.Infra.LazyInitPackageContext])
+    _package_context_cache: MutableMapping[str, p.Infra.LazyInitPackageContext] = (
+        m.PrivateAttr(default_factory=dict)
     )
     _module_policy_cache: MutableMapping[
         tuple[str, str, str],
-        m.Infra.NamespaceModulePolicy,
-    ] = m.PrivateAttr(
-        default_factory=dict[tuple[str, str, str], m.Infra.NamespaceModulePolicy]
-    )
-    _module_convention_cache: MutableMapping[str, m.Infra.RopeModuleConvention] = (
-        m.PrivateAttr(default_factory=dict[str, m.Infra.RopeModuleConvention])
+        p.Infra.NamespaceModulePolicy,
+    ] = m.PrivateAttr(default_factory=dict)
+    _module_convention_cache: MutableMapping[str, p.Infra.RopeModuleConvention] = (
+        m.PrivateAttr(default_factory=dict)
     )
     _module_object_cache: MutableMapping[
         tuple[str, bool, bool],
@@ -835,7 +868,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         invalidate.
 
         Returns:
-            The resulting ``m.Infra.RopeWorkspaceSession``.
+            The resulting ``p.Infra.RopeWorkspaceSession``.
 
         """
         if validate_project and self._rope_project is not None:
@@ -857,7 +890,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         """Reopen the shared Rope project and drop all transient caches.
 
         Returns:
-            The resulting ``m.Infra.RopeWorkspaceSession``.
+            The resulting ``p.Infra.RopeWorkspaceSession``.
 
         """
         self.close()

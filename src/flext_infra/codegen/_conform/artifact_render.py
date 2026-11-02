@@ -90,7 +90,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     f"authenticated resource has no bytes: {source}"
                 )
             return result_type.create_from_callable(
-                lambda: p.Cli.AuthenticatedTemplateRender(
+                lambda: m.Cli.AuthenticatedTemplateRender(
                     rendered=content.decode(c.DEFAULT_ENCODING),
                     source_states=(captured.value,),
                 )
@@ -1039,7 +1039,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if origin.failure:
             return result_type.from_failure(origin)
         return result_type.create_from_callable(
-            lambda: p.Infra.CiSuperprojectCheckoutSpec(
+            lambda: m.Infra.CiSuperprojectCheckoutSpec(
                 repository=u.Infra.git_remote_identity(origin.value.text),
                 ref=branch,
                 path=root.relative_to(workspace_root).as_posix(),

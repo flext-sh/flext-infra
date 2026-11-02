@@ -372,7 +372,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         lines = source.splitlines(keepends=True)
         begin = sum(map(len, lines[: owner.lineno - 1]))
         end = sum(map(len, lines[: owner.end_lineno]))
-        edits = [p.Infra.SourceRewrite(start=begin, end=end, text="")]
+        edits = [m.Infra.SourceRewrite(start=begin, end=end, text="")]
         for item in tree.body:
             if isinstance(item, c.Infra.AST_ASSIGNMENT_TYPES):
                 assign_targets = (

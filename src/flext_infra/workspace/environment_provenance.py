@@ -409,11 +409,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             and (item.source.editable is not None or item.source.directory is not None)
             for item in locked.package
         ):
-            members[workspace.repository.distribution] = (
-                workspace.repository.model_copy(
-                    update={"path": Path()},
-                )
-            )
+            members[workspace.repository.distribution] = workspace.repository
         observation: p.Infra.PythonEnvironmentObservation | None = None
         if metadata_paths is None:
             native = FlextInfraBindingService.consumer_package_environment(
@@ -491,6 +487,10 @@ class FlextInfraWorkspaceEnvironmentProvenance(
                 observation=observation,
             )
             if provenance.failure:
+                u.Cli.info(
+                    f"environment distribution={item.name} "
+                    f"installed_version={distribution.version}"
+                )
                 return r[int].from_failure(provenance)
             validated += int(provenance.value)
         return r[int].ok(validated)
@@ -883,9 +883,13 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             or receipt.vcs_info is not None
             or not located
         ):
+            revision = (
+                receipt.vcs_info.commit_id if receipt.vcs_info is not None else None
+            )
             return r[bool].fail(
                 f"locked workspace build direct_url mismatch: {name} "
-                f"expected={expected_root} actual={receipt.url}",
+                f"expected={expected_root} actual={receipt.url} "
+                f"installed_revision={revision}",
             )
         return r[bool].ok(value=True)
 

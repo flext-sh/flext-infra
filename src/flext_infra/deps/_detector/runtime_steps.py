@@ -105,7 +105,7 @@ class FlextInfraDepsDetectorRuntimeSteps:
         root: Path,
         venv_bin: Path,
         params: p.Infra.DetectCommand,
-        report_model: p.Infra.WorkspaceReport,
+        report_model: p.Infra.WorkspaceDependencyReport,
     ) -> p.Result[bool]:
         """Execute the workspace ``pip check`` and stamp the report; ``r.ok(pip_ok)``.
 

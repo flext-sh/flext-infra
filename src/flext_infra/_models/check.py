@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
@@ -66,16 +66,14 @@ class FlextInfraModelsCheck:
             bool,
             m.Field(description="Stop check gates after the first failure"),
         ] = c.Infra.CHECK_FAIL_FAST_DEFAULT
-        gate_set: Annotated[
-            c.Infra.CheckGateSet,
-            m.Field(
-                alias="gate-set",
-                description=(
-                    "Gate inventory resolved at runtime when --gates is empty: "
-                    "check (CI or local partition), fix, or fmt"
-                ),
+        gate_set: c.Infra.CheckGateSet = m.Field(
+            c.Infra.CheckGateSet.CHECK,
+            alias="gate-set",
+            description=(
+                "Gate inventory resolved at runtime when --gates is empty: "
+                "check (CI or local partition), fix, or fmt"
             ),
-        ] = c.Infra.CheckGateSet.CHECK
+        )
         phase: Annotated[
             c.Infra.CheckPhase,
             m.Field(description="Primary source admission or complete checker phase"),
@@ -90,44 +88,35 @@ class FlextInfraModelsCheck:
                 ),
             ),
         ] = c.Infra.CodegenConformScope.SELF
-        reports_dir: Annotated[
-            str,
-            m.Field(
-                alias="reports-dir",
-                description="Base directory for unique invocation check reports",
-            ),
-        ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
-        check_only: Annotated[
-            bool,
-            m.Field(
-                alias="check-only",
-                description="Enable check-only mode for supported tools",
-            ),
-        ] = False
-        ruff_args: Annotated[
-            str | None,
-            m.Field(alias="ruff-args", description="Extra arguments forwarded to Ruff"),
-        ] = None
-        pyright_args: Annotated[
-            str | None,
-            m.Field(
-                alias="pyright-args",
-                description="Extra arguments forwarded to Pyright",
-            ),
-        ] = None
+        reports_dir: str = m.Field(
+            f"{c.Infra.REPORTS_DIR_NAME}/check",
+            alias="reports-dir",
+            description="Base directory for unique invocation check reports",
+        )
+        check_only: bool = m.Field(
+            default=False,
+            alias="check-only",
+            description="Enable check-only mode for supported tools",
+        )
+        ruff_args: str | None = m.Field(
+            None, alias="ruff-args", description="Extra arguments forwarded to Ruff"
+        )
+        pyright_args: str | None = m.Field(
+            None,
+            alias="pyright-args",
+            description="Extra arguments forwarded to Pyright",
+        )
         file: Annotated[
             str | None,
             m.Field(
                 description="One literal repository-relative file; read-only gates"
             ),
         ] = None
-        report_output: Annotated[
-            Path | None,
-            m.Field(
-                alias="report-output",
-                description="Absent invocation-owned typed summary destination",
-            ),
-        ] = None
+        report_output: Path | None = m.Field(
+            None,
+            alias="report-output",
+            description="Absent invocation-owned typed summary destination",
+        )
 
         @property
         def reports_dir_path(self) -> Path:
@@ -541,20 +530,14 @@ class FlextInfraModelsCheck:
         model_config: ClassVar[p.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
         id: Annotated[str, m.Field(description="Rule identifier")]
-        short_description: Annotated[
-            str,
-            m.Field(
-                validation_alias=m.AliasPath("shortDescription", "text"),
-                description="Rule short description",
-            ),
-        ]
-        help_uri: Annotated[
-            str,
-            m.Field(
-                validation_alias="helpUri",
-                description="Documentation URL of the tool behind the gate",
-            ),
-        ]
+        short_description: str = m.Field(
+            validation_alias=m.AliasPath("shortDescription", "text"),
+            description="Rule short description",
+        )
+        help_uri: str = m.Field(
+            validation_alias="helpUri",
+            description="Documentation URL of the tool behind the gate",
+        )
 
         @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
@@ -575,18 +558,12 @@ class FlextInfraModelsCheck:
 
         model_config: ClassVar[p.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
-        rule_id: Annotated[
-            str,
-            m.Field(validation_alias="ruleId", description="Rule identifier"),
-        ]
+        rule_id: str = m.Field(validation_alias="ruleId", description="Rule identifier")
         level: Annotated[str, m.Field(description="Result level (error/warning/note)")]
-        message: Annotated[
-            str,
-            m.Field(
-                validation_alias=m.AliasPath("message", "text"),
-                description="Result message",
-            ),
-        ]
+        message: str = m.Field(
+            validation_alias=m.AliasPath("message", "text"),
+            description="Result message",
+        )
         locations: tuple[FlextInfraModelsCheck.SarifLocation, ...] = m.Field(
             description="Result locations",
         )
@@ -597,27 +574,28 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
 
-        @m.model_serializer
-        def _serialize(self) -> t.JsonMapping:
+        @m.model_serializer(mode="wrap")
+        def _serialize(
+            self,
+            handler: Callable[
+                [p.Infra.SarifResult], Mapping[str, Sequence[t.JsonValue]]
+            ],
+        ) -> t.JsonMapping:
             """Serialize.
 
             Returns:
                 The resulting ``t.JsonMapping``.
 
             """
+            values = handler(self)
             result: t.MutableJsonMapping = {
                 "ruleId": self.rule_id,
                 "level": self.level,
                 "message": {"text": self.message},
-                "locations": [
-                    location.model_dump(by_alias=True) for location in self.locations
-                ],
+                "locations": list(values["locations"]),
             }
             if self.related_locations:
-                result["relatedLocations"] = [
-                    location.model_dump(by_alias=True)
-                    for location in self.related_locations
-                ]
+                result["relatedLocations"] = list(values["related_locations"])
             return result
 
     class SarifRun(m.ContractModel):
@@ -625,13 +603,10 @@ class FlextInfraModelsCheck:
 
         model_config: ClassVar[p.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
-        tool_name: Annotated[
-            str,
-            m.Field(
-                validation_alias=m.AliasPath("tool", "driver", "name"),
-                description="Tool name",
-            ),
-        ]
+        tool_name: str = m.Field(
+            validation_alias=m.AliasPath("tool", "driver", "name"),
+            description="Tool name",
+        )
         information_uri: str = m.Field(
             "",
             validation_alias=m.AliasPath("tool", "driver", "informationUri"),
@@ -648,27 +623,27 @@ class FlextInfraModelsCheck:
             description="Run results",
         )
 
-        @m.model_serializer
-        def _serialize(self) -> t.JsonMapping:
+        @m.model_serializer(mode="wrap")
+        def _serialize(
+            self,
+            handler: Callable[[p.Infra.SarifRun], Mapping[str, Sequence[t.JsonValue]]],
+        ) -> t.JsonMapping:
             """Serialize.
 
             Returns:
                 The resulting ``t.JsonMapping``.
 
             """
+            values = handler(self)
             return {
                 "tool": {
                     "driver": {
                         "name": self.tool_name,
                         "informationUri": self.information_uri,
-                        "rules": [
-                            rule.model_dump(by_alias=True) for rule in self.rules
-                        ],
+                        "rules": list(values["rules"]),
                     },
                 },
-                "results": [
-                    result.model_dump(by_alias=True) for result in self.results
-                ],
+                "results": list(values["results"]),
             }
 
     class CheckReportSummary(m.ContractModel):

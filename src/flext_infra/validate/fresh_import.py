@@ -466,6 +466,10 @@ class FlextInfraValidateFreshImport(s[bool]):
             namespace = (
                 vars(sys.modules[klass.__module__])
                 | dict(vars(klass))
+                | {
+                    parameter.__name__: parameter
+                    for parameter in getattr(klass, "__type_params__", ())
+                }
                 | {klass.__name__: klass}
             )
             for name, info in fields.items():

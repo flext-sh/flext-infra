@@ -7,14 +7,14 @@ valid:
       code: str
 - |
   class Finding(m.ContractModel):
-      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
+      model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
       code: str
 invalid:
 - |
   class Finding(m.ContractModel):
       """Required fields consumed from one native finding."""
 
-      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="ignore")
+      model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="ignore")
 
       code: str
 - |

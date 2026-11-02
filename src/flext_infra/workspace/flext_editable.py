@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -258,16 +257,7 @@ class FlextInfraWorkspaceFlextEditable:
             timeout=c.Infra.TIMEOUT_LONG,
         )
         if checked.failure:
-            # Receipt-bound editables satisfy direct-URL pins by SOURCE, not by
-            # direct_url metadata — uv pip check cannot see the receipt and
-            # reports "<dist> @ git+..., but it's not installed" for exactly
-            # the distributions this flow binds. Tolerate a failure only when
-            # every distribution it names is receipt-bound (their editable
-            # origins are verified below); anything else stays a hard failure.
-            named = set(re.findall(r"package `([^`]+)` requires", checked.error or ""))
-            receipt_bound = set(selection.distributions)
-            if not named or not named <= receipt_bound:
-                return r[bool].from_failure(checked)
+            return r[bool].from_failure(checked)
         verified = cls._pending_sources(
             runtime_root, selection, candidate_environment=candidate_environment
         )

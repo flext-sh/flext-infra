@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Literal
 
 from flext_cli import c, m, t
 
@@ -91,16 +91,11 @@ class FlextInfraModelsSettings:
             validation_alias="UV",
             description="uv launcher path resolved for dependency orchestration.",
         )
-        toolchain_repair_tool: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                validation_alias="FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL",
-                description=(
-                    "Explicit declared tool selected by fix-toolchain; unset "
-                    "refuses installation repair before effects."
-                ),
-            ),
-        ] = None
+        toolchain_repair_tool: t.NonEmptyStr | None = m.Field(
+            None,
+            validation_alias="FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL",
+            description="Explicit declared tool selected by fix-toolchain; unset refuses installation repair before effects.",
+        )
         runtime_root: Path | None = m.Field(
             default=None,
             validation_alias="RUNTIME_ROOT",

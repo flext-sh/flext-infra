@@ -8,14 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.docs import FlextInfraDocServiceBase
 from flext_infra.docs._generator import FlextInfraDocsGeneratorBundle
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraDocGenerator(
@@ -55,7 +52,7 @@ class FlextInfraDocGenerator(
             Published reports, or the original failure.
 
         """
-        report_type = r[Sequence[p.Infra.DocsPhaseReport]]
+        report_type = r[Sequence[m.Infra.DocsPhaseReport]]
         prepared = self._prepare_request(request)
         if prepared.failure:
             return report_type.from_failure(prepared)
@@ -127,7 +124,7 @@ class FlextInfraDocGenerator(
                 reason=report.reason,
             )
             reports.append(report)
-        return r[Sequence[p.Infra.DocsPhaseReport]].ok(tuple(reports))
+        return r[Sequence[m.Infra.DocsPhaseReport]].ok(tuple(reports))
 
     @staticmethod
     def plan_files(

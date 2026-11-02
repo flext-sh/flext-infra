@@ -179,7 +179,12 @@ class TestsLiveEditableProvenance:
 
     @staticmethod
     def _select(root: Path) -> int:
-        """Run the public editable selection against the real workspace."""
+        """Run the public editable selection against the real workspace.
+
+        Returns:
+            The unchanged exit code from the public selection command.
+
+        """
         return FlextInfraCli.infra_main([
             "workspace",
             c.Infra.FLEXT_EDITABLE_ROUTE_NAME,
@@ -245,6 +250,29 @@ class TestsLiveEditableProvenance:
             eq=True,
             msg=observation.stdout + observation.stderr,
         )
+
+    def test_selected_distribution_missing_dependency_blocks_receipt_publication(
+        self,
+        tmp_path: Path,
+        capfd: pytest.CaptureFixture[str],
+    ) -> None:
+        """A receipt-bound requirement owner cannot excuse a missing dependency."""
+        root, members = self._workspace(tmp_path)
+        tm.that(self._select(root), eq=0)
+        receipt = root / c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH
+        admitted = receipt.read_bytes()
+        manifest = members[0] / c.PYPROJECT_FILENAME
+        document = u.Tests.toml_doc(manifest.read_text(encoding=c.DEFAULT_ENCODING))
+        project = u.Cli.toml_ensure_table(document, "project")
+        project[c.Infra.DEPENDENCIES] = ["packaging"]
+        tm.ok(u.Cli.atomic_write_text_file(manifest, u.Cli.toml_dumps(document)))
+        tm.that(self._select(root), ne=0)
+        capture = capfd.readouterr()
+        tm.that(
+            capture.out + capture.err,
+            has="requires `packaging`, but it's not installed",
+        )
+        tm.that(receipt.read_bytes(), eq=admitted)
 
     def test_selection_rejects_duplicate_native_metadata_without_rebinding(
         self,

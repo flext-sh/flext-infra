@@ -26,7 +26,12 @@ class FlextInfraModelsCodegenTransaction:
         """One managed file change plus its governed ownership metadata."""
 
         inputs: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[
+                Annotated[
+                    p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)
+                ],
+                ...,
+            ],
             m.Field(
                 description="Original read-only observations consumed by this effect",
             ),
@@ -117,7 +122,10 @@ class FlextInfraModelsCodegenTransaction:
         declared_files: tuple[
             FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...
         ] = m.Field(default=(), description="Authenticated candidate file declarations")
-        inputs: tuple[p.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[
+            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
+            ...,
+        ] = m.Field(
             default=(),
             description="Original source observations whose layouts join the closure",
         )
@@ -175,9 +183,10 @@ class FlextInfraModelsCodegenTransaction:
         roots: tuple[Path, ...] = m.Field(
             description="Discovered project roots covering the pinned source closure"
         )
-        inputs: tuple[p.Cli.AtomicFileState, ...] = m.Field(
-            description="Exact source and configuration observations"
-        )
+        inputs: tuple[
+            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
+            ...,
+        ] = m.Field(description="Exact source and configuration observations")
         updates: Mapping[Path, str | None] = m.Field(
             description=(
                 "Desired sources keyed by live destination; None retires an artifact"

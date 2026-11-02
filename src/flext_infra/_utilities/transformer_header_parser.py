@@ -10,8 +10,12 @@ import io
 import token
 import tokenize
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesTransformerHeaderParser:
@@ -22,7 +26,7 @@ class FlextInfraUtilitiesTransformerHeaderParser:
         """Parse a module header and let the first tokenizer exception escape.
 
         Returns:
-            The resulting ``m.Infra.HeaderInfo``.
+            The resulting ``p.Infra.HeaderInfo``.
 
         """
         tokens = tuple(tokenize.tokenize(io.BytesIO(source.encode()).readline))

@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import p, t
 from flext_infra._models import (
@@ -73,28 +73,23 @@ class FlextInfraModelsDeps(
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             populate_by_name=True,
         )
-        uv_package: Annotated[
-            bool | None,
-            m.Field(
-                validation_alias=m.AliasPath("tool", "uv", "package"),
-                description="Explicit native UV package participation declaration",
-            ),
-        ] = None
-        build_backend: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                validation_alias=m.AliasPath("build-system", "build-backend"),
-                description="Declared native Python build backend",
-            ),
-        ] = None
+        uv_package: bool | None = m.Field(
+            None,
+            validation_alias=m.AliasPath("tool", "uv", "package"),
+            description="Explicit native UV package participation declaration",
+        )
+        build_backend: t.NonEmptyStr | None = m.Field(
+            None,
+            validation_alias=m.AliasPath("build-system", "build-backend"),
+            description="Declared native Python build backend",
+        )
 
     class ProjectMetadataState(m.ArbitraryTypesModel):
         """One TOML ingress retaining metadata and its native packaging declaration."""
 
-        source: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(exclude=True, description="Original TOML observation parsed here"),
-        ]
+        source: m.Cli.AtomicFileState = m.Field(
+            exclude=True, description="Original TOML observation parsed here"
+        )
         metadata: Annotated[
             t.Port[p.ProjectMetadata],
             m.Field(description="Original canonical PEP 621 and FLEXT metadata"),
@@ -125,7 +120,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         inputs: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 min_length=1, description="Authenticated distribution metadata states"
             ),
@@ -168,7 +163,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         inputs: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 min_length=1,
                 description="Native lock and production-source input states",
@@ -179,7 +174,7 @@ class FlextInfraModelsDeps(
         """Calculated target requirements and unchanged diagnostic identities."""
 
         source: Annotated[
-            tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
+            tuple[t.Port[p.Cli.AtomicPhysicalTreeManifest], ...],
             m.Field(
                 min_length=1,
                 description="Production trees establishing applicability",
@@ -202,7 +197,7 @@ class FlextInfraModelsDeps(
             m.Field(description="Missing or ambiguous import suppliers remaining red"),
         ]
         inputs: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 description="Every metadata, lock and source state backing this plan"
             ),
@@ -211,13 +206,9 @@ class FlextInfraModelsDeps(
     class DependencyMarkerEnvironment(m.Value):
         """Complete PEP 508 facts reported by the consumer interpreter."""
 
-        prefix: Annotated[
-            Path,
-            m.Field(
-                exclude=True,
-                description="Consumer interpreter environment prefix",
-            ),
-        ]
+        prefix: Path = m.Field(
+            exclude=True, description="Consumer interpreter environment prefix"
+        )
         implementation_name: Annotated[
             str,
             m.Field(description="PEP 508 implementation name"),
@@ -264,29 +255,22 @@ class FlextInfraModelsDeps(
         ``verbose`` from ``WriteMixin``.
         """
 
-        output_format: Annotated[
-            str,
-            m.Field(alias="format", description="Output format for dependency report"),
-        ] = "text"
+        output_format: str = m.Field(
+            "text", alias="format", description="Output format for dependency report"
+        )
         output: Annotated[
             str | None,
             m.Field(None, description="Optional output report path"),
         ] = None
-        quiet: Annotated[
-            bool,
-            m.Field(default=False, description="Reduce command output"),
-        ] = False
-        no_fail: Annotated[
-            bool,
-            m.Field(
-                alias="no-fail",
-                description="Exit successfully even when issues are found",
-            ),
-        ] = False
-        no_pip_check: Annotated[
-            bool,
-            m.Field(alias="no-pip-check", description="Skip workspace pip check"),
-        ] = False
+        quiet: bool = m.Field(False, description="Reduce command output")
+        no_fail: bool = m.Field(
+            False,
+            alias="no-fail",
+            description="Exit successfully even when issues are found",
+        )
+        no_pip_check: bool = m.Field(
+            False, alias="no-pip-check", description="Skip workspace pip check"
+        )
 
         @property
         def output_path(self) -> Path | None:
@@ -332,14 +316,11 @@ class FlextInfraModelsDeps(
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
-        before: Annotated[
-            m.Cli.AtomicFileState | None,
-            m.Field(
-                default=None,
-                exclude=True,
-                description="Original physical read; absent for pure source rendering",
-            ),
-        ] = None
+        before: m.Cli.AtomicFileState | None = m.Field(
+            None,
+            exclude=True,
+            description="Original physical read; absent for pure source rendering",
+        )
         original_rendered: Annotated[
             str,
             m.Field(description="Original TOML source text"),
@@ -352,16 +333,11 @@ class FlextInfraModelsDeps(
             t.MutableJsonMapping,
             m.Field(description="Validated plain TOML payload"),
         ] = m.Field(default_factory=dict[str, t.JsonValue])
-        document: Annotated[
-            t.Port[t.Cli.TomlDocument] | None,
-            m.Field(
-                default=None,
-                exclude=True,
-                description=(
-                    "Original parsed TOML tree retaining authored layout and comments"
-                ),
-            ),
-        ] = None
+        document: t.Port[t.Cli.TomlDocument] | None = m.Field(
+            None,
+            exclude=True,
+            description="Original parsed TOML tree retaining authored layout and comments",
+        )
 
     class PackagedDataSelection(m.ContractModel):
         """Validated data inputs separated by Hatch selection semantics."""
@@ -520,10 +496,7 @@ class FlextInfraModelsDeps(
     class PipCheckReport(m.ArbitraryTypesModel):
         """Pip check execution report with status and output lines."""
 
-        ok: Annotated[
-            bool,
-            m.Field(default=True, description="Whether pip check passed"),
-        ] = True
+        ok: bool = m.Field(True, description="Whether pip check passed")
         lines: Annotated[
             Sequence[str],
             m.Field(description="Pip check output lines"),
@@ -607,13 +580,9 @@ class FlextInfraModelsDeps(
             ),
         ]
 
-        planned_sources: Annotated[
-            Mapping[Path, str],
-            m.Field(
-                exclude=True,
-                description="Captured Python candidate bytes overriding disk",
-            ),
-        ]
+        planned_sources: Mapping[Path, str] = m.Field(
+            exclude=True, description="Captured Python candidate bytes overriding disk"
+        )
 
         project_name: Annotated[
             t.NonEmptyStr,

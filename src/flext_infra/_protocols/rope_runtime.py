@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE - Source bootstrap legacy protocol holder.
 """Structural protocols for the external Rope runtime boundary.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -13,9 +14,8 @@ from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 
 if TYPE_CHECKING:
     import ast
-    from pathlib import Path
 
-    from flext_core import p
+    from flext_core import p as core_p
 
     from flext_infra import p, t
 
@@ -82,22 +82,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         ) -> None: ...
 
     @runtime_checkable
-    class RopeProjectElection(Protocol):
-        """Readonly native import roots and source-selection policy."""
-
-        @property
-        def source_folders(self) -> t.StrTuple: ...
-
-        @property
-        def ignored_resources(self) -> t.StrTuple: ...
-
-        @property
-        def extension_modules(self) -> t.StrTuple: ...
-
-        @property
-        def python_path_folders(self) -> t.StrTuple: ...
-
-    @runtime_checkable
     class RopePyObject(Protocol):
         """Attributes, module identity and type provided by every native object."""
 
@@ -115,6 +99,13 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         ) -> FlextInfraProtocolsRopeRuntime.RopeSemanticModule | None: ...
 
         def get_type(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
+
+    @runtime_checkable
+    class RopeUnresolvedBase(RopePyObject, Protocol):
+        """Native unresolved ancestry with its original evaluated base value."""
+
+        @property
+        def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject | None: ...
 
     @runtime_checkable
     class RopeNamedObject(RopePyObject, Protocol):
@@ -210,9 +201,9 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
 
         def __len__(self) -> int: ...
 
-        def __getitem__(self, index: int, /) -> p.AttributeProbe: ...
+        def __getitem__(self, index: int, /) -> core_p.AttributeProbe: ...
 
-        def __iter__(self) -> Iterator[p.AttributeProbe]: ...
+        def __iter__(self) -> Iterator[core_p.AttributeProbe]: ...
 
     @runtime_checkable
     class RopeBuiltinClass(Protocol):
@@ -622,57 +613,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         ) -> bool: ...
 
     @runtime_checkable
-    class RopeAttributeReadProof(Protocol):
-        """Snapshot-bound native proof for an attribute read without effects."""
-
-        @property
-        def source_path(self) -> Path: ...
-
-        @property
-        def source_sha256(self) -> str: ...
-
-        @property
-        def start_byte(self) -> int: ...
-
-        @property
-        def end_byte(self) -> int: ...
-
-        @property
-        def expression(self) -> str: ...
-
-        @property
-        def access(self) -> Literal["module", "class", "instance"]: ...
-
-        @property
-        def base(self) -> p.Infra.SourceClassReference: ...
-
-        @property
-        def accessor(self) -> p.Infra.SourceClassReference: ...
-
-        @property
-        def member(self) -> p.Infra.SourceClassReference: ...
-
-        @property
-        def descriptor(self) -> p.Infra.SourceClassReference | None: ...
-
-        @property
-        def project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
-
-        @property
-        def native_base(self) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
-
-        @property
-        def native_accessor(self) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
-
-        @property
-        def native_member(self) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
-
-        @property
-        def native_descriptor(
-            self,
-        ) -> FlextInfraProtocolsRopeRuntime.RopePyName | None: ...
-
-    @runtime_checkable
     class RopeSemanticModule(RopeNamedObject, Protocol):
         """Module attributes shared by native builtins, packages, and source."""
 
@@ -874,7 +814,7 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
 
         def get_name(self) -> str: ...
 
-        def matches(self, suspect: p.AttributeProbe, arg: Argument) -> bool: ...
+        def matches(self, suspect: core_p.AttributeProbe, arg: Argument) -> bool: ...
 
     @runtime_checkable
     class RopeDefaultWildcard(RopeWildcard[str], Protocol):

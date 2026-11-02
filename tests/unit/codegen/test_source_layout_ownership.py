@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.codegen import FlextInfraStagedPackage
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraSourceLayoutOwnership:
@@ -164,9 +164,20 @@ class TestsFlextInfraSourceLayoutOwnership:
         helper = member / "automation" / "scripts" / "check.py"
         helper.parent.mkdir(parents=True)
         helper.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
+        sibling = helper.with_name("other.py")
+        sibling.write_text("OTHER = 1\n", encoding=c.DEFAULT_ENCODING)
 
         plan = tm.ok(
-            FlextInfraStagedPackage.plan_sources(root, {helper: "VALUE = 2\n"})
+            FlextInfraStagedPackage.plan_sources(
+                root,
+                {helper: "VALUE = 2\n"},
+                options=m.Infra.StageSourceOptions(
+                    inputs=tuple(
+                        tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                        for path in (helper, sibling)
+                    ),
+                ),
+            )
         )
         candidate = tmp_path / "candidate"
         tm.ok(FlextInfraStagedPackage.materialize_sources(plan, candidate))
@@ -180,3 +191,4 @@ class TestsFlextInfraSourceLayoutOwnership:
             eq="VALUE = 2\n",
         )
         tm.that(helper.read_text(encoding=c.DEFAULT_ENCODING), eq="VALUE = 1\n")
+        tm.that(sibling.read_text(encoding=c.DEFAULT_ENCODING), eq="OTHER = 1\n")

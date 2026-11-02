@@ -310,7 +310,7 @@ class FlextInfraUtilitiesCodemodNative:
                     spec,
                     rule_ids=rule_ids,
                     facts={
-                        c.Infra.CODEMOD_SCOPE_FACTS: p.Infra.CodemodScopeFacts(
+                        c.Infra.CODEMOD_SCOPE_FACTS: m.Infra.CodemodScopeFacts(
                             scopes=scopes
                         )
                     },

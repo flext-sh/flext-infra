@@ -52,12 +52,9 @@ class FlextInfraModelsGit(
         origin: Annotated[
             str | None, m.Field(description="Native effective config origin")
         ]
-        value: Annotated[
-            str | None,
-            m.Field(
-                exclude=True, description="Private native config value for projection"
-            ),
-        ] = None
+        value: str | None = m.Field(
+            None, exclude=True, description="Private native config value for projection"
+        )
         process: Annotated[
             m.Cli.ProcessOutcome, m.Field(description="Original native query outcome")
         ]
@@ -265,10 +262,7 @@ class FlextInfraModelsGit(
         model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         ancestor: Annotated[t.NonEmptyStr, m.Field(description="Candidate ancestor")]
-        descendant: Annotated[
-            t.NonEmptyStr,
-            m.Field(default="HEAD", description="Candidate descendant"),
-        ] = "HEAD"
+        descendant: t.NonEmptyStr = m.Field("HEAD", description="Candidate descendant")
 
     class GitPathPairRequest(GitRepoRequest):
         """Repository plus source/target relative paths."""

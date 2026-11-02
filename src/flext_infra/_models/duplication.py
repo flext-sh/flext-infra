@@ -32,21 +32,21 @@ class FlextInfraModelsDuplication:
             populate_by_name=True,
         )
 
-        min_lines: Annotated[
-            t.PositiveInt,
-            m.Field(alias="min-lines", description="Minimum duplicated line count"),
-        ] = c.Infra.JSCPD_MIN_LINES
-        min_tokens: Annotated[
-            t.PositiveInt,
-            m.Field(alias="min-tokens", description="Minimum duplicated token count"),
-        ] = c.Infra.JSCPD_MIN_TOKENS
-        threshold_percent: Annotated[
-            t.Percentage,
-            m.Field(
-                alias="threshold-percent",
-                description="Maximum allowed duplication percentage",
-            ),
-        ] = c.Infra.JSCPD_THRESHOLD_PERCENT
+        min_lines: t.PositiveInt = m.Field(
+            c.Infra.JSCPD_MIN_LINES,
+            alias="min-lines",
+            description="Minimum duplicated line count",
+        )
+        min_tokens: t.PositiveInt = m.Field(
+            c.Infra.JSCPD_MIN_TOKENS,
+            alias="min-tokens",
+            description="Minimum duplicated token count",
+        )
+        threshold_percent: t.Percentage = m.Field(
+            c.Infra.JSCPD_THRESHOLD_PERCENT,
+            alias="threshold-percent",
+            description="Maximum allowed duplication percentage",
+        )
         mode: Annotated[t.NonEmptyStr, m.Field(description="jscpd detection mode")] = (
             c.Infra.JSCPD_MODE
         )
@@ -197,10 +197,9 @@ class FlextInfraModelsDuplication:
         )
 
         end: Annotated[t.PositiveInt, m.Field(description="Exclusive clone end offset")]
-        end_location: Annotated[
-            FlextInfraModelsDuplication.JscpdLocation,
-            m.Field(alias="endLoc", description="Clone end coordinate"),
-        ]
+        end_location: FlextInfraModelsDuplication.JscpdLocation = m.Field(
+            alias="endLoc", description="Clone end coordinate"
+        )
         name: Annotated[
             t.NonEmptyStr,
             m.Field(description="Absolute scanned source path"),
@@ -213,10 +212,9 @@ class FlextInfraModelsDuplication:
             t.NonNegativeInt,
             m.Field(description="Inclusive clone start offset"),
         ]
-        start_location: Annotated[
-            FlextInfraModelsDuplication.JscpdLocation,
-            m.Field(alias="startLoc", description="Clone start coordinate"),
-        ]
+        start_location: FlextInfraModelsDuplication.JscpdLocation = m.Field(
+            alias="startLoc", description="Clone start coordinate"
+        )
 
     class JscpdDuplicate(m.ContractModel):
         """One complete two-sided clone from jscpd."""
@@ -227,28 +225,21 @@ class FlextInfraModelsDuplication:
             populate_by_name=True,
         )
 
-        first_file: Annotated[
-            FlextInfraModelsDuplication.JscpdFile,
-            m.Field(alias="firstFile", description="First clone source"),
-        ]
-        format_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(alias="format", description="jscpd parser format name"),
-        ]
+        first_file: FlextInfraModelsDuplication.JscpdFile = m.Field(
+            alias="firstFile", description="First clone source"
+        )
+        format_name: t.NonEmptyStr = m.Field(
+            alias="format", description="jscpd parser format name"
+        )
         fragment: Annotated[
             t.NonEmptyStr,
             m.Field(description="Duplicated source fragment"),
         ]
-        is_new: Annotated[
-            t.StrictBool,
-            m.Field(
-                alias="isNew",
-                description=(
-                    "Whether jscpd marked the clone new; the flag is absent from "
-                    "some jscpd report versions and defaults to False"
-                ),
-            ),
-        ] = False
+        is_new: t.StrictBool = m.Field(
+            False,
+            alias="isNew",
+            description="Whether jscpd marked the clone new; the flag is absent from some jscpd report versions and defaults to False",
+        )
         kind: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -262,10 +253,9 @@ class FlextInfraModelsDuplication:
             t.PositiveInt,
             m.Field(description="Duplicated logical line count"),
         ]
-        second_file: Annotated[
-            FlextInfraModelsDuplication.JscpdFile,
-            m.Field(alias="secondFile", description="Second clone source"),
-        ]
+        second_file: FlextInfraModelsDuplication.JscpdFile = m.Field(
+            alias="secondFile", description="Second clone source"
+        )
         tokens: Annotated[t.PositiveInt, m.Field(description="Duplicated token count")]
         similarity: Annotated[
             float | None,
@@ -286,40 +276,29 @@ class FlextInfraModelsDuplication:
         )
 
         clones: Annotated[t.NonNegativeInt, m.Field(description="Detected clone count")]
-        duplicated_lines: Annotated[
-            t.NonNegativeInt,
-            m.Field(alias="duplicatedLines", description="Duplicated line count"),
-        ]
-        duplicated_tokens: Annotated[
-            t.NonNegativeInt,
-            m.Field(alias="duplicatedTokens", description="Duplicated token count"),
-        ]
+        duplicated_lines: t.NonNegativeInt = m.Field(
+            alias="duplicatedLines", description="Duplicated line count"
+        )
+        duplicated_tokens: t.NonNegativeInt = m.Field(
+            alias="duplicatedTokens", description="Duplicated token count"
+        )
         lines: Annotated[
             t.NonNegativeInt,
             m.Field(description="Scanned logical line count"),
         ]
-        new_clones: Annotated[
-            t.NonNegativeInt,
-            m.Field(alias="newClones", description="New clone count"),
-        ]
-        new_duplicated_lines: Annotated[
-            t.NonNegativeInt,
-            m.Field(
-                alias="newDuplicatedLines",
-                description="New duplicated line count",
-            ),
-        ]
+        new_clones: t.NonNegativeInt = m.Field(
+            alias="newClones", description="New clone count"
+        )
+        new_duplicated_lines: t.NonNegativeInt = m.Field(
+            alias="newDuplicatedLines", description="New duplicated line count"
+        )
         percentage: Annotated[
             t.Percentage,
             m.Field(description="Duplicated line percentage"),
         ]
-        percentage_tokens: Annotated[
-            t.Percentage,
-            m.Field(
-                alias="percentageTokens",
-                description="Duplicated token percentage",
-            ),
-        ]
+        percentage_tokens: t.Percentage = m.Field(
+            alias="percentageTokens", description="Duplicated token percentage"
+        )
         sources: Annotated[
             t.NonNegativeInt,
             m.Field(description="Scanned source file count"),
@@ -335,10 +314,9 @@ class FlextInfraModelsDuplication:
             populate_by_name=True,
         )
 
-        detection_date: Annotated[
-            t.NonEmptyStr,
-            m.Field(alias="detectionDate", description="jscpd detection timestamp"),
-        ]
+        detection_date: t.NonEmptyStr = m.Field(
+            alias="detectionDate", description="jscpd detection timestamp"
+        )
         formats: Annotated[
             Mapping[str, FlextInfraModelsDuplication.JscpdStatisticsSummary],
             m.Field(description="Statistics keyed by parsed source format"),

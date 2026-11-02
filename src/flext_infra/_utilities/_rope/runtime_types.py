@@ -212,7 +212,9 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeScopes):
         )
 
     @classmethod
-    def unresolved_witness(cls, value: p.AttributeProbe) -> bool:
+    def unresolved_witness(
+        cls, value: p.AttributeProbe
+    ) -> TypeGuard[p.Infra.RopeUnresolvedBase]:
         """Return whether ``value`` is an unresolved base witness.
 
         Rope dc15 keeps an ``UnresolvedBase`` in its MRO position by policy

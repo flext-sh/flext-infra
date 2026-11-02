@@ -546,7 +546,7 @@ class FlextInfraUtilitiesDependencies(
         }
         return u.Cli.dag_closure(graph, frozenset((distribution,))).flat_map(
             lambda closed: u.Cli.dag_order({name: graph[name] for name in closed}).map(
-                lambda names: p.Infra.BootstrapRequirementsRenderSpec(
+                lambda names: m.Infra.BootstrapRequirementsRenderSpec(
                     # requirements files are not shell: shlex quoting breaks
                     # uv pip; PEP 508 direct reference + URL-encoded path is
                     # the portable form for pip and uv alike.

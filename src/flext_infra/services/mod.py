@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ from flext_cli import u
 
 import flext_infra
 from flext_infra import c, codemod, m, r, t
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseAccessorRename,
@@ -85,6 +87,12 @@ class FlextInfraModHandlers:
                     candidate=staged.value, consumer_roots=seed.value.consumer_roots
                 ),
                 publish=request.apply,
+                validator=partial(
+                    FlextInfraModHandlers._validate_semantic_rule,
+                    context=context,
+                    selected=selected,
+                    reports_root=root,
+                ),
             )
         if published.failure:
             return outcome.from_failure(published)
@@ -95,12 +103,61 @@ class FlextInfraModHandlers:
         return outcome.ok(value=True)
 
     @staticmethod
+    def _validate_semantic_rule(
+        root: Path,
+        *,
+        context: p.Infra.ModExecutionContext,
+        selected: p.Infra.RopeContractRules,
+        reports_root: Path,
+    ) -> p.Result[bool]:
+        """Verify the elected rule and real imports against the staged sources.
+
+        Returns:
+            The original planning/runtime failure, or staged consumer acceptance.
+
+        """
+        outcome = r[bool]
+        root = flext_infra.u.Infra.import_project_roots(root)[0].resolve()
+        with context.rope_workspace(root) as workspace:
+            captured = codemod.FlextInfraCodemodSemanticApply.build_source_plan(
+                root, snapshot=workspace.snapshot
+            )
+            if captured.failure:
+                return outcome.from_failure(captured)
+            candidate = captured.value.candidate
+            planned = flext_infra.u.Infra.plan_contract_rules(
+                workspace,
+                flext_infra.u.Infra.candidate_python_sources(
+                    candidate, candidate.inputs
+                ),
+                selected.rules,
+                options=m.Infra.ContractAdmissionOptions(
+                    signature_additions=selected.signature_additions,
+                    signature_removals=selected.signature_removals,
+                    method_transfers=selected.method_transfers,
+                ),
+            )
+        if planned.failure:
+            return outcome.from_failure(planned)
+        if planned.value:
+            return outcome.fail("selected semantic candidate is not a fixed point")
+        return FlextInfraWorkspaceChecker(repository_root=root).execute_payload(
+            m.Infra.RunCommand(
+                repository_root=root,
+                reports_dir=str(
+                    m.Infra.RunCommand(repository_root=reports_root).reports_dir_path
+                ),
+                gates=(c.Infra.FRESH_IMPORT,),
+            )
+        )
+
+    @staticmethod
     def _semantic_decisions_request(
         root: Path,
         decisions: Path,
         output: Path | None,
         request: p.Infra.ModRequest,
-    ) -> tuple[p.Infra.SemanticRenamePlanCommand, m.Cli.AtomicFileState]:
+    ) -> tuple[p.Infra.SemanticRenamePlanCommand, p.Cli.AtomicFileState]:
         """Validate configured decisions at their required-content boundary.
 
         Returns:
@@ -454,11 +511,11 @@ class FlextInfraModHandlers:
         request: p.Infra.ModRequest,
         progress: p.Infra.ModProgress,
         campaigns: p.Infra.RefactorCsvCampaignsSpec,
-    ) -> p.Result[t.Cli.ResultValue] | None:
+    ) -> p.Result[t.Cli.ResultValue]:
         """Resolve every declared rule domain before dispatching a unique identity.
 
         Returns:
-            A selected result, or None for the existing AST batch executor.
+            The uniquely selected owner result, or the original selection failure.
 
         Raises:
             ValueError: The request has no rule identity to select.
@@ -531,13 +588,15 @@ class FlextInfraModHandlers:
                     context, root, request, native, tuple(catalogue_inputs)
                 )
             )
-        if text_selected:
-            return codemod.FlextInfraModTextGateEngine.run(
-                root, apply=request.apply, rule_ids=(selector,)
-            )
-        if ast_selected:
-            return FlextInfraModHandlers._execute_batch(
-                context, root, request, progress, None
+        if text_selected or ast_selected:
+            return (
+                codemod.FlextInfraModTextGateEngine.run(
+                    root, apply=request.apply, rule_ids=(selector,)
+                )
+                if text_selected
+                else FlextInfraModHandlers._execute_batch(
+                    context, root, request, progress, None
+                )
             )
         declared = FlextInfraModHandlers._declared_selection(
             context, root, request, progress, campaigns
@@ -626,27 +685,14 @@ class FlextInfraModHandlers:
             return FlextInfraModHandlers._execute_batch(
                 self, root, request, progress, None
             )
-        if request.rule_id is not None:
-            with flext_infra.u.Infra.codemod_workspace_snapshot(root) as snapshot:
-                ast_rule = flext_infra.u.Infra.codemod_rule_plan(
-                    snapshot, rule_ids=(request.rule_id,)
-                )
-            if ast_rule.success:
-                return FlextInfraModHandlers._execute_batch(
-                    self, root, request, progress, None
-                )
-            if ast_rule.error_code != c.ErrorCode.NOT_FOUND:
-                return r[t.Cli.ResultValue].from_failure(ast_rule)
         selected = flext_infra.u.Infra.load_refactor_csv_campaigns(root)
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)
         campaigns_config = selected.value
         if request.rule_id is not None:
-            routed = FlextInfraModHandlers._selected_rule(
+            return FlextInfraModHandlers._selected_rule(
                 self, root, request, progress, campaigns_config
             )
-            if routed is not None:
-                return routed
         rename_plan = request.rename_plan or campaigns_config.semantic_plan
         if campaigns_config.semantic_decisions is not None:
             configured = FlextInfraModHandlers._semantic_decisions_request(

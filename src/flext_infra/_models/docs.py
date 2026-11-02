@@ -36,10 +36,9 @@ class FlextInfraModelsDocs(
         id: Annotated[str, m.Field(description="Actual rendered heading ID")]
         name: Annotated[str, m.Field(description="Sanitized heading label")]
         html: Annotated[str, m.Field(description="Rendered inline heading HTML")]
-        data_toc_label: Annotated[
-            str,
-            m.Field(alias="data-toc-label", description="Explicit TOC label"),
-        ]
+        data_toc_label: str = m.Field(
+            alias="data-toc-label", description="Explicit TOC label"
+        )
         children: Annotated[
             Sequence[FlextInfraModelsDocs.DocsTocToken],
             m.Field(description="Nested heading tokens"),

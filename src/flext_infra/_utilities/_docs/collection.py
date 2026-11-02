@@ -237,7 +237,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             manifest_path = self.canonical / "collection-manifest.json"
             owned = {item.relative_path: item for item in self.manifest.artifacts}
             owned.update({
-                path.relative_to(self.canonical): p.Infra.PlanCollectionOwnedArtifact(
+                path.relative_to(self.canonical): m.Infra.PlanCollectionOwnedArtifact(
                     relative_path=path.relative_to(self.canonical),
                     digest=sha256(content).hexdigest(),
                 )

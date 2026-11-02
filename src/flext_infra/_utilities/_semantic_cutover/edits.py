@@ -11,12 +11,10 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t
+from flext_infra import c, m, p, r, t
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverEdits:

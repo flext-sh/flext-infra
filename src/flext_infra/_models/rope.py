@@ -275,7 +275,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Qualified module name under inventory"),
         ]
         provider: Annotated[
-            m.InstanceOf[p.Infra.RopeSourceModule],
+            t.Port[p.Infra.RopeSourceModule],
             m.Field(description="Native provider elected for the captured source"),
         ]
         package: Annotated[

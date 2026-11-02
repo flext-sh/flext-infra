@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import builtins
+import keyword
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from textwrap import dedent, indent
@@ -1411,7 +1412,11 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 expression = expression.removesuffix(" is True").strip()
                 conditions.append((
                     statement.indent,
-                    runtime.same_name(
+                    all(
+                        part.isidentifier() and not keyword.iskeyword(part)
+                        for part in expression.split(".")
+                    )
+                    and runtime.same_name(
                         guard,
                         runtime.expression_name(module.get_scope(), expression),
                     ),

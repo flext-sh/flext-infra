@@ -389,13 +389,11 @@ class FlextInfraModelsRefactor(
         scope: Annotated[
             Sequence[str], m.Field(description="Governed Python scan scope")
         ]
-        states: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
-            m.Field(
-                exclude=True,
-                description="Scan authentication states; receipts retain byte digests",
-            ),
-        ] = ()
+        states: tuple[t.Port[p.Cli.AtomicFileState], ...] = m.Field(
+            (),
+            exclude=True,
+            description="Scan authentication states; receipts retain byte digests",
+        )
         sha256: Annotated[
             Mapping[str, str], m.Field(description="Source and catalog byte digests")
         ]
@@ -712,12 +710,12 @@ class FlextInfraModelsRefactor(
     ):
         """Public census request separated from injected execution capabilities."""
 
-        check_only: Annotated[
-            bool, m.Field(alias="check", description="Validate without writing")
-        ] = False
-        dry_run_mode: Annotated[
-            bool, m.Field(alias="dry-run", description="Inspect without writing")
-        ] = False
+        check_only: bool = m.Field(
+            False, alias="check", description="Validate without writing"
+        )
+        dry_run_mode: bool = m.Field(
+            False, alias="dry-run", description="Inspect without writing"
+        )
         output_format: Annotated[
             str, m.Field(description="Output format (json|text)")
         ] = "text"
@@ -730,13 +728,11 @@ class FlextInfraModelsRefactor(
     ):
         """CLI/service request for accessor migration dry-runs and applies."""
 
-        preview_limit: Annotated[
-            t.PositiveInt,
-            m.Field(
-                alias="preview-limit",
-                description="Maximum number of file previews to include in the report",
-            ),
-        ] = 10
+        preview_limit: t.PositiveInt = m.Field(
+            10,
+            alias="preview-limit",
+            description="Maximum number of file previews to include in the report",
+        )
 
     class Result(m.ArbitraryTypesModel):
         """Result of applying refactor rules to a single file."""
@@ -871,10 +867,9 @@ class FlextInfraModelsRefactor(
         """
 
         check: Annotated[bool, m.Field(description="Validate without writing")] = False
-        dry_run_mode: Annotated[
-            bool,
-            m.Field(alias="dry-run", description="Inspect without writing"),
-        ] = False
+        dry_run_mode: bool = m.Field(
+            False, alias="dry-run", description="Inspect without writing"
+        )
         rename_plan: Annotated[
             Path | None,
             m.Field(description="Authenticated semantic rename artifact to consume"),
@@ -1030,7 +1025,7 @@ class FlextInfraModelsRefactor(
         ] = 0
         applied: Annotated[bool, m.Field(description="Whether changes were applied")]
         published_states: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 exclude=True,
                 description="Authenticated states of the acknowledged published paths",

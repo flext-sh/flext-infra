@@ -134,7 +134,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 return r[str].from_failure(branch)
             workspace = workspace.model_copy(
                 update={
-                    "integration": p.Infra.WorkspaceIntegrationSpec(
+                    "integration": m.Infra.WorkspaceIntegrationSpec(
                         provider=workspace.repository.provider,
                         branch=branch.value,
                     ),

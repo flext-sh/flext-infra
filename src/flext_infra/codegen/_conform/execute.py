@@ -103,7 +103,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The projection result or its original failure.
 
         """
-        bootstrap = u.Infra.bootstrap_protocol_model_sources(request.root)
+        if execution_context is None:
+            return r[p.Infra.CodegenResult].fail(
+                "source bootstrap requires bound generation collaborators"
+            )
+        bootstrap = u.Infra.bootstrap_protocol_model_sources(
+            request.root, ports=execution_context.codegen_conform_collaborators()
+        )
         if bootstrap.failure:
             return r[p.Infra.CodegenResult].from_failure(bootstrap)
         admitted = m.Infra.CodegenGenerateRequest.model_validate(

@@ -243,6 +243,10 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
     TEMPLATE_MODEL_PROTOCOL: ClassVar[str] = "model_protocol.py.j2"
+    TEMPLATE_MODEL_PROTOCOL_CONFORMANCE: ClassVar[str] = (
+        "model_protocol_conformance.py.j2"
+    )
+    MODEL_PROTOCOL_CONFORMANCE_FILENAME: ClassVar[str] = "_model_conformance.py"
     "Protocol module template consumed by the existing source projector."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
     INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"

@@ -23,7 +23,7 @@ class FlextInfraModelsTransformers:
     class SemanticPublicationOptions(m.FrozenModel):
         """Caller-controlled gates and scope roots for one joint publication."""
 
-        inputs: tuple[p.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[t.Port[p.Cli.AtomicFileState], ...] = m.Field(
             default=(),
             exclude=True,
             description="Original observations required by every publication effect",

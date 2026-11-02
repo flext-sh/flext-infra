@@ -1,5 +1,10 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Source-derived structural model contracts."""
+"""Source-derived structural model contracts.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+src/flext_infra/_protocols/gates
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -7,13 +12,15 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
+from flext_infra import c, t
+
 if TYPE_CHECKING:
-    from flext_infra import c, p, t
-from flext_infra._protocols import FlextInfraProtocolsCheck, FlextInfraProtocolsDeps
+    from flext_infra import p
+    from flext_infra._protocols import FlextInfraProtocolsCheck, FlextInfraProtocolsDeps
 
 
 class FlextInfraProtocolsGates:
-    """Own the structural model contracts declared by this module."""
+    """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
     class SccFile(Protocol):
@@ -27,309 +34,516 @@ class FlextInfraProtocolsGates:
         """Structural data contract projected from the owning model."""
 
         name: str
-        files: tuple[FlextInfraProtocolsGates.SccFile, ...]
+        files: tuple[p.Infra.SccFile, ...]
+
+    @runtime_checkable
+    class SccReport(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        root: tuple[FlextInfraProtocolsGates.SccLanguage, ...]
 
     @runtime_checkable
     class DeptryError(Protocol):
         """Structural data contract projected from the owning model."""
 
-        code: str
-        message: str
+        @property
+        def code(self) -> str: ...
+        @property
+        def message(self) -> str: ...
 
     @runtime_checkable
     class DeptryLocation(Protocol):
         """Structural data contract projected from the owning model."""
 
-        file: str
-        line: int | None
-        column: int | None
+        @property
+        def file(self) -> str: ...
+        @property
+        def line(self) -> int | None: ...
+        @property
+        def column(self) -> int | None: ...
 
     @runtime_checkable
     class DeptryDiagnostic(Protocol):
         """Structural data contract projected from the owning model."""
 
-        error: FlextInfraProtocolsGates.DeptryError
-        module: str
-        location: FlextInfraProtocolsGates.DeptryLocation
+        @property
+        def error(self) -> p.Infra.DeptryError: ...
+        @property
+        def module(self) -> str: ...
+        @property
+        def location(self) -> p.Infra.DeptryLocation: ...
+
+    @runtime_checkable
+    class DeptryNativeReport(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        root: tuple[FlextInfraProtocolsGates.DeptryDiagnostic, ...]
+
+    @runtime_checkable
+    class DeptryScan(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def scanned_files(self) -> int: ...
+        @property
+        def venv_bin(self) -> Path: ...
+        @property
+        def source(self) -> tuple[p.Cli.AtomicPhysicalTreeManifest, ...]: ...
+        @property
+        def native(self) -> p.Cli.CommandOutput: ...
+        @property
+        def settings(self) -> p.Cli.AtomicFileState: ...
+        @property
+        def report_state(self) -> p.Cli.AtomicFileState: ...
+        @property
+        def report_sha256(self) -> str: ...
+        @property
+        def report(self) -> p.Infra.DeptryNativeReport: ...
 
     @runtime_checkable
     class GateContext(Protocol):
         """Structural data contract projected from the owning model."""
 
-        fail_fast: bool = ...
-        repository_root: Path = ...
-        runtime_root: Path | None = ...
-        reports_dir: Path
-        apply_fixes: bool = ...
-        check_only: bool = ...
-        runtime_dependency_inputs: p.Infra.RuntimeDependencyInputs | None = ...
-        runtime_dependency_collector: (
-            t.Port[FlextInfraProtocolsDeps.RuntimeDependencyCollector] | None
-        ) = ...
-        scope_facts: t.Port[FlextInfraProtocolsCheck.GitScopeFacts] | None = ...
-        signal_wave: t.Port[p.Cli.SignalWave] | None = ...
-        ruff_args: Sequence[str] = ...
-        pyright_args: Sequence[str] = ...
-        selected_files: tuple[Path, ...] = ...
-        candidate_files: tuple[Path, ...] | None = ...
-        check_progress: Callable[[Path, p.Infra.ProjectResult], None] | None = ...
+        @property
+        def fail_fast(self) -> bool: ...
+        @property
+        def repository_root(self) -> Path: ...
+        @property
+        def runtime_root(self) -> Path | None: ...
+        @property
+        def reports_dir(self) -> Path: ...
+        @property
+        def apply_fixes(self) -> bool: ...
+        @property
+        def check_only(self) -> bool: ...
+        @property
+        def runtime_dependency_inputs(
+            self,
+        ) -> p.Infra.RuntimeDependencyInputs | None: ...
+        @property
+        def runtime_dependency_collector(
+            self,
+        ) -> FlextInfraProtocolsDeps.RuntimeDependencyCollector | None: ...
+        @property
+        def scope_facts(self) -> FlextInfraProtocolsCheck.GitScopeFacts | None: ...
+        @property
+        def signal_wave(self) -> p.Cli.SignalWave | None: ...
+        @property
+        def ruff_args(self) -> Sequence[str]: ...
+        @property
+        def pyright_args(self) -> Sequence[str]: ...
+        @property
+        def selected_files(self) -> tuple[Path, ...]: ...
+        @property
+        def candidate_files(self) -> tuple[Path, ...] | None: ...
+        @property
+        def check_progress(
+            self,
+        ) -> Callable[[Path, FlextInfraProtocolsCheck.ProjectResult], None] | None: ...
 
     @runtime_checkable
     class MypyDiagnostic(Protocol):
         """Structural data contract projected from the owning model."""
 
-        file: str
-        line: int
-        column: int
-        end_line: int | None = ...
-        end_column: int | None = ...
-        message: t.NonEmptyStr
-        hint: str | None = ...
-        code: str | None = ...
-        severity: Literal["error", "note"]
+        @property
+        def file(self) -> str: ...
+        @property
+        def line(self) -> int: ...
+        @property
+        def column(self) -> int: ...
+        @property
+        def end_line(self) -> int | None: ...
+        @property
+        def end_column(self) -> int | None: ...
+        @property
+        def message(self) -> t.NonEmptyStr: ...
+        @property
+        def hint(self) -> str | None: ...
+        @property
+        def code(self) -> str | None: ...
+        @property
+        def severity(self) -> Literal["error", "note"]: ...
 
     @runtime_checkable
     class PyrightPosition(Protocol):
         """Structural data contract projected from the owning model."""
 
-        line: t.NonNegativeInt
-        character: t.NonNegativeInt
+        @property
+        def line(self) -> t.NonNegativeInt: ...
+        @property
+        def character(self) -> t.NonNegativeInt: ...
 
     @runtime_checkable
     class PyrightRange(Protocol):
         """Structural data contract projected from the owning model."""
 
-        start: FlextInfraProtocolsGates.PyrightPosition
-        end: FlextInfraProtocolsGates.PyrightPosition
+        @property
+        def start(self) -> p.Infra.PyrightPosition: ...
+        @property
+        def end(self) -> p.Infra.PyrightPosition: ...
 
     @runtime_checkable
     class PyrightDiagnostic(Protocol):
         """Structural data contract projected from the owning model."""
 
-        file: str
-        severity: Literal["error", "warning", "information"]
-        message: t.NonEmptyStr
-        range: FlextInfraProtocolsGates.PyrightRange | None = ...
-        rule: str | None = ...
+        @property
+        def file(self) -> str: ...
+        @property
+        def severity(self) -> Literal["error", "warning", "information"]: ...
+        @property
+        def message(self) -> t.NonEmptyStr: ...
+        @property
+        def range(self) -> p.Infra.PyrightRange | None: ...
+        @property
+        def rule(self) -> str | None: ...
 
     @runtime_checkable
     class PyrightSummary(Protocol):
         """Structural data contract projected from the owning model."""
 
-        files_analyzed: t.NonNegativeInt
-        error_count: t.NonNegativeInt
-        warning_count: t.NonNegativeInt
-        information_count: t.NonNegativeInt
-        time_in_sec: float
+        @property
+        def files_analyzed(self) -> t.NonNegativeInt: ...
+        @property
+        def error_count(self) -> t.NonNegativeInt: ...
+        @property
+        def warning_count(self) -> t.NonNegativeInt: ...
+        @property
+        def information_count(self) -> t.NonNegativeInt: ...
+        @property
+        def time_in_sec(self) -> float: ...
 
     @runtime_checkable
     class PyrightReport(Protocol):
         """Structural data contract projected from the owning model."""
 
-        version: t.NonEmptyStr
-        time: t.NonEmptyStr
-        general_diagnostics: Sequence[FlextInfraProtocolsGates.PyrightDiagnostic]
-        summary: FlextInfraProtocolsGates.PyrightSummary
+        @property
+        def version(self) -> t.NonEmptyStr: ...
+        @property
+        def time(self) -> t.NonEmptyStr: ...
+        @property
+        def general_diagnostics(self) -> Sequence[p.Infra.PyrightDiagnostic]: ...
+        @property
+        def summary(self) -> p.Infra.PyrightSummary: ...
 
     @runtime_checkable
     class PyreflyDiagnostic(Protocol):
         """Structural data contract projected from the owning model."""
 
-        line: t.NonNegativeInt
-        column: t.NonNegativeInt
-        stop_line: t.NonNegativeInt
-        stop_column: t.NonNegativeInt
-        path: t.NonEmptyStr
-        code: int
-        name: t.NonEmptyStr
-        description: t.NonEmptyStr
-        concise_description: str
-        severity: Literal["error", "warn", "info"]
+        @property
+        def line(self) -> t.NonNegativeInt: ...
+        @property
+        def column(self) -> t.NonNegativeInt: ...
+        @property
+        def stop_line(self) -> t.NonNegativeInt: ...
+        @property
+        def stop_column(self) -> t.NonNegativeInt: ...
+        @property
+        def path(self) -> t.NonEmptyStr: ...
+        @property
+        def code(self) -> int: ...
+        @property
+        def name(self) -> t.NonEmptyStr: ...
+        @property
+        def description(self) -> t.NonEmptyStr: ...
+        @property
+        def concise_description(self) -> str: ...
+        @property
+        def severity(self) -> Literal["error", "warn", "info"]: ...
 
     @runtime_checkable
     class PyreflyReport(Protocol):
         """Structural data contract projected from the owning model."""
 
-        errors: Sequence[FlextInfraProtocolsGates.PyreflyDiagnostic]
+        @property
+        def errors(self) -> Sequence[p.Infra.PyreflyDiagnostic]: ...
 
     @runtime_checkable
     class GateReportEvidence(Protocol):
         """Structural data contract projected from the owning model."""
 
-        path: Path
-        digest: str
-        kind: c.Infra.GateEvidenceReportKind
+        @property
+        def path(self) -> Path: ...
+        @property
+        def digest(self) -> str: ...
+        @property
+        def kind(self) -> c.Infra.GateEvidenceReportKind: ...
 
     @runtime_checkable
     class GateTestIntent(Protocol):
         """Structural data contract projected from the owning model."""
 
-        execution_mode: c.Infra.PytestExecutionMode
-        target: Path
-        target_file: Path | None
-        ci_context: bool
-        slow_phase: bool
-        profile_enabled: bool
+        @property
+        def execution_mode(self) -> c.Infra.PytestExecutionMode: ...
+        @property
+        def target(self) -> Path: ...
+        @property
+        def target_file(self) -> Path | None: ...
+        @property
+        def ci_context(self) -> bool: ...
+        @property
+        def slow_phase(self) -> bool: ...
+        @property
+        def profile_enabled(self) -> bool: ...
 
     @runtime_checkable
     class GateExecutionIntent(Protocol):
         """Structural data contract projected from the owning model."""
 
-        phase: c.Infra.CheckPhase = ...
-        requested_gates: t.StrTuple = ...
-        test_selection: FlextInfraProtocolsGates.GateTestIntent | None = ...
+        @property
+        def phase(self) -> c.Infra.CheckPhase: ...
+        @property
+        def requested_gates(self) -> t.StrTuple: ...
+        @property
+        def test_selection(self) -> p.Infra.GateTestIntent | None: ...
 
     @runtime_checkable
     class GateExecutionFacts(Protocol):
         """Structural data contract projected from the owning model."""
 
-        scope: Literal["workspace"]
-        runtime_identity: str
-        gate: t.NonEmptyStr
-        command_digest: str
-        process: p.Cli.ProcessOutcome
-        native_outcome: c.Infra.ToolOutcome
-        intent: FlextInfraProtocolsGates.GateExecutionIntent
-        policy: c.Infra.GateAcceptancePolicy
-        context_digest: str
-        policy_digest: str
-        reports: tuple[FlextInfraProtocolsGates.GateReportEvidence, ...]
-        result_digest: t.NonEmptyStr
-        started_at: t.NonEmptyStr
-        completed_at: t.NonEmptyStr
+        @property
+        def scope(self) -> Literal["workspace"]: ...
+        @property
+        def runtime_identity(self) -> str: ...
+        @property
+        def gate(self) -> t.NonEmptyStr: ...
+        @property
+        def command_digest(self) -> str: ...
+        @property
+        def process(self) -> p.Cli.ProcessOutcome: ...
+        @property
+        def native_outcome(self) -> c.Infra.ToolOutcome: ...
+        @property
+        def intent(self) -> p.Infra.GateExecutionIntent: ...
+        @property
+        def policy(self) -> c.Infra.GateAcceptancePolicy: ...
+        @property
+        def context_digest(self) -> str: ...
+        @property
+        def policy_digest(self) -> str: ...
+        @property
+        def reports(self) -> tuple[p.Infra.GateReportEvidence, ...]: ...
+        @property
+        def result_digest(self) -> t.NonEmptyStr: ...
+        @property
+        def started_at(self) -> t.NonEmptyStr: ...
+        @property
+        def completed_at(self) -> t.NonEmptyStr: ...
 
     @runtime_checkable
     class GateCommandEvidence(Protocol):
         """Structural data contract projected from the owning model."""
 
-        scope: Literal["workspace"]
-        runtime_identity: str
-        gate: t.NonEmptyStr
-        command_digest: str
-        process: p.Cli.ProcessOutcome
-        native_outcome: c.Infra.ToolOutcome
-        intent: FlextInfraProtocolsGates.GateExecutionIntent
-        policy: c.Infra.GateAcceptancePolicy
-        context_digest: str
-        policy_digest: str
-        reports: tuple[FlextInfraProtocolsGates.GateReportEvidence, ...]
-        result_digest: t.NonEmptyStr
-        started_at: t.NonEmptyStr
-        completed_at: t.NonEmptyStr
-        repository: str | None
-        commit_sha: str | None
-        tree_sha: str | None
-        dirty: bool | None
-        after_repository: str | None
-        after_commit_sha: str | None
-        after_tree_sha: str | None
-        after_dirty: bool | None
+        @property
+        def scope(self) -> Literal["workspace"]: ...
+        @property
+        def runtime_identity(self) -> str: ...
+        @property
+        def gate(self) -> t.NonEmptyStr: ...
+        @property
+        def command_digest(self) -> str: ...
+        @property
+        def process(self) -> p.Cli.ProcessOutcome: ...
+        @property
+        def native_outcome(self) -> c.Infra.ToolOutcome: ...
+        @property
+        def intent(self) -> p.Infra.GateExecutionIntent: ...
+        @property
+        def policy(self) -> c.Infra.GateAcceptancePolicy: ...
+        @property
+        def context_digest(self) -> str: ...
+        @property
+        def policy_digest(self) -> str: ...
+        @property
+        def reports(self) -> tuple[p.Infra.GateReportEvidence, ...]: ...
+        @property
+        def result_digest(self) -> t.NonEmptyStr: ...
+        @property
+        def started_at(self) -> t.NonEmptyStr: ...
+        @property
+        def completed_at(self) -> t.NonEmptyStr: ...
+        @property
+        def repository(self) -> str | None: ...
+        @property
+        def commit_sha(self) -> str | None: ...
+        @property
+        def tree_sha(self) -> str | None: ...
+        @property
+        def dirty(self) -> bool | None: ...
+        @property
+        def after_repository(self) -> str | None: ...
+        @property
+        def after_commit_sha(self) -> str | None: ...
+        @property
+        def after_tree_sha(self) -> str | None: ...
+        @property
+        def after_dirty(self) -> bool | None: ...
 
     @runtime_checkable
     class GateCaptureBeginRequest(Protocol):
         """Structural data contract projected from the owning model."""
 
-        repository_root: Path
-        gate: t.NonEmptyStr
-        command: t.StrTuple
-        intent: FlextInfraProtocolsGates.GateExecutionIntent
-        runtime_identity: str
+        @property
+        def repository_root(self) -> Path: ...
+        @property
+        def gate(self) -> t.NonEmptyStr: ...
+        @property
+        def command(self) -> t.StrTuple: ...
+        @property
+        def intent(self) -> p.Infra.GateExecutionIntent: ...
+        @property
+        def runtime_identity(self) -> str: ...
 
     @runtime_checkable
     class GateCaptureStart(Protocol):
         """Structural data contract projected from the owning model."""
 
-        repository_root: Path
-        gate: t.NonEmptyStr
-        intent: FlextInfraProtocolsGates.GateExecutionIntent
-        command: t.StrTuple
-        repository: str | None
-        commit_sha: str | None
-        tree_sha: str | None
-        dirty: bool | None
-        runtime_identity: str
-        context_digest: str
-        policy: c.Infra.GateAcceptancePolicy
-        policy_digest: str
-        started_at: t.NonEmptyStr
-        issue: str | None
+        @property
+        def repository_root(self) -> Path: ...
+        @property
+        def gate(self) -> t.NonEmptyStr: ...
+        @property
+        def intent(self) -> p.Infra.GateExecutionIntent: ...
+        @property
+        def command(self) -> t.StrTuple: ...
+        @property
+        def repository(self) -> str | None: ...
+        @property
+        def commit_sha(self) -> str | None: ...
+        @property
+        def tree_sha(self) -> str | None: ...
+        @property
+        def dirty(self) -> bool | None: ...
+        @property
+        def runtime_identity(self) -> str: ...
+        @property
+        def context_digest(self) -> str: ...
+        @property
+        def policy(self) -> c.Infra.GateAcceptancePolicy: ...
+        @property
+        def policy_digest(self) -> str: ...
+        @property
+        def started_at(self) -> t.NonEmptyStr: ...
+        @property
+        def issue(self) -> str | None: ...
 
     @runtime_checkable
     class GateCaptureRequest(Protocol):
         """Structural data contract projected from the owning model."""
 
-        phase: c.Infra.CheckPhase = ...
-        repository_root: Path
-        gates: t.NonEmptyStr | None = ...
-        report_output: Path | None = ...
+        @property
+        def phase(self) -> c.Infra.CheckPhase: ...
+        @property
+        def repository_root(self) -> Path: ...
+        @property
+        def gates(self) -> t.NonEmptyStr | None: ...
+        @property
+        def report_output(self) -> Path | None: ...
 
     @runtime_checkable
     class GateCaptureFinishRequest(Protocol):
         """Structural data contract projected from the owning model."""
 
-        started: FlextInfraProtocolsGates.GateCaptureStart
-        process: p.Cli.ProcessOutcome
-        reports: tuple[FlextInfraProtocolsGates.GateReportEvidence, ...]
-        report_root: Path
-        runtime_identity: str
+        @property
+        def started(self) -> p.Infra.GateCaptureStart: ...
+        @property
+        def process(self) -> p.Cli.ProcessOutcome: ...
+        @property
+        def reports(self) -> tuple[p.Infra.GateReportEvidence, ...]: ...
+        @property
+        def report_root(self) -> Path: ...
+        @property
+        def runtime_identity(self) -> str: ...
 
     @runtime_checkable
     class GateCaptureReport(Protocol):
         """Structural data contract projected from the owning model."""
 
-        process: p.Cli.ProcessOutcome
-        receipt: Path | None
-        issues: tuple[p.Infra.Issue, ...] = ...
+        @property
+        def process(self) -> p.Cli.ProcessOutcome: ...
+        @property
+        def receipt(self) -> Path | None: ...
+        @property
+        def issues(self) -> tuple[FlextInfraProtocolsCheck.Issue, ...]: ...
 
     @runtime_checkable
     class GateAttestationPredicate(Protocol):
         """Structural data contract projected from the owning model."""
 
-        schema_version: c.Infra.GateAttestationSchema = ...
-        anchor_oid: str
-        signer: t.NonEmptyStr
-        toolchain_digest: t.NonEmptyStr
-        context_digest: str
-        receipt: FlextInfraProtocolsGates.GateReportEvidence
-        covered_gates: Sequence[str]
-        commands: tuple[FlextInfraProtocolsGates.GateCommandEvidence, ...]
+        @property
+        def schema_version(self) -> c.Infra.GateAttestationSchema: ...
+        @property
+        def anchor_oid(self) -> str: ...
+        @property
+        def signer(self) -> t.NonEmptyStr: ...
+        @property
+        def toolchain_digest(self) -> t.NonEmptyStr: ...
+        @property
+        def context_digest(self) -> str: ...
+        @property
+        def receipt(self) -> p.Infra.GateReportEvidence: ...
+        @property
+        def covered_gates(self) -> Sequence[str]: ...
+        @property
+        def commands(self) -> tuple[p.Infra.GateCommandEvidence, ...]: ...
 
     @runtime_checkable
     class GateAttestationCreateRequest(Protocol):
         """Structural data contract projected from the owning model."""
 
-        workspace: str = ...
-        signer: t.NonEmptyStr
-        gates: Sequence[str]
-        receipt: Path
-        context_digest: str
-        policy: c.Infra.GateAcceptancePolicy
-        policy_digest: str
-        allowed_signers: t.NonEmptyStr
+        @property
+        def workspace(self) -> str: ...
+        @property
+        def signer(self) -> t.NonEmptyStr: ...
+        @property
+        def gates(self) -> Sequence[str]: ...
+        @property
+        def receipt(self) -> Path: ...
+        @property
+        def context_digest(self) -> str: ...
+        @property
+        def policy(self) -> c.Infra.GateAcceptancePolicy: ...
+        @property
+        def policy_digest(self) -> str: ...
+        @property
+        def allowed_signers(self) -> t.NonEmptyStr: ...
 
     @runtime_checkable
     class GateAttestationVerifyRequest(Protocol):
         """Structural data contract projected from the owning model."""
 
-        workspace: str = ...
-        allowed_signers: t.NonEmptyStr
-        expected_gates: Sequence[str]
-        context_digest: str
-        policy: c.Infra.GateAcceptancePolicy
-        policy_digest: str
-        receipt: Path
-        output: str | None = ...
+        @property
+        def workspace(self) -> str: ...
+        @property
+        def allowed_signers(self) -> t.NonEmptyStr: ...
+        @property
+        def expected_gates(self) -> Sequence[str]: ...
+        @property
+        def context_digest(self) -> str: ...
+        @property
+        def policy(self) -> c.Infra.GateAcceptancePolicy: ...
+        @property
+        def policy_digest(self) -> str: ...
+        @property
+        def receipt(self) -> Path: ...
+        @property
+        def output(self) -> str | None: ...
 
     @runtime_checkable
     class GateAttestationReport(Protocol):
         """Structural data contract projected from the owning model."""
 
-        tag: t.NonEmptyStr
-        anchor_oid: t.NonEmptyStr
-        signer: t.NonEmptyStr
-        covered_gates: Sequence[str]
-        context_digest: str
-        reused: bool = ...
+        @property
+        def tag(self) -> t.NonEmptyStr: ...
+        @property
+        def anchor_oid(self) -> t.NonEmptyStr: ...
+        @property
+        def signer(self) -> t.NonEmptyStr: ...
+        @property
+        def covered_gates(self) -> Sequence[str]: ...
+        @property
+        def context_digest(self) -> str: ...
+        @property
+        def reused(self) -> bool: ...
 
 
 __all__: list[str] = [

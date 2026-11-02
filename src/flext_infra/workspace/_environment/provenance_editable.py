@@ -28,14 +28,14 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
         *,
         metadata_paths: Sequence[str],
         environment_root: Path,
-    ) -> p.Result[tuple[Distribution, str, m.Infra.DirectUrlReceipt]]:
-        """Authenticate one installed distribution and its native PEP 610 record.
+    ) -> p.Result[tuple[Distribution, str, p.Infra.DirectUrlReceipt]]:
+        """Parse the native PEP 610 model and expose its structural receipt contract.
 
         Returns:
             The distribution, original receipt and validated source declaration.
 
         """
-        result = r[tuple[Distribution, str, m.Infra.DirectUrlReceipt]]
+        result = r[tuple[Distribution, str, p.Infra.DirectUrlReceipt]]
         matches = u.installed_distributions(
             name=distribution_name,
             path=metadata_paths,
@@ -63,7 +63,7 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
                 f"member declaration lacks PEP 610 provenance: {distribution_name}",
             )
         receipt = r[p.Infra.DirectUrlReceipt].create_from_callable(
-            lambda: p.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
+            lambda: m.Infra.DirectUrlReceipt.model_validate_json(raw, strict=True),
         )
         if receipt.failure:
             return result.from_failure(receipt)

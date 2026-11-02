@@ -444,6 +444,27 @@ proved real module addition and removal after reinstall.
 Selection classifies absent installation metadata by its native zero-match count;
 multiple installed distributions remain an ambiguous provenance failure. Error-text
 matching cannot authorize rebinding an ambiguous installation.
+The native `uv pip check` status is binding before receipt publication. A selected
+requirement owner does not excuse its missing dependencies. An isolated native
+FlextCore installation reported eight missing dependencies, including Pydantic.
+The former owner-name regex would accept that captured diagnostic, but the actual
+`run_live` boundary preserves the failed exit without capturing diagnostic text;
+the exception branch was unreachable there. Removing it preserves the unchanged
+native failure and eliminates an unsupported text-based exception. Read-only checks
+of the actual Algar consumer and executor environments passed with 261 and 220
+installed distributions respectively; direct URLs and selected editables receive
+no requirement-text exception.
+Workspace source and installation captures admit their runtime-checkable atomic
+file-state protocols through `t.Port` on each tuple element. The existing concrete
+snapshots remain the same objects and retain native model serialization; unrelated
+objects fail Pydantic admission rather than enabling blanket arbitrary types.
+The shared test filesystem's model-class inputs use the authored runtime-checkable
+`p.Tests.ModelReader` capability through `t.InstanceOf`. Its `model_validate` and
+`__name__` declarations cover actual reading and content-metadata consumers.
+The concrete Pydantic class remains the same object; unrelated objects and model
+instances fail admission. `t.Port` has equivalent instance validation here but
+omits the capability from JSON Schema, so it is not substituted without a schema
+requirement. Neither boundary serializes a model class as JSON.
 See the [Setuptools strict editable contract](https://setuptools.pypa.io/en/latest/userguide/development_mode.html#strict-editable-installs).
 
 Native source declarations and locked consistency are the approved provisioning
@@ -842,6 +863,20 @@ lexical class scopes determine each destination, not facade-name conventions or
 field maps. A declaration in the consumer's own module uses its local class name
 without importing itself; siblings use their declaring package's lazy export.
 
+The existing native facade-composition phase adopts configuration-declared pure
+facade namespaces through `facade_component_source`. Native module and class
+bindings authenticate the introducing owner and public facade identity. Authored
+ports or executable module bodies require their existing relocation first.
+The operation preserves original source witnesses and authored frames while
+planning provider composition and its canonical ownership header. It recognizes
+no alternate bootstrap marker and never relaxes generation's authored guard.
+`require-facade-mro-completeness` is a phase law, not an independently declared
+public selector. The current `config/infra.yaml` declares `semantic:cutover` and
+the distinct `callback:facade-components` domain/nesting/consumer planner. Public
+selection follows that typed catalog. Preview and staged runtime admission must
+precede publication through the native publisher. A scoped recovery is not
+complete fleet validation.
+
 The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
 JSON through `--decisions`. A selection identifies the introducing class,
 callable, or module and its intended name. `consumer_roots` is an optional JSON
@@ -906,6 +941,13 @@ expression grammar cannot declare annotations. An absent scope kind alone never
 excludes a scope. The existing quoted-type selector still owns annotation positions,
 including nested quoted types and typing-only declarations; ordinary strings,
 lambda payloads, literal values and annotation metadata are not replacement targets.
+The same native selector treats the type argument of the actual Core
+`FlextResult` subscription as a type position, including imported spellings and
+nested types. Native binding identity excludes shadowed receivers and unrelated
+subscriptions; executable model constructors and schema arguments remain values.
+Nested selections retain the outermost complete type region once, including a
+Result subscription inside a declared annotation. Partial overlaps remain an
+explicit failure before Rope's disjoint content-change validation.
 Native annotation-scope rejection reports both declaration counts and the first
 differing identity (bounded, without source payloads) in the primary exception
 message, so CLI transports that omit exception notes retain the causal evidence.
@@ -1234,6 +1276,10 @@ restoration tracked by `flext-vjj1s.8`. Its complete native inventory and source
 module ownership determine coverage and destinations; a consumed-model filter is
 not the accepted scope. The ADR owns the structural data/callable distinction,
 runtime boundaries, grouping, collision failure, pilot matrix and expansion order.
+The source inventory classifies model declarations by their native Pydantic
+ancestry, including inherited presets such as frozen and configuration contracts.
+A same-spelled local base is not evidence of model ownership, and unresolved
+ancestry fails before rendering instead of silently excluding that declaration.
 The operator explicitly authorized drift admission by coherent cohort on
 2026-10-28, with pilots published and integrated before fleet rollout. The existing
 transaction/admission owner implements this bounded change; it is not a new
@@ -1249,6 +1295,40 @@ The accepted DSL integration is `RopeWorkspaceDsl.protocol_projection()` with a
 typed invocation-local projection plan, consumed by both generation and an
 existing `ModLoopPhase.plan` callback. Share the invocation's authenticated native
 session/snapshot across callbacks and refresh changed resources incrementally.
+Protocol types used in executable generic arguments require the owning `p` facade
+at runtime. A `TYPE_CHECKING` import cannot supply an executed `Result` or service
+specialization; model construction remains at its existing concrete owner.
+Value-level `r.ok(value)` and `r.fail(...)` retain the native Result inference and
+failure contract without an unnecessary executable generic specialization. Their
+public annotations still name the owning protocol; this does not establish that
+an absent protocol projection or payload schema has been repaired.
+Model election admits an authenticated Pydantic BaseModel in the native MRO.
+A non-model class with unresolved ancestry remains a failure unless each
+synthetic witness resolves to the exact native TypedDict factory. That
+exemption classifies a known non-model; it never grants unknown ancestry.
+Inside a protocol declaration module, postponed references to the enclosing
+protocol facade remain under `TYPE_CHECKING`; importing that facade while it
+composes the module creates a self-dependency rather than a runtime capability.
+When extending an authored protocol holder, compose the added declarations before
+planning its imports. Reuse the existing header owner so postponed facade
+references stay deferred, runtime decorators remain available, and header changes
+cannot invalidate the captured declaration offsets.
+The same rule covers imports from the package root and from its `protocols`
+module. Authored protocol extension inserts declarations against the captured
+holder extent before changing the import header, preserving class indentation.
+Persisted protocol payload fields use the existing Pydantic metadata mechanism:
+`t.schema_for_model(actual_model)` delegates validation, serialization and JSON
+Schema to that authenticated model. The annotation remains the runtime-checkable
+protocol; the model reference is an executable schema target. This is distinct
+from `t.Port`, which represents an injected dependency rather than persisted data.
+Runtime collection adapters follow the same boundary. The accessor migration
+catalog validates its sequence of protocol-typed items with
+`t.schema_for_model(m.Infra.AccessorMigrationRule)` metadata. The concrete model
+remains an executable schema target, preserving its strict validation, defaults
+and model validators; a Protocol alone cannot validate the YAML payload.
+The field migration classifies model declarations through the existing native
+Rope scope graph and the authenticated Pydantic base identity. It does not build
+a second import/ancestry inventory or infer a model role from a class basename.
 No fake static restructure patterns or per-symbol catalogs represent this dynamic
 projection. The entry, callback, cohort policy and runtime receipts remain
 implementation/validation work, not proven capabilities of the current engine.
@@ -1498,6 +1578,11 @@ published family before selecting that package's recursive family cohort. The
 same component, initializer, import-normalization and candidate-admission owners
 close that scope and all native move consumers; an explicit `None` selection means
 all owned families. Unrelated family drift is not added to the selected cohort.
+Semantic domain-owner projection receives that same typed selection and applies
+it before discovering domains or planning moves. A selected protocol facade
+therefore closes its nested protocol domains, initializer effects and native
+consumers without relocating unrelated model or utility owners. The original
+collision and source-publication guards still apply to the complete candidate.
 Native declarations elect an authored methodless composition beside or inside
 its private child domain before any missing identity is derived. Suppliers must
 come from other native domain modules, not the holder's own nested declarations.
@@ -2573,21 +2658,28 @@ Prerequisite waves construct their mutable project results with the existing
 `m.Infra.ProjectResult` model; the protocol namespace describes ports and does
 not own a constructible `ProjectResult`. The Core container likewise constructs
 `m.ServiceRegistration` for the command bus; `p` cannot instantiate that model.
-Core service configuration annotations use `m.ConfigDict`, the declared
-Pydantic configuration type; evaluating the nonexistent `p.ConfigDict` aborts
-service import before any quality gate can start.
-Rope workspace session payloads, candidate plans, layout records and census
-objects use their existing `m.Infra` declarations. Native Rope project,
-initializer planner and snapshot capabilities retain their `p.Infra` ports.
-Git reports, fleet reports and managed-artifact input records likewise use
-their declared models; invalid protocol references in runtime generic
-expressions can stop the CLI before the checker produces a report.
+Core configuration annotations use the native `t.ConfigDict` type; the runtime
+constructor remains `m.ConfigDict`. Data and capability annotations use their
+real `p` protocols, declared as runtime-checkable structural contracts. Missing
+protocols are produced at their owning boundary before consumers switch; a name
+that is absent at runtime must not be used in executable generic expressions.
+Concrete `m` models remain the owners of construction and validation, and are
+passed through those ports by reference. This applies equally to Rope workspace
+payloads, Git reports, managed artifacts and CLI document or spreadsheet plans.
 
-The same identity boundary applies to CLI document rendering: `DocxRenderRequest`
-and its document, paragraph, run and font plans are models in `m.Cli`; renderer
-and document-object capabilities remain protocols in `p.Cli`. A model annotation
-must not be redirected to a protocol member that does not exist. The same rule
-applies to the XLSX color, font, fill, border, alignment and named-style models.
+Annotation-member contract rules preserve existing native protocol members. A
+model source member migrates only after its lexical binding matches the declared
+native model owner and its destination exists at the declared protocol owner.
+Model destinations fail catalogue and execution admission. Native SDK typing
+destinations retain their actual source identity; a nominally similar class is
+not a substitute. Runtime constructors and schema metadata remain executable
+model references. Nested result type regions are composed once by their existing
+annotation-region owner before the native Rope content-change boundary.
+Import cleanup authenticates a typing guard only when its condition is a
+qualified-name expression accepted by the native name resolver. Comparisons,
+boolean expressions and calls remain conditional; they are never submitted as
+identifiers or promoted to unconditional imports. Real name-resolution errors
+retain their original failure.
 
 Repair invocations execute their complete requested fixable-gate inventory in
 declared order, with the same applicability and explicit fail-fast policy. The
@@ -3460,6 +3552,10 @@ Snapshot source ownership elects the nearest governed ancestor from the existing
 authenticated member set. It walks each source's ancestry once instead of expanding
 that ancestry for every member; the deepest-owner result, outside-member refusal
 and complete source-state, content and digest admission remain unchanged.
+Candidate input-layout election reuses nearest-owner results only for sources
+sharing one parent directory in the current invocation. It retains every source
+observation and its authenticated witness; it does not cache bytes, resolve a
+different path, cross a nested project boundary or survive the invocation.
 Pydantic warning and exception classes are native Core `c` facts. Fresh-import
 probes and their emitted child programs use that same owner, preserving the SDK
 warning identity, error filter, source note and re-raise. A new warning observation
@@ -4168,9 +4264,18 @@ new authority. An explicitly declared scaffold retains its admitted identity
 while no manifest exists; a manifest appearing afterward requires the existing
 workspace election to run again. Member observations are not reread to elect the
 local target. This reuse still requires qualification through the public command.
-Git declaration results use `m.Infra.GitSubmoduleDeclaration`, the existing parsed
-data contract. `p.Infra` describes runtime capabilities and does not declare that
-model; using it in a concrete Result specialization prevents discovery from running.
+Git declaration construction uses `m.Infra.GitSubmoduleDeclaration`. Transport
+annotations use its runtime-checkable protocol from `p.Infra`, preserving the
+constructed model by reference. A missing protocol is repaired at its declaring
+producer before consumers change; protocols never replace model constructors.
+
+The external-model semantic utility consumes the existing native symbol planner
+through `p.Infra.NativeSemanticRenamePlanner`, injected into the Rope workspace
+at the API and semantic-operation composition roots. It does not import the
+codemod planner through the aggregate utility namespace. Deferring that internal
+import into a method does not repair the dependency cycle and leaves other
+methods without their binding. Native method/receiver identity audits remain
+diagnostic evidence; the unneeded leaf-receiver rewrite was not published.
 
 ## Service foundation
 
@@ -4205,6 +4310,19 @@ Batch callers supply their existing `declared_files` plans explicitly, including
 retirements; a live cohort supplies an empty tuple. Both planning and runtime-cycle
 verification retain those tombstones and their original file witnesses.
 
+Protocol extension reconciles imports through the existing module-header owner.
+Bare imported names, renamed providers and plain module imports retain their
+lexical bindings. Annotation-only providers stay deferred; decorators, class
+construction and runtime model schemas keep the imports they execute.
+Header injection and cold protocol normalization share that classification.
+Postponed annotations do not defer class bases or executable protocol references,
+and deferral retains the original provider instead of substituting the local facade.
+Unparsable source retains its original `SyntaxError` location. Import and protocol
+projection never delete an unattached decorator to manufacture a parseable input;
+the owning producer must restore the missing declaration or correct its emission.
+Native AST spans use UTF-8 byte columns. Source patches apply to the same encoded
+bytes so non-ASCII annotations and metadata cannot shift adjacent declarations.
+
 Concrete class imports use the nearest package that actually publishes that
 source identity. Application modules consume their local facade when its native
 MRO includes the imported provider and the consumed member paths resolve through
@@ -4213,6 +4331,11 @@ runtime dependencies that would introduce a cycle retain their original provider
 Import aliases keep their lexical binding. Unknown origins, conflicting owners
 and incompatible member paths fail before publication; a matching letter or
 directory name never proves identity.
+
+Annotation-member migration validates its declared destination before planning.
+An absent protocol never selects an `m` typing destination. Canonical protocol
+and native SDK typing destinations still require their actual source and target
+bindings; required imports use that elected destination's facade name.
 
 Before boundary validation, normalization may repair an own-family facade import
 only when its published provider belongs to that namespace's family. A root
@@ -4319,6 +4442,17 @@ candidate or fixed-point verification. The same resolved identity governs
 or unknown IDs fail before source observation or publication. Plain `make mod`
 remains the complete-catalog convergence route and is not weakened by the
 single-rule command.
+The selected semantic route verifies its exact rule's fixed point and the real
+fresh-import consumer on the complete staged composition, including required lazy
+initializer projections, before publication. An explicitly supplied candidate
+validator also runs during dry-run; pending file counts alone do not establish
+runtime acceptance. The same admitted bytes reach the existing atomic publisher.
+The public mod handler delegates single-ID election once to its existing
+cross-domain arbiter. An AST match cannot preempt a homonymous CSV, text or semantic
+owner; the arbiter rejects that ambiguity before dispatch. Removing the preliminary
+AST dispatch also removes its duplicate workspace capture for non-AST selectors.
+The native provider composer retains universal, runtime, local and generated
+precedence, and each dispatched engine returns its original Result unchanged.
 
 Facade consumer discovery resolves each native Rope `ImportedModule` once within
 the current source file. Repeated occurrences retain their binding and owner checks;
@@ -4544,6 +4678,12 @@ without applicable gates. Such an attempt is published before advancing and
 remains incomplete; equal directory basenames never identify the same target.
 The existing progress callback and Markdown/SARIF owners implement this contract.
 No extra reporter, latest pointer or alternative acceptance path is introduced.
+Native SARIF model serializers delegate child serialization to Pydantic once;
+they only arrange the resulting JSON values into the declared SARIF shape.
+Collection conversion belongs to that final shape, preserving arrays in Python
+and JSON output without another field serializer traversing the same payload.
+Optimization preserves each per-gate aggregate publication, including interrupted
+and partial execution, rather than reducing its frequency.
 
 Duplication assessment consumes every native scanner candidate. Within one
 assessment, its existing captured-source owner must parse and tokenize each
@@ -5155,3 +5295,15 @@ scan-target discovery of the semantic source closure are being reduced under epi
 - [Plan Collection](plan-collection.md)
 - [Recovery Runbook](recovery.md)
 - [ADR Index](../../../docs/architecture/adr/README.md)
+
+### Workspace settings type correction (2026-11-02)
+
+`src/flext/settings.py` annotated `model_config` as the nonexistent `p.SettingsConfigDict`. The annotation now uses the existing `t.SettingsConfigDict` type while `m.SettingsConfigDict` continues to construct the configuration. Root Pyrefly decreased from 15 to 14 findings, all concerning the missing `p.Root.PipelineStageData`; focused Ruff passed. The global primary gate still exits before checks because `p.Infra.GitIdentityReport` is missing. Rope wrote the change but reported `ResourceNotFoundError` while scanning the pre-existing dangling `.hadolint.yaml` link; the link target `.qlty/configs/.hadolint.yaml` is absent. The reported Rope operation is therefore not treated as a successful complete transaction.
+
+The Rope resource failure was reproduced independently with a real temporary project containing a dangling symbolic link: `Project.root.get_children()` raised `ResourceNotFoundError` for the link. An isolated `ChangeContents` operation did not itself fail without the workspace's observer path, so this narrower reproduction does not establish that every write fails. The loaded Rope distribution reports version `1.15.0+dc.10` and VCS revision `d56a179adcb2a8d932d96e742cdc42abebaf3885`; its loaded file is in the workspace virtual environment.
+
+After the carrier-analysis correction, `make check CHECK_PHASE=primary` reached all 32 projects and exited 2 with 7,986 findings. The complete native report is `.reports/gates/20261102T082916.268560Z-1692474/check/310876b0-67cb-4d33-ba82-9a2f461d9ee5/check-report.md` relative to the FLEXT root. This run occurred while shared source was changing and is not exact-revision acceptance. Direct root Ruff and Pyrefly diagnostics reported 2,296 and 14 findings respectively under their own scopes; they are not equivalent to the coordinated gate.
+
+The workspace duplication census used the installed `cpd 5.1.1` through `jscpd --config .jscpd.json --format python src flext-*/src` on 2026-11-02. It covered 32 source roots and 2,314 Python files, reporting 1,267 clones and 13,003 duplicated lines (2.78%). The configured minimum is eight lines and the report is `/tmp/flext-jscpd-20261102.log`. Exit 0 only means the scan completed; it does not mean duplication is resolved. The scan excludes tests and other paths, and its live shared sources are not an exact-revision release receipt.
+
+`qlty 0.662.0 smells --no-snippets src flext-*/src` completed with exit 0, reported analysis of 32 paths and 2,690 files, and produced `/tmp/flext-qlty-smells-20261102.log`. The output contains 626 similarity entries and 452 lines mentioning complexity; these are report-line counts, not deduplicated defect counts. The output also references matches in example and test paths, so its comparison population is broader than the requested source roots. Findings require causal triage; exit 0 is not a clean-quality claim.

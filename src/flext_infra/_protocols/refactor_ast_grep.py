@@ -1,5 +1,10 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Source-derived structural model contracts."""
+"""Source-derived structural model contracts.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+src/flext_infra/_protocols/refactor_ast_grep
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -7,12 +12,14 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
+from flext_infra import c, t
+
 if TYPE_CHECKING:
-    from flext_infra import c, p, t
+    from flext_infra import p
 
 
 class FlextInfraProtocolsRefactorAstGrep:
-    """Own the structural model contracts declared by this module."""
+    """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
     class CodemodRule(Protocol):
@@ -20,49 +27,34 @@ class FlextInfraProtocolsRefactorAstGrep:
 
         @property
         def id(self) -> t.NonEmptyStr: ...
-
         @property
         def digest(self) -> t.NonEmptyStr: ...
-
         @property
         def provider(self) -> t.NonEmptyStr: ...
-
         @property
         def resource(self) -> Path: ...
-
         @property
         def fixable(self) -> bool: ...
-
         @property
         def owned_path_suffix(self) -> Literal[".pyi"] | None: ...
-
         @property
         def message(self) -> str: ...
-
         @property
         def module_absence(self) -> bool: ...
-
         @property
         def expected(self) -> int | None: ...
-
         @property
         def owner(self) -> t.NonEmptyStr | None: ...
-
         @property
         def consumers_of(self) -> t.NonEmptyStr | None: ...
-
         @property
         def enforce(self) -> t.Infra.EnforcementIds: ...
-
         @property
         def disabled(self) -> bool: ...
-
         @property
         def partitioned(self) -> bool: ...
-
         @property
         def partition_of(self) -> t.NonEmptyStr | None: ...
-
         @property
         def relocation(self) -> c.Infra.CodemodRelocation | None: ...
 
@@ -72,13 +64,10 @@ class FlextInfraProtocolsRefactorAstGrep:
 
         @property
         def provider(self) -> t.NonEmptyStr: ...
-
         @property
         def config(self) -> Path: ...
-
         @property
         def rule_ids(self) -> Sequence[str]: ...
-
         @property
         def fixable_rule_ids(self) -> Sequence[str]: ...
 
@@ -88,13 +77,10 @@ class FlextInfraProtocolsRefactorAstGrep:
 
         @property
         def provider_order(self) -> Sequence[str]: ...
-
         @property
         def rules(self) -> tuple[p.Infra.CodemodRule, ...]: ...
-
         @property
         def rulesets(self) -> tuple[p.Infra.CodemodRuleset, ...]: ...
-
         @property
         def project_rule_ids(self) -> Mapping[Path, Sequence[str]]: ...
 
@@ -104,10 +90,8 @@ class FlextInfraProtocolsRefactorAstGrep:
 
         @property
         def exports(self) -> Mapping[str, t.StrTuple]: ...
-
         @property
         def directories(self) -> Mapping[str, str]: ...
-
         @property
         def modules(self) -> Mapping[str, t.StrTuple]: ...
 
@@ -117,10 +101,8 @@ class FlextInfraProtocolsRefactorAstGrep:
 
         @property
         def utilities(self) -> Mapping[str, t.JsonMapping]: ...
-
         @property
         def rules(self) -> Mapping[str, t.JsonMapping]: ...
-
         @property
         def scopes(self) -> Mapping[str, t.StrTuple]: ...
 
@@ -137,22 +119,16 @@ class FlextInfraProtocolsRefactorAstGrep:
 
         @property
         def rule_id(self) -> t.NonEmptyStr: ...
-
         @property
         def variable(self) -> t.NonEmptyStr: ...
-
         @property
         def holds(self) -> bool: ...
-
         @property
         def selectors(self) -> t.NonEmptyStr: ...
-
         @property
         def pattern(self) -> t.NonEmptyStr: ...
-
         @property
         def keys(self) -> Mapping[str, str]: ...
-
         @property
         def matching(self) -> bool: ...
 
@@ -169,22 +145,16 @@ class FlextInfraProtocolsRefactorAstGrep:
 
         @property
         def source_name(self) -> t.NonEmptyStr: ...
-
         @property
         def replacement_name(self) -> t.NonEmptyStr: ...
-
         @property
         def reason(self) -> t.NonEmptyStr: ...
-
         @property
         def origin(self) -> str: ...
-
         @property
         def operation(self) -> Literal["rename", "normalize-field"]: ...
-
         @property
         def declaring_class(self) -> t.NonEmptyStr | None: ...
-
         @property
         def field(self) -> t.NonEmptyStr | None: ...
 
@@ -194,21 +164,64 @@ class FlextInfraProtocolsRefactorAstGrep:
 
         @property
         def file(self) -> t.NonEmptyStr: ...
-
         @property
         def line(self) -> t.NonNegativeInt: ...
-
         @property
         def original_name(self) -> t.NonEmptyStr: ...
-
         @property
         def replacement_name(self) -> str: ...
-
         @property
         def automated(self) -> bool: ...
-
         @property
         def reason(self) -> str: ...
+
+    @runtime_checkable
+    class AccessorMigrationFile(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def file(self) -> t.NonEmptyStr: ...
+        @property
+        def lint_tools(self) -> tuple[str, ...]: ...
+        @property
+        def automated_changes(self) -> tuple[p.Infra.AccessorMigrationChange, ...]: ...
+        @property
+        def warnings(self) -> tuple[p.Infra.AccessorMigrationChange, ...]: ...
+        @property
+        def diff(self) -> str: ...
+        @property
+        def lint_before(self) -> t.Infra.LintSnapshot[p.Infra.LintGateResult]: ...
+        @property
+        def lint_after(self) -> t.Infra.LintSnapshot[p.Infra.LintGateResult]: ...
+        @property
+        def new_lint_errors(self) -> Mapping[str, Sequence[str]]: ...
+
+    @runtime_checkable
+    class AccessorMigrationReport(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace(self) -> t.NonEmptyStr: ...
+        @property
+        def dry_run(self) -> bool: ...
+        @property
+        def files_scanned(self) -> t.NonNegativeInt: ...
+        @property
+        def files_with_changes(self) -> t.NonNegativeInt: ...
+        @property
+        def automated_change_count(self) -> t.NonNegativeInt: ...
+        @property
+        def warning_count(self) -> t.NonNegativeInt: ...
+        @property
+        def lint_tools(self) -> tuple[str, ...]: ...
+        @property
+        def lint_before_totals(self) -> t.IntMapping: ...
+        @property
+        def lint_after_totals(self) -> t.IntMapping: ...
+        @property
+        def new_lint_error_totals(self) -> t.IntMapping: ...
+        @property
+        def files(self) -> tuple[p.Infra.AccessorMigrationFile, ...]: ...
 
 
 __all__: list[str] = [

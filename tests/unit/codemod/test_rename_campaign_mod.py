@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraConfig, infra, m
+from flext_infra import FlextInfraCli, FlextInfraConfig, infra, m
 from tests import c, tm, u
 
 
@@ -27,7 +27,8 @@ class TestsFlextInfraRenameCampaignMod:
         )
         (config_dir / c.Infra.INFRA_CONFIG_FILENAME).write_text(
             "Infra:\n  refactor_csv_campaigns:\n    campaigns:\n"
-            "      - csv: renames.csv\n"
+            "      - id: csv:campaign\n"
+            "        csv: renames.csv\n"
             "        text_globs: ['**/*.md']\n"
             "        python_documentation: true\n",
             encoding="utf-8",
@@ -105,7 +106,8 @@ class TestsFlextInfraRenameCampaignMod:
         )
         (config_dir / c.Infra.INFRA_CONFIG_FILENAME).write_text(
             "Infra:\n  refactor_csv_campaigns:\n    campaigns:\n"
-            "      - csv: renames.csv\n"
+            "      - id: csv:campaign\n"
+            "        csv: renames.csv\n"
             "        rename_definitions: true\n"
             "        bindings: {'': ['sample.ModWorkspaceSample.Settings']}\n",
             encoding="utf-8",
@@ -239,7 +241,8 @@ class TestsFlextInfraRenameCampaignMod:
         self._declare(config_dir)
         (config_dir / c.Infra.INFRA_CONFIG_FILENAME).write_text(
             "Infra:\n  refactor_csv_campaigns:\n    campaigns:\n"
-            f"      - csv: {csv!r}\n"
+            "      - id: csv:campaign\n"
+            f"        csv: {csv!r}\n"
             f"        roots: {list(roots)!r}\n"
             "        text_globs: ['**/*.md']\n",
             encoding="utf-8",
@@ -292,7 +295,8 @@ class TestsFlextInfraRenameCampaignMod:
             (mod_workspace / "outside").symlink_to(outside, target_is_directory=True)
             (config_dir / c.Infra.INFRA_CONFIG_FILENAME).write_text(
                 "Infra:\n  refactor_csv_campaigns:\n    campaigns:\n"
-                "      - csv: renames.csv\n"
+                "      - id: csv:campaign\n"
+                "        csv: renames.csv\n"
                 "        roots: [outside]\n"
                 "        text_globs: ['**/*.md']\n",
                 encoding="utf-8",
@@ -315,4 +319,46 @@ class TestsFlextInfraRenameCampaignMod:
         tm.fail(u.Cli.process_succeeded(result.outcome))
         tm.that(result.stdout + result.stderr, has=expected)
         tm.that(guide.read_text(encoding="utf-8"), eq="A campaign_token paragraph.\n")
-        tm.that(guide.read_text(encoding="utf-8"), eq="A campaign_token paragraph.\n")
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("selector", ["csv:campaign", "csv:unknown"])
+    def test_public_selected_rule_rejects_ambiguous_and_unknown_owners(
+        self,
+        mod_workspace: Path,
+        capsys: pytest.CaptureFixture[str],
+        selector: str,
+    ) -> None:
+        """All declared domains participate before any selected owner executes."""
+        self._declare(mod_workspace / "config")
+        u.Tests.declare_rules(
+            mod_workspace,
+            {
+                "campaign-collision": (
+                    "id: csv:campaign\nlanguage: Python\nseverity: warning\n"
+                    "rule:\n  pattern: marker = dict()\nfix: marker = {}\n"
+                ),
+            },
+        )
+        sample = mod_workspace / "sample.py"
+        source = "marker = dict()\n"
+        tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        code = FlextInfraCli.infra_main([
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(mod_workspace),
+            "--rule",
+            selector,
+            "--apply",
+        ])
+        capture = capsys.readouterr()
+        tm.that(code, ne=0)
+        tm.that(
+            capture.out + capture.err,
+            has=(
+                f"ambiguous refactor mod rule selector {selector}"
+                if selector == "csv:campaign"
+                else f"unknown refactor mod rule selector: {selector}"
+            ),
+        )
+        tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)

@@ -1,0 +1,25 @@
+{{ header }}
+"""{{ module_description }}
+
+{{ copyright_notice }}
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+{{ imports | join('\n') | indent(4, true) }}
+    from {{ package_name }} import m, p
+{% for native, structural, parameters, arguments in checks %}
+
+{% if parameters %}
+    def _model_protocol_{{ loop.index }}[{{ parameters | join(', ') }}]() -> type[{{ structural }}{% if arguments %}[{{ arguments | join(', ') }}]{% endif %}]:
+        return {{ native }}{% if arguments %}[{{ arguments | join(', ') }}]{% endif %}
+{% else %}
+    def _model_protocol_{{ loop.index }}(value: object) -> {{ structural }}:
+        if not isinstance(value, {{ native }}):
+            raise TypeError("model protocol witness received another declaring owner")
+        return value
+{% endif %}
+{% endfor %}

@@ -22,6 +22,25 @@ class FlextInfraConstantsDocs:
         """Finite presentation messages, English baseline and Brazilian Portuguese."""
 
         DOCUMENTATION = ("Documentation", "Documentação")
+        MODEL_PROTOCOL_MODULE = (
+            "Source-derived structural model contracts.",
+            "Contratos estruturais derivados dos modelos de origem.",
+        )
+        MODEL_PROTOCOL_OWNER = (
+            "Own the structural contracts declared by its model source.",
+            "Reúne os contratos estruturais declarados pelos modelos de origem.",
+        )
+        MODEL_PROTOCOL_CONTRACT = (
+            "Structural data contract projected from the owning model.",
+            "Contrato estrutural de dados projetado do modelo responsável.",
+        )
+        MODEL_PROTOCOL_CONFORMANCE = (
+            "Static instance-to-protocol evidence required by candidate admission.",
+            (
+                "Prova estática de instância para protocolo exigida no aceite "
+                "do candidato."
+            ),
+        )
         VERSION = ("Version", "Versão")
         PROJECT_CLASS = ("Project class", "Classe do projeto")
         PACKAGE = ("Package", "Pacote")

@@ -10,7 +10,7 @@ rule:
             regex: "^exit_code$"
       - inside:
             any:
-              - pattern: p.Cli.CommandOutput($$$ARGS)
-              - pattern: p.Cli.CommandBytesOutput($$$ARGS)
+              - pattern: m.Cli.CommandOutput($$$ARGS)
+              - pattern: m.Cli.CommandBytesOutput($$$ARGS)
             stopBy: end
 message: Build command payloads from one causal ProcessOutcome; synthetic exit codes are forbidden.

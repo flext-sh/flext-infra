@@ -666,7 +666,7 @@ class FlextInfraStagedPackage:
         cls,
         workspace: Path,
         inputs: tuple[p.Cli.AtomicFileState, ...],
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        layouts: Mapping[str, p.Infra.RopeProjectLayout],
     ) -> tuple[tuple[p.Infra.RopeProjectLayout, bool], ...]:
         """Elect the read-only closure roots of the original Python observations.
 
@@ -678,6 +678,7 @@ class FlextInfraStagedPackage:
 
         """
         roots: list[tuple[p.Infra.RopeProjectLayout, bool]] = []
+        owners: dict[Path, p.Result[p.Infra.RopeProjectLayout]] = {}
         for state in inputs:
             if (
                 state.path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES
@@ -685,7 +686,10 @@ class FlextInfraStagedPackage:
                 or "site-packages" in state.path.parts
             ):
                 continue
-            resolved = cls._source_layout(state.path, layouts)
+            directory = state.path.parent
+            if directory not in owners:
+                owners[directory] = cls._source_layout(state.path, layouts)
+            resolved = owners[directory]
             if resolved.success:
                 roots.append((resolved.value, False))
         return tuple(roots)
@@ -771,7 +775,7 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _source_layout(
         path: Path,
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        layouts: Mapping[str, p.Infra.RopeProjectLayout],
     ) -> p.Result[p.Infra.RopeProjectLayout]:
         """Resolve a source owner without replacing another package's identity.
 
@@ -780,7 +784,7 @@ class FlextInfraStagedPackage:
 
         """
         result_type = r[p.Infra.RopeProjectLayout]
-        owners: dict[Path, m.Infra.RopeProjectLayout] = {}
+        owners: dict[Path, p.Infra.RopeProjectLayout] = {}
         for layout in layouts.values():
             owners.setdefault(layout.project_root, layout)
         # The nearest enclosing project root owns the source: walk its ancestors

@@ -79,7 +79,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             target.path: self._isolate_context(ctx, target) for target in projects
         }
         results = {
-            target.path: p.Infra.ProjectResult(project=target.name)
+            target.path: m.Infra.ProjectResult(project=target.name)
             for target in projects
         }
         for project_ctx in contexts.values():

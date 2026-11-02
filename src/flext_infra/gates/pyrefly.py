@@ -32,6 +32,17 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
         c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,
     )
 
+    def __init__(
+        self,
+        repository_root: Path,
+        *,
+        source_roots: Sequence[Path] = (),
+        runner: p.Cli.CommandRunner = u.Cli,
+    ) -> None:
+        """Bind staged import roots while retaining normal project execution."""
+        super().__init__(repository_root, runner=runner)
+        self._source_roots = source_roots
+
     def _native_report_path(
         self,
         project_dir: Path,
@@ -90,8 +101,12 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
             c.Infra.PYREFLY,
             c.Infra.CHECK,
             *target_args,
-            "--config",
-            c.PYPROJECT_FILENAME,
+            *(() if self._source_roots else ("--config", c.PYPROJECT_FILENAME)),
+            *(
+                argument
+                for source in self._source_roots
+                for argument in ("--search-path", str(source))
+            ),
             "--python-interpreter-path",
             str(u.Infra.runtime_python(project_dir, runtime_root=ctx.runtime_root)),
             "--output-format",

@@ -14,13 +14,9 @@ import os
 import sysconfig
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraBindingService:

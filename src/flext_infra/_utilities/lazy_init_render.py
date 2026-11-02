@@ -135,7 +135,7 @@ class FlextInfraUtilitiesLazyInitRender:
                 declaration.spec.project.documentation_language
                 if declaration.spec.project is not None
                 else scope_state.docs_documentation_language({
-                    "documentation_language": p.Infra.ProjectSpec.model_fields[
+                    "documentation_language": m.Infra.ProjectSpec.model_fields[
                         "documentation_language"
                     ].get_default(),
                 })

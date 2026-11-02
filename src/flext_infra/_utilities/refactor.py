@@ -882,7 +882,25 @@ class FlextInfraUtilitiesRefactor:
                 raise ValueError(msg)
             references.append(
                 m.Infra.ModScanFindingReference(
-                    **entry.model_dump(exclude_computed_fields=True),
+                    rule_file=entry.rule_file,
+                    rule_id=entry.rule_id,
+                    repository=entry.repository,
+                    catalog_digest=entry.catalog_digest,
+                    message=entry.message,
+                    module_absence=entry.module_absence,
+                    file=entry.file,
+                    source_owner=entry.source_owner,
+                    source_state=entry.source_state,
+                    range=entry.range,
+                    text=entry.text,
+                    replacement=entry.replacement,
+                    actionable=entry.actionable,
+                    classification=entry.classification,
+                    replacement_offsets=entry.replacement_offsets,
+                    severity=entry.severity,
+                    origin=entry.origin,
+                    native_record=entry.native_record,
+                    native_receipt=entry.native_receipt,
                     source_path=(
                         entry.source_state.path
                         if entry.source_state is not None

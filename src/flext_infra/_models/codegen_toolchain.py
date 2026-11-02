@@ -155,7 +155,7 @@ class FlextInfraModelsCodegenToolchain:
             ),
         ]
         sources: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(description="Ordered YAML states that produced the replacement"),
         ] = ()
 
@@ -205,7 +205,7 @@ class FlextInfraModelsCodegenToolchain:
 
         @m.computed_field
         @property
-        def sources(self) -> tuple[p.Cli.AtomicFileState, ...]:
+        def sources(self) -> tuple[t.Port[p.Cli.AtomicFileState], ...]:
             """Every state the publication reads: the planned declarations.
 
             Returns:

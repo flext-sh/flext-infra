@@ -14,46 +14,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from flext_cli import u
-from git import GitError, Repo
-from git.repo.fun import is_git_dir
+from git import GitError
 
 from flext_infra import c, config, m, p, r
+from flext_infra._utilities._git.physical_scope import (
+    FlextInfraUtilitiesGitPhysicalScope,
+)
 
 
 class FlextInfraUtilitiesGitMutationScope:
     """Classify absent Git ownership before opening any declared Git marker."""
-
-    @staticmethod
-    def _git_mutation_scope(root: Path) -> p.Infra.GitMutationScope:
-        resolved = root.resolve(strict=True)
-        if not resolved.is_dir():
-            msg = f"mutation scope is not a physical directory: {root}"
-            raise ValueError(msg)
-        for candidate in (resolved, *resolved.parents):
-            marker = candidate / c.Infra.GIT_DIR
-            if marker.exists() or marker.is_symlink():
-                with Repo(candidate, search_parent_directories=False) as repo:
-                    if (
-                        repo.bare
-                        or repo.working_tree_dir is None
-                        or Path(repo.working_tree_dir).resolve() != candidate
-                    ):
-                        msg = (
-                            f"declared Git marker does not own this worktree: "
-                            f"{candidate}"
-                        )
-                        raise ValueError(msg)
-                    return m.Infra.GitMutationScope(
-                        root=resolved,
-                        git_dir=Path(repo.git_dir).resolve(),
-                    )
-            if is_git_dir(candidate):
-                msg = (
-                    f"mutation scope belongs to Git storage rather than a "
-                    f"worktree: {root}"
-                )
-                raise ValueError(msg)
-        return m.Infra.GitMutationScope(root=resolved, git_dir=None)
 
     @classmethod
     def git_mutation_scope(
@@ -67,10 +37,12 @@ class FlextInfraUtilitiesGitMutationScope:
 
         """
         try:
-            scope = cls._git_mutation_scope(request.repo_root)
+            root, git_dir = FlextInfraUtilitiesGitPhysicalScope.scope_paths(
+                request.repo_root
+            )
         except (GitError, OSError, ValueError) as exc:
-            return r[p.Infra.GitMutationScope].fail(str(exc), exception=exc)
-        return r[p.Infra.GitMutationScope].ok(scope)
+            return r.fail(str(exc), exception=exc)
+        return r.ok(m.Infra.GitMutationScope(root=root, git_dir=git_dir))
 
     @classmethod
     def mutation_lock_path(cls, root: Path) -> p.Result[Path]:
@@ -83,16 +55,11 @@ class FlextInfraUtilitiesGitMutationScope:
             The lock path, or the scope classification failure.
 
         """
-        return cls.git_mutation_scope(m.Infra.GitRepoRequest(repo_root=root)).map(
-            lambda scope: (
-                (
-                    scope.git_dir
-                    if scope.git_dir is not None
-                    else scope.root / c.Infra.TRANSACTION_STATE_DIRNAME
-                )
-                / c.Infra.MUTATION_LOCK_NAME
-            )
-        )
+        try:
+            lock_path = FlextInfraUtilitiesGitPhysicalScope.lock_path(root)
+        except (GitError, OSError, ValueError) as exc:
+            return r.fail(str(exc), exception=exc)
+        return r.ok(lock_path)
 
     @staticmethod
     def mutation_lock_holder_path(lock_path: Path) -> Path:

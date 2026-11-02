@@ -779,9 +779,14 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         def covers(line: int) -> bool:
             return path == span[0] and span[1] <= line <= span[2]
 
+        resolutions: dict[tuple[int, str], p.Infra.RopePyName | None] = {}
+
         def resolves(node: p.Infra.RopeAstNode) -> p.Infra.RopePyName | None:
             scope = runtime.scope_at(module, runtime.source_offset(source, node))
-            return runtime.resolve_symbol(scope, node)
+            key = (id(scope), ast.unparse(node))
+            if key not in resolutions:
+                resolutions[key] = runtime.resolve_symbol(scope, node)
+            return resolutions[key]
 
         def whole_owner(actual: p.Infra.RopePyName | None) -> bool:
             return (
@@ -896,6 +901,11 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         if not isinstance(expression, ast.AST):
             msg = "native carrier proof requires an AST expression"
             raise TypeError(msg)
+        qualifiers = {
+            id(node.value)
+            for node in ast.walk(expression)
+            if isinstance(node, ast.Attribute)
+        }
         return any(
             actual is not None
             and (
@@ -907,6 +917,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             )
             for part in ast.walk(expression)
             if isinstance(part, c.Infra.AST_NAME_REFERENCE_TYPES)
+            and id(part) not in qualifiers
             for actual in (resolves(part),)
         )
 

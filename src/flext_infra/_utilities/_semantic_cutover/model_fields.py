@@ -22,6 +22,9 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverModelFieldsBindings,
 )
+from flext_infra._utilities.transformer_header import (
+    FlextInfraUtilitiesTransformerHeader,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -405,18 +408,37 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
 
         """
+        models = cls._pydantic_model_classes(sources, source_project=source_project)
         return cls._semantic_edits(
             cls._editable_sources(sources),
             lambda path, source: cls._rewrite_fields(
-                path, source, source_project=source_project
+                path,
+                source,
+                source_project=source_project,
+                models=models,
             ),
         )
 
     @classmethod
     def _rewrite_fields(
-        cls, path: Path, source: str, *, source_project: p.Infra.RopeProject
+        cls,
+        path: Path,
+        source: str,
+        *,
+        source_project: p.Infra.RopeProject,
+        models: frozenset[tuple[Path, int]],
     ) -> t.Infra.TransformResult:
-        tree = ast.parse(source, filename=str(path))
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            source_project.get_pymodule(
+                FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                    source_project, path
+                )
+            )
+        )
+        if module.source_code != source:
+            message = f"field source differs from its native candidate: {path}"
+            raise ValueError(message)
+        tree = module.get_ast()
         replacements: list[tuple[int, int, str]] = []
         lines = source.splitlines(keepends=True)
         for function in ast.walk(tree):
@@ -426,24 +448,245 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
                 cls._function_field_replacements(path, function, lines),
             )
         if not replacements:
-            return source, ()
+            return cls._wrap_model_protocol_fields(path, source, tree, models=models)
         cls._require_unshadowed_guard(tree)
         for start, end, replacement in sorted(replacements, reverse=True):
             lines[start:end] = [replacement]
-        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
-            source_project.get_pymodule(
-                FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
-                    source_project, path
-                )
-            )
-        )
         with FlextInfraUtilitiesRopeModulePatch.candidate_module(
             module, "".join(lines)
         ) as candidate:
             updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
                 candidate, module="flext_core", name="u"
             )
-        return updated, ("narrowed untrusted model-class boundaries",)
+        with FlextInfraUtilitiesRopeModulePatch.candidate_module(
+            module, updated
+        ) as candidate:
+            protocol_updated, protocol_changes = cls._wrap_model_protocol_fields(
+                path, updated, candidate.get_ast(), models=models
+            )
+        return protocol_updated, (
+            "narrowed untrusted model-class boundaries",
+            *protocol_changes,
+        )
+
+    @classmethod
+    def _wrap_model_protocol_fields(
+        cls,
+        path: Path,
+        source: str,
+        tree: ast.Module,
+        *,
+        models: frozenset[tuple[Path, int]],
+    ) -> t.Infra.TransformResult:
+        """Port-wrap direct public protocol field types on runtime Pydantic models.
+
+        Pydantic builds class-body field schemas at import time.  A direct public
+        protocol therefore needs the existing ``t.Port`` schema owner, including
+        when it is nested in a container or union.  Protocol declarations and
+        function signatures deliberately remain outside this field-only rewrite.
+
+        Returns:
+            Source with direct protocol field types port-wrapped, or the input.
+
+        Raises:
+            ValueError: If a rewritten model field has no complete source span.
+
+        """
+        replacements: list[tuple[int, int, str]] = []
+        for model in ast.walk(tree):
+            if (
+                not isinstance(model, ast.ClassDef)
+                or (path, model.lineno) not in models
+            ):
+                continue
+            for field in model.body:
+                annotation = (
+                    field.annotation
+                    if isinstance(field, ast.AnnAssign)
+                    else field.returns
+                    if isinstance(field, c.Infra.AST_FUNCTION_TYPES)
+                    and cls._is_computed_model_field(field, tree)
+                    else None
+                )
+                if annotation is None:
+                    continue
+                annotation, changed = cls._port_protocol_annotation(annotation)
+                if not changed:
+                    continue
+                if field.end_col_offset is None or field.end_lineno is None:
+                    msg = (
+                        "model field has no complete source span in "
+                        f"{path}:{field.lineno}"
+                    )
+                    raise ValueError(msg)
+                replacements.append((
+                    cls._source_offset(
+                        source, annotation.lineno, annotation.col_offset
+                    ),
+                    cls._source_offset(
+                        source,
+                        annotation.end_lineno or annotation.lineno,
+                        annotation.end_col_offset or annotation.col_offset,
+                    ),
+                    ast.unparse(annotation),
+                ))
+        if not replacements:
+            return source, ()
+        updated = source
+        for start, end, replacement in sorted(replacements, reverse=True):
+            updated = f"{updated[:start]}{replacement}{updated[end:]}"
+        return (
+            FlextInfraUtilitiesSemanticCutoverModelFields._ensure_port_import(updated),
+            ("port-wrapped runtime protocol model fields",),
+        )
+
+    @staticmethod
+    def _is_computed_model_field(
+        field: ast.FunctionDef | ast.AsyncFunctionDef,
+        tree: ast.Module,
+    ) -> bool:
+        """Return whether a method is a Pydantic computed field declaration."""
+        for decorator in field.decorator_list:
+            candidate = decorator.func if isinstance(decorator, ast.Call) else decorator
+            if (
+                isinstance(candidate, ast.Attribute)
+                and isinstance(candidate.value, ast.Name)
+                and candidate.value.id == "m"
+                and candidate.attr == "computed_field"
+            ):
+                return True
+            if not isinstance(candidate, ast.Name) or candidate.id != "computed_field":
+                continue
+            if any(
+                isinstance(statement, ast.ImportFrom)
+                and statement.module == "pydantic"
+                and any(
+                    alias.name == "computed_field"
+                    and (alias.asname or alias.name) == candidate.id
+                    for alias in statement.names
+                )
+                for statement in tree.body
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _pydantic_model_classes(
+        sources: Mapping[Path, str],
+        *,
+        source_project: p.Infra.RopeProject,
+    ) -> frozenset[tuple[Path, int]]:
+        """Classify declarations through the shared native source and C3 graph.
+
+        Returns:
+            Exact source lines whose native ancestry contains Pydantic's model.
+
+        Raises:
+            ValueError: A native module differs from its authenticated source.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        base = runtime.qualified_name(
+            source_project, c.Infra.PYDANTIC_MODEL_IDENTITY
+        ).get_object()
+        models: set[tuple[Path, int]] = set()
+        for path, source in sources.items():
+            module = types.require_source_module(
+                source_project.get_pymodule(
+                    runtime.file_resource_at(source_project, path)
+                )
+            )
+            if module.source_code != source:
+                message = f"native model inventory differs from captured source: {path}"
+                raise ValueError(message)
+            scopes = list(module.get_scope().get_scopes())
+            while scopes:
+                scope = scopes.pop()
+                scopes.extend(scope.get_scopes())
+                candidate = scope.pyobject
+                if types.py_class(candidate) and base in candidate.get_mro():
+                    models.add((path, scope.get_start()))
+        return frozenset(models)
+
+    @classmethod
+    def _port_protocol_annotation(cls, annotation: ast.expr) -> tuple[ast.expr, bool]:
+        """Return an annotation with direct public protocol nodes port-wrapped."""
+
+        class PortWrapper(ast.NodeTransformer):
+            changed = False
+
+            def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
+                if cls._is_port_annotation(node) or cls._is_callable_annotation(node):
+                    return node
+                return self.generic_visit(node)
+
+            def visit_Attribute(self, node: ast.Attribute) -> ast.expr:
+                node = self.generic_visit(node)
+                if not cls._is_public_protocol_reference(node):
+                    return node
+                self.changed = True
+                return ast.copy_location(
+                    ast.Subscript(
+                        value=ast.Attribute(
+                            value=ast.Name(id="t", ctx=ast.Load()),
+                            attr="Port",
+                            ctx=ast.Load(),
+                        ),
+                        slice=node,
+                        ctx=ast.Load(),
+                    ),
+                    node,
+                )
+
+        wrapper = PortWrapper()
+        updated = wrapper.visit(ast.fix_missing_locations(annotation))
+        return ast.fix_missing_locations(updated), wrapper.changed
+
+    @staticmethod
+    def _is_port_annotation(node: ast.Subscript) -> bool:
+        return (
+            isinstance(node.value, ast.Attribute)
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "t"
+            and node.value.attr == "Port"
+        )
+
+    @staticmethod
+    def _is_callable_annotation(node: ast.Subscript) -> bool:
+        """Return whether this generic owns a callable signature annotation."""
+        return (isinstance(node.value, ast.Name) and node.value.id == "Callable") or (
+            isinstance(node.value, ast.Attribute) and node.value.attr == "Callable"
+        )
+
+    @staticmethod
+    def _is_public_protocol_reference(node: ast.expr) -> bool:
+        return (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Attribute)
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "p"
+        )
+
+    @staticmethod
+    def _source_offset(source: str, line: int, column: int) -> int:
+        """Return a character offset from a one-based AST source location."""
+        return (
+            sum(len(item) for item in source.splitlines(keepends=True)[: line - 1])
+            + column
+        )
+
+    @staticmethod
+    def _ensure_port_import(source: str) -> str:
+        """Require the runtime ``t`` binding Pydantic resolves for its fields.
+
+        Returns:
+            Source with the required runtime import.
+
+        """
+        return FlextInfraUtilitiesTransformerHeader.ensure_alias_import(
+            source, "flext_core", "t", runtime_required=True
+        )
 
     @classmethod
     def _function_field_replacements(

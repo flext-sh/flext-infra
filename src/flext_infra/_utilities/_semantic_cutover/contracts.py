@@ -1243,6 +1243,9 @@ class FlextInfraUtilitiesSemanticContracts(
         if source is None or not separator or capture != "${member}":
             message = f"{rule.id}: annotation owner declaration is incomplete"
             raise ValueError(message)
+        if target.partition(".")[0] == c.Infra.FacadeFamily.M:
+            message = f"{rule.id}: model typing destination is prohibited: {target}"
+            raise ValueError(message)
         owner = rule.bindings.get(target)
         source_owner = rule.bindings.get(source)
         if owner is None or source_owner is None:
@@ -1411,7 +1414,7 @@ class FlextInfraUtilitiesSemanticContracts(
 
         Returns:
             Native Rope content changes for unresolved members owned by the declared
-            destination model namespace.
+            declared destination namespace.
 
         Raises:
             ValueError: A source snapshot, member owner, or binding is ambiguous.
@@ -1483,7 +1486,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 resource, source, edits
             )
         if len(import_modules) != 1:
-            message = f"{rule.id}: one module elected multiple m facades"
+            message = f"{rule.id}: one module elected multiple destination facades"
             raise ValueError(message)
         root = Path(project.root.real_path).resolve()
         import_module = next(iter(import_modules))
@@ -1511,7 +1514,7 @@ class FlextInfraUtilitiesSemanticContracts(
             )
         if imported is None:
             message = (
-                f"{rule.id}: Rope did not add unconditional m import from "
+                f"{rule.id}: Rope did not add the required destination import from "
                 f"{import_module} in {module.get_name()}"
             )
             raise ValueError(message)
@@ -1541,7 +1544,14 @@ class FlextInfraUtilitiesSemanticContracts(
         for begin, end, _line in references.annotation_regions(source, module):
             scope = runtime.scope_at(module, begin)
             annotation = source[begin:end]
-            state = (project, module, context, import_modules)
+            state = (
+                project,
+                module,
+                FlextInfraUtilitiesSemanticContracts._AnnotationMemberState(
+                    context, begin
+                ),
+                import_modules,
+            )
             replace = partial(
                 FlextInfraUtilitiesSemanticContracts._annotation_member_replacement,
                 context=state,
@@ -1560,42 +1570,35 @@ class FlextInfraUtilitiesSemanticContracts(
         context: tuple[
             p.Infra.RopeProject,
             p.Infra.RopePyModule,
-            FlextInfraUtilitiesSemanticContracts._AnnotationMemberOwner,
+            FlextInfraUtilitiesSemanticContracts._AnnotationMemberState,
             set[str],
         ],
     ) -> str | None:
         """Resolve the source and destination identities for one annotation.
 
         Returns:
-            The destination spelling for an owned model member, or no edit when a
+            The destination spelling for an owned member, or no edit when a
             real protocol already provides the source member.
 
         Raises:
             ValueError: The source, target, or destination binding is ambiguous.
 
         """
-        owner = context[2]
-        member_prefix = f"{owner.source}."
-        if not expression.startswith(member_prefix):
+        owner = context[2].owner
+        if not expression.startswith(f"{owner.source}."):
             return None
-        member = expression.removeprefix(member_prefix)
+        member = expression.removeprefix(f"{owner.source}.")
         if not member.isidentifier():
             return None
         if not FlextInfraUtilitiesSemanticContracts._annotation_source_owner_matches(
             scope, owner
         ):
             return None
-        if FlextInfraUtilitiesSemanticContracts._annotation_source_member_exists(
-            scope, owner.source, member
-        ):
-            return None
-        expected = owner.members.get(member)
+        expected = FlextInfraUtilitiesSemanticContracts._annotation_member_target(
+            scope, owner, member
+        )
         if expected is None:
-            message = (
-                f"{owner.rule.id}: {expression} has no member in declared owner "
-                f"{owner.owner}"
-            )
-            raise ValueError(message)
+            return None
         destination_path = f"{owner.target}.{member}"
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         destination = runtime.expression_name(scope, destination_path)
@@ -1604,7 +1607,10 @@ class FlextInfraUtilitiesSemanticContracts(
             if isinstance(
                 root_binding, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
             ) and not runtime.imported_binding_precedes(
-                context[0], context[1], "m", context[2]
+                context[0],
+                context[1],
+                owner.target.partition(".")[0],
+                context[2].offset,
             ):
                 context[3].add(
                     FlextInfraUtilitiesSemanticContracts._annotation_member_import(
@@ -1613,17 +1619,16 @@ class FlextInfraUtilitiesSemanticContracts(
                 )
             return destination_path
         if root_binding is None:
-            import_module = (
+            context[3].add(
                 FlextInfraUtilitiesSemanticContracts._annotation_member_import(
                     context[0], context[1], owner, member
                 )
             )
-            context[3].add(import_module)
             return destination_path
         unknown = runtime.runtime_callable("rope.base.pyobjects", "get_unknown")()
         if root_binding.get_object() is unknown:
             message = (
-                f"{owner.rule.id}: target m binding is ambiguous in "
+                f"{owner.rule.id}: target {owner.target} binding is ambiguous in "
                 f"{context[1].get_name()}"
             )
             raise ValueError(message)
@@ -1632,6 +1637,63 @@ class FlextInfraUtilitiesSemanticContracts(
             f"resolve to {owner.owner}.{member} in {context[1].get_name()}"
         )
         raise ValueError(message)
+
+    @staticmethod
+    def _annotation_member_target(
+        scope: p.Infra.RopeScope,
+        owner: FlextInfraUtilitiesSemanticContracts._AnnotationMemberOwner,
+        member: str,
+    ) -> p.Infra.RopePyName | None:
+        """Admit actual model references while retaining real protocol members.
+
+        Returns:
+            The declared native destination, or no edit for an existing protocol.
+
+        Raises:
+            ValueError: A model source is missing or shadowed, the destination is
+                absent, or a native SDK typing destination changes identity.
+
+        """
+        model_source = owner.source.partition(".")[0] == c.Infra.FacadeFamily.M
+        if FlextInfraUtilitiesSemanticContracts._annotation_source_member_exists(
+            scope, owner.source, member
+        ):
+            if not model_source:
+                return None
+        elif model_source:
+            message = (
+                f"{owner.rule.id}: model annotation source is undeclared: "
+                f"{owner.source}.{member}"
+            )
+            raise ValueError(message)
+        expected = owner.members.get(member)
+        if expected is None:
+            message = (
+                f"{owner.rule.id}: {owner.source}.{member} has no member in "
+                f"declared owner {owner.owner}"
+            )
+            raise ValueError(message)
+        if model_source:
+            runtime = FlextInfraUtilitiesRopeRuntimeModules
+            source_member = owner.source_owner.get_attributes().get(member)
+            if source_member is None or not runtime.same_name(
+                source_member,
+                runtime.expression_name(scope, f"{owner.source}.{member}"),
+            ):
+                message = (
+                    f"{owner.rule.id}: model annotation source is shadowed: "
+                    f"{owner.source}.{member}"
+                )
+                raise ValueError(message)
+            if owner.target.partition(".")[0] != c.Infra.FacadeFamily.P and not (
+                runtime.same_name(source_member, expected)
+            ):
+                message = (
+                    f"{owner.rule.id}: native typing destination changes source "
+                    f"identity: {owner.target}.{member}"
+                )
+                raise ValueError(message)
+        return expected
 
     @staticmethod
     def _annotation_source_owner_matches(
@@ -1667,13 +1729,13 @@ class FlextInfraUtilitiesSemanticContracts(
         owner: FlextInfraUtilitiesSemanticContracts._AnnotationMemberOwner,
         member: str,
     ) -> str:
-        """Prove the scoped package publishes the expected public model facade.
+        """Prove the scoped package publishes the expected destination facade.
 
         Returns:
             The selected package root for Rope's public import organizer.
 
         Raises:
-            ValueError: The package root does not publish the configured model owner.
+            ValueError: The package root does not publish the configured owner.
 
         """
         package_root = module.get_name().partition(".")[0]
@@ -1686,7 +1748,7 @@ class FlextInfraUtilitiesSemanticContracts(
             raise ValueError(message)
         expected = owner.members.get(member)
         if expected is None:
-            message = f"{owner.rule.id}: model owner has no member {member}"
+            message = f"{owner.rule.id}: destination owner has no member {member}"
             raise ValueError(message)
         target_prefix = owner.target
         public = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(

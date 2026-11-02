@@ -128,15 +128,15 @@ class FlextInfraModelsCodemod:
         """Closed descriptor-authenticated sources used by occurrence admission."""
 
         states: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(description="Consumer and resolved Python import-owner inputs"),
         ]
 
         @m.field_validator("states")
         @classmethod
         def unique_inputs(
-            cls, states: tuple[p.Cli.AtomicFileState, ...]
-        ) -> tuple[p.Cli.AtomicFileState, ...]:
+            cls, states: tuple[t.Port[p.Cli.AtomicFileState], ...]
+        ) -> tuple[t.Port[p.Cli.AtomicFileState], ...]:
             """Store each authenticated input once; conflicting identities fail.
 
             Returns:
@@ -146,7 +146,7 @@ class FlextInfraModelsCodemod:
                 ValueError: If binding source snapshots disagree.
 
             """
-            indexed: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+            indexed: MutableMapping[Path, p.Cli.AtomicFileState] = {}
             for state in states:
                 previous = indexed.setdefault(state.path, state)
                 if previous is not state and previous != state:
@@ -164,10 +164,9 @@ class FlextInfraModelsCodemod:
         model_config: ClassVar[p.ConfigDict] = m.ConfigDict(strict=True)
 
         file: Annotated[str, m.Field(min_length=1, description="Reported source path")]
-        rule_id: Annotated[
-            str,
-            m.Field(alias="ruleId", min_length=1, description="Native rule ID"),
-        ]
+        rule_id: str = m.Field(
+            alias="ruleId", min_length=1, description="Native rule ID"
+        )
         severity: Annotated[
             c.Infra.NativeRuleSeverity,
             m.Field(description="Native rule severity"),
@@ -175,54 +174,36 @@ class FlextInfraModelsCodemod:
         message: Annotated[str, m.Field(description="Native rule diagnostic")]
         text: Annotated[str, m.Field(description="Exact matched source text")]
         lines: Annotated[str, m.Field(description="Source lines containing the match")]
-        line: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "start", "line"),
-                description="Zero-based starting source line",
-            ),
-        ]
-        column: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "start", "column"),
-                description="Zero-based starting source column",
-            ),
-        ]
-        end_line: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "end", "line"),
-                description="Zero-based ending source line",
-            ),
-        ]
-        end_column: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "end", "column"),
-                description="Zero-based ending source column",
-            ),
-        ]
-        start_byte: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "byteOffset", "start"),
-                description="Inclusive UTF-8 byte offset",
-            ),
-        ]
-        end_byte: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "byteOffset", "end"),
-                description="Exclusive UTF-8 byte offset",
-            ),
-        ]
+        line: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "start", "line"),
+            description="Zero-based starting source line",
+        )
+        column: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "start", "column"),
+            description="Zero-based starting source column",
+        )
+        end_line: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "end", "line"),
+            description="Zero-based ending source line",
+        )
+        end_column: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "end", "column"),
+            description="Zero-based ending source column",
+        )
+        start_byte: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "byteOffset", "start"),
+            description="Inclusive UTF-8 byte offset",
+        )
+        end_byte: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "byteOffset", "end"),
+            description="Exclusive UTF-8 byte offset",
+        )
 
     class AstGrepOwnedPathDiagnostic(AstGrepDiagnostic):
         """A validated owned-path finding in the native scanner wire format."""
@@ -520,6 +501,12 @@ class FlextInfraModelsCodemod:
                 return
             member = ".${member}"
             target = self.goal.removesuffix(member)
+            if target.partition(".")[0] == c.Infra.FacadeFamily.M:
+                msg = (
+                    "annotation member rules cannot produce model typing; "
+                    "declare a canonical runtime-checkable protocol destination"
+                )
+                raise ValueError(msg)
             owner = self.bindings.get(target)
             source_owner = self.bindings.get(self.annotation_member_source)
             valid = (

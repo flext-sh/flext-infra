@@ -43,7 +43,11 @@ class FlextInfraTransformersSemanticPublication:
         )
         if composed.failure:
             return r[tuple[Path, ...]].from_failure(composed)
-        if not publish:
+        if (
+            not publish
+            and selected.validator is None
+            and selected.plan_validator is None
+        ):
             return cls._pending_paths(composed.value)
         changes = u.Infra.normalized_codegen_changes(composed.value)
         if changes.failure:
@@ -55,6 +59,8 @@ class FlextInfraTransformersSemanticPublication:
         )
         if accepted.failure:
             return r[tuple[Path, ...]].from_failure(accepted)
+        if not publish:
+            return cls._pending_paths(composed.value)
         return u.Infra.publish_normalized_codegen_plans(
             repository_root, composed.value, changes.value
         )

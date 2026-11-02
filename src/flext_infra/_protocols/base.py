@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE - Source bootstrap legacy protocol holder.
 """Base protocols for flext-infra project.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -6,7 +7,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -15,9 +16,9 @@ if TYPE_CHECKING:
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from types import FunctionType
-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+from typing import Literal
 
-from flext_cli import p, t
+from flext_cli import FlextCliProtocols, t
 
 if TYPE_CHECKING:
     from flext_infra import c
@@ -242,6 +243,19 @@ class FlextInfraProtocolsBase(Protocol):
         def rules(self) -> Sequence[FlextInfraProtocolsBase.CodemodRule]: ...
 
     @runtime_checkable
+    class CodegenInputs(Protocol):
+        """Effective codegen policy and authenticated configuration sources."""
+
+        @property
+        def spec(self) -> p.Infra.CodegenConfigSpec: ...
+
+        @property
+        def kind(self) -> c.Infra.ProjectKind: ...
+
+        @property
+        def sources(self) -> Sequence[p.Cli.AtomicFileState]: ...
+
+    @runtime_checkable
     class ApplyRenamesInput(Protocol):
         """Read-only validated CSV rename campaign declaration."""
 
@@ -269,7 +283,9 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> FlextInfraProtocolsBase.CodegenConformPorts | None: ...
 
     @runtime_checkable
-    class CodegenService(CodegenExecutionContext, p.Service[t.JsonDict], Protocol):
+    class CodegenService(
+        CodegenExecutionContext, FlextCliProtocols.Service[t.JsonDict], Protocol
+    ):
         """Public codegen operations bound to the caller's execution context."""
 
         def codegen_generate(
@@ -1118,12 +1134,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceReport(Protocol):
-        """Protocol for workspace dependency report model contract."""
-
-        pip_check: p.Infra.PipCheckReport | None
-
-    @runtime_checkable
     class JsonService(Protocol):
         """Service for JSON serialization and persistence."""
 
@@ -1323,9 +1333,8 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def exit_code(self) -> int: ...
-
         @property
-        def classification(self) -> str: ...
+        def classification(self) -> t.NonEmptyStr: ...
 
     @runtime_checkable
     class SummaryStats(Protocol):
@@ -1333,19 +1342,14 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def verb(self) -> str: ...
-
         @property
         def total(self) -> int: ...
-
         @property
         def success(self) -> int: ...
-
         @property
         def failed(self) -> int: ...
-
         @property
         def skipped(self) -> int: ...
-
         @property
         def elapsed(self) -> float: ...
 
@@ -1355,10 +1359,8 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def workspace(self) -> Path: ...
-
         @property
         def updated_source(self) -> str: ...
-
         @property
         def gates(self) -> Sequence[str] | None: ...
 
@@ -1367,16 +1369,13 @@ class FlextInfraProtocolsBase(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def tool_name(self) -> str: ...
-
+        def tool_name(self) -> t.NonEmptyStr: ...
         @property
         def errors(self) -> Sequence[str]: ...
-
         @property
         def output(self) -> p.Cli.CommandOutput | None: ...
-
         @property
-        def execution_error(self) -> str | None: ...
+        def execution_error(self) -> t.NonEmptyStr | None: ...
 
     @runtime_checkable
     class TransformStep(Protocol):
@@ -1384,12 +1383,47 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def detector(self) -> str: ...
-
         @property
         def transformer(self) -> str: ...
-
         @property
         def gates(self) -> str: ...
+
+    @runtime_checkable
+    class CommandContext(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        repository_root: Path
+        apply_changes: bool
+        check_only: bool
+        dry_run: bool
+        output_format: str
+        project_filter: str | None
+        report_path: Path | None
+        output_dir: Path | None
+
+        @property
+        def root(self) -> Path: ...
+        @property
+        def effective_dry_run(self) -> bool: ...
+
+    @runtime_checkable
+    class ProtectedSourceWritesRequest(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        workspace: Path
+        expected_sources: Mapping[Path, str | None]
+        gates: Sequence[str] | None
+        post_write: Callable[[], None] | None
+        skip_pytest: bool
+
+    @runtime_checkable
+    class ProtectedFileEditRequest(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        workspace: Path
+        before_source: str
+        edit_fn: Callable[[], None]
+        gates: Sequence[str] | None
 
 
 __all__: list[str] = ["FlextInfraProtocolsBase"]

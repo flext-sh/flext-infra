@@ -89,7 +89,7 @@ class FlextInfraCodemodRenameSources:
                 inputs=tuple(known.values()),
             ),
         ).map(
-            lambda stage: p.Infra.SemanticSourcePlan(
+            lambda stage: m.Infra.SemanticSourcePlan(
                 candidate=stage, consumer_roots=candidate.consumer_roots
             )
         )

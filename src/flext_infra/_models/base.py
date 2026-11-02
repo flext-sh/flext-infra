@@ -31,38 +31,30 @@ class FlextInfraModelsBase:
             validate_default=True,
             description="Repository root",
         )
-        apply_changes: Annotated[
-            bool,
-            m.Field(
-                alias="apply",
-                description="Apply changes",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
-                },
-            ),
-        ] = False
-        check_only: Annotated[
-            bool,
-            m.Field(alias="check", description="Check mode"),
-        ] = False
+        apply_changes: bool = m.Field(
+            False,
+            alias="apply",
+            description="Apply changes",
+            json_schema_extra={
+                "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
+            },
+        )
+        check_only: bool = m.Field(False, alias="check", description="Check mode")
         dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
         output_format: Annotated[
             str,
             m.Field(description="Output format (json|text)"),
             m.BeforeValidator(lambda value: value.strip().lower()),
         ] = "text"
-        project_filter: Annotated[
-            str | None,
-            m.Field(description="Project filter (comma-separated)", exclude=True),
-        ] = None
-        report_path: Annotated[
-            Path | None,
-            m.Field(description="Report output path", exclude=True),
-        ] = None
-        output_dir: Annotated[
-            Path | None,
-            m.Field(description="Output directory", exclude=True),
-        ] = None
+        project_filter: str | None = m.Field(
+            None, description="Project filter (comma-separated)", exclude=True
+        )
+        report_path: Path | None = m.Field(
+            None, description="Report output path", exclude=True
+        )
+        output_dir: Path | None = m.Field(
+            None, description="Output directory", exclude=True
+        )
 
         @m.field_validator("repository_root", mode="before")
         @classmethod

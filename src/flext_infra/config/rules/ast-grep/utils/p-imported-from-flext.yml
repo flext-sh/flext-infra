@@ -1,0 +1,23 @@
+id: p-imported-from-flext
+language: python
+rule:
+  kind: import_from_statement
+  all:
+  - inside:
+      kind: module
+  - has:
+      pattern: p
+      stopBy: end
+  - any:
+    - has:
+        field: module_name
+        regex: "^flext(?:_[a-z0-9_]+)?$"
+    - has:
+        kind: relative_import
+  - not:
+      has:
+        kind: aliased_import
+        stopBy: end
+        has:
+          pattern: p
+          stopBy: end

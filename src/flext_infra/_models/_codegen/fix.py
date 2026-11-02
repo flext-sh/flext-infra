@@ -209,35 +209,20 @@ class FlextInfraModelsCodegenFix:
         state.
         """
 
-        violations_fixed: Annotated[
-            MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation],
-            m.Field(
-                default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
-                description="List of violations that were fixed",
-            ),
+        violations_fixed: MutableSequence[
+            FlextInfraModelsCodegenScaffold.CensusViolation
         ] = m.Field(
             default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
             description="List of violations that were fixed",
         )
-        violations_skipped: Annotated[
-            MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation],
-            m.Field(
-                default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
-                description="List of violations that were skipped",
-            ),
+        violations_skipped: MutableSequence[
+            FlextInfraModelsCodegenScaffold.CensusViolation
         ] = m.Field(
             default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
             description="List of violations that were skipped",
         )
-        files_modified: Annotated[
-            MutableSet[str],
-            m.Field(
-                default_factory=set[str],
-                description="Set of unique modified file paths",
-            ),
-        ] = m.Field(
-            default_factory=set[str],
-            description="Set of unique modified file paths",
+        files_modified: MutableSet[str] = m.Field(
+            default_factory=set[str], description="Set of unique modified file paths"
         )
 
         @property

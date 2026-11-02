@@ -599,7 +599,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             Local spelling, member, publication package and declared owner.
 
         Raises:
-            ValueError: If a destination has no lazy publication.
+            ValueError: If a destination has no lazy publication for the consumer.
 
         """
         context, module = frame
@@ -634,7 +634,10 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         if package is None and not FlextInfraUtilitiesRopeRuntime.same_name(
             owner_binding, module.get_scope().get_names().get(local)
         ):
-            message = f"{identity}: same-family destination has no lazy publication"
+            message = (
+                f"{identity}: same-family destination has no lazy publication "
+                f"for consumer {context.file_path} ({context.module})"
+            )
             raise ValueError(message)
         return local, member, package, owner
 

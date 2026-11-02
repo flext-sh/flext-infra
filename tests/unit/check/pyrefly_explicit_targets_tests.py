@@ -24,6 +24,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
     @pytest.mark.slow
     def test_literal_excluded_stub_preserves_native_scope_and_config(
         real_python_package: Path,
+        suite_runtime_root: Path,
     ) -> None:
         """A selected excluded stub is checked without admitting its sibling."""
         project = real_python_package
@@ -46,6 +47,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
         reports.mkdir()
         context = m.Infra.GateContext(
             repository_root=project,
+            runtime_root=suite_runtime_root,
             reports_dir=reports,
             selected_files=(selected,),
         )
@@ -77,7 +79,11 @@ class TestsFlextInfraPyreflyExplicitTargets:
             eq=True,
             msg=str(invalid.issues),
         )
-        discovery = m.Infra.GateContext(repository_root=project, reports_dir=reports)
+        discovery = m.Infra.GateContext(
+            repository_root=project,
+            runtime_root=suite_runtime_root,
+            reports_dir=reports,
+        )
         empty = gate.check_files((selected,), project, discovery)
         tm.fail(empty.result.passed)
         tm.that(empty.issues, empty=False)
@@ -90,6 +96,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
     @pytest.mark.slow
     def test_explicit_targets_keep_configured_excludes(
         real_python_package: Path,
+        suite_runtime_root: Path,
     ) -> None:
         """The real gate excludes a generated tree yet still checks governed code.
 
@@ -113,7 +120,11 @@ class TestsFlextInfraPyreflyExplicitTargets:
         (tree / "wire_pb2.py").write_text('value: int = "wire"\n', encoding="utf-8")
         reports = project / ".reports"
         reports.mkdir()
-        context = m.Infra.GateContext(repository_root=project, reports_dir=reports)
+        context = m.Infra.GateContext(
+            repository_root=project,
+            runtime_root=suite_runtime_root,
+            reports_dir=reports,
+        )
         gate = gates.FlextInfraGatesPyrefly(project)
 
         excluded = gate.check(project, context)

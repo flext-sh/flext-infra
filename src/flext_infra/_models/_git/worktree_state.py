@@ -105,10 +105,9 @@ class FlextInfraModelsGitWorktreeState:
             FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
             m.Field(description="Stage-zero entry, absent for an untracked file"),
         ]
-        content: Annotated[
-            bytes | None,
-            m.Field(exclude=True, description="Bytes of the captured index blob"),
-        ]
+        content: bytes | None = m.Field(
+            exclude=True, description="Bytes of the captured index blob"
+        )
 
     class GitIndexRetirementRequest(m.ContractModel):
         """Remove only the captured entry under Git's native index lock."""

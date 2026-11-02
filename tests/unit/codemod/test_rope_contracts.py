@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import runpy
 import shutil
+import sys
 from contextlib import redirect_stderr
 from io import StringIO
 from pathlib import Path
@@ -17,6 +18,7 @@ from typing import get_protocol_members
 
 import pytest
 
+from flext_infra import transformers
 from tests import c, m, p, t, tm, u
 
 
@@ -87,7 +89,11 @@ class TestsFlextInfraRopeContractCatalog:
                 )
             )
         tm.that(spec.provider is provider, eq=True)
-        tm.that(binding.get_object().get_name(), eq="FlextHandlers")
+        tm.that(
+            binding.get_object()
+            is provider.get_attribute("FlextHandlers").get_object(),
+            eq=True,
+        )
 
     @staticmethod
     def test_source_export_reader_uses_binding_index_contract(tmp_path: Path) -> None:
@@ -223,297 +229,229 @@ class TestsFlextInfraRopeContractCatalog:
             m.Infra.RopeContractScope(targets=(target, target))
 
     @staticmethod
-    def test_annotation_owner_rewrite_preserves_runtime_literals_and_protocols(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+    @pytest.mark.parametrize("operation", ["lower", "upper"])
+    def test_semantic_dry_run_validates_the_real_staged_consumer_without_effects(
+        tmp_path: Path, operation: str
     ) -> None:
-        """Only unresolved annotation members move to their proven model owner."""
-        workspace, path = rope_contract_consumer
-        source = (
-            "from __future__ import annotations\n"
-            "from typing import Literal, Protocol\n"
-            "class Models:\n"
-            "    class DcRecon:\n"
-            "        class ModelType: pass\n"
-            "        class RuntimeOnly: pass\n"
-            "class Protocols:\n"
-            "    class DcRecon:\n"
-            "        class RealPort(Protocol): ...\n"
-            "m = Models\n"
-            "p = Protocols\n"
-            "class Consumer:\n"
-            "    model: p.DcRecon.ModelType\n"
-            '    quoted: "p.DcRecon.ModelType"\n'
-            "    port: p.DcRecon.RealPort\n"
-            "    literal: Literal['p.DcRecon.ModelType']\n"
-            "    runtime = p.DcRecon.RuntimeOnly\n"
-            "    text = 'p.DcRecon.ModelType'\n"
-        )
+        """Explicit preview validation accepts or rejects actual consumer execution."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = "def normalize(value: str) -> str: return value.strip()\n"
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        rule = m.Infra.RopeContractRule(
-            id="annotation-model-owner",
-            pattern="${receiver}.${member}",
-            goal="m.DcRecon.${member}",
-            arguments={},
-            annotation_member_source="p.DcRecon",
-            bindings={
-                "m.DcRecon": "flext_test_project.consumer.Models.DcRecon",
-                "p.DcRecon": "flext_test_project.consumer.Protocols.DcRecon",
-            },
-            annotation_only=True,
-            scope=m.Infra.RopeContractScope(
-                targets=(
-                    m.Infra.RopeContractScopeTarget(
-                        distribution="flext-test-project",
-                        module="flext_test_project.consumer",
-                    ),
-                )
-            ),
-        )
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+        candidate = source.replace("value.strip()", f"value.strip().{operation}()")
+        observations: list[Path] = []
 
-        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, (rule,)))
-        tm.that(len(edits), eq=1)
-        updated = edits[0].updated_source
-        tm.that(updated, contains="model: p.DcRecon.ModelType")
-        tm.that(updated, contains="quoted: 'm.DcRecon.ModelType'")
-        tm.that(updated, contains="port: p.DcRecon.RealPort")
-        tm.that(updated, contains="Literal['p.DcRecon.ModelType']")
-        tm.that(updated, contains="runtime = p.DcRecon.RuntimeOnly")
-        tm.that(updated, contains="text = 'p.DcRecon.ModelType'")
-        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-        tm.that(
-            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, (rule,))),
-            empty=True,
+        def validate(view_root: Path) -> p.Result[bool]:
+            """Execute the staged module through the real interpreter.
+
+            Returns:
+                The native process verdict with its original execution failure.
+
+            """
+            observations.append(view_root)
+            return u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.consumer import normalize; "
+                        "assert normalize(' AbC ') == 'abc'"
+                    ),
+                ),
+                cwd=view_root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(view_root / c.Infra.DEFAULT_SRC_DIR)},
+                ),
+            ).map(lambda consumer: u.Cli.process_succeeded(consumer.outcome))
+
+        preview = (
+            transformers.FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
+                (
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=path,
+                        before=before,
+                        desired_content=candidate.encode(c.DEFAULT_ENCODING),
+                        desired_mode=before.mode,
+                    ),
+                ),
+                repository_root=root,
+                options=m.Infra.SemanticPublicationOptions(validator=validate),
+                publish=False,
+            )
         )
+        tm.that(preview.success, eq=operation == "lower")
+        tm.that(len(observations), eq=1)
+        tm.fail(observations[0] == root)
+        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("m_type_checking", [False, True])
-    def test_annotation_owner_rewrite_adds_proven_public_m_when_unbound(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-        *,
-        m_type_checking: bool,
+    @pytest.mark.parametrize(
+        ("condition", "typing_guard"),
+        [
+            ("checking", True),
+            ("typing.TYPE_CHECKING is True", True),
+            ("flag", False),
+            ("flag and enabled", False),
+            ("len(()) > 0", False),
+            ("False", False),
+        ],
+    )
+    def test_native_import_cleanup_authenticates_only_typing_guards(
+        tmp_path: Path, condition: str, *, typing_guard: bool
     ) -> None:
-        """A missing local m import is added from its declared public package root."""
-        workspace, path = rope_contract_consumer
-        root = workspace.repository_root
-        package = root / c.Infra.DEFAULT_SRC_DIR / "flext_test_project"
-        (package / "models.py").write_text(
-            "class Models:\n"
-            "    class DcRecon:\n"
-            "        class ModelType: pass\n"
-            "m = Models\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        (package / "protocols.py").write_text(
-            "class Protocols:\n    class DcRecon: pass\np = Protocols\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        (package / c.Infra.INIT_PY).write_text(
-            "from .models import m\nfrom .protocols import p\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        source = "from __future__ import annotations\n"
-        if m_type_checking:
-            source += (
-                "from typing import TYPE_CHECKING\n"
-                "if TYPE_CHECKING:\n"
-                "    from flext_test_project import m\n"
-            )
-        source += (
-            "from flext_test_project import p\n"
-            "class Consumer:\n"
-            "    model: p.DcRecon.ModelType\n"
+        """Ordinary conditions never enter the native identifier-only resolver."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "guarded.py"
+        source = (
+            "from typing import TYPE_CHECKING as checking\n"
+            "import typing\n"
+            "flag = enabled = True\n"
+            f"if {condition}:\n"
+            "    from contextlib import nullcontext\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        rule = m.Infra.RopeContractRule(
-            id="annotation-model-owner",
-            pattern="${receiver}.${member}",
-            goal="m.DcRecon.${member}",
-            arguments={},
-            annotation_member_source="p.DcRecon",
-            bindings={
-                "m.DcRecon": "flext_test_project.models.Models.DcRecon",
-                "p.DcRecon": "flext_test_project.protocols.Protocols.DcRecon",
-            },
-            annotation_only=True,
-            scope=m.Infra.RopeContractScope(
-                targets=(
-                    m.Infra.RopeContractScopeTarget(
-                        distribution="flext-test-project",
-                        module="flext_test_project.consumer",
-                    ),
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
                 )
-            ),
-        )
-
-        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, (rule,)))
-        tm.that(len(edits), eq=1)
-        updated = edits[0].updated_source
-        tm.ok(
+            )
+            imports = u.Infra.native_import_infos(project, module)
+        tm.that(
             any(
-                line.startswith("from flext_test_project import m")
-                for line in updated.splitlines()
-            )
+                item.get_import_statement() == "from contextlib import nullcontext"
+                for item in imports
+            ),
+            eq=typing_guard,
         )
-        if m_type_checking:
-            tm.that(updated, contains="if TYPE_CHECKING:")
-            tm.that(updated, contains="    from flext_test_project import m")
-        tm.that(updated, contains="model: p.DcRecon.ModelType")
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    def test_annotation_owner_preserves_existing_runtime_protocol(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """An existing native protocol remains the canonical annotation owner."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from __future__ import annotations\n"
+            "from flext_cli import p\n"
+            "def consume(value: p.Cli.AtomicFileState): return value\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rule = m.Infra.RopeContractRule(
+            id="preserve-protocol-owner",
+            pattern="${receiver}.${member}",
+            goal="p.Cli.${member}",
+            arguments={},
+            annotation_member_source="p.Cli",
+            bindings={"p.Cli": "flext_cli.protocols.FlextCliProtocols.Cli"},
+            annotation_only=True,
+            scope=m.Infra.RopeContractScope(
+                targets=(
+                    m.Infra.RopeContractScopeTarget(
+                        distribution=workspace.repository_root.name,
+                        module=f"{path.parent.name}.{path.stem}",
+                    ),
+                )
+            ),
+        )
         tm.that(
-            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, (rule,))),
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))),
             empty=True,
         )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    def test_annotation_owner_rewrite_rejects_missing_or_ambiguous_destination(
+    @pytest.mark.parametrize(
+        ("source", "target_owner", "message"),
+        [
+            (
+                (
+                    "from flext_cli import m, p\n"
+                    "def consume(value: m.Cli.AtomicFileState): return value\n"
+                ),
+                "flext_core.protocols.FlextProtocols",
+                "has no member in declared owner",
+            ),
+            (
+                (
+                    "from flext_cli import m, p\n"
+                    "def consume(value: m.Cli.Missing): return value\n"
+                ),
+                "flext_cli.protocols.FlextCliProtocols.Cli",
+                "model annotation source is undeclared",
+            ),
+            (
+                (
+                    "from missing_model_package import m\n"
+                    "from flext_cli import p\n"
+                    "def consume(value: m.Cli.AtomicFileState): return value\n"
+                ),
+                "flext_cli.protocols.FlextCliProtocols.Cli",
+                "source namespace .* is unknown",
+            ),
+        ],
+    )
+    def test_annotation_owner_refuses_unproven_native_members(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+        source: str,
+        target_owner: str,
+        message: str,
     ) -> None:
-        """An absent destination member fails planning instead of being guessed."""
+        """Missing model or protocol declarations never produce a guessed edit."""
         workspace, path = rope_contract_consumer
-        source = (
-            "from __future__ import annotations\n"
-            "class Models:\n"
-            "    class DcRecon: pass\n"
-            "class Protocols:\n"
-            "    class DcRecon: pass\n"
-            "m = Models\n"
-            "p = Protocols\n"
-            "def operation(value: p.DcRecon.Missing): ...\n"
-        )
+        source = "from __future__ import annotations\n" + source
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         rule = m.Infra.RopeContractRule(
-            id="annotation-model-owner",
+            id="strict-protocol-owner",
             pattern="${receiver}.${member}",
-            goal="m.DcRecon.${member}",
+            goal="p.Cli.${member}",
             arguments={},
-            annotation_member_source="p.DcRecon",
+            annotation_member_source="m.Cli",
             bindings={
-                "m.DcRecon": "flext_test_project.consumer.Models.DcRecon",
-                "p.DcRecon": "flext_test_project.consumer.Protocols.DcRecon",
+                "m.Cli": "flext_cli.models.FlextCliModels.Cli",
+                "p.Cli": target_owner,
             },
             annotation_only=True,
             scope=m.Infra.RopeContractScope(
                 targets=(
                     m.Infra.RopeContractScopeTarget(
-                        distribution="flext-test-project",
-                        module="flext_test_project.consumer",
+                        distribution=workspace.repository_root.name,
+                        module=f"{path.parent.name}.{path.stem}",
                     ),
                 )
             ),
         )
-
-        with pytest.raises(ValueError, match="has no member in declared owner"):
+        with pytest.raises(ValueError, match=message):
             u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    def test_annotation_owner_rewrite_rejects_shadowed_model_member(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-    ) -> None:
-        """A same-named member from another facade cannot satisfy the owner proof."""
-        workspace, path = rope_contract_consumer
-        source = (
-            "from __future__ import annotations\n"
-            "class Models:\n"
-            "    class DcRecon:\n"
-            "        class ModelType: pass\n"
-            "class Shadow:\n"
-            "    class DcRecon:\n"
-            "        class ModelType: pass\n"
-            "class Protocols:\n"
-            "    class DcRecon: pass\n"
-            "m = Shadow\n"
-            "p = Protocols\n"
-            "def operation(value: p.DcRecon.ModelType): ...\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        rule = m.Infra.RopeContractRule(
-            id="annotation-model-owner",
-            pattern="${receiver}.${member}",
-            goal="m.DcRecon.${member}",
-            arguments={},
-            annotation_member_source="p.DcRecon",
-            bindings={
-                "m.DcRecon": "flext_test_project.consumer.Models.DcRecon",
-                "p.DcRecon": "flext_test_project.consumer.Protocols.DcRecon",
-            },
-            annotation_only=True,
-            scope=m.Infra.RopeContractScope(
-                targets=(
-                    m.Infra.RopeContractScopeTarget(
-                        distribution="flext-test-project",
-                        module="flext_test_project.consumer",
-                    ),
-                )
-            ),
-        )
-
-        with pytest.raises(ValueError, match="does not resolve to"):
-            u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
-
-    @staticmethod
-    def test_annotation_owner_rewrite_rejects_unknown_source_namespace(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-    ) -> None:
-        """An unresolved p import is ambiguous and cannot be treated as absence."""
-        workspace, path = rope_contract_consumer
-        source = (
-            "from __future__ import annotations\n"
-            "from missing_protocol_package import p\n"
-            "class Models:\n"
-            "    class DcRecon:\n"
-            "        class ModelType: pass\n"
-            "class Protocols:\n"
-            "    class DcRecon: pass\n"
-            "m = Models\n"
-            "def operation(value: p.DcRecon.ModelType): ...\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        rule = m.Infra.RopeContractRule(
-            id="annotation-model-owner",
-            pattern="${receiver}.${member}",
-            goal="m.DcRecon.${member}",
-            arguments={},
-            annotation_member_source="p.DcRecon",
-            bindings={
-                "m.DcRecon": "flext_test_project.consumer.Models.DcRecon",
-                "p.DcRecon": "flext_test_project.consumer.Protocols.DcRecon",
-            },
-            annotation_only=True,
-            scope=m.Infra.RopeContractScope(
-                targets=(
-                    m.Infra.RopeContractScopeTarget(
-                        distribution="flext-test-project",
-                        module="flext_test_project.consumer",
-                    ),
-                )
-            ),
-        )
-
-        with pytest.raises(ValueError, match="source binding is ambiguous"):
-            u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
-
-    @staticmethod
-    def test_annotation_owner_catalog_rejects_unbound_templates() -> None:
-        """Annotation-member templates require a typed scope and destination owner."""
-        with pytest.raises(m.ValidationError, match="native source and bound target"):
+    def test_annotation_owner_catalog_rejects_model_typing() -> None:
+        """Model destinations fail at catalogue admission, before Rope planning."""
+        with pytest.raises(m.ValidationError, match="cannot produce model typing"):
             m.Infra.RopeContractRule(
-                id="annotation-model-owner",
-                pattern="p.DcRecon.${member}",
-                goal="m.DcRecon.${member}",
-                arguments={},
-                annotation_member_source="p.DcRecon",
-                bindings={
-                    "m.DcRecon": "flext_test_project.consumer.Models.DcRecon",
-                    "p.DcRecon": "flext_test_project.consumer.Protocols.DcRecon",
-                },
-            )
-        with pytest.raises(m.ValidationError, match="native source and bound target"):
-            m.Infra.RopeContractRule(
-                id="annotation-model-owner",
+                id="prohibited-model-owner",
                 pattern="${receiver}.${member}",
-                goal="m.DcRecon.${member}",
+                goal="m.Cli.${member}",
                 arguments={},
-                annotation_member_source="p.DcRecon",
+                annotation_member_source="p.Cli",
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize("pattern", ["p.Cli.${member}", "${receiver}.${member}"])
+    def test_annotation_owner_catalog_rejects_unbound_templates(pattern: str) -> None:
+        """Protocol templates require scoped source and destination identities."""
+        with pytest.raises(m.ValidationError, match="native source and bound target"):
+            m.Infra.RopeContractRule(
+                id="unbound-protocol-owner",
+                pattern=pattern,
+                goal="p.Cli.${member}",
+                arguments={},
+                annotation_member_source="m.Cli",
                 annotation_only=True,
             )
 

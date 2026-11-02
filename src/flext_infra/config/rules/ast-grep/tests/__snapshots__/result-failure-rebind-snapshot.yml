@@ -15,21 +15,6 @@ snapshots:
       style: secondary
       start: 0
       end: 90
-  "if loaded.failure:\n    return r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)\n":
-    fixed: |
-      if loaded.failure:
-          return r[p.Sample.Config].from_failure(loaded)
-    labels:
-    - source: r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-      style: primary
-      start: 30
-      end: 90
-    - source: |-
-        if loaded.failure:
-            return r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-      style: secondary
-      start: 0
-      end: 90
   "if result.failure:\n    return r[str].fail(result.error or \"read failed\")\n":
     fixed: |
       if result.failure:

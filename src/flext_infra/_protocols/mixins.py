@@ -1,5 +1,10 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Source-derived structural model contracts."""
+"""Source-derived structural model contracts.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+src/flext_infra/_protocols/mixins
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -11,54 +16,57 @@ from flext_cli import t
 
 
 class FlextInfraProtocolsMixins:
-    """Own the structural model contracts declared by this module."""
+    """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
     class ModuleSelectionMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        module: str | None = ...
+        module: str | None
 
     @runtime_checkable
     class NamespaceSelectionMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        namespace: str | None = ...
+        namespace: str | None
 
     @runtime_checkable
     class ScopeMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        repository_root: Path = ...
-        projects: Sequence[str] | None = ...
-        verbose: bool = ...
+        repository_root: Path
+        projects: Sequence[str] | None
+        verbose: bool
 
     @runtime_checkable
     class ReadMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        repository_root: Path = ...
-        projects: Sequence[str] | None = ...
-        verbose: bool = ...
-        report: str | None = ...
-        output_dir: str | None = ...
+        repository_root: Path
+        projects: Sequence[str] | None
+        verbose: bool
+        report: str | None
+        output_dir: str | None
 
     @runtime_checkable
     class WriteMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        repository_root: Path = ...
-        projects: Sequence[str] | None = ...
-        verbose: bool = ...
-        apply: bool = ...
-        gates: Sequence[str] = ...
+        repository_root: Path
+        projects: Sequence[str] | None
+        verbose: bool
+        apply: bool
+        gates: Sequence[str]
+
+        @property
+        def dry_run(self) -> bool: ...
 
     @runtime_checkable
     class VersionTagMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        version: str = ...
-        tag: str = ...
+        version: str
+        tag: str
 
     @runtime_checkable
     class FilePathMixin(Protocol):
@@ -88,13 +96,13 @@ class FlextInfraProtocolsMixins:
     class NonNegativeLineMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        line: t.NonNegativeInt = ...
+        line: t.NonNegativeInt
 
     @runtime_checkable
     class NestedClassPathMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        class_path: str = ...
+        class_path: str
 
     @runtime_checkable
     class FileLineViolationMixin(Protocol):
@@ -113,7 +121,7 @@ class FlextInfraProtocolsMixins:
     class ErrorDetailMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        detail: str = ...
+        detail: str
 
     @runtime_checkable
     class ProjectNameMixin(Protocol):
@@ -137,13 +145,13 @@ class FlextInfraProtocolsMixins:
     class ProjectNamesOptionalMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        project_names: Sequence[str] | None = ...
+        project_names: Sequence[str] | None
 
     @runtime_checkable
     class ProjectNamesListMixin(Protocol):
         """Structural data contract projected from the owning model."""
 
-        project_names: Sequence[str] = ...
+        project_names: Sequence[str]
 
 
 __all__: list[str] = [

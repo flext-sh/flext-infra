@@ -14,6 +14,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 from flext_infra import c, m, p, t
+from flext_infra._protocols_bootstrap import merge_class_lineages
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCorePyModule,
@@ -100,40 +101,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             The consistent ordered ancestors.
 
         """
-        sequences = [list(lineage) for lineage in lineages]
-        result: list[TIdentity] = []
-        while any(sequences):
-            candidate = next(
-                (
-                    sequence[0]
-                    for sequence in sequences
-                    if sequence
-                    and all(sequence[0] not in other[1:] for other in sequences)
-                ),
-                None,
-            )
-            if candidate is None:
-                failure = ValueError(message)
-                heads = tuple(
-                    dict.fromkeys(sequence[0] for sequence in sequences if sequence)
-                )
-                failure.add_note(
-                    f"blocked_c3_heads={heads}; "
-                    f"precedence_conflicts={
-                        tuple(
-                            (head, sequence[0])
-                            for head in heads
-                            for sequence in sequences
-                            if sequence and head in sequence[1:]
-                        )
-                    }"
-                )
-                raise failure
-            result.append(candidate)
-            for sequence in sequences:
-                if sequence and sequence[0] == candidate:
-                    sequence.pop(0)
-        return tuple(result)
+        return merge_class_lineages(lineages, message=message)
 
     @classmethod
     def source_member_relocation(

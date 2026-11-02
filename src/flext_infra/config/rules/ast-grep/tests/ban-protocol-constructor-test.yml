@@ -1,0 +1,22 @@
+id: ban-protocol-constructor
+valid:
+  - |
+    from flext_infra import m, p
+    def make() -> p.Infra.FacadeFamily:
+        return m.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
+  - |
+    from flext_infra import p
+    def is_imported(value: object) -> bool:
+        match value:
+            case p.Infra.RopeImportedName():
+                return True
+        return False
+invalid:
+  - |
+    from flext_infra import p
+    def make():
+        return p.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
+  - |
+    from flext_infra import p
+    def make():
+        return p.ConfigDocument(data={})

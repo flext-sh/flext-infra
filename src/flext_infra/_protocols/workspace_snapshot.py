@@ -12,9 +12,9 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-from collections.abc import Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import AbstractContextManager
-from typing import TYPE_CHECKING, Literal, Protocol, Self, runtime_checkable
+from typing import Literal, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -310,105 +310,105 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
-        def python_files(self) -> MutableMapping[Path, tuple[Path, ...]]:
+        def python_files(self) -> Mapping[Path, tuple[Path, ...]]:
             """Python sources of each member, listed on first query."""
             ...
 
         @property
         def directory_facts(
             self,
-        ) -> MutableMapping[Path, tuple[Path | None, str]]:
+        ) -> Mapping[Path, tuple[Path | None, str]]:
             """Physical directory owner and package name."""
             ...
 
         @property
         def python_module_facts(
             self,
-        ) -> MutableMapping[t.Infra.RopeNativeParsedModule, p.Infra.PythonModuleFacts]:
+        ) -> Mapping[t.Infra.RopeNativeParsedModule, p.Infra.PythonModuleFacts]:
             """Static facts keyed by the original engine's parsed module."""
             ...
 
         @property
         def sources(
             self,
-        ) -> MutableMapping[
+        ) -> Mapping[
             Path, FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshotSource
         ]:
             """Authenticated reads of this run, made on first query."""
             ...
 
         @property
-        def packages(self) -> MutableMapping[Path, str]:
+        def packages(self) -> Mapping[Path, str]:
             """Dotted package of each queried directory."""
             ...
 
         @property
         def import_edges(
             self,
-        ) -> MutableMapping[Path, tuple[frozenset[str], frozenset[str]]]:
+        ) -> Mapping[Path, tuple[frozenset[str], frozenset[str]]]:
             """Runtime and typing-only imported modules per queried source."""
             ...
 
         @property
         def bootstrap_dependencies(
             self,
-        ) -> MutableMapping[
+        ) -> Mapping[
             Path, FlextInfraProtocolsWorkspaceSnapshot.WorkspaceBootstrapDependencies
         ]:
             """Bootstrap closure bound to native modules and resolver roots."""
             ...
 
         @property
-        def absolute_import_roots(self) -> MutableMapping[Path, t.StrTuple]:
+        def absolute_import_roots(self) -> Mapping[Path, t.StrTuple]:
             """Absolute imported package roots per captured member."""
             ...
 
         @property
         def import_namespaces(
             self,
-        ) -> MutableMapping[tuple[Path, Path], tuple[Path, str] | None]:
+        ) -> Mapping[tuple[Path, Path], tuple[Path, str] | None]:
             """Import-law namespace election per consumer and source."""
             ...
 
         @property
-        def class_ancestors(self) -> MutableMapping[str, t.StrTuple]:
+        def class_ancestors(self) -> Mapping[str, t.StrTuple]:
             """C3 method order per qualified class identity."""
             ...
 
         @property
-        def exports(self) -> MutableMapping[Path, Sequence[str]]:
+        def exports(self) -> Mapping[Path, Sequence[str]]:
             """Declared public names per module."""
             ...
 
         @property
-        def bindings(self) -> MutableMapping[Path, dict[str, str]]:
+        def bindings(self) -> Mapping[Path, Mapping[str, str]]:
             """Module-level name to bound qualified source per module."""
             ...
 
         @property
-        def initializer_aliases(self) -> MutableMapping[Path, dict[str, str]]:
+        def initializer_aliases(self) -> Mapping[Path, Mapping[str, str]]:
             """Aliases each initializer publishes."""
             ...
 
         @property
-        def receiver_bindings(self) -> MutableMapping[tuple[Path, str], Path | None]:
+        def receiver_bindings(self) -> Mapping[tuple[Path, str], Path | None]:
             """Module each source binds a facade letter from."""
             ...
 
         @property
-        def facade_paths(self) -> MutableMapping[tuple[Path, str], Path]:
+        def facade_paths(self) -> Mapping[tuple[Path, str], Path]:
             """Facade module per package and letter."""
             ...
 
         @property
-        def pyproject_texts(self) -> MutableMapping[tuple[Path, str], str]:
+        def pyproject_texts(self) -> Mapping[tuple[Path, str], str]:
             """Recovered pyproject text per path and digest."""
             ...
 
         @property
         def codemod_renderings(
             self,
-        ) -> MutableMapping[tuple[Path, str], p.Infra.CodemodNativeGenerated]:
+        ) -> Mapping[tuple[Path, str], p.Infra.CodemodNativeGenerated]:
             """Native codemod rendering per member root and render-input digest."""
             ...
 

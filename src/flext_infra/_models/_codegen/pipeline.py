@@ -135,38 +135,25 @@ class FlextInfraModelsCodegenPipeline:
         capabilities by reference rather than assembling utility implementations.
         """
 
-        docs_planner: Annotated[
-            t.Port[p.Infra.DocsArtifactPlannerFactory],
-            m.Field(
-                exclude=True,
-                description="Builds the docs planner for one conform scope",
-            ),
-        ]
-        file_publisher: Annotated[
-            t.Port[p.Infra.CodegenFilePublisher],
-            m.Field(
-                exclude=True,
-                description="Shared guarded normalization and publication owner",
-            ),
-        ]
-        source_preview: Annotated[
-            t.Port[p.Infra.SourcePreview],
-            m.Field(exclude=True, description="Native staged source-view owner"),
-        ]
-        candidate_validator: Annotated[
-            t.Port[Callable[[Path, Path, tuple[Path, ...]], p.Result[bool]]],
-            m.Field(
-                exclude=True,
-                description="Native cold-import admission in the source runtime",
-            ),
-        ]
-        component_planner: Annotated[
-            t.Port[p.Infra.SourceComponentPlanner],
-            m.Field(
-                exclude=True,
-                description="Shared recursive facade composition planner",
-            ),
-        ]
+        docs_planner: t.Port[p.Infra.DocsArtifactPlannerFactory] = m.Field(
+            exclude=True, description="Builds the docs planner for one conform scope"
+        )
+        file_publisher: t.Port[p.Infra.CodegenFilePublisher] = m.Field(
+            exclude=True,
+            description="Shared guarded normalization and publication owner",
+        )
+        source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
+            exclude=True, description="Native staged source-view owner"
+        )
+        candidate_validator: t.Port[
+            Callable[[Path, Path, tuple[Path, ...]], p.Result[bool]]
+        ] = m.Field(
+            exclude=True,
+            description="Native cold-import admission in the source runtime",
+        )
+        component_planner: t.Port[p.Infra.SourceComponentPlanner] = m.Field(
+            exclude=True, description="Shared recursive facade composition planner"
+        )
 
     class CodegenConformState(m.ArbitraryTypesModel):
         """Mutable request-local data owned by one projection invocation."""

@@ -1,54 +1,36 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Source-derived structural model contracts."""
+"""Source-derived structural model contracts.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+src/flext_infra/_protocols/census
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import MutableMapping, MutableSequence, MutableSet, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from flext_infra import t
+
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraProtocolsCensus:
-    """Own the structural model contracts declared by this module."""
-
-    @runtime_checkable
-    class CensusOptions(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def consumer_roots(self) -> tuple[Path, ...]: ...
-
-        @property
-        def source_plan_output(self) -> Path | None: ...
-
-        @property
-        def json_output(self) -> str | None: ...
-
-        @property
-        def impact_map_output(self) -> str | None: ...
-
-        @property
-        def kinds(self) -> Sequence[str] | None: ...
-
-        @property
-        def rules(self) -> Sequence[str] | None: ...
-
-        @property
-        def families(self) -> Sequence[str] | None: ...
-
-        @property
-        def include_local_scopes(self) -> bool: ...
+    """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
     class ReferenceSite(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
+        def line(self) -> t.NonNegativeInt: ...
+        @property
+        def file_path(self) -> t.NonEmptyStr: ...
+        @property
         def surface(self) -> str: ...
-
         @property
         def offset(self) -> t.NonNegativeInt | None: ...
 
@@ -57,50 +39,43 @@ class FlextInfraProtocolsCensus:
         """Structural data contract projected from the owning model."""
 
         @property
+        def class_path(self) -> str: ...
+        @property
+        def project(self) -> t.NonEmptyStr: ...
+        @property
+        def line(self) -> t.NonNegativeInt: ...
+        @property
+        def file_path(self) -> t.NonEmptyStr: ...
+        @property
         def name(self) -> t.NonEmptyStr: ...
-
         @property
         def kind(self) -> str: ...
-
         @property
         def module_name(self) -> str: ...
-
         @property
         def scope_path(self) -> str: ...
-
         @property
         def actual_tier(self) -> str: ...
-
         @property
         def expected_tier(self) -> str: ...
-
         @property
         def is_facade_member(self) -> bool: ...
-
         @property
         def references_count(self) -> t.NonNegativeInt: ...
-
         @property
         def runtime_references_count(self) -> t.NonNegativeInt: ...
-
         @property
         def script_references_count(self) -> t.NonNegativeInt: ...
-
         @property
         def runtime_reference_sites(self) -> tuple[p.Infra.ReferenceSite, ...]: ...
-
         @property
         def script_reference_sites(self) -> tuple[p.Infra.ReferenceSite, ...]: ...
-
         @property
         def all_reference_sites(self) -> tuple[p.Infra.ReferenceSite, ...]: ...
-
         @property
         def reference_evidence_collected(self) -> bool: ...
-
         @property
         def fingerprint(self) -> str: ...
-
         @property
         def payload_fingerprint(self) -> str: ...
 
@@ -110,7 +85,6 @@ class FlextInfraProtocolsCensus:
 
         @property
         def gates(self) -> Sequence[str]: ...
-
         @property
         def source_cache(self) -> MutableMapping[Path, str] | None: ...
 
@@ -119,23 +93,23 @@ class FlextInfraProtocolsCensus:
         """Structural data contract projected from the owning model."""
 
         @property
+        def project(self) -> t.NonEmptyStr: ...
+        @property
+        def line(self) -> t.NonNegativeInt: ...
+        @property
+        def file_path(self) -> t.NonEmptyStr: ...
+        @property
         def object_name(self) -> t.NonEmptyStr: ...
-
         @property
         def object_kind(self) -> str: ...
-
         @property
         def scope_path(self) -> str: ...
-
         @property
         def reason(self) -> str: ...
-
         @property
         def suggested_action(self) -> str: ...
-
         @property
         def runtime_reference_sites(self) -> tuple[p.Infra.ReferenceSite, ...]: ...
-
         @property
         def script_reference_sites(self) -> tuple[p.Infra.ReferenceSite, ...]: ...
 
@@ -144,23 +118,19 @@ class FlextInfraProtocolsCensus:
         """Structural data contract projected from the owning model."""
 
         @property
+        def project(self) -> t.NonEmptyStr: ...
+        @property
         def object_name(self) -> t.NonEmptyStr: ...
-
         @property
         def object_kind(self) -> str: ...
-
         @property
         def kind(self) -> str: ...
-
         @property
         def severity(self) -> str: ...
-
         @property
         def file_path(self) -> str: ...
-
         @property
         def line(self) -> t.NonNegativeInt: ...
-
         @property
         def description(self) -> str: ...
 
@@ -170,24 +140,29 @@ class FlextInfraProtocolsCensus:
 
         @property
         def kind_names(self) -> Sequence[str] | None: ...
-
         @property
         def rule_names(self) -> Sequence[str] | None: ...
-
         @property
         def selected_families(self) -> frozenset[str]: ...
-
         @property
         def selected_kinds(self) -> frozenset[str] | None: ...
-
         @property
         def selected_rules(self) -> frozenset[str] | None: ...
-
         @property
         def include_object_references(self) -> bool: ...
-
         @property
         def include_local_scopes(self) -> bool: ...
+
+    @runtime_checkable
+    class ScanFindings(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def project_objects(
+            self,
+        ) -> MutableMapping[str, MutableSequence[p.Infra.Object]]: ...
+        @property
+        def report_projects(self) -> MutableSet[str]: ...
 
     @runtime_checkable
     class DuplicateDefinition(Protocol):
@@ -195,22 +170,16 @@ class FlextInfraProtocolsCensus:
 
         @property
         def item(self) -> p.Infra.Object: ...
-
         @property
         def path(self) -> Path: ...
-
         @property
         def source(self) -> str: ...
-
         @property
         def statement(self) -> p.Infra.LogicalStatement | None: ...
-
         @property
         def body(self) -> str: ...
-
         @property
         def consumers(self) -> int: ...
-
         @property
         def layer(self) -> int: ...
 
@@ -220,10 +189,8 @@ class FlextInfraProtocolsCensus:
 
         @property
         def definition(self) -> p.Infra.DuplicateDefinition: ...
-
         @property
         def consumer_files(self) -> tuple[Path, ...]: ...
-
         @property
         def in_module_uses(self) -> int: ...
 
@@ -233,10 +200,8 @@ class FlextInfraProtocolsCensus:
 
         @property
         def owner(self) -> p.Infra.DuplicateCopyCure: ...
-
         @property
         def copies(self) -> tuple[p.Infra.DuplicateCopyCure, ...]: ...
-
         @property
         def edits(self) -> tuple[p.Infra.SemanticMigrationEdit, ...]: ...
 
@@ -246,13 +211,10 @@ class FlextInfraProtocolsCensus:
 
         @property
         def path(self) -> Path: ...
-
         @property
         def name(self) -> str: ...
-
         @property
         def line(self) -> int: ...
-
         @property
         def project(self) -> str: ...
 
@@ -262,19 +224,14 @@ class FlextInfraProtocolsCensus:
 
         @property
         def name(self) -> t.NonEmptyStr: ...
-
         @property
         def kind(self) -> str: ...
-
         @property
         def definitions(self) -> MutableSequence[p.Infra.Object]: ...
-
         @property
         def canonical(self) -> str: ...
-
         @property
         def value_identical(self) -> bool: ...
-
         @property
         def semantic_candidate(self) -> bool: ...
 
@@ -284,13 +241,10 @@ class FlextInfraProtocolsCensus:
 
         @property
         def file_path(self) -> Path: ...
-
         @property
         def line(self) -> t.PositiveInt: ...
-
         @property
         def action(self) -> t.NonEmptyStr: ...
-
         @property
         def detail(self) -> t.NonEmptyStr: ...
 
@@ -300,25 +254,18 @@ class FlextInfraProtocolsCensus:
 
         @property
         def name(self) -> t.NonEmptyStr: ...
-
         @property
         def kind(self) -> str: ...
-
         @property
         def origin(self) -> t.NonEmptyStr: ...
-
         @property
         def reason(self) -> t.NonEmptyStr: ...
-
         @property
         def owner_file_path(self) -> Path: ...
-
         @property
         def owner_line(self) -> t.PositiveInt: ...
-
         @property
         def owner_project(self) -> str: ...
-
         @property
         def edits(self) -> tuple[p.Infra.DuplicateCureEdit, ...]: ...
 
@@ -328,16 +275,12 @@ class FlextInfraProtocolsCensus:
 
         @property
         def edits(self) -> tuple[p.Infra.SemanticMigrationEdit, ...]: ...
-
         @property
         def plans(self) -> tuple[p.Infra.DuplicateCurePlan, ...]: ...
-
         @property
         def files_changed(self) -> t.NonNegativeInt: ...
-
         @property
         def copies_removed(self) -> t.NonNegativeInt: ...
-
         @property
         def bindings_rewired(self) -> t.NonNegativeInt: ...
 
@@ -346,28 +289,43 @@ class FlextInfraProtocolsCensus:
         """Structural data contract projected from the owning model."""
 
         @property
+        def project(self) -> t.NonEmptyStr: ...
+        @property
         def objects(self) -> tuple[p.Infra.Object, ...]: ...
-
         @property
         def objects_total(self) -> t.NonNegativeInt: ...
-
         @property
         def objects_by_kind(self) -> t.IntMapping: ...
-
         @property
         def violations(self) -> tuple[p.Infra.Violation, ...]: ...
-
         @property
         def violations_total(self) -> t.NonNegativeInt: ...
-
         @property
         def unused_count(self) -> t.NonNegativeInt: ...
-
         @property
         def removal_candidate_count(self) -> t.NonNegativeInt: ...
-
         @property
         def removal_candidates(self) -> tuple[p.Infra.RemovalCandidate, ...]: ...
+
+    @runtime_checkable
+    class WorkspaceReport(Protocol):
+        """Structural data contract projected from the owning model."""
+
+        constant_consumer_files: t.NonNegativeInt
+        constant_consumer_bindings: t.NonNegativeInt
+        duplicate_cure_files: t.NonNegativeInt
+        duplicate_cure_copies: t.NonNegativeInt
+        duplicate_cure_bindings: t.NonNegativeInt
+        projects: tuple[p.Infra.ProjectReport, ...]
+        total_objects: t.NonNegativeInt
+        total_violations: t.NonNegativeInt
+        duplicates: tuple[p.Infra.DuplicateGroup, ...]
+        duplicate_cure_plans: tuple[p.Infra.DuplicateCurePlan, ...]
+        unused_count: t.NonNegativeInt
+        removal_candidate_count: t.NonNegativeInt
+        removal_candidates: tuple[p.Infra.RemovalCandidate, ...]
+        scan_duration_seconds: float
+        parse_errors: t.NonNegativeInt
 
 
 __all__: list[str] = [

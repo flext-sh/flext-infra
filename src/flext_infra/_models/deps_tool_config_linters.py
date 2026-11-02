@@ -23,32 +23,22 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
     class TrackerAuthorization(m.ContractModel):
         """Authorization recorded under one canonical tracker key."""
 
-        tracker_key: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                alias="tracker-key",
-                description="Tracker memory or item key recording the approval.",
-            ),
-        ]
+        tracker_key: t.NonEmptyStr = m.Field(
+            alias="tracker-key",
+            description="Tracker memory or item key recording the approval.",
+        )
 
     class OperatorAuthorization(m.ContractModel):
         """Authorization quoted verbatim from the operator."""
 
-        operator_words: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                alias="operator-words",
-                description="The operator's approval, verbatim.",
-            ),
-        ]
-        authorized_on: Annotated[
-            date,
-            m.Field(
-                alias="date",
-                strict=False,
-                description="Calendar date on which the operator approved.",
-            ),
-        ]
+        operator_words: t.NonEmptyStr = m.Field(
+            alias="operator-words", description="The operator's approval, verbatim."
+        )
+        authorized_on: date = m.Field(
+            alias="date",
+            strict=False,
+            description="Calendar date on which the operator approved.",
+        )
         channel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Channel and session that carried the approval."),
@@ -112,32 +102,19 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
     class RuffTypeCheckingConfig(m.ArbitraryTypesModel):
         """Ruff flake8-type-checking settings loaded from YAML."""
 
-        runtime_evaluated_roots: Annotated[
-            Sequence[t.NonEmptyStr],
-            m.Field(
-                alias="runtime-evaluated-roots",
-                min_length=1,
-                description=(
-                    "Qualified base classes whose subclasses evaluate their "
-                    "annotations at runtime; codegen derives every project "
-                    "base inheriting one into runtime-evaluated-base-classes."
-                ),
-            ),
-        ]
+        runtime_evaluated_roots: Sequence[t.NonEmptyStr] = m.Field(
+            alias="runtime-evaluated-roots",
+            min_length=1,
+            description="Qualified base classes whose subclasses evaluate their annotations at runtime; codegen derives every project base inheriting one into runtime-evaluated-base-classes.",
+        )
 
     class RuffLintConfig(m.ArbitraryTypesModel):
         """Ruff lint settings loaded from YAML."""
 
-        rule_owners: Annotated[
-            Mapping[t.Infra.RuffRule, t.NonEmptyStr],
-            m.Field(
-                alias="rule-owners",
-                description=(
-                    "Rules enforced by another registered canonical gate, never "
-                    "waived; projection verifies its complete check/repair election."
-                ),
-            ),
-        ]
+        rule_owners: Mapping[t.Infra.RuffRule, t.NonEmptyStr] = m.Field(
+            alias="rule-owners",
+            description="Rules enforced by another registered canonical gate, never waived; projection verifies its complete check/repair election.",
+        )
 
         @m.field_validator("rule_owners")
         @classmethod
@@ -166,19 +143,12 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 raise ValueError(msg)
             return owners
 
-        ruling_disabled_rules: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="ruling-disabled-rules",
-                strict=False,
-                description=(
-                    "Operator-ruled rules disabled at the SSOT because the "
-                    "lazy facade architecture requires what they forbid; "
-                    "projected into lint ignore, never silenced by manual "
-                    "hints."
-                ),
-            ),
-        ] = ()
+        ruling_disabled_rules: tuple[t.NonEmptyStr, ...] = m.Field(
+            (),
+            alias="ruling-disabled-rules",
+            strict=False,
+            description="Operator-ruled rules disabled at the SSOT because the lazy facade architecture requires what they forbid; projected into lint ignore, never silenced by manual hints.",
+        )
         enforce: Annotated[
             Mapping[t.Infra.RuffRule, t.Infra.EnforcementIds],
             m.Field(
@@ -188,46 +158,27 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 ),
             ),
         ]
-        fix_recipes: Annotated[
-            Mapping[t.Infra.RuffRule, c.Infra.LintFixRecipe],
-            m.Field(
-                alias="fix-recipes",
-                description=(
-                    "Ruff rule name -> repair make fix applies to the findings "
-                    "Ruff reports without a fix of its own."
-                ),
-            ),
-        ]
-        fix_recipe_phases: Annotated[
-            tuple[tuple[c.Infra.LintFixRecipe, ...], ...],
-            m.Field(
-                alias="fix-recipe-phases",
-                description=(
-                    "Recipe phases make fix applies in order; Ruff re-reads "
-                    "the tree after each phase so a later phase sees the "
-                    "findings an earlier one created or cured."
-                ),
-            ),
-        ]
-        flake8_type_checking: Annotated[
-            FlextInfraModelsDepsToolConfigLinters.RuffTypeCheckingConfig,
-            m.Field(
-                alias="flake8-type-checking",
-                description="Ruff flake8-type-checking configuration",
-            ),
-        ]
+        fix_recipes: Mapping[t.Infra.RuffRule, c.Infra.LintFixRecipe] = m.Field(
+            alias="fix-recipes",
+            description="Ruff rule name -> repair make fix applies to the findings Ruff reports without a fix of its own.",
+        )
+        fix_recipe_phases: tuple[tuple[c.Infra.LintFixRecipe, ...], ...] = m.Field(
+            alias="fix-recipe-phases",
+            description="Recipe phases make fix applies in order; Ruff re-reads the tree after each phase so a later phase sees the findings an earlier one created or cured.",
+        )
+        flake8_type_checking: FlextInfraModelsDepsToolConfigLinters.RuffTypeCheckingConfig = m.Field(
+            alias="flake8-type-checking",
+            description="Ruff flake8-type-checking configuration",
+        )
 
     class RuffConfig(m.ArbitraryTypesModel):
         """Ruff top-level settings loaded from YAML."""
 
-        findings_exit_codes: Annotated[
-            tuple[int, ...],
-            m.Field(
-                alias="findings-exit-codes",
-                strict=False,
-                description="Exit statuses with which Ruff reports its findings.",
-            ),
-        ]
+        findings_exit_codes: tuple[int, ...] = m.Field(
+            alias="findings-exit-codes",
+            strict=False,
+            description="Exit statuses with which Ruff reports its findings.",
+        )
         lint: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig = m.Field(
             description="Ruff lint configuration",
         )
@@ -291,14 +242,12 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 raise ValueError(msg)
             return self
 
-        ruling_disable_error_codes: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="ruling-disable-error-codes",
-                strict=False,
-                description="Operator-authorized suspended diagnostics.",
-            ),
-        ] = ()
+        ruling_disable_error_codes: tuple[t.NonEmptyStr, ...] = m.Field(
+            (),
+            alias="ruling-disable-error-codes",
+            strict=False,
+            description="Operator-authorized suspended diagnostics.",
+        )
         overrides: Annotated[
             tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
             m.Field(description="Module scopes and justified native option pairs."),

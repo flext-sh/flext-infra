@@ -212,7 +212,7 @@ class FlextInfraCodemodSemanticApply(
         """
         return cls._source_scopes(root, consumer_roots).flat_map(
             lambda scopes: cls._source_closure(scopes, snapshot).map(
-                lambda candidate: p.Infra.SemanticSourcePlan(
+                lambda candidate: m.Infra.SemanticSourcePlan(
                     candidate=candidate,
                     consumer_roots=scopes[1:],
                 )
@@ -817,7 +817,7 @@ class FlextInfraCodemodSemanticApply(
             for selection in selections.decisions
         )
         return cls._build_native_source_plan(scopes, decisions, snapshot).map(
-            lambda planned: p.Infra.SemanticRenamePlan(
+            lambda planned: m.Infra.SemanticRenamePlan(
                 decisions=decisions,
                 edits=cls._rename_edits(
                     u.Infra.candidate_python_sources(
@@ -1158,6 +1158,7 @@ class FlextInfraCodemodSemanticApply(
         candidate: p.Infra.SemanticSourcePlan,
         *,
         publish: bool = True,
+        validator: Callable[[Path], p.Result[bool]] | None = None,
     ) -> p.Result[tuple[Path, ...]]:
         """Publish one rule-composed native candidate.
 
@@ -1165,7 +1166,9 @@ class FlextInfraCodemodSemanticApply(
             The canonical publisher's acknowledged paths or original failure.
 
         """
-        return cls._publish_authenticated_source(root, candidate, publish=publish)
+        return cls._publish_authenticated_source(
+            root, candidate, publish=publish, validator=validator
+        )
 
     @classmethod
     def load_rename_artifact(
@@ -1347,6 +1350,7 @@ class FlextInfraCodemodSemanticApply(
         artifact: p.Infra.SemanticSourcePlan,
         *,
         publish: bool,
+        validator: Callable[[Path], p.Result[bool]] | None = None,
     ) -> p.Result[tuple[Path, ...]]:
         """Publish the candidate's planned effects through the shared publisher.
 
@@ -1385,6 +1389,7 @@ class FlextInfraCodemodSemanticApply(
                 repository_root=u.Infra.import_project_roots(root)[0].resolve(),
                 options=m.Infra.SemanticPublicationOptions(
                     inputs=artifact.candidate.inputs,
+                    validator=validator,
                     projection_roots=tuple(
                         sorted({
                             root,

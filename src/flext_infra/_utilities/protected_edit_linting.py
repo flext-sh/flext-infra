@@ -15,11 +15,11 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from itertools import islice
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, codegen, config, gates, m, r, t
+from flext_infra import c, codegen, config, gates, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProcess,
@@ -31,9 +31,6 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticPaths,
     FlextInfraUtilitiesGitStateCheckpoint,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesProtectedEditLinting:
@@ -300,9 +297,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             FlextInfraUtilitiesGitStateCheckpoint.state_leases(owners),
             u.Cli.file_changes_lock(lock.value),
         ):
-            published = cls._publish_verified_plans(
-                plans, tuple(changes), lock.value, result_type
-            )
+            published = cls._publish_verified_plans(plans, tuple(changes), lock.value)
             if published.failure:
                 return published
             completed = cls._retire_published_index_entries(plans).flat_map(
@@ -330,7 +325,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
         plans: Sequence[p.Infra.CodegenFilePlan],
         changes: Sequence[p.Cli.FileChange],
         lock_path: Path,
-        result_type: type[p.Result[tuple[Path, ...]]],
     ) -> p.Result[tuple[Path, ...]]:
         """Verify the captured inputs and publish one normalized change batch.
 
@@ -342,7 +336,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             tuple(state for plan in plans for state in plan.inputs),
         )
         if verified.failure:
-            return result_type.from_failure(verified)
+            return r[tuple[Path, ...]].from_failure(verified)
         return u.Cli.publish_file_changes(
             changes,
             lock_path=lock_path,

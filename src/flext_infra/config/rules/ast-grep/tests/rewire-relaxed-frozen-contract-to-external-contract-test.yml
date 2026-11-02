@@ -2,14 +2,14 @@ id: rewire-relaxed-frozen-contract-to-external-contract
 valid:
 - |
   class Finding(m.ContractModel):
-      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="ignore")
+      model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="ignore")
       code: str
 invalid:
 - |
   class Issue(m.ContractModel):
       """One issue in a search response."""
 
-      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
+      model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
       key: str
 - |
   class LegacyIssue(m.ContractModel):

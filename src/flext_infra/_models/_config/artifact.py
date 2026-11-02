@@ -1147,7 +1147,7 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         sources: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 exclude=True, description="Exact consulted configuration input states"
             ),
@@ -1170,7 +1170,7 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         sources: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(exclude=True, description="Exact consulted config input states"),
         ] = ()
 

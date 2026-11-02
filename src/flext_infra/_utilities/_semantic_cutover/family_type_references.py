@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import operator
 from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterator, Sequence
 
@@ -100,6 +99,9 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         Returns:
             Sorted ``(begin, end, declaration line)`` annotation regions.
 
+        Raises:
+            ValueError: Native type regions overlap without containment.
+
         """
         regions = cls._semantic_annotation_regions(module)
         words = cls._require_worder(
@@ -108,7 +110,17 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         )
         for statement in FlextInfraUtilitiesRopeStructure.logical_statements(source):
             regions.update(cls._statement_regions(source, words, statement))
-        return tuple(sorted(regions, key=operator.itemgetter(0, 1)))
+        selected: list[tuple[int, int, int | None]] = []
+        for region in sorted(
+            regions, key=lambda item: (item[0], -item[1], item[2] is None)
+        ):
+            if selected and region[0] < selected[-1][1]:
+                if region[1] > selected[-1][1]:
+                    message = "native type regions overlap without containment"
+                    raise ValueError(message)
+                continue
+            selected.append(region)
+        return tuple(selected)
 
     @classmethod
     def _require_worder(cls, source: str, requirement: str) -> p.Infra.RopeWorder:
@@ -145,12 +157,17 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         finder = refactors.semantic_finder(module)
+        result_finder = refactors.semantic_finder(
+            module,
+            arguments={"result": "name=flext_core.result.FlextResult"},
+        )
         regions: set[tuple[int, int, int | None]] = set()
-        for pattern in (
-            "${declared}: ${annotation}",
-            "${declared}: ${annotation} = ${value}",
+        for matcher, pattern in (
+            (finder, "${declared}: ${annotation}"),
+            (finder, "${declared}: ${annotation} = ${value}"),
+            (result_finder, "${result}[${annotation}]"),
         ):
-            for match in finder.get_matches(pattern):
+            for match in matcher.get_matches(pattern):
                 begin, end = refactors.semantic_capture_region(
                     module, match, "annotation"
                 )

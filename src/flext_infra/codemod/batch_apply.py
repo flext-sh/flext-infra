@@ -328,7 +328,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
         """
         return {
-            path: p.Infra.SemanticFilePlan(
+            path: m.Infra.SemanticFilePlan(
                 project=u.Infra.project_root(path) or root,
                 path=path,
                 before=inputs[path],
@@ -834,7 +834,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         return outcome.ok(
             voided.model_copy(
                 update={
-                    "quarantined": p.Infra.ModModuleQuarantine(
+                    "quarantined": m.Infra.ModModuleQuarantine(
                         path=path,
                         cause=failure.error or "",
                         error_code=failure.error_code,
@@ -869,7 +869,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 inputs=candidate.inputs,
             ),
         ).map(
-            lambda staged: p.Infra.SemanticSourcePlan(
+            lambda staged: m.Infra.SemanticSourcePlan(
                 candidate=staged, consumer_roots=plan.consumer_roots
             )
         )
@@ -1137,7 +1137,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 inputs=seed.candidate.inputs,
             ),
         ).map(
-            lambda staged: p.Infra.SemanticSourcePlan(
+            lambda staged: m.Infra.SemanticSourcePlan(
                 candidate=staged, consumer_roots=seed.consumer_roots
             )
         )

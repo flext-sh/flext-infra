@@ -95,205 +95,124 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 str,
                 m.Field(description="Execution environment root path."),
             ]
-            report_private_usage: Annotated[
-                str,
-                m.Field(
-                    alias=c.Infra.REPORT_PRIVATE_USAGE,
-                    description="reportPrivateUsage override for this environment.",
-                ),
-            ]
-            extra_paths: Annotated[
-                Sequence[str],
-                m.Field(
-                    alias=c.Infra.EXTRA_PATHS,
-                    description="extraPaths applied to this execution environment.",
-                ),
-            ]
-            diagnostic_levels: Annotated[
-                Mapping[str, str],
-                m.Field(
-                    exclude=True,
-                    description=(
-                        "Authorized native rule levels the renderer adds to "
-                        "this environment's payload."
-                    ),
-                ),
-            ] = m.Field(default_factory=u.empty(TypeForm(Mapping[str, str])))
+            report_private_usage: str = m.Field(
+                alias=c.Infra.REPORT_PRIVATE_USAGE,
+                description="reportPrivateUsage override for this environment.",
+            )
+            extra_paths: Sequence[str] = m.Field(
+                alias=c.Infra.EXTRA_PATHS,
+                description="extraPaths applied to this execution environment.",
+            )
+            diagnostic_levels: Mapping[str, str] = m.Field(
+                default_factory=u.empty(TypeForm(Mapping[str, str])),
+                exclude=True,
+                description="Authorized native rule levels the renderer adds to this environment's payload.",
+            )
 
         class PathRulesConfig(m.ArbitraryTypesModel):
             """Path resolution rules loaded from YAML."""
 
-            project_root_env_dirs: Annotated[
-                Sequence[str],
-                m.Field(
-                    alias="project-root-env-dirs",
-                    description=(
-                        "Included directories resolved from their project "
-                        "package parent."
-                    ),
-                ),
-            ] = ()
+            project_root_env_dirs: Sequence[str] = m.Field(
+                (),
+                alias="project-root-env-dirs",
+                description="Included directories resolved from their project package parent.",
+            )
 
-            source_dir: Annotated[
-                str,
-                m.Field(
-                    alias="source-dir",
-                    description="Primary source directory name.",
-                ),
-            ] = "src"
-            project_root: Annotated[
-                str,
-                m.Field(
-                    alias="project-root",
-                    description="Project root path entry used in path resolution.",
-                ),
-            ] = "."
-            env_dirs: Annotated[
-                Sequence[str],
-                m.Field(
-                    alias="env-dirs",
-                    description="Canonical execution environment directories in order.",
-                ),
-            ] = ()
-            test_like_dirs: Annotated[
-                Sequence[str],
-                m.Field(
-                    alias="test-like-dirs",
-                    description=(
-                        "Env dirs that should include project root in extraPaths."
-                    ),
-                ),
-            ] = ()
-            default_excludes: Annotated[
-                Sequence[str],
-                m.Field(
-                    alias="default-excludes",
-                    description="Always-applied pyright exclude globs.",
-                ),
-            ] = ()
-            ignored_diagnostic_globs: Annotated[
-                Sequence[str],
-                m.Field(
-                    alias="ignored-diagnostic-globs",
-                    description=(
-                        "Pyright ignore globs for files that remain on "
-                        "search paths but must not emit diagnostics."
-                    ),
-                ),
-            ] = ()
-            diagnostic_path_exceptions: Annotated[
-                tuple[
-                    FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException,
-                    ...,
-                ],
-                m.Field(
-                    alias="diagnostic-path-exceptions",
-                    description=(
-                        "Authorized rule exceptions; each entry renders its Pyright "
-                        "environment and its Pyrefly sub-config."
-                    ),
-                ),
-            ] = ()
-            source_report_private_usage: Annotated[
-                str,
-                m.Field(
-                    alias="source-report-private-usage",
-                    description=(
-                        "reportPrivateUsage value for source-dir execution envs."
-                    ),
-                ),
-            ]
-            test_like_report_private_usage: Annotated[
-                str,
-                m.Field(
-                    alias="test-like-report-private-usage",
-                    description=(
-                        "reportPrivateUsage value for test-like execution envs."
-                    ),
-                ),
-            ]
-            other_report_private_usage: Annotated[
-                str,
-                m.Field(
-                    alias="other-report-private-usage",
-                    description=(
-                        "reportPrivateUsage value for non-source/non-test-like envs."
-                    ),
-                ),
-            ]
+            source_dir: str = m.Field(
+                "src", alias="source-dir", description="Primary source directory name."
+            )
+            project_root: str = m.Field(
+                ".",
+                alias="project-root",
+                description="Project root path entry used in path resolution.",
+            )
+            env_dirs: Sequence[str] = m.Field(
+                (),
+                alias="env-dirs",
+                description="Canonical execution environment directories in order.",
+            )
+            test_like_dirs: Sequence[str] = m.Field(
+                (),
+                alias="test-like-dirs",
+                description="Env dirs that should include project root in extraPaths.",
+            )
+            default_excludes: Sequence[str] = m.Field(
+                (),
+                alias="default-excludes",
+                description="Always-applied pyright exclude globs.",
+            )
+            ignored_diagnostic_globs: Sequence[str] = m.Field(
+                (),
+                alias="ignored-diagnostic-globs",
+                description="Pyright ignore globs for files that remain on search paths but must not emit diagnostics.",
+            )
+            diagnostic_path_exceptions: tuple[
+                FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException, ...
+            ] = m.Field(
+                (),
+                alias="diagnostic-path-exceptions",
+                description="Authorized rule exceptions; each entry renders its Pyright environment and its Pyrefly sub-config.",
+            )
+            source_report_private_usage: str = m.Field(
+                alias="source-report-private-usage",
+                description="reportPrivateUsage value for source-dir execution envs.",
+            )
+            test_like_report_private_usage: str = m.Field(
+                alias="test-like-report-private-usage",
+                description="reportPrivateUsage value for test-like execution envs.",
+            )
+            other_report_private_usage: str = m.Field(
+                alias="other-report-private-usage",
+                description="reportPrivateUsage value for non-source/non-test-like envs.",
+            )
 
-        path_rules: Annotated[
-            FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
-            m.Field(
-                alias="path-rules",
-                description="Pyright path resolution and execution-env rules.",
-            ),
-        ]
+        path_rules: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig = m.Field(
+            alias="path-rules",
+            description="Pyright path resolution and execution-env rules.",
+        )
 
     class PyreflyConfig(m.ArbitraryTypesModel):
         """Pyrefly execution and path policy; native options live in settings."""
 
-        findings_exit_codes: Annotated[
-            tuple[int, ...],
-            m.Field(
-                alias="findings-exit-codes",
-                description="Native diagnostic statuses",
-            ),
-        ] = ()
+        findings_exit_codes: tuple[int, ...] = m.Field(
+            (), alias="findings-exit-codes", description="Native diagnostic statuses"
+        )
 
         class PathRulesConfig(m.ArbitraryTypesModel):
             """Path resolution rules loaded from YAML."""
 
-            source_dir: Annotated[
-                str,
-                m.Field(
-                    alias="source-dir",
-                    description="Primary source directory name.",
-                ),
-            ] = "src"
-            project_root: Annotated[
-                str,
-                m.Field(
-                    alias="project-root",
-                    description="Project root path entry used in search-path.",
-                ),
-            ] = "."
-            env_dirs: Annotated[
-                Sequence[str],
-                m.Field(
-                    alias="env-dirs",
-                    description="Canonical directories used to build project-includes.",
-                ),
-            ] = ()
-            workspace_include_children: Annotated[
-                bool,
-                m.Field(
-                    alias="workspace-include-children",
-                    description="Whether root pyrefly should include child projects.",
-                ),
-            ] = False
-            workspace_include_child_env_dirs: Annotated[
-                Sequence[str],
-                m.Field(
-                    alias="workspace-include-child-env-dirs",
-                    description="Child env dirs included by root pyrefly when enabled.",
-                ),
-            ] = ()
-            project_shared_search_paths: Annotated[
-                Sequence[str],
-                m.Field(
-                    alias="project-shared-search-paths",
-                    description=(
-                        "Additional shared workspace paths "
-                        "for declared_repository pyrefly search-path."
-                    ),
-                ),
-            ] = ()
+            source_dir: str = m.Field(
+                "src", alias="source-dir", description="Primary source directory name."
+            )
+            project_root: str = m.Field(
+                ".",
+                alias="project-root",
+                description="Project root path entry used in search-path.",
+            )
+            env_dirs: Sequence[str] = m.Field(
+                (),
+                alias="env-dirs",
+                description="Canonical directories used to build project-includes.",
+            )
+            workspace_include_children: bool = m.Field(
+                False,
+                alias="workspace-include-children",
+                description="Whether root pyrefly should include child projects.",
+            )
+            workspace_include_child_env_dirs: Sequence[str] = m.Field(
+                (),
+                alias="workspace-include-child-env-dirs",
+                description="Child env dirs included by root pyrefly when enabled.",
+            )
+            project_shared_search_paths: Sequence[str] = m.Field(
+                (),
+                alias="project-shared-search-paths",
+                description="Additional shared workspace paths for declared_repository pyrefly search-path.",
+            )
 
-        path_rules: Annotated[
-            FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig,
-            m.Field(alias="path-rules", description="Pyrefly search-path rules."),
-        ]
+        path_rules: FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig = m.Field(
+            alias="path-rules", description="Pyrefly search-path rules."
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolConfigTypeCheckers"]

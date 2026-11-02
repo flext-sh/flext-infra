@@ -24,18 +24,18 @@ rule:
   any:
     - pattern: |
         try:
-            return r[$MODEL].ok($MODEL.model_validate($DATA))
+            return r[$RESULT].ok($MODEL.model_validate($DATA))
         except $EXC as $ERR:
-            return r[$MODEL].fail(str($ERR), exception=$ERR)
+            return r[$RESULT].fail(str($ERR), exception=$ERR)
     - pattern: |
         try:
-            return r[$MODEL].ok($MODEL.model_validate($DATA))
+            return r[$RESULT].ok($MODEL.model_validate($DATA))
         except $EXC as $ERR:
             return r.fail(str($ERR), exception=$ERR)
 constraints:
   ERR:
     kind: identifier
-fix: return r[$MODEL].from_validation($DATA, $MODEL)
+fix: return r[$RESULT].from_validation($DATA, $MODEL)
 ---
 id: railroad-ifelse-identity-passthrough
 language: python

@@ -101,7 +101,7 @@ snapshots:
       style: secondary
       start: 38
       end: 56
-  "from flext_core import FlextModels, m\nclass m.AiHub(FlextModels):\n    pass\nm = m.AiHub = [\"m.AiHub", \"m\"]\n":
+  "from flext_core import FlextModels, m\nclass m.AiHub(FlextModels):\n    pass\nm = m.AiHub = [\"m.AiHub\", \"m\"]\n":
     labels:
     - source: m = m.AiHub
       style: primary

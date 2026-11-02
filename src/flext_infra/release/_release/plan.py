@@ -255,7 +255,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         if bump.failure:
             return r[p.Infra.ReleasePlan].from_failure(bump)
         return u.Infra.bump_version(current, bump.value).map(
-            lambda next_version: p.Infra.ReleasePlan(
+            lambda next_version: m.Infra.ReleasePlan(
                 current=current,
                 next=next_version,
                 bump=bump.value,

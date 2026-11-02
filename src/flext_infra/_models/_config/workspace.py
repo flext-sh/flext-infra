@@ -11,7 +11,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._constants.config import FlextInfraConstantsConfig
@@ -294,10 +294,9 @@ class FlextInfraModelsConfigWorkspace:
 
         model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-        include_group: Annotated[
-            t.NonEmptyStr,
-            m.Field(alias="include-group", description="Referenced dependency group"),
-        ]
+        include_group: t.NonEmptyStr = m.Field(
+            alias="include-group", description="Referenced dependency group"
+        )
 
     class DependencyGroupEntries(m.RootModel[tuple[str | DependencyGroupInclude, ...]]):
         """Native ordered PEP 735 entries, without resolving local references."""
@@ -320,17 +319,12 @@ class FlextInfraModelsConfigWorkspace:
 
         model_config: ClassVar[p.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        dependency_groups: Annotated[
-            Mapping[
-                str,
-                tuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
-                ],
-            ],
-            m.Field(
-                alias="dependency-groups", description="Ordered native group entries"
-            ),
-        ]
+        dependency_groups: Mapping[
+            str,
+            tuple[str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...],
+        ] = m.Field(
+            alias="dependency-groups", description="Ordered native group entries"
+        )
 
         @m.field_validator("dependency_groups", mode="before")
         @classmethod
@@ -420,31 +414,18 @@ class FlextInfraModelsConfigWorkspace:
         and ignores its other tables.
         """
 
-        name: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                validation_alias=m.AliasPath("project", "name"),
-                description="PEP 621 distribution name",
-            ),
-        ]
-        dependencies: Annotated[
-            Sequence[str],
-            m.Field(
-                validation_alias=m.AliasPath("project", "dependencies"),
-                description="PEP 621 runtime requirements",
-            ),
-        ] = ()
-        dependency_groups: Annotated[
-            Mapping[
-                str,
-                tuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
-                ],
-            ],
-            m.Field(
-                validation_alias=c.Infra.DEPENDENCY_GROUPS,
-                description="PEP 735 dependency groups (dev, codegen, ...)",
-            ),
+        name: t.NonEmptyStr = m.Field(
+            validation_alias=m.AliasPath("project", "name"),
+            description="PEP 621 distribution name",
+        )
+        dependencies: Sequence[str] = m.Field(
+            (),
+            validation_alias=m.AliasPath("project", "dependencies"),
+            description="PEP 621 runtime requirements",
+        )
+        dependency_groups: Mapping[
+            str,
+            tuple[str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...],
         ] = m.Field(
             default_factory=lambda: MappingProxyType[
                 str,
@@ -452,6 +433,8 @@ class FlextInfraModelsConfigWorkspace:
                     str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
                 ],
             ]({}),
+            validation_alias=c.Infra.DEPENDENCY_GROUPS,
+            description="PEP 735 dependency groups (dev, codegen, ...)",
         )
 
     class DependencyEdgeSpec(m.ContractModel):
@@ -764,7 +747,7 @@ class FlextInfraModelsConfigWorkspace:
         """Local identity plus topology read from this repository's Git inputs."""
 
         inputs: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 exclude=True,
                 description="Original topology and declaration observations",

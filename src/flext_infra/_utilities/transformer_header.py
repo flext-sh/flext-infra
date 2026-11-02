@@ -10,6 +10,7 @@ import ast
 from collections.abc import MutableSequence
 
 from flext_infra import c
+from flext_infra._protocols_bootstrap import annotation_reference_only
 from flext_infra._utilities import FlextInfraUtilitiesTransformerHeaderParser
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
@@ -70,24 +71,43 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
     def ensure_alias_import(
         cls,
         source: str,
-        module: str,
+        module: str | None,
         alias: str,
         *,
         runtime_required: bool = False,
     ) -> str:
-        """Honor the consumer's runtime requirement when introducing an alias.
+        """Bind one used import with its required runtime availability.
+
+        ``module=None`` retains the native ``import`` form; other values name
+        the ``from`` provider. ``alias`` is one native import item, including
+        its optional declared ``as`` binding.
 
         Returns:
-            The resulting ``str``.
+            Source with the required runtime or deferred import.
 
         Raises:
-            ValueError: If canonical import alias must be non-empty; or if canonical
-                alias.
+            ValueError: The declaration is not one explicit import binding, or a
+                runtime consumer has only a deferred binding.
 
         """
         if not alias:
             msg = "canonical import alias must be non-empty"
             raise ValueError(msg)
+        statement = (
+            f"from {module} import {alias}" if module is not None else f"import {alias}"
+        )
+        declaration = ast.parse(statement).body
+        if (
+            len(declaration) != 1
+            or not isinstance(declaration[0], c.Infra.AST_IMPORT_TYPES)
+            or len(declaration[0].names) != 1
+            or declaration[0].names[0].name == "*"
+        ):
+            msg = "canonical import requires one explicit binding"
+            raise ValueError(msg)
+        imported = declaration[0].names[0]
+        alias = imported.asname or imported.name.partition(".")[0]
+        statement = ast.unparse(declaration[0])
         if not cls.alias_used(source, alias):
             return source
         if cls.has_alias_import(source, alias):
@@ -106,7 +126,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         if cls.alias_locally_bound(source, alias):
             return source
         if not runtime_required:
-            typed = cls._alias_import_under_type_checking(source, module, alias)
+            typed = cls._alias_import_under_type_checking(source, statement, alias)
             if typed is not None:
                 return typed
         info = cls._parse_header(source)
@@ -116,7 +136,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             info.span.comments_end,
             info.span.docstring_end,
         )
-        line = f"from {module} import {alias}\n"
+        line = f"{statement}\n"
         if offset < len(source) and not source[offset:].startswith("\n"):
             line = f"{line}\n"
         return f"{source[:offset]}{line}{source[offset:]}"
@@ -137,9 +157,20 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             frozenset({alias}) if alias is not None else c.FAMILY_CANONICAL_ALIASES
         )
         for node in header:
+            if isinstance(node, ast.If) and (
+                (isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING")
+                or (
+                    isinstance(node.test, ast.Attribute)
+                    and node.test.attr == "TYPE_CHECKING"
+                )
+            ):
+                continue
             if not isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 return False
-            if any((name.asname or name.name) in expected for name in node.names):
+            if any(
+                (name.asname or name.name.partition(".")[0]) in expected
+                for name in node.names
+            ):
                 return True
         return False
 
@@ -147,7 +178,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
     def _alias_import_under_type_checking(
         cls,
         source: str,
-        module: str,
+        statement: str,
         alias: str,
     ) -> str | None:
         """Place an annotation-only facade import inside ``if TYPE_CHECKING:``.
@@ -181,12 +212,12 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
                 ),
                 "    ",
             )
-            lines.insert(index + 1, f"{indent}from {module} import {alias}\n")
+            lines.insert(index + 1, f"{indent}{statement}\n")
             return "".join(lines)
-        return cls._create_type_checking_block(source, module, alias)
+        return cls._create_type_checking_block(source, statement)
 
     @classmethod
-    def _create_type_checking_block(cls, source: str, module: str, alias: str) -> str:
+    def _create_type_checking_block(cls, source: str, statement: str) -> str:
         """Create the type-checking block an annotation-only import needs.
 
         Without a block to extend, the injector fell through to a module-level
@@ -215,7 +246,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         guard = ""
         if not cls._imports_type_checking(source):
             guard = "from typing import TYPE_CHECKING\n\n"
-        block = f"if TYPE_CHECKING:\n    from {module} import {alias}\n"
+        block = f"if TYPE_CHECKING:\n    {statement}\n"
         return f"{prefix}{guard}{block}{source[offset:]}"
 
     @staticmethod
@@ -236,13 +267,18 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
 
     @staticmethod
     def alias_used(source: str, alias: str) -> bool:
-        """Return whether ``alias`` is used as a standalone dotted identifier.
+        """Return whether a loaded name or quoted dotted reference uses ``alias``.
 
         Returns:
-            Whether ``alias`` is used as a standalone dotted identifier.
+            Whether a loaded name or quoted dotted reference uses ``alias``.
 
         """
-        return (
+        return any(
+            isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Load)
+            and node.id == alias
+            for node in ast.walk(ast.parse(source))
+        ) or (
             c.Infra.compile(rf"\b{c.Infra.escape(alias)}\.(?![0-9])").search(source)
             is not None
         )
@@ -251,7 +287,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
     def has_alias_import(cls, source: str, alias: str) -> bool:
         """Return whether ``alias`` is already bound by a ``from`` import.
 
-        Every binding counts, including one inside ``if TYPE_CHECKING:``. The
+        Module-level bindings count, including ``if TYPE_CHECKING:``. The
         header scan stops at the first non-header statement, so an alias
         imported in that block read as absent and a duplicate was injected
         next to it. This proves a lexical declaration only; callers requiring
@@ -262,12 +298,18 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             Whether ``alias`` is already bound by a ``from`` import.
 
         """
-        return any(
-            (name.asname or name.name) == alias
-            for node in ast.walk(ast.parse(source))
-            if isinstance(node, c.Infra.AST_IMPORT_TYPES)
-            for name in node.names
-        )
+        pending: list[ast.AST] = [ast.parse(source)]
+        while pending:
+            node = pending.pop()
+            if isinstance(node, c.Infra.AST_DEFINITION_TYPES):
+                continue
+            if isinstance(node, c.Infra.AST_IMPORT_TYPES) and any(
+                (name.asname or name.name.partition(".")[0]) == alias
+                for name in node.names
+            ):
+                return True
+            pending.extend(ast.iter_child_nodes(node))
+        return False
 
     @staticmethod
     def _runtime_model_annotation_ids(module: ast.Module) -> frozenset[int]:
@@ -303,54 +345,23 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             runtime_ids.add(id(node.annotation))
         return frozenset(runtime_ids)
 
-    @staticmethod
-    def _alias_is_annotation_only(source: str, alias: str) -> bool:
-        """Report whether every use of ``alias`` sits inside an annotation.
+    @classmethod
+    def _alias_is_annotation_only(cls, source: str, alias: str) -> bool:
+        """Report whether every use of ``alias`` is a deferred type reference.
 
         Class-body annotations on a runtime model are excluded from that set:
         the model resolves them at import time, so the alias must stay
-        importable at runtime.
+        importable at runtime. Class bases and decorators are evaluated during
+        class creation and remain runtime reads, including ``Protocol`` bases.
 
         Returns:
             The resulting ``bool``.
 
         """
         module = ast.parse(source)
-        runtime_ids = (
-            FlextInfraUtilitiesTransformerHeader._runtime_model_annotation_ids(module)
+        return annotation_reference_only(
+            module, alias, cls._runtime_model_annotation_ids(module)
         )
-        spans: list[tuple[int, int, int, int]] = []
-        for node in ast.walk(module):
-            annotations: MutableSequence[ast.expr | None] = []
-            if isinstance(node, ast.AnnAssign | ast.arg):
-                annotations.append(node.annotation)
-            elif isinstance(node, c.Infra.AST_FUNCTION_TYPES):
-                annotations.append(node.returns)
-            for annotation in annotations:
-                if annotation is None or annotation.end_lineno is None:
-                    continue
-                if id(annotation) in runtime_ids:
-                    continue
-                spans.append((
-                    annotation.lineno,
-                    annotation.col_offset,
-                    annotation.end_lineno,
-                    annotation.end_col_offset or 0,
-                ))
-
-        def inside(node: ast.expr) -> bool:
-            position = (node.lineno, node.col_offset)
-            return any(
-                (start_line, start_col) <= position <= (end_line, end_col)
-                for start_line, start_col, end_line, end_col in spans
-            )
-
-        uses = [
-            node
-            for node in ast.walk(module)
-            if isinstance(node, ast.Name) and node.id == alias
-        ]
-        return bool(uses) and all(inside(node) for node in uses)
 
     @staticmethod
     def alias_locally_bound(source: str, alias: str) -> bool:

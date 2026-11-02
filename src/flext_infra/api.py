@@ -19,6 +19,7 @@ from flext_infra import (
     codegen,
     codemod,
     m,
+    p,
     r,
     release,
     s,
@@ -33,7 +34,6 @@ from flext_infra.codemod._rename import FlextInfraCodemodRenameSymbols
 from flext_infra.services import FlextInfraCodegenHandlers, FlextInfraModHandlers
 
 if TYPE_CHECKING:
-    from flext_infra import p
     from flext_infra.docs import FlextInfraDocFormatter
     from flext_infra.workspace import FlextInfraWorkspacePropagation
 
@@ -388,7 +388,7 @@ class FlextInfra(
     def _project_captured_runtime(
         resolved: Path,
         root: Path,
-    ) -> p.Result[tuple[p.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]]:
+    ) -> p.Result[tuple[p.Infra.CodegenInputs, p.Infra.WorkspaceRuntimeContext]]:
         """Load the root codegen policy and elect the workspace runtime context.
 
         Args:
@@ -402,14 +402,14 @@ class FlextInfra(
         captured = flext_infra.u.Infra.load_codegen_inputs(root)
         if captured.failure:
             return r[
-                tuple[p.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
+                tuple[p.Infra.CodegenInputs, p.Infra.WorkspaceRuntimeContext]
             ].from_failure(captured)
         runtime = workspace.FlextInfraWorkspaceDetector.resolution_context(resolved)
         if runtime.failure:
             return r[
-                tuple[p.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]
+                tuple[p.Infra.CodegenInputs, p.Infra.WorkspaceRuntimeContext]
             ].from_failure(runtime)
-        return r[tuple[p.Infra.CodegenInputs, m.Infra.WorkspaceRuntimeContext]].ok(
+        return r[tuple[p.Infra.CodegenInputs, p.Infra.WorkspaceRuntimeContext]].ok(
             (captured.value, runtime.value),
         )
 
@@ -417,7 +417,7 @@ class FlextInfra(
     def _project_workspace_target(
         root: Path,
         captured: p.Infra.CodegenInputs,
-    ) -> p.Result[tuple[p.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]]:
+    ) -> p.Result[tuple[p.Infra.WorkspaceSpec, p.Infra.RepositoryConformTarget]]:
         """Load the workspace spec and resolve its conform target.
 
         Args:
@@ -434,7 +434,7 @@ class FlextInfra(
         )
         if observed.failure:
             return r[
-                tuple[p.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
+                tuple[p.Infra.WorkspaceSpec, p.Infra.RepositoryConformTarget]
             ].from_failure(observed)
         target = workspace.FlextInfraWorkspaceDetector.conform_target(
             root,
@@ -443,9 +443,9 @@ class FlextInfra(
         )
         if target.failure:
             return r[
-                tuple[p.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]
+                tuple[p.Infra.WorkspaceSpec, p.Infra.RepositoryConformTarget]
             ].from_failure(target)
-        return r[tuple[p.Infra.WorkspaceSpec, m.Infra.RepositoryConformTarget]].ok(
+        return r[tuple[p.Infra.WorkspaceSpec, p.Infra.RepositoryConformTarget]].ok(
             (observed.value, target.value),
         )
 

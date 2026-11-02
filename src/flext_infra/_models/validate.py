@@ -347,10 +347,9 @@ class FlextInfraModelsCore:
         external-contract preset reads this subset and ignores the rest.
         """
 
-        report_type: Annotated[
-            str,
-            m.Field(alias="$report_type", description="Pytest event kind"),
-        ]
+        report_type: str = m.Field(
+            alias="$report_type", description="Pytest event kind"
+        )
         category: Annotated[
             str | None,
             m.Field(description="Warning category name"),

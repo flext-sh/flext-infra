@@ -11,7 +11,7 @@ from keyword import iskeyword
 from pathlib import Path, PureWindowsPath
 from typing import Annotated, ClassVar, Literal
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
@@ -292,7 +292,7 @@ class FlextInfraModelsConfigRepository:
         model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         inputs: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 exclude=True, description="Original identity and policy observations"
             ),
@@ -443,7 +443,7 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Repository-rooted resolved editor declarations"),
         ] = None
         vscode_sources: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 exclude=True, description="Exact consulted editor declaration inputs"
             ),

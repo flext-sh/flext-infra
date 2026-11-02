@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import runpy
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +21,147 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraFamilyTypeReferences:
     """Exercise the real Rope graph for generic bases and deferred annotations."""
+
+    @staticmethod
+    @pytest.mark.parametrize("protocol_imported", [False, True])
+    def test_nested_result_regions_publish_one_native_protocol_cutover(
+        tmp_path: Path,
+        *,
+        protocol_imported: bool,
+    ) -> None:
+        """Nested and declared regions produce disjoint, executable Rope edits."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        (package / c.Infra.INIT_PY).write_text(
+            "from flext_cli import p\n", encoding=c.DEFAULT_ENCODING
+        )
+        path = package / "consumer.py"
+        imports = "m, p, r, u" if protocol_imported else "m, r, u"
+        source = (
+            "from pathlib import Path\n"
+            f"from flext_cli import {imports}\n"
+            "state = u.Cli.atomic_read_binary_file_state(\n"
+            "    Path(__file__).resolve(), required=True).unwrap()\n"
+            "declared: r[m.Cli.AtomicFileState] = (\n"
+            "    r[m.Cli.AtomicFileState].ok(state))\n"
+            "nested = r[tuple[m.Cli.AtomicFileState, r[m.Cli.AtomicFileState]]]\n"
+            "constructor = m.Cli.AtomicFileState\n"
+            "literal = 'm.Cli.AtomicFileState'\n"
+            "parsed = m.Cli.AtomicFileState.model_validate_json(\n"
+            "    state.model_dump_json())\n"
+            "assert declared.value is state\n"
+            "assert isinstance(declared.value, p.Cli.AtomicFileState)\n"
+            "assert constructor is m.Cli.AtomicFileState\n"
+            "assert literal == 'm.Cli.AtomicFileState'\n"
+            "assert parsed == state\n"
+        )
+        if protocol_imported:
+            source += "retained: p.Cli.AtomicFileState = state\n"
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rule = m.Infra.RopeContractRule(
+            id="result-runtime-protocol-owner",
+            pattern="${receiver}.${member}",
+            goal="p.Cli.${member}",
+            arguments={},
+            annotation_member_source="m.Cli",
+            bindings={
+                "m.Cli": "flext_cli.models.FlextCliModels.Cli",
+                "p.Cli": "flext_cli.protocols.FlextCliProtocols.Cli",
+            },
+            annotation_only=True,
+            scope=m.Infra.RopeContractScope(
+                targets=(
+                    m.Infra.RopeContractScopeTarget(
+                        distribution=root.name,
+                        module=f"{package.name}.consumer",
+                    ),
+                )
+            ),
+        )
+        with infra.rope_workspace(root) as rope:
+            (edit,) = tm.ok(u.Infra.plan_contract_rules(rope, {path: source}, (rule,)))
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_contract_rules(
+                        rope, {path: edit.updated_source}, (rule,)
+                    )
+                ),
+                empty=True,
+            )
+        tm.that(edit.updated_source, has="declared: r[p.Cli.AtomicFileState]")
+        tm.that(
+            edit.updated_source,
+            has="nested = r[tuple[p.Cli.AtomicFileState, r[p.Cli.AtomicFileState]]]",
+        )
+        tm.that(edit.updated_source, has="constructor = m.Cli.AtomicFileState")
+        tm.that(edit.updated_source, has="m.Cli.AtomicFileState.model_validate_json(")
+        tm.that(edit.updated_source, has="literal = 'm.Cli.AtomicFileState'")
+        if protocol_imported:
+            tm.that(edit.updated_source, has="retained: p.Cli.AtomicFileState = state")
+        candidate = package / "candidate.py"
+        candidate.write_text(edit.updated_source, encoding=c.DEFAULT_ENCODING)
+        runpy.run_path(str(candidate))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            (
+                "from flext_core import r\nvalue = r['Domain.Item']\n",
+                ("Domain.Item",),
+            ),
+            (
+                (
+                    "from flext_core.result import FlextResult as Outcome\n"
+                    "value = Outcome[tuple['Domain.Item', int]]\n"
+                ),
+                ("Domain.Item",),
+            ),
+            (
+                (
+                    "from flext_core import r\n"
+                    "def consume(r):\n    return r['Domain.Item']\n"
+                ),
+                (),
+            ),
+            (
+                (
+                    "from flext_core import r\n"
+                    "def consume():\n    r = list\n    return r['Domain.Item']\n"
+                ),
+                (),
+            ),
+            ("value = list['Domain.Item']\n", ()),
+            (
+                "from flext_core import r\nvalue = r[str].ok('Domain.Item')\n",
+                (),
+            ),
+            (
+                (
+                    "from typing import Annotated\nfrom flext_core import m, r\n"
+                    "value = r[Annotated[str, m.Field(description='Domain.Item')]]\n"
+                ),
+                (),
+            ),
+        ],
+    )
+    def test_result_runtime_type_arguments_keep_native_identity(
+        tmp_path: Path, source: str, expected: tuple[str, ...]
+    ) -> None:
+        """Only real Core result subscriptions contribute quoted type arguments."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with infra.rope_workspace(root) as rope:
+            resource = tm.not_none(rope.resource(path))
+            module = u.Infra.resolve_pymodule(rope.rope_project, resource)
+            references = u.Infra.scoped_quoted_type_references(
+                source, rope.rope_project, module
+            )
+            tm.that(
+                tuple(expression for expression, _scope, _line in references),
+                eq=expected,
+            )
 
     @staticmethod
     @pytest.mark.parametrize(

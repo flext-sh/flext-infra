@@ -66,7 +66,13 @@ class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
 
     @property
     def snapshot(self) -> p.Infra.WorkspaceSnapshot:
-        """The run snapshot: the injected one, or one this session opens once."""
+        """Retain structural inventory with the repository's native source owners.
+
+        An injected engine keeps its election and lifetime. Otherwise the
+        repository root elects sources within the enclosing structural root;
+        sibling inventory members remain dependency lookups. Failed snapshot
+        initialization closes this session's entered resources.
+        """
         snapshot = self._snapshot
         if snapshot is None:
             root = (
@@ -74,26 +80,34 @@ class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
                 if self._rope_project is None
                 else Path(self._rope_project.root.real_path)
             )
-            scope = ExitStack()
-            snapshot = scope.enter_context(
-                u.Infra.workspace_snapshot(
-                    root,
-                    tuple(
-                        dict.fromkeys((
-                            root,
-                            *(
-                                member
-                                for member in u.Infra.discover_rope_project_roots(
-                                    root, source_project=self._rope_project
-                                )
-                                if member.is_relative_to(root)
-                            ),
-                        ))
+            with ExitStack() as scope:
+                source_project: p.Infra.RopeProject | None = self._rope_project
+                if source_project is None:
+                    source_project = scope.enter_context(
+                        u.Infra.workspace_overlay_project(
+                            root, (self.repository_root.resolve(),)
+                        )
+                    )
+                snapshot = scope.enter_context(
+                    u.Infra.workspace_snapshot(
+                        root,
+                        tuple(
+                            dict.fromkeys((
+                                root,
+                                *(
+                                    member
+                                    for member in u.Infra.discover_rope_project_roots(
+                                        root, source_project=self._rope_project
+                                    )
+                                    if member.is_relative_to(root)
+                                ),
+                            ))
+                        ),
+                        source_project=source_project,
                     ),
                 )
-            )
-            self._snapshot_scope = scope
-            self._snapshot = snapshot
+                self._snapshot_scope = scope.pop_all()
+                self._snapshot = snapshot
         return snapshot
 
     @property

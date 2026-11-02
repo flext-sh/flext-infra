@@ -12,13 +12,13 @@ valid:
 - |
   class Model(m.Value):
       value: Annotated[str, m.Field(description="model metadata")]
+- |
+  class Holder(Protocol):
+      state: p.Cli.AtomicFileState
 invalid:
 - |
   class Holder(Protocol):
       value: Annotated[str, m.Field(description="leaked")]
-- |
-  class Holder(Protocol):
-      state: m.Cli.AtomicFileState
 - |
   class Holder(Protocol):
       state: FlextInfraModelsWorkspace.WorkspaceRuntimeContext

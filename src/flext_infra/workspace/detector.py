@@ -8,14 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
-from flext_infra import c, config, m, r, settings, u
+from flext_infra import c, config, m, p, r, settings, u
 from flext_infra.base import s
 from flext_infra.workspace import FlextInfraWorkspaceGovernance
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraWorkspaceDetector(

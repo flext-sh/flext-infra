@@ -46,10 +46,10 @@ class FlextInfraModelsWorkspace:
             )
         )
         optimize: int = m.Field(ge=0, le=2, description="Native compiler optimization")
-        inputs: tuple[p.Cli.AtomicFileReceipt, ...] = m.Field(
+        inputs: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(
             description="Pinned source/resource/distribution/runtime byte identities"
         )
-        bootstrap_sources: tuple[p.Cli.AtomicFileState, ...] = m.Field(
+        bootstrap_sources: tuple[t.Port[p.Cli.AtomicFileState], ...] = m.Field(
             default=(),
             description=(
                 "Original buffered source candidates for atomic-reader bootstrap; "
@@ -57,7 +57,7 @@ class FlextInfraModelsWorkspace:
             ),
         )
         _source_birth: tuple[int, str] | None = m.PrivateAttr(default=None)
-        generator_trees: tuple[p.Cli.AtomicPhysicalTreeManifest, ...] = m.Field(
+        generator_trees: tuple[t.Port[p.Cli.AtomicPhysicalTreeManifest], ...] = m.Field(
             description="Authenticated physical producer membership"
         )
         generator_modules: tuple[tuple[str, Path], ...] = m.Field(
@@ -361,7 +361,7 @@ class FlextInfraModelsWorkspace:
         bindings: tuple[FlextInfraModelsWorkspace.NativeBindingEvidence, ...] = m.Field(
             description="Complete static native binding observations"
         )
-        executed_sources: tuple[p.Cli.AtomicFileReceipt, ...] = m.Field(
+        executed_sources: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(
             default=(),
             description="Sources authenticated before compilation in the cold import",
         )
@@ -396,7 +396,7 @@ class FlextInfraModelsWorkspace:
         source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority for reference consumption, not publication",
         )
-        inputs: tuple[p.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[t.Port[p.Cli.AtomicFileState], ...] = m.Field(
             description="Pinned source inputs checked before and after authentication",
             exclude=True,
         )
@@ -484,7 +484,13 @@ class FlextInfraModelsWorkspace:
             ),
         ]
         installation_inputs: Annotated[
-            tuple[p.Cli.AtomicFileState, ...],
+            tuple[
+                Annotated[
+                    p.Cli.AtomicFileState,
+                    t.schema_for_model(m.Cli.AtomicFileState),
+                ],
+                ...,
+            ],
             m.Field(
                 description="Native lock and physical environment states "
                 "captured after installation"
@@ -503,7 +509,7 @@ class FlextInfraModelsWorkspace:
         """Original in-process repository operation, with its observed effects."""
 
         native_tool_qualifications: Annotated[
-            tuple[p.Cli.ProcessNativeToolEvidence, ...],
+            tuple[t.Port[p.Cli.ProcessNativeToolEvidence], ...],
             m.Field(description="Shared native qualification evidence."),
         ] = ()
         runtime_context: Annotated[
@@ -777,47 +783,35 @@ class FlextInfraModelsWorkspace:
             tuple[FlextInfraModelsWorkspace.LockedDependency, ...],
             m.Field(description="Resolved package edges; absent for a leaf package"),
         ] = ()
-        optional_dependencies: Annotated[
-            Mapping[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
-            m.Field(
-                alias="optional-dependencies",
-                description="Resolved edges by extra; absent when no extras exist",
-            ),
+        optional_dependencies: Mapping[
+            str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
-                    Mapping[
-                        str,
-                        tuple[FlextInfraModelsWorkspace.LockedDependency, ...],
-                    ]
-                ),
+                    Mapping[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]]
+                )
             ),
             validate_default=True,
+            alias="optional-dependencies",
+            description="Resolved edges by extra; absent when no extras exist",
         )
-        dev_dependencies: Annotated[
-            Mapping[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]],
-            m.Field(
-                alias="dev-dependencies",
-                description="Resolved edges by development group; absent means none",
-            ),
+        dev_dependencies: Mapping[
+            str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
-                    Mapping[
-                        str,
-                        tuple[FlextInfraModelsWorkspace.LockedDependency, ...],
-                    ]
-                ),
+                    Mapping[str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]]
+                )
             ),
             validate_default=True,
+            alias="dev-dependencies",
+            description="Resolved edges by development group; absent means none",
         )
-        resolution_markers: Annotated[
-            tuple[str, ...],
-            m.Field(
-                alias="resolution-markers",
-                description="Package fork conditions; absent means no fork restriction",
-            ),
-        ] = ()
+        resolution_markers: tuple[str, ...] = m.Field(
+            (),
+            alias="resolution-markers",
+            description="Package fork conditions; absent means no fork restriction",
+        )
 
     class LockedEnvironment(m.ExternalContractModel):
         """Typed installation identities, never a dependency resolver."""
@@ -826,13 +820,11 @@ class FlextInfraModelsWorkspace:
             tuple[FlextInfraModelsWorkspace.LockedPackage, ...],
             m.Field(min_length=1, description="Nonempty lock-owned package inventory"),
         ]
-        members: Annotated[
-            tuple[str, ...],
-            m.Field(
-                validation_alias=m.AliasPath("manifest", "members"),
-                description="Native workspace members; absent outside a workspace",
-            ),
-        ] = ()
+        members: tuple[str, ...] = m.Field(
+            (),
+            validation_alias=m.AliasPath("manifest", "members"),
+            description="Native workspace members; absent outside a workspace",
+        )
 
     class EditableDirectUrl(m.ContractModel):
         """Validated PEP 610 editable provenance payload."""
@@ -850,13 +842,10 @@ class FlextInfraModelsWorkspace:
             int,
             m.Field(description="Provider pull-request number"),
         ]
-        head: Annotated[
-            str,
-            m.Field(
-                validation_alias="headRefName",
-                description="Branch the pull request proposes",
-            ),
-        ]
+        head: str = m.Field(
+            validation_alias="headRefName",
+            description="Branch the pull request proposes",
+        )
         title: Annotated[str, m.Field(description="Pull-request title")]
         url: Annotated[str, m.Field(description="Pull-request web address")]
 

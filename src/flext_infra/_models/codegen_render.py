@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMiseToolchain
@@ -27,25 +27,58 @@ from flext_infra._models._config import (
 class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     """Typed render contexts for generated codegen artifacts."""
 
+    class ModelProtocolConformanceRenderContext(m.ContractModel):
+        """Source-bound constructor types checked before protocol publication."""
+
+        header: str = m.Field(description="Generated source ownership marker")
+        copyright_notice: str = m.Field(description="The owning project's legal notice")
+        package_name: t.NonEmptyStr = m.Field(
+            description="Authenticated public package"
+        )
+        imports: tuple[str, ...] = m.Field(description="Native generic-bound imports")
+        checks: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...]], ...] = m.Field(
+            description="Native constructor, structural port, parameters and arguments"
+        )
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Project-local generated documentation language"
+        )
+
+        @m.computed_field
+        @property
+        def module_description(self) -> str:
+            """The instance-to-protocol evidence description."""
+            return c.Infra.DocumentationText.MODEL_PROTOCOL_CONFORMANCE.localized(
+                self.documentation_language
+            )
+
     class ModelProtocolRenderContext(m.ContractModel):
         """Exact declarations supplied to one mirrored protocol module."""
 
         class ModelProtocolContract(m.ContractModel):
             """One nested data contract within its declaring module."""
 
-            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
                 str_strip_whitespace=False,
             )
 
             name: t.NonEmptyStr = m.Field(description="The nested structural contract")
+            depth: int = m.Field(
+                default=0,
+                ge=0,
+                description="The contract's nesting depth beneath its owner",
+            )
             type_parameters: tuple[str, ...] = m.Field(
                 description="Complete parameter declarations with bounds and defaults"
+            )
+            bases: tuple[str, ...] = m.Field(
+                default=("Protocol",),
+                description="Authenticated structural capabilities of the contract",
             )
             declarations: tuple[str, ...] = m.Field(
                 description="Field declarations retaining their annotation metadata"
             )
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             str_strip_whitespace=False,
         )
 
@@ -56,9 +89,40 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             description="Canonical import lines for referenced protocol owners"
         )
         owner: t.NonEmptyStr = m.Field(description="The declaring protocol namespace")
+        bases: tuple[str, ...] = m.Field(
+            default=(),
+            description="Native source-derived facade composition bases",
+        )
         contracts: tuple[ModelProtocolContract, ...] = m.Field(
             description="All data contracts declared by the corresponding model module"
         )
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Project-local generated documentation language"
+        )
+
+        @m.computed_field
+        @property
+        def module_description(self) -> str:
+            """The projected module's structural responsibility."""
+            return c.Infra.DocumentationText.MODEL_PROTOCOL_MODULE.localized(
+                self.documentation_language
+            )
+
+        @m.computed_field
+        @property
+        def owner_description(self) -> str:
+            """The declaring holder's structural responsibility."""
+            return c.Infra.DocumentationText.MODEL_PROTOCOL_OWNER.localized(
+                self.documentation_language
+            )
+
+        @m.computed_field
+        @property
+        def contract_description(self) -> str:
+            """The generated value contract's responsibility."""
+            return c.Infra.DocumentationText.MODEL_PROTOCOL_CONTRACT.localized(
+                self.documentation_language
+            )
 
     class GithubWorkflowRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""

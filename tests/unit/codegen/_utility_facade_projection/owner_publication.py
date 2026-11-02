@@ -633,6 +633,72 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
 
+    def test_source_bootstrap_protocol_facade_reuses_canonical_holder_mro(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Public planning follows the bootstrap owner instead of stale Base parts."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        self._write(package / "__init__.py", "")
+        self._write(package / "_protocols" / "__init__.py", "")
+        self._write(
+            package / "_protocols" / "base.py",
+            "from typing import Protocol, runtime_checkable\n\n"
+            "class ProtocolsBase:\n"
+            "    @runtime_checkable\n"
+            "    class Contract(Protocol):\n"
+            "        @property\n"
+            "        def stale(self) -> str: ...\n"
+            "__all__ = ['ProtocolsBase']\n",
+        )
+        self._write(
+            package / "_protocols" / "owner.py",
+            "from typing import Protocol, runtime_checkable\n\n"
+            "class ProtocolsOwner:\n"
+            "    @runtime_checkable\n"
+            "    class Contract(Protocol):\n"
+            "        @property\n"
+            "        def canonical(self) -> str: ...\n"
+            "__all__ = ['ProtocolsOwner']\n",
+        )
+        facade = package / "protocols.py"
+        self._write(
+            facade,
+            "# AUTO-GENERATED FILE - Source bootstrap protocol facade.\n"
+            "from typing import Protocol\n"
+            f"from {package.name}._protocols.owner import ProtocolsOwner\n\n"
+            "class Protocols:\n"
+            "    class Infra(ProtocolsOwner):\n"
+            "        pass\n\n"
+            "p = Protocols\n"
+            "__all__ = ['Protocols', 'p']\n",
+        )
+
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        )
+        tm.that(rendered, has="class Infra(ProtocolsOwner):")
+        tm.that(rendered, lacks="ProtocolsBase")
+        plan = tm.ok(
+            FlextInfraCodegenConform.Generate(
+                state=m.Infra.CodegenConformState(repository_root=root),
+            ).plan(
+                u.Tests.conform_request(
+                    root,
+                    what=c.Infra.CodegenConformSurface.FACADES,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    module=f"{package.name}.protocols",
+                    mode=c.Infra.CodegenConformMode.CHECK,
+                )
+            )
+        )
+        tm.that(
+            u.Tests.codegen_file_text(
+                next(file for file in plan.files if file.path == facade)
+            ),
+            eq=rendered,
+        )
+
     @pytest.mark.parametrize("length_delta", [0, 16])
     @pytest.mark.parametrize("parenthesized", [False, True])
     def test_published_import_width_preserves_mro_and_lazy_exports(

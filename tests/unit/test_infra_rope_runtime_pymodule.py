@@ -24,6 +24,74 @@ class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("package_name", "export", "owner"),
+        [
+            ("flext_core", "r", "flext_core.result.FlextResult"),
+            ("flext_cli", "m", "flext_cli.models.FlextCliModels"),
+            ("flext_api", "p", "flext_api.protocols.FlextApiProtocols"),
+        ],
+    )
+    def test_native_sdk_resolves_real_lazy_publication_identity(
+        tmp_path: Path, package_name: str, export: str, owner: str
+    ) -> None:
+        """Actual SDK package attributes agree with their declared live suppliers."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        with infra.rope_workspace(root) as workspace:
+            project = workspace.rope_project
+            package = u.Infra.require_semantic_module(project.get_module(package_name))
+            native = package.get_attribute(export)
+            supplier = u.Infra.qualified_name(project, owner)
+            tm.ok(u.Infra.same_name(supplier, native))
+            tm.ok(
+                u.Infra.same_name(
+                    native, u.Infra.qualified_name(project, f"{package_name}.{export}")
+                )
+            )
+
+    @staticmethod
+    def test_qualified_explicit_module_retains_original_snapshot_syntax_failure(
+        tmp_path: Path,
+    ) -> None:
+        """A valid alternate publication cannot replace a malformed selected module."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            "from typing import TYPE_CHECKING\n"
+            "from flext_core.lazy import install_lazy_exports\n"
+            "if TYPE_CHECKING:\n    from .published import FlextResult\n"
+            "install_lazy_exports(__name__, globals(), "
+            "{'FlextResult': '.published'}, public_exports=('FlextResult',))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        source = "from flext_core.result import FlextResult\n"
+        requested = package / "requested.py"
+        requested.write_text(source, encoding=c.DEFAULT_ENCODING)
+        (package / "published.py").write_text(source, encoding=c.DEFAULT_ENCODING)
+        with (
+            infra.rope_workspace(root) as live,
+            closing(
+                u.Infra.snapshot_project(
+                    live.rope_project, {requested: "def invalid(:\n"}
+                )
+            ) as project,
+        ):
+            with pytest.raises(
+                u.Infra.exception_type("rope.base.exceptions", "ModuleSyntaxError")
+            ) as error:
+                u.Infra.qualified_name(
+                    project, "FlextResult", module_name=f"{package.name}.requested"
+                )
+            tm.that(str(error.value), has=requested.name)
+            tm.ok(
+                u.Infra.same_name(
+                    u.Infra.qualified_name(project, "flext_core.result.FlextResult"),
+                    u.Infra.qualified_name(project, f"{package.name}.FlextResult"),
+                )
+            )
+        tm.that(requested.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
     def _published_name(attribute: p.Infra.RopePyName) -> str:
         """Resolve the declared name of the native object behind one attribute.
 
