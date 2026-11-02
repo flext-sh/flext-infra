@@ -437,10 +437,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
         """Insert the nearest declaring package's import for unbound names.
 
         One rule per package and scope inserts, after the module's first
-        future or plain import, one ``from <package> import ...`` line with
-        every name that package resolves in that scope, when the module uses
-        one of them without binding it anywhere; the Ruff import-fix stage
-        prunes the unused names and orders the block. A module inside a
+        future or plain import, one ``from <package> import <name>`` line for
+        an actual unbound use. The fixed-point loop binds remaining free names;
+        already-bound names keep their existing semantic owner. A module inside a
         declaring package imports from the deepest declaring package that
         contains it; every other module imports from the unique shallowest
         declaring package, and gets no header when that package is ambiguous.
@@ -509,7 +508,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 "message": f"Import the names `{package}` publishes from it.",
                 "utils": dict(utils),
                 "rule": cls._codemod_header_rule(sorted(names)),
-                "fix": f"$ANCHOR\nfrom {package} import {', '.join(sorted(names))}",
+                "fix": f"$ANCHOR\nfrom {package} import $USED",
             }
             if scope is not None:
                 document["files"] = [cls._codemod_directory_glob(scope)]

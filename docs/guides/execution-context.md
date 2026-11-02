@@ -816,6 +816,37 @@ The exact-file relocation overload does not move package directories. Native
 string payloads and framework registration are not implicitly renamed; they
 remain subject to the existing consumer validation and declaration owners.
 
+When native facade composition replaces a previous generated import with its
+declared provider, it retires only retained base expressions bound through that
+exact displaced spelling. Keeping both expressions would make the replaced import
+bind both to one class and produce duplicate bases. Unrelated identities and
+aliases remain intact; occupied authored bindings still fail explicitly. This
+native repair belongs to semantic modification and does not waive ADR-018's pure
+generation target.
+
+Component consumer analysis and provider lazy bindings read the injected native
+candidate only. Syntax errors retain their original cause and abort planning;
+neither physical preimages nor skipped invalid consumers substitute for that
+candidate. Resource-less native providers have no source lazy declarations;
+source-backed providers resolve through the existing native resource owner.
+
+Required keyword parameter additions use the native signature operation in the
+same captured project and publisher. Rope owns declaration and call occurrences;
+its source-preserving addition retains existing parameter kinds, annotations,
+comments and call argument order. The contract catalogue supplies the new type
+and caller expression. Ambiguous keyword expansion fails explicitly instead of
+guessing a value or using the legacy signature serializer.
+
+Repository-owned method transfers are declared alongside those contract operations
+in `config/rules/rope/contracts.yaml`. The existing normalization pass resolves
+each source and destination through native module/class identities and delegates
+the complete static/class-method batch to Rope's `MoveMethod.get_class_changes`.
+Rope owns declaration regions, imports, references and semantic admission; the
+same captured-source planner and guarded publisher own the resulting file effects.
+No forwarding method, handwritten transplantation or second execution route is
+introduced. A completed transfer is a no-op only when the destination's native
+declaration owns the exact member and the original class no longer declares it.
+
 Facade composition retains direct imports of discovered component declarations;
 the renderer does not redirect them through private-family package exports.
 Existing behavioral base chains retain their native C3 ordering. This is not a
@@ -1108,6 +1139,9 @@ planned project view. Local scope, value shadowing, module-as-base, cyclic route
 and unknown bindings retain their native failure; spelling alone never proves
 that a base can be dropped. No private import or live-disk replacement may bypass
 that public source provenance.
+Runtime-base regression cases share parameterized public discovery calls for
+known/unknown guard bindings and non-class rebinding; consolidation
+retains every successful identity and original failure boundary.
 Upstream import bindings follow [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) Decision 10: preserve a used bare letter
 or a source-proven existing alias according to the declaration's header references.
 A later publication of the package's own letter does not alone require aliasing the
@@ -1418,6 +1452,10 @@ the original process status and verbatim output receipt. An empty native report,
 unexplained findings exit, unauthenticated diagnostic, stderr failure, timeout or
 signal never qualifies. Operational errors always fail the displayed gate verdict;
 a green Markdown row cannot override an error in the original typed SARIF summary.
+The Ruff parser authenticates each native result once and retains an operational
+diagnostic for an unexplained exit. Outcome classification consumes those same
+admitted remaining diagnostics; it does not parse the native report or repeat the
+semantic identity scan. Native error guards and the original receipt remain intact.
 Receipt admission continues to consume that same phase-specific report and its
 original byte bindings, never a fabricated receipt or an older green invocation.
 
@@ -2229,9 +2267,9 @@ the clock's existing publication contract. Profiling does not replace an import
 failure with success or enlarge the generation deadline.
 `FLEXT_INFRA_PROFILE_CHILDREN=1` selects child-consumer captures independently of
 parent profiling, retaining the invoking verb's configured profile destination.
-It also profiles the existing preview-plan consumer before materialization, so
-source-closure cost cannot be mistaken for a slow import probe. Both consumers
-use the same clock and immutable capture publisher.
+It does not instrument preview planning or materialization. Their stage diagnostics
+identify whether a cold consumer actually launched; only launched probes produce
+child captures through the same clock and immutable capture publisher.
 
 The environment belongs to the `RUNTIME_ROOT`. A member attached as a submodule uses
 its containing Git superproject's environment. A standalone checkout or linked Git
@@ -2256,16 +2294,40 @@ borrowed from another checkout fails before candidate checks or publication.
 Candidate admission reports documentation preparation, source normalization and
 preview entry separately before launching its fresh-import probes. Their diagnostics
 identify an unfinished boundary without classifying it as successful admission.
+Child-only profiling instruments the cold consumers, leaving source-preview
+planning unprofiled so profiler overhead cannot consume the children's unchanged
+command budget before they launch. Whole-operation profiling remains owned by the
+invoking command's existing profiler.
+Governed repository planning selects the existing scaffold or existing-repository
+planner once, then passes the same typed target, workspace, configuration and
+surface contract through that owner's common call boundary.
 Focal facade generation retains its original workspace snapshot through candidate
 admission and publication. Normalized plans carry those original source witnesses,
 and staging reuses the same captured states and parsed import facts. Closing that
 snapshot after planning would force a second read and parse during admission.
 Duplicate input references are coalesced only when their captured states agree;
 publication still verifies the original witnesses through the existing writer.
+An admitted cohort is indivisible: cohort selection precedes admission, and its
+normalized plans reach check or publication together. Shared invocation witnesses
+are therefore carried once by its first normalized plan, after that plan's own
+inputs; every other plan keeps all its original inputs. Check and the existing
+publisher flatten the complete cohort before filtering pending writes, with final
+verification under the same publication lock. Reordering the complete cohort or
+keeping a no-op first plan must never drop its read set.
+Regression coverage exercises public native file verification and publication
+with real original observations: successful complete publication, reordered plans,
+no-op carriers, drift and conflicting observations. Storage counts or private
+executor methods do not establish that behavioral contract; the original public
+generation command validates admission integration.
+Reusable real-file cohort construction belongs to the existing pytest fixture
+owner; the public-behavior tests receive those validated declarations directly.
 Repository-wide and initializer generation retain those same passive read states
 and import edges in their invocation state before closing each native snapshot.
 Candidate staging consumes the original objects after closure; it does not keep
 native projects alive, reopen their sources, or elect a smaller validation scope.
+Staging elects changed-source roots before traversing their import closure. Each
+phase shares the same original read set, preserving first witnesses and ownership
+failures without recapturing sources to authorize the candidate.
 
 The conflict-marker gate consumes the explicit `GateContext.candidate_files` inventory
 of an authenticated candidate when its runtime owner is explicit. A staged source tree
@@ -3967,6 +4029,16 @@ the requested module and identity as an exception note, retaining the original
 exception and traceback; neither failed admission nor a rule is silently skipped.
 Matcher patterns give captured expressions a parenthesized grammar context;
 their authenticated source bytes and original coordinate checks stay intact.
+
+`flext-infra refactor mod --rule <id>` is the diagnostic and repair route for
+one concrete rule identity. It resolves the ID before provider generation and
+loads only the owning AST, text, CSV, or semantic rule engine; unrelated rules,
+receipts, callbacks, campaigns, and generated providers do not enter its
+candidate or fixed-point verification. The same resolved identity governs
+`--check`, `--dry-run`, and fix mode. Empty, ambiguous, partition, duplicate,
+or unknown IDs fail before source observation or publication. Plain `make mod`
+remains the complete-catalog convergence route and is not weakened by the
+single-rule command.
 
 Facade consumer discovery resolves each native Rope `ImportedModule` once within
 the current source file. Repeated occurrences retain their binding and owner checks;

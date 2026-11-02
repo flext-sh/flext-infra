@@ -18,55 +18,51 @@ if TYPE_CHECKING:
     from flext_infra import config, infra, settings
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
-    from tests.constants_scan import TestsFlextInfraConstantsScanMixin
+    from tests.constants_scan import TestsFlextInfraConstantsScan
     from tests.models import TestsFlextInfraModels, m
     from tests.protocols import TestsFlextInfraProtocols, p
     from tests.typings import TestsFlextInfraTypes, t
     from tests.utilities import TestsFlextInfraUtilities, u
-    from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
+    from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
     from tests.utilities_conform import TestsFlextInfraUtilitiesConform
-    from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
-    from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
-    from tests.utilities_fixture_project import (
-        TestsFlextInfraUtilitiesProjectFixtureMixin,
-    )
-    from tests.utilities_fixture_tooling import (
-        TestsFlextInfraUtilitiesToolingFixtureMixin,
-    )
+    from tests.utilities_deps import TestsFlextInfraUtilitiesDeps
+    from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixture
+    from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
+    from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
     from tests.utilities_fixture_workspace import (
-        TestsFlextInfraUtilitiesWorkspaceFixtureMixin,
+        TestsFlextInfraUtilitiesWorkspaceFixture,
     )
-    from tests.utilities_gates import TestsFlextInfraUtilitiesGatesMixin
-    from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
-    from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGitMixin
-    from tests.utilities_promoted import TestsFlextInfraUtilitiesPromotedMixin
-    from tests.utilities_release import TestsFlextInfraUtilitiesReleaseMixin
-    from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
-    from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
+    from tests.utilities_gates import TestsFlextInfraUtilitiesGates
+    from tests.utilities_git import TestsFlextInfraUtilitiesGit
+    from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGit
+    from tests.utilities_promoted import TestsFlextInfraUtilitiesPromoted
+    from tests.utilities_release import TestsFlextInfraUtilitiesRelease
+    from tests.utilities_toml import TestsFlextInfraUtilitiesToml
+    from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
 
 
 __all__: tuple[str, ...] = (
     "TestsFlextInfraConstants",
-    "TestsFlextInfraConstantsScanMixin",
+    "TestsFlextInfraConstantsScan",
     "TestsFlextInfraModels",
     "TestsFlextInfraProtocols",
     "TestsFlextInfraServiceBase",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
-    "TestsFlextInfraUtilitiesCodegenMixin",
+    "TestsFlextInfraUtilitiesCodegen",
     "TestsFlextInfraUtilitiesConform",
-    "TestsFlextInfraUtilitiesDepsMixin",
-    "TestsFlextInfraUtilitiesDocsFixtureMixin",
-    "TestsFlextInfraUtilitiesGatesMixin",
-    "TestsFlextInfraUtilitiesGitMixin",
-    "TestsFlextInfraUtilitiesHermeticGitMixin",
-    "TestsFlextInfraUtilitiesProjectFixtureMixin",
-    "TestsFlextInfraUtilitiesPromotedMixin",
-    "TestsFlextInfraUtilitiesReleaseMixin",
-    "TestsFlextInfraUtilitiesTomlMixin",
-    "TestsFlextInfraUtilitiesToolingFixtureMixin",
-    "TestsFlextInfraUtilitiesWorkspaceEnvMixin",
-    "TestsFlextInfraUtilitiesWorkspaceFixtureMixin",
+    "TestsFlextInfraUtilitiesDeps",
+    "TestsFlextInfraUtilitiesDocsFixture",
+    "TestsFlextInfraUtilitiesGates",
+    "TestsFlextInfraUtilitiesGit",
+    "TestsFlextInfraUtilitiesHermeticGit",
+    "TestsFlextInfraUtilitiesProjectFixture",
+    "TestsFlextInfraUtilitiesPromoted",
+    "TestsFlextInfraUtilitiesRelease",
+    "TestsFlextInfraUtilitiesToml",
+    "TestsFlextInfraUtilitiesToolingFixture",
+    "TestsFlextInfraUtilitiesWorkspaceEnv",
+    "TestsFlextInfraUtilitiesWorkspaceFixture",
     "api",
     "c",
     "config",
@@ -93,26 +89,26 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "TestsFlextInfraConstants": ".constants",
-        "TestsFlextInfraConstantsScanMixin": ".constants_scan",
+        "TestsFlextInfraConstantsScan": ".constants_scan",
         "TestsFlextInfraModels": ".models",
         "TestsFlextInfraProtocols": ".protocols",
         "TestsFlextInfraServiceBase": ".base",
         "TestsFlextInfraTypes": ".typings",
         "TestsFlextInfraUtilities": ".utilities",
-        "TestsFlextInfraUtilitiesCodegenMixin": ".utilities_codegen",
+        "TestsFlextInfraUtilitiesCodegen": ".utilities_codegen",
         "TestsFlextInfraUtilitiesConform": ".utilities_conform",
-        "TestsFlextInfraUtilitiesDepsMixin": ".utilities_deps",
-        "TestsFlextInfraUtilitiesDocsFixtureMixin": ".utilities_fixture_docs",
-        "TestsFlextInfraUtilitiesGatesMixin": ".utilities_gates",
-        "TestsFlextInfraUtilitiesGitMixin": ".utilities_git",
-        "TestsFlextInfraUtilitiesHermeticGitMixin": ".utilities_hermetic_git",
-        "TestsFlextInfraUtilitiesProjectFixtureMixin": ".utilities_fixture_project",
-        "TestsFlextInfraUtilitiesPromotedMixin": ".utilities_promoted",
-        "TestsFlextInfraUtilitiesReleaseMixin": ".utilities_release",
-        "TestsFlextInfraUtilitiesTomlMixin": ".utilities_toml",
-        "TestsFlextInfraUtilitiesToolingFixtureMixin": ".utilities_fixture_tooling",
-        "TestsFlextInfraUtilitiesWorkspaceEnvMixin": ".utilities_workspace_env",
-        "TestsFlextInfraUtilitiesWorkspaceFixtureMixin": ".utilities_fixture_workspace",
+        "TestsFlextInfraUtilitiesDeps": ".utilities_deps",
+        "TestsFlextInfraUtilitiesDocsFixture": ".utilities_fixture_docs",
+        "TestsFlextInfraUtilitiesGates": ".utilities_gates",
+        "TestsFlextInfraUtilitiesGit": ".utilities_git",
+        "TestsFlextInfraUtilitiesHermeticGit": ".utilities_hermetic_git",
+        "TestsFlextInfraUtilitiesProjectFixture": ".utilities_fixture_project",
+        "TestsFlextInfraUtilitiesPromoted": ".utilities_promoted",
+        "TestsFlextInfraUtilitiesRelease": ".utilities_release",
+        "TestsFlextInfraUtilitiesToml": ".utilities_toml",
+        "TestsFlextInfraUtilitiesToolingFixture": ".utilities_fixture_tooling",
+        "TestsFlextInfraUtilitiesWorkspaceEnv": ".utilities_workspace_env",
+        "TestsFlextInfraUtilitiesWorkspaceFixture": ".utilities_fixture_workspace",
         "api": "flext_tests",
         "c": ".constants",
         "config": "flext_infra",

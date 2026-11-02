@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class TestsFlextInfraConstantsScanMixin:
+class TestsFlextInfraConstantsScan:
     """Log and scanner fixture patterns."""
 
     LOG_NOISE_LINES: ClassVar[Sequence[str]] = (
@@ -52,4 +52,4 @@ class TestsFlextInfraConstantsScanMixin:
     SCANNER_HELLO_RE: ClassVar[t.RegexPattern] = _re.compile(r"hello", _re.MULTILINE)
 
 
-__all__: list[str] = ["TestsFlextInfraConstantsScanMixin"]
+__all__: list[str] = ["TestsFlextInfraConstantsScan"]

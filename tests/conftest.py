@@ -17,7 +17,7 @@ import pytest
 
 from flext_infra import config, p
 from flext_infra.services.cli_mod_progress import FlextInfraCliModProgress
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 # The installed flext-tests pytest11 plugin owns the shared fixture set; these
 # remaining project plugins own the infra-specific fixtures during migration.
@@ -35,6 +35,39 @@ _TRACKED_CODEGEN_CONFIG_PATH = (
 )
 _SESSION_ISOLATION = pytest.StashKey[ExitStack]()
 _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
+
+
+@pytest.fixture
+def codegen_admission_cohort(
+    infra_git_repo: Path,
+) -> tuple[tuple[m.Infra.CodegenFilePlan, ...], m.Cli.AtomicFileState]:
+    """Provide real effects with an unchanged shared-observation carrier.
+
+    Returns:
+        The complete cohort and original shared input observation.
+
+    """
+    root = infra_git_repo
+    u.Tests.standalone_workspace(root, config.Infra.name)
+    shared = root / "observed.txt"
+    shared.write_text("observed\n", encoding=c.DEFAULT_ENCODING)
+    captured = tm.ok(u.Cli.atomic_read_binary_file_state(shared, required=True))
+    files: list[m.Infra.CodegenFilePlan] = []
+    for name, desired in (("unchanged.txt", b"before\n"), ("changed.txt", b"after\n")):
+        path = root / name
+        path.write_bytes(b"before\n")
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+        files.append(
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=path,
+                before=before,
+                desired_content=desired,
+                desired_mode=before.mode,
+                inputs=(captured,) if not files else (),
+            )
+        )
+    return tuple(files), captured
 
 
 @pytest.fixture

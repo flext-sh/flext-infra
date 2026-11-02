@@ -22,6 +22,40 @@ if TYPE_CHECKING:
 class FlextInfraModelsCodemod:
     """Typed contracts for native codemod scans and mutation reports."""
 
+    class RopeSignatureAddition(m.ContractModel):
+        """Required keyword propagation elected by native caller identities."""
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Stable addition identity")]
+        target: Annotated[
+            t.NonEmptyStr, m.Field(description="Native qualified function declaration")
+        ]
+        parameter: Annotated[
+            t.NonEmptyStr, m.Field(description="Required keyword parameter name")
+        ]
+        annotation: Annotated[
+            t.NonEmptyStr, m.Field(description="Origin-owned annotation expression")
+        ]
+        call_values: Annotated[
+            Mapping[str, str],
+            m.Field(description="Caller declaration identity to argument expression"),
+        ]
+
+    class RopeMethodTransfer(m.ContractModel):
+        """An existing class receiving native static or class declarations."""
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Stable transfer identity")]
+        destination: Annotated[
+            tuple[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(description="Destination module and existing qualified class"),
+        ]
+        methods: Annotated[
+            tuple[tuple[t.NonEmptyStr, t.NonEmptyStr], ...],
+            m.Field(
+                min_length=1,
+                description="Source module and qualified method pairs",
+            ),
+        ]
+
     class ContractAdmissionOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Independent native admission selectors for one contract planning pass."""
 
@@ -30,6 +64,12 @@ class FlextInfraModelsCodemod:
         )
         class_alias_only: bool = m.Field(
             default=False, description="Limit admission to class-alias contracts"
+        )
+        signature_additions: Sequence[FlextInfraModelsCodemod.RopeSignatureAddition] = (
+            m.Field(default=(), description="Native additions in this same source pass")
+        )
+        method_transfers: Sequence[FlextInfraModelsCodemod.RopeMethodTransfer] = (
+            m.Field(default=(), description="Native transfers in this same source pass")
         )
 
     class AstGrepCapture(FlextInfraModelsBase.FrozenArbitrary):
@@ -430,6 +470,12 @@ class FlextInfraModelsCodemod:
             Sequence[FlextInfraModelsCodemod.RopeContractRule],
             m.Field(description="Ordered, identity-constrained Rope contract rules"),
         ]
+        signature_additions: Sequence[FlextInfraModelsCodemod.RopeSignatureAddition] = (
+            m.Field(default=(), description="Ordered native required keyword additions")
+        )
+        method_transfers: Sequence[FlextInfraModelsCodemod.RopeMethodTransfer] = (
+            m.Field(default=(), description="Ordered native method ownership transfers")
+        )
 
     class ModFixtureDirectories(FlextInfraModelsBase.FrozenArbitrary):
         """Validated physical directories selected by one ast-grep owner."""

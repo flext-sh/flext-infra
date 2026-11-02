@@ -13,7 +13,21 @@ from flext_infra import c, p, t
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeBase
 
 
-class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
+class FlextInfraUtilitiesRopeRuntimeScopes(FlextInfraUtilitiesRopeRuntimeBase):
+    """Expose lexical-scope predicates for native Rope values."""
+
+    @classmethod
+    def native_scope(cls, value: p.AttributeProbe) -> TypeGuard[p.Infra.RopeScope]:
+        """Admit lexical scopes through their native SDK ancestry.
+
+        Returns:
+            Whether the object belongs to Rope's declared Scope hierarchy.
+
+        """
+        return isinstance(value, cls.runtime_type("rope.base.pyscopes", "Scope"))
+
+
+class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeScopes):
     """Expose typed predicates for Rope runtime objects."""
 
     @classmethod

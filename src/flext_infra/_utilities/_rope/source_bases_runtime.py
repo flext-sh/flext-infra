@@ -1732,64 +1732,35 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self,
             module: t.Infra.RopeSemanticModule,
         ) -> Mapping[str, m.Infra.SourceClassReference]:
-            """Read a provider's declared lazy aliases from its native source module.
-
-            An uncaptured candidate view can shadow the physical initializer
-            with empty bytes; the physical raw disk is the lazy SSOT fallback
-            when the candidate text declares no installer at all.
+            """Read lazy aliases from the provider's authenticated native candidate.
 
             Returns:
                 Declared provider modules keyed by their lazy aliases.
 
+            Raises:
+                TypeError: A source-backed provider has no native source module.
+
             """
             declaring = module.get_module()
             if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
-                # An abstract package election has no source module of its
-                # own; its initializer on the raw disk is the lazy SSOT.
                 outer = module.get_resource()
                 if outer is None:
                     return {}
-                folder = (
-                    Path(outer.real_path)
-                    if outer.is_folder()
-                    else Path(outer.real_path).parent
+                declaring = FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                    self._project, outer
                 )
-                init_path = folder / c.Infra.INIT_PY
-                if not init_path.is_file():
-                    return {}
-                return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
-                    self._provider_name(module),
-                    init_path,
-                    init_path.read_text(encoding=c.DEFAULT_ENCODING, errors="replace"),
-                    project=self._project,
-                    pymodule=None,
-                )
+                if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
+                    message = "Source-backed provider has no native source module"
+                    raise TypeError(message)
             resource = declaring.get_resource()
             if resource is None:
                 return {}
-            source = declaring.source_code
-            used_disk = False
-            if "install_lazy_exports" not in source and resource.exists():
-                # A cached candidate view can trail the latest projection:
-                # when the candidate declares no installer at all, the raw
-                # disk initializer is the lazy SSOT and its text parses
-                # standalone (no candidate snapshot to diff). Preferring the
-                # disk unconditionally re-widens the walk into foreign
-                # runtime lineages and re-triggers candidate-epoch splices.
-                physical = Path(resource.real_path)
-                if physical.is_file():
-                    disk = physical.read_text(
-                        encoding=c.DEFAULT_ENCODING, errors="replace"
-                    )
-                    if "install_lazy_exports" in disk:
-                        source = disk
-                        used_disk = True
             return FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
                 self._provider_name(module),
                 Path(resource.real_path),
-                source,
+                declaring.source_code,
                 project=self._project,
-                pymodule=None if used_disk else declaring,
+                pymodule=declaring,
             )
 
         def _star_reexporter(
@@ -2423,8 +2394,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._active.add(identity)
             parents = self._bases(identity)
             if len(set(parents)) != len(parents):
-                message = f"Duplicate class base: {identity}"
+                repeated = sorted(
+                    parent for parent in set(parents) if parents.count(parent) > 1
+                )
+                message = f"Duplicate class base: {identity}; repeated={repeated!r}"
                 raise ValueError(message)
+            parents = tuple(
+                parent
+                for index, parent in enumerate(parents)
+                if not any(
+                    parent in self._linearize(previous)[1:]
+                    for previous in parents[:index]
+                )
+            )
             linearization = self._c3_merge(identity, parents)
             self._active.remove(identity)
             self._linearizations[identity] = linearization

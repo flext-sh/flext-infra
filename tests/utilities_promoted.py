@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsFlextInfraUtilitiesPromotedMixin:
+class TestsFlextInfraUtilitiesPromoted:
     """Promoted-command builders shared by the promoted test modules.
 
     The builder is declared here, not beside one test, because two promoted
@@ -54,4 +54,4 @@ class TestsFlextInfraUtilitiesPromotedMixin:
         )
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesPromotedMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesPromoted"]

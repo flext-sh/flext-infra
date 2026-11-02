@@ -13,13 +13,13 @@ from typing import TYPE_CHECKING
 from flext_infra import infra
 from flext_infra.deps import FlextInfraConfigFixer
 from tests import c, m, tm
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
+from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
 
 if TYPE_CHECKING:
     from flext_infra.gates.base_gate import FlextInfraGates
 
 
-class TestsFlextInfraUtilitiesGatesMixin:
+class TestsFlextInfraUtilitiesGates:
     """Typed quality-gate execution and enforcement fixture helpers."""
 
     @staticmethod
@@ -71,7 +71,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         gate = gate_class(tmp_path)
         result = gate.check(
             project_dir,
-            TestsFlextInfraUtilitiesGatesMixin.gate_context(tmp_path),
+            TestsFlextInfraUtilitiesGates.gate_context(tmp_path),
         )
         tm.that(result.result.passed, eq=passed)
         tm.that(len(result.issues), eq=issues_len)
@@ -149,7 +149,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         resolved_gates: Mapping[str, m.Infra.GateExecution] = (
             gates
             if gates is not None
-            else {"lint": TestsFlextInfraUtilitiesGatesMixin.create_gate_execution()}
+            else {"lint": TestsFlextInfraUtilitiesGates.create_gate_execution()}
         )
         result: m.Infra.ProjectResult = m.Infra.ProjectResult.model_validate({
             "project": name,
@@ -193,7 +193,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         return gate.check(
             project_dir,
             ctx
-            or TestsFlextInfraUtilitiesGatesMixin.create_gate_context(
+            or TestsFlextInfraUtilitiesGates.create_gate_context(
                 repository_root,
                 reports_dir=reports_dir,
             ),
@@ -218,7 +218,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         values.update(repository_root=workspace, rules=rules)
         if kinds is not None:
             values["kinds"] = kinds
-        TestsFlextInfraUtilitiesToolingFixtureMixin.provision_checkout(workspace)
+        TestsFlextInfraUtilitiesToolingFixture.provision_checkout(workspace)
         return tm.ok(infra.census(m.Infra.CensusInput.model_validate(values)))
 
     @staticmethod
@@ -234,4 +234,4 @@ class TestsFlextInfraUtilitiesGatesMixin:
         ]
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesGatesMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesGates"]

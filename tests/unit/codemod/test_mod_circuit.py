@@ -388,8 +388,8 @@ class TestsFlextInfraModCliRoute:
         tm.ok(updated.startswith("from __future__ import annotations"))
 
     @staticmethod
-    def test_scan_keeps_prefix_rule_ids_exact(mod_workspace: Path) -> None:
-        """Test scan keeps prefix rule ids exact."""
+    def test_mod_rule_keeps_prefix_rule_ids_exact(mod_workspace: Path) -> None:
+        """The public mod selector elects only its exact requested rule ID."""
         config_path = mod_workspace / c.Infra.CODEMOD_CONFIG_RELPATH
         rules_root = config_path.parent / c.Cli.RULES_DIR_NAME
         first_rule = rules_root / "rewire-first.yml"
@@ -401,6 +401,12 @@ class TestsFlextInfraModCliRoute:
                 config_path,
                 f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
                 f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\n",
+            ),
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / "config" / "codegen.yaml",
+                "Infra:\n  codegen:\n    repository:\n      kind: internal_flext\n",
             ),
         )
         tm.ok(
@@ -457,6 +463,8 @@ class TestsFlextInfraModCliRoute:
             "--repository-root",
             str(mod_workspace),
             "--check",
+            "--rule",
+            "rewire-first",
         ])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
@@ -469,14 +477,13 @@ class TestsFlextInfraModCliRoute:
         )
 
         tm.that(exit_code, ne=0)
-        tm.that(report.findings, eq=2)
+        tm.that(report.findings, eq=1)
         tm.that(report.actionable, eq=1)
-        tm.that(report.detection_only, eq=1)
+        tm.that(report.detection_only, eq=0)
         tm.that(
             {entry.rule_id: entry.rule_file for entry in report.entries},
             eq={
                 "rewire-first": str(first_rule.resolve()),
-                "rewire-first-message": str(second_rule.resolve()),
             },
         )
 

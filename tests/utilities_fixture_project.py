@@ -24,7 +24,7 @@ FIXTURE_PROVIDER_BASE_URL = "https://github.com/flext-sh"
 WORKSPACE_MANIFEST_VERSION = 3
 
 
-class TestsFlextInfraUtilitiesProjectFixtureMixin:
+class TestsFlextInfraUtilitiesProjectFixture:
     """Typed project identity, spec, and manifest-seed fixture helpers."""
 
     @dataclasses.dataclass(frozen=True)
@@ -52,7 +52,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The resulting ``m.Infra.ProjectInfo``.
 
         """
-        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
+        fixture = TestsFlextInfraUtilitiesProjectFixture
         resolved_traits = fixture.ProjectInfoTraits() if traits is None else traits
         return m.Infra.ProjectInfo(
             name=name,
@@ -108,7 +108,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The resulting ``str``.
 
         """
-        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
+        fixture = TestsFlextInfraUtilitiesProjectFixture
         if distribution is None:
             distribution = config.Infra.codegen.infra_repository.distribution
         distribution = canonicalize_name(distribution)
@@ -125,10 +125,10 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The fixture's declared integration line (provider + branch).
 
         """
-        provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
+        provider = TestsFlextInfraUtilitiesProjectFixture.provider()
         return m.Infra.WorkspaceIntegrationSpec(
             provider=provider.name,
-            branch=TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+            branch=TestsFlextInfraUtilitiesProjectFixture.provider_branch(),
         )
 
     @staticmethod
@@ -149,7 +149,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The resulting ``m.Infra.WorkspaceSpec``.
 
         """
-        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
+        fixture = TestsFlextInfraUtilitiesProjectFixture
         return m.Infra.WorkspaceSpec(
             name=repository.name,
             beads=fixture.beads_project(repository.name),
@@ -185,7 +185,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The resulting ``m.Infra.RepositoryRef``.
 
         """
-        provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
+        provider = TestsFlextInfraUtilitiesProjectFixture.provider()
         resolved_path = Path() if path is None else path
         is_declared_repository = bool(resolved_path.parts)
         resolved_role = role or (
@@ -233,11 +233,11 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         package_name = name.replace("-", "_")
         class_stem = u.derive_class_stem(name)
         homepage = (
-            f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider().base_url.rstrip('/')}/"
+            f"{TestsFlextInfraUtilitiesProjectFixture.provider().base_url.rstrip('/')}/"
             f"{name}"
         )
         return m.Infra.ProjectSpec(
-            flext_source=TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source(),
+            flext_source=TestsFlextInfraUtilitiesProjectFixture.flext_source(),
             package_name=package_name,
             class_stem=class_stem,
             namespace=class_stem.removeprefix("Flext") or class_stem,
@@ -317,7 +317,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The resulting ``Path``.
 
         """
-        provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
+        provider = TestsFlextInfraUtilitiesProjectFixture.provider()
         manifest = repository / "config" / "workspace.yaml"
         manifest.parent.mkdir(parents=True, exist_ok=True)
         resolved_url = url or (f"{provider.base_url.rstrip('/')}/{distribution}.git")
@@ -339,7 +339,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             "  read_only: false\n",
             encoding="utf-8",
         )
-        TestsFlextInfraUtilitiesProjectFixtureMixin.declare_governed_kind(repository)
+        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(repository)
         return manifest
 
     @staticmethod
@@ -350,7 +350,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         own ``config/codegen.yaml`` and fail closed without it; every governed
         fixture root declares it there, exactly as a real FLEXT checkout does.
         """
-        TestsFlextInfraUtilitiesProjectFixtureMixin.override_repository_declaration(
+        TestsFlextInfraUtilitiesProjectFixture.override_repository_declaration(
             repository,
             {"kind": c.Infra.ProjectKind.INTERNAL_FLEXT.value},
         )
@@ -384,7 +384,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The resulting ``Path``.
 
         """
-        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
+        fixture = TestsFlextInfraUtilitiesProjectFixture
         provider = fixture.provider()
         path = repository / c.Infra.GITMODULES
         path.write_text(
@@ -407,7 +407,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             The resulting ``Path``.
 
         """
-        return TestsFlextInfraUtilitiesProjectFixtureMixin.write_beads_project(
+        return TestsFlextInfraUtilitiesProjectFixture.write_beads_project(
             project_dir,
             workspace=name,
             database=name,
@@ -420,7 +420,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         package = project_dir / "src" / name.replace("-", "_")
         package.mkdir(parents=True, exist_ok=True)
         (package / "__init__.py").write_text("", encoding="utf-8")
-        TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
+        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             project_dir,
             name,
         )
@@ -439,4 +439,4 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         )
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesProjectFixtureMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesProjectFixture"]

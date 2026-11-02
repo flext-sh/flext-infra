@@ -1406,20 +1406,17 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             tuple[list[m.Infra.CodegenFilePlan], list[m.Infra.CodegenFilePlan]]
         ]
         config_spec = inputs.spec
-        if scaffold:
-            repository_plan = self._plan_scaffold_repository(
-                target=target,
-                workspace=local_workspace,
-                codegen=config_spec,
-                contract=contract,
-            )
-        else:
-            repository_plan = self._plan_existing_repository(
-                target=target,
-                workspace=local_workspace,
-                codegen=config_spec,
-                contract=contract,
-            )
+        planner = (
+            self._plan_scaffold_repository
+            if scaffold
+            else self._plan_existing_repository
+        )
+        repository_plan = planner(
+            target=target,
+            workspace=local_workspace,
+            codegen=config_spec,
+            contract=contract,
+        )
         if repository_plan.failure:
             return result_type.from_failure(repository_plan)
         governed = self._complete_governed_plans(

@@ -15,7 +15,7 @@ from flext_infra import config, u
 from tests import m, p, t
 
 
-class TestsFlextInfraUtilitiesDepsMixin:
+class TestsFlextInfraUtilitiesDeps:
     """Shared dependency-test execution and service fixture owners."""
 
     @staticmethod
@@ -73,7 +73,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
             options=m.Cli.ProcessOptions(env=environment),
         )
         if result.success:
-            TestsFlextInfraUtilitiesDepsMixin.record_dependency_command_output(
+            TestsFlextInfraUtilitiesDeps.record_dependency_command_output(
                 result.value,
             )
         return result
@@ -96,4 +96,4 @@ class TestsFlextInfraUtilitiesDepsMixin:
         return validated
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesDepsMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesDeps"]

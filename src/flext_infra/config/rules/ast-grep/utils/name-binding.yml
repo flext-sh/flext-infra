@@ -29,7 +29,38 @@ rule:
     - inside: {kind: as_pattern_target}
     - inside: {kind: global_statement}
     - inside: {kind: nonlocal_statement}
-    - inside: {kind: type_parameter, stopBy: end}
+    # Tree-sitter also calls the arguments in ``ClassVar[t.ConfigDict]``
+    # type_parameter. Only a declaration's own parameters bind names.
+    - inside:
+        kind: type
+        inside: &declared_type_parameters
+          kind: type_parameter
+          any:
+            - inside: {kind: class_definition, field: type_parameters}
+            - inside: {kind: function_definition, field: type_parameters}
+            - inside:
+                kind: generic_type
+                inside:
+                  kind: type
+                  inside: {kind: type_alias_statement, field: left}
+    # In ``T: Bound`` only the first type binds; Bound remains a free use.
+    - inside:
+        kind: type
+        not:
+          follows: {kind: type}
+        inside:
+          kind: constrained_type
+          inside:
+            kind: type
+            inside: *declared_type_parameters
+    - inside:
+        kind: type
+        inside: {kind: type_alias_statement, field: left}
+    - inside:
+        kind: generic_type
+        inside:
+          kind: type
+          inside: {kind: type_alias_statement, field: left}
     - inside: {kind: case_pattern, stopBy: end}
     - inside:
         any: [{kind: pattern_list}, {kind: tuple_pattern}, {kind: list_pattern}]

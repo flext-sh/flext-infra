@@ -71,7 +71,11 @@ class TestsFlextInfraGeneratedRuntime:
         directory = package / family.directory
         directory.mkdir(parents=True, exist_ok=True)
         sources = {
-            directory / c.Infra.INIT_PY: "__all__ = []\n",
+            directory / c.Infra.INIT_PY: (
+                "from .first import FirstPart\n"
+                "from .second import SecondPart\n"
+                "__all__ = ['FirstPart', 'SecondPart']\n"
+            ),
             directory / "first.py": (
                 "class FirstPart:\n"
                 "    @staticmethod\n"
@@ -85,10 +89,13 @@ class TestsFlextInfraGeneratedRuntime:
                 "__all__ = ['SecondPart']\n"
             ),
             package / c.Infra.UTILITIES_PY: (
-                f"from {package.name}.{family.directory}.first import FirstPart\n"
-                f"from {package.name}.{family.directory}.second import SecondPart\n"
+                c.Infra.AUTOGEN_HEADER
+                + "\nfrom pathlib import Path\n"
+                + f"from {package.name}.{family.directory} import FirstPart, "
+                "SecondPart\n"
                 "class Utilities(FirstPart, SecondPart): pass\n"
                 "u = Utilities\n"
+                "def foreign(value): return Path(value)\n"
                 "__all__ = ['Utilities', 'u']\n"
             ),
             package / c.Infra.INIT_PY: ("from .utilities import u\n__all__ = ['u']\n"),
@@ -97,11 +104,16 @@ class TestsFlextInfraGeneratedRuntime:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
         rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.UTILITIES_PY, rendered))
+        tm.ok(
+            u.Cli.atomic_write_text_file(directory / c.Infra.INIT_PY, "__all__ = []\n")
+        )
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name} import u\n"
             "assert u.first() == 'first'\n"
-            "assert u.second() == 'second'\n",
+            "assert u.second() == 'second'\n"
+            f"from {package.name}.utilities import foreign\n"
+            "assert foreign('native-path').name == 'native-path'\n",
             cwd=root,
         )
 

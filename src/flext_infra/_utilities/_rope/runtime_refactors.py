@@ -14,7 +14,11 @@ from flext_cli import u
 
 from flext_infra import m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeMatching
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeRuntimeMatching,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatching):
@@ -303,6 +307,236 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             message = "Rope InlineVariable does not satisfy its native contract"
             raise TypeError(message)
         return inline.get_changes(remove=remove, resources=list(resources), docs=False)
+
+    @classmethod
+    def signature_addition_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        addition: m.Infra.RopeSignatureAddition,
+        paths: Sequence[Path],
+    ) -> p.Infra.RopeChangeSet:
+        """Propagate one required keyword through native declaration identities.
+
+        Returns:
+            Unapplied native changes over the captured consumer resources.
+
+        Raises:
+            TypeError: If the SDK exposes no valid signature planning contract.
+            ValueError: If a declaration or caller has no exact native owner.
+
+        """
+        binding = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+            project, addition.target
+        )
+        target = binding.get_object()
+        module, _line = binding.get_definition_location()
+        resource = None if module is None else module.get_resource()
+        if (
+            not FlextInfraUtilitiesRopeRuntimeTypes.py_function(target)
+            or resource is None
+        ):
+            message = f"{addition.id}: signature target has no function source"
+            raise ValueError(message)
+        resource, offset = cls._declaration_position(
+            project, binding, paths, f"{addition.id}: signature declaration"
+        )
+
+        callers = {
+            FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                project, name
+            ).get_object(): value
+            for name, value in addition.call_values.items()
+        }
+
+        def call_value(
+            caller: p.Infra.RopePyModule, occurrence: p.Infra.RopeOccurrence
+        ) -> str:
+            scope = caller.get_scope().get_inner_scope_for_line(occurrence.lineno)
+            while scope is not None:
+                if scope.pyobject in callers:
+                    return callers[scope.pyobject]
+                scope = scope.parent
+            message = (
+                f"{addition.id}: no native caller value for "
+                f"{caller.get_name()}:{occurrence.lineno}"
+            )
+            raise ValueError(message)
+
+        change = cls.runtime_callable(
+            "rope.refactor.change_signature", "ArgumentAdder"
+        )(
+            0,
+            addition.parameter,
+            value=call_value,
+            keyword_only=True,
+            annotation=addition.annotation,
+        )
+        planner = cls.runtime_callable(
+            "rope.refactor.change_signature", "ChangeSignature"
+        )(project, resource, offset)
+        get_changes = getattr(planner, "get_changes", None)
+        if not callable(get_changes):
+            message = "Rope ChangeSignature exposes no native planning contract"
+            raise TypeError(message)
+        changes = get_changes(
+            [change],
+            resources=[
+                FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
+                for path in paths
+            ],
+        )
+        if not isinstance(changes, p.Infra.RopeChangeSet):
+            message = "Rope ChangeSignature returned an invalid change set"
+            raise TypeError(message)
+        return changes
+
+    @classmethod
+    def _declaration_position(
+        cls,
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        paths: Sequence[Path],
+        label: str,
+    ) -> tuple[p.Infra.RopeResource, int]:
+        """Retain a unique native declaration occurrence inside captured sources.
+
+        Returns:
+            The source resource and its native declaration-name offset.
+
+        Raises:
+            ValueError: A declaration lacks captured source or a unique occurrence.
+
+        """
+        target = cls.require_named_object(binding.get_object(), label)
+        module, _line = binding.get_definition_location()
+        resource = None if module is None else module.get_resource()
+        if resource is None:
+            message = f"{label} has no source"
+            raise ValueError(message)
+        if Path(resource.real_path).resolve() not in paths:
+            message = f"{label} is outside captured sources"
+            raise ValueError(message)
+        definitions = tuple(
+            occurrence.get_word_range()[0]
+            for occurrence in cls.create_occurrence_finder(
+                project, target.get_name(), binding, imports=False, in_hierarchy=False
+            ).find_occurrences(resource=resource)
+            if occurrence.is_defined()
+        )
+        if len(definitions) != 1:
+            message = f"{label} is ambiguous"
+            raise ValueError(message)
+        return resource, definitions[0]
+
+    @classmethod
+    def method_transfer_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        transfer: m.Infra.RopeMethodTransfer,
+        paths: Sequence[Path],
+    ) -> p.Infra.RopeChangeSet | None:
+        """Delegate existing-class method ownership to the native SDK batch.
+
+        Returns:
+            Native unapplied changes, or None for an already completed transfer.
+
+        Raises:
+            TypeError: A native owner or SDK result violates its typed contract.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        destination = runtime.qualified_name(
+            project, transfer.destination[1], module_name=transfer.destination[0]
+        )
+        owner = destination.get_object()
+        if not types.py_class(owner):
+            message = f"{transfer.id}: destination is not a native source class"
+            raise TypeError(message)
+        destination_resource, destination_offset = cls._declaration_position(
+            project, destination, paths, f"{transfer.id}: destination"
+        )
+        moves = cls._method_transfer_moves(project, transfer, paths, owner)
+        if not moves:
+            return None
+        planner = getattr(
+            cls.runtime_type("rope.refactor.move", "MoveMethod"),
+            "get_class_changes",
+            None,
+        )
+        if not callable(planner):
+            message = "Rope MoveMethod exposes no native class-transfer contract"
+            raise TypeError(message)
+        changes = planner(
+            project,
+            moves,
+            destination_resource,
+            destination_offset,
+            resources=[runtime.file_resource_at(project, path) for path in paths],
+        )
+        if not isinstance(changes, p.Infra.RopeChangeSet):
+            message = "Rope MoveMethod returned an invalid change set"
+            raise TypeError(message)
+        return changes
+
+    @classmethod
+    def _method_transfer_moves(
+        cls,
+        project: p.Infra.RopeProject,
+        transfer: m.Infra.RopeMethodTransfer,
+        paths: Sequence[Path],
+        owner: p.Infra.RopeSourceClass,
+    ) -> list[tuple[p.Infra.RopeResource, int, str]]:
+        """Collect source-owned methods, retaining completed destination transfers.
+
+        Returns:
+            Source resource, declaration offset, and method-name triples.
+
+        Raises:
+            TypeError: A declared source owner is not a native source class.
+            ValueError: A source method is malformed or has no valid owner.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        moves: list[tuple[p.Infra.RopeResource, int, str]] = []
+        for module, qualified in transfer.methods:
+            class_name, separator, name = qualified.rpartition(".")
+            if not separator:
+                message = f"{transfer.id}: source must name a class method: {qualified}"
+                raise ValueError(message)
+            source = runtime.qualified_name(
+                project, class_name, module_name=module
+            ).get_object()
+            if not types.py_class(source):
+                message = f"{transfer.id}: source is not a native source class"
+                raise TypeError(message)
+            binding = source.get_attributes().get(name)
+            function = None if binding is None else binding.get_object()
+            if (
+                binding is not None
+                and types.py_function(function)
+                and function.get_name() == name
+                and (enclosing := function.get_scope().parent) is not None
+                and enclosing.pyobject is source
+            ):
+                resource, offset = cls._declaration_position(
+                    project, binding, paths, f"{transfer.id}: {qualified}"
+                )
+                moves.append((resource, offset, name))
+                continue
+            published = owner.get_attributes().get(name)
+            settled = None if published is None else published.get_object()
+            if (
+                not types.py_function(settled)
+                or settled.get_name() != name
+                or (enclosing := settled.get_scope().parent) is None
+                or enclosing.pyobject is not owner
+                or (binding is not None and function is not settled)
+            ):
+                message = f"{transfer.id}: source method is not owned: {qualified}"
+                raise ValueError(message)
+        return moves
 
     @classmethod
     def restructure_changes(

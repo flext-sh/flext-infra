@@ -16,7 +16,7 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm
 
 
-class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
+class TestsFlextInfraUtilitiesWorkspaceEnv:
     """Workspace profile, ignore, and process-environment helpers."""
 
     @staticmethod
@@ -73,8 +73,8 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             Every SSOT pattern whose section targets that profile.
 
         """
-        return TestsFlextInfraUtilitiesWorkspaceEnvMixin.ignore_patterns_for_profile(
-            TestsFlextInfraUtilitiesWorkspaceEnvMixin.repository_profile(root),
+        return TestsFlextInfraUtilitiesWorkspaceEnv.ignore_patterns_for_profile(
+            TestsFlextInfraUtilitiesWorkspaceEnv.repository_profile(root),
         )
 
     @staticmethod
@@ -109,4 +109,4 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
         return code == 1
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceEnvMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceEnv"]

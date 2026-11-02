@@ -67,6 +67,10 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         default=None,
         description="Optional native candidate composed before publication",
     )
+    rule_id: str | None = m.Field(
+        default=None,
+        description="Exact catalog rules selected for this isolated transaction",
+    )
     _quarantine: dict[Path, m.Infra.ModModuleQuarantine] = m.PrivateAttr(
         default_factory=dict
     )
@@ -76,7 +80,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
     @override
     def execute(self) -> p.Result[t.Cli.ResultValue]:
-        """Inspect or apply the complete rule cascade with visible phases.
+        """Inspect or apply the selected rule cascade with visible phases.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
@@ -111,7 +115,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         outcome = r[tuple[tuple[Path, ...], m.Infra.ModScanReport]]
         while True:
             with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
-                planned = u.Infra.codemod_rule_plan(snapshot)
+                planned = u.Infra.codemod_rule_plan(
+                    snapshot, rule_ids=(self.rule_id,) if self.rule_id else None
+                )
                 if planned.failure:
                     return outcome.from_failure(planned)
                 rules = u.Infra.codemod_fixture_resources(planned.value)
@@ -1125,7 +1131,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         self.rename_plan = None
         self.progress.emit(f"mod: published {len(published_paths)} source file(s)")
         rope_workspace.refresh()
-        after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+        after_ast = FlextInfraModGateEngine.scan(
+            root, fix=False, selection=(self.rule_id,) if self.rule_id else None
+        ).unwrap()
         phase_states.append(
             FlextInfraCodemodSemanticApply.source_fingerprint(root, after_ast)
         )
@@ -1137,7 +1145,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         u.Cli.atomic_verify_binary_file_states(renames.value).unwrap()
         if renames.value:
             rope_workspace.refresh()
-            after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+            after_ast = FlextInfraModGateEngine.scan(
+                root, fix=False, selection=(self.rule_id,) if self.rule_id else None
+            ).unwrap()
         return outcome.ok(
             m.Infra.ModPhaseAdvance(report=after_ast, phase_states=tuple(phase_states))
         )
@@ -1267,7 +1277,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 else:
                     self._emit_drift(f"joint iteration {iteration}", advance.drifted)
                     rope_workspace.refresh()
-                    current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+                    current = FlextInfraModGateEngine.scan(
+                        root,
+                        fix=False,
+                        selection=(self.rule_id,) if self.rule_id else None,
+                    ).unwrap()
                 continue
             current, phase_states = advance.report, advance.phase_states
             text_precondition_pending = False

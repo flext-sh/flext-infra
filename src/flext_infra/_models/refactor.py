@@ -852,9 +852,10 @@ class FlextInfraModelsRefactor(
     class ModCommand(FlextInfraModelsMixins.ScopeMixin, m.ContractModel):
         """CLI request for the shared AST, semantic, and text codemod cascade.
 
-        ``refactor mod`` performs the transformation directly: it carries no
-        apply mode and no rule selector. ``check`` and ``dry-run`` are the
-        only inspection modes; without them the invocation writes.
+        ``refactor mod`` performs the transformation directly. Supplying one
+        ``--rule`` value selects one concrete catalog identity; selection
+        resolution happens before any scan or write. ``check`` and ``dry-run``
+        are the inspection modes; without them the invocation writes.
         """
 
         check: Annotated[bool, m.Field(description="Validate without writing")] = False
@@ -869,6 +870,11 @@ class FlextInfraModelsRefactor(
         consumer_roots: tuple[Path, ...] = m.Field(
             default=(),
             description="Explicit external consumer checkout roots for this run",
+        )
+        rule_id: t.NonEmptyStr | None = m.Field(
+            default=None,
+            alias="rule",
+            description="One exact concrete codemod rule ID; omit for the full catalog",
         )
 
         @property

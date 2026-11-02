@@ -121,6 +121,14 @@ class FlextInfraModHandlers:
         root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
             request.repository_root
         )
+        if request.rule_id is not None:
+            text_rules = codemod.FlextInfraModTextGateEngine.load_rules(root)
+            if text_rules.failure:
+                return r[t.Cli.ResultValue].from_failure(text_rules)
+            if request.rule_id in {rule.rule_id for rule in text_rules.value}:
+                return codemod.FlextInfraModTextGateEngine.run(
+                    root, apply=request.apply, rule_ids=(request.rule_id,)
+                )
         selected = flext_infra.u.Infra.load_refactor_csv_campaigns(root)
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)
@@ -165,6 +173,7 @@ class FlextInfraModHandlers:
                 source_preview=source_preview,
                 repository_root=root,
                 consumer_roots=request.consumer_roots,
+                rule_id=request.rule_id,
                 rename_plan=rename_plan,
                 apply_changes=request.apply,
                 check_only=request.check,

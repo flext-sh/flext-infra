@@ -23,6 +23,13 @@ class FlextInfraModelsConfigRefactorCampaigns:
     class RenameCampaignSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One declared CSV-driven rename campaign applied by the mod verb."""
 
+        id: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^csv:[a-z0-9]+(?:-[a-z0-9]+)*$",
+                description="Stable public selector for this CSV campaign",
+            ),
+        ]
         rename_definitions: Annotated[
             bool,
             m.Field(description="Atomically rename owned declarations and references"),
@@ -134,6 +141,23 @@ class FlextInfraModelsConfigRefactorCampaigns:
                 description="Workspace-relative SemanticRenameSelections JSON input"
             ),
         ] = None
+
+        @m.model_validator(mode="after")
+        def validate_campaign_ids(self) -> Self:
+            """Require every declared campaign selector to be unique.
+
+            Returns:
+                The validated campaign specification, unchanged.
+
+            Raises:
+                ValueError: If two campaigns claim the same public selector.
+
+            """
+            ids = tuple(campaign.id for campaign in self.campaigns)
+            if len(ids) != len(set(ids)):
+                msg = "duplicate CSV campaign selector"
+                raise ValueError(msg)
+            return self
 
         @m.model_validator(mode="after")
         def validate_semantic_decisions(self) -> Self:

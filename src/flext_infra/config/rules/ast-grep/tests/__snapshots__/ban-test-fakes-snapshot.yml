@@ -76,7 +76,7 @@ snapshots:
       style: secondary
       start: 6
       end: 15
-  "class TestsFlextInfraUtilitiesTomlMixin:\n    class TomlReaderSequence(p.Infra.TomlReader):\n        pass\n":
+  "class TestsFlext#1:\n    class TomlReaderSequence(p.Infra.TomlReader):\n        pass\n":
     labels:
     - source: |-
         class TomlReaderSequence(p.Infra.TomlReader):

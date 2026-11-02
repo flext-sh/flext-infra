@@ -966,9 +966,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 tracking=file.tracking,
                 index_before=file.index_before,
                 tracking_dependencies=file.tracking_dependencies,
-                inputs=(*file.inputs, *captured),
+                inputs=(*file.inputs, *(captured if index == 0 else ())),
             )
-            for file in files
+            for index, file in enumerate(files)
         )
         return self._validated_source_plans(request, files, self.state)
 

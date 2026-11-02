@@ -201,6 +201,24 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             ),
             ("checking: bool = False", "checking", False),
             ("original = True\nchecking = original", "checking", True),
+            (
+                (
+                    "from typing import TYPE_CHECKING\n"
+                    "from os import getenv\n"
+                    "TYPE_CHECKING = bool(getenv('COLLECTOR_GUARD'))"
+                ),
+                "TYPE_CHECKING",
+                None,
+            ),
+            (
+                (
+                    "import typing\nfrom os import getenv\n"
+                    "typing = getenv('COLLECTOR_GUARD')"
+                ),
+                "typing.TYPE_CHECKING",
+                None,
+            ),
+            ("", "TYPE_CHECKING", None),
         ],
     )
     @staticmethod
@@ -209,9 +227,9 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         setup: str,
         condition: str,
         *,
-        selects_model: bool,
+        selects_model: bool | None,
     ) -> None:
-        """Only the proven runtime branch supplies the consumer's class alias."""
+        """Proven guards select a class; undecidable guards keep their failure."""
         source = u.Tests.runtime_root_import() + (
             f"{setup}\n"
             "class Model(RuntimeRoot): pass\n"
@@ -220,60 +238,24 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
             "else:\n    Alias = Plain\n"
             "class Consumer(Alias): pass\n"
         )
+        planned = {tmp_path / "src" / "runtime_guard" / "models.py": source}
+        if selects_model is None:
+            with pytest.raises(ValueError, match="Non-class binding used as a base"):
+                u.Infra.runtime_evaluated_base_classes(
+                    tmp_path, planned, u.Tests.runtime_evaluated_roots()
+                )
+            return
         expected = set(u.Tests.runtime_evaluated_roots())
         if selects_model:
             expected.add("runtime_guard.models.Alias")
         tm.that(
             u.Infra.runtime_evaluated_base_classes(
                 tmp_path,
-                {tmp_path / "src" / "runtime_guard" / "models.py": source},
+                planned,
                 u.Tests.runtime_evaluated_roots(),
             ),
             eq=tuple(sorted(expected)),
         )
-
-    @pytest.mark.parametrize(
-        ("setup", "condition"),
-        [
-            (
-                (
-                    "from typing import TYPE_CHECKING\n"
-                    "from os import getenv\n"
-                    "TYPE_CHECKING = bool(getenv('COLLECTOR_GUARD'))"
-                ),
-                "TYPE_CHECKING",
-            ),
-            (
-                (
-                    "import typing\nfrom os import getenv\n"
-                    "typing = getenv('COLLECTOR_GUARD')"
-                ),
-                "typing.TYPE_CHECKING",
-            ),
-            ("", "TYPE_CHECKING"),
-        ],
-    )
-    @staticmethod
-    def test_unknown_guard_cannot_borrow_standard_constant_semantics(
-        tmp_path: Path,
-        setup: str,
-        condition: str,
-    ) -> None:
-        """Undecidable guards retain the original ambiguous-base failure."""
-        source = u.Tests.runtime_root_import() + (
-            f"{setup}\n"
-            "class Model(RuntimeRoot): pass\n"
-            "class Plain: pass\n"
-            f"if {condition}:\n    Alias = Model\n"
-            "else:\n    Alias = Plain\n"
-            "class Consumer(Alias): pass\n"
-        )
-        with pytest.raises(ValueError, match="Non-class binding used as a base"):
-            u.Infra.runtime_evaluated_base_classes(
-                tmp_path,
-                {tmp_path / "src" / "unknown_guard" / "models.py": source},
-                u.Tests.runtime_evaluated_roots(),
-            )
 
     @pytest.mark.parametrize(
         ("setup", "mutation", "condition"),
@@ -611,29 +593,53 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         tm.fail("generated_contract" in sys.modules)
 
     @pytest.mark.parametrize(
-        ("target", "values"),
+        ("declarations", "failure"),
         [
-            ("Alias, other", "None, None"),
-            ("Alias, (other, *rest)", "None, (None, None)"),
+            (
+                (
+                    "class Alias(RuntimeRoot): pass\n"
+                    "def values(): return None, None\n"
+                    "Alias, other = values()\n"
+                    "class Consumer(Alias): pass\n"
+                ),
+                "Non-class binding used as a base",
+            ),
+            (
+                (
+                    "class Alias(RuntimeRoot): pass\n"
+                    "def values(): return None, (None, None)\n"
+                    "Alias, (other, *rest) = values()\n"
+                    "class Consumer(Alias): pass\n"
+                ),
+                "Non-class binding used as a base",
+            ),
+            (
+                (
+                    "class Origin:\n"
+                    "    class Contract(RuntimeRoot): pass\n"
+                    "class Shadow(Origin): Contract = 0\n"
+                    "class Consumer(Shadow.Contract): pass\n"
+                ),
+                "Non-class member shadows required base",
+            ),
         ],
+        ids=["unpacked", "nested-unpacked", "inherited-member"],
     )
     @staticmethod
-    def test_computed_unpacking_cannot_preserve_a_shadowed_class_base(
+    def test_non_class_rebinding_cannot_preserve_a_shadowed_class_base(
         tmp_path: Path,
-        target: str,
-        values: str,
+        declarations: str,
+        failure: str,
     ) -> None:
-        """Opaque iterable elements cannot inherit an earlier class identity."""
-        source = u.Tests.runtime_root_import() + (
-            "class Alias(RuntimeRoot): pass\n"
-            f"def values(): return {values}\n"
-            f"{target} = values()\n"
-            "class Consumer(Alias): pass\n"
-        )
-        with pytest.raises(ValueError, match="Non-class binding used as a base"):
+        """Unpacked values and inherited member stores keep their exact failure."""
+        with pytest.raises(ValueError, match=failure):
             u.Infra.runtime_evaluated_base_classes(
                 tmp_path,
-                {tmp_path / "src" / "unpacked_contract" / "models.py": source},
+                {
+                    tmp_path / "src" / "shadow_contract" / "models.py": (
+                        u.Tests.runtime_root_import() + declarations
+                    ),
+                },
                 u.Tests.runtime_evaluated_roots(),
             )
 
@@ -753,6 +759,69 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         )
 
     @staticmethod
+    def test_later_base_covered_by_prior_composite_is_not_duplicate(
+        tmp_path: Path,
+    ) -> None:
+        """C3 keeps one composite and prunes its later direct implementation."""
+        package = tmp_path / "src" / "composite_contract"
+        planned = {
+            package / "__init__.py": "from .consumer import Consumer\n",
+            package / "base.py": u.Tests.runtime_root_import()
+            + "class Base(RuntimeRoot): pass\n",
+            package
+            / "composite.py": "from .base import Base\nclass Composite(Base): pass\n",
+            package / "consumer.py": (
+                "from .base import Base\n"
+                "from .composite import Composite\n"
+                "class Consumer(Composite, Base): pass\n"
+            ),
+        }
+        tm.that(
+            u.Infra.runtime_evaluated_base_classes(
+                tmp_path, planned, u.Tests.runtime_evaluated_roots()
+            ),
+            has="composite_contract.Consumer",
+        )
+
+    @staticmethod
+    def test_facade_composite_keeps_its_alias_namespace(
+        tmp_path: Path,
+    ) -> None:
+        """A facade keeps the alias namespace without repeating its parts."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        directory = package / family.directory
+        directory.mkdir(parents=True)
+        sources = {
+            directory / "base.py": "class Base: pass\n__all__ = ['Base']\n",
+            directory / "child.py": "class Child: pass\n__all__ = ['Child']\n",
+            directory / "composer.py": (
+                "from .base import Base\n"
+                "from .child import Child\n"
+                "class Composer:\n    Base = Base\n    Child = Child\n"
+                "__all__ = ['Composer']\n"
+            ),
+            package / c.Infra.CONSTANTS_PY: (
+                "from fixture.constants import Base, Child, Composer\n"
+                "class Constants:\n"
+                "    class Fixture(Composer, Base, Child): pass\n"
+                "c = Constants\n__all__ = ['Constants', 'c']\n"
+            ),
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        with u.Infra.facade_source_project(root) as binding:
+            rendered = tm.ok(
+                u.Infra.facade_component_source(
+                    binding[0],
+                    package / c.Infra.CONSTANTS_PY,
+                    directory,
+                    family=family,
+                )
+            )
+        tm.that(rendered, has="class Fixture(Composer):")
+
+    @staticmethod
     @pytest.mark.parametrize(
         "initializer",
         [
@@ -818,21 +887,6 @@ class TestsFlextInfraRuntimeEvaluatedBaseClasses:
         )
         tm.that(aliased, eq=direct)
         tm.ok(set(u.Tests.runtime_evaluated_roots()).issubset(aliased))
-
-    @staticmethod
-    def test_value_shadowing_is_a_visible_invalid_base(tmp_path: Path) -> None:
-        source = u.Tests.runtime_root_import() + (
-            "class Origin:\n"
-            "    class Contract(RuntimeRoot): pass\n"
-            "class Shadow(Origin): Contract = 0\n"
-            "class Consumer(Shadow.Contract): pass\n"
-        )
-        with pytest.raises(ValueError, match="Non-class member shadows required base"):
-            u.Infra.runtime_evaluated_base_classes(
-                tmp_path,
-                {tmp_path / "src" / "shadow_contract" / "models.py": source},
-                u.Tests.runtime_evaluated_roots(),
-            )
 
 
 class TestsFlextInfraLazyAliasOrdering:

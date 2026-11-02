@@ -14,7 +14,7 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra.docs.auditor import FlextInfraDocAuditor
-    from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
+    from flext_infra.docs.auditor_mixin import FlextInfraDocAuditor
     from flext_infra.docs.base import FlextInfraDocServiceBase
     from flext_infra.docs.builder import FlextInfraDocBuilder
     from flext_infra.docs.collector import FlextInfraDocCollector
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 
 __all__: tuple[str, ...] = (
     "FlextInfraDocAuditor",
-    "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
     "FlextInfraDocCollector",
     "FlextInfraDocFixer",
@@ -43,7 +42,7 @@ install_lazy_exports(
     globals(),
     MappingProxyType({
         "FlextInfraDocAuditor": ".auditor",
-        "FlextInfraDocAuditorMixin": ".auditor_mixin",
+        "FlextInfraDocAuditor": ".auditor_mixin",
         "FlextInfraDocBuilder": ".builder",
         "FlextInfraDocCollector": ".collector",
         "FlextInfraDocFixer": ".fixer",

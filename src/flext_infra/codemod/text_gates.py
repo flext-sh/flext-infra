@@ -27,17 +27,19 @@ class FlextInfraModTextGateEngine:
     """Scan, apply, and prove the declarative sed-by-list rule cascade."""
 
     @classmethod
-    def run(cls, root: Path, *, apply: bool) -> p.Result[t.Cli.ResultValue]:
+    def run(
+        cls, root: Path, *, apply: bool, rule_ids: tuple[str, ...] = ()
+    ) -> p.Result[t.Cli.ResultValue]:
         """Replay only text rules through their authenticated transaction.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        pending = cls.scan(root, fix=apply, validate_receipts=True)
+        pending = cls.scan(root, fix=apply, validate_receipts=True, rule_ids=rule_ids)
         if pending.failure:
             return r[t.Cli.ResultValue].from_failure(pending)
-        remaining = cls.scan(root, fix=False)
+        remaining = cls.scan(root, fix=False, rule_ids=rule_ids)
         if remaining.failure:
             return r[t.Cli.ResultValue].from_failure(remaining)
         if remaining.value.findings:
@@ -750,6 +752,7 @@ class FlextInfraModTextGateEngine:
         *,
         sources: Mapping[Path, str] | None = None,
         validate_receipts: bool = False,
+        rule_ids: tuple[str, ...] = (),
     ) -> p.Result[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]:
         """Plan the complete text cascade without publishing any source.
 
@@ -765,7 +768,11 @@ class FlextInfraModTextGateEngine:
         actionable = 0
         for project in u.Infra.governed_project_roots(root):
             scanned = cls._scan_project(
-                project, fix=True, sources=sources, validate_receipts=validate_receipts
+                project,
+                fix=True,
+                sources=sources,
+                validate_receipts=validate_receipts,
+                rule_ids=rule_ids,
             )
             if scanned.failure:
                 return scanned
@@ -795,6 +802,7 @@ class FlextInfraModTextGateEngine:
         *,
         fix: bool,
         validate_receipts: bool = False,
+        rule_ids: tuple[str, ...] = (),
     ) -> p.Result[m.Infra.ModTextReport]:
         """Observe or publish the same complete text plan.
 
@@ -802,7 +810,7 @@ class FlextInfraModTextGateEngine:
             The observed or published report, or the first phase failure.
 
         """
-        planned = cls.plan(root, validate_receipts=validate_receipts)
+        planned = cls.plan(root, validate_receipts=validate_receipts, rule_ids=rule_ids)
         if planned.failure:
             return r[m.Infra.ModTextReport].from_failure(planned)
         report, plans = planned.value
@@ -820,6 +828,7 @@ class FlextInfraModTextGateEngine:
         fix: bool,
         validate_receipts: bool,
         sources: Mapping[Path, str] | None = None,
+        rule_ids: tuple[str, ...] = (),
     ) -> p.Result[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]:
         """Plan one member's rules using its declared distribution identity.
 
@@ -832,6 +841,14 @@ class FlextInfraModTextGateEngine:
         if context.failure:
             return outcome.from_failure(context)
         _catalogues, _identity, rules = context.value
+        if rule_ids:
+            known = {rule.rule_id for rule in rules}
+            unknown = set(rule_ids) - known
+            if unknown:
+                return outcome.fail(
+                    f"unknown text rule IDs: {', '.join(sorted(unknown))}"
+                )
+            rules = tuple(rule for rule in rules if rule.rule_id in rule_ids)
         include_issues = cls._include_issues(root, rules)
         if include_issues:
             return outcome.fail(

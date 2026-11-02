@@ -830,6 +830,9 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def consumer_roots(self) -> tuple[Path, ...]: ...
 
+        @property
+        def rule_id(self) -> str | None: ...
+
     @runtime_checkable
     class WorkspaceEnvironmentContracts(Protocol):
         """Structural contract the direnv gate consumes for static lint.

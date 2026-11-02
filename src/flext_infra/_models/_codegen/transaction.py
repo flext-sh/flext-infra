@@ -115,7 +115,9 @@ class FlextInfraModelsCodegenTransaction:
                     Path, tuple[frozenset[str], frozenset[str]]
                 ]({}),
                 exclude=True,
-                description="Captured runtime and typing import facts retained by reference",
+                description=(
+                    "Captured runtime and typing import facts retained by reference"
+                ),
             )
         )
         snapshot: (
@@ -136,10 +138,17 @@ class FlextInfraModelsCodegenTransaction:
                 This validated source-admission request.
 
             Raises:
-                ValueError: If an import fact has no original source witness.
+                ValueError: If original witnesses conflict or an import fact
+                    has no original source witness.
 
             """
-            if self.import_edges.keys() - {state.path for state in self.inputs}:
+            observed: dict[Path, m.Cli.AtomicFileState] = {}
+            for state in self.inputs:
+                previous = observed.setdefault(state.path, state)
+                if previous != state:
+                    message = f"conflicting original source witnesses: {state.path}"
+                    raise ValueError(message)
+            if self.import_edges.keys() - observed.keys():
                 message = "captured import facts require original source witnesses"
                 raise ValueError(message)
             return self

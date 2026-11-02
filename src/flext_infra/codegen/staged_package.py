@@ -14,8 +14,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory, gettempdir
 from types import MappingProxyType
 
-from flext_infra import c, config, m, p, r, settings, u
-from flext_infra._pytest import FlextInfraPytestClock
+from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -56,23 +55,7 @@ class FlextInfraStagedPackage:
 
         """
         u.Cli.info("stage=source-preview-plan state=start")
-        if settings.Infra.profile_children:
-            destination = settings.Infra.profile_output
-            if destination is None:
-                return r[T].fail(
-                    "source-preview profiling requires the command profile destination"
-                )
-
-            def failed(outcome: p.Result[m.Infra.StageSourcePlan]) -> bool:
-                return outcome.failure
-
-            planned = FlextInfraPytestClock.profile_operation(
-                lambda: self.plan_sources(workspace, updates, options=options),
-                destination.with_stem(f"{destination.stem}-preview-plan"),
-                is_failure=failed,
-            )
-        else:
-            planned = self.plan_sources(workspace, updates, options=options)
+        planned = self.plan_sources(workspace, updates, options=options)
         if planned.failure:
             return r[T].from_failure(planned)
         plan = planned.value
@@ -569,9 +552,9 @@ class FlextInfraStagedPackage:
             ]
         ]
         selected: list[m.Infra.RopeProjectLayout] = []
-        states: MutableMapping[Path, m.Cli.AtomicFileState] = {
-            state.path: state for state in inputs
-        }
+        states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        for state in inputs:
+            states.setdefault(state.path, state)
 
         def read_layout(
             provider: m.Infra.RopeProjectLayout,
@@ -585,17 +568,10 @@ class FlextInfraStagedPackage:
                 import_edges=options.import_edges,
             )
 
-        roots: list[tuple[m.Infra.RopeProjectLayout, bool]] = []
-        for path in normalized:
-            resolved = cls._source_layout(path, layouts)
-            if resolved.success:
-                roots.append((resolved.value, True))
-                continue
-            # A common Python source outside every package needs only its
-            # own original bytes: repair groups it by the workspace cwd.
-            if path.is_symlink():
-                return result_type.fail(f"candidate source is a symlink: {path}")
-            states.setdefault(path, source_project.source_state(path, required=False))
+        elected = cls._source_roots(normalized, layouts, source_project, states)
+        if elected.failure:
+            return result_type.from_failure(elected)
+        roots = elected.value
         roots.extend(cls._input_layouts(workspace, inputs, layouts))
         roots.extend(
             (layouts[name], False)
@@ -618,8 +594,37 @@ class FlextInfraStagedPackage:
         if paths.failure:
             return result_type.from_failure(paths)
         for path in paths.value:
-            states.setdefault(path, source_project.source_state(path, required=False))
+            if path not in states:
+                states[path] = source_project.source_state(path, required=False)
         return result_type.ok((selected, states))
+
+    @classmethod
+    def _source_roots(
+        cls,
+        normalized: Mapping[Path, str | None],
+        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        source_project: p.Infra.RopeProject,
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[list[tuple[m.Infra.RopeProjectLayout, bool]]]:
+        """Elect rewrite roots while preserving original common-source witnesses.
+
+        Returns:
+            Owned rewrite roots in source order, or the first symlink failure.
+
+        """
+        result_type = r[list[tuple[m.Infra.RopeProjectLayout, bool]]]
+        roots: list[tuple[m.Infra.RopeProjectLayout, bool]] = []
+        for path in normalized:
+            resolved = cls._source_layout(path, layouts)
+            if resolved.success:
+                roots.append((resolved.value, True))
+                continue
+            # Common Python sources outside packages retain their own bytes.
+            if path.is_symlink():
+                return result_type.fail(f"candidate source is a symlink: {path}")
+            if path not in states:
+                states[path] = source_project.source_state(path, required=False)
+        return result_type.ok(roots)
 
     @classmethod
     def _input_layouts(
@@ -994,8 +999,7 @@ class FlextInfraStagedPackage:
             return r[tuple[str, ...]].from_failure(paths)
         modules: list[str] = []
         source_paths = set(paths.value)
-        if updates is not None:
-            source_paths.update(updates)
+        source_paths.update(updates if updates is not None else ())
         for path in sorted(source_paths):
             if path.is_symlink():
                 return r[tuple[str, ...]].fail(f"candidate source is a symlink: {path}")
@@ -1008,23 +1012,25 @@ class FlextInfraStagedPackage:
                 )
                 states[path] = state
             content = state.content
-            rewritten = updates is not None and path in updates
+            rewritten = False
             if updates is not None and path in updates:
+                rewritten = True
                 desired = updates[path]
                 content = (
                     None if desired is None else desired.encode(c.DEFAULT_ENCODING)
                 )
             if path.suffix not in {c.Infra.EXT_PYTHON, ".pyi"} or content is None:
                 continue
-            observed_imports = import_edges.get(path)
-            if not rewritten and observed_imports is not None:
+            observed_imports = None if rewritten else import_edges.get(path)
+            if (
+                observed_imports is None
+                and not rewritten
+                and snapshot is not None
+                and cls._read_by(snapshot, path)
+            ):
+                observed_imports = u.Infra.workspace_module_imports(snapshot, path)
+            if observed_imports is not None:
                 runtime, typing = observed_imports
-                modules.extend((*runtime, *typing) if updates else runtime)
-                continue
-            if snapshot is not None and not rewritten and cls._read_by(snapshot, path):
-                # The run already parsed this unchanged source once: its edges
-                # serve every layout that reads it, instead of a second parse.
-                runtime, typing = u.Infra.workspace_module_imports(snapshot, path)
                 modules.extend((*runtime, *typing) if updates else runtime)
                 continue
             modules.extend(
@@ -1092,9 +1098,9 @@ class FlextInfraStagedPackage:
 
         """
         selected: list[m.Infra.RopeProjectLayout] = []
-        queue = [local.package_name]
+        queue = deque([local.package_name])
         while queue:
-            name = queue.pop(0)
+            name = queue.popleft()
             layout = layouts[name]
             selected.append(layout)
             owned: MutableMapping[Path, str | None] | None = None

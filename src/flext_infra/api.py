@@ -324,6 +324,7 @@ class FlextInfra(
                     check=request.check,
                     dry_run_mode=request.dry_run_mode,
                     consumer_roots=request.consumer_roots,
+                    rule_id=request.rule_id,
                 )
             )
             completed = super().mod(child_request, progress)

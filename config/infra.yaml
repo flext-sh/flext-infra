@@ -8,7 +8,8 @@ Infra:
     finalize_maintenance: true
   refactor_csv_campaigns:
     campaigns:
-      - csv: rules/mod/renames/infra-dedup.csv
+      - id: csv:infra-dedup
+        csv: rules/mod/renames/infra-dedup.csv
         bindings:
           t: [flext_infra.t, flext_core.t]
           c: [flext_infra.c, flext_core.c]

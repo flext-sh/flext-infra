@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import check, codegen, config, u
-from tests import TestsFlextInfraUtilitiesTomlMixin, c, m, t
+from tests import TestsFlextInfraUtilitiesToml, c, m, t
 
 
 class TestsFlextInfraUtilitiesConform:
@@ -136,7 +136,7 @@ class TestsFlextInfraUtilitiesConform:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        return TestsFlextInfraUtilitiesTomlMixin.codegen_file_text(makefile)
+        return TestsFlextInfraUtilitiesToml.codegen_file_text(makefile)
 
 
 __all__ = ["TestsFlextInfraUtilitiesConform"]

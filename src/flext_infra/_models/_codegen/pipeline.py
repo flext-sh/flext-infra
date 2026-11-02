@@ -181,7 +181,9 @@ class FlextInfraModelsCodegenPipeline:
             m.Field(
                 default_factory=dict[Path, tuple[frozenset[str], frozenset[str]]],
                 exclude=True,
-                description="Original runtime and typing import facts of captured sources",
+                description=(
+                    "Original runtime and typing import facts of captured sources"
+                ),
             )
         )
 

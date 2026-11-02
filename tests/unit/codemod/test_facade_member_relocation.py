@@ -78,10 +78,13 @@ class TestsFlextInfraFacadeMemberRelocation:
         # letter binds it and the receiver binds no object or the identical one.
         with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
-                snapshot.engine, sources={}
+                snapshot.engine,
+                sources=u.Infra.project_captured_sources(snapshot.engine),
             )
             _lineage, references, _names = u.Infra.facade_member_census(
-                mod_workspace, source_project=snapshot.engine
+                mod_workspace,
+                source_project=snapshot.engine,
+                resolver_factory=resolver_factory,
             )
             owners = {
                 name: u.Infra.facade_member_owner(

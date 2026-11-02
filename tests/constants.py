@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_tests import FlextTestsConstants
 
 from flext_infra import FlextInfraConstants
-from tests.constants_scan import TestsFlextInfraConstantsScanMixin
+from tests.constants_scan import TestsFlextInfraConstantsScan
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -34,7 +34,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
     All base constants from FlextTestsConstants are available through inheritance.
     """
 
-    class Tests(TestsFlextInfraConstantsScanMixin, FlextTestsConstants.Tests):
+    class Tests(TestsFlextInfraConstantsScan, FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
 
         DETECTOR_MODULE_SCENARIOS: ClassVar[Sequence[t.StrTuple]] = (

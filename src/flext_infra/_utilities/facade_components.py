@@ -21,9 +21,8 @@ from functools import partial
 from importlib.metadata import packages_distributions
 from pathlib import Path
 
-import rope.base.exceptions
 from flext_cli import u
-from rope.base import ast
+from rope.base import ast, exceptions as rope_exceptions
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -106,8 +105,9 @@ class FlextInfraUtilitiesFacadeComponents:
         )
         return u.Cli.template_render(template, context)
 
-    @staticmethod
+    @classmethod
     def facade_component_declarations(
+        cls,
         project: p.Infra.RopeProject,
         directory: Path,
     ) -> tuple[tuple[Path, p.Infra.RopeSourceClass], ...]:
@@ -144,7 +144,64 @@ class FlextInfraUtilitiesFacadeComponents:
                     and owner.get_module() is module
                 ):
                     declarations.append((path, owner))
-        return tuple(declarations)
+        alias_composers = cls._facade_namespace_alias_composers(project, declarations)
+        return tuple(
+            declaration
+            for declaration in declarations
+            if declaration[1].get_name() not in alias_composers
+        )
+
+    @staticmethod
+    def _facade_namespace_alias_composers(
+        project: p.Infra.RopeProject,
+        declarations: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
+    ) -> frozenset[str]:
+        """Exclude pure alias namespaces from flattened facade base selection.
+
+        A composer has no bases or behavior of its own and binds only exported
+        sibling parts as simple class attributes. The parts retain the flattened
+        facade contract; the composer remains independently published by its
+        own package without becoming a duplicate facade base.
+
+        Returns:
+            Names of namespace-only declarations excluded from base selection.
+
+        """
+        names = frozenset(owner.get_name() for _path, owner in declarations)
+        composers: set[str] = set()
+        by_path: dict[Path, list[p.Infra.RopeSourceClass]] = {}
+        for path, owner in declarations:
+            by_path.setdefault(path, []).append(owner)
+        for path, owners in by_path.items():
+            tree = ast.parse(project.source_text(path))
+            nodes = {
+                node.name: node for node in tree.body if isinstance(node, ast.ClassDef)
+            }
+            for owner in owners:
+                node = nodes.get(owner.get_name())
+                if node is None or node.bases:
+                    continue
+                aliases: set[str] = set()
+                for statement in node.body:
+                    if (
+                        isinstance(statement, ast.Expr)
+                        and isinstance(statement.value, ast.Constant)
+                        and isinstance(statement.value.value, str)
+                    ):
+                        continue
+                    if not (
+                        isinstance(statement, ast.Assign)
+                        and len(statement.targets) == 1
+                        and isinstance(statement.targets[0], ast.Name)
+                        and isinstance(statement.value, ast.Name)
+                        and statement.value.id in names
+                    ):
+                        aliases.clear()
+                        break
+                    aliases.add(statement.value.id)
+                if aliases:
+                    composers.add(owner.get_name())
+        return frozenset(composers)
 
     @classmethod
     def facade_domain_declarations(
@@ -603,7 +660,7 @@ class FlextInfraUtilitiesFacadeComponents:
         path: Path,
         directory: Path,
         *,
-        family: c.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily | m.Infra.FacadeFamily,
         owner_name: str | None = None,
     ) -> p.Result[str]:
         """Compose declared native providers while retaining authored source bodies.
@@ -615,12 +672,15 @@ class FlextInfraUtilitiesFacadeComponents:
             The complete unchanged-body source candidate, never a published effect.
 
         """
+        selected = c.Infra.FacadeFamily(
+            family.letter if isinstance(family, m.Infra.FacadeFamily) else family
+        )
         settled = cls._facade_settled_initializers(project, (path, directory))
         if settled.failure:
             return r[str].from_failure(settled)
         resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
         planned = cls._facade_component_plan(
-            project, path, directory, family=family, owner_name=owner_name
+            project, path, directory, family=selected, owner_name=owner_name
         )
         if planned.failure:
             return r[str].from_failure(planned)
@@ -856,7 +916,9 @@ class FlextInfraUtilitiesFacadeComponents:
             ].from_failure(resolved)
         owner, namespace = resolved.value[0], resolved.value[1]
         index = module.get_source_binding_index()
-        framed = cls._facade_namespace_bases(module, index, namespace, path)
+        framed = cls._facade_namespace_bases(
+            module, index, namespace, path, directory=directory
+        )
         if framed.failure:
             return r[
                 tuple[
@@ -883,7 +945,14 @@ class FlextInfraUtilitiesFacadeComponents:
             in namespace.get_mro()[1:]
         )
         bases = [
-            (expression, base) for expression, base in bases if base not in wrappers
+            (expression, base)
+            for expression, base in bases
+            if base not in wrappers
+            and not any(
+                base in provider.get_mro()[1:]
+                for _origin, provider in resolved.value[2]
+                if provider is not base
+            )
         ]
         aliases, alias_names = cls._facade_namespace_aliases(index, namespace)
         providers = cls._facade_admitted_providers(
@@ -1017,6 +1086,10 @@ class FlextInfraUtilitiesFacadeComponents:
         Returns:
             The owner, namespace, family declarations and their member resolver.
 
+        Raises:
+            InconsistentHierarchyError: If ``not
+                module.source_code.startswith(c.Infra.AUTOGEN_HEADER)``.
+
         """
         published = FlextInfraUtilitiesRopeAnalysisImportState.published_facade_owner(
             project,
@@ -1084,9 +1157,14 @@ class FlextInfraUtilitiesFacadeComponents:
                 project, sources=sources
             )
         )
-        namespaces = cls._facade_inherited_namespaces(
-            owner, directory, resolver_factory=resolver_factory, project=project
-        )
+        try:
+            namespaces = cls._facade_inherited_namespaces(
+                owner, directory, resolver_factory=resolver_factory, project=project
+            )
+        except rope_exceptions.InconsistentHierarchyError:
+            if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
+                raise
+            namespaces = ()
         if len(namespaces) > 1:
             message = f"Competing inherited facade namespaces: {path}"
             return result_type.fail(message)
@@ -1295,19 +1373,31 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
-        nested = tuple(
-            scope.pyobject
-            for scope in owner.get_scope().get_scopes()
-            if types.py_class(scope.pyobject)
-        )
+        rendered = owner.get_module().source_code.startswith(c.Infra.AUTOGEN_HEADER)
+        nested: list[p.Infra.RopeSourceClass] = []
+        for scope in owner.get_scope().get_scopes():
+            child = scope.pyobject
+            if not types.py_class(child):
+                continue
+            try:
+                classified = (
+                    FlextInfraUtilitiesFacadeMembers.class_kind(
+                        child,
+                        resolver_factory=resolver_factory,
+                        source_project=project,
+                    )
+                    is c.Infra.FacadeMemberKind.TYPE
+                )
+            except rope_exceptions.InconsistentHierarchyError:
+                if not rendered:
+                    raise
+                classified = True
+            if classified:
+                nested.append(child)
         return tuple(
             child
             for child in nested
-            if FlextInfraUtilitiesFacadeMembers.class_kind(
-                child, resolver_factory=resolver_factory, source_project=project
-            )
-            is c.Infra.FacadeMemberKind.TYPE
-            and (
+            if (
                 any(
                     child.get_name() in parent.get_attributes()
                     and types.abstract_class(
@@ -1330,6 +1420,8 @@ class FlextInfraUtilitiesFacadeComponents:
         index: p.Infra.RopeSourceBindingIndex,
         namespace: p.Infra.RopeSourceClass,
         path: Path,
+        *,
+        directory: Path,
     ) -> p.Result[
         tuple[
             p.Infra.RopeSourceClassLayout,
@@ -1350,11 +1442,18 @@ class FlextInfraUtilitiesFacadeComponents:
         rendered = source.startswith(c.Infra.AUTOGEN_HEADER)
         bases: list[tuple[str, p.Infra.RopePyObject]] = []
         for (start, end), binding in layout.base_bindings:
+            base = binding.get_object() if binding is not None else None
             if rendered and (
                 binding is None
-                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(
-                    binding.get_object()
-                )
+                or not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(base)
+            ):
+                continue
+            if (
+                rendered
+                and base is not None
+                and (base_module := base.get_module()) is not None
+                and (resource := base_module.get_resource()) is not None
+                and Path(resource.real_path).is_relative_to(directory)
             ):
                 continue
             if binding is None:
@@ -1648,6 +1747,12 @@ class FlextInfraUtilitiesFacadeComponents:
                 return r[
                     tuple[list[tuple[str, p.Infra.RopePyObject]], tuple[str, ...]]
                 ].fail(message)
+            if stale_import:
+                retained = [
+                    (expression, base)
+                    for expression, base in retained
+                    if expression != binding
+                ]
             bindings.append(binding)
             retained.append((binding, provider))
         retained.sort(
@@ -2321,19 +2426,10 @@ class FlextInfraUtilitiesFacadeComponents:
         components = cls._component_methods(claims)
         declared = {plan.path: plan for plan in declared_files}
         plans: list[m.Infra.CodegenFilePlan] = []
-        module_syntax_error = FlextInfraUtilitiesRopeRuntime.exception_type(
-            "rope.base.exceptions", "ModuleSyntaxError"
-        )
         for resource in source_project.get_python_files():
             path = Path(resource.real_path)
-            try:
-                module = cls._consumer_module(source_project, path)
-                calls = cls._component_calls(module, claims, components)
-            except module_syntax_error:
-                # A projected consumer with invalid syntax (a render bug owned
-                # by its own stage) cannot be a valid consumer candidate; the
-                # syntax defect surfaces at its owner's validation, not here.
-                continue
+            module = cls._consumer_module(source_project, path)
+            calls = cls._component_calls(module, claims, components)
             if not calls:
                 continue
             source = module.source_code
@@ -2753,19 +2849,9 @@ class FlextInfraUtilitiesFacadeComponents:
         resource = engine.get_file(
             path.relative_to(Path(engine.root.real_path)).as_posix()
         )
-        try:
-            module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
-                engine.get_pymodule(resource)
-            )
-        except rope.base.exceptions.ModuleSyntaxError:
-            # Conteúdo candidate do overlay pode ser inválido (staging do
-            # quoted-move troca conteúdos no mesmo path): o consumo segue
-            # com módulo vazio e a re-leitura settled pelo disco corrige.
-            module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
-                FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-                    engine, Path(path).read_text(encoding="utf-8")
-                )
-            )
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
+            engine.get_pymodule(resource)
+        )
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             message = f"component consumer has no native source module: {path}"
             raise TypeError(message)
@@ -2874,6 +2960,8 @@ class FlextInfraUtilitiesFacadeComponents:
         it as their facts: the lineage, the foreign member references and
         names, the misplaced members and the component claims are derived a
         single time over the snapshot's sources instead of once per renderer.
+        Member classification shares one captured-source resolver across the
+        census and misplaced-member queries, within this unchanged view only.
 
         Returns:
             The census bound to ``snapshot`` and the absolute project root.
@@ -2882,8 +2970,16 @@ class FlextInfraUtilitiesFacadeComponents:
         root = project.absolute()
         members = FlextInfraUtilitiesFacadeMembers
         engine = snapshot.engine
+        resolver_factory = (
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                engine,
+                sources=FlextInfraUtilitiesWorkspaceSnapshot.project_captured_sources(
+                    engine
+                ),
+            )
+        )
         lineage, references, exposed = members.facade_member_census(
-            root, source_project=engine
+            root, source_project=engine, resolver_factory=resolver_factory
         )
         return m.Infra.FacadeCensus(
             snapshot=snapshot,
@@ -2894,6 +2990,7 @@ class FlextInfraUtilitiesFacadeComponents:
             missing=members.facade_misplaced_members(
                 FlextInfraUtilitiesPyprojectConform.project_package_name(root),
                 source_project=engine,
+                resolver_factory=resolver_factory,
             ),
             claims=cls._component_claims(root, source_project=engine),
         )

@@ -16,40 +16,38 @@ from flext_tests import FlextTestsUtilities
 
 from flext_infra import FlextInfraUtilities, config
 from tests import c, m, p, r, t, tm
-from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
-from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
-from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
-from tests.utilities_fixture_workspace import (
-    TestsFlextInfraUtilitiesWorkspaceFixtureMixin,
-)
-from tests.utilities_gates import TestsFlextInfraUtilitiesGatesMixin
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
-from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGitMixin
-from tests.utilities_promoted import TestsFlextInfraUtilitiesPromotedMixin
-from tests.utilities_release import TestsFlextInfraUtilitiesReleaseMixin
-from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
-from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
+from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
+from tests.utilities_deps import TestsFlextInfraUtilitiesDeps
+from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixture
+from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
+from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
+from tests.utilities_fixture_workspace import TestsFlextInfraUtilitiesWorkspaceFixture
+from tests.utilities_gates import TestsFlextInfraUtilitiesGates
+from tests.utilities_git import TestsFlextInfraUtilitiesGit
+from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGit
+from tests.utilities_promoted import TestsFlextInfraUtilitiesPromoted
+from tests.utilities_release import TestsFlextInfraUtilitiesRelease
+from tests.utilities_toml import TestsFlextInfraUtilitiesToml
+from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
     class Tests(
-        TestsFlextInfraUtilitiesTomlMixin,
-        TestsFlextInfraUtilitiesProjectFixtureMixin,
-        TestsFlextInfraUtilitiesWorkspaceFixtureMixin,
-        TestsFlextInfraUtilitiesToolingFixtureMixin,
-        TestsFlextInfraUtilitiesDocsFixtureMixin,
-        TestsFlextInfraUtilitiesPromotedMixin,
-        TestsFlextInfraUtilitiesReleaseMixin,
-        TestsFlextInfraUtilitiesGitMixin,
-        TestsFlextInfraUtilitiesHermeticGitMixin,
-        TestsFlextInfraUtilitiesGatesMixin,
-        TestsFlextInfraUtilitiesCodegenMixin,
-        TestsFlextInfraUtilitiesDepsMixin,
-        TestsFlextInfraUtilitiesWorkspaceEnvMixin,
+        TestsFlextInfraUtilitiesToml,
+        TestsFlextInfraUtilitiesProjectFixture,
+        TestsFlextInfraUtilitiesWorkspaceFixture,
+        TestsFlextInfraUtilitiesToolingFixture,
+        TestsFlextInfraUtilitiesDocsFixture,
+        TestsFlextInfraUtilitiesPromoted,
+        TestsFlextInfraUtilitiesRelease,
+        TestsFlextInfraUtilitiesGit,
+        TestsFlextInfraUtilitiesHermeticGit,
+        TestsFlextInfraUtilitiesGates,
+        TestsFlextInfraUtilitiesCodegen,
+        TestsFlextInfraUtilitiesDeps,
+        TestsFlextInfraUtilitiesWorkspaceEnv,
         FlextTestsUtilities.Tests,
     ):
         """Canonical test helper namespace."""
@@ -208,7 +206,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 The resulting ``t.JsonMapping``.
 
             """
-            return TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
+            return TestsFlextInfraUtilitiesToml.toml_mapping(
                 tm.ok(u.Cli.json_loads(content)),
             )
 

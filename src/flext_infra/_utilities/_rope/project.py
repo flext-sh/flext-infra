@@ -36,6 +36,21 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
     _source_view_lock: RLock
 
+    @override
+    @contextmanager
+    def frozen_layout(self) -> Generator[Self]:
+        """Keep alias queries within this read-only pass's native source epoch.
+
+        Yields:
+            This project with its native layout and lexical index bound together.
+
+        """
+        with (
+            super().frozen_layout(),
+            FlextInfraUtilitiesRopeRuntime.annotation_alias_context(),
+        ):
+            yield self
+
     class OverlayFiles:
         """Read-only filesystem view: planned bytes overlay authenticated captures.
 
@@ -749,7 +764,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     for path, source in analysis_files.items()
                 },
             )
-            yield self
+            with FlextInfraUtilitiesRopeRuntime.annotation_alias_context():
+                yield self
         finally:
             primary = sys.exception()
             try:
@@ -807,8 +823,13 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             python_paths = self._frozen_folders[1]
             self._frozen_folders = None
             self._frozen_folders = (self.get_source_folders(), python_paths)
+        changed_epoch = changed_folders or any(
+            before != after for _, before, after in changed
+        )
+        if changed_epoch:
+            FlextInfraUtilitiesRopeRuntime.invalidate_annotation_alias_indices()
         self._notify_source_changes(changed, previous_directories)
-        if changed_folders or any(before != after for _, before, after in changed):
+        if changed_epoch:
             self._refresh_source_finders()
             # Roots and membership change this project's resolver epoch even
             # when no cached resource changed. Native imported-module and MRO

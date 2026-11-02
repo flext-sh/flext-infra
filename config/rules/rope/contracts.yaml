@@ -1,4 +1,23 @@
 rules:
+- id: rope-declared-source-admission-owner
+  pattern: '${receiver}.require_source_module(${value})'
+  goal: 'FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(${value})'
+  arguments:
+    receiver: object=flext_infra._utilities._rope.runtime_types.FlextInfraUtilitiesRopeRuntimeTypes
+  imports:
+    FlextInfraUtilitiesRopeRuntimeTypes: from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeTypes
+  bindings:
+    FlextInfraUtilitiesRopeRuntimeTypes.require_source_module: flext_infra._utilities._rope.runtime_types.FlextInfraUtilitiesRopeRuntimeTypes.require_source_module
+- id: rope-native-lexical-scope-admission
+  pattern: '${check}(${value}, ${scope})'
+  goal: 'FlextInfraUtilitiesRopeRuntimeTypes.native_scope(${value})'
+  arguments:
+    check: name=builtins.isinstance
+    scope: name=flext_infra._protocols.rope_runtime.FlextInfraProtocolsRopeRuntime.RopeScope
+  imports:
+    FlextInfraUtilitiesRopeRuntimeTypes: from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeTypes
+  bindings:
+    FlextInfraUtilitiesRopeRuntimeTypes.native_scope: flext_infra._utilities._rope.runtime_types.FlextInfraUtilitiesRopeRuntimeTypes.native_scope
 - id: pydantic-exhaustive-strenum-annotation
   operation: normalize-exhaustive-enum
   pattern: '${literal}[${members}]'
@@ -88,3 +107,12 @@ rules:
   bindings:
     cls.ConstantSources._constant_owner_binding: flext_infra._utilities._semantic_cutover.FlextInfraUtilitiesSemanticConstantSources._constant_owner_binding
   ownership_transfer: [ flext_infra._utilities._semantic_cutover.constant_consumers, FlextInfraUtilitiesSemanticConstantConsumers._constant_owner_binding ]
+method_transfers:
+- id: rope-native-module-query-ownership
+  destination:
+  - flext_infra._utilities._rope.runtime_module_queries
+  - FlextInfraUtilitiesRopeRuntimeModuleQueries
+  methods:
+  - [flext_infra._utilities._rope.runtime_modules, FlextInfraUtilitiesRopeRuntimeModules.native_object_identity]
+  - [flext_infra._utilities._rope.runtime_modules, FlextInfraUtilitiesRopeRuntimeModules.lexical_scope]
+  - [flext_infra._utilities._rope.runtime_types, FlextInfraUtilitiesRopeRuntimeTypes.require_declared_source_module]
