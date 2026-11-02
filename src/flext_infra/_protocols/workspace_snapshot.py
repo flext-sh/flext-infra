@@ -6,11 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flext_infra import p
+
+
 from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, Literal, Protocol, Self, runtime_checkable
-
-from flext_infra import p
 
 if TYPE_CHECKING:
     from pathlib import Path

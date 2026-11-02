@@ -3,11 +3,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flext_infra import p
+
+
 from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from flext_infra import p, t
+from flext_infra import t
 
 
 class FlextInfraProtocolsCodegenPipeline:

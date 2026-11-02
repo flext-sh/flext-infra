@@ -8,16 +8,19 @@ from types import MappingProxyType
 from flext_core.lazy import install_lazy_exports
 
 __all__: tuple[str, ...] = (
-    "FlextInfraProtocolsBase",
-    "FlextInfraProtocolsCensus",
-    "FlextInfraProtocolsCheck",
     "FlextInfraProtocolsCodegenFix",
     "FlextInfraProtocolsCodegenLazyInit",
     "FlextInfraProtocolsCodegenPipeline",
-    "FlextInfraProtocolsCodegenRender",
     "FlextInfraProtocolsCodegenTransaction",
-    "FlextInfraProtocolsCodemod",
     "FlextInfraProtocolsConfigWorkspace",
+    "FlextInfraProtocolsGitIdentity",
+    "FlextInfraProtocolsGitWorktreeFacts",
+    "FlextInfraProtocolsGitWorktreeState",
+    "FlextInfraProtocolsBase",
+    "FlextInfraProtocolsCensus",
+    "FlextInfraProtocolsCheck",
+    "FlextInfraProtocolsCodegenRender",
+    "FlextInfraProtocolsCodemod",
     "FlextInfraProtocolsDeps",
     "FlextInfraProtocolsDepsToml",
     "FlextInfraProtocolsDepsToolConfig",
@@ -29,10 +32,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsDuplication",
     "FlextInfraProtocolsGates",
     "FlextInfraProtocolsGit",
-    "FlextInfraProtocolsGitIdentity",
     "FlextInfraProtocolsGitLaneInputs",
-    "FlextInfraProtocolsGitWorktreeFacts",
-    "FlextInfraProtocolsGitWorktreeState",
     "FlextInfraProtocolsMiseToolchainBase",
     "FlextInfraProtocolsMixins",
     "FlextInfraProtocolsPromoted",
@@ -51,10 +51,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsWorktree",
 )
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    MappingProxyType({
+install_lazy_exports(__name__, globals(), MappingProxyType({
         "FlextInfraProtocolsCodegenFix": "._codegen.fix",
         "FlextInfraProtocolsCodegenLazyInit": "._codegen.lazy_init",
         "FlextInfraProtocolsCodegenPipeline": "._codegen.pipeline",
@@ -96,6 +93,4 @@ install_lazy_exports(
         "FlextInfraProtocolsWorkspace": ".workspace",
         "FlextInfraProtocolsWorkspaceSnapshot": ".workspace_snapshot",
         "FlextInfraProtocolsWorktree": ".worktree",
-    }),
-    public_exports=__all__,
-)
+    }), public_exports=__all__)

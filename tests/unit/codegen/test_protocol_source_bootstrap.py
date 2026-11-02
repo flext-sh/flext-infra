@@ -31,6 +31,7 @@ class TestsProtocolSourceBootstrap:
             "    class Reader(Protocol):\n"
             "        title: Annotated[str, 'public', m.Field(description='drop')]\n"
             "        count: int = m.Field(default=0)\n"
+            "        receipt: p.Cli.AtomicFileState | None\n"
             "\n"
             "class Other(Protocol):\n"
             "    enabled: Annotated[bool, m.Field(description='drop')]\n",
@@ -56,3 +57,5 @@ class TestsProtocolSourceBootstrap:
         assert "from typing import runtime_checkable" in normalized
         assert "title: Annotated[str, Field(description='keep')]" in normalized
         assert "from flext_infra import m" not in normalized
+        assert "if TYPE_CHECKING:\n    from flext_infra import p" in normalized
+        assert "\nfrom flext_infra import p\n" not in normalized

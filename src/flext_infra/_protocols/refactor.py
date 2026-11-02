@@ -6,9 +6,10 @@ from __future__ import annotations
 import ast
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra import c, p, t
+if TYPE_CHECKING:
+    from flext_infra import c, p, t
 
 
 class FlextInfraProtocolsRefactor:

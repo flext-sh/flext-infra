@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flext_infra import p
+
+
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Protocol, Self, runtime_checkable
 
-from flext_infra import c, p
+from flext_infra import c
 
 """Application-level protocols for Rope-backed infra utilities.
 

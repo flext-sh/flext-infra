@@ -255,13 +255,53 @@ def _remove_unused_m_imports(tree: ast.Module, offsets: Sequence[int]) -> list[_
     return patches
 
 
-def _has_infra_facade_import(tree: ast.Module) -> bool:
-    return any(
-        isinstance(node, ast.ImportFrom)
-        and node.module == "flext_infra"
-        and any((alias.asname or alias.name) == "p" for alias in node.names)
+def _typing_p_import_patches(tree: ast.Module, offsets: Sequence[int]) -> list[_Patch]:
+    """Move protocol-only ``p`` imports behind ``TYPE_CHECKING``."""
+    patches: list[_Patch] = []
+    for node in tree.body:
+        if not (isinstance(node, ast.ImportFrom) and node.module == "flext_infra"):
+            continue
+        retained = [
+            alias for alias in node.names if (alias.asname or alias.name) != "p"
+        ]
+        if len(retained) == len(node.names):
+            continue
+        start, end = _span(node, offsets)
+        replacement = (
+            ""
+            if not retained
+            else ast.unparse(
+                ast.ImportFrom(module=node.module, names=retained, level=node.level)
+            )
+        )
+        patches.append(_Patch(start, end, replacement))
+    needs_p = any(
+        isinstance(node, ast.Name) and node.id == "p" for node in ast.walk(tree)
+    )
+    has_typing_p = any(
+        isinstance(node, ast.If)
+        and isinstance(node.test, ast.Name)
+        and node.test.id == "TYPE_CHECKING"
+        and any(
+            isinstance(statement, ast.ImportFrom)
+            and statement.module == "flext_infra"
+            and any((alias.asname or alias.name) == "p" for alias in statement.names)
+            for statement in node.body
+        )
         for node in tree.body
     )
+    if needs_p and not has_typing_p:
+        insertion = _import_insertion_offset(tree, offsets)
+        patches.append(
+            _Patch(
+                insertion,
+                insertion,
+                "\nfrom typing import TYPE_CHECKING\n\n"
+                "if TYPE_CHECKING:\n"
+                "    from flext_infra import p\n",
+            )
+        )
+    return patches
 
 
 def _annotation_patches(
@@ -340,9 +380,13 @@ def normalize_protocol_source(source: str, *, filename: str = "<protocol>") -> s
                 insertion, insertion, f"{suffix}from typing import runtime_checkable\n"
             )
         )
-    if requires_facade and not _has_infra_facade_import(tree):
-        insertion = _import_insertion_offset(tree, offsets)
-        patches.append(_Patch(insertion, insertion, "\nfrom flext_infra import p\n"))
+    if requires_facade or any(
+        isinstance(node, ast.ImportFrom)
+        and node.module == "flext_infra"
+        and any((alias.asname or alias.name) == "p" for alias in node.names)
+        for node in tree.body
+    ):
+        patches.extend(_typing_p_import_patches(tree, offsets))
     if not patches:
         return source
     normalized = _apply_patches(source, patches)

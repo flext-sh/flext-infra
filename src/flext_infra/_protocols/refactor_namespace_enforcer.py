@@ -3,9 +3,10 @@
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraProtocolsRefactorNamespaceEnforcer:

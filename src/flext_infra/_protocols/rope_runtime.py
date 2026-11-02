@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, runtime_checkable
 
-from flext_infra import p
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 
 if TYPE_CHECKING:
