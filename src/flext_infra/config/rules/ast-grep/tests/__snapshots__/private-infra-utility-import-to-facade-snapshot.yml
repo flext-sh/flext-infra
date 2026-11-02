@@ -10,7 +10,7 @@ snapshots:
         )
       style: primary
       start: 0
-      end: 83
+      end: 77
   from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery:
     fixed: from flext_infra import u
     labels:

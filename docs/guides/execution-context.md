@@ -1728,19 +1728,12 @@ receipt-based operations retain their own admission contracts. Full applicable
 checks remain required before completion and integration; a member-only receipt
 never claims fleet completion.
 
-Ruff's native findings exit is classified before policy can erase its explanation.
-When the per-identity naming exemption owner authenticates every original native
-diagnostic, the lint producer may report an effective clean execution while retaining
-the original process status and verbatim output receipt. An empty native report,
-unexplained findings exit, unauthenticated diagnostic, stderr failure, timeout or
-signal never qualifies. Operational errors always fail the displayed gate verdict;
+Every native Ruff diagnostic blocks the lint gate: the lint producer reports each
+finding under its Ruff rule name, and no rule, name or source identity removes one.
+A findings exit with an empty report, a stderr failure, a timeout or a signal is an
+operational error. Operational errors always fail the displayed gate verdict;
 a green Markdown row cannot override an error in the original typed SARIF summary.
-The Ruff parser authenticates each native result once and retains an operational
-diagnostic for an unexplained exit. Outcome classification consumes those same
-admitted remaining diagnostics; it does not parse the native report or repeat the
-semantic identity scan. Native error guards and the original receipt remain intact.
-Parser admission and native process failures remain separate decisions, avoiding
-an oversized compound predicate without removing any refusal condition.
+Native error guards and the original receipt remain intact.
 Each global target retains its pre-gate source identity in the digest-bound report.
 Independent native identity reads use the checker's configured concurrency bound
 and retain the caller's context. Results and failures are consumed in target order;
@@ -1752,13 +1745,6 @@ report itself; writing a green Markdown row does not establish source currentnes
 Repeating a semantic query is not a substitute for that receipt-admission guard.
 Receipt admission continues to consume that same phase-specific report and its
 original byte bindings, never a fabricated receipt or an older green invocation.
-
-The existing N802 settings-namespace exemption requires the callable at the exact
-reported source position to be an own property of a class derived from the native
-`typing.Protocol` identity. Its direct decorator must resolve to the builtin
-`property` identity, and its name must be a genuine immediate settings/config
-branch field. A matching field name alone never authenticates another callable,
-an ordinary class method, an imported function alias, or a shadowed decorator.
 
 Within a read-only check invocation, prerequisite gates run first, but their
 failed verdicts do not suppress the remaining requested diagnostic gates unless

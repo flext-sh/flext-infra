@@ -650,10 +650,11 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             ),
         )
         # Collect syntax before admitting canonical native bindings.
+        relocated = cls._family_relocated_names(tree, file_path)
         loose = tuple(
             name
             for name in cls._loose_members(tree, values=True, strict=True)
-            if name not in canonical
+            if name not in canonical and name not in relocated
         )
         unsupported = tuple(
             f"{type(node).__name__}@{node.lineno}"
@@ -722,8 +723,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         utility_family = FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
             c.Infra.UTILITIES_PY
         )
+        # Constants, typings and models functions are relocated to `u` by
+        # ban-behavior-in-declaration-layer (rule ``family-declaration``); the
+        # protocols family has no such relocation, so its functions still stop
+        # the nesting here.
         if (
             family is not None
+            and family
+            == FlextInfraUtilitiesCodegenNamespace.facade_family_of_file(
+                c.Infra.PROTOCOLS_PY
+            )
             and family != utility_family
             and any(
                 isinstance(node, c.Infra.AST_FUNCTION_TYPES) and node.name in loose

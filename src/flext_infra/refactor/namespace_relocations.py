@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT.
 
 from __future__ import annotations
 
+import io
+import keyword
+import tokenize
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
@@ -197,23 +200,33 @@ class FlextInfraNamespaceRelocationCascade:
         if initialized.failure:
             return result_type.from_failure(initialized)
         state = initialized.value
-        names, spans, imports, classes = self._grouped_targets(
+        future_files, spans, imports, families = self._grouped_targets(
             request.project_root, request.findings
         )
         for file_path, statement_lines in spans.items():
             state.working[file_path] = u.Infra.plan_hoist_inline_imports(
                 file_path, state.working[file_path], statement_lines
             )
+        for file_path in sorted(future_files):
+            state.working[file_path] = u.Infra.plan_future_annotations(
+                state.working[file_path]
+            )
         effect = self._relocate_imports(state, rope_project, imports)
         if effect.failure:
             return result_type.from_failure(effect)
-        selected = self._declaration_targets(request, state, names, classes)
+        selected = self._family_targets(request, state, rope_project, families)
         if selected.failure:
             return result_type.from_failure(selected)
-        effect = self._prepare_destinations(state, selected.value)
+        declarations, members = selected.value
+        effect = self._prepare_destinations(
+            state, declarations, members, project_root=request.project_root
+        )
         if effect.failure:
             return result_type.from_failure(effect)
-        effect = self._move_declarations(request, state, rope_project, selected.value)
+        effect = self._move_declarations(request, state, rope_project, declarations)
+        if effect.failure:
+            return result_type.from_failure(effect)
+        effect = self._transfer_members(request, state, rope_project, members)
         if effect.failure:
             return result_type.from_failure(effect)
         return self._relocation_plans(request, state)
@@ -283,86 +296,113 @@ class FlextInfraNamespaceRelocationCascade:
                 working[file_path] = updated.value
         return r[bool].ok(value=True)
 
-    @staticmethod
-    def _declaration_targets(
+    @classmethod
+    def _family_targets(
+        cls,
         request: p.Infra.NamespaceRelocationRequest,
         state: p.Infra.NamespaceRelocationState,
-        names: Mapping[c.Infra.CodemodRelocation, Mapping[Path, set[str]]],
-        classes: Sequence[tuple[Path, str, str, int]],
-    ) -> p.Result[list[tuple[Path, str, Path]]]:
-        """Elect native class, protocol and type-alias destinations in phase order.
+        rope_project: p.Infra.RopeProject,
+        findings: Sequence[tuple[Path, str, str, int]],
+    ) -> p.Result[tuple[list[tuple[Path, str, Path]], list[tuple[Path, str, Path]]]]:
+        """Elect each finding's family domain module and classify its binding.
+
+        The native binding at the finding decides the primitive: a module-level
+        binding moves whole (``declarations``), a static or class method
+        transfers into the destination owner class (``members``). A method
+        that needs a receiver rewrite is not derivable and stays a finding.
 
         Returns:
-            Ordered declaration moves, or the first unsupported relocation failure.
+            ``(declarations, members)`` as ``(source, name, destination)``
+            triples, or the first finding without a native declaration.
 
         """
-        project_root = request.project_root
-        working = state.working
+        result_type = r[
+            tuple[list[tuple[Path, str, Path]], list[tuple[Path, str, Path]]]
+        ]
         declarations: list[tuple[Path, str, Path]] = []
-        if classes:
-            layout = u.Infra.layout(project_root)
-            if layout is None:
-                return r[list[tuple[Path, str, Path]]].fail(
-                    f"facade-class relocation requires a project layout: {project_root}"
-                )
-            declarations.extend(
-                (
-                    path,
-                    name,
-                    u.Infra.class_target_file(
-                        package_dir=layout.package_dir,
-                        source_file=path,
-                        class_name=name,
-                        family=family,
-                    ),
-                )
-                for path, name, family, _line in classes
+        members: list[tuple[Path, str, Path]] = []
+        if not findings:
+            return result_type.ok((declarations, members))
+        snapshot = cls._relocation_snapshot(request, state, rope_project)
+        coordinate = Path(snapshot.root.real_path)
+        for path, name, family, line in findings:
+            target = u.Infra.family_declaration_target_file(
+                project_root=request.project_root, source_file=path, family=family
             )
-        for relocation, names_by_file in names.items():
-            if relocation is c.Infra.CodemodRelocation.FUTURE_ANNOTATIONS:
-                for path in names_by_file:
-                    working[path] = u.Infra.plan_future_annotations(working[path])
+            module = u.Infra.resolve_pymodule(
+                snapshot,
+                u.Infra.require_file_resource(
+                    snapshot.get_resource(path.relative_to(coordinate).as_posix()),
+                    path,
+                ),
+            )
+            binding = module.get_scope().get_defined_names().get(name)
+            location = None if binding is None else binding.get_definition_location()
+            module_level = location is not None and location[0] is module
+            if module_level and location[1] == line:
+                declarations.append((path, name, target))
                 continue
-            if relocation not in {
-                c.Infra.CodemodRelocation.PROTOCOL,
-                c.Infra.CodemodRelocation.TYPING_ALIAS,
-            }:
-                return r[list[tuple[Path, str, Path]]].fail(
-                    f"relocation has no native planning primitive: {relocation}"
-                )
-            filename = (
-                c.Infra.PROTOCOLS_PY
-                if relocation is c.Infra.CodemodRelocation.PROTOCOL
-                else c.Infra.TYPINGS_PY
-            )
-            declarations.extend(
-                (
-                    path,
-                    name,
-                    u.Infra.canonical_target_file(
-                        project_root=project_root,
-                        source_file=path,
-                        filename=filename,
-                    ),
-                )
-                for path, declared in names_by_file.items()
-                for name in sorted(declared)
-            )
-        return r[list[tuple[Path, str, Path]]].ok(declarations)
+            member = cls._transferable_member(module, name, line)
+            if member is not None:
+                members.append((path, member, target))
+            elif module_level:
+                declarations.append((path, name, target))
+        return result_type.ok((declarations, members))
 
     @staticmethod
+    def _transferable_member(
+        module: p.Infra.RopePyModule, name: str, line: int
+    ) -> str | None:
+        """Return the qualified name of the static or class method at ``line``.
+
+        Returns:
+            ``Owner.method`` for a native static or class method declared at the
+            finding line, otherwise ``None`` (instance methods, properties and
+            nested functions need receiver rewrites no derivation supplies).
+
+        """
+        pending = [(module.get_scope(), ())]
+        while pending:
+            scope, chain = pending.pop()
+            for child in scope.get_scopes():
+                declared = child.pyobject
+                if child.get_kind() == "Class":
+                    pending.append((child, (*chain, declared.get_name())))
+                elif (
+                    scope.get_kind() == "Class"
+                    and child.get_kind() == "Function"
+                    and declared.get_name() == name
+                    and declared.get_ast().lineno == line
+                    and declared.get_kind()
+                    in {
+                        c.Infra.RopeFunctionKind.STATICMETHOD,
+                        c.Infra.RopeFunctionKind.CLASSMETHOD,
+                    }
+                ):
+                    return ".".join((*chain, name))
+        return None
+
+    @classmethod
     def _prepare_destinations(
+        cls,
         state: p.Infra.NamespaceRelocationState,
         declarations: Sequence[tuple[Path, str, Path]],
+        members: Sequence[tuple[Path, str, Path]],
+        *,
+        project_root: Path,
     ) -> p.Result[bool]:
         """Seed each absent destination; an existing unread file fails.
+
+        A member transfer needs an existing owner class, so its absent
+        destination is seeded with the derived owner skeleton.
 
         Returns:
             Acceptance of each destination, or the first foreign-file failure.
 
         """
         working = state.working
-        for path, _name, target in declarations:
+        owners = {target for _path, _name, target in members}
+        for path, _name, target in (*declarations, *members):
             if target in working:
                 continue
             destination = u.Infra.codegen_target_snapshot(target)
@@ -375,10 +415,45 @@ class FlextInfraNamespaceRelocationCascade:
             source = u.Infra.codegen_target_snapshot(path)
             if source.failure:
                 return r[bool].from_failure(source)
+            seed = f"{c.Infra.FUTURE_ANNOTATIONS}\n"
+            if target in owners:
+                owner = cls._derived_owner(project_root, target)
+                if owner.failure:
+                    return r[bool].from_failure(owner)
+                seed = (
+                    f'{seed}\n\nclass {owner.value}:\n    """Relocated behavior."""\n'
+                    f'\n\n__all__: list[str] = ["{owner.value}"]\n'
+                )
             state.originals[target] = destination.value
             state.modes[target] = source.value.mode
-            working[target] = f"{c.Infra.FUTURE_ANNOTATIONS}\n"
+            working[target] = seed
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _derived_owner(project_root: Path, target: Path) -> p.Result[str]:
+        """Derive the family owner class a new domain module declares.
+
+        The grammar is the class-nesting owner grammar: project class stem,
+        family suffix, then the module stem.
+
+        Returns:
+            The owner class name, or the failure naming the underivable tier.
+
+        """
+        layout = u.Infra.layout(project_root)
+        letter = u.Infra.facade_family_of_directory(target.parent.name)
+        if (
+            layout is None
+            or letter is None
+            or not target.is_relative_to(layout.package_dir)
+        ):
+            return r[str].fail(
+                f"member transfer cannot derive the owner class of {target}"
+            )
+        suffix = u.Infra.facade_families()[letter].suffix
+        return r[str].ok(
+            f"{layout.class_stem}{suffix}{u.derive_class_stem(target.stem.strip('_'))}"
+        )
 
     @classmethod
     def _move_declarations(
@@ -395,13 +470,31 @@ class FlextInfraNamespaceRelocationCascade:
 
         """
         working = state.working
-        for path, name, target in declarations:
+        for path, declared, target in declarations:
+            name = declared
+            if declared.startswith("_"):
+                published = cls._publish_private_name(
+                    request, state, rope_project, (path, declared, target)
+                )
+                if published.failure:
+                    return r[bool].from_failure(published)
+                name = published.value
             snapshot = cls._relocation_snapshot(request, state, rope_project)
             coordinate = Path(snapshot.root.real_path)
             resource = u.Infra.require_file_resource(
                 snapshot.get_resource(path.relative_to(coordinate).as_posix()),
                 path,
             )
+            quoted = cls._quoted_reference_line(working[path], name)
+            if quoted is not None:
+                return r[bool].fail(
+                    f"relocation of {name} has a quoted forward reference at "
+                    f"{path}:{quoted}: native occurrences cannot rewire a string; "
+                    "write it as a real annotation first"
+                )
+            occupied = cls._destination_occupied(snapshot, target, name)
+            if occupied.failure:
+                return r[bool].from_failure(occupied)
             offset = cls._declaration_offset(snapshot, resource, working[path], name)
             if offset.failure:
                 return r[bool].from_failure(offset)
@@ -410,29 +503,274 @@ class FlextInfraNamespaceRelocationCascade:
                     snapshot.get_resource(target.relative_to(coordinate).as_posix()),
                     target,
                 ),
-                resources=[
-                    u.Infra.require_file_resource(
-                        snapshot.get_resource(
-                            candidate.relative_to(coordinate).as_posix()
-                        ),
-                        candidate,
-                    )
-                    for candidate in working
-                    if candidate.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
-                ],
+                resources=cls._python_resources(snapshot, working),
             )
-            for change in changes.changes:
-                if not isinstance(change, p.Infra.RopeChangeContents):
-                    return r[bool].fail(
-                        "native declaration relocation produced a non-content effect"
-                    )
-                destination = Path(change.resource.real_path).resolve()
-                if destination not in working:
-                    return r[bool].fail(
-                        f"native relocation escaped its working view: {destination}"
-                    )
-                working[destination] = change.new_contents
+            applied = cls._apply_changes(working, changes.changes)
+            if applied.failure:
+                return applied
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _python_resources(
+        snapshot: p.Infra.RopeProject, working: Mapping[Path, str]
+    ) -> list[p.Infra.RopeResource]:
+        """Bind every candidate Python source to its native snapshot resource.
+
+        Returns:
+            The Rope resources of the candidate view, in view order.
+
+        """
+        coordinate = Path(snapshot.root.real_path)
+        return [
+            u.Infra.require_file_resource(
+                snapshot.get_resource(candidate.relative_to(coordinate).as_posix()),
+                candidate,
+            )
+            for candidate in working
+            if candidate.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
+        ]
+
+    @staticmethod
+    def _apply_changes(
+        working: MutableMapping[Path, str],
+        changes: Sequence[p.AttributeProbe],
+    ) -> p.Result[bool]:
+        """Apply native content effects to the candidate bytes only.
+
+        Returns:
+            Acceptance of every effect, or the first escaping or non-content one.
+
+        """
+        for change in changes:
+            if not isinstance(change, p.Infra.RopeChangeContents):
+                return r[bool].fail(
+                    "native declaration relocation produced a non-content effect"
+                )
+            destination = Path(change.resource.real_path).resolve()
+            if destination not in working:
+                return r[bool].fail(
+                    f"native relocation escaped its working view: {destination}"
+                )
+            working[destination] = change.new_contents
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _quoted_reference_line(source: str, name: str) -> int | None:
+        """Locate a string literal that spells ``name`` as a forward reference.
+
+        Returns:
+            The 1-based line of the first quoted spelling, or ``None``.
+
+        """
+        exporting = False
+        line_start = True
+        for token in tokenize.generate_tokens(io.StringIO(source).readline):
+            if token.type == tokenize.NEWLINE:
+                exporting = False
+                line_start = True
+                continue
+            if token.type in {
+                tokenize.NL,
+                tokenize.COMMENT,
+                tokenize.INDENT,
+                tokenize.DEDENT,
+            }:
+                continue
+            if line_start:
+                exporting = token.string == c.Infra.DUNDER_ALL
+                line_start = False
+            if (
+                not exporting
+                and token.type == tokenize.STRING
+                and token.string[:1] in {'"', "'"}
+                and token.string.strip("\"'") == name
+            ):
+                return token.start[0]
+        return None
+
+    @staticmethod
+    def _destination_occupied(
+        snapshot: p.Infra.RopeProject, target: Path, name: str
+    ) -> p.Result[bool]:
+        """Reject a move onto a name the destination module already declares.
+
+        Returns:
+            Acceptance when ``name`` is free at module level and in its classes.
+
+        """
+        coordinate = Path(snapshot.root.real_path)
+        module = u.Infra.resolve_pymodule(
+            snapshot,
+            u.Infra.require_file_resource(
+                snapshot.get_resource(target.relative_to(coordinate).as_posix()),
+                target,
+            ),
+        )
+        scope = module.get_scope()
+        if name in scope.get_names() or any(
+            child.get_kind() == "Class" and name in child.pyobject.get_attributes()
+            for child in scope.get_scopes()
+        ):
+            return r[bool].fail(
+                f"relocation destination already declares {name}: {target}"
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
+    def _publish_private_name(
+        cls,
+        request: p.Infra.NamespaceRelocationRequest,
+        state: p.Infra.NamespaceRelocationState,
+        rope_project: p.Infra.RopeProject,
+        declaration: tuple[Path, str, Path],
+    ) -> p.Result[str]:
+        """Rename a module-private declaration to the public family member it becomes.
+
+        A family namespace has no privacy: the relocated name is read as
+        ``t.<Domain>.<Name>`` by its former module, so the leading underscores
+        leave through the native rename before the move.
+
+        Returns:
+            The public name, or the first collision or native rename failure.
+
+        """
+        path, private, target = declaration
+        public = private.lstrip("_")
+        if not public.isidentifier() or keyword.iskeyword(public):
+            return r[str].fail(f"private declaration has no public name: {private}")
+        working = state.working
+        snapshot = cls._relocation_snapshot(request, state, rope_project)
+        coordinate = Path(snapshot.root.real_path)
+        resource = u.Infra.require_file_resource(
+            snapshot.get_resource(path.relative_to(coordinate).as_posix()), path
+        )
+        if (
+            public
+            in u.Infra.resolve_pymodule(snapshot, resource).get_scope().get_names()
+        ):
+            return r[str].fail(
+                f"private declaration {private} cannot become public: "
+                f"{public} is occupied in {path}"
+            )
+        occupied = cls._destination_occupied(snapshot, target, public)
+        if occupied.failure:
+            return r[str].from_failure(occupied)
+        offset = cls._declaration_offset(snapshot, resource, working[path], private)
+        if offset.failure:
+            return r[str].from_failure(offset)
+        changes = u.Infra.rename_changes(
+            snapshot,
+            resource,
+            offset.value,
+            public,
+            options=m.Infra.RopeRenameOptions(
+                resources=cls._python_resources(snapshot, working),
+                in_hierarchy=False,
+                docs=False,
+            ),
+        )
+        applied = cls._apply_changes(working, changes.changes)
+        return r[str].from_failure(applied) if applied.failure else r[str].ok(public)
+
+    @classmethod
+    def _transfer_members(
+        cls,
+        request: p.Infra.NamespaceRelocationRequest,
+        state: p.Infra.NamespaceRelocationState,
+        rope_project: p.Infra.RopeProject,
+        members: Sequence[tuple[Path, str, Path]],
+    ) -> p.Result[bool]:
+        """Transfer static and class methods into their family owner class.
+
+        The native Rope class transfer rewrites every proven reference and
+        rejects the whole transfer when a reference is unproven; that rejection
+        is the method's own unresolved finding (its rule keeps reporting it),
+        never a plan crash, so the member stays where it is.
+
+        Returns:
+            Acceptance of every attempted transfer, or the first non-Rope failure.
+
+        """
+        working = state.working
+        refused = u.Infra.exception_type("rope.base.exceptions", "RefactoringError")
+        for path, qualified, target in members:
+            snapshot = cls._relocation_snapshot(request, state, rope_project)
+            owner = cls._destination_owner(request, snapshot, target)
+            if owner.failure:
+                return r[bool].from_failure(owner)
+            transfer = m.Infra.RopeMethodTransfer(
+                id=f"family-declaration:{path.name}:{qualified}",
+                destination=(
+                    u.Infra.module_name_for_file(
+                        target,
+                        project_root=request.project_root,
+                        source_project=snapshot,
+                    ),
+                    owner.value,
+                ),
+                methods=(
+                    (
+                        u.Infra.module_name_for_file(
+                            path,
+                            project_root=request.project_root,
+                            source_project=snapshot,
+                        ),
+                        qualified,
+                    ),
+                ),
+            )
+            try:
+                changes = u.Infra.method_transfer_changes(
+                    snapshot,
+                    transfer,
+                    tuple(candidate.resolve() for candidate in working),
+                    u.Infra.source_member_resolver(snapshot, sources={}),
+                )
+            except refused as error:
+                u.Cli.info(f"family transfer unresolved: {qualified}: {error}")
+                continue
+            if changes is None:
+                continue
+            applied = cls._apply_changes(working, changes.changes)
+            if applied.failure:
+                return applied
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _destination_owner(
+        request: p.Infra.NamespaceRelocationRequest,
+        snapshot: p.Infra.RopeProject,
+        target: Path,
+    ) -> p.Result[str]:
+        """Elect the single owner class of a member transfer destination.
+
+        Returns:
+            The owner class name, or the failure naming an ambiguous module.
+
+        """
+        coordinate = Path(snapshot.root.real_path)
+        module = u.Infra.resolve_pymodule(
+            snapshot,
+            u.Infra.require_file_resource(
+                snapshot.get_resource(target.relative_to(coordinate).as_posix()),
+                target,
+            ),
+        )
+        classes = tuple(
+            child.pyobject.get_name()
+            for child in module.get_scope().get_scopes()
+            if child.get_kind() == "Class"
+        )
+        if len(classes) == 1:
+            return r[str].ok(classes[0])
+        derived = FlextInfraNamespaceRelocationCascade._derived_owner(
+            request.project_root, target
+        )
+        if derived.success and derived.value in classes:
+            return derived
+        return r[str].fail(
+            f"member transfer destination has no single owner class: {target}"
+        )
 
     @staticmethod
     def _relocation_snapshot(
@@ -589,10 +927,7 @@ class FlextInfraNamespaceRelocationCascade:
         project_root: Path,
         findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
     ) -> tuple[
-        MutableMapping[
-            c.Infra.CodemodRelocation,
-            MutableMapping[Path, set[str]],
-        ],
+        set[Path],
         MutableMapping[Path, list[tuple[int, int]]],
         MutableMapping[Path, MutableMapping[tuple[str, str], set[str]]],
         list[tuple[Path, str, str, int]],
@@ -600,18 +935,15 @@ class FlextInfraNamespaceRelocationCascade:
         """Group findings into the batched targets each relocation consumes.
 
         Returns:
-            The resulting ``(names, spans, imports, classes)`` batches.
+            The resulting ``(future_files, spans, imports, families)`` batches.
 
         """
-        names: MutableMapping[
-            c.Infra.CodemodRelocation,
-            MutableMapping[Path, set[str]],
-        ] = defaultdict(lambda: defaultdict(set))
+        future_files: set[Path] = set()
         spans: MutableMapping[Path, list[tuple[int, int]]] = defaultdict(list)
         imports: MutableMapping[Path, MutableMapping[tuple[str, str], set[str]]] = (
             defaultdict(lambda: defaultdict(set))
         )
-        classes: list[tuple[Path, str, str, int]] = []
+        families: list[tuple[Path, str, str, int]] = []
         artifacts = tuple(
             {
                 finding.native_receipt.path: finding.native_receipt
@@ -626,7 +958,7 @@ class FlextInfraNamespaceRelocationCascade:
                     case c.Infra.CodemodRelocation.MODULE_IMPORT:
                         spans[file_path].append(self._finding_lines(finding))
                     case c.Infra.CodemodRelocation.FUTURE_ANNOTATIONS:
-                        names[relocation].setdefault(file_path, set())
+                        future_files.add(file_path)
                     case (
                         c.Infra.CodemodRelocation.PACKAGE_ROOT_IMPORT
                         | c.Infra.CodemodRelocation.OWN_PACKAGE_IMPORT
@@ -635,8 +967,8 @@ class FlextInfraNamespaceRelocationCascade:
                         # which binds own-package symbols to the own package and
                         # leaves foreign-package findings as residue.
                         pass
-                    case c.Infra.CodemodRelocation.FACADE_CLASS:
-                        classes.append((
+                    case c.Infra.CodemodRelocation.FAMILY_DECLARATION:
+                        families.append((
                             file_path,
                             self._captured(
                                 finding,
@@ -650,21 +982,13 @@ class FlextInfraNamespaceRelocationCascade:
                             ),
                             self._finding_lines(finding)[0],
                         ))
-                    case _:
-                        names[relocation][file_path].add(
-                            self._captured(
-                                finding,
-                                c.Infra.CODEMOD_RULE_NAME_METAVARIABLE,
-                                readers,
-                            ),
-                        )
         for file_path, moves in self.import_relocation_targets(
             project_root,
             findings,
         ).items():
             for (source_module, target_module), aliases in moves.items():
                 imports[file_path][source_module, target_module].update(aliases)
-        return names, spans, imports, classes
+        return future_files, spans, imports, families
 
     @staticmethod
     def _finding_lines(finding: p.Infra.ModScanFinding) -> tuple[int, int]:

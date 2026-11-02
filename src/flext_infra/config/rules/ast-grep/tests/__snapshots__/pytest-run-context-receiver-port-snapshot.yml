@@ -1,210 +1,210 @@
 id: pytest-run-context-receiver-port
 snapshots:
-    "from __future__ import annotations\nfrom collections.abc import Callable\nfrom typing import TYPE_CHECKING\nfrom flext_infra import m\nif TYPE_CHECKING:\n    from flext_infra import p\nclass FlextInfraPytestRunnerExecution:\n    def _execute_testmon(\n        self,\n        *,\n        complete: bool,\n        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,\n    ) -> p.Result[int]:\n        if run_context_receiver is not None:\n            run_context_receiver(context)\n":
-        fixed: |
-            from __future__ import annotations
-            from collections.abc import Callable
-            from typing import TYPE_CHECKING
-            from flext_infra import m, p
-            if TYPE_CHECKING:
-                from flext_infra import p
-            class FlextInfraPytestRunnerExecution:
-                def _execute_testmon(
-                    self,
-                    *,
-                    complete: bool,
-                    run_context_receiver: p.Infra.PytestRunContextReceiver | None = None,
-                ) -> p.Result[int]:
-                    if run_context_receiver is not None:
-                        run_context_receiver(context)
-        labels:
-          - source: "run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None"
-            style: primary
-            start: 301
-            end: 379
-          - source: FlextInfraPytestRunnerExecution
-            style: secondary
-            start: 185
-            end: 216
-          - source: |-
-                class FlextInfraPytestRunnerExecution:
-                    def _execute_testmon(
-                        self,
-                        *,
-                        complete: bool,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    ) -> p.Result[int]:
-                        if run_context_receiver is not None:
-                            run_context_receiver(context)
-            style: secondary
-            start: 179
-            end: 491
-          - source: |-
-                def _execute_testmon(
-                        self,
-                        *,
-                        complete: bool,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    ) -> p.Result[int]:
-                        if run_context_receiver is not None:
-                            run_context_receiver(context)
-            style: secondary
-            start: 222
-            end: 491
-          - source: _execute_testmon
-            style: secondary
-            start: 226
-            end: 242
-          - source: |-
-                def _execute_testmon(
-                        self,
-                        *,
-                        complete: bool,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    ) -> p.Result[int]:
-                        if run_context_receiver is not None:
-                            run_context_receiver(context)
-            style: secondary
-            start: 222
-            end: 491
-          - source: |-
-                (
-                        self,
-                        *,
-                        complete: bool,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    )
-            style: secondary
-            start: 242
-            end: 386
-          - source: |-
-                if TYPE_CHECKING:
-                    from flext_infra import p
-            style: secondary
-            start: 131
-            end: 178
-          - source: |
-                from __future__ import annotations
-                from collections.abc import Callable
-                from typing import TYPE_CHECKING
-                from flext_infra import m, p
-                if TYPE_CHECKING:
-                    from flext_infra import p
-                class FlextInfraPytestRunnerExecution:
-                    def _execute_testmon(
-                        self,
-                        *,
-                        complete: bool,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    ) -> p.Result[int]:
-                        if run_context_receiver is not None:
-                            run_context_receiver(context)
-            style: secondary
-            start: 0
-            end: 492
-    "from __future__ import annotations\nfrom collections.abc import Callable\nfrom typing import TYPE_CHECKING, override\nfrom flext_infra import m\nif TYPE_CHECKING:\n    from flext_infra import p\nclass FlextInfraPytestRunnerExecution:\n    @override\n    def execute(\n        self,\n        *,\n        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,\n    ) -> p.Result[int]:\n        return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)\n":
-        fixed: |
-            from __future__ import annotations
-            from collections.abc import Callable
-            from typing import TYPE_CHECKING, override
-            from flext_infra import m, p
-            if TYPE_CHECKING:
-                from flext_infra import p
-            class FlextInfraPytestRunnerExecution:
-                @override
-                def execute(
-                    self,
-                    *,
-                    run_context_receiver: p.Infra.PytestRunContextReceiver | None = None,
-                ) -> p.Result[int]:
-                    return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
-        labels:
-          - source: "run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None"
-            style: primary
-            start: 292
-            end: 370
-          - source: FlextInfraPytestRunnerExecution
-            style: secondary
-            start: 195
-            end: 226
-          - source: |-
-                class FlextInfraPytestRunnerExecution:
-                    @override
-                    def execute(
-                        self,
-                        *,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    ) -> p.Result[int]:
-                        return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
-            style: secondary
-            start: 189
-            end: 491
-          - source: |-
-                @override
-                    def execute(
-                        self,
-                        *,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    ) -> p.Result[int]:
-                        return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
-            style: secondary
-            start: 232
-            end: 491
-          - source: |-
-                @override
-                    def execute(
-                        self,
-                        *,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    ) -> p.Result[int]:
-                        return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
-            style: secondary
-            start: 232
-            end: 491
-          - source: execute
-            style: secondary
-            start: 250
-            end: 257
-          - source: |-
-                def execute(
-                        self,
-                        *,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    ) -> p.Result[int]:
-                        return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
-            style: secondary
-            start: 246
-            end: 491
-          - source: |-
-                (
-                        self,
-                        *,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    )
-            style: secondary
-            start: 257
-            end: 377
-          - source: |-
-                if TYPE_CHECKING:
-                    from flext_infra import p
-            style: secondary
-            start: 141
-            end: 188
-          - source: |
-                from __future__ import annotations
-                from collections.abc import Callable
-                from typing import TYPE_CHECKING, override
-                from flext_infra import m, p
-                if TYPE_CHECKING:
-                    from flext_infra import p
-                class FlextInfraPytestRunnerExecution:
-                    @override
-                    def execute(
-                        self,
-                        *,
-                        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
-                    ) -> p.Result[int]:
-                        return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
-            style: secondary
-            start: 0
-            end: 492
+  "from __future__ import annotations\nfrom collections.abc import Callable\nfrom typing import TYPE_CHECKING\nfrom flext_infra import m, p\nif TYPE_CHECKING:\n    from flext_infra import p\nclass FlextInfraPytestRunnerExecution:\n    def _execute_testmon(\n        self,\n        *,\n        complete: bool,\n        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,\n    ) -> p.Result[int]:\n        if run_context_receiver is not None:\n            run_context_receiver(context)\n":
+    fixed: |
+      from __future__ import annotations
+      from collections.abc import Callable
+      from typing import TYPE_CHECKING
+      from flext_infra import m, p
+      if TYPE_CHECKING:
+          from flext_infra import p
+      class FlextInfraPytestRunnerExecution:
+          def _execute_testmon(
+              self,
+              *,
+              complete: bool,
+              run_context_receiver: p.Infra.PytestRunContextReceiver | None = None,
+          ) -> p.Result[int]:
+              if run_context_receiver is not None:
+                  run_context_receiver(context)
+    labels:
+    - source: "run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None"
+      style: primary
+      start: 304
+      end: 382
+    - source: FlextInfraPytestRunnerExecution
+      style: secondary
+      start: 188
+      end: 219
+    - source: |-
+        class FlextInfraPytestRunnerExecution:
+            def _execute_testmon(
+                self,
+                *,
+                complete: bool,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            ) -> p.Result[int]:
+                if run_context_receiver is not None:
+                    run_context_receiver(context)
+      style: secondary
+      start: 182
+      end: 494
+    - source: |-
+        def _execute_testmon(
+                self,
+                *,
+                complete: bool,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            ) -> p.Result[int]:
+                if run_context_receiver is not None:
+                    run_context_receiver(context)
+      style: secondary
+      start: 225
+      end: 494
+    - source: _execute_testmon
+      style: secondary
+      start: 229
+      end: 245
+    - source: |-
+        def _execute_testmon(
+                self,
+                *,
+                complete: bool,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            ) -> p.Result[int]:
+                if run_context_receiver is not None:
+                    run_context_receiver(context)
+      style: secondary
+      start: 225
+      end: 494
+    - source: |-
+        (
+                self,
+                *,
+                complete: bool,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            )
+      style: secondary
+      start: 245
+      end: 389
+    - source: |-
+        if TYPE_CHECKING:
+            from flext_infra import p
+      style: secondary
+      start: 134
+      end: 181
+    - source: |
+        from __future__ import annotations
+        from collections.abc import Callable
+        from typing import TYPE_CHECKING
+        from flext_infra import m, p
+        if TYPE_CHECKING:
+            from flext_infra import p
+        class FlextInfraPytestRunnerExecution:
+            def _execute_testmon(
+                self,
+                *,
+                complete: bool,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            ) -> p.Result[int]:
+                if run_context_receiver is not None:
+                    run_context_receiver(context)
+      style: secondary
+      start: 0
+      end: 495
+  "from __future__ import annotations\nfrom collections.abc import Callable\nfrom typing import TYPE_CHECKING, override\nfrom flext_infra import m, p\nif TYPE_CHECKING:\n    from flext_infra import p\nclass FlextInfraPytestRunnerExecution:\n    @override\n    def execute(\n        self,\n        *,\n        run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,\n    ) -> p.Result[int]:\n        return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)\n":
+    fixed: |
+      from __future__ import annotations
+      from collections.abc import Callable
+      from typing import TYPE_CHECKING, override
+      from flext_infra import m, p
+      if TYPE_CHECKING:
+          from flext_infra import p
+      class FlextInfraPytestRunnerExecution:
+          @override
+          def execute(
+              self,
+              *,
+              run_context_receiver: p.Infra.PytestRunContextReceiver | None = None,
+          ) -> p.Result[int]:
+              return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
+    labels:
+    - source: "run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None"
+      style: primary
+      start: 295
+      end: 373
+    - source: FlextInfraPytestRunnerExecution
+      style: secondary
+      start: 198
+      end: 229
+    - source: |-
+        class FlextInfraPytestRunnerExecution:
+            @override
+            def execute(
+                self,
+                *,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            ) -> p.Result[int]:
+                return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
+      style: secondary
+      start: 192
+      end: 494
+    - source: |-
+        @override
+            def execute(
+                self,
+                *,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            ) -> p.Result[int]:
+                return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
+      style: secondary
+      start: 235
+      end: 494
+    - source: |-
+        @override
+            def execute(
+                self,
+                *,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            ) -> p.Result[int]:
+                return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
+      style: secondary
+      start: 235
+      end: 494
+    - source: execute
+      style: secondary
+      start: 253
+      end: 260
+    - source: |-
+        def execute(
+                self,
+                *,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            ) -> p.Result[int]:
+                return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
+      style: secondary
+      start: 249
+      end: 494
+    - source: |-
+        (
+                self,
+                *,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            )
+      style: secondary
+      start: 260
+      end: 380
+    - source: |-
+        if TYPE_CHECKING:
+            from flext_infra import p
+      style: secondary
+      start: 144
+      end: 191
+    - source: |
+        from __future__ import annotations
+        from collections.abc import Callable
+        from typing import TYPE_CHECKING, override
+        from flext_infra import m, p
+        if TYPE_CHECKING:
+            from flext_infra import p
+        class FlextInfraPytestRunnerExecution:
+            @override
+            def execute(
+                self,
+                *,
+                run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
+            ) -> p.Result[int]:
+                return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
+      style: secondary
+      start: 0
+      end: 495

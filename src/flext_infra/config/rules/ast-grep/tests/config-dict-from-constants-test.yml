@@ -3,7 +3,7 @@ id: config-dict-from-constants
 # import `m` (the rewrite would bind nothing; its owner repairs the import).
 valid:
 - |
-  from flext_ldap import m, p, t
+  from flext_ldap import m, t
   from typing import ClassVar
   class A:
       model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
@@ -15,7 +15,7 @@ valid:
 # `invalid` MUST match: the constants spelling in a module that imports `m`.
 invalid:
 - |
-  from flext_ldap import m, p
+  from flext_ldap import m
   from typing import ClassVar
   from algar_sample import c
   class C:
@@ -29,7 +29,7 @@ invalid:
           extra="forbid",
       )
 - |
-  from flext_cli import c, m, p, t
+  from flext_cli import c, m, t
   from typing import ClassVar
   class Settings:
       model_config: ClassVar[c.SettingsConfigDict] = c.SettingsConfigDict(env_prefix="APP_")

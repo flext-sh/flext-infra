@@ -304,7 +304,46 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
             lexical, expression
         )
-        return result if isinstance(result, p.Infra.RopePyName) else None
+        if not isinstance(result, p.Infra.RopePyName):
+            return None
+        target = cls.native_export_target(result)
+        return result if target is None else target
+
+    @classmethod
+    def native_export_target(
+        cls, binding: p.Infra.RopePyName
+    ) -> p.Infra.RopePyName | None:
+        """Follow a native-export wrapper assignment to the value it republishes.
+
+        A facade member declared as ``Name = <native export wrapper>(value)``
+        denotes ``value`` itself: the wrapper exists only to keep the native
+        callable's complete type, so both spellings are one declaration.
+
+        Returns:
+            The wrapped expression's binding, or None when ``binding`` is not the
+            sole assignment of one native-export wrapper call.
+
+        """
+        if (
+            not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+            or len(binding.assignments) != 1
+        ):
+            return None
+        call = binding.assignments[0].ast_node
+        if not isinstance(call, ast.Call) or len(call.args) != 1 or call.keywords:
+            return None
+        module, _line = cls.definition_location(binding)
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            return None
+        scope = cls.scope_at(module, cls.source_offset(module.source_code, call))
+        wrapper = cls.expression_name(scope, ast.unparse(call.func))
+        if (
+            wrapper is None
+            or cls.native_object_identity(wrapper.get_object())
+            != c.Infra.NATIVE_EXPORT_IDENTITY
+        ):
+            return None
+        return cls.expression_name(scope, ast.unparse(call.args[0]))
 
     @staticmethod
     def lexical_scope(scope: p.Infra.RopeScope, name: str) -> p.Infra.RopeScope | None:

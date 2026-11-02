@@ -409,7 +409,11 @@ class FlextInfraGates:
                 self._native_error_issue(project_dir, result.stderr),
             )
             passed = False
-        outcome = self._check_output_outcome(result, issues, project_dir)
+        outcome = u.Infra.tool_outcome(
+            result.outcome,
+            findings=len(issues),
+            findings_exit_codes=self._findings_exit_codes(),
+        )
         if any(
             issue.code == c.Infra.ToolOutcome.ERROR
             or issue.code in {f"{self.gate_id}-stderr", f"{self.gate_id}-exec"}
@@ -430,25 +434,6 @@ class FlextInfraGates:
             ),
             evidence,
         ).model_copy(update={"process": process})
-
-    def _check_output_outcome(
-        self,
-        result: p.Cli.CommandOutput,
-        issues: Sequence[p.Infra.Issue],
-        project_dir: Path,
-    ) -> c.Infra.ToolOutcome:
-        """Classify native execution independently of the displayed verdict.
-
-        Returns:
-            The native classification before producer-specific identity policy.
-
-        """
-        del project_dir
-        return u.Infra.tool_outcome(
-            result.outcome,
-            findings=len(issues),
-            findings_exit_codes=self._findings_exit_codes(),
-        )
 
     def _detected_gate_execution(
         self,

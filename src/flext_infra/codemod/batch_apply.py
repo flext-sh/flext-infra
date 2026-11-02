@@ -84,7 +84,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
     @property
     def selected_rule_ids(self) -> tuple[str, ...] | None:
-        """Return the exact AST selection, if this is a focused transaction.
+        """Exact AST selection of a focused transaction.
 
         Returns:
             The plural catalog selection, the legacy single selector, or
@@ -138,16 +138,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 if planned.failure:
                     return outcome.from_failure(planned)
                 rules = u.Infra.codemod_fixture_resources(planned.value)
-                if self.effective_dry_run:
-                    self.progress.emit(
-                        f"mod: scan {len(rules)} discovered rule file(s)"
-                    )
-                else:
-                    self.progress.emit("mod: validate ast-grep rule fixtures")
-                    FlextInfraModGateEngine.validate_rule_fixtures(
-                        self.repository_root,
-                        rules,
-                    ).unwrap()
+                self.progress.emit("mod: validate ast-grep rule fixtures")
+                FlextInfraModGateEngine.validate_rule_fixtures(
+                    self.repository_root,
+                    rules,
+                ).unwrap()
                 states = tuple(source.state for source in snapshot.sources.values())
                 drifted = self._drifted(states)
                 if not drifted:
@@ -172,6 +167,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             The inspection verdict over the discovered rule cascade.
 
         """
+        seed_renames = r[int].ok(value=0)
         if self.rename_plan is not None:
             preview = self._advance_phases(
                 self.repository_root,
@@ -182,17 +178,23 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             )
             if preview.failure:
                 return r[t.Cli.ResultValue].from_failure(preview)
-        pending_count = pending.findings
+        elif self.selected_rule_ids is None:
+            seed_renames = self._preview_module_names()
+            if seed_renames.failure:
+                return r[t.Cli.ResultValue].from_failure(seed_renames)
+        pending_count = pending.findings + seed_renames.value
         text_findings = 0
         text_actionable = 0
         cycles: tuple[Path, ...] = ()
         renames_pending = r[int].ok(value=0)
+        error_data: t.JsonDict | None = None
         if self.selected_rule_ids is None:
             text_pending = FlextInfraModTextGateEngine.scan(
                 self.repository_root,
                 fix=False,
                 validate_receipts=True,
             ).unwrap()
+            error_data = {"text": text_pending.model_dump(mode="json")}
             text_findings = text_pending.findings
             text_actionable = text_pending.actionable
             pending_count += text_findings
@@ -209,9 +211,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 f"{pending.non_actionable_with_fix} non-actionable with fix, plus "
                 f"{text_findings} pending sed-by-list finding(s) "
                 f"({text_actionable} actionable), "
+                f"{seed_renames.value} pending module rename(s), "
                 f"{len(cycles)} module(s) in runtime import cycles and "
                 f"{renames_pending.value} pending CSV-rename occurrence(s), "
                 f"across {len(rules)} rule file(s)",
+                error_data=error_data,
             )
         self.progress.emit("mod: no pending ast-grep or sed-by-list fixes")
         return r[t.Cli.ResultValue].ok(value=True)
@@ -984,7 +988,8 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         """Capture the source campaign and its module-naming rename candidate.
 
         A rename spanning a quarantined module is dropped whole, leaving the
-        captured campaign without it.
+        captured campaign without it. A focused rule selection runs one rule at
+        a time: module naming is a distinct campaign and stays unplanned.
 
         Returns:
             The named or plain campaign, or the first capture failure.
@@ -993,7 +998,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         built = FlextInfraCodemodSemanticApply.build_source_plan(
             root, self.consumer_roots
         )
-        if built.failure:
+        if built.failure or self.selected_rule_ids is not None:
             return built
         named = FlextInfraCodemodSemanticApply.plan_module_names(root, built.value)
         if named.success and not self._coherent(
@@ -1001,6 +1006,28 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         ):
             return built
         return named
+
+    def _preview_module_names(self) -> p.Result[int]:
+        """Plan the module-naming campaign without publishing or staging it.
+
+        Apply plans the same seed, so a naming failure surfaces here exactly as
+        it would there; every planned rename is reported before it is counted.
+
+        Returns:
+            The number of pending module renames, or the first planning failure.
+
+        """
+        seeded = self._campaign_seed(self.repository_root)
+        if seeded.failure:
+            return r[int].from_failure(seeded)
+        moves = (
+            seeded.value.moves
+            if isinstance(seeded.value, p.Infra.SemanticRenamePlan)
+            else ()
+        )
+        for source, destination in moves:
+            self.progress.emit(f"mod: rename module {source} -> {destination}")
+        return r[int].ok(len(moves))
 
     def _admitted_rename_seed(
         self, seed: p.Infra.SemanticSourcePlan

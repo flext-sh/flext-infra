@@ -36,11 +36,11 @@ snapshots:
       style: secondary
       start: 0
       end: 38
-    - source: p.ContractModel
+    - source: m.ContractModel
       style: secondary
       start: 11
       end: 26
-    - source: p.ContractModel
+    - source: m.ContractModel
       style: secondary
       start: 11
       end: 26

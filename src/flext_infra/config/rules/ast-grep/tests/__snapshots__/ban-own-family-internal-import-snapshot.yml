@@ -1,8 +1,8 @@
 id: ban-own-family-internal-import
 snapshots:
-  from ai_hub._models.base import m.AiHub:
+  from ai_hub._models.base import AiHubModelsBase:
     labels:
-    - source: from ai_hub._models.base import m.AiHub
+    - source: from ai_hub._models.base import AiHubModelsBase
       style: primary
       start: 0
       end: 47

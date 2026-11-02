@@ -26,9 +26,10 @@ rule:
   - inside:
       kind: module
       stopBy: end
-      matches: p-imported-from-flext
-  - inside:
-      matches: semantic-type-context
+      has:
+        matches: p-imported-from-flext
+        stopBy: end
+  - matches: semantic-type-context
 constraints:
   CLS:
     regex: "^FlextInfraModels[A-Z][A-Za-z0-9]*$"

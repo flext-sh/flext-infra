@@ -34,6 +34,7 @@ _SOURCE_BOOTSTRAP_CONTRACT_DOCSTRING = (
     "Structural data contract projected from the owning model."
 )
 _MAX_IMPORT_LINE_LENGTH = 88
+_GENERATED_INIT_HEADER = "# AUTO-GENERATED FILE — Regenerate with: make gen"
 _FIELD_ALIAS_KEYWORDS = frozenset({"alias", "validation_alias", "serialization_alias"})
 _FIELD_ASSIGNMENT_KEYWORDS = _FIELD_ALIAS_KEYWORDS | frozenset({
     "default",
@@ -1711,53 +1712,6 @@ def _aggregate_protocol_holders(
     return tuple((holder, modules[holder]) for holder in nearest)
 
 
-def _aggregate_protocol_member_aliases(
-    package_root: Path,
-    holders: Sequence[tuple[str, str]],
-    *,
-    sources: Mapping[Path, str],
-) -> tuple[tuple[str, str], ...]:
-    """Return uniquely owned nested protocol classes for direct facade aliases.
-
-    Explicit aliases make nested holder members visible to static analyzers without
-    introducing duplicate protocol declarations.
-    """
-    owners: dict[str, list[str]] = {}
-    for holder, module in holders:
-        path = _protocol_module_path(package_root, module, sources=sources)
-        if path is None:
-            message = f"protocol holder has no local module: {holder} -> {module}"
-            raise ValueError(message)
-        tree = ast.parse(_protocol_source(path, sources=sources), filename=str(path))
-        declaration = next(
-            (
-                node
-                for node in tree.body
-                if isinstance(node, ast.ClassDef) and node.name == holder
-            ),
-            None,
-        )
-        if declaration is None:
-            message = f"protocol holder is missing its declaration: {holder} -> {path}"
-            raise ValueError(message)
-        for member in declaration.body:
-            if isinstance(member, ast.ClassDef):
-                owners.setdefault(member.name, []).append(holder)
-    return tuple(
-        (name, declared_owners[0])
-        for name, declared_owners in sorted(owners.items())
-        if len(declared_owners) == 1
-    )
-
-
-def _render_protocol_member_alias(name: str, holder: str) -> str:
-    """Render one static facade alias within the configured line limit."""
-    rendered = f"        {name} = {holder}.{name}\n"
-    if len(rendered.rstrip()) <= 88:
-        return rendered
-    return f"        {name} = (\n            {holder}\n            .{name}\n        )\n"
-
-
 def _render_facade_import(module: str, holder: str) -> str:
     """Render one aggregate import within the project's Ruff line limit.
 
@@ -2013,22 +1967,10 @@ def plan_protocol_facades(
         itertools.starmap(_render_lazy_export_mapping_entry, exports_by_name.items())
     )
     mapping_entries = f"{mapping_entries}\n" if mapping_entries else ""
-    aliases = _aggregate_protocol_member_aliases(
-        protocol_root, holders, sources=sources
-    )
-    alias_holders = {holder for _name, holder in aliases}
-    holder_modules = dict(holders)
-    ordered_imports = sorted(
-        {
-            *(holder_exports),
-            *((holder, holder_modules[holder]) for holder in alias_holders),
-        },
-        key=operator.itemgetter(1, 0),
-    )
     imports = "\n".join(
-        _render_facade_import(module, holder) for holder, module in ordered_imports
+        _render_facade_import(module, holder)
+        for holder, module in sorted(holder_exports, key=operator.itemgetter(1, 0))
     )
-    member_aliases = "".join(itertools.starmap(_render_protocol_member_alias, aliases))
     type_imports = "\n".join(
         _render_lazy_export_type_import(module, holder)
         for holder, module in exports_by_name.items()
@@ -2084,9 +2026,7 @@ def plan_protocol_facades(
             if bases
             else "    class Infra:\n"
         )
-        + '        """Aggregate source-derived protocol contracts."""\n\n'
-        + (f"{member_aliases}\n" if member_aliases else "")
-        + "\n"
+        + '        """Aggregate source-derived protocol contracts."""\n\n\n'
         "p = FlextInfraProtocols\n"
         '__all__: list[str] = ["FlextInfraProtocols", "p"]\n'
     )
@@ -2168,7 +2108,7 @@ def _render_family_init(
         )
     mapping = "\n".join(entries)
     return (
-        "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
+        f"{_GENERATED_INIT_HEADER}\n"
         f"{_family_init_docstring(module_name)}\n\n"
         "from __future__ import annotations\n\n"
         "from types import MappingProxyType\n"
@@ -2197,11 +2137,12 @@ def plan_protocol_family_inits(
 
     A family package is a private (underscore-prefixed) directory of projected
     protocol modules. Its exports derive from the ``__all__`` of its direct
-    modules; an existing initializer is a generator projection and is never
-    rewritten here.
+    modules. An absent initializer, or a generated stub that installs no lazy
+    exports, is planned; an authored or already lazy initializer belongs to the
+    lazy-init generator and is never rewritten here.
 
     Returns:
-        The initializer sources to create, keyed by destination path.
+        The initializer sources to write, keyed by destination path.
 
     Raises:
         ValueError: A family module declares no literal ``__all__``.
@@ -2222,7 +2163,11 @@ def plan_protocol_family_inits(
     planned: dict[Path, str] = {}
     for directory in directories:
         initializer = directory / "__init__.py"
-        if initializer in sources:
+        existing = sources.get(initializer)
+        if existing is not None and (
+            not existing.startswith(_GENERATED_INIT_HEADER)
+            or "install_lazy_exports(" in existing
+        ):
             continue
         members: list[tuple[str, tuple[str, ...]]] = []
         for path in _family_member_modules(directory, sources=sources):
@@ -2373,16 +2318,14 @@ def publish_protocol_family_inits(repository_root: Path) -> tuple[Path, ...]:
 
     """
     root = repository_root.resolve(strict=True)
-    package_name = _declared_protocol_package(
-        root, (root / "pyproject.toml").read_text(encoding="utf-8")
-    )
     return _publish_protocol_sources(
         root,
-        lambda sources: (
-            plan_protocol_family_inits(
-                root, package_name=package_name, declared_sources=sources
-            )
-            | {}
+        lambda sources: plan_protocol_family_inits(
+            root,
+            package_name=_declared_protocol_package(
+                root, sources[root / "pyproject.toml"]
+            ),
+            declared_sources=sources,
         ),
     )
 
@@ -2402,11 +2345,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         msg = "protocol bootstrap requires a repository root"
         raise ValueError(msg)
     root = Path(arguments[0]).resolve()
+    initialized = publish_protocol_family_inits(root)
     model_changed = normalize_model_alias_tree(root)
     changed = normalize_protocol_tree(root)
-    publish_protocol_facades(root)
+    if (
+        _declared_protocol_package(
+            root, (root / "pyproject.toml").read_text(encoding="utf-8")
+        )
+        == "flext_infra"
+    ):
+        publish_protocol_facades(root)
     print(f"normalized model alias fields: {len(model_changed)}")
     print(f"normalized protocol modules: {len(changed)}")
+    print(f"published protocol family initializers: {len(initialized)}")
     if len(arguments) == 1:
         return 0
     command = arguments[2:] if arguments[1] == "--" else arguments[1:]

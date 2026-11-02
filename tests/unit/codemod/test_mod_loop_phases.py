@@ -196,7 +196,7 @@ class TestsFlextInfraCodemodLoopPhases:
 
         tm.fail(changed.failure)
         tm.ok(changed.value)
-        protocols_file = service_file.parent / "protocols.py"
+        protocols_file = service_file.parent / "_protocols" / "service.py"
         tm.ok(protocols_file.exists())
         tm.that(
             protocols_file.read_text(encoding="utf-8"),
@@ -356,7 +356,7 @@ class TestsFlextInfraCodemodLoopPhases:
 
         tm.fail(result.failure)
         tm.that(
-            (service_file.parent / "protocols.py").exists(),
+            (service_file.parent / "_protocols" / "service.py").exists(),
             eq=True,
         )
         legacy_source = legacy_file.read_text(encoding="utf-8")

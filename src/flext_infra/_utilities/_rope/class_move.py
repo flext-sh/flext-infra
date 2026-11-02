@@ -2010,37 +2010,39 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         return target_file, mover
 
     @staticmethod
-    def class_module_stem(class_name: str) -> str:
-        """Derive one module stem from the core CamelCase boundary authority.
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        return c.CAMEL_TO_SNAKE_RE.sub(r"\1_\2", class_name).lower()
-
-    @classmethod
-    def class_target_file(
-        cls,
+    def family_declaration_target_file(
         *,
-        package_dir: Path,
+        project_root: Path,
         source_file: Path,
-        class_name: str,
         family: str,
     ) -> Path:
-        """Derive a canonical destination without a project-owned registry.
+        """Derive the family module that carries the declaring module's domain.
+
+        ADR-028 Decisions 3-4: every declaration lives in the family that owns
+        its kind, one nested class per module. The destination is the module of
+        ``family`` named after the declaring module (``_models/matchers.py``
+        relocates a typing to ``_typings/matchers.py``), inside the namespace
+        root that hosts the family directories: ``src/<package>`` for public
+        sources, the tier directory (``tests``, ``examples``, ``scripts``) for
+        every other tier. Both the directory and the family come from the
+        facade-family census, never from a list.
 
         Returns:
-            The resulting ``Path``.
+            The family domain module path, existing or to be scaffolded.
 
         """
-        module_stem = cls.class_module_stem(class_name).lstrip("_")
-        if family:
-            family_dir = FlextInfraUtilitiesCodegenNamespace.facade_families()[
-                family
-            ].directory
-            return package_dir / family_dir / f"{module_stem}.py"
-        return source_file.parent / f"{source_file.stem}_{module_stem}.py".lstrip("_")
+        parts = source_file.relative_to(project_root).parts
+        source_package = parts[:2]
+        if parts[0] == c.Infra.DEFAULT_SRC_DIR and len(parts) > len(source_package):
+            namespace_root = project_root.joinpath(*source_package)
+        elif len(parts) > 1:
+            namespace_root = project_root / parts[0]
+        else:
+            namespace_root = project_root
+        directory = FlextInfraUtilitiesCodegenNamespace.facade_families()[
+            family
+        ].directory
+        return namespace_root / directory / f"{source_file.stem.strip('_')}.py"
 
     @staticmethod
     def _owned_path(root: Path, candidate: Path) -> Path:

@@ -1,7 +1,7 @@
 id: fix-frozen-dataclass-with-bases-to-model
 valid:
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @dataclass(frozen=True)
   class Point:
@@ -12,7 +12,7 @@ valid:
       x: int
 invalid:
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @dataclass(frozen=True)
   class Point(Base):

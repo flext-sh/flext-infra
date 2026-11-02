@@ -1,22 +1,61 @@
-# Protocol facades describe structural types; only the model facade constructs data.
+# A `p` member is a structural Protocol, never a constructor: data is built and
+# validated only through the model `m` publishes at the same dotted path
+# (AGENTS.md: "A model is never a type"). One law covers every construction
+# form at any namespace depth: `p.X(...)`, `p.NS.X(...)` and the model
+# classmethods `.model_validate`, `.model_validate_json`,
+# `.model_validate_strings` and `.model_construct` on a `p` path. An
+# annotation, `isinstance` or `match` class pattern reads the protocol and
+# never fires: only a call whose callee is the `p` path does.
+#
+# The rewrite is exact and generated: `protocol-model-path` lists the dotted
+# `p` paths that a reached facade package publishes as a MODEL at the same path
+# in `m` (derived from the native source of both letters, never hand-kept).
+# The rewriter retargets only that path from `p` to `m`; a protocol with no
+# model twin keeps its text, so the finding stays a detection the owner
+# decides. An unbound `m` is bound by the import-header stage afterwards.
 id: ban-protocol-constructor
 language: python
 severity: error
 files:
   - "**/*.py"
+rewriters:
+  - id: protocol-path-to-model-path
+    rule:
+      kind: attribute
+      pattern: $PATH
+      matches: protocol-model-path
+      not:
+        inside:
+          kind: attribute
+          matches: protocol-model-path
+    transform:
+      MODEL_PATH:
+        replace:
+          source: $PATH
+          replace: "^p\\."
+          by: m.
+    fix: $MODEL_PATH
 rule:
-  any:
-    - pattern: p.$MODEL($$$ARGS)
-    - pattern: p.$NAMESPACE.$MODEL($$$ARGS)
-  inside:
-    kind: module
-    stopBy: end
-    has:
-      matches: p-imported-from-flext
-      stopBy: end
-constraints:
-  MODEL:
-    regex: "^[A-Z][A-Za-z0-9_]*$"
+  all:
+    - kind: attribute
+    - pattern: $CALLEE
+    - regex: "^p(?:\\.[A-Z][A-Za-z0-9_]*)+(?:\\.model_(?:validate|validate_json|validate_strings|construct))?$"
+    - inside:
+        kind: call
+        field: function
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: p-imported-from-flext
+          stopBy: end
+transform:
+  RETARGETED:
+    rewrite:
+      rewriters: [protocol-path-to-model-path]
+      source: $CALLEE
+fix: $RETARGETED
 message: >-
-  A p facade member is a Protocol contract, not a constructor. Instantiate the
-  matching model through m and keep p for annotations and runtime checks.
+  A p facade member is a Protocol contract, not a constructor or validator.
+  Construct and validate through the model m publishes at the same path and
+  keep p for annotations and runtime checks.

@@ -24,7 +24,13 @@ ignores:
   - "**/__version__.py"
 metadata:
   enforce: [ENFORCE-005]
-  relocation: protocol
+  relocation: family-declaration
+transform:
+  FAMILY:
+    replace:
+      source: $NAME
+      replace: "^.*$"
+      by: p
 rule:
   all:
     - kind: class_definition

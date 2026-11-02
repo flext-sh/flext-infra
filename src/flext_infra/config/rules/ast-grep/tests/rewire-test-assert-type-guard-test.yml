@@ -20,10 +20,10 @@ invalid:
   from flext_tests import tm
   assert isinstance(value, (Entry, Schema))
 - |
-  from tests import p, tm
+  from tests import tm
   if not (isinstance(self.value, Entry)):
       raise AssertionError
 - |
-  from tests import p, tm
+  from tests import tm
   if not (isinstance(value, (Entry, Schema))):
       raise AssertionError

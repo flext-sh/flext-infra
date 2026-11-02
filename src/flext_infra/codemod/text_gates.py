@@ -45,6 +45,7 @@ class FlextInfraModTextGateEngine:
         if remaining.value.findings:
             return r[t.Cli.ResultValue].fail(
                 f"mod-text has {remaining.value.findings} pending finding(s)",
+                error_data={"text": remaining.value.model_dump(mode="json")},
             )
         return r[t.Cli.ResultValue].ok(
             f"mod-text: {pending.value.actionable if apply else 0} "

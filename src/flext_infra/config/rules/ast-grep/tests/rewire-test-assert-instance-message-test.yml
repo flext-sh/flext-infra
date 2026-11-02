@@ -2,7 +2,7 @@ id: rewire-test-assert-instance-message
 valid:
 - assert isinstance(value, Entry), "An entry is required"
 - |
-  from tests import p, tm
+  from tests import tm
   assert isinstance(value, (Entry, Schema)), "An entry is required"
 invalid:
 - |
@@ -11,9 +11,9 @@ invalid:
   def check():
       assert isinstance(value, int), explain()
 - |
-  from tests import p, tm
+  from tests import tm
   assert isinstance(value, Entry), "An entry is required"
 - |
-  from tests import p, tm
+  from tests import tm
   if not (isinstance(value, Entry)):
       raise AssertionError(report)

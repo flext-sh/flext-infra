@@ -8,14 +8,14 @@ snapshots:
     - source: from tests import p, tm
       style: primary
       start: 0
-      end: 20
+      end: 23
     - source: Sinks.FlextModelsTargetLdap.BaseSink
       style: secondary
-      start: 39
-      end: 75
+      start: 42
+      end: 78
     - source: |
         from tests import p, tm
         def consume(sink: Sinks.FlextModelsTargetLdap.BaseSink) -> None: pass
       style: secondary
       start: 0
-      end: 91
+      end: 94

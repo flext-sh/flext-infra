@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, config, m, p, u
-from flext_infra.gates.readonly_namespace import FlextInfraReadonlyNamespace
 from flext_infra.gates.ruff_base import FlextInfraGatesRuffGate
 
 
@@ -379,63 +378,11 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
         Returns:
             The run's verdict and the findings it reported.
 
-        """
-        del ctx
-        issues = self._native_issues(result)
-        passed, parsed = self._finalize_parse_result(
-            result,
-            project_dir,
-            issues,
-            c.Infra.RUFF,
-        )
-        # Only the authenticated identity owner can remove a native finding.
-        explained = passed or (
-            bool(issues)
-            and result.outcome.raw_return_code in self._findings_exit_codes()
-        )
-        remaining = self._without_exempt_identities(project_dir, parsed)
-        return explained and not remaining, remaining
-
-    @override
-    def _check_output_outcome(
-        self,
-        result: p.Cli.CommandOutput,
-        issues: Sequence[p.Infra.Issue],
-        project_dir: Path,
-    ) -> c.Infra.ToolOutcome:
-        """Classify the diagnostics already admitted by the Ruff parser.
-
-        Returns:
-            Clean for an authenticated exemption-only findings exit.
-
-        """
-        outcome = super()._check_output_outcome(result, issues, project_dir)
-        if outcome is not c.Infra.ToolOutcome.ERROR or issues:
-            return outcome
-        if (
-            result.stderr.strip()
-            or result.outcome.timed_out
-            or result.outcome.forwarded_signal is not None
-            or result.outcome.raw_return_code not in self._findings_exit_codes()
-        ):
-            return outcome
-        # Unexplained exits retain an operational issue from the parser;
-        # these empty findings already carry its completed identity admission.
-        return c.Infra.ToolOutcome.CLEAN
-
-    @staticmethod
-    def _native_issues(
-        result: p.Cli.CommandOutput,
-    ) -> MutableSequence[p.Infra.Issue]:
-        """Read original Ruff diagnostics before applying identity policy.
-
-        Returns:
-            Every diagnostic in the original native JSON report.
-
         Raises:
             TypeError: If the report is not a list of finding objects.
 
         """
+        del ctx
         report = u.Cli.json_parse(result.stdout or "[]").unwrap()
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
@@ -456,38 +403,15 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
                     severity=c.Infra.GateSeverity.ERROR.value,
                 ),
             )
-        return issues
-
-    @staticmethod
-    def _without_exempt_identities(
-        project_dir: Path,
-        issues: Sequence[p.Infra.Issue],
-    ) -> Sequence[p.Infra.Issue]:
-        """Remove exactly the findings an authenticated identity exempts.
-
-        The readonly-namespace owner authenticates each naming exemption at
-        the reported file, row, column and rule. Every other finding, every
-        other rule and every unauthenticated row remains blocking; nothing is
-        exempt by name or by file. UP040 is never exempt: it is also unfixable
-        at the tooling SSOT, because its fix would replace a published class
-        with a ``TypeAliasType``.
-
-        Returns:
-            The findings that still block the verdict.
-
-        """
-        exempt = FlextInfraReadonlyNamespace.exempt_identities(project_dir, issues)
-        if not exempt:
-            return issues
-        return [
-            issue
-            for issue in issues
-            if (
-                (Path(issue.file).resolve(), issue.line, issue.column),
-                issue.code,
-            )
-            not in exempt
-        ]
+        passed, parsed = self._finalize_parse_result(
+            result,
+            project_dir,
+            issues,
+            c.Infra.RUFF,
+        )
+        # Ruff's findings exit is a valid scanner result, but every reported
+        # finding blocks the lint gate: no rule, name or identity is exempt.
+        return passed and not parsed, parsed
 
     @staticmethod
     @override

@@ -22,10 +22,10 @@ valid:
 invalid:
 - |
   from flext_core import FlextModels, m
-  class m.AiHub(FlextModels):
+  class AiHubModels(FlextModels):
       pass
-  m = m.AiHub
-  __all__ = ["m.AiHub", "m"]
+  m = AiHubModels
+  __all__ = ["AiHubModels", "m"]
 - |
   class FlextFooConstants:
       pass

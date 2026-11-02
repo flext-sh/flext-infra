@@ -42,11 +42,11 @@ snapshots:
       style: secondary
       start: 0
       end: 76
-    - source: p.FrozenModel
+    - source: m.FrozenModel
       style: secondary
       start: 42
       end: 55
-    - source: p.FrozenModel
+    - source: m.FrozenModel
       style: secondary
       start: 42
       end: 55

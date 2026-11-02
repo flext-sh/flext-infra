@@ -1,11 +1,11 @@
 id: rewire-type-adapter-construction
 valid:
 - |
-  from flext_core import m, p, u
+  from flext_core import t, u
 
-  ADAPTER: p.TypeAdapter[int] = u.type_adapter(int)
+  ADAPTER: t.TypeAdapter[int] = u.type_adapter(int)
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   ADAPTER = m.TypeAdapter(int)
 - |
@@ -26,29 +26,29 @@ valid:
 
   ADAPTER = PydanticAdapter(int)
 - |
-  from ai_hub import m, p, u as utilities
+  from ai_hub import m, u as utilities
 
   ADAPTER = m.TypeAdapter(int)
 - |
   from project.adapters import u
-  from flext_core import m, p
+  from flext_core import m
 
   ADAPTER = m.TypeAdapter(int)
 invalid:
 - |
-  from ai_hub import m, p, u
+  from ai_hub import m, u
 
   ADAPTER = m.TypeAdapter(int)
 - |
-  from tests import m, p, u
+  from tests import m, u
 
   ADAPTER = m.TypeAdapter(int)
 - |
-  from . import m, p, u
+  from . import m, u
 
   ADAPTER = m.TypeAdapter(int)
 - |
-  from flext_core import m, p, u
+  from flext_core import m, u
 
   ADAPTER = m.TypeAdapter(int)
 - |

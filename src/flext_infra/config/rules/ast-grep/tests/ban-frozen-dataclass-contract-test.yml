@@ -1,7 +1,7 @@
 id: ban-frozen-dataclass-contract
 valid:
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @dataclass(frozen=True)
   class Point:
@@ -20,7 +20,7 @@ invalid:
   class Point:
       x: int
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @final
   @dataclass(frozen=True)

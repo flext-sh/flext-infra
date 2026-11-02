@@ -2,7 +2,7 @@ id: rewire-type-adapter-construction-missing-u-import
 snapshots:
   "from ai_hub import m\n\nADAPTER = m.TypeAdapter(int)\n":
     labels:
-    - source: p.TypeAdapter(int)
+    - source: m.TypeAdapter(int)
       style: primary
       start: 32
       end: 50
@@ -15,15 +15,15 @@ snapshots:
       start: 32
       end: 33
     - source: |
-        from ai_hub import m, p
-
+        from ai_hub import m
+        
         ADAPTER = m.TypeAdapter(int)
       style: secondary
       start: 0
       end: 51
-  "from ai_hub import m, p, u as utilities\n\nADAPTER = m.TypeAdapter(int)\n":
+  "from ai_hub import m, u as utilities\n\nADAPTER = m.TypeAdapter(int)\n":
     labels:
-    - source: p.TypeAdapter(int)
+    - source: m.TypeAdapter(int)
       style: primary
       start: 48
       end: 66
@@ -36,15 +36,15 @@ snapshots:
       start: 48
       end: 49
     - source: |
-        from ai_hub import m, p, u as utilities
-
+        from ai_hub import m, u as utilities
+        
         ADAPTER = m.TypeAdapter(int)
       style: secondary
       start: 0
       end: 67
   "from flext_core import m\n\nADAPTER = m.TypeAdapter(int)\n":
     labels:
-    - source: p.TypeAdapter(int)
+    - source: m.TypeAdapter(int)
       style: primary
       start: 36
       end: 54
@@ -57,8 +57,8 @@ snapshots:
       start: 36
       end: 37
     - source: |
-        from flext_core import m, p
-
+        from flext_core import m
+        
         ADAPTER = m.TypeAdapter(int)
       style: secondary
       start: 0
@@ -79,14 +79,14 @@ snapshots:
       end: 32
     - source: |
         from pydantic import TypeAdapter
-
+        
         ADAPTER = TypeAdapter(int)
       style: secondary
       start: 0
       end: 61
     - source: |
         from pydantic import TypeAdapter
-
+        
         ADAPTER = TypeAdapter(int)
       style: secondary
       start: 0

@@ -107,8 +107,6 @@ class FlextInfraConstantsBase(
     "Ruff tool section key."
     RUFF_INVALID_SYNTAX: ClassVar[str] = "invalid-syntax"
     "Rule name Ruff gives a module it cannot parse."
-    RUFF_INVALID_FUNCTION_NAME: ClassVar[str] = "invalid-function-name"
-    "Ruff N802; function names must be lowercase, including protocol getters."
     DEPTRY: ClassVar[str] = "deptry"
     "Deptry tool section key."
     ISORT: ClassVar[str] = "isort"

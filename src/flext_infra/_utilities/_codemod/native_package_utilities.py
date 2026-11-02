@@ -23,10 +23,11 @@ from typing import is_protocol
 
 from flext_cli import u
 
-from flext_infra import FlextInfraConfig, c, m, p, t
+from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesImportLaw,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesPythonModel,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -434,24 +435,65 @@ class FlextInfraUtilitiesCodemodNativePackage:
         project: Path,
         facts: p.Infra.CodemodPackageExportsFacts,
     ) -> Mapping[str, t.JsonMapping]:
-        """Insert the nearest declaring package's import for unbound names.
+        """Render the letter-binding law: one binding per letter, from its owner.
 
-        One rule per package and scope inserts, after the module's first
-        future or plain import, one ``from <package> import <name>`` line for
-        an actual unbound use. The fixed-point loop binds remaining free names;
-        already-bound names keep their existing semantic owner. A module inside a
-        declaring package imports from the deepest declaring package that
-        contains it; every other module imports from the unique shallowest
-        declaring package, and gets no header when that package is ambiguous.
+        Every document is an ``import-header`` shape. One rule per package and
+        scope inserts, after the module's first future or plain import, one
+        ``from <package> import <name>`` line for an actual unbound use. The
+        fixed-point loop binds remaining free names; already-bound names keep
+        their existing semantic owner. A module inside a declaring package
+        imports from the deepest declaring package that contains it; every
+        other module imports from the unique shallowest declaring package, and
+        gets no header when that package is ambiguous.
+
+        A facade-family module (the modules of one letter's family, per
+        top-level package) never binds that letter, nor a later one, from its
+        own package: the family assembles that facade. Those letters bind from
+        the upstream package the facade composes, the own-package binding is
+        removed, and a letter bound from two origins keeps the upstream one.
+        Outside the families every letter binds from the own package root.
 
         Returns:
             The generated ``import-header`` rule documents keyed by id.
 
         """
-        del snapshot
-        del project
+        root = project.resolve()
+        families = cls._codemod_letter_families(snapshot, root)
+        upstreams = cls._codemod_letter_upstreams((snapshot, root), facts, families)
+        carved: dict[tuple[str, str], set[str]] = {}
+        for family, files in families.items():
+            for name in cls._codemod_forbidden_letters(facts, upstreams, family):
+                carved.setdefault((family[0], name), set()).update(files)
+        documents = dict(
+            cls._codemod_header_documents(
+                facts, {key: tuple(sorted(files)) for key, files in carved.items()}
+            )
+        )
+        documents.update(
+            cls._codemod_family_binding_documents(
+                (snapshot, root), facts, families, upstreams
+            )
+        )
+        return documents
+
+    @classmethod
+    def _codemod_header_documents(
+        cls,
+        facts: p.Infra.CodemodPackageExportsFacts,
+        carve: Mapping[tuple[str, str], t.StrTuple],
+    ) -> Mapping[str, t.JsonMapping]:
+        """Insert the nearest declaring package's import for unbound names.
+
+        A letter never binds from the package whose family module needs it:
+        those family files are carved out of the package's document, and the
+        family documents bind them from the upstream.
+
+        Returns:
+            The generated header documents keyed by id.
+
+        """
         directories = facts.directories
-        groups: dict[tuple[str, str | None, t.StrTuple], set[str]] = {}
+        groups: dict[tuple[str, str | None, t.StrTuple, t.StrTuple], set[str]] = {}
         resolvable = cls.codemod_header_resolvable_names(facts)
         for name, packages in cls._codemod_declaring_packages(facts).items():
             # A module inside a declaring package always resolves the name to
@@ -479,24 +521,28 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     )
                 )
                 scope = None if package == root else home.as_posix()
-                groups.setdefault((package, scope, nested), set()).add(name)
+                carved = carve.get((package, name), ())
+                groups.setdefault((package, scope, nested, carved), set()).add(name)
         utils = cls._codemod_name_utils()
         documents: dict[str, t.JsonMapping] = {}
         # The root scope is None; order it before every directory scope.
-        for (package, scope, nested), names in sorted(
+        for (package, scope, nested, carved), names in sorted(
             groups.items(),
             key=lambda item: (
                 item[0][0],
                 item[0][1] is not None,
                 item[0][1] or "",
                 item[0][2],
+                item[0][3],
             ),
         ):
             qualifier = (
                 package
-                if scope is None and not nested
+                if scope is None and not nested and not carved
                 else f"{package}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
-                + u.Cli.sha256_content(f"{scope}\0{'\0'.join(nested)}")[:12]
+                + u.Cli.sha256_content(
+                    f"{scope}\0{'\0'.join(nested)}\0{'\0'.join(carved)}"
+                )[:12]
             )
             rule_id = (
                 f"{c.Infra.CODEMOD_IMPORT_HEADER_SHAPE}"
@@ -512,16 +558,626 @@ class FlextInfraUtilitiesCodemodNativePackage:
             }
             if scope is not None:
                 document["files"] = [cls._codemod_directory_glob(scope)]
-            if nested:
-                document["ignores"] = [
-                    cls._codemod_directory_glob(directory) for directory in nested
-                ]
+            ignores = [
+                *(cls._codemod_directory_glob(directory) for directory in nested),
+                *cls._codemod_file_globs(carved),
+            ]
+            if ignores:
+                document["ignores"] = ignores
             documents[rule_id] = document
+        return documents
+
+    @staticmethod
+    def _codemod_file_globs(files: Sequence[str]) -> list[str]:
+        """Match each project-relative file, wherever staged.
+
+        Returns:
+            The native globs.
+
+        """
+        return [f"**/{relative}" for relative in files]
+
+    @staticmethod
+    def _codemod_letter_rank(letter: str) -> int:
+        """Rank a runtime facade letter in the import-layer order.
+
+        A letter naming a layer is that layer; a declared layer alias ranks
+        with its layer; every other letter stands for ``base``.
+
+        Returns:
+            The letter's layer rank.
+
+        """
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
+        return order.index(
+            letter
+            if letter in order
+            else config.Infra.tooling.lazy_init.layer_aliases.get(
+                letter, c.Infra.IMPORT_LAW_BASE_LAYER
+            )
+        )
+
+    @staticmethod
+    def _codemod_package_letters(
+        facts: p.Infra.CodemodPackageExportsFacts, package: str
+    ) -> frozenset[str]:
+        """Name the one-letter facade aliases one package publishes.
+
+        Returns:
+            The package's letters.
+
+        """
+        return frozenset(
+            name
+            for name in facts.exports.get(package, ())
+            if len(name) == 1 and name.islower()
+        )
+
+    @staticmethod
+    def _codemod_letter_families(
+        snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> Mapping[tuple[str, str], t.StrTuple]:
+        """Group each letter's family modules by their top-level package.
+
+        A family is the modules of one facade letter inside one package (the
+        public package or an internal tier): the modules whose own ``__all__``
+        declares the letter and those of the private family package of such a
+        facade module. Its members assemble that package's facade.
+
+        Returns:
+            Project-relative family files keyed by ``(package, letter)``.
+
+        """
+        root = project.resolve()
+        files = frozenset(
+            FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(snapshot, root)
+        )
+
+        def letters(module: Path) -> frozenset[str]:
+            if module not in files:
+                return frozenset()
+            return frozenset(
+                name
+                for name in FlextInfraUtilitiesWorkspaceSnapshot.workspace_public_exports(
+                    snapshot, module
+                )
+                if len(name) == 1 and name.islower()
+            )
+
+        grouped: dict[tuple[str, str], list[str]] = {}
+        for path in sorted(files):
+            relative = path.relative_to(root)
+            if relative.name == c.Infra.INIT_PY:
+                continue
+            facades = (
+                root
+                / package.parent
+                / f"{package.name.removeprefix('_')}{c.Infra.EXT_PYTHON}"
+                for package in relative.parents
+                if package.name.startswith("_") and not package.name.startswith("__")
+            )
+            owner = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                path, project_root=root
+            ).partition(".")[0]
+            for letter in letters(path).union(*map(letters, facades)):
+                grouped.setdefault((owner, letter), []).append(relative.as_posix())
+        return {key: tuple(found) for key, found in sorted(grouped.items())}
+
+    @classmethod
+    def _codemod_letter_upstreams(
+        cls,
+        context: tuple[p.Infra.WorkspaceSnapshot, Path],
+        facts: p.Infra.CodemodPackageExportsFacts,
+        families: Mapping[tuple[str, str], t.StrTuple],
+    ) -> Mapping[tuple[str, str], str]:
+        """Elect the upstream package each package composes for each letter.
+
+        An internal tier composes the public package's letters. The public
+        package composes the single other package whose same letter its facade
+        class derives from, read from the facade module's own imports. A
+        letter without a facade of its own takes the package's common
+        upstream, when every facade of the package agrees on one.
+
+        Returns:
+            The upstream package keyed by ``(package, letter)``; letters
+            without one are absent.
+
+        """
+        snapshot, root = context
+        public = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
+        run = FlextInfraUtilitiesPythonModel.python_model_run(snapshot.engine, {})
+        upstreams: dict[tuple[str, str], str] = {}
+        for (package, letter), files in families.items():
+            candidates: set[str] = set()
+            if package != public:
+                if letter in cls._codemod_package_letters(facts, public):
+                    candidates.add(public)
+            else:
+                for relative in files:
+                    module = FlextInfraUtilitiesPythonModel.python_model_module_at(
+                        run,
+                        root / relative,
+                        FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                            root / relative, project_root=root
+                        ),
+                    )
+                    if letter not in (
+                        FlextInfraUtilitiesPythonModel.python_model_exports(module)
+                        or ()
+                    ):
+                        continue
+                    for base in module.classes.get(module.values.get(letter, ""), ()):
+                        origin, _, leaf = module.imports.get(base, "").rpartition(".")
+                        top = origin.partition(".")[0]
+                        if leaf == letter and top and top != package:
+                            candidates.add(top)
+            if len(candidates) == 1:
+                (elected,) = candidates
+                upstreams[package, letter] = elected
+        for package in {package for package, _letter in families}:
+            common = {up for (owner, _l), up in upstreams.items() if owner == package}
+            if len(common) == 1:
+                (elected,) = common
+                for letter in cls._codemod_package_letters(facts, package):
+                    upstreams.setdefault((package, letter), elected)
+        return upstreams
+
+    @classmethod
+    def _codemod_forbidden_letters(
+        cls,
+        facts: p.Infra.CodemodPackageExportsFacts,
+        upstreams: Mapping[tuple[str, str], str],
+        family: tuple[str, str],
+    ) -> frozenset[str]:
+        """Name the letters one family binds from its upstream, not its package.
+
+        Returns:
+            The family's own letter and every later letter its package
+            publishes, each with a known upstream.
+
+        """
+        package, letter = family
+        floor = cls._codemod_letter_rank(letter)
+        return frozenset(
+            name
+            for name in {letter, *cls._codemod_package_letters(facts, package)}
+            if cls._codemod_letter_rank(name) >= floor and (package, name) in upstreams
+        )
+
+    @classmethod
+    def _codemod_family_binding_documents(
+        cls,
+        context: tuple[p.Infra.WorkspaceSnapshot, Path],
+        facts: p.Infra.CodemodPackageExportsFacts,
+        families: Mapping[tuple[str, str], t.StrTuple],
+        upstreams: Mapping[tuple[str, str], str],
+    ) -> Mapping[str, t.JsonMapping]:
+        """Render the binding law over every package's family and orchestrator modules.
+
+        Inside the family of letter ``L`` of package ``P``, each letter at or
+        after ``L`` in the layer order binds from the upstream package ``P``
+        composes, never from ``P``; a letter bound from two origins keeps the
+        upstream one. Outside the families, every letter binds from ``P``'s
+        own root. In both, a letter is imported from a package root, never a
+        module path, and never through a package module object.
+
+        Returns:
+            The binding documents keyed by id.
+
+        """
+        snapshot, root = context
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        shape = c.Infra.CODEMOD_IMPORT_HEADER_SHAPE
+        facade_packages = tuple(cls.codemod_facade_packages(snapshot, root))
+        documents: dict[str, t.JsonMapping] = {}
+        by_package: dict[str, set[str]] = {}
+        for (package, letter), files in families.items():
+            by_package.setdefault(package, set()).update(files)
+            forbidden = cls._codemod_forbidden_letters(
+                facts, upstreams, (package, letter)
+            )
+            if not forbidden:
+                continue
+            names = "|".join(sorted(forbidden))
+            grouped: dict[str, list[str]] = {}
+            for name in sorted(forbidden):
+                grouped.setdefault(upstreams[package, name], []).append(name)
+            for upstream, bound in grouped.items():
+                rule_id = separator.join((
+                    shape,
+                    "family",
+                    package,
+                    letter,
+                    upstream,
+                ))
+                documents[rule_id] = {
+                    "id": rule_id,
+                    "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                    "message": (
+                        f"Bind `{'`, `'.join(bound)}` from `{upstream}` in the "
+                        f"`{letter}` family of `{package}`."
+                    ),
+                    "utils": dict(cls._codemod_name_utils()),
+                    "files": cls._codemod_file_globs(files),
+                    "rule": cls._codemod_header_rule(bound),
+                    "fix": f"$ANCHOR\nfrom {upstream} import $USED",
+                }
+            documents.update(
+                cls._codemod_origin_removal_documents(
+                    ("own-letter", package, letter),
+                    f"The `{letter}` family of `{package}` binds `{names}` from "
+                    f"the package it composes, never from `{package}`.",
+                    (rf"^{re.escape(package)}(?:\.|$)", f"^(?:{names})$"),
+                    cls._codemod_file_globs(files),
+                    correlate=False,
+                    enforce=("ENFORCE-051",),
+                )
+            )
+        for package, files in sorted(by_package.items()):
+            documents.update(
+                cls._codemod_origin_removal_documents(
+                    ("duplicate-origin", package),
+                    f"A family module of `{package}` binds a letter once, from "
+                    "its upstream.",
+                    (rf"^{re.escape(package)}(?:\.|$)", r"^[a-z]$"),
+                    cls._codemod_file_globs(sorted(files)),
+                    correlate=True,
+                    enforce=("ENFORCE-051",),
+                )
+            )
+        layer_zero = frozenset(cls.codemod_layer_zero_files(snapshot, root))
+        for package, home in sorted(facts.directories.items()):
+            letters = cls._codemod_package_letters(facts, package)
+            others = [name for name in facade_packages if name != package]
+            if not letters or not others:
+                continue
+            exempt = sorted({*by_package.get(package, ()), *layer_zero})
+            documents.update(
+                cls._codemod_origin_removal_documents(
+                    ("foreign-origin", package),
+                    f"Outside the families, `{package}` binds every letter from "
+                    "its own root, never from another package.",
+                    (
+                        r"^(?:" + "|".join(map(re.escape, others)) + r")(?:\.|$)",
+                        "^(?:" + "|".join(sorted(letters)) + ")$",
+                    ),
+                    [cls._codemod_directory_glob(home)],
+                    correlate=False,
+                    enforce=("ENFORCE-003", "ENFORCE-080"),
+                    ignores=[
+                        f"**/{c.Infra.INIT_PY}",
+                        *cls._codemod_file_globs(exempt),
+                    ],
+                )
+            )
+        if facade_packages:
+            documents.update(
+                cls._codemod_origin_removal_documents(
+                    ("module-path",),
+                    "A letter is imported from a package root, never from a "
+                    "module path.",
+                    (
+                        r"^(?:" + "|".join(map(re.escape, facade_packages)) + r")\.",
+                        r"^[a-z]$",
+                    ),
+                    ["**/*.py"],
+                    correlate=False,
+                    enforce=("ENFORCE-003", "ENFORCE-051"),
+                    ignores=[f"**/{c.Infra.INIT_PY}"],
+                )
+            )
+        documents.update(cls._codemod_letter_module_object_documents(facade_packages))
+        return documents
+
+    @staticmethod
+    def _codemod_comment_free(position: int) -> t.JsonDict:
+        """Match the named child at ``position``, comments not counted.
+
+        Returns:
+            The native ``nthChild`` rule.
+
+        """
+        return {
+            "nthChild": {"position": position, "ofRule": {"not": {"kind": "comment"}}}
+        }
+
+    @classmethod
+    def _codemod_origin_removal_documents(
+        cls,
+        identity: tuple[str, ...],
+        message: str,
+        target: tuple[str, str],
+        files: Sequence[str],
+        *,
+        correlate: bool,
+        enforce: Sequence[str],
+        ignores: Sequence[str] = (),
+    ) -> Mapping[str, t.JsonMapping]:
+        """Remove a bound letter from an origin, in every statement shape.
+
+        The binding is one name of a ``from <origin> import ...`` statement:
+        a name followed by a comma, the last name, the sole name of a
+        statement, and the sole statement of an ``if TYPE_CHECKING:`` block each
+        need their own native fix. ``correlate`` removes the binding only when
+        the module binds the same name from another origin.
+
+        Returns:
+            The four removal documents keyed by id.
+
+        """
+        origin, names = target
+        own: t.JsonDict = {"field": "module_name", "regex": origin}
+        other: t.JsonDict = {
+            "field": "module_name",
+            "regex": ".",
+            "not": {"regex": origin},
+        }
+        free = cls._codemod_comment_free
+        name: t.JsonDict = {"kind": "dotted_name", "regex": names}
+        conditions: list[t.JsonValue] = []
+        if correlate:
+            name["pattern"] = "$NAME"
+            conditions.append({
+                "inside": {
+                    "kind": "module",
+                    "stopBy": "end",
+                    "has": {
+                        "stopBy": "end",
+                        "kind": "import_from_statement",
+                        "all": [
+                            {"has": other},
+                            {
+                                "has": {
+                                    "kind": "dotted_name",
+                                    "pattern": "$NAME",
+                                    **free(2),
+                                }
+                            },
+                        ],
+                    },
+                }
+            })
+        sole: t.JsonDict = {
+            "kind": "import_from_statement",
+            "all": [
+                {"has": own},
+                {"has": {**name, **free(2)}},
+                {"not": {"has": free(3)}},
+            ],
+        }
+        after_module: t.JsonDict = {
+            "follows": {
+                "stopBy": "end",
+                "any": [{"kind": "dotted_name"}, {"kind": "relative_import"}],
+            }
+        }
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        base = separator.join((c.Infra.CODEMOD_IMPORT_HEADER_SHAPE, *identity))
+        listed: t.JsonDict = {
+            "kind": "import_from_statement",
+            "all": [{"has": own}, {"has": free(3)}],
+        }
+        shapes: dict[str, tuple[t.JsonDict, t.JsonValue]] = {
+            "comma": (
+                {
+                    "all": [
+                        name,
+                        after_module,
+                        {"precedes": {"regex": ","}},
+                        {"inside": listed},
+                        *conditions,
+                    ]
+                },
+                {"template": "", "expandEnd": {"regex": ","}},
+            ),
+            "last": (
+                {
+                    "all": [
+                        name,
+                        after_module,
+                        {"follows": {"regex": ","}},
+                        {"not": {"precedes": {"regex": ","}}},
+                        {"inside": listed},
+                        *conditions,
+                    ]
+                },
+                {"template": "", "expandStart": {"regex": ","}},
+            ),
+            "statement": (
+                {
+                    "all": [
+                        sole,
+                        {
+                            "any": [
+                                {"inside": {"kind": "module"}},
+                                {"inside": {"kind": "block", "has": free(2)}},
+                            ]
+                        },
+                        *conditions,
+                    ]
+                },
+                "",
+            ),
+            "guard": (
+                {
+                    "kind": "if_statement",
+                    "all": [
+                        {
+                            "has": {
+                                "field": "condition",
+                                "regex": r"^(?:typing\.)?TYPE_CHECKING$",
+                            }
+                        },
+                        {
+                            "has": {
+                                "field": "consequence",
+                                "kind": "block",
+                                "all": [
+                                    {"has": {**sole, **free(1)}},
+                                    {"not": {"has": free(2)}},
+                                ],
+                            }
+                        },
+                        {"not": {"has": {"field": "alternative", "regex": "."}}},
+                        *conditions,
+                    ],
+                },
+                "",
+            ),
+        }
+        documents: dict[str, t.JsonMapping] = {}
+        for kind, (rule, fix) in shapes.items():
+            rule_id = f"{base}{separator}{kind}"
+            document: dict[str, t.JsonValue] = {
+                "id": rule_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": message,
+                "metadata": {"enforce": list(enforce)},
+                "files": list(files),
+                "rule": rule,
+                "fix": fix,
+            }
+            if ignores:
+                document["ignores"] = list(ignores)
+            documents[rule_id] = document
+        return documents
+
+    @classmethod
+    def _codemod_letter_module_object_documents(
+        cls, facade_packages: Sequence[str]
+    ) -> Mapping[str, t.JsonMapping]:
+        """Read a facade letter bound by name, never through a package object.
+
+        ``pkg.u.x`` becomes ``u.x`` and the header binds ``u`` from its owner.
+        A module that declares the letter itself (a facade module) cannot bind
+        the package's: it reads ``pkg_u`` instead, bound as ``from pkg import u
+        as pkg_u``, the spelling facade modules compose upstream letters with.
+
+        Returns:
+            The letter-module-object documents keyed by id.
+
+        """
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        shape = c.Infra.CODEMOD_IMPORT_HEADER_SHAPE
+        utils = cls._codemod_name_utils()
+        local: t.JsonDict = {
+            "inside": {
+                "kind": "module",
+                "stopBy": "end",
+                "has": {
+                    "stopBy": "end",
+                    "pattern": "$NAME",
+                    "matches": "local-binding",
+                },
+            }
+        }
+        by_name = f"{shape}{separator}letter-module-object"
+        documents: dict[str, t.JsonMapping] = {
+            by_name: {
+                "id": by_name,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": (
+                    "Letter `$NAME` read through the package module object "
+                    "`$PACKAGE`: bind the letter by name."
+                ),
+                "ignores": [f"**/{c.Infra.INIT_PY}"],
+                "utils": dict(utils),
+                "constraints": {
+                    "PACKAGE": {
+                        "any": [
+                            {"matches": c.Infra.CODEMOD_OWN_PACKAGE_UTILITY},
+                            {"matches": c.Infra.CODEMOD_FACADE_PACKAGE_UTILITY},
+                        ]
+                    },
+                    "NAME": {"regex": "^[a-z]$"},
+                },
+                "rule": {
+                    "kind": "attribute",
+                    "all": [
+                        {
+                            "has": {
+                                "field": "object",
+                                "kind": "identifier",
+                                "pattern": "$PACKAGE",
+                            }
+                        },
+                        {"has": {"field": "attribute", "pattern": "$NAME"}},
+                        {"not": local},
+                    ],
+                },
+                "fix": "$NAME",
+            }
+        }
+        for package in facade_packages:
+            alias = f"{shape}{separator}letter-module-alias{separator}{package}"
+            documents[alias] = {
+                "id": alias,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": (
+                    f"Letter `$NAME` read through the `{package}` module object "
+                    "in a module that declares `$NAME` itself: bind "
+                    f"`{package}_$NAME` from the package."
+                ),
+                "ignores": [f"**/{c.Infra.INIT_PY}"],
+                "utils": dict(utils),
+                "constraints": {"NAME": {"regex": "^[a-z]$"}},
+                "rule": {
+                    "kind": "attribute",
+                    "all": [
+                        {
+                            "has": {
+                                "field": "object",
+                                "kind": "identifier",
+                                "regex": f"^{re.escape(package)}$",
+                            }
+                        },
+                        {"has": {"field": "attribute", "pattern": "$NAME"}},
+                        local,
+                    ],
+                },
+                "fix": f"{package}_$NAME",
+            }
+            binder = f"{shape}{separator}letter-alias{separator}{package}"
+            documents[binder] = {
+                "id": binder,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": f"Bind `{package}_<letter>` from `{package}`.",
+                "utils": dict(utils),
+                "transform": {
+                    "LETTER": {
+                        "substring": {"source": "$USED", "startChar": len(package) + 1}
+                    }
+                },
+                "rule": cls._codemod_header_rule_regex(
+                    rf"^{re.escape(package)}_[a-z]$"
+                ),
+                "fix": f"$ANCHOR\nfrom {package} import $LETTER as $USED",
+            }
         return documents
 
     @classmethod
     def _codemod_header_rule(cls, names: Sequence[str]) -> t.JsonDict:
         """Anchor on the first future or plain import of a module using ``names``.
+
+        Returns:
+            The native rule of one ``import-header`` document.
+
+        """
+        return cls._codemod_header_anchor(cls.codemod_exact_names_rule(names))
+
+    @classmethod
+    def _codemod_header_rule_regex(cls, regex: str) -> t.JsonDict:
+        """Anchor on the first import of a module using a name matching ``regex``.
+
+        Returns:
+            The native rule of one ``import-header`` document.
+
+        """
+        return cls._codemod_header_anchor({"regex": regex})
+
+    @classmethod
+    def _codemod_header_anchor(cls, matcher: t.JsonDict) -> t.JsonDict:
+        """Anchor on the first future or plain import of a module using a name.
 
         Returns:
             The native rule of one ``import-header`` document.
@@ -561,7 +1217,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     # module walk before the scope-sensitive use and binding tests.
                     "all": [
                         {"kind": "identifier"},
-                        cls.codemod_exact_names_rule(names),
+                        matcher,
                         {"matches": "use"},
                         {"pattern": "$USED"},
                         {
@@ -722,113 +1378,6 @@ class FlextInfraUtilitiesCodemodNativePackage:
                             },
                             *unbound,
                         ],
-                    }
-                },
-            ]
-        }
-
-    @staticmethod
-    def _codemod_nearest_publisher(
-        facts: p.Infra.CodemodPackageExportsFacts, module: str, name: str
-    ) -> str | None:
-        """Nearest package containing ``module`` whose ``__all__`` declares ``name``.
-
-        Returns:
-            The dotted package, or ``None`` when no ancestor publishes the name.
-
-        """
-        package = module.rpartition(".")[0]
-        while package:
-            if name in facts.exports.get(package, ()):
-                return package
-            package = package.rpartition(".")[0]
-        return None
-
-    @classmethod
-    def codemod_package_deep_import_rules(
-        cls, project: Path, facts: p.Infra.CodemodPackageExportsFacts
-    ) -> Mapping[str, t.JsonMapping]:
-        """Rebind a one-name import from a module to its nearest publishing package.
-
-        For each package P, one rule matches ``from <module> import <Name>``
-        for every module file below P whose nearest package publishing
-        ``Name`` is P, and rewrites it to ``from P import <Name>``. Module files
-        and publish sets come from the package facts; a child package is never
-        a module file, and a package's own initializer is never rewritten.
-
-        Returns:
-            The generated ``deep-import`` rule documents keyed by id.
-
-        """
-        del project
-        branches: dict[str, list[t.JsonValue]] = {}
-        for package, children in sorted(facts.modules.items()):
-            for leaf in children:
-                module = f"{package}.{leaf}"
-                if module in facts.exports:
-                    continue
-                targets: dict[str, list[str]] = {}
-                for owner, names in facts.exports.items():
-                    if not module.startswith(f"{owner}."):
-                        continue
-                    targets[owner] = [
-                        name
-                        for name in names
-                        if name.isidentifier()
-                        and cls._codemod_nearest_publisher(facts, module, name) == owner
-                    ]
-                for owner, names in sorted(targets.items()):
-                    if names:
-                        branches.setdefault(owner, []).append(
-                            cls._codemod_deep_import_branch(module, names)
-                        )
-        documents: dict[str, t.JsonMapping] = {}
-        for owner, alternatives in sorted(branches.items()):
-            rule_id = (
-                f"{c.Infra.CODEMOD_DEEP_IMPORT_SHAPE}"
-                f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{owner}"
-            )
-            documents[rule_id] = {
-                "id": rule_id,
-                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
-                "message": (
-                    f"Import the name from `{owner}`, its nearest publishing "
-                    "package, not from a module below it."
-                ),
-                "ignores": [f"**/{c.Infra.INIT_PY}"],
-                "rule": {
-                    "kind": "import_from_statement",
-                    "regex": c.Infra.CODEMOD_SINGLE_NAME_IMPORT_REGEX,
-                    "any": alternatives,
-                },
-                "fix": f"from {owner} import $NAME",
-            }
-        return documents
-
-    @classmethod
-    def _codemod_deep_import_branch(
-        cls, module: str, names: Sequence[str]
-    ) -> t.JsonDict:
-        """Match an import of one of ``names`` from exactly ``module``.
-
-        Returns:
-            The native branch of one ``deep-import`` document.
-
-        """
-        return {
-            "all": [
-                {
-                    "has": {
-                        "field": "module_name",
-                        **cls.codemod_exact_names_rule((module,)),
-                    }
-                },
-                {
-                    "has": {
-                        "field": "name",
-                        "kind": "dotted_name",
-                        "pattern": "$NAME",
-                        **cls.codemod_exact_names_rule(names),
                     }
                 },
             ]

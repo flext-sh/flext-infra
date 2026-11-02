@@ -24,9 +24,9 @@ snapshots:
       style: secondary
       start: 0
       end: 90
-  "from tests import p, tm\nassert value is not None, \"A value is required\"\n":
+  "from tests import tm\nassert value is not None, \"A value is required\"\n":
     fixed: |
-      from tests import p, tm
+      from tests import tm
       if value is None:
           tm.reject("A value is required")
     labels:
@@ -34,19 +34,19 @@ snapshots:
       style: primary
       start: 21
       end: 68
-    - source: from tests import p, tm
+    - source: from tests import tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import p, tm
+        from tests import tm
         assert value is not None, "A value is required"
       style: secondary
       start: 0
       end: 69
-  "from tests import p, tm\nif not (value is not None):\n    raise AssertionError(report)\n":
+  "from tests import tm\nif not (value is not None):\n    raise AssertionError(report)\n":
     fixed: |
-      from tests import p, tm
+      from tests import tm
       if value is None:
           tm.reject(report)
     labels:
@@ -56,12 +56,12 @@ snapshots:
       style: primary
       start: 21
       end: 81
-    - source: from tests import p, tm
+    - source: from tests import tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import p, tm
+        from tests import tm
         if not (value is not None):
             raise AssertionError(report)
       style: secondary

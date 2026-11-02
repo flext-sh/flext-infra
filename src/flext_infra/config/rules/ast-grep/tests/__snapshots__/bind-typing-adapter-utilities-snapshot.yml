@@ -23,12 +23,12 @@ snapshots:
       style: secondary
       start: 22
       end: 23
-  "from tests import p, t\nvalue = t.json_mapping_adapter().validate_python(payload)\n":
+  "from tests import t\nvalue = t.json_mapping_adapter().validate_python(payload)\n":
     fixed: |
       from tests import u, t
       value = t.json_mapping_adapter().validate_python(payload)
     labels:
-    - source: from tests import p, t
+    - source: from tests import t
       style: primary
       start: 0
       end: 19
@@ -37,7 +37,7 @@ snapshots:
       start: 28
       end: 52
     - source: |
-        from tests import p, t
+        from tests import t
         value = t.json_mapping_adapter().validate_python(payload)
       style: secondary
       start: 0

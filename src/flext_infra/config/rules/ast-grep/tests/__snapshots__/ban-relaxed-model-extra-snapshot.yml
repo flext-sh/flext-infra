@@ -38,11 +38,11 @@ snapshots:
       style: secondary
       start: 66
       end: 73
-    - source: p.ConfigDict
+    - source: m.ConfigDict
       style: secondary
       start: 47
       end: 59
-    - source: p.ConfigDict(extra="allow")
+    - source: m.ConfigDict(extra="allow")
       style: secondary
       start: 47
       end: 74

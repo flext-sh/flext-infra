@@ -262,13 +262,22 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
             return {}
         grammar = re.compile(c.Infra.CODEMOD_COMPAT_MESSAGE_PATTERN)
         moves: dict[str, str] = {}
+        # One declaration is reachable under every facade path that composes
+        # its class (the root letter and each namespace that extends it), so
+        # its marker names the path it retires and that path must be one of
+        # the declaration's own facade paths.
+        reachable: dict[str, list[str]] = {}
         for path, message in cls._compat_markers(facade, (c.Infra.FacadeFamily.C,)):
-            old = ".".join(path)
+            reachable.setdefault(message, []).append(".".join(path))
+        for message, paths in reachable.items():
             parsed = grammar.match(message)
-            if parsed is None or parsed["old"] != old:
-                msg = f"compat marker of {old} breaks its grammar: {message!r}"
+            if parsed is None or parsed["old"] not in paths:
+                msg = (
+                    f"compat marker of {', '.join(paths)} breaks its grammar: "
+                    f"{message!r}"
+                )
                 raise ValueError(msg)
-            moves[old] = parsed["new"]
+            moves[parsed["old"]] = parsed["new"]
         if not moves:
             return {}
         rule_id = (

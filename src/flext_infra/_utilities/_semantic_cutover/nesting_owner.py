@@ -434,6 +434,74 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         )
 
     @classmethod
+    def _family_relocated_names(
+        cls, tree: ast.Module, file_path: Path
+    ) -> frozenset[str]:
+        """Return the module-level names the family relocation owns, not nesting.
+
+        ADR-028 Decisions 3-4: a typing declaration belongs to `t` and a
+        function to `u`. Outside its owning family such a name is relocated by
+        the ``family-declaration`` rules (typing aliases, behavior in a
+        declaration layer); nesting it under this module's own class would
+        publish it from the wrong family and hide it from that relocation.
+
+        Returns:
+            The typing names of a non-typings module and the function names of
+            a constants, typings or models module.
+
+        """
+        namespace = FlextInfraUtilitiesCodegenNamespace
+        family = namespace.facade_family_of_file(
+            file_path.name
+        ) or namespace.facade_family_of_directory(file_path.parent.name)
+        if family is None:
+            return frozenset()
+        relocated: set[str] = set()
+        if family != namespace.facade_family_of_file(c.Infra.TYPINGS_PY):
+            relocated.update(
+                name
+                for node in tree.body
+                if (name := cls._typing_binding_name(node)) is not None
+            )
+        if family not in {
+            namespace.facade_family_of_file(c.Infra.UTILITIES_PY),
+            namespace.facade_family_of_file(c.Infra.PROTOCOLS_PY),
+        }:
+            relocated.update(
+                node.name
+                for node in tree.body
+                if isinstance(node, c.Infra.AST_FUNCTION_TYPES)
+            )
+        return frozenset(relocated)
+
+    @classmethod
+    def _typing_binding_name(cls, node: ast.stmt) -> str | None:
+        """Return the name a module statement binds as a typing declaration.
+
+        Returns:
+            The PEP 695 alias, ``TypeAlias`` annotation or typing-factory
+            binding name, or ``None`` for any other statement.
+
+        """
+        if isinstance(node, ast.TypeAlias):
+            return node.name.id
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.value is not None
+            and cls._is_typing_declaration(node.value, node.annotation)
+        ):
+            return node.target.id
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and cls._is_typing_declaration(node.value, None)
+        ):
+            return node.targets[0].id
+        return None
+
+    @classmethod
     def _is_pure_reference(cls, value: ast.expr) -> bool:
         """Whether ``value`` only names another binding (``A`` or ``A.B.C``).
 

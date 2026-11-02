@@ -96,13 +96,52 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
 
         tm.that(report.projects[0].relocation_findings, eq=0)
-        protocols_file = pkg / "protocols.py"
+        protocols_file = pkg / "_protocols" / "service.py"
         tm.ok(protocols_file.exists())
 
         protocols_source = protocols_file.read_text(encoding="utf-8")
         tm.that(protocols_source, has="class ServiceContract(Protocol):")
         tm.that(protocols_source, has="from __future__ import annotations")
         tm.that(protocols_source, has="from typing import Protocol")
+
+    @staticmethod
+    def test_namespace_enforcer_apply_moves_typing_aliases_to_the_domain_typings_module(
+        tmp_path: Path,
+    ) -> None:
+        """Public and private aliases reach the typings module of their domain.
+
+        Premise: ADR-028 Decisions 3-4 place every type alias in `t`; the
+        destination is the typings module named after the declaring module,
+        never the generated typings root, and a private alias becomes the
+        public family member its former module now imports.
+        """
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
+        source_file = pkg / "matchers.py"
+        _ = source_file.write_text(
+            "from __future__ import annotations\n\n"
+            "type Expected = int | str\n"
+            "type _Entries = dict[str, int]\n\n"
+            "class Matcher:\n"
+            "    def entries(self, value: Expected) -> _Entries:\n"
+            "        return {}\n",
+            encoding="utf-8",
+        )
+        u.Tests.provision_checkout(workspace)
+
+        report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
+            apply=True,
+        )
+
+        tm.that(report.projects[0].relocation_findings, eq=0)
+        typings_source = (pkg / "_typings" / "matchers.py").read_text(encoding="utf-8")
+        tm.that(typings_source, has="type Expected = int | str")
+        tm.that(typings_source, has="type Entries = dict[str, int]")
+        tm.that(typings_source, lacks="_Entries")
+        moved_source = source_file.read_text(encoding="utf-8")
+        tm.that(moved_source, lacks="type Expected")
+        tm.that(moved_source, lacks="_Entries")
+        tm.that(moved_source, has=f"{pkg.name}._typings.matchers import")
+        tm.fail((pkg / "typings.py").exists())
 
     @staticmethod
     @pytest.mark.slow
@@ -133,9 +172,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(report.projects[0].relocation_findings, eq=0)
         tm.that(service_file.read_text(encoding="utf-8"), has="logger = ")
-        tm.ok((pkg / "protocols.py").exists())
+        tm.ok((pkg / "_protocols" / "service.py").exists())
         tm.that(
-            (pkg / "protocols.py").read_text(encoding="utf-8"),
+            (pkg / "_protocols" / "service.py").read_text(encoding="utf-8"),
             has="class ServiceContract(Protocol):",
         )
         tm.that(
@@ -417,7 +456,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(report.projects[0].relocation_findings, eq=0)
         tm.ok(report.projects[0].has_violations)
         tm.ok(any(row.after for row in report.projects[0].rule_deltas))
-        tm.ok((pkg / "protocols.py").exists())
+        tm.ok((pkg / "_protocols" / "service.py").exists())
 
     @staticmethod
     def test_namespace_enforcer_apply_clears_the_pending_relocations(
@@ -444,7 +483,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.ok(pending.projects[0].relocation_findings > 0)
         tm.that(applied.projects[0].relocation_findings, eq=0)
-        tm.ok((pkg / "protocols.py").exists())
+        tm.ok((pkg / "_protocols" / "service.py").exists())
 
     @staticmethod
     def test_namespace_enforcer_invalid_declaration_fails_before_any_effect(
@@ -480,7 +519,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         with pytest.raises(TypeError, match="must be a boolean"):
             FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(apply=True)
 
-        tm.fail((healthy_pkg / "protocols.py").exists())
+        tm.fail((healthy_pkg / "_protocols" / "service.py").exists())
 
     @staticmethod
     def test_namespace_enforcer_render_text_reports_the_totals(
@@ -572,7 +611,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         (rules / "destination.yml").write_text(
             f"id: {rule_id}\nlanguage: Python\n"
             "rule:\n  pattern: |\n    class ServiceContract(Protocol):\n      $$$BODY\n"
-            "files:\n  - '**/protocols.py'\nseverity: error\n",
+            "files:\n  - '**/_protocols/service.py'\nseverity: error\n",
             encoding="utf-8",
         )
         (pkg / "service.py").write_text(

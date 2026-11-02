@@ -1,4 +1,4 @@
-"""Readonly namespace identities do not grant name-wide lint exemptions.
+"""Readonly namespace contracts are proven by real checkers, never exempted.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,14 +9,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import gates
-from tests import c, m, tm, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 class TestsFlextInfraReadonlyNamespaceContract:
-    """Validate exempt identities against real sources and checkers."""
+    """Validate readonly namespace contracts against real sources and checkers."""
 
     @staticmethod
     def _semantic_project(tmp_path: Path) -> Path:
@@ -93,10 +93,10 @@ class TestsFlextInfraReadonlyNamespaceContract:
         )
 
     @staticmethod
-    def test_protocol_getter_names_have_no_identity_exemption(
+    def test_protocol_getter_names_block_the_lint_gate(
         tmp_path: Path,
     ) -> None:
-        """N802 remains blocking even for a structurally read-only getter."""
+        """N802 blocks the lint gate even for a structurally read-only getter."""
         project = TestsFlextInfraReadonlyNamespaceContract._semantic_project(tmp_path)
         contracts = project / "src" / "sample" / "contracts.py"
         contracts.write_text(
@@ -113,13 +113,6 @@ class TestsFlextInfraReadonlyNamespaceContract:
         )
         tm.that(checked.result.passed, eq=False)
         tm.that(
-            sum(
-                issue.code == c.Infra.RUFF_INVALID_FUNCTION_NAME
-                for issue in checked.issues
-            ),
+            sum(issue.code == "invalid-function-name" for issue in checked.issues),
             eq=2,
         )
-        exempt = gates.FlextInfraReadonlyNamespace.exempt_identities(
-            project, checked.issues
-        )
-        tm.that(exempt, eq=frozenset())

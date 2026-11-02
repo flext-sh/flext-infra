@@ -52,9 +52,9 @@ snapshots:
       style: secondary
       start: 34
       end: 68
-  "from tests import p, tm\nif not (isinstance(self.value, Entry)):\n    raise AssertionError\n":
+  "from tests import tm\nif not (isinstance(self.value, Entry)):\n    raise AssertionError\n":
     fixed: |
-      from tests import p, tm
+      from tests import tm
       if isinstance(self.value, Entry):
           pass
       else:
@@ -66,12 +66,12 @@ snapshots:
       style: primary
       start: 21
       end: 85
-    - source: from tests import p, tm
+    - source: from tests import tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import p, tm
+        from tests import tm
         if not (isinstance(self.value, Entry)):
             raise AssertionError
       style: secondary
@@ -81,9 +81,9 @@ snapshots:
       style: secondary
       start: 29
       end: 58
-  "from tests import p, tm\nif not (isinstance(value, (Entry, Schema))):\n    raise AssertionError\n":
+  "from tests import tm\nif not (isinstance(value, (Entry, Schema))):\n    raise AssertionError\n":
     fixed: |
-      from tests import p, tm
+      from tests import tm
       if isinstance(value, (Entry, Schema)):
           pass
       else:
@@ -95,12 +95,12 @@ snapshots:
       style: primary
       start: 21
       end: 90
-    - source: from tests import p, tm
+    - source: from tests import tm
       style: secondary
       start: 0
       end: 20
     - source: |
-        from tests import p, tm
+        from tests import tm
         if not (isinstance(value, (Entry, Schema))):
             raise AssertionError
       style: secondary

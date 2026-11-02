@@ -1,8 +1,8 @@
 id: config-dict-from-constants
 snapshots:
-  "from flext_cli import c, m, p, t\nfrom typing import ClassVar\nclass Settings:\n    model_config: ClassVar[c.SettingsConfigDict] = c.SettingsConfigDict(env_prefix=\"APP_\")\n":
+  "from flext_cli import c, m, t\nfrom typing import ClassVar\nclass Settings:\n    model_config: ClassVar[c.SettingsConfigDict] = c.SettingsConfigDict(env_prefix=\"APP_\")\n":
     fixed: |
-      from flext_cli import c, m, p, t
+      from flext_cli import c, m, t
       from typing import ClassVar
       class Settings:
           model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict(env_prefix="APP_")
@@ -11,12 +11,12 @@ snapshots:
       style: primary
       start: 78
       end: 164
-    - source: from flext_cli import c, m, p, t
+    - source: from flext_cli import c, m, t
       style: secondary
       start: 0
       end: 29
     - source: |
-        from flext_cli import c, m, p, t
+        from flext_cli import c, m, t
         from typing import ClassVar
         class Settings:
             model_config: ClassVar[c.SettingsConfigDict] = c.SettingsConfigDict(env_prefix="APP_")
@@ -25,7 +25,7 @@ snapshots:
       end: 165
   "from flext_ldap import m\nfrom typing import ClassVar\nfrom algar_sample import c\nclass C:\n    model_config: ClassVar[c.ConfigDict] = c.ConfigDict(extra=\"forbid\", frozen=True)\n":
     fixed: |
-      from flext_ldap import m, p
+      from flext_ldap import m
       from typing import ClassVar
       from algar_sample import c
       class C:
@@ -35,12 +35,12 @@ snapshots:
       style: primary
       start: 93
       end: 173
-    - source: from flext_ldap import m, p
+    - source: from flext_ldap import m
       style: secondary
       start: 0
       end: 24
     - source: |
-        from flext_ldap import m, p
+        from flext_ldap import m
         from typing import ClassVar
         from algar_sample import c
         class C:

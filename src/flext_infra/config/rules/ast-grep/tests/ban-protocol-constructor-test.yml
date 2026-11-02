@@ -1,3 +1,6 @@
+# Fixture models (fixture-utils/protocol-model-path.yml): `ConfigDocument`,
+# `Infra.FacadeFamily` and `Infra.Outer.Inner`; `Infra.RopeImportedName` is a
+# protocol with no model twin and stays a finding without a rewrite.
 id: ban-protocol-constructor
 valid:
   - |
@@ -5,12 +8,31 @@ valid:
     def make() -> p.Infra.FacadeFamily:
         return m.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
   - |
+    from flext_infra import m, p
+    def make(payload: str) -> p.Infra.FacadeFamily:
+        return m.Infra.FacadeFamily.model_validate_json(payload)
+  - |
     from flext_infra import p
     def is_imported(value: object) -> bool:
         match value:
             case p.Infra.RopeImportedName():
                 return True
         return False
+  - |
+    from flext_infra import p
+    def is_family(value: object) -> bool:
+        return isinstance(value, p.Infra.FacadeFamily)
+  - |
+    from flext_infra import p
+    def read(value: p.Infra.FacadeFamily) -> p.Infra.Outer.Inner:
+        return value.inner
+  - |
+    def make(p):
+        return p.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
+  - |
+    from thirdparty import p
+    def make():
+        return p.Infra.FacadeFamily(letter="u")
 invalid:
   - |
     from flext_infra import p
@@ -20,3 +42,35 @@ invalid:
     from flext_infra import p
     def make():
         return p.ConfigDocument(data={})
+  - |
+    from flext_infra import p
+    def make(payload: dict):
+        return p.Infra.FacadeFamily.model_validate(payload, from_attributes=True)
+  - |
+    from flext_infra import p
+    def make(payload: str):
+        return p.Infra.FacadeFamily.model_validate_json(payload)
+  - |
+    from flext_infra import p
+    def make(payload: dict):
+        return p.Infra.FacadeFamily.model_validate_strings(payload)
+  - |
+    from flext_infra import p
+    def make():
+        return p.Infra.FacadeFamily.model_construct(letter="u")
+  - |
+    from flext_infra import p
+    def make():
+        return p.Infra.Outer.Inner(value=1)
+  - |
+    from flext_infra import p
+    def make(payload: dict):
+        return p.Infra.Outer.Inner.model_validate(payload)
+  - |
+    from flext_infra import p
+    def make():
+        return p.Infra.RopeImportedName(name="x")
+  - |
+    from flext_infra import p
+    def make(payload: dict):
+        return p.Infra.RopeImportedName.model_validate(payload)

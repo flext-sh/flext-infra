@@ -2,19 +2,19 @@ id: rewire-test-assert-truth
 valid:
 - assert path.is_file()
 - |
-  from tests import p, tm
+  from tests import tm
   assert path.is_file(), "missing"
 - |
-  from tests import p, tm
+  from tests import tm
   assert not path.exists()
 - |
-  from tests import p, tm
+  from tests import tm
   assert value is not None
 - |
-  from tests import p, tm
+  from tests import tm
   assert isinstance(value, Entry)
 - |
-  from tests import p, tm
+  from tests import tm
   try:
       run()
   except ValueError:
@@ -25,16 +25,16 @@ invalid:
   def check():
       assert verdict() or unexpected()
 - |
-  from tests import p, tm
+  from tests import tm
   assert path.is_file()
 - |
-  from tests import p, tm
+  from tests import tm
   assert len(lines) == _EXPECTED_LINES
 - |
-  from tests import p, tm
+  from tests import tm
   assert 0 < count < limit
 - |
-  from tests import p, tm
+  from tests import tm
   assert (
       tm.ok(result) == expected
   )

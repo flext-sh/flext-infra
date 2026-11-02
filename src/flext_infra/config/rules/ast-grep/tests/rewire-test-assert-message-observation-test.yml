@@ -2,16 +2,16 @@ id: rewire-test-assert-message-observation
 valid:
 - assert result.success, result.error
 - |
-  from tests import p, tm
+  from tests import tm
   assert isinstance(value, Entry), "An entry is required"
 - |
-  from tests import p, tm
+  from tests import tm
   assert value is None, "No value is expected"
 invalid:
 - |
-  from tests import p, tm
+  from tests import tm
   assert result.success, result.error
 - |
-  from tests import p, tm
+  from tests import tm
   if not (started.success):
       raise AssertionError(started.error)

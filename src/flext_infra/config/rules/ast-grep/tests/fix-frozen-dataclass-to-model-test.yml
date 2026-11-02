@@ -1,25 +1,25 @@
 id: fix-frozen-dataclass-to-model
 valid:
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @dataclass
   class Point:
       x: int
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @dataclass(frozen=True)
   class Handle:
       fd: os.stat_result
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @dataclass(frozen=True, order=True)
   class Point:
       x: int
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @dataclass(frozen=True)
   class Point:
@@ -32,21 +32,21 @@ valid:
   class Point:
       x: int
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @dataclass(frozen=True)
   class Point(Base):
       x: int
 invalid:
 - |
-  from flext_core import m, p
+  from flext_core import m
 
   @dataclass(frozen=True)
   class Point:
       x: int
       label: str | None = None
 - |
-  from flext_infra import m, p, t
+  from flext_infra import m, t
 
   @dataclass(frozen=True, slots=True)
   class Span:

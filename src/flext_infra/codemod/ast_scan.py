@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
@@ -50,11 +49,13 @@ class FlextInfraCodemodAstScan(s[t.Cli.ResultValue]):
             planned = u.Infra.codemod_rule_plan(snapshot)
         if planned.failure:
             return r[t.Cli.ResultValue].from_failure(planned)
+        cli.display_text("ast: validate ast-grep rule fixtures")
+        FlextInfraModGateEngine.validate_rule_fixtures(
+            self.repository_root,
+            u.Infra.codemod_fixture_resources(planned.value),
+        ).unwrap()
         if not self.effective_dry_run:
-            return self._execute_apply(
-                self.repository_root,
-                u.Infra.codemod_fixture_resources(planned.value),
-            )
+            return self._execute_apply(self.repository_root)
         ast_report = FlextInfraModGateEngine.scan(
             self.repository_root,
             fix=False,
@@ -111,19 +112,13 @@ class FlextInfraCodemodAstScan(s[t.Cli.ResultValue]):
         return r[t.Cli.ResultValue].ok(value=True)
 
     @classmethod
-    def _execute_apply(
-        cls,
-        root: Path,
-        rules: Sequence[Path],
-    ) -> p.Result[t.Cli.ResultValue]:
+    def _execute_apply(cls, root: Path) -> p.Result[t.Cli.ResultValue]:
         """Drive both mechanical cascades to a verified fixed point.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        cli.display_text("ast: validate ast-grep rule fixtures")
-        FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         before = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         return cls._converge(root, before)
 

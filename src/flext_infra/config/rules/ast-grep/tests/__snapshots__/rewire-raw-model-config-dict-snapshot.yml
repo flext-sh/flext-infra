@@ -19,7 +19,7 @@ snapshots:
       end: 47
   "from flext_core import m\nclass Spec(m.FrozenModel):\n    model_config = {\"frozen\": False}\n":
     fixed: |
-      from flext_core import m, p
+      from flext_core import m
       class Spec(m.FrozenModel):
           model_config = m.ConfigDict(frozen=False)
     labels:
@@ -37,7 +37,7 @@ snapshots:
       end: 88
   "from flext_core import m\nclass Spec(m.FrozenModel):\n    model_config: ClassVar = {\"populate_by_name\": True, \"extra\": \"forbid\"}\n":
     fixed: |
-      from flext_core import m, p
+      from flext_core import m
       class Spec(m.FrozenModel):
           model_config = m.ConfigDict(populate_by_name=True, extra="forbid")
     labels:

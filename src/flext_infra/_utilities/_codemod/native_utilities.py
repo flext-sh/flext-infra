@@ -281,11 +281,15 @@ class FlextInfraUtilitiesCodemodNative:
         *,
         rule_ids: Sequence[str] | None = None,
     ) -> p.Infra.CodemodNativeGenerated:
-        """Render every generated utility, then every rule document, in memory.
+        """Render the generated file scopes, rule documents and utilities in memory.
 
-        Renderers run after the producers because rendered rules reference the
-        generated utilities through ``matches``. Only ``make mod`` consumes
-        them: its native cascade stages them; nothing is projected to disk.
+        Without a selection everything is rendered. An exact selection of rule
+        ids (authored or generated) renders only what those rules read: the
+        scope producers when a selected renderer or catalog rule consumes file
+        scopes, the selected renderers' documents, and the utility producers
+        when a selected document references a utility it does not declare.
+        Only ``make mod`` consumes them: its native cascade stages them;
+        nothing is projected to disk.
 
         The rendering is a pure function of the member's sources, its manifest
         and the declared spec, so the injected snapshot keeps one rendering
@@ -295,8 +299,6 @@ class FlextInfraUtilitiesCodemodNative:
             The project's generated utility and rule documents keyed by id.
 
         """
-        if rule_ids == ():
-            return m.Infra.CodemodNativeGenerated(utilities={}, rules={}, scopes={})
         root = project.resolve()
         key = (root, cls._generated_key(snapshot, root, spec, rule_ids))
         rendered = snapshot.codemod_renderings.get(key)
@@ -591,17 +593,8 @@ class FlextInfraUtilitiesCodemodNative:
                 return r[p.Infra.CodemodRulePlan].fail(
                     "duplicate codemod rule IDs in selection",
                 )
-        generated_rule_ids = (
-            None
-            if rule_ids is None
-            else tuple(
-                rule_id
-                for rule_id in rule_ids
-                if c.Infra.CODEMOD_GENERATED_ID_SEPARATOR in rule_id
-            )
-        )
         provider = cls.codemod_generated_provider(
-            snapshot, root, spec, rule_ids=generated_rule_ids
+            snapshot, root, spec, rule_ids=rule_ids
         )
         return FlextInfraUtilitiesCodemodRules.codemod_compose_rule_plan(
             root, {root: provider}, rule_ids=rule_ids

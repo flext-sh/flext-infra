@@ -26,5 +26,5 @@ invalid:
   from flext_tests import tm
   assert self.value is not None, "A value is required"
 - |
-  from tests import p, tm
+  from tests import tm
   assert value is None, "No value is expected"

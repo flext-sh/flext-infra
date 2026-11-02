@@ -1,0 +1,106 @@
+id: tests-staticmethod-decorator-order
+snapshots:
+  "class TestsPolicy:\n    @c.Tests.MARK.parametrize(\"policy\", [\"console\"])\n    @staticmethod\n    def test_policy(policy):\n        return policy\n":
+    fixed: |
+      class TestsPolicy:
+          @staticmethod
+          @c.Tests.MARK.parametrize("policy", ["console"])
+          @staticmethod
+          def test_policy(policy):
+              return policy
+    labels:
+    - source: "@c.Tests.MARK.parametrize(\"policy\", [\"console\"])"
+      style: primary
+      start: 23
+      end: 71
+    - source: "@staticmethod"
+      style: secondary
+      start: 76
+      end: 89
+  "class TestsPolicy:\n    @c.Tests.MARK.slow\n    @c.Tests.MARK.parametrize(\"policy\", [\"console\"])\n    @staticmethod\n    def test_policy(policy):\n        return policy\n":
+    fixed: |
+      class TestsPolicy:
+          @c.Tests.MARK.slow
+          @staticmethod
+          @c.Tests.MARK.parametrize("policy", ["console"])
+          @staticmethod
+          def test_policy(policy):
+              return policy
+    labels:
+    - source: "@c.Tests.MARK.parametrize(\"policy\", [\"console\"])"
+      style: primary
+      start: 46
+      end: 94
+    - source: "@staticmethod"
+      style: secondary
+      start: 99
+      end: 112
+  "class TestsPolicy:\n    @owner.decorate\n    @staticmethod\n    @pytest.fixture\n    def policy():\n        return \"console\"\n":
+    fixed: |
+      class TestsPolicy:
+          @owner.decorate
+          @pytest.fixture
+          @staticmethod
+          @pytest.fixture
+          def policy():
+              return "console"
+    labels:
+    - source: "@staticmethod"
+      style: primary
+      start: 43
+      end: 56
+    - source: "@pytest.fixture"
+      style: secondary
+      start: 61
+      end: 76
+  "class TestsPolicy:\n    @pytest.mark.slow\n    @staticmethod\n    async def test_policy_conftest_form():\n        return None\n":
+    fixed: |
+      class TestsPolicy:
+          @staticmethod
+          @pytest.mark.slow
+          @staticmethod
+          async def test_policy_conftest_form():
+              return None
+    labels:
+    - source: "@pytest.mark.slow"
+      style: primary
+      start: 23
+      end: 40
+    - source: "@staticmethod"
+      style: secondary
+      start: 45
+      end: 58
+  "class TestsPolicy:\n    @staticmethod\n    @pytest.fixture\n    def policy():\n        return \"console\"\n":
+    fixed: |
+      class TestsPolicy:
+          @pytest.fixture
+          @staticmethod
+          @pytest.fixture
+          def policy():
+              return "console"
+    labels:
+    - source: "@staticmethod"
+      style: primary
+      start: 23
+      end: 36
+    - source: "@pytest.fixture"
+      style: secondary
+      start: 41
+      end: 56
+  "class TestsPolicy:\n    @staticmethod\n    @u.Tests.fixture(autouse=True)\n    def policy() -> str:\n        return \"console\"\n":
+    fixed: |
+      class TestsPolicy:
+          @u.Tests.fixture(autouse=True)
+          @staticmethod
+          @u.Tests.fixture(autouse=True)
+          def policy() -> str:
+              return "console"
+    labels:
+    - source: "@staticmethod"
+      style: primary
+      start: 23
+      end: 36
+    - source: "@u.Tests.fixture(autouse=True)"
+      style: secondary
+      start: 41
+      end: 71

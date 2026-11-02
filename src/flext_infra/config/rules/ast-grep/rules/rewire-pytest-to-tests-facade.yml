@@ -14,8 +14,15 @@
 # the flext-infra `Infra.Pytest` owners), so every document is `error`.
 #
 # Autofix order: these documents rewrite references only; the import-header
-# stage binds the missing letters, and retire-pytest-import drops the import
-# once no bare `pytest` reference remains.
+# stage binds the missing letters, and the `import-fix` stage (Ruff F401, the
+# only owner of unused-import removal) drops `import pytest` once no bare
+# `pytest` reference remains.
+#
+# `pytest.fail` stays: the generated `u` owner set is the kind classification
+# intersected with what `u.Infra.Pytest` (flext-infra
+# `_utilities/pytest_surface.py`) publishes, and that class does not publish
+# `fail`, because `u.Tests` inherits it ahead of its result matchers and the
+# matcher `fail` owns the name.
 id: rewire-pytest-function-to-tests-utilities
 language: python
 severity: error
@@ -135,29 +142,3 @@ fix: c.Tests.$NAME
 message: >-
   `pytest.$NAME` in a test module: read the enum or exception through the
   flext-tests facade `c.Tests.$NAME`.
----
-id: retire-pytest-import
-language: python
-severity: error
-files:
-  - "tests/**/*.py"
-ignores:
-  - "**/conftest.py"
-  - "tests/fixtures/**"
-rule:
-  pattern: import pytest
-  inside:
-    kind: module
-    not:
-      has:
-        stopBy: end
-        kind: identifier
-        regex: "^pytest$"
-        not:
-          inside:
-            kind: import_statement
-            stopBy: end
-fix: ""
-message: >-
-  `import pytest` in a test module: pytest is reached through the flext-tests
-  facades (`u.Tests`, `t.Tests`, `c.Tests`).

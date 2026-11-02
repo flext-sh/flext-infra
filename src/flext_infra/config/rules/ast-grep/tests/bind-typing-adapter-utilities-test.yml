@@ -4,12 +4,12 @@ valid:
   from flext_cli import t, u
   value = u.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
 - |
-  from tests import p, t
+  from tests import t
   value: t.JsonMapping = payload
 invalid:
 - |
   from flext_cli import t
   value = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload)
 - |
-  from tests import p, t
+  from tests import t
   value = t.json_mapping_adapter().validate_python(payload)

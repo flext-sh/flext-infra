@@ -1,0 +1,50 @@
+id: ban-model-typing-in-protocol-projection
+snapshots:
+  "class Holder(Protocol):\n    state: FlextInfraModelsWorkspace.WorkspaceRuntimeContext\n":
+    labels:
+    - source: FlextInfraModelsWorkspace.WorkspaceRuntimeContext
+      style: primary
+      start: 35
+      end: 84
+    - source: FlextInfraModelsWorkspace.WorkspaceRuntimeContext
+      style: secondary
+      start: 35
+      end: 84
+    - source: "state: FlextInfraModelsWorkspace.WorkspaceRuntimeContext"
+      style: secondary
+      start: 28
+      end: 84
+    - source: (Protocol)
+      style: secondary
+      start: 12
+      end: 22
+    - source: |-
+        class Holder(Protocol):
+            state: FlextInfraModelsWorkspace.WorkspaceRuntimeContext
+      style: secondary
+      start: 0
+      end: 84
+  "class Holder(Protocol):\n    value: Annotated[str, m.Field(description=\"leaked\")]\n":
+    labels:
+    - source: m.Field
+      style: primary
+      start: 50
+      end: 57
+    - source: m.Field(description="leaked")
+      style: secondary
+      start: 50
+      end: 79
+    - source: "value: Annotated[str, m.Field(description=\"leaked\")]"
+      style: secondary
+      start: 28
+      end: 80
+    - source: (Protocol)
+      style: secondary
+      start: 12
+      end: 22
+    - source: |-
+        class Holder(Protocol):
+            value: Annotated[str, m.Field(description="leaked")]
+      style: secondary
+      start: 0
+      end: 80

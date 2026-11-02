@@ -22,5 +22,5 @@ rule:
 constraints:
   NAME:
     regex: "^(Field|SkipValidation|AfterValidator|PlainValidator|WrapValidator|PlainSerializer|WrapSerializer|computed_field|field_serializer|model_serializer)$"
-fix: p.$NAME
+fix: m.$NAME
 message: Read the Pydantic declaration surface from the models facade ``m``.

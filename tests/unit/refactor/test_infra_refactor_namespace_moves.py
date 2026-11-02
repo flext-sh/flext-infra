@@ -26,30 +26,25 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
 
     @staticmethod
     @pytest.mark.parametrize("source_stem", ["parser", "_parser"])
-    @pytest.mark.parametrize("class_name", ["DocumentReader", "_DocumentReader"])
-    def test_class_relocation_keeps_modules_public_and_facade_directories_private(
-        tmp_path: Path, source_stem: str, class_name: str
+    @pytest.mark.parametrize("source_tier", ["src/example", "tests", "examples"])
+    def test_family_relocation_targets_the_declaring_domain_in_each_family(
+        tmp_path: Path, source_stem: str, source_tier: str
     ) -> None:
-        """Relocation destinations follow module and facade ownership conventions."""
-        package = tmp_path / "example"
-        source = package / f"{source_stem}.py"
-        tm.that(
-            u.Infra.class_target_file(
-                package_dir=package,
-                source_file=source,
-                class_name=class_name,
-                family="",
-            ),
-            eq=package / "parser_document_reader.py",
-        )
+        """Every family receives a declaration in the module of the same domain.
+
+        The premise replaces the former class-named destination: ADR-028
+        Decisions 3-4 give each family one nested class per module, so the
+        declaring module's domain, not the declared name, selects the module,
+        and the namespace root is the package or the tier hosting the families.
+        """
+        project = tmp_path / "project"
+        source = project / source_tier / f"{source_stem}.py"
+        namespace_root = project / source_tier
         for letter, family in u.Infra.facade_families().items():
-            target = u.Infra.class_target_file(
-                package_dir=package,
-                source_file=source,
-                class_name=class_name,
-                family=letter,
+            target = u.Infra.family_declaration_target_file(
+                project_root=project, source_file=source, family=letter
             )
-            tm.that(target, eq=package / family.directory / "document_reader.py")
+            tm.that(target, eq=namespace_root / family.directory / "parser.py")
             tm.that(target.parent.name.startswith("_"), eq=True)
 
     @staticmethod

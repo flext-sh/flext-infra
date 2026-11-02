@@ -4,12 +4,12 @@ id: config-dict-type-from-typings
 valid:
 # Canonical annotations name the existing native typing contract.
 - |
-  from flext_ldif import m, p, t
+  from flext_ldif import m, t
   from typing import ClassVar
   class A:
       model_config: ClassVar[t.ConfigDict] = m.ConfigDict()
 - |
-  from flext_ldif import m, p, t
+  from flext_ldif import m, t
   from typing import ClassVar
   class B:
       model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict()
@@ -33,17 +33,17 @@ invalid:
       model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 # The value facade is not the annotation owner.
 - |
-  from flext_cli import m, p, t
+  from flext_cli import m, t
   from typing import ClassVar
   class F:
-      model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+      model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 - |
-  from flext_cli import m, p, t
+  from flext_cli import m, t
   from typing import ClassVar
   class G:
-      model_config: ClassVar[p.SettingsConfigDict] = m.SettingsConfigDict(env_prefix="APP_")
+      model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(env_prefix="APP_")
 - |
-  from flext_cli import c, m, p, t
+  from flext_cli import c, m, t
   from typing import ClassVar
   class H:
       model_config: ClassVar[c.ConfigDict] = m.ConfigDict(validate_default=True)
