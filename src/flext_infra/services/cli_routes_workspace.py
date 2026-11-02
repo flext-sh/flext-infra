@@ -9,7 +9,8 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import ClassVar
 
-from flext_infra import c, infra, m, p, t, u
+from flext_infra import c, m, p, t, u
+from flext_infra.api import infra
 from flext_infra.git import FlextInfraGitService
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import FlextInfraCliRouteBase
@@ -19,7 +20,9 @@ from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironmentMixi
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from flext_infra.workspace.flext_binding import FlextInfraBindingService
+from flext_infra.workspace.fleet_gaps import FlextInfraWorkspaceFleetGaps
+from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
+from flext_infra.workspace.lifecycle import FlextInfraWorkspaceLifecycle
 from flext_infra.workspace.propagation import FlextInfraWorkspacePropagation
 
 
@@ -36,7 +39,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        return FlextInfraBindingService.apply(
+        return FlextInfraFlextBindingService.apply(
             consumer_root=params.repository_root,
             flext_root=params.flext_root,
             python=params.python,
@@ -83,11 +86,16 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 success_message="workspace serial lifecycle validated",
             ),
             m.Cli.ResultCommandRoute(
+<<<<<<< ours
                 name="verify-lane",
                 help_text=(
                     "Verify stash absence and declared live integration ancestry "
                     "without effects"
                 ),
+=======
+                name="verify-lanes",
+                help_text="Read-only lane inventory and fresh integration admission",
+>>>>>>> theirs
                 model_cls=m.Infra.GitLaneVerificationRequest,
                 handler=FlextInfraCliRouteBase.result_handler(
                     FlextInfraGitService.verify_lane,
@@ -95,6 +103,7 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 success_message="lane stash and live integration ancestry verified",
             ),
             m.Cli.ResultCommandRoute(
+<<<<<<< ours
                 name="verify-lanes",
                 help_text="Read-only lane inventory, ownership census, and refusals",
                 model_cls=m.Infra.GitLaneVerificationRequest,
@@ -104,6 +113,8 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                 success_message="lane inventory verified",
             ),
             m.Cli.ResultCommandRoute(
+=======
+>>>>>>> theirs
                 name="identity",
                 help_text="Report canonical Git checkout identity",
                 model_cls=m.Infra.GitRepoRequest,
@@ -113,13 +124,15 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
             m.Cli.ResultCommandRoute(
                 name="verify-clean",
                 help_text=(
-                    "Fail if a Git worktree has staged, unstaged, or untracked changes"
+                    "Reject staged, unstaged, untracked changes and stash entries"
                 ),
                 model_cls=m.Infra.GitStatusRequest,
                 handler=FlextInfraCliRouteBase.result_handler(
                     FlextInfraGitService.verify_clean,
                 ),
-                success_message="workspace Git worktree is clean",
+                success_message=(
+                    "workspace Git worktree is clean and has no stash entries"
+                ),
             ),
             m.Cli.ResultCommandRoute(
                 name="verify-environment",
@@ -166,6 +179,19 @@ class FlextInfraWorkspaceRoutes(FlextInfraRefactorRoutes):
                         "Sync generated direnv/mise environment files",
                         m.Infra.WorkspaceEnvironmentCliRequest,
                         _sync_environment,
+                    ),
+                    (
+                        c.Infra.FLEET_GAPS_ROUTE_NAME,
+                        (
+                            "Report every declared repository's hygiene gaps "
+                            "(dirty paths, open PRs, unmerged branches, "
+                            "violation counts, standards presence) and publish "
+                            "the receipt"
+                        ),
+                        FlextInfraWorkspaceFleetGaps,
+                        FlextInfraCliRouteBase.result_handler(
+                            FlextInfraWorkspaceFleetGaps.execute_command,
+                        ),
                     ),
                 )
             ),

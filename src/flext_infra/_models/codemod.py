@@ -10,9 +10,14 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal
 
+<<<<<<< ours
 from flext_cli import m as cli_m
 
 from flext_core import m
+=======
+from flext_cli import m
+
+>>>>>>> theirs
 from flext_infra import t
 
 
@@ -22,6 +27,7 @@ class FlextInfraModelsCodemod:
     class AstGrepCapture(m.ContractModel):
         """Authenticate an occurrence against native UTF-8 capture coordinates."""
 
+<<<<<<< ours
         text: str
         start_byte: Annotated[
             int,
@@ -30,6 +36,24 @@ class FlextInfraModelsCodemod:
         end_byte: Annotated[
             int,
             m.Field(ge=0, validation_alias=m.AliasPath("range", "byteOffset", "end")),
+=======
+        text: Annotated[str, m.Field(description="Exact captured source text")]
+        start_byte: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                validation_alias=m.AliasPath("range", "byteOffset", "start"),
+                description="Inclusive UTF-8 byte offset",
+            ),
+        ]
+        end_byte: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                validation_alias=m.AliasPath("range", "byteOffset", "end"),
+                description="Exclusive UTF-8 byte offset",
+            ),
+>>>>>>> theirs
         ]
 
     class CodemodBindingSnapshot(m.ArbitraryTypesModel):
@@ -38,7 +62,11 @@ class FlextInfraModelsCodemod:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         states: Annotated[
+<<<<<<< ours
             tuple[cli_m.Cli.AtomicFileState, ...],
+=======
+            tuple[m.Cli.AtomicFileState, ...],
+>>>>>>> theirs
             m.Field(description="Consumer and resolved Python import-owner inputs"),
         ]
 
@@ -115,7 +143,7 @@ class FlextInfraModelsCodemod:
             t.JsonMapping,
             m.Field(
                 validation_alias=m.AliasPath("metaVariables", "single"),
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=lambda: MappingProxyType[str, t.JsonValue]({}),
                 description=(
                     "Captured single metavariables; ast-grep omits the payload "
                     "for a match that captures none"
@@ -126,7 +154,7 @@ class FlextInfraModelsCodemod:
             t.JsonMapping,
             m.Field(
                 validation_alias=m.AliasPath("metaVariables", "transformed"),
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=lambda: MappingProxyType[str, t.JsonValue]({}),
                 description="Metavariables the rule derived through transform",
             ),
         ]

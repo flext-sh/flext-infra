@@ -10,10 +10,8 @@ import ast
 from collections.abc import Iterator
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities.rope_runtime_modules import (
+from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 
@@ -62,7 +60,11 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             return frozenset()
         typing = project.get_module("typing")
         for node in nodes:
+<<<<<<< ours
             offset, _end = cls.expression_range(source, node)
+=======
+            offset, _end = cls._expression_range(source, node)
+>>>>>>> theirs
             scope = runtime.scope_at(module, offset)
             selected = tuple(cls._type_nodes(node, project, scope))
             arguments = (
@@ -71,11 +73,19 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             binding = runtime.resolve_symbol(scope, node.value)
             if runtime.same_name(typing.get_attribute("Literal"), binding):
                 protected.update(
+<<<<<<< ours
                     cls.expression_range(source, argument) for argument in arguments
                 )
             elif runtime.same_name(typing.get_attribute("Annotated"), binding):
                 protected.update(
                     cls.expression_range(source, argument)
+=======
+                    cls._expression_range(source, argument) for argument in arguments
+                )
+            elif runtime.same_name(typing.get_attribute("Annotated"), binding):
+                protected.update(
+                    cls._expression_range(source, argument)
+>>>>>>> theirs
                     for argument in arguments
                     if argument not in selected
                 )
@@ -89,6 +99,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, t.VariadicTuple[m.Infra.SourceRewrite]]:
+
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = flatten.project.get_pymodule(resource)
         edits: list[m.Infra.SourceRewrite] = []
@@ -125,6 +136,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         *,
         flatten: m.Infra.FamilyWrapperFlatten,
     ) -> t.Pair[bool, str]:
+
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         nodes = tuple(
             cls._type_nodes(
@@ -303,6 +315,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         project: p.Infra.RopeProject,
         scope: p.Infra.RopeScope,
     ) -> Iterator[ast.expr]:
+
         yield node
         if isinstance(node, ast.Subscript):
             yield from cls._type_nodes(node.value, project, scope)

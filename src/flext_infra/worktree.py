@@ -9,7 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_cli import r
+
+from flext_infra import c, m, p, t, u
+from flext_infra.base import s
+from flext_infra.git_lanes import FlextInfraGitLanes
 
 
 class FlextInfraWorktreeService(s[str]):
@@ -295,6 +299,7 @@ class FlextInfraWorktreeService(s[str]):
             return r[str].fail("worktree add requires --apply")
         if base.startswith("-"):
             return r[str].fail(f"invalid base commitish: {base}")
+<<<<<<< ours
         return None
 
     def _admitted_base_oid(
@@ -309,6 +314,8 @@ class FlextInfraWorktreeService(s[str]):
             The admitted base commit oid.
 
         """
+=======
+>>>>>>> theirs
         admitted = u.Infra.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=self.repository_root,
@@ -328,7 +335,14 @@ class FlextInfraWorktreeService(s[str]):
         )
         if admission.failure:
             return r[str].from_failure(admission)
+<<<<<<< ours
         return r[str].ok(base_oid.value)
+=======
+        lane = self._new_lane_path(primary_root, branch)
+        if lane.failure:
+            return r[str].from_failure(lane)
+        return self._create_lane(primary_root, lane.value, branch, base_oid.value)
+>>>>>>> theirs
 
     @staticmethod
     def _resolved_base(primary_root: Path, base: str) -> p.Result[str]:
@@ -514,10 +528,12 @@ class FlextInfraWorktreeService(s[str]):
                 f"worktree remove refuses lane {branch} while children are "
                 f"registered: {nested}",
             )
-        removed = u.Infra.git_remove_clean_worktree(primary_root, lane)
-        if removed.failure:
-            return r[str].from_failure(removed)
-        return r[str].ok(str(lane))
+        integrated = FlextInfraGitLanes.verify_retirement(primary_root, branch)
+        if integrated.failure:
+            return r[str].from_failure(integrated)
+        return u.Infra.git_remove_clean_worktree(primary_root, lane).map(
+            lambda _: str(lane),
+        )
 
     def _update(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
         """Merge-forward one clean canonical lane to the requested base.
