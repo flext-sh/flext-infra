@@ -4074,8 +4074,6 @@ class FlextInfraUtilitiesModelsProtocol:
             if inventoried.failure:
                 return result_type.from_failure(inventoried)
             families = FlextInfraUtilitiesCodegenNamespace.facade_families()
-            if self.package is None:
-                return result_type.fail("model protocol inventory lost its package")
             model_directory = self.package / families["m"].directory
             for route, binding in self.models.items():
                 if not self._owned(binding):
@@ -4373,7 +4371,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 if not self.py_class(ancestor):
                     continue
                 declaring = ancestor.get_module()
-                origin = declaring.get_resource() if declaring is not None else None
+                origin = declaring.get_resource()
                 if origin is None or not Path(
                     origin.real_path
                 ).resolve().is_relative_to(self.project.root.real_path):
