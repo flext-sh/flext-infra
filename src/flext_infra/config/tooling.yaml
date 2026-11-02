@@ -534,7 +534,7 @@ Infra:
         # corrected owner instead of accumulating a backlog of unrelated
         # failures.
         max-failures: 1
-        enforcement-plugin: flext_tests_enforcement
+        enforcement-plugin: flext_tests.enforcement_plugin
         # Retain the complete selection, but expose known failures first.
         progress-args: [ --verbose, --failed-first ]
         report-args: [ -ra, --durations=25, --durations-min=0.001, --tb=short ]
