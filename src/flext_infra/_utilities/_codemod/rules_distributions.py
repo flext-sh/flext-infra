@@ -6,12 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 import sysconfig
 from collections.abc import Mapping, MutableMapping, Sequence
 from functools import lru_cache
+from importlib.machinery import PathFinder
 from importlib.metadata import Distribution
-from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 
@@ -19,7 +18,8 @@ from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, p, r
+from flext_infra import c, m, p, r
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraUtilitiesCodemodRulesDistributions:
@@ -107,17 +107,78 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
         )
 
     @staticmethod
-    def _import_paths() -> tuple[str, ...]:
-        """Return the physical import search path that keys environment facts.
+    @lru_cache(maxsize=8)
+    def codemod_target_environment(
+        root: Path,
+    ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
+        """Observe the TARGET repository's own provisioned Python environment.
+
+        The rule plan of a repository is elected against that repository's
+        runtime (``runtime_environment_dir``), never against the invoking
+        interpreter: a consumer's runtime distributions live only in the
+        consumer's environment. The target interpreter reports its own
+        ``sys.path`` (editable ``.pth`` entries included) and import-package
+        owners, once per root.
+
+        Returns:
+            The target observation, or the first failure: an unprovisioned
+            target environment, a failed interpreter probe, or a foreign
+            reported prefix.
+
+        """
+        outcome = r[m.Infra.PythonEnvironmentObservation]
+        discovery = FlextInfraUtilitiesProjectDiscovery
+        environment = discovery.runtime_environment_dir(root)
+        python = discovery.environment_python(environment)
+        if not (environment / c.Infra.ENVIRONMENT_METADATA).is_file():
+            return outcome.fail(
+                f"target repository environment is not provisioned: "
+                f"{environment}; run make setup in {root}",
+            )
+        probe = u.Cli.run(
+            (str(python), "-I", "-c", c.Infra.BINDING_PACKAGE_SCRIPT),
+            cwd=root,
+        )
+        if probe.failure:
+            return outcome.from_failure(probe)
+        facts = m.Infra.PythonEnvironmentObservation.model_validate_json(
+            probe.value.stdout,
+        )
+        if facts.prefix.resolve() != environment.resolve():
+            return outcome.fail(
+                f"target interpreter reports a foreign environment: "
+                f"expected={environment}, actual={facts.prefix}",
+            )
+        return outcome.ok(facts)
+
+    @classmethod
+    def codemod_target_import_paths(cls, root: Path) -> p.Result[tuple[str, ...]]:
+        """Return the target environment's physical import search path.
 
         Import search paths may repeat the same physical directory. Query each
         directory once; distinct installations with the same name still fail.
 
         Returns:
-            The de-duplicated resolved ``sys.path`` entries, in order.
+            The de-duplicated resolved target ``sys.path`` entries, in order.
 
         """
-        return tuple(dict.fromkeys(str(Path(path).resolve()) for path in sys.path))
+        return cls.codemod_target_environment(root).map(
+            lambda facts: tuple(
+                dict.fromkeys(str(path.resolve()) for path in facts.import_paths)
+            ),
+        )
+
+    @classmethod
+    def codemod_target_distributions(
+        cls, root: Path
+    ) -> p.Result[Mapping[str, Distribution]]:
+        """Index the distributions installed in the target environment.
+
+        Returns:
+            Canonical distribution name to its installed distribution.
+
+        """
+        return cls.codemod_target_import_paths(root).map(cls._indexed_distributions)
 
     @staticmethod
     @lru_cache(maxsize=8)
@@ -139,7 +200,9 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
             paths
         ):
             provider_config = (
-                FlextInfraUtilitiesCodemodRulesDistributions._provider_config(name)
+                FlextInfraUtilitiesCodemodRulesDistributions._provider_config(
+                    name, paths
+                )
             )
             if provider_config is not None:
                 configs[name] = provider_config
@@ -248,7 +311,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
         return order.value
 
     @staticmethod
-    def _provider_config(name: str) -> Path | None:
+    def _provider_config(name: str, paths: tuple[str, ...]) -> Path | None:
         """Locate one indexed distribution's codemod config, if it ships one.
 
         ``name`` is the distribution index's canonical name, so the installed
@@ -264,7 +327,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
         package_name = name.replace("-", "_")
         if not package_name.isidentifier():
             return None
-        spec = find_spec(package_name)
+        spec = PathFinder.find_spec(package_name, list(paths))
         if spec is None:
             return None
         roots = tuple(Path(path) for path in spec.submodule_search_locations or ())

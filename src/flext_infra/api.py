@@ -262,6 +262,64 @@ class FlextInfra(
             repository_root=request.repository_root,
         ).build_report()
 
+    @staticmethod
+    def _mod_selection(request: p.Infra.ModRequest) -> p.Result[bool]:
+        """Require one theme selection and only laws the catalog derives.
+
+        Returns:
+            Acceptance, the unselected-run refusal, the catalog failure, or
+            the unknown-law failure.
+
+        """
+        selectors = (request.rule_id, request.rule_ids, request.laws)
+        if all(item is None for item in (*selectors, request.rename_plan)):
+            return r[bool].fail(
+                "refactor mod requires a theme selection (--laws, --rule-ids, "
+                "--rule or --rename-plan); an unselected engine run is a global "
+                "make and is refused (ADR-028 Decision 18 item 2)"
+            )
+        if request.laws is None:
+            return r[bool].ok(value=True)
+        catalog = flext_infra.u.Infra.enforcement_catalog()
+        if catalog.failure:
+            return r[bool].from_failure(catalog)
+        unknown = frozenset(request.laws).difference(
+            claim.id for claim in catalog.value.claims if claim.active
+        )
+        if unknown:
+            return r[bool].fail(
+                "refactor mod --laws names laws no active owner claims: "
+                + ", ".join(sorted(unknown))
+            )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _mod_selected_roots(
+        root: Path,
+        request: p.Infra.ModRequest,
+        governed: frozenset[Path],
+    ) -> p.Result[frozenset[Path]]:
+        """Resolve ``projects`` into governed repository roots before any run.
+
+        Returns:
+            Every governed root without ``projects``, the selected roots, or
+            the first resolution or out-of-workspace failure.
+
+        """
+        if not request.projects:
+            return r[frozenset[Path]].ok(governed)
+        resolved = flext_infra.u.Infra.resolve_projects(root, tuple(request.projects))
+        if resolved.failure:
+            return r[frozenset[Path]].from_failure(resolved)
+        selected = frozenset(project.path.resolve() for project in resolved.value)
+        outside = selected.difference(governed)
+        if outside:
+            return r[frozenset[Path]].fail(
+                "mod --projects selects repositories outside the governed "
+                f"workspace: {tuple(sorted(str(item) for item in outside))}"
+            )
+        return r[frozenset[Path]].ok(selected)
+
     @override
     def mod(
         self,
@@ -278,34 +336,28 @@ class FlextInfra(
         A mutating run stops at its first failed prerequisite; later
         repositories are not reported as executed. A check or dry-run mutates
         nothing, so every selected repository runs and one aggregated failure
-        names each failing repository.
+        names each failing repository. A run must select its theme (laws,
+        rule IDs, one rule or a rename plan): an unselected engine run is a
+        global make and is refused (ADR-028 Decision 18 item 2). Laws are
+        validated once against the derived enforcement catalog; each
+        repository expands them into its own planned rules.
 
         Returns:
-            The first repository failure for a mutating run, the aggregated
-            failure naming every failing repository for check/dry-run, or
-            acceptance of every selected run.
+            The selection failure, the first repository failure for a mutating
+            run, the aggregated failure naming every failing repository for
+            check/dry-run, or acceptance of every selected run.
 
         """
         root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
             request.repository_root
         )
         governed = frozenset(flext_infra.u.Infra.governed_project_roots(root))
-        selected_roots = governed
-        if request.projects:
-            resolved = flext_infra.u.Infra.resolve_projects(
-                root, tuple(request.projects)
-            )
-            if resolved.failure:
-                return r[t.Cli.ResultValue].from_failure(resolved)
-            selected_roots = frozenset(
-                project.path.resolve() for project in resolved.value
-            )
-            outside = selected_roots.difference(governed)
-            if outside:
-                return r[t.Cli.ResultValue].fail(
-                    "mod --projects selects repositories outside the governed "
-                    f"workspace: {tuple(sorted(str(item) for item in outside))}"
-                )
+        selected = self._mod_selection(request).flat_map(
+            lambda _: self._mod_selected_roots(root, request, governed)
+        )
+        if selected.failure:
+            return r[t.Cli.ResultValue].from_failure(selected)
+        selected_roots = selected.value
         if governed == frozenset({root}):
             return super().mod(request, progress)
         inputs = flext_infra.u.Infra.load_codegen_inputs(root)
@@ -357,6 +409,7 @@ class FlextInfra(
                     consumer_roots=request.consumer_roots,
                     rule_id=request.rule_id,
                     rule_ids=request.rule_ids,
+                    laws=request.laws,
                 )
             )
             completed = super().mod(child_request, progress)

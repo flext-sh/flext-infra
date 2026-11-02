@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import check, codegen, config, u
-from tests import TestsFlextInfraUtilitiesToml, c, m, p, t
+from flext_infra import check, codegen
+from tests import c, config, m, p, t, u
 
 
 class TestsFlextInfraUtilitiesConform:
@@ -136,7 +136,7 @@ class TestsFlextInfraUtilitiesConform:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        return TestsFlextInfraUtilitiesToml.codegen_file_text(makefile)
+        return u.Tests.codegen_file_text(makefile)
 
 
 __all__ = ["TestsFlextInfraUtilitiesConform"]

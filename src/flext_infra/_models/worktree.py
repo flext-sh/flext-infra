@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import t
 
@@ -92,7 +92,7 @@ class FlextInfraModelsWorktree:
         a no-op that reports nothing.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         tool_internal: Annotated[
             Sequence[str],
@@ -110,7 +110,7 @@ class FlextInfraModelsWorktree:
         scan once and correlation evidence stays optional and boundary-typed.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         repo_roots: Annotated[
             tuple[Path, ...],

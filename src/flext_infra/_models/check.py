@@ -133,7 +133,7 @@ class FlextInfraModelsCheck:
         requires the producer's identity for each actual target, including root.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True,
             validate_default=False,
         )
@@ -214,7 +214,7 @@ class FlextInfraModelsCheck:
     class SarifLocation(m.ContractModel):
         """Native SARIF location, including the optional end of its source span."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(validate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
         uri: str = m.Field(
             validation_alias=m.AliasPath("physicalLocation", "artifactLocation", "uri"),
@@ -527,7 +527,7 @@ class FlextInfraModelsCheck:
     class SarifRule(m.ContractModel):
         """Compact SARIF rule descriptor."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(validate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
         id: Annotated[str, m.Field(description="Rule identifier")]
         short_description: str = m.Field(
@@ -556,7 +556,7 @@ class FlextInfraModelsCheck:
     class SarifResult(m.ContractModel):
         """SARIF result entry."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(validate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
         rule_id: str = m.Field(validation_alias="ruleId", description="Rule identifier")
         level: Annotated[str, m.Field(description="Result level (error/warning/note)")]
@@ -601,7 +601,7 @@ class FlextInfraModelsCheck:
     class SarifRun(m.ContractModel):
         """SARIF run entry."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(validate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
         tool_name: str = m.Field(
             validation_alias=m.AliasPath("tool", "driver", "name"),
@@ -722,7 +722,7 @@ class FlextInfraModelsCheck:
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report; serializes and validates the same JSON."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             validate_by_name=True,
             serialize_by_alias=True,
         )

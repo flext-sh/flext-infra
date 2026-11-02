@@ -10,9 +10,9 @@ from collections.abc import MutableMapping, MutableSequence, MutableSet, Sequenc
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m, p
+from flext_core import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsMixins,
@@ -238,7 +238,7 @@ class FlextInfraModelsCensus:
         then assembles the workspace report from them.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_objects: Annotated[
             MutableMapping[str, MutableSequence[FlextInfraModelsCensus.Object]],
@@ -301,7 +301,7 @@ class FlextInfraModelsCensus:
     class DuplicateDeletion(m.ContractModel):
         """One duplicate definition scheduled for removal."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         path: Annotated[Path, m.Field(description="Copy source path")]
         name: Annotated[str, m.Field(description="Duplicate object name")]
@@ -341,7 +341,7 @@ class FlextInfraModelsCensus:
     class DuplicateCureEdit(m.ContractModel):
         """One proposed or applied source rewrite of a duplicate cure."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         file_path: Annotated[Path, m.Field(description="File the cure edit touches")]
         line: Annotated[
@@ -369,7 +369,7 @@ class FlextInfraModelsCensus:
         owner and every proposed edit so the cure stays reviewable.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Duplicated object name")]
         kind: Annotated[str, m.Field(description="Duplicated object kind")]
@@ -405,7 +405,7 @@ class FlextInfraModelsCensus:
         transaction; ``plans`` always carries every manual assisted-cure plan.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         edits: tuple[FlextInfraModelsTransformers.SemanticMigrationEdit, ...] = m.Field(
             default_factory=tuple, description="Applied source rewrites"

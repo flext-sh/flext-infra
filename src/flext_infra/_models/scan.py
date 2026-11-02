@@ -237,7 +237,7 @@ class FlextInfraModelsScan:
     class ModScanCounts[FindingT: ModOccurrence](m.ArbitraryTypesModel):
         """Authenticated findings are the sole source of serialized scan counts."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         entries: Annotated[
             tuple[FindingT, ...],
@@ -474,7 +474,7 @@ class FlextInfraModelsScan:
     class ModScanEvidence(ModScanCounts[ModScanFindingReference]):
         """Complete replace-on-run evidence for one public mod scan."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         schema_version: Annotated[
             int,

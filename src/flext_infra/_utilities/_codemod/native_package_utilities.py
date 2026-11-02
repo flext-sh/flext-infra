@@ -620,7 +620,8 @@ class FlextInfraUtilitiesCodemodNativePackage:
         """Group each letter's family modules by their top-level package.
 
         A family is the modules of one facade letter inside one package (the
-        public package or an internal tier): the modules whose own ``__all__``
+        public package, an internal tier, or an independent package under a
+        declared repository namespace): the modules whose own ``__all__``
         declares the letter and those of the private family package of such a
         facade module. Its members assemble that package's facade.
 
@@ -631,6 +632,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
         root = project.resolve()
         files = frozenset(
             FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(snapshot, root)
+        )
+        namespaces = frozenset(
+            FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(root)
         )
 
         def letters(module: Path) -> frozenset[str]:
@@ -656,9 +660,10 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 for package in relative.parents
                 if package.name.startswith("_") and not package.name.startswith("__")
             )
-            owner = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+            parts = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
                 path, project_root=root
-            ).partition(".")[0]
+            ).split(".")
+            owner = ".".join(parts[: 2 if parts[0] in namespaces else 1])
             for letter in letters(path).union(*map(letters, facades)):
                 grouped.setdefault((owner, letter), []).append(relative.as_posix())
         return {key: tuple(found) for key, found in sorted(grouped.items())}
@@ -673,8 +678,10 @@ class FlextInfraUtilitiesCodemodNativePackage:
         """Elect the upstream package each package composes for each letter.
 
         An internal tier composes the public package's letters. The public
-        package composes the single other package whose same letter its facade
-        class derives from, read from the facade module's own imports. A
+        package and every package under a declared repository namespace
+        (independent packages, never tiers) compose the single other package
+        whose same letter their facade class derives from, read from the
+        facade module's own imports. A
         letter without a facade of its own takes the package's common
         upstream, when every facade of the package agrees on one.
 
@@ -685,11 +692,14 @@ class FlextInfraUtilitiesCodemodNativePackage:
         """
         snapshot, root = context
         public = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
+        namespaces = frozenset(
+            FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(root)
+        )
         run = FlextInfraUtilitiesPythonModel.python_model_run(snapshot.engine, {})
         upstreams: dict[tuple[str, str], str] = {}
         for (package, letter), files in families.items():
             candidates: set[str] = set()
-            if package != public:
+            if package != public and package.partition(".")[0] not in namespaces:
                 if letter in cls._codemod_package_letters(facts, public):
                     candidates.add(public)
             else:
@@ -833,6 +843,11 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 continue
             exempt = sorted({*by_package.get(package, ()), *layer_zero})
             documents.update(
+                cls._codemod_own_root_document(
+                    package, home, letters, cls._codemod_foreign_ignores(exempt)
+                )
+            )
+            documents.update(
                 cls._codemod_origin_removal_documents(
                     ("foreign-origin", package),
                     f"Outside the families, `{package}` binds every letter from "
@@ -844,10 +859,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     [cls._codemod_directory_glob(home)],
                     correlate=False,
                     enforce=("ENFORCE-003", "ENFORCE-080"),
-                    ignores=[
-                        f"**/{c.Infra.INIT_PY}",
-                        *cls._codemod_file_globs(exempt),
-                    ],
+                    ignores=cls._codemod_foreign_ignores(exempt),
                 )
             )
         if facade_packages:
@@ -879,6 +891,56 @@ class FlextInfraUtilitiesCodemodNativePackage:
         """
         return {
             "nthChild": {"position": position, "ofRule": {"not": {"kind": "comment"}}}
+        }
+
+    @classmethod
+    def _codemod_foreign_ignores(cls, exempt: Sequence[str]) -> list[str]:
+        """Exclude initializers and family modules from the foreign-origin law.
+
+        Returns:
+            The native ignore globs.
+
+        """
+        return [f"**/{c.Infra.INIT_PY}", *cls._codemod_file_globs(exempt)]
+
+    @classmethod
+    def _codemod_own_root_document(
+        cls,
+        package: str,
+        home: str,
+        letters: frozenset[str],
+        ignores: Sequence[str],
+    ) -> Mapping[str, t.JsonMapping]:
+        """Rebind a used, unbound letter from the package's own root.
+
+        The foreign-origin removal leaves the letter unbound; this header
+        document binds it from ``package`` in the next pass, so the pair
+        converges without an undefined name.
+
+        Returns:
+            The one rebinding document keyed by id.
+
+        """
+        rule_id = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR.join((
+            c.Infra.CODEMOD_IMPORT_HEADER_SHAPE,
+            "own-root",
+            package,
+        ))
+        return {
+            rule_id: {
+                "id": rule_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": (
+                    f"Outside the families, `{package}` binds a used letter "
+                    "from its own root."
+                ),
+                "metadata": {"enforce": ["ENFORCE-003", "ENFORCE-080"]},
+                "utils": dict(cls._codemod_name_utils()),
+                "files": [cls._codemod_directory_glob(home)],
+                "ignores": list(ignores),
+                "rule": cls._codemod_header_rule(sorted(letters)),
+                "fix": f"$ANCHOR\nfrom {package} import $USED",
+            }
         }
 
     @classmethod

@@ -1285,8 +1285,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         module_name = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
             producer, source_project=projects[0]
         )
-        # Occurrences live only in files whose text carries the renamed
-        # identifier, so the token pre-scan bounds the resources Rope searches.
+        # Each project edits only its own sources that carry the identifier.
         retired = (
             module_name.rpartition(".")[2]
             if offset is None
@@ -1312,6 +1311,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                             candidate
                             for candidate in project.get_python_files()
                             if Path(candidate.real_path) in sources
+                            and project.source_owned(Path(candidate.real_path))
                             and (
                                 candidate.real_path == resource.real_path
                                 or retired in sources[Path(candidate.real_path)]

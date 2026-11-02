@@ -29,7 +29,7 @@ class FlextInfraModelsConfigWorkspace:
     class GitSubmoduleDeclaration(m.ContractModel):
         """One Git configuration section parsed by its canonical owner."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
         )
@@ -157,7 +157,7 @@ class FlextInfraModelsConfigWorkspace:
         Recovery targets authorize bounded publication into existing worktrees.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             use_enum_values=False, extra="forbid"
         )
 
@@ -268,7 +268,7 @@ class FlextInfraModelsConfigWorkspace:
 
         # The planner's surface contract takes the enum member, so the
         # contract base's value coercion is switched off here.
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         path: Annotated[Path, m.Field(description="Relative candidate worktree path")]
         what: Annotated[
@@ -294,7 +294,7 @@ class FlextInfraModelsConfigWorkspace:
     class DependencyGroupInclude(m.ContractModel):
         """One native PEP 735 inclusion at its original array position."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         include_group: t.NonEmptyStr = m.Field(
             alias="include-group", description="Referenced dependency group"
@@ -319,7 +319,7 @@ class FlextInfraModelsConfigWorkspace:
     class DependencyGroupDeclarations(m.ContractModel):
         """Shared native dependency-group grammar and local reference graph."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         dependency_groups: Mapping[
             str,
@@ -442,7 +442,7 @@ class FlextInfraModelsConfigWorkspace:
     class DependencyEdgeSpec(m.ContractModel):
         """One directed requirement edge between two workspace members."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
         )

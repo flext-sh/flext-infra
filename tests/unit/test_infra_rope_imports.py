@@ -222,7 +222,7 @@ class TestsFlextInfraRopeImports:
                 "from x import p\nclass A:\n    y = p.X\n", "p.X", True, id="class"
             ),
             pytest.param(
-                "from x import p\ndef f():\n    return m.Z\n",
+                "from x import p\ndef f():\n    return p.Z\n",
                 "p.Z",
                 True,
                 id="function",
@@ -240,7 +240,7 @@ class TestsFlextInfraRopeImports:
                 id="twice",
             ),
             pytest.param(
-                "def f():\n    from x import p\n    return m.Z\nq = p.Y\n",
+                "def f():\n    from x import p\n    return p.Z\nq = p.Y\n",
                 "p.Y",
                 False,
                 id="local",

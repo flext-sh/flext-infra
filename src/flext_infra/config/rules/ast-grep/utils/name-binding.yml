@@ -61,7 +61,12 @@ rule:
         inside:
           kind: type
           inside: {kind: type_alias_statement, field: left}
-    - inside: {kind: case_pattern, stopBy: end}
+    # A capture binds; a class reference or dotted value pattern only reads
+    # (`case m.Model(x)` binds `x`, never `m`).
+    - all:
+        - inside: {kind: case_pattern, stopBy: end}
+        - not: {inside: {kind: dotted_name, regex: "\\."}}
+        - not: {inside: {kind: dotted_name, inside: {kind: class_pattern}}}
     - inside:
         any: [{kind: pattern_list}, {kind: tuple_pattern}, {kind: list_pattern}]
         stopBy: end

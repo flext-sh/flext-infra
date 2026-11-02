@@ -132,17 +132,28 @@ Infra:
       # Generated native rule documents: each renderer receives the typed
       # model of its producer and returns {rule id: native rule document}
       # (the header stage owns import-header, the catalog stage the rest).
+      # `enforce` lists every law a renderer's documents enforce: it is
+      # stamped into each document that claims none of its own (a narrower
+      # document claim must stay inside it) and claimed in the enforcement
+      # catalog, so `refactor mod --laws` selects generated rules natively.
       renderers:
+      # The letter-binding law (ADR-028 Decision 10): own-letter and
+      # duplicate-origin (ENFORCE-051), foreign-origin (ENFORCE-003,
+      # ENFORCE-080), module-path (ENFORCE-003, ENFORCE-051).
       - name: codemod_import_header_rules
         facts: codemod_workspace_export_facts
         shapes: [ import-header ]
+        enforce: [ ENFORCE-003, ENFORCE-051, ENFORCE-080 ]
       - name: codemod_module_member_rules
         facts: codemod_package_export_facts
         shapes: [ module-member ]
       # One rule for the constants facade: an inline isinstance set equal to
       # a tuple-of-classes constant is rewired to it (one rewriter each).
+      # ENFORCE-079 (ban-inline-type-set-outside-constants names this rule as
+      # its rewrite).
       - name: codemod_type_set_rules
         shapes: [ type-set ]
+        enforce: [ ENFORCE-079 ]
       # One rule failing and rewiring every read of a compat-marked constant
       # to the new owner its warnings.deprecated marker names.
       - name: codemod_compat_rules
@@ -155,9 +166,11 @@ Infra:
         - ban-settings-config-own-facade-import
         - ban-settings-config-own-module-import
       # Facade boundary (ADR-028): a library import outside the c/t/p/m/u
-      # families; stdlib, own and FLEXT facade packages are derived.
+      # families; stdlib, own and FLEXT facade packages are derived
+      # (ENFORCE-070/093, c.Infra.CODEMOD_EXTERNAL_IMPORT_SHAPE).
       - name: codemod_external_import_rules
         shapes: [ ban-external-import-outside-facade-family ]
+        enforce: [ ENFORCE-070, ENFORCE-093 ]
       # Typings boundary (ADR-028): a library type named inline outside the
       # typings family; the library set is derived like the import boundary.
       - name: codemod_library_type_rules
@@ -190,10 +203,12 @@ Infra:
         shapes: [ retire-foreign-facade-member, facade-member-wrong-layer ]
       # The catalog rules partitioned per file group (metadata.scope
       # .partition), rendered per project instead of elected as authored.
-      # Its shapes are those catalog declarations themselves.
+      # Its shapes are those catalog declarations themselves, and each
+      # partition keeps the laws its catalog declaration claims.
       - name: codemod_partitioned_rules
         facts: codemod_scope_facts
         shapes_from: codemod_partitioned_shapes
+        enforce: []
       # The import-layer direction law: one document per importing layer,
       # plus the settings-layer bounds, from each module's resolved layer.
       - name: codemod_reverse_import_rules
@@ -885,6 +900,7 @@ Infra:
       # Private cross-repo doc-link entries (checkouts outside this public
       # registry) belong in the gitignored config/codegen.local.yaml; the
       # lookup appends local entries and resolves first match.
+      common_verb_group: development
       verbs:
       - name: setup
         description: Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).
@@ -899,7 +915,8 @@ Infra:
         description: Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
         requires_activation: false
       - name: mod
-        description: Transform declared source structure and publish the complete coherent semantic change through the shared engines.
+        arguments: [ LAWS, RULES ]
+        description: Check and fix one theme globally (LAWS=ENFORCE ids or RULES=rule ids, ADR-028 Decision 18 item 2); a run without a selection is refused.
       - name: fix
         description: Apply declared repairs to authored inputs through their canonical owners.
       - name: fmt

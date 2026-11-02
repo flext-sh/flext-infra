@@ -313,8 +313,8 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         self._write(
             package / "shadowed_consumer.py",
             "from flext_sample import p\n"
-            "def parameter(p):\n    return m.Sample.Unused\n"
-            "def assigned():\n    p = 0\n    return m.Sample.Unused\n",
+            "def parameter(p):\n    return p.Sample.Unused\n"
+            "def assigned():\n    p = 0\n    return p.Sample.Unused\n",
         )
         facade = package / "protocols.py"
         header = (

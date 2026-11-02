@@ -10,9 +10,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-from flext_cli import m, p
+from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
@@ -130,7 +130,7 @@ class FlextInfraModelsConfigRelease:
 
         # The bump map is consumed as enum members by the strict release plan,
         # so the contract base's value coercion is switched off here.
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             strict=False,
             frozen=True,
             extra="forbid",

@@ -541,7 +541,7 @@ class FlextInfraModelsRefactor(
         Published for successful and partial failed repair sequences.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         schema_version: Annotated[
             int,
@@ -860,10 +860,13 @@ class FlextInfraModelsRefactor(
         """CLI request for the shared AST, semantic, and text codemod cascade.
 
         ``refactor mod`` performs the transformation directly. ``--rule``
-        selects one concrete owner route, while ``--rule-ids`` selects exact
-        ast-grep catalog identities; selection resolution happens before any
-        scan or write. ``check`` and ``dry-run`` are the inspection modes;
-        without them the invocation writes.
+        selects one concrete owner route, ``--rule-ids`` selects exact
+        ast-grep catalog identities and ``--laws`` selects one theme: every
+        planned rule whose ``enforce`` claims a selected law. Exactly one
+        selector is accepted; a run without a selection is refused (ADR-028
+        Decision 18 item 2). Selection resolution happens before any scan or
+        write. ``check`` and ``dry-run`` are the inspection modes; without
+        them the invocation writes.
         """
 
         check: Annotated[bool, m.Field(description="Validate without writing")] = False
@@ -881,21 +884,22 @@ class FlextInfraModelsRefactor(
         rule_id: t.NonEmptyStr | None = m.Field(
             default=None,
             alias="rule",
-            description="One exact concrete codemod rule ID; omit for the full catalog",
+            description="One exact concrete codemod rule ID",
         )
         rule_ids: tuple[t.NonEmptyStr, ...] | None = m.Field(
             default=None,
             alias="rule-ids",
-            description=(
-                "Exact ast-grep catalog rule IDs; repeat --rule-ids for each "
-                "selection and omit for the full catalog"
-            ),
+            description="Exact ast-grep catalog rule IDs; repeat for each selection",
+        )
+        laws: tuple[t.Infra.EnforcementId, ...] | None = m.Field(
+            default=None,
+            description="Theme law ids (ENFORCE-NNN); repeat --laws for each law",
         )
 
-        @m.field_validator("rule_ids", mode="before")
+        @m.field_validator("rule_ids", "laws", mode="before")
         @classmethod
         def normalize_rule_ids(cls, value: object) -> object:
-            """Accept one CLI occurrence as a one-item catalog selection.
+            """Accept one CLI occurrence as a one-item selection.
 
             Returns:
                 The CLI's scalar value wrapped as a tuple, or its repeated
@@ -908,17 +912,18 @@ class FlextInfraModelsRefactor(
 
         @m.model_validator(mode="after")
         def exclusive_rule_selection(self) -> Self:
-            """Keep the owner selector and catalog selector unambiguous.
+            """Keep the owner, catalog and law selectors mutually exclusive.
 
             Returns:
                 The validated command.
 
             Raises:
-                ValueError: If both selection surfaces are supplied.
+                ValueError: If more than one selection surface is supplied.
 
             """
-            if self.rule_id is not None and self.rule_ids is not None:
-                msg = "refactor mod accepts either rule or rule_ids, not both"
+            selectors = (self.rule_id, self.rule_ids, self.laws)
+            if sum(selector is not None for selector in selectors) > 1:
+                msg = "refactor mod accepts one of rule, rule_ids or laws"
                 raise ValueError(msg)
             return self
 

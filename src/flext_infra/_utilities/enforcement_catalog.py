@@ -45,9 +45,11 @@ class FlextInfraUtilitiesEnforcementCatalog:
     ) -> p.Result[p.Infra.EnforcementCatalog]:
         """Derive the catalog from every owner's claims, failing on the first defect.
 
-        Claims come from ast-grep rule ``metadata.enforce``, the Ruff rules'
-        ``tools.ruff.lint.enforce``, the smells checks' ``smells.enforce``, the
-        gate registry's ``GATE_ENFORCES`` and codegen template ``enforce``. An
+        Claims come from ast-grep rule ``metadata.enforce``, each generated-rule
+        renderer's ``ast_grep.renderers`` ``enforce`` (stamped into every
+        document it renders), the Ruff rules' ``tools.ruff.lint.enforce``, the
+        smells checks' ``smells.enforce``, the gate registry's
+        ``GATE_ENFORCES`` and codegen template ``enforce``. An
         id is valid when at least one active owner claims it. A claim the same
         owner repeats is a duplicate; an id claimed only by disabled or
         unregistered owners is an orphan.
@@ -100,6 +102,10 @@ class FlextInfraUtilitiesEnforcementCatalog:
                 *(
                     (engine.AST_GREP, rule.id, None, not rule.disabled, rule.enforce)
                     for rule in rules
+                ),
+                *(
+                    (engine.AST_GREP, entry.name, None, True, entry.enforce)
+                    for entry in config.Infra.codegen.ast_grep.renderers
                 ),
                 *(
                     (engine.RUFF, rule, None, rule in enabled_ruff, laws)

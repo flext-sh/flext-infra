@@ -59,3 +59,5 @@ message: >-
   A p facade member is a Protocol contract, not a constructor or validator.
   Construct and validate through the model m publishes at the same path and
   keep p for annotations and runtime checks.
+metadata:
+  enforce: [ENFORCE-115]

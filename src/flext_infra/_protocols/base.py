@@ -950,6 +950,9 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def rule_ids(self) -> tuple[str, ...] | None: ...
 
+        @property
+        def laws(self) -> tuple[str, ...] | None: ...
+
     @runtime_checkable
     class ModRuleOwnerRunner(Protocol):
         """Pure semantic/callback owner planned by a focused mod route."""

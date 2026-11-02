@@ -292,6 +292,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,
+                verb_groups=repository.verb_groups,
             ),
         )
 
@@ -657,6 +658,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 repository_namespace_packages=project.repository_namespace_packages,
                 root_modules=project.root_modules,
                 cli_module=project.cli_module,
+                console_scripts=project.console_scripts,
                 runtime_dependency_overlay=project.runtime_dependency_overlay,
                 description=project.description,
                 documentation_language=project.documentation_language,
@@ -771,7 +773,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     f"captured project metadata is invalid: {repository_root}"
                 )
             declared = r[p.Infra.DependencyManifestSpec].create_from_callable(
-                lambda: p.Infra.DependencyManifestSpec.model_validate(parsed)
+                lambda: m.Infra.DependencyManifestSpec.model_validate(parsed)
             )
             if declared.failure:
                 return result_type.from_failure(declared)

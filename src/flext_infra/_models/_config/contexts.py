@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
@@ -191,6 +191,30 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
+        verb_groups: Annotated[
+            tuple[FlextInfraModelsConfigMake.MakeVerbGroupSpec, ...],
+            m.Field(description="Ordered `make help` sections; empty is flat"),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _require_common_verb_group(self) -> Self:
+            """Declare the canonical verbs' section whenever sections exist.
+
+            Returns:
+                The validated render context.
+
+            Raises:
+                ValueError: When sections omit ``make.common_verb_group``.
+
+            """
+            names = {group.name for group in self.verb_groups}
+            if names and self.make.common_verb_group not in names:
+                msg = (
+                    "verb_groups must declare the canonical section "
+                    f"{self.make.common_verb_group!r}: {sorted(names)}"
+                )
+                raise ValueError(msg)
+            return self
 
         makefile_custom_include: Annotated[
             t.NonEmptyStr,
@@ -538,6 +562,15 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 ),
             ),
         ]
+        console_scripts: Annotated[
+            tuple[FlextInfraModelsConfigContexts.ConsoleScriptSpec, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional console scripts; see the ProjectSpec namesake."
+                ),
+            ),
+        ] = ()
         runtime_dependency_overlay: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(

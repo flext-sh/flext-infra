@@ -182,24 +182,13 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             seed_renames = self._preview_module_names()
             if seed_renames.failure:
                 return r[t.Cli.ResultValue].from_failure(seed_renames)
-        pending_count = pending.findings + seed_renames.value
-        text_findings = 0
-        text_actionable = 0
-        cycles: tuple[Path, ...] = ()
+        text_pending, cycles = self._catalog_verdicts(validate_receipts=True)
+        pending_count = pending.findings + seed_renames.value + len(cycles)
+        pending_count += text_pending.findings
         renames_pending = r[int].ok(value=0)
         error_data: t.JsonDict | None = None
         if self.selected_rule_ids is None:
-            text_pending = FlextInfraModTextGateEngine.scan(
-                self.repository_root,
-                fix=False,
-                validate_receipts=True,
-            ).unwrap()
             error_data = {"text": text_pending.model_dump(mode="json")}
-            text_findings = text_pending.findings
-            text_actionable = text_pending.actionable
-            pending_count += text_findings
-            cycles = u.Infra.codemod_import_cycle_issues(self.repository_root)
-            pending_count += len(cycles)
             renames_pending = self._pending_renames()
             if renames_pending.failure:
                 return r[t.Cli.ResultValue].from_failure(renames_pending)
@@ -209,8 +198,8 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 f"{pending.actionable} actionable and "
                 f"{pending.detection_only} detection-only and "
                 f"{pending.non_actionable_with_fix} non-actionable with fix, plus "
-                f"{text_findings} pending sed-by-list finding(s) "
-                f"({text_actionable} actionable), "
+                f"{text_pending.findings} pending sed-by-list finding(s) "
+                f"({text_pending.actionable} actionable), "
                 f"{seed_renames.value} pending module rename(s), "
                 f"{len(cycles)} module(s) in runtime import cycles and "
                 f"{renames_pending.value} pending CSV-rename occurrence(s), "
@@ -236,7 +225,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             current,
             text_precondition_pending=True,
         )
-        if result.failure:
+        if result.failure or self.selected_rule_ids is not None:
             return result
         self.progress.emit("mod: verify the workspace constants census")
         census_runner = FlextInfraRefactorCensus(
@@ -1099,10 +1088,15 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     ) -> p.Result[p.Infra.SemanticSourcePlan]:
         """Compose all native semantic effects on the prepared candidate.
 
+        A selected theme composes no semantic phase: the census constants and
+        semantic edits belong to no selected rule.
+
         Returns:
-            The staged semantic candidate.
+            The staged semantic candidate, or the seed for a selected theme.
 
         """
+        if self.selected_rule_ids is not None:
+            return r[p.Infra.SemanticSourcePlan].ok(seed)
         outcome = r[p.Infra.SemanticSourcePlan]
         syntax = seed.candidate
         semantic_preflight = self._preview_ast_candidate(
@@ -1137,8 +1131,6 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 root, syntax, working
             )
         )
-        if self.selected_rule_ids is not None:
-            return r[p.Infra.SemanticSourcePlan].ok(seed)
         semantic = FlextInfraCodemodSemanticApply.plan_semantic_edits(
             root,
             FlextInfraModGateEngine.authored(semantic_preflight.value),
@@ -1242,14 +1234,38 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 f"finding(s) remain for owner repair: {', '.join(text_rules)}",
             )
 
+    def _catalog_verdicts(
+        self, *, validate_receipts: bool
+    ) -> tuple[p.Infra.ModTextReport, tuple[p.Infra.Issue, ...]]:
+        """Observe the whole-catalog text and import-cycle verdicts.
+
+        A selected theme (ADR-028 Decision 18 item 2) checks and fixes only
+        its own rules, so neither verdict belongs to it.
+
+        Returns:
+            The text report and the runtime import cycles; both empty for a
+            selected theme.
+
+        """
+        if self.selected_rule_ids is not None:
+            empty = m.Infra.ModTextReport(
+                findings=0, actionable=0, files=frozenset(), entries=()
+            )
+            return empty, ()
+        return (
+            FlextInfraModTextGateEngine.scan(
+                self.repository_root, fix=False, validate_receipts=validate_receipts
+            ).unwrap(),
+            u.Infra.codemod_import_cycle_issues(self.repository_root),
+        )
+
     def _verdict_message(
         self,
-        root: Path,
         states: tuple[
             tuple[tuple[str, str], ...],
             Sequence[tuple[tuple[str, str], ...]],
         ],
-        reports: tuple[p.Infra.ModScanReport, m.Infra.ModTextReport],
+        current: p.Infra.ModScanReport,
     ) -> str | None:
         """Judge the converged fixed point and report residual owner repairs.
 
@@ -1260,9 +1276,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
         """
         before, phase_states = states
-        current, current_text = reports
         if any(state != before for state in phase_states):
             return "mod cross-phase cycle returned to its starting source state"
+        current_text, cycles = self._catalog_verdicts(validate_receipts=False)
         if current.actionable or current_text.actionable:
             return (
                 "mod made no progress with "
@@ -1272,7 +1288,6 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         self._emit_residuals(current, current_text)
         # ENFORCE-006: the runtime import graph, not a syntax rule, decides a
         # cycle; any cycle at the fixed point blocks, like check's verdict.
-        cycles = u.Infra.codemod_import_cycle_issues(root)
         for issue in cycles:
             self.progress.emit(f"mod: {issue.file}: {issue.message}")
         if cycles:
@@ -1347,14 +1362,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 continue
             current, phase_states = advance.report, advance.phase_states
             text_precondition_pending = False
-            current_text = FlextInfraModTextGateEngine.scan(root, fix=False).unwrap()
             after = fingerprint(root, current)
             if after != before:
                 continue
             message = self._verdict_message(
-                root,
-                (before, phase_states),
-                (current, current_text),
+                (before, phase_states), current
             ) or self._relocation_verdict(root, rope_workspace, current)
             quarantined = self._quarantine_verdict()
             if quarantined is not None:
@@ -1404,12 +1416,16 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
         An unresolved owner is a finding of that declaration, never a plan
         crash; accepted writes remain available for the next fix-forward pass.
+        The relocation census owns no selected theme, so a selected run skips it.
 
         Returns:
             The failure message naming every unresolved declaration, or
-            ``None`` when every payload declaration has a resolved owner.
+            ``None`` for a selected theme or when every payload declaration
+            has a resolved owner.
 
         """
+        if self.selected_rule_ids is not None:
+            return None
         findings = FlextInfraCodemodSemanticApply.relocation_findings(
             root,
             FlextInfraModGateEngine.authored(current),

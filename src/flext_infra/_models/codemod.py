@@ -161,7 +161,7 @@ class FlextInfraModelsCodemod:
         the complete payload remains in the gate's raw scanner output.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(strict=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(strict=True)
 
         file: Annotated[str, m.Field(min_length=1, description="Reported source path")]
         rule_id: str = m.Field(

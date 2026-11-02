@@ -22,7 +22,7 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
     implementation and project-selection state used by ``_collect_report``.
     """
 
-    model_config: ClassVar[p.ConfigDict] = m.Infra.CensusOptions.model_config
+    model_config: ClassVar[t.ConfigDict] = m.Infra.CensusOptions.model_config
 
     options: p.Infra.CensusOptions = m.Field(
         default_factory=m.Infra.CensusOptions,

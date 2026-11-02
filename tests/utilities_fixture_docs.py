@@ -11,10 +11,7 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import c, r, tm
-from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
-from tests.utilities_git import TestsFlextInfraUtilitiesGit
+from tests import c, p, r, tm, u
 
 
 class TestsFlextInfraUtilitiesDocsFixture:
@@ -35,7 +32,7 @@ class TestsFlextInfraUtilitiesDocsFixture:
         """
         workspace = root / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
-        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
+        u.Tests.write_project_beads_config(
             workspace,
             "workspace",
         )
@@ -65,13 +62,11 @@ class TestsFlextInfraUtilitiesDocsFixture:
             f"\n[tool.uv.workspace]\nmembers = [{members}]\n" if project_names else ""
         )
         infrastructure = config.Infra.codegen.infra_repository.distribution
-        infrastructure_ref = TestsFlextInfraUtilitiesProjectFixture.repository_ref(
-            infrastructure
-        )
+        infrastructure_ref = u.Tests.repository_ref(infrastructure)
         development = (
             "\n[dependency-groups]\n"
             f'dev = ["{infrastructure} @ git+{infrastructure_ref.url}@'
-            f'{TestsFlextInfraUtilitiesProjectFixture.provider_branch()}"]\n'
+            f'{u.Tests.provider_branch()}"]\n'
         )
         _write(
             workspace / c.PYPROJECT_FILENAME,
@@ -99,13 +94,13 @@ class TestsFlextInfraUtilitiesDocsFixture:
             _write(project / "docs/architecture.md", "# Architecture\n")
             _write(project / "docs/dev.md", "# Development\n")
             _write(project / "docs/api.md", "# API\n")
-            TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
+            u.Tests.write_project_beads_config(
                 project,
                 name,
             )
 
         if project_names:
-            TestsFlextInfraUtilitiesProjectFixture.declare_workspace_projects(
+            u.Tests.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -118,15 +113,15 @@ class TestsFlextInfraUtilitiesDocsFixture:
         # Initialize children first so the parent's initial index records
         # gitlinks rather than ordinary files inside the declared members.
         for name in project_names:
-            TestsFlextInfraUtilitiesGit.initialize_git_repo(
+            u.Tests.initialize_git_repo(
                 workspace / name,
-                origin_url=TestsFlextInfraUtilitiesProjectFixture.repository_ref(
+                origin_url=u.Tests.repository_ref(
                     name,
                 ).url,
             )
-        TestsFlextInfraUtilitiesGit.initialize_git_repo(
+        u.Tests.initialize_git_repo(
             workspace,
-            origin_url=TestsFlextInfraUtilitiesProjectFixture.repository_ref(
+            origin_url=u.Tests.repository_ref(
                 "workspace",
             ).url,
         )
@@ -148,7 +143,7 @@ class TestsFlextInfraUtilitiesDocsFixture:
         """
         workspace = root / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
-        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
+        u.Tests.write_project_beads_config(
             workspace,
             "workspace",
         )
@@ -167,12 +162,12 @@ class TestsFlextInfraUtilitiesDocsFixture:
                 ),
                 encoding="utf-8",
             )
-            TestsFlextInfraUtilitiesProjectFixture.write_member_package(
+            u.Tests.write_member_package(
                 project,
                 name,
             )
         if project_names:
-            TestsFlextInfraUtilitiesProjectFixture.declare_workspace_projects(
+            u.Tests.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -241,7 +236,7 @@ class TestsFlextInfraUtilitiesDocsFixture:
 
         """
         plans = TestsFlextInfraUtilitiesDocsFixture.plan_docs_bundle(generator)
-        published = TestsFlextInfraUtilitiesCodegen.materialize_codegen_plans(
+        published = u.Tests.materialize_codegen_plans(
             r[tuple[p.Infra.CodegenFilePlan, ...]].ok(plans),
         )
         tm.ok(published)

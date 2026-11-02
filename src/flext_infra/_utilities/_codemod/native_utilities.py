@@ -20,10 +20,9 @@ import shutil
 import sys
 import tempfile
 import time
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from functools import cache
-from importlib.metadata import packages_distributions
 from pathlib import Path
 from types import MappingProxyType
 
@@ -210,36 +209,37 @@ class FlextInfraUtilitiesCodemodNative:
         ).unwrap()
         if not project[1]:
             return frozenset()
-        return cls._runtime_modules_of(tuple(project[1]))
+        return cls._runtime_modules_of(root.resolve(), tuple(project[1]))
 
     @staticmethod
     @cache
-    def _runtime_modules_of(requirements: tuple[str, ...]) -> frozenset[str]:
-        """Resolve the import packages of one requirement set, once per process.
+    def _runtime_modules_of(
+        root: Path, requirements: tuple[str, ...]
+    ) -> frozenset[str]:
+        """Resolve the import packages of one requirement set, once per root.
 
-        Installed metadata is a fact of the one owning runtime environment for
-        the life of the process, so every plan, gate and render of the
-        invocation shares the one closure its direct requirements select.
+        Installed metadata is a fact of the TARGET repository's own runtime
+        environment, observed through its own interpreter; the invoking
+        interpreter is never read. Every plan, gate and render of one
+        repository shares the one closure its direct requirements select.
 
         Returns:
             The import packages whose distributions the closure contains.
 
         """
         progress = FlextInfraUtilitiesImportLaw.codemod_progress
+        owner = FlextInfraUtilitiesCodemodRules
         progress(f"runtime distributions start requirements={len(requirements)}")
-        distributions = (
-            FlextInfraUtilitiesCodemodRules.codemod_environment_distributions()
-        )
+        environment = owner.codemod_target_environment(root).unwrap()
+        distributions = owner.codemod_target_distributions(root).unwrap()
         progress(f"runtime distributions finish distributions={len(distributions)}")
         progress("runtime dependency closure start")
-        closure = FlextInfraUtilitiesCodemodRules.codemod_runtime_closure(
-            requirements,
-            distributions,
-        )
+        closure = owner.codemod_runtime_closure(requirements, distributions)
         progress(f"runtime dependency closure finish distributions={len(closure)}")
-        progress("runtime import package metadata start")
-        owner = FlextInfraUtilitiesCodemodNative
-        packages = owner.codemod_installed_import_packages()
+        packages = {
+            module: frozenset(canonicalize_name(name) for name in providers)
+            for module, providers in environment.package_distributions.items()
+        }
         progress(f"runtime import package metadata finish packages={len(packages)}")
         selected: set[str] = set()
         due = 0.0
@@ -253,24 +253,6 @@ class FlextInfraUtilitiesCodemodNative:
                 selected.add(module)
         progress(f"runtime imports finish modules={len(selected)}")
         return frozenset(selected)
-
-    @staticmethod
-    @cache
-    def codemod_installed_import_packages() -> Mapping[str, frozenset[str]]:
-        """Map each installed import package to its canonical distributions.
-
-        Installed metadata is a fact of the interpreter environment, fixed for
-        the life of the process, so it is read once; a project's runtime
-        closure over it is still computed per call.
-
-        Returns:
-            Import package to the canonical names of its distributions.
-
-        """
-        return MappingProxyType({
-            module: frozenset(canonicalize_name(name) for name in providers)
-            for module, providers in packages_distributions().items()
-        })
 
     @classmethod
     def codemod_native_generated(
@@ -600,6 +582,66 @@ class FlextInfraUtilitiesCodemodNative:
             root, {root: provider}, rule_ids=rule_ids
         )
 
+    @classmethod
+    def codemod_law_rule_ids(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        laws: frozenset[str],
+    ) -> p.Result[t.StrTuple]:
+        """Expand a theme's laws into this repository's exact planned rule ids.
+
+        The repository's authored catalogs elect their rules (owner and
+        consumer scopes applied); an elected rule belongs to the theme when
+        its ``enforce`` intersects ``laws``. Generated rules belong to it by
+        the laws their documents claim, rendered only by the renderers whose
+        declared laws, or the catalog laws of the authored rules they render
+        (partitions), intersect ``laws``. The ids feed the existing exact
+        selection, so the theme's plan is the plan those ids compose.
+
+        Returns:
+            The theme's rule ids in plan order, empty when the repository
+            plans no rule of the theme, or the first composition failure.
+
+        """
+        outcome = r[t.StrTuple]
+        root = snapshot.workspace_root.resolve()
+        owner = FlextInfraUtilitiesCodemodRules
+        composed = owner.codemod_compose_rule_plan(root, {root: None})
+        if composed.failure:
+            return outcome.from_failure(composed)
+        catalog: dict[str, frozenset[str]] = {}
+        for ruleset in composed.value.rulesets:
+            parsed = owner.codemod_catalog_rules(ruleset.provider, ruleset.config)
+            if parsed.failure:
+                return outcome.from_failure(parsed)
+            catalog.update({rule.id: frozenset(rule.enforce) for rule in parsed.value})
+        generated = cls._rendered_rules(
+            snapshot,
+            root,
+            tuple(
+                entry
+                for entry in config.Infra.codegen.ast_grep.renderers
+                if laws.intersection(
+                    frozenset(entry.enforce).union(
+                        *(
+                            catalog.get(shape, ())
+                            for shape in cls._renderer_shapes(entry)
+                        )
+                    )
+                )
+            ),
+            None,
+            lambda _rule_id, claimed: bool(laws.intersection(claimed)),
+        )
+        return outcome.ok((
+            *(
+                rule.id
+                for rule in composed.value.rules
+                if laws.intersection(rule.enforce)
+            ),
+            *generated,
+        ))
+
     @staticmethod
     def codemod_fixture_resources(
         plan: p.Infra.CodemodRulePlan,
@@ -837,10 +879,43 @@ class FlextInfraUtilitiesCodemodNative:
     ) -> Mapping[str, t.JsonMapping]:
         """Run every registered renderer and merge its rule documents by id.
 
-        ``facts`` seeds facts models the generation already computed.
+        ``facts`` seeds facts models the generation already computed. Every
+        document carries its renderer's declared laws (``_law_document``).
 
         Returns:
             Every generated native rule document keyed by its rule id.
+
+        """
+        selected = None if rule_ids is None else frozenset(rule_ids)
+        return cls._rendered_rules(
+            snapshot,
+            project,
+            tuple(
+                entry
+                for entry in spec.renderers
+                if selected is None or cls._renderer_selects_rule_ids(entry, selected)
+            ),
+            facts,
+            lambda rule_id, _claimed: selected is None or rule_id in selected,
+        )
+
+    @classmethod
+    def _rendered_rules(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        project: Path,
+        entries: Sequence[p.Infra.CodegenAstGrepRendererSpec],
+        facts: Mapping[str, p.Model] | None,
+        keep: Callable[[str, frozenset[str]], bool],
+    ) -> Mapping[str, t.JsonMapping]:
+        """Render the given renderers and keep the documents ``keep`` admits.
+
+        ``keep`` receives each validated rule id and the laws its stamped
+        document claims, so an exact id selection and a law selection share
+        one rendering and validation path.
+
+        Returns:
+            The kept native rule documents keyed by their rule id.
 
         Raises:
             ValueError: If a rule id repeats, names an unregistered shape, or
@@ -849,18 +924,11 @@ class FlextInfraUtilitiesCodemodNative:
         """
         documents: dict[str, t.JsonMapping] = {}
         computed: dict[str, p.Model] = dict(facts or {})
-        selected = None if rule_ids is None else frozenset(rule_ids)
-        for entry in spec.renderers:
-            if selected is not None and not cls._renderer_selects_rule_ids(
-                entry, selected
-            ):
-                continue
+        for entry in entries:
             with cls._producer_progress(entry.name, project):
                 rendered = cls.codemod_native_render(snapshot, project, entry, computed)
             shapes = cls._renderer_shapes(entry)
             for rule_id, document in rendered.items():
-                if selected is not None and rule_id not in selected:
-                    continue
                 shape = rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
                 if shape not in shapes:
                     msg = (
@@ -874,8 +942,52 @@ class FlextInfraUtilitiesCodemodNative:
                 if document.get("id") != rule_id:
                     msg = f"ast-grep rule document id disagrees with {rule_id}"
                     raise ValueError(msg)
-                documents[rule_id] = document
+                claimed = cls._law_document(entry, document)
+                if keep(rule_id, claimed[1]):
+                    documents[rule_id] = claimed[0]
         return MappingProxyType(dict(sorted(documents.items())))
+
+    @staticmethod
+    def _law_document(
+        entry: p.Infra.CodegenAstGrepRendererSpec, document: t.JsonMapping
+    ) -> tuple[t.JsonMapping, frozenset[str]]:
+        """Stamp the renderer's laws on a document that claims none of its own.
+
+        A renderer declares every law its documents enforce; a document that
+        claims a narrower set of them keeps its own. A renderer that declares
+        none renders authored catalog rules, whose documents carry theirs.
+
+        Returns:
+            The document with its law claim, and the laws it claims.
+
+        Raises:
+            ValueError: If a document claims a law its renderer does not declare.
+
+        """
+        key = c.Infra.CODEMOD_RULE_ENFORCE_KEY
+        metadata = document.get("metadata")
+        declared: dict[str, t.JsonValue] = (
+            dict(metadata) if isinstance(metadata, Mapping) else {}
+        )
+        claimed = declared.get(key)
+        laws = (
+            frozenset(law for law in claimed if isinstance(law, str))
+            if isinstance(claimed, list)
+            else frozenset[str]()
+        )
+        if entry.enforce and not laws.issubset(entry.enforce):
+            msg = (
+                f"ast-grep renderer {entry.name} document {document.get('id')} "
+                f"claims undeclared laws: {', '.join(sorted(laws))}"
+            )
+            raise ValueError(msg)
+        if claimed is not None or not entry.enforce:
+            return document, laws
+        stamped = list[t.JsonValue](entry.enforce)
+        return (
+            {**document, "metadata": {**declared, key: stamped}},
+            frozenset(entry.enforce),
+        )
 
     @classmethod
     def _renderer_selects_rule_ids(

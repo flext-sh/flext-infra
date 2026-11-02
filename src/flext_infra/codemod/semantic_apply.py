@@ -374,7 +374,7 @@ class FlextInfraCodemodSemanticApply(
                     )
                 )
             ):
-                if part is None and replacement != name.lstrip("_"):
+                if part is not None or replacement != name.lstrip("_"):
                     msg = (
                         f"module naming destination shadows its parent publication: "
                         f"{path} -> {replacement}"
@@ -853,20 +853,20 @@ class FlextInfraCodemodSemanticApply(
         captured = m.Infra.CodemodBindingSnapshot(states=baseline.inputs)
         original = u.Infra.candidate_python_sources(baseline, captured.states)
         with ExitStack() as stack:
-            declared_projects = tuple(
-                dict.fromkeys(
-                    project
+            # One native project per repository; a module elects in its owner only.
+            live = tuple(
+                stack.enter_context(
+                    u.Infra.open_project(
+                        owner,
+                        project_roots=u.Infra.discover_rope_project_roots(owner),
+                        consumer_root=owner,
+                    )
+                )
+                for owner in dict.fromkeys(
+                    project.resolve()
                     for scope in scopes
                     for project in u.Infra.import_project_roots(scope)
                 )
-            )
-            live = (
-                stack.enter_context(
-                    u.Infra.open_project(
-                        baseline.workspace,
-                        project_roots=declared_projects,
-                    )
-                ),
             )
             python_folders = tuple(
                 dict.fromkeys(

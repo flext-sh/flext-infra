@@ -181,6 +181,31 @@ class FlextInfraUtilitiesRopeCore(
         )
 
     @staticmethod
+    def binding_projects(
+        producer: p.Infra.RopeProject,
+        projects: Sequence[p.Infra.RopeProject],
+        declaration: Path,
+    ) -> tuple[p.Infra.RopeProject, ...]:
+        """Elect the repository projects that can bind one native declaration.
+
+        ``src/`` holds a repository's public namespaces; every other child of
+        the repository root is an internal tier whose dotted names denote that
+        repository's own modules only. Another repository resolves the same
+        dotted name inside its own tier, so it never binds this declaration.
+
+        Returns:
+            The producer first, followed by every other project when public.
+
+        """
+        public = declaration.resolve().is_relative_to(
+            Path(producer.root.real_path) / c.Infra.DEFAULT_SRC_DIR
+        )
+        return (
+            producer,
+            *(project for project in projects if public and project is not producer),
+        )
+
+    @staticmethod
     @contextmanager
     def open_import_project(source_root: Path) -> Generator[t.Infra.RopeProject]:
         """Resolve imports against the containing declared workspace, if attached.

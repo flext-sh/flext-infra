@@ -17,7 +17,7 @@ rule:
         $$$AFTER
 constraints:
   CONFIG:
-    regex: "^p\\.ConfigDict$"
+    regex: "^t\\.ConfigDict$"
 fix: |-
   class $NAME(m.ExternalContractModel):
       $$$BEFORE
@@ -42,7 +42,7 @@ rule:
         $$$AFTER
 constraints:
   CONFIG:
-    regex: "^p\\.ConfigDict$"
+    regex: "^t\\.ConfigDict$"
 fix: |-
   class $NAME(m.ExternalContractModel):
       $$$BEFORE
@@ -66,7 +66,7 @@ rule:
         $$$AFTER
 constraints:
   CONFIG:
-    regex: "^p\\.ConfigDict$"
+    regex: "^t\\.ConfigDict$"
 fix: |-
   class $NAME(m.ExternalContractModel):
       $$$BEFORE

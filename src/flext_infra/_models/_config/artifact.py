@@ -35,7 +35,7 @@ from flext_infra._models._config import (
     FlextInfraModelsConfigWorkspace,
 )
 from flext_infra._protocols import FlextInfraProtocolsBase
-from flext_infra._typings import FlextInfraTypesAdapters
+from flext_infra._typings import FlextInfraTypesAdapters, FlextInfraTypesBase
 
 
 class FlextInfraModelsConfigArtifact(
@@ -308,6 +308,10 @@ class FlextInfraModelsConfigArtifact(
                 ),
             ),
         ] = None
+        enforce: Annotated[
+            FlextInfraTypesBase.EnforcementIds,
+            m.Field(description="Laws every rendered document enforces (stamped)"),
+        ] = ()
 
         @m.model_validator(mode="after")
         def _validate_one_shape_source(self) -> Self:
@@ -508,7 +512,7 @@ class FlextInfraModelsConfigArtifact(
     class CodegenConfigSpec(CodegenArtifactScopeSpec):
         """Fully modeled content of ``config/codegen.yaml``."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
 
         runtime_module_overrides: Annotated[
             Mapping[
@@ -1211,7 +1215,7 @@ class FlextInfraModelsConfigArtifact(
     class CodegenGenerateRequest(FlextInfraModelsConfigContract.ConfigContract):
         """Validated projection inputs for ``flext-infra codegen generate``."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
         root: Annotated[Path, m.Field(description="Repository or workspace root")]
         what: Annotated[
             c.Infra.CodegenConformSurface,

@@ -80,7 +80,7 @@ class FlextInfraModelsCodegenPipeline:
     class CodegenPlan(m.ArbitraryTypesModel):
         """Candidate effects of one completely planned request."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
         )
         request: Annotated[

@@ -118,11 +118,13 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             )
             if cls.has_runtime_alias_import(source, alias) or deferred:
                 return source
-            msg = (
-                f"canonical alias {alias!r} has only deferred or conditional imports "
-                "but its consumer requires a runtime binding"
-            )
-            raise ValueError(msg)
+            if not runtime_required:
+                msg = (
+                    f"canonical alias {alias!r} has only deferred or conditional "
+                    "imports but its consumer requires a runtime binding"
+                )
+                raise ValueError(msg)
+            source = cls._promote_deferred_alias_import(source, alias)
         if cls.alias_locally_bound(source, alias):
             return source
         if not runtime_required:
@@ -140,6 +142,71 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         if offset < len(source) and not source[offset:].startswith("\n"):
             line = f"{line}\n"
         return f"{source[:offset]}{line}{source[offset:]}"
+
+    @staticmethod
+    def _promote_deferred_alias_import(source: str, alias: str) -> str:
+        """Drop the ``if TYPE_CHECKING:`` binding of an alias that now needs runtime.
+
+        A generated holder that composes a sibling class by MRO needs the base at
+        runtime, while an earlier annotation-only read placed the same import in
+        the type-checking block. The runtime binding supersedes the deferred one,
+        so the deferred binding is removed (and an emptied block with it) before
+        the runtime import is injected; keeping both would bind the alias twice.
+
+        Returns:
+            The source without any deferred binding of ``alias``.
+
+        """
+        module = ast.parse(source)
+        lines = source.splitlines(keepends=True)
+        edits: MutableSequence[tuple[int, int, str]] = []
+        for node in module.body:
+            if not (
+                isinstance(node, ast.If)
+                and (
+                    (
+                        isinstance(node.test, ast.Name)
+                        and node.test.id == "TYPE_CHECKING"
+                    )
+                    or (
+                        isinstance(node.test, ast.Attribute)
+                        and node.test.attr == "TYPE_CHECKING"
+                    )
+                )
+            ):
+                continue
+            kept = 0
+            block: MutableSequence[tuple[int, int, str]] = []
+            for child in node.body:
+                if not isinstance(child, c.Infra.AST_IMPORT_TYPES) or not any(
+                    (name.asname or name.name.partition(".")[0]) == alias
+                    for name in child.names
+                ):
+                    kept += 1
+                    continue
+                rest = [
+                    name
+                    for name in child.names
+                    if (name.asname or name.name.partition(".")[0]) != alias
+                ]
+                end = child.end_lineno or child.lineno
+                if rest:
+                    kept += 1
+                    child.names = rest
+                    indent = lines[child.lineno - 1][
+                        : len(lines[child.lineno - 1])
+                        - len(lines[child.lineno - 1].lstrip())
+                    ]
+                    block.append((child.lineno, end, f"{indent}{ast.unparse(child)}\n"))
+                else:
+                    block.append((child.lineno, end, ""))
+            if kept:
+                edits.extend(block)
+            elif block:
+                edits.append((node.lineno, node.end_lineno or node.lineno, ""))
+        for start, end, text in sorted(edits, reverse=True):
+            lines[start - 1 : end] = [text] if text else []
+        return "".join(lines)
 
     @staticmethod
     def has_runtime_alias_import(source: str, alias: str | None = None) -> bool:

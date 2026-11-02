@@ -10,9 +10,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_core import m, p
+from flext_core import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 
 
 class FlextInfraModelsDuplication:
@@ -26,7 +26,7 @@ class FlextInfraModelsDuplication:
         with no overrides table gets the same behavior as the workspace scan.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -94,7 +94,7 @@ class FlextInfraModelsDuplication:
         declared key that violates the schema fails loud.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -113,7 +113,7 @@ class FlextInfraModelsDuplication:
     class JscpdConfig(m.ContractModel):
         """Complete generated jscpd invocation configuration."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -190,7 +190,7 @@ class FlextInfraModelsDuplication:
     class JscpdFile(m.ContractModel):
         """One side of a detected clone."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -219,7 +219,7 @@ class FlextInfraModelsDuplication:
     class JscpdDuplicate(m.ContractModel):
         """One complete two-sided clone from jscpd."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -269,7 +269,7 @@ class FlextInfraModelsDuplication:
     class JscpdStatisticsSummary(m.ContractModel):
         """Complete aggregate emitted for one format or the whole scan."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
@@ -308,7 +308,7 @@ class FlextInfraModelsDuplication:
     class JscpdStatistics(m.ContractModel):
         """Per-format and total statistics proving non-empty collection."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,

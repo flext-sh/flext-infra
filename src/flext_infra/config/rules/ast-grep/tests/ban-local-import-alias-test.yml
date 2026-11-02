@@ -14,7 +14,7 @@ valid:
 # The canonical letter binding under TYPE_CHECKING.
 - |
   if TYPE_CHECKING:
-      from ai_hub.models import m.AiHub as m
+      from ai_hub.models import AiHubModels as m
 invalid:
 - from ai_hub import m as models
 - |

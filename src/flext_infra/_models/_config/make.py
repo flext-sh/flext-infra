@@ -191,6 +191,39 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ] = tuple(FlextInfraConstantsConfig.MakeProfile)
+        group: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Declared help section of a repository-owned verb; present "
+                    "exactly when the repository declares verb_groups"
+                ),
+            ),
+        ] = None
+        cli: Annotated[
+            tuple[
+                Annotated[str, m.Field(pattern=r"^[a-z][a-z0-9-]*$")],
+                ...,
+            ],
+            m.Field(
+                description=(
+                    "Console script followed by its route words; the generated "
+                    "handler forwards each argument as one --<kebab> option"
+                ),
+            ),
+        ] = ()
+
+    class MakeVerbGroupSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """One ordered `make help` section of repository-owned verbs."""
+
+        name: Annotated[
+            str,
+            m.Field(pattern=r"^[a-z][a-z0-9-]*$", description="Section key"),
+        ]
+        title: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Operator-facing section heading"),
+        ]
 
     class MakeOperationSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One typed public operation and its distinct checker evidence phase."""
@@ -922,6 +955,16 @@ class FlextInfraModelsConfigMake(
         verbs: Annotated[
             tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(description="Ordered canonical public verbs"),
+        ]
+        common_verb_group: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[a-z][a-z0-9-]*$",
+                description=(
+                    "Section key that holds the canonical and release verbs "
+                    "when a repository declares verb_groups"
+                ),
+            ),
         ]
         violations_sweep_repair_verbs: Annotated[
             tuple[t.NonEmptyStr, ...],

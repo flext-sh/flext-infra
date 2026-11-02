@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import t
 from flext_infra._models import (
@@ -259,7 +259,7 @@ class FlextInfraModelsGit(
         arbitrary pair; there is no separate pair verb.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         ancestor: Annotated[t.NonEmptyStr, m.Field(description="Candidate ancestor")]
         descendant: t.NonEmptyStr = m.Field("HEAD", description="Candidate descendant")
@@ -382,7 +382,7 @@ class FlextInfraModelsGit(
         Namespaces include ``refs/heads`` and ``refs/remotes/origin``.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         namespace: Annotated[t.NonEmptyStr, m.Field(description="Ref namespace")]
 

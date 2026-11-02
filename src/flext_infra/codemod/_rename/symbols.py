@@ -246,10 +246,7 @@ class FlextInfraCodemodRenameSymbols:
                 msg = f"semantic rename has incompatible contract: {identity}"
                 raise ValueError(msg)
             cls._plan_native_item(
-                (
-                    producer,
-                    *[project for project in projects if project is not producer],
-                ),
+                u.Infra.binding_projects(producer, projects, Path(item.file_path)),
                 sources,
                 item,
                 decision.replacement_name,

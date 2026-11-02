@@ -10,7 +10,7 @@ from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import t
 from flext_infra._models import FlextInfraModelsMixins
@@ -65,7 +65,7 @@ class FlextInfraModelsCodegenScaffold:
     class ScaffoldDirRequest(m.ArbitraryTypesModel):
         """Directory-level scaffold request and accumulation state."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True,
             revalidate_instances="never",
         )

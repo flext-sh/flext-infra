@@ -10,7 +10,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-from flext_cli import m, p, t
+from flext_cli import m, t
 
 from flext_infra import c
 
@@ -21,7 +21,7 @@ class FlextInfraModelsBase:
     class CommandContext(m.ArbitraryTypesModel):
         """Mutable command data shared by infra services and CLI schemas."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             validate_by_name=True,
             validate_by_alias=True,
         )
@@ -145,7 +145,7 @@ class FlextInfraModelsBase:
     class FrozenArbitrary(m.ContractModel):
         """Strict immutable payloads preserving exact text and enum identities."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             str_strip_whitespace=False,
             use_enum_values=False,
         )

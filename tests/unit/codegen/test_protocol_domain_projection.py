@@ -60,7 +60,11 @@ class TestsProtocolDomainProjection:
             "_protocols/git.py": (
                 "class ProtocolsGit: pass\n__all__ = ['ProtocolsGit']\n"
             ),
-            "_protocols/_git/__init__.py": "",
+            # The composed sibling imports its part through this family package.
+            "_protocols/_git/__init__.py": (
+                f"from {name}._protocols._git.part import ProtocolsGitPart\n"
+                "__all__ = ['ProtocolsGitPart']\n"
+            ),
             "_protocols/_git/part.py": (
                 "from typing import Protocol, runtime_checkable\n"
                 "class ProtocolsGitPart:\n"

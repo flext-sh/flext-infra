@@ -785,7 +785,10 @@ class FlextInfraUtilitiesCodemodRules(
         if project.failure:
             return r[p.Infra.CodemodRulePlan].from_failure(project)
         root_name, direct_runtime = project.value
-        paths = cls._import_paths()
+        target_paths = cls.codemod_target_import_paths(root)
+        if target_paths.failure:
+            return r[p.Infra.CodemodRulePlan].from_failure(target_paths)
+        paths = target_paths.value
         indexed = cls._indexed_distributions(paths)
         discovered = cls._indexed_provider_configs(paths)
         runtime_closure = cls.codemod_runtime_closure(direct_runtime, indexed)

@@ -3,7 +3,7 @@
 id: ban-family-base-own-import
 valid:
 - |
-  from ai_hub._models._base.aihubmodelsbase_part_03 import m.AiHub
+  from ai_hub._models._base.aihubmodelsbase_part_03 import AiHubModelsBasePart
 - |
   import ai_hub._models._base.aihubmodelsbase_part_03
 - |
@@ -13,7 +13,7 @@ valid:
   from flext_infra import t
 # The family's public compose module is the sanctioned static surface.
 - |
-  from ai_hub.models import m.AiHub
+  from ai_hub.models import AiHubModels
 invalid:
 - |
   if TYPE_CHECKING:

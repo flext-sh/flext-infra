@@ -20,7 +20,7 @@ class FlextInfraModelsCodegenToolchain:
     class MiseToolchainProjectLayout(m.ArbitraryTypesModel):
         """Stable paths needed to validate and recover one project."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         selector: Annotated[
             t.NonEmptyStr,
@@ -41,7 +41,7 @@ class FlextInfraModelsCodegenToolchain:
     class CodegenFileParticipant(m.ArbitraryTypesModel):
         """Explicit physical publication capability without Git or Mise ownership."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         selector: Annotated[
             str,
@@ -80,7 +80,7 @@ class FlextInfraModelsCodegenToolchain:
     class MiseToolchainWorkspaceLayout(m.ArbitraryTypesModel):
         """Stable recovery topology independent of mutable source contents."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         scope_root: Annotated[Path, m.Field(description="Resolved transaction scope")]
         state_root: Annotated[
@@ -131,7 +131,7 @@ class FlextInfraModelsCodegenToolchain:
     class MiseToolchainConfigState(m.ArbitraryTypesModel):
         """Current destination plus the exact planned Mise configuration."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         before: Annotated[
             m.Cli.AtomicFileState,
@@ -162,7 +162,7 @@ class FlextInfraModelsCodegenToolchain:
     class MiseToolchainProjectState(m.ArbitraryTypesModel):
         """Immutable source and destination snapshot for one project layout."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout,
@@ -192,7 +192,7 @@ class FlextInfraModelsCodegenToolchain:
     class MiseToolchainWorkspacePlan(m.ArbitraryTypesModel):
         """One stable layout plus a coherent mutable-state snapshot."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegenToolchain.MiseToolchainWorkspaceLayout,

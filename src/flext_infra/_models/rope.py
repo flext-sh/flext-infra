@@ -42,7 +42,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
     class RopeRestructureRequest(FlextInfraModelsBase.FrozenArbitrary):
         """One complete native restructuring operation and its admitted inputs."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
 
         pattern: t.NonEmptyStr = m.Field(description="Native Rope match template")
         goal: str = m.Field(

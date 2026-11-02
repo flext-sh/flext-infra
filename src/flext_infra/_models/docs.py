@@ -10,9 +10,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m, p
+from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsDocsCollection,
@@ -76,7 +76,7 @@ class FlextInfraModelsDocs(
     class DocsGovernanceLinks(m.ContractModel):
         """Resolved governance pointers of one generated project page."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 
@@ -88,7 +88,7 @@ class FlextInfraModelsDocs(
     class DocsGuideEntry(m.ContractModel):
         """One guide row of a generated guides index."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 
@@ -98,7 +98,7 @@ class FlextInfraModelsDocs(
     class DocsModuleEntry(m.ContractModel):
         """One module page row of a generated module index."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 
@@ -108,7 +108,7 @@ class FlextInfraModelsDocs(
     class DocsPageContext(m.ContractModel):
         """Validated base context of every generated Markdown docs page."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 

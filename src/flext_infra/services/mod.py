@@ -611,14 +611,19 @@ class FlextInfraModHandlers:
         root: Path,
         request: p.Infra.ModRequest,
         progress: p.Infra.ModProgress,
-        campaigns: p.Infra.RefactorCsvCampaignsSpec | None,
+        scope: p.Infra.RefactorCsvCampaignsSpec | tuple[str, ...] | None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Compose the existing batch once for the selected native scope.
+
+        ``scope`` is the declared campaigns of a rename-plan run, or the exact
+        AST rule IDs of a selected theme: the request's own, or the
+        repository's expansion of its laws.
 
         Returns:
             The original executor result over the same captured workspace.
 
         """
+        campaigns = None if isinstance(scope, tuple) else scope
         structural_root = flext_infra.u.Infra.import_project_roots(root)[0].resolve()
         source_preview = context.source_preview(structural_root)
         with context.rope_workspace(root, structural_root) as rope:
@@ -628,7 +633,7 @@ class FlextInfraModHandlers:
                 repository_root=root,
                 consumer_roots=request.consumer_roots,
                 rule_id=request.rule_id,
-                rule_ids=request.rule_ids,
+                rule_ids=scope if isinstance(scope, tuple) else None,
                 rename_plan=(
                     request.rename_plan or campaigns.semantic_plan
                     if campaigns is not None
@@ -663,6 +668,43 @@ class FlextInfraModHandlers:
                 ),
             ).execute()
 
+    @staticmethod
+    def _execute_exact(
+        context: p.Infra.ModExecutionContext,
+        root: Path,
+        request: p.Infra.ModRequest,
+        progress: p.Infra.ModProgress,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Run one theme over exact AST rule IDs: its own or its expanded laws.
+
+        Laws expand inside this repository's own plan (static, generated and
+        partitioned rules alike). A repository whose plan claims none of them
+        has an empty theme plan and nothing to check or fix.
+
+        Returns:
+            The expansion failure, the accepted empty theme, or the exact
+            batch result over the selected rule IDs.
+
+        """
+        if request.laws is None:
+            return FlextInfraModHandlers._execute_batch(
+                context, root, request, progress, request.rule_ids
+            )
+        laws = frozenset(request.laws)
+        with flext_infra.u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            expanded = flext_infra.u.Infra.codemod_law_rule_ids(snapshot, laws)
+        if expanded.failure:
+            return r[t.Cli.ResultValue].from_failure(expanded)
+        if not expanded.value:
+            progress.emit(
+                f"mod: no planned rule in {root} claims {', '.join(sorted(laws))}"
+            )
+            return r[t.Cli.ResultValue].ok(value=True)
+        progress.emit(f"mod: laws expand to {len(expanded.value)} rule(s) in {root}")
+        return FlextInfraModHandlers._execute_batch(
+            context, root, request, progress, expanded.value
+        )
+
     def mod(
         self: p.Infra.ModExecutionContext,
         request: p.Infra.ModRequest,
@@ -677,10 +719,8 @@ class FlextInfraModHandlers:
         root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
             request.repository_root
         )
-        if request.rule_ids is not None:
-            return FlextInfraModHandlers._execute_batch(
-                self, root, request, progress, None
-            )
+        if request.laws is not None or request.rule_ids is not None:
+            return FlextInfraModHandlers._execute_exact(self, root, request, progress)
         selected = flext_infra.u.Infra.load_refactor_csv_campaigns(root)
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)

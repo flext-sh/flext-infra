@@ -240,6 +240,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             examples_module: str | None = None
             extra_verbs: tuple[p.Infra.MakeVerbSpec, ...] = ()
             script_dispatch: p.Infra.ScriptDispatchSpec | None = None
+            verb_groups: tuple[p.Infra.MakeVerbGroupSpec, ...] = ()
             version: str | None = None
 
         @staticmethod
@@ -271,6 +272,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     "examples_module": shape.examples_module,
                     "extra_verbs": shape.extra_verbs,
                     "script_dispatch": shape.script_dispatch,
+                    "verb_groups": shape.verb_groups,
                 },
             )
             project_root = tmp_path / profile.value / shape.project_name

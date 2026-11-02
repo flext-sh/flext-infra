@@ -660,3 +660,51 @@ class TestsModelProtocolNativeMro:
         tm.ok("if TYPE_CHECKING:\n    from flext_test_project import p, t" in rendered)
         tm.fail("\nfrom flext_test_project import p\n" in rendered)
         tm.fail("\nfrom flext_test_project import t\n" in rendered)
+
+    @staticmethod
+    def test_consumer_bootstrap_never_plans_the_infra_facade(tmp_path: Path) -> None:
+        """A non-infra package with protocol sources bootstraps in its own tree."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = {
+            package / "_models" / "payload.py": (
+                "from flext_core import m\n"
+                "class FlextTestProjectModelsPayload:\n"
+                "    class Packet(m.ContractModel):\n"
+                "        visible: str\n"
+                "__all__ = ['FlextTestProjectModelsPayload']\n"
+            ),
+            package / "models.py": (
+                f"from {package.name}._models.payload import "
+                "FlextTestProjectModelsPayload\n"
+                "class FlextTestProjectModels(FlextTestProjectModelsPayload):\n"
+                "    pass\n"
+                "m = FlextTestProjectModels\n"
+                "__all__ = ['FlextTestProjectModels', 'm']\n"
+            ),
+            package / "_protocols" / "reader.py": (
+                "from typing import Protocol, runtime_checkable\n"
+                "class FlextTestProjectProtocolsReader:\n"
+                "    @runtime_checkable\n    class Reader(Protocol):\n"
+                "        @property\n        def visible(self) -> str: ...\n"
+                "__all__ = ['FlextTestProjectProtocolsReader']\n"
+            ),
+            package / "protocols.py": (
+                f"from {package.name}._protocols.reader import "
+                "FlextTestProjectProtocolsReader\n"
+                "class FlextTestProjectProtocols(FlextTestProjectProtocolsReader):\n"
+                "    pass\n"
+                "p = FlextTestProjectProtocols\n"
+                "__all__ = ['FlextTestProjectProtocols', 'p']\n"
+            ),
+        }
+        for path, content in sources.items():
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, content))
+
+        tm.ok(
+            u.Infra.bootstrap_protocol_model_sources(
+                root, ports=infra.codegen_conform_collaborators()
+            )
+        )
+
+        tm.fail((root / c.Infra.DEFAULT_SRC_DIR / c.Infra.PACKAGE_IMPORT_NAME).exists())

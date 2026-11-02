@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from flext_cli import m, p
+from flext_cli import m
 
 
 class FlextInfraModelsGitWorktreeFacts:
@@ -17,7 +17,7 @@ class FlextInfraModelsGitWorktreeFacts:
     class GitTreeStats(m.ContractModel):
         """Bounded tree measurement for one directory."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         total_bytes: Annotated[int, m.Field(ge=0, description="Sum of file sizes")]
         newest_mtime: Annotated[

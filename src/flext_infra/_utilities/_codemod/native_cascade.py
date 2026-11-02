@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import concurrent.futures
+import difflib
 import shutil
 import tempfile
 from collections.abc import Mapping
@@ -289,8 +290,9 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             for relative, content in originals.items():
                 u.Cli.ensure_dir((preview / relative).parent).unwrap()
                 (preview / relative).write_bytes(content)
+            before = after = cls._preview_contents(preview)
             for _pass in range(phases.pass_cap):
-                before = cls._preview_contents(preview)
+                before = after
                 for stage, ruleset in staged:
                     if ruleset is not None:
                         cls._run_native_stage(preview, binary, ruleset)
@@ -303,9 +305,25 @@ class FlextInfraUtilitiesCodemodNativeCascade:
                         for relative, content in after.items()
                         if originals[relative] != content
                     }
+            oscillating = sorted(
+                relative
+                for relative, content in after.items()
+                if before.get(relative) != content
+            )
+            first = oscillating[0]
+            last_pass = "".join(
+                difflib.unified_diff(
+                    before[first].decode(c.DEFAULT_ENCODING).splitlines(keepends=True),
+                    after[first].decode(c.DEFAULT_ENCODING).splitlines(keepends=True),
+                    fromfile=f"{first.as_posix()} (pass start)",
+                    tofile=f"{first.as_posix()} (pass end)",
+                )
+            )
         msg = (
             f"native cascade did not reach its fixed point within "
-            f"{phases.pass_cap} passes: {root}"
+            f"{phases.pass_cap} passes: {root}; still changing in the last "
+            f"pass: {', '.join(item.as_posix() for item in oscillating)}\n"
+            f"{last_pass}"
         )
         raise RuntimeError(msg)
 

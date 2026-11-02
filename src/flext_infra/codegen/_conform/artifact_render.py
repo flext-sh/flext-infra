@@ -504,7 +504,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         return document.flat_map(cls._release_declaration).flat_map(
             lambda section: result_type.create_from_callable(
-                lambda: p.Infra.ReleasePolicySpec.model_validate({
+                lambda: m.Infra.ReleasePolicySpec.model_validate({
                     "build_constraints": config.Infra.release.build_constraints,
                     "maintenance_line": section.get("maintenance_line"),
                     "finalize_maintenance": section.get("finalize_maintenance", False),
@@ -1181,6 +1181,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     codegen,
                 ),
                 script_dispatch=target.repository.script_dispatch,
+                verb_groups=target.repository.verb_groups,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
