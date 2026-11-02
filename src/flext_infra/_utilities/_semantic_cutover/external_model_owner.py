@@ -33,16 +33,20 @@ class FlextInfraUtilitiesSemanticCutoverExternalModelOwner:
             ValueError: If native rename would move a module.
 
         """
+        planner = workspace.semantic_rename_planner
+        if planner is None:
+            message = "external model owner requires the injected native rename planner"
+            raise ValueError(message)
         decisions: list[p.Infra.SemanticRenameDecision] = []
         for path, source in sorted(sources.items()):
-            decision = cls._external_model_owner_decision(workspace, path, source)
+            decision = cls._external_model_owner_decision(
+                workspace, path, source, planner
+            )
             if decision is not None:
                 decisions.append(decision)
         if not decisions:
             return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
-        from flext_infra.codemod._rename.symbols import FlextInfraCodemodRenameSymbols
-
-        updates, moves = FlextInfraCodemodRenameSymbols.plan_native_candidates(
+        updates, moves = planner.plan_native_candidates(
             (workspace.rope_project,), sources, decisions
         )
         if moves:
@@ -67,6 +71,7 @@ class FlextInfraUtilitiesSemanticCutoverExternalModelOwner:
         workspace: p.Infra.RopeWorkspaceDsl,
         path: Path,
         source: str,
+        planner: p.Infra.NativeSemanticRenamePlanner,
     ) -> p.Infra.SemanticRenameDecision | None:
         """Return the one eligible external class holder in ``path``.
 
@@ -104,7 +109,7 @@ class FlextInfraUtilitiesSemanticCutoverExternalModelOwner:
             isinstance(node, ast.ClassDef) and node.name == target for node in tree.body
         ):
             return None
-        declaration = FlextInfraCodemodRenameSymbols.inventoried_declaration(
+        declaration = planner.inventoried_declaration(
             workspace, f"{convention.module_name}.{holders[0].name}"
         )
         return m.Infra.SemanticRenameDecision(

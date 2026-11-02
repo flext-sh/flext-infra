@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from flext_core import p
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 @runtime_checkable

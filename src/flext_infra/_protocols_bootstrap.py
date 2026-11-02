@@ -279,7 +279,7 @@ def _annotation_patches(
     )
     for protocol in protocols:
         annotations: list[ast.expr] = []
-        for candidate in ast.walk(protocol):
+        for candidate in protocol.body:
             if isinstance(candidate, ast.AnnAssign):
                 annotations.append(candidate.annotation)
             elif isinstance(candidate, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -294,10 +294,7 @@ def _annotation_patches(
                     )
                     if argument.annotation is not None
                 )
-        unique_annotations = {
-            _span(annotation, offsets): annotation for annotation in annotations
-        }
-        for annotation in unique_annotations.values():
+        for annotation in annotations:
             replacement, needs_facade = _normalized_annotation(annotation, owner)
             requires_facade = requires_facade or needs_facade
             if replacement is not None:

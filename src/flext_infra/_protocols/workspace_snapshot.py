@@ -15,7 +15,7 @@ from flext_infra import p
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, t
+    from flext_infra import t
 
 
 @runtime_checkable

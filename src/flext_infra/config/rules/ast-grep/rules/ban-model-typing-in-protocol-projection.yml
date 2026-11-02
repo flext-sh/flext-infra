@@ -1,0 +1,31 @@
+# Protocol projections are structural interfaces. Pydantic metadata and concrete
+# model identities belong to m at construction/validation time, never here.
+id: ban-model-typing-in-protocol-projection
+language: python
+severity: error
+files:
+- "src/*/_protocols/**/*.py"
+rule:
+  all:
+  - any:
+    - pattern: Annotated[$$$]
+    - kind: attribute
+      regex: "^m(?:\\.[A-Za-z_][A-Za-z0-9_]*)+$"
+    - kind: attribute
+      regex: "^Flext[A-Za-z0-9]*Models[A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)+$"
+  - inside:
+      kind: type
+      stopBy: end
+  - inside:
+      kind: assignment
+      field: type
+      stopBy: end
+  - inside:
+      kind: class_definition
+      stopBy: end
+      has:
+        field: superclasses
+        regex: "\\bProtocol\\b"
+message: >-
+  Protocol field typing must use structural p/t identities only; remove Pydantic
+  Annotated metadata and concrete m/Flext*Models references in the producer.

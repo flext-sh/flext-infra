@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
-from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from pathlib import Path
+from typing import TYPE_CHECKING, Annotated, Literal, Protocol, Self, runtime_checkable
 
 from flext_infra import c, p
 
@@ -16,7 +17,6 @@ SPDX-License-Identifier: MIT
 
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from types import TracebackType
 
     from flext_core import t
@@ -529,7 +529,7 @@ class FlextInfraProtocolsRope(Protocol):
         start_byte: int
         end_byte: int
         expression: str
-        access: Literal[module, "class", instance]
+        access: Literal["module", "class", "instance"]
         base: FlextInfraProtocolsRope.SourceClassReference
         accessor: FlextInfraProtocolsRope.SourceClassReference
         member: FlextInfraProtocolsRope.SourceClassReference

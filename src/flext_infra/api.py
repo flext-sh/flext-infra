@@ -29,6 +29,7 @@ from flext_infra import (
 )
 from flext_infra._conform import FlextInfraConformWiring
 from flext_infra._preview import FlextInfraPreviewWiring
+from flext_infra.codemod._rename import FlextInfraCodemodRenameSymbols
 from flext_infra.services import FlextInfraCodegenHandlers, FlextInfraModHandlers
 
 if TYPE_CHECKING:
@@ -97,9 +98,11 @@ class FlextInfra(
         resolved_root = (
             self.repository_root if repository_root is None else repository_root
         )
-        return workspace.FlextInfraRopeWorkspace.open_workspace(
+        session = workspace.FlextInfraRopeWorkspace.open_workspace(
             resolved_root, rope_repository_root=rope_repository_root
         )
+        session.semantic_rename_planner = FlextInfraCodemodRenameSymbols
+        return session
 
     @staticmethod
     def check(request: p.Infra.RunCommand) -> p.Result[bool]:

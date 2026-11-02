@@ -1697,6 +1697,7 @@ class FlextInfraCodemodSemanticApply(
         result_type = r[tuple[p.Infra.SemanticMigrationEdit, ...]]
         if not original:
             return result_type.fail("semantic cutover has no source inventory")
+        rope_workspace.semantic_rename_planner = FlextInfraCodemodRenameSymbols
         working = dict(original)
         changed: set[Path] = set()
         retired: t.Infra.RopeMutablePaths = set()
