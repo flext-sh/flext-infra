@@ -563,8 +563,7 @@ class FlextInfraUtilitiesFacadeMembers:
             )
             resolved = FlextInfraUtilitiesImportLaw.resolve_declared_binding(
                 source_project,
-                provider.get_name(),
-                binding.imported_name,
+                (provider.get_name(), binding.imported_name),
                 Path(source_project.root.real_path),
                 {},
             )

@@ -14,7 +14,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory, gettempdir
 from types import MappingProxyType
 
-from flext_infra import c, config, m, p, r, u
+from flext_infra import c, config, m, p, r, settings, u
+from flext_infra._pytest import FlextInfraPytestClock
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -54,10 +55,28 @@ class FlextInfraStagedPackage:
             The validator outcome, or the first planning or staging failure.
 
         """
-        planned = self.plan_sources(workspace, updates, options=options)
+        u.Cli.info("stage=source-preview-plan state=start")
+        if settings.Infra.profile_children:
+            destination = settings.Infra.profile_output
+            if destination is None:
+                return r[T].fail(
+                    "source-preview profiling requires the command profile destination"
+                )
+
+            def failed(outcome: p.Result[m.Infra.StageSourcePlan]) -> bool:
+                return outcome.failure
+
+            planned = FlextInfraPytestClock.profile_operation(
+                lambda: self.plan_sources(workspace, updates, options=options),
+                destination.with_stem(f"{destination.stem}-preview-plan"),
+                is_failure=failed,
+            )
+        else:
+            planned = self.plan_sources(workspace, updates, options=options)
         if planned.failure:
             return r[T].from_failure(planned)
         plan = planned.value
+        u.Cli.info(f"stage=source-preview-plan state=end inputs={len(plan.inputs)}")
         lock = u.Infra.mutation_lock_path(plan.workspace)
         if lock.failure:
             return r[T].from_failure(lock)
@@ -68,9 +87,11 @@ class FlextInfraStagedPackage:
             prefix="flext-source-preview-", dir=lock.value.parent
         ) as directory:
             root = Path(directory)
+            u.Cli.info("stage=source-preview-materialize state=start")
             materialized = self.materialize_sources(plan, root)
             if materialized.failure:
                 return r[T].from_failure(materialized)
+            u.Cli.info("stage=source-preview-materialize state=end")
             return r[T].ok(
                 validator(
                     root,
@@ -319,9 +340,9 @@ class FlextInfraStagedPackage:
         closure = cls._source_closure(
             workspace,
             normalized,
-            options.inputs,
+            options,
             layouts,
-            (source_project, options.snapshot),
+            source_project,
         )
         if closure.failure:
             return r[m.Infra.StageSourcePlan].from_failure(closure)
@@ -452,6 +473,11 @@ class FlextInfraStagedPackage:
                         for state in options.inputs
                         if state.path.is_relative_to(root)
                     ),
+                    import_edges={
+                        path: edges
+                        for path, edges in options.import_edges.items()
+                        if path.is_relative_to(root)
+                    },
                 ),
             )
             if planned.failure:
@@ -512,9 +538,9 @@ class FlextInfraStagedPackage:
         cls,
         workspace: Path,
         normalized: Mapping[Path, str | None],
-        inputs: tuple[m.Cli.AtomicFileState, ...],
+        options: m.Infra.StageSourceOptions,
         layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
-        view: tuple[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
+        source_project: p.Infra.RopeProject,
     ) -> p.Result[
         tuple[
             list[m.Infra.RopeProjectLayout],
@@ -526,16 +552,16 @@ class FlextInfraStagedPackage:
         Args:
             workspace: Resolved root of the Git workspace containing the projects.
             normalized: Elected physical destinations of the desired sources.
-            inputs: Original observations, never replaced by a fresh read; the
-                layouts of their workspace Python sources join the closure.
+            options: Original observations and import facts, never replaced by
+                fresh captures to authorize this candidate.
             layouts: Retained provider layouts keyed by package name.
-            view: The Rope view of the workspace and the optional run snapshot.
+            source_project: The authenticated native source view.
 
         Returns:
             The elected layouts with the file states of their sources.
 
         """
-        source_project, snapshot = view
+        inputs, snapshot = options.inputs, options.snapshot
         result_type = r[
             tuple[
                 list[m.Infra.RopeProjectLayout],
@@ -552,7 +578,11 @@ class FlextInfraStagedPackage:
             owned: Mapping[Path, str | None] | None,
         ) -> p.Result[tuple[str, ...]]:
             return cls._layout_states(
-                provider, states, (source_project, snapshot), updates=owned
+                provider,
+                states,
+                (source_project, snapshot),
+                updates=owned,
+                import_edges=options.import_edges,
             )
 
         roots: list[tuple[m.Infra.RopeProjectLayout, bool]] = []
@@ -939,6 +969,7 @@ class FlextInfraStagedPackage:
         view: tuple[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
         *,
         updates: Mapping[Path, str | None] | None = None,
+        import_edges: Mapping[Path, tuple[frozenset[str], frozenset[str]]],
     ) -> p.Result[tuple[str, ...]]:
         """Read one layout's sources and collect their package dependencies.
 
@@ -951,6 +982,7 @@ class FlextInfraStagedPackage:
             view: The Rope view of the workspace and the optional run snapshot
                 whose reads and import edges serve the sources it already read.
             updates: Desired sources keyed by live path; None retires an artifact.
+            import_edges: Original runtime and typing import facts of observed sources.
 
         Returns:
             The imports of the layout's sources.
@@ -983,6 +1015,11 @@ class FlextInfraStagedPackage:
                     None if desired is None else desired.encode(c.DEFAULT_ENCODING)
                 )
             if path.suffix not in {c.Infra.EXT_PYTHON, ".pyi"} or content is None:
+                continue
+            observed_imports = import_edges.get(path)
+            if not rewritten and observed_imports is not None:
+                runtime, typing = observed_imports
+                modules.extend((*runtime, *typing) if updates else runtime)
                 continue
             if snapshot is not None and not rewritten and cls._read_by(snapshot, path):
                 # The run already parsed this unchanged source once: its edges

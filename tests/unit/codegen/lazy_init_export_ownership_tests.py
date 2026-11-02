@@ -19,6 +19,39 @@ class TestsFlextInfraLazyInitOwnership:
     """Validate public owner boundaries, collisions and native identity."""
 
     @staticmethod
+    def test_root_regeneration_does_not_inherit_its_stale_publication(
+        tmp_path: Path,
+    ) -> None:
+        """A generated root cannot resurrect its removed API-module export."""
+        repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
+        retired = "retired_publication"
+        package.joinpath("api.py").write_text(
+            "from pathlib import Path\n__all__ = ('Path',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        package.joinpath(c.Infra.INIT_PY).write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n"
+            f"    from {package.name}.api import {retired}\n"
+            f"__all__ = ({retired!r},)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import importlib\nfrom pathlib import Path\n"
+                f"package = importlib.import_module({package.name!r})\n"
+                f"print({retired!r} in package.__all__)\n"
+                "print(package.Path is Path)\n",
+                python_paths=(str(package.parent),),
+                cwd=repository,
+            ),
+            eq=["False", "True"],
+        )
+
+    @staticmethod
     def test_staticmethod_reexport_retains_assignment_owner(tmp_path: Path) -> None:
         """Resolve an explicit imported descriptor without requiring Rope inference."""
         repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)

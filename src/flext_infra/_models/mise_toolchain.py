@@ -532,6 +532,16 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = True
+        mise_activate_aggressive: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as [settings] activate_aggressive. "
+                    "Keep project tool directories ahead of inherited host "
+                    "directories when Mise constructs the environment."
+                ),
+            ),
+        ] = True
         mise_disable_update_warning: Annotated[
             bool,
             m.Field(

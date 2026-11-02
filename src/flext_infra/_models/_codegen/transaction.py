@@ -109,6 +109,15 @@ class FlextInfraModelsCodegenTransaction:
             default=(),
             description="Original source observations whose layouts join the closure",
         )
+        import_edges: t.Port[Mapping[Path, tuple[frozenset[str], frozenset[str]]]] = (
+            m.Field(
+                default_factory=lambda: MappingProxyType[
+                    Path, tuple[frozenset[str], frozenset[str]]
+                ]({}),
+                exclude=True,
+                description="Captured runtime and typing import facts retained by reference",
+            )
+        )
         snapshot: (
             t.Port[FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot] | None
         ) = m.Field(
@@ -118,6 +127,22 @@ class FlextInfraModelsCodegenTransaction:
                 "the closure instead of a second read and parse"
             ),
         )
+
+        @m.model_validator(mode="after")
+        def observed_import_inputs(self) -> Self:
+            """Require original witnesses for every retained source import fact.
+
+            Returns:
+                This validated source-admission request.
+
+            Raises:
+                ValueError: If an import fact has no original source witness.
+
+            """
+            if self.import_edges.keys() - {state.path for state in self.inputs}:
+                message = "captured import facts require original source witnesses"
+                raise ValueError(message)
+            return self
 
     class StageSourcePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned project closure and desired bytes for effect-free validation."""

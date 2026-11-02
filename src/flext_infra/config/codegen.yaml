@@ -410,6 +410,9 @@ Infra:
       # a stale or incomplete lock never blocks install, use, setup or a verb
       # (operator-ruling-2026-10-09-setup-resilient).
       mise_lockfile: true
+      # Native PATH composition must keep project-selected tools ahead of host
+      # directories, including when the inherited shared shim farm is last.
+      mise_activate_aggressive: true
       # Projection: .mise.toml [settings] lockfile_platforms. Only platforms the
       # fleet runs on: CI ubuntu-latest (linux-x64), macos-latest (macos-arm64),
       # windows-latest (windows-x64) and the alpine container proof
@@ -678,6 +681,7 @@ Infra:
       # than the declared toolchain; `uv sync` alone keeps it.
       environment_identity:
         marker_file: pyvenv.cfg
+        recreate_parameter: RECREATE
         uv_key: uv
         python_key: version_info
       # Isolated environment that runs `make upg`'s one residual flext-infra
@@ -888,7 +892,7 @@ Infra:
       verbs:
       - name: setup
         description: Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).
-        arguments: [ FLEXT ]
+        arguments: [ FLEXT, RECREATE ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
       - name: gen

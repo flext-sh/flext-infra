@@ -457,7 +457,9 @@ class FlextInfra(
         Ordinary test failures retain their original first status while every
         selected repository is reached. Interruptions and infrastructure errors
         stop dispatch with their native status; configuration failures escape.
-        Admission, discovery and member execution share this operation's clock.
+        Discovery and member execution share this operation's clock. The native
+        runner admits the original global source proof immediately before its
+        engines; the transport must not repeat that expensive admission.
         FULL executes the complete applicable suite once in each project context
         without Testmon, an incremental pre-run or database access.
 
@@ -471,16 +473,14 @@ class FlextInfra(
             return r[int].fail(f"tests require a project context: {context.cwd}")
         root = context.identity.repo_root
         workspace_root = context.runtime.runtime_root
-        admitted = flext_infra.u.Infra.git_require_green_check_receipt(
-            workspace_root,
-            flext_infra.u.Infra.load_codegen_inputs(workspace_root).unwrap().spec.make,
-            phase=c.Infra.CheckPhase.PRIMARY,
-            plan_global_targets=check.FlextInfraWorkspaceChecker(
-                repository_root=workspace_root,
-            ).plan_global_targets,
-        )
-        if admitted.failure:
-            return r[int].from_failure(admitted)
+        if request.scope == c.Infra.CodegenConformScope.SELF:
+            return r[int].ok(
+                validate.FlextInfraPytestRunner.execute_project_context(
+                    context,
+                    started_at_monotonic=started_at_monotonic,
+                    execution_mode=execution_mode,
+                )
+            )
         observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
             workspace_root,
         ).unwrap()
@@ -504,8 +504,6 @@ class FlextInfra(
         status = 0
         for distribution in ordered:
             selected = by_distribution[distribution]
-            if request.scope == c.Infra.CodegenConformScope.SELF and selected != root:
-                continue
             u.Cli.info(f"tests: repository {distribution} root={selected}")
             project = (
                 context

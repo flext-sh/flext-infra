@@ -1,0 +1,42 @@
+id: pytest-fixture-staticmethod-order
+language: python
+severity: error
+files:
+- "**/tests/**/*.py"
+rule:
+  kind: decorated_definition
+  all:
+  - has:
+      all:
+      - pattern:
+          context: |
+            @staticmethod
+            def method(): pass
+          selector: decorator
+      - precedes:
+          pattern:
+            context: |
+              @$FIXTURE
+              def method(): pass
+            selector: decorator
+  - has:
+      kind: function_definition
+      pattern: $DEFINITION
+  - not:
+      has:
+        kind: decorator
+        not:
+          regex: '^@(?:staticmethod$|pytest\.fixture(?:\(|$))'
+constraints:
+  FIXTURE:
+    regex: '^pytest\.fixture(?:\(|$)'
+  DEFINITION:
+    kind: function_definition
+fix: |
+  @$FIXTURE
+  @staticmethod
+  $DEFINITION
+message: >-
+  pytest.fixture owns fixture registration and must wrap staticmethod, not be
+  wrapped by it. Preserve the function and fixture arguments while moving the
+  registration decorator outside the descriptor.

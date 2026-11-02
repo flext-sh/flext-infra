@@ -514,6 +514,9 @@ initializers or relax Rope's class boundary to compensate for a truncated name.
 Source ancestry resolves provider identities from their captured physical paths,
 then the project's declared namespace discovery. Rope's shortened regular-package
 name cannot replace that identity when a namespace ancestor has no initializer.
+Native rename queries use the same provider identity owner before calling Rope's
+module finder. They retain the elected-resource equality check; a shortened native
+package name must not redirect a source rename to an installed package.
 Member lineage, package ownership and component discovery share the provider-name
 boundary with source ancestry; native external providers retain their own names.
 Member classification uses the existing pre-assignment binding owner for class
@@ -1379,8 +1382,12 @@ source-admission evidence with
 `flext-infra workspace check --repository-root <root> --phase primary`, then use
 `flext-infra workspace tests --repository-root <root> --scope all`. Generated Make
 consumers use `make check CHECK_PHASE=primary` followed by `make tests`; bare
-`make check` retains complete acceptance. An attached member's primary check
-uses its containing runtime workspace, never member-only evidence. The primary
+`make check` retains complete acceptance. Outside CI, an attached member's primary
+check uses its containing runtime workspace, never member-only evidence. In CI,
+every phase checks only the selected project root while provisioning keeps the
+containing runtime environment. The generated Make transport selects that root
+before the checker reads repository governance; it does not substitute workspace
+policy or bypass the selected project's declaration. The primary
 phase derives its gates from `make.check_prerequisite_gates`; the complete phase
 retains the full configured check inventory and its context partitions. Both use
 the same native checker, original capture and SARIF publisher. The test owners
@@ -1877,6 +1884,16 @@ check; it does not disable the environment guard or replace the generator.
 
 ### Mise PATH Composition and Beads Server Environment
 
+The typed `toolchain.mise_activate_aggressive` policy projects Mise's native
+`[settings] activate_aggressive` option. It keeps project tool directories ahead
+of inherited host directories when evaluating the environment. Without this
+option, Mise preserves directories before an inherited shim farm ahead of its
+selected tools; a host shim farm placed last can therefore let a global command
+shadow the project's installed version. This policy implements the existing
+project-first ordering through native Mise configuration, without listing tool
+paths or removing host installations. Activation still puts the physical project
+virtual environment first after loading Mise's output.
+
 Activation loads the native `mise env --shell bash` output, which puts the
 installed tool directories ahead of the host's shared shims. This includes the
 self-managed Mise executable: a shim named `mise` otherwise invokes the host
@@ -2203,6 +2220,19 @@ Python interpreter in the derived `RUNTIME_VENV`, never
 with the interpreter hosting the tool. Without a declaration, the owner derives the
 checkout's Git root; a declaration without an interpreter fails.
 
+Fresh-import admission reports each declared probe's start and outcome without
+changing probe coverage, isolation, ordering or timeout. When native profiling is
+enabled, each probe executes its unchanged source through the existing parent-free
+child transport and shared clock. The configured command profile path supplies
+separate probe destinations; immutable captures and original exceptions follow
+the clock's existing publication contract. Profiling does not replace an import
+failure with success or enlarge the generation deadline.
+`FLEXT_INFRA_PROFILE_CHILDREN=1` selects child-consumer captures independently of
+parent profiling, retaining the invoking verb's configured profile destination.
+It also profiles the existing preview-plan consumer before materialization, so
+source-closure cost cannot be mistaken for a slow import probe. Both consumers
+use the same clock and immutable capture publisher.
+
 The environment belongs to the `RUNTIME_ROOT`. A member attached as a submodule uses
 its containing Git superproject's environment. A standalone checkout or linked Git
 worktree owns its physical `<RUNTIME_ROOT>/.venv`; it never resolves an environment
@@ -2222,6 +2252,20 @@ an explicitly declared root is not re-elected through Git attachment. Managed ba
 interpreter symlinks inside a physical environment are valid, but the candidate process
 must retain that environment's `sys.prefix`. A symlinked environment or an interpreter
 borrowed from another checkout fails before candidate checks or publication.
+
+Candidate admission reports documentation preparation, source normalization and
+preview entry separately before launching its fresh-import probes. Their diagnostics
+identify an unfinished boundary without classifying it as successful admission.
+Focal facade generation retains its original workspace snapshot through candidate
+admission and publication. Normalized plans carry those original source witnesses,
+and staging reuses the same captured states and parsed import facts. Closing that
+snapshot after planning would force a second read and parse during admission.
+Duplicate input references are coalesced only when their captured states agree;
+publication still verifies the original witnesses through the existing writer.
+Repository-wide and initializer generation retain those same passive read states
+and import edges in their invocation state before closing each native snapshot.
+Candidate staging consumes the original objects after closure; it does not keep
+native projects alive, reopen their sources, or elect a smaller validation scope.
 
 The conflict-marker gate consumes the explicit `GateContext.candidate_files` inventory
 of an authenticated candidate when its runtime owner is explicit. A staged source tree
@@ -2376,6 +2420,11 @@ graph. The subsequent source-only pip step runs in the consumer's physical
 Python environment and does not resolve a second graph. Dependency checking and
 validation of each installed PEP 610 editable origin must succeed before the
 existing selection receipt is published. No `--no-config` escape is used.
+When the supplier workspace provides the consumer's own distribution, selection
+binds that distribution to the consumer's physical root, not the supplier's
+sibling checkout. Executor bootstrap may replace the initial frozen build; the
+typed selection must restore the consumer before publishing its receipt. Native
+lock, distribution identity and import-origin validation remain mandatory.
 Additional installed distributions, such as the dirty Rope checkout, are
 declared through `toolchain.editable_sources` in the existing local codegen
 override layer. They must identify the same project name as their source
@@ -2959,6 +3008,13 @@ same signal callbacks, owning-thread profiler and native publication behavior.
 Flattening a nested module to a root filename is not a valid bootstrap route;
 missing canonical source remains an error rather than selecting an older copy.
 
+Fresh-import probe profiling executes its actual program through `runpy.run_path`
+from one securely created temporary script, owned and removed by the transport.
+The native `__main__` namespace and raised failures remain observable; the
+transport neither evaluates code strings with `exec` nor suppresses security
+findings. The existing profiling owner still captures the operation and signal
+checkpoints.
+
 The ordinary generation handler admits `settings.Infra.profile` around its actual
 typed `codegen_generate` call. The shared profiler preserves the returned Result
 and classifies failure from `Result.failure`, not its truth value. Its output uses
@@ -3217,6 +3273,24 @@ equivalent authored component declaration; its complete value and native type
 identity must agree. Declaration retirement and consumer rewrites share one
 authenticated candidate. Layer-zero modules retain their configured runtime roles,
 and generation still rejects genuinely mixed scalar/class facades.
+
+The same ownership-transfer candidate admits native PEP 695 alias declarations
+through Rope's existing alias binding and assignment-layout queries. Alias values
+remain lazy and are not inferred to establish ownership. A parameterized alias
+requires native parameter-definition proof; a transfer without that proof is refused.
+An exported compatibility assignment may retire only after its direct native value
+binding resolves to the declared destination. Assignment expressions with effects,
+ambiguous writes and local-function bindings are not retirement candidates. Native
+consumer, quoted-annotation, import and export completeness checks remain mandatory;
+no source scanner or alternate publisher participates.
+
+Installed-distribution import metadata supplies candidates, not executable facade
+providers. Provider election resolves each candidate package initializer through the
+same native source project and reads its declared lazy aliases with the existing
+lazy-binding owner. Only that source declaration establishes a public facade family.
+Ordinary libraries, extension modules and metadata names without a package initializer
+do not become providers. Classification never imports arbitrary dependency packages;
+native source-read and declaration failures retain their original cause.
 Before facade model-owner validation, generation may repair exported singleton
 model entities declared directly in model-family modules through the existing
 class-nesting engine. This bounded entry uses
@@ -3285,6 +3359,12 @@ it does not authorize reexports. Explicit facade letters and inherited serving
 contracts continue through the existing letter election. Authored initializers
 retain their declared publications and content.
 
+Facade inheritance never treats the package currently being planned as its own
+parent. Its direct modules have already elected its local publications; reading
+that package's previous generated initializer would reintroduce retired exports.
+Other packages still inherit from this root through its completed plan. Missing
+bindings in authored declaration owners remain errors, not optional exports.
+
 Lazy initializer planning keeps facade exports lazy. A version metadata export
 whose name collides with its child module uses the existing eager-dunder contract:
 the scalar is bound before lazy installation and omitted from the lazy map. Public
@@ -3313,7 +3393,11 @@ and no files, and generation is rerun with `make gen` once the sources are stabl
 Changed external member dependencies are source inputs, not exclusions.
 
 Repository generation plans treat malformed source as a failed input. The
-planning report at `.reports/codegen-plan.json` under the worktree's Git directory
+direct-module export collector propagates the original native syntax exception;
+an elected source that cannot be parsed is not an absent publication. Candidate
+election, not a parser-error handler or a later convergence pass, decides which
+module sources participate. The planning report at `.reports/codegen-plan.json`
+under the worktree's Git directory
 (never the source tree) records each selected repository's
 outcome, exception type and original traceback. Generation reports failures at
 their affected files and retains successfully generated files. Changes made
@@ -4326,6 +4410,23 @@ constructs a sibling filename from a namespace segment. Physical publication
 witnesses remain owned by `source_state`, separate from candidate `source_text`.
 This correction still requires the original public runtime and native gates;
 source changes alone provide no acceptance receipt.
+
+Import-origin repair requires a declared public destination and the same native
+declaration, not merely an attribute with the same spelling. A package's implicit
+child module cannot replace a facade instance, and a retired lazy route does not
+authorize importing an unpublished name from its former provider. Route election
+therefore checks the destination package's explicit exports and proves the original
+provider binding identical before changing the consumer import. Direct module
+lookup retains its existing contract; the stricter publication requirement belongs
+to public import routing.
+Native provider capture owns resource addressing and source selection. Route traversal
+consumes that capture and one module/name binding identity, so publication policy does
+not duplicate filesystem discovery or expand the resolver's independent inputs.
+Facade collision analysis separates lexical guard provenance from declaration
+collection: only a native import binding to `typing.TYPE_CHECKING` or its
+`typing_extensions` counterpart makes a branch type-only. Runtime redeclarations
+still participate in collision detection. Its consumer checks use the existing
+typed test matchers without changing the collision contract.
 
 Every derived fact is a lazy memo on the snapshot, computed on first query and
 reused for the rest of the run:

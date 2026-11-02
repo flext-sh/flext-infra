@@ -34,12 +34,14 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             projection: Path | None,
             manifest: m.Infra.PlanCollectionManifest,
             configuration: m.Infra.PlanCollectionConfig,
+            *,
+            states: MutableMapping[Path, m.Cli.AtomicFileState],
         ) -> None:
             self.canonical = canonical
             self.projection = projection
             self.manifest = manifest
             self.configuration = configuration
-            self.states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+            self.states = states
             self.desired: MutableMapping[Path, bytes] = {}
             self.history = list(manifest.revisions)
             self.observed = {
@@ -333,13 +335,14 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         }
         for path in owned_outputs:
             cls.collection_capture(path, state.states)
+        inputs = tuple(state.states.values())
         plans_list = [
             FlextInfraUtilitiesDocsContract.docs_file_plan(
                 root,
                 path,
                 None,
                 desired_mode=None,
-                inputs=tuple(state.states.values()),
+                inputs=inputs,
             ).unwrap()
             for path in sorted(owned_outputs)
         ]
@@ -445,10 +448,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         ]
         lines.extend(
             f"- [Plan]({revision.canonical_path.name})\n\n"
-            f"  {revision.identity}\n\n"
-            f"  {revision.source_updated_at or 'source update unknown'}"
+            f"    {revision.identity}\n\n"
+            f"    {revision.source_updated_at or 'source update unknown'}"
             + (
-                "\n\n  Chronology unresolved: no timezone-aware instant."
+                "\n\n    Chronology unresolved: no timezone-aware instant."
                 if revision.source_updated_at_utc is None
                 else ""
             )
@@ -517,6 +520,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         projection = state.projection
         state.record_manifest()
         state.mirror_projection()
+        # Reuse the completed capture; each plan authenticates the same inputs.
+        inputs = tuple(state.states.values())
         plans: list[m.Infra.CodegenFilePlan] = []
         for path, content in sorted(state.desired.items()):
             owner = root if path.is_relative_to(canonical) else projection
@@ -528,7 +533,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 path,
                 content,
                 desired_mode=c.Infra.DOCS_ARTIFACT_MODE,
-                inputs=tuple(state.states.values()),
+                inputs=inputs,
             ).unwrap()
             if path in state.states and planned.before != state.states[path]:
                 msg = f"collection publication target changed after capture: {path}"
@@ -569,8 +574,13 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         )
         if manifest.revisions:
             cls._verify_collection_revisions(canonical, manifest, states)
-        state = cls._CollectionState(canonical, projection, manifest, configuration)
-        state.states = states
+        state = cls._CollectionState(
+            canonical,
+            projection,
+            manifest,
+            configuration,
+            states=states,
+        )
         if not configuration.enabled:
             return cls._disabled_collection_bundle(root, state)
         state.absorb_owned_artifacts()

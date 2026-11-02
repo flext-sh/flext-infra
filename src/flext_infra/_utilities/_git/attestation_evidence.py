@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
-from flext_cli import u
+from flext_cli import settings, u
 
 from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesBase
@@ -236,6 +237,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         """
         refuse = f"tests run only on a green check: {receipt.parent.name} "
         started = datetime.fromisoformat(evidence.started_at)
+        originals: list[m.Infra.GitIdentityReport] = []
         for target in targets:
             original = target.source_identity
             if original is None or original.repo_root != target.path:
@@ -243,42 +245,68 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
                     f"{refuse}has no original source identity for {target.path}; "
                     "rerun make check",
                 )
-            observed = FlextInfraUtilitiesGitSemanticIdentity.exact_worktree_root(
-                target.path
-            )
-            if observed.failure:
-                return r[Path].from_failure(observed)
-            current = observed.value
-            if (
-                (
-                    current.git_dir,
-                    current.common_dir,
-                    current.head_oid,
-                    current.porcelain,
-                )
-                != (
-                    original.git_dir,
-                    original.common_dir,
-                    original.head_oid,
-                    original.porcelain,
-                )
-                or original.head_oid is None
-                or (
-                    target.path == repo_root
-                    and (
-                        original.head_oid != evidence.commit_sha
-                        or original.head_oid != evidence.after_commit_sha
-                    )
+            if original.head_oid is None or (
+                target.path == repo_root
+                and (
+                    original.head_oid != evidence.commit_sha
+                    or original.head_oid != evidence.after_commit_sha
                 )
             ):
                 return r[Path].fail(
                     f"{refuse}source identity or HEAD changed in {target.path}; "
                     "rerun make check",
                 )
-            freshness = cls._green_target_paths_currentness(original, started, refuse)
-            if freshness.failure:
-                return r[Path].from_failure(freshness)
+            originals.append(original)
+        if originals:
+            outcomes = u.Cli.run_in_signal_wave(
+                tuple(
+                    partial(cls._green_source_currentness, original, started, refuse)
+                    for original in originals
+                ),
+                max_workers=min(len(originals), settings.cli_pipeline_max_workers),
+            )
+            for outcome in outcomes:
+                if outcome.failure:
+                    return r[Path].from_failure(outcome)
         return r[Path].ok(receipt)
+
+    @classmethod
+    def _green_source_currentness(
+        cls,
+        original: m.Infra.GitIdentityReport,
+        started: datetime,
+        refuse: str,
+        wave: p.Cli.SignalWave,
+    ) -> p.Result[Path]:
+        """Read one root's exact identity and all of its changed-file timestamps.
+
+        Returns:
+            The admitted root or its original currentness failure.
+
+        """
+        _ = wave
+        observed = FlextInfraUtilitiesGitSemanticIdentity.exact_worktree_root(
+            original.repo_root
+        )
+        if observed.failure:
+            return r[Path].from_failure(observed)
+        current = observed.value
+        if (
+            current.git_dir,
+            current.common_dir,
+            current.head_oid,
+            current.porcelain,
+        ) != (
+            original.git_dir,
+            original.common_dir,
+            original.head_oid,
+            original.porcelain,
+        ):
+            return r[Path].fail(
+                f"{refuse}source identity or HEAD changed in {original.repo_root}; "
+                "rerun make check",
+            )
+        return cls._green_target_paths_currentness(original, started, refuse)
 
     @classmethod
     def _green_target_paths_currentness(

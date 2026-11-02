@@ -643,10 +643,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         command_cwd = cls._command_cwd(path, path.parent)
-        u.Cli.debug(
+        u.debug(
             f"normalize: ruff {arguments[0]} settings source="
             f"{'staged' if settings else 'none'} project={command_cwd} path={path}"
-        )
+        ).unwrap()
         environment = cls._ruff_environment(command_cwd)
         executed = u.Cli.run_raw(
             (

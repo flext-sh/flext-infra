@@ -22,7 +22,6 @@ import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_cli import u
 from packaging.utils import canonicalize_name
 
 from flext_infra import FlextInfraConfig, c, config, m, p, t
@@ -991,7 +990,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             package: (
                 frozenset(layout.runtime_aliases)
                 if package == own
-                else frozenset(u.runtime_alias_names(package))
+                else FlextInfraUtilitiesCodemodNativePackage.codemod_provider_aliases(
+                    snapshot, package
+                )
             )
             for package in packages(snapshot, root)
         }

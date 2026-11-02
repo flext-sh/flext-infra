@@ -3,10 +3,10 @@ id: config-dict-from-constants
 # import `m` (the rewrite would bind nothing; its owner repairs the import).
 valid:
   - |
-    from flext_ldap import m
+    from flext_ldap import m, t
     from typing import ClassVar
     class A:
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
   - |
     from flext_ldap import c
     from typing import ClassVar
@@ -28,3 +28,8 @@ invalid:
             frozen=True,
             extra="forbid",
         )
+  - |
+    from flext_cli import c, m, t
+    from typing import ClassVar
+    class Settings:
+        model_config: ClassVar[c.SettingsConfigDict] = c.SettingsConfigDict(env_prefix="APP_")

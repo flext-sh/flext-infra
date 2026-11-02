@@ -172,6 +172,19 @@ class FlextInfraModelsCodegenPipeline:
     class CodegenConformState(m.ArbitraryTypesModel):
         """Mutable request-local data owned by one projection invocation."""
 
+        source_inputs: t.Port[dict[Path, m.Cli.AtomicFileState]] = m.Field(
+            default_factory=dict[Path, m.Cli.AtomicFileState],
+            exclude=True,
+            description="Original source witnesses retained after native planning",
+        )
+        source_imports: t.Port[dict[Path, tuple[frozenset[str], frozenset[str]]]] = (
+            m.Field(
+                default_factory=dict[Path, tuple[frozenset[str], frozenset[str]]],
+                exclude=True,
+                description="Original runtime and typing import facts of captured sources",
+            )
+        )
+
         request: t.Port[p.Infra.CodegenGenerateRequest] | None = m.Field(
             default=None,
             exclude=True,

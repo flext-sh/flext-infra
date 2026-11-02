@@ -1,20 +1,8 @@
-# FLEXT codemod: a model_config annotation must name the single owner of
-# ConfigDict, which is `m`. Both other spellings crash at import, because
-# neither FlextProtocols nor FlextTypes carries the member:
-#
-#   model_config: ClassVar[p.ConfigDict] = m.ConfigDict(...)   # defect
-#   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(...)   # defect
-#                       ->
-#   model_config: ClassVar[m.ConfigDict] = m.ConfigDict(...)   # canonical
-#
-# `t` carried ConfigDict until flext-core consolidated ownership onto `m`; the
-# annotation is the same facade the construction value already uses, so the
-# rewrite never introduces an unbound name.
-#
-# Idempotent: only the two broken spellings match; a canonical module yields
-# zero matches on re-scan. The value must construct through `m.ConfigDict(...)`, so
-# the rewritten annotation never introduces an unbound name. SettingsConfigDict
-# is out of scope.
+# ConfigDict's type contract belongs to `t`; its constructor belongs to `m`.
+# Keep the configured value unchanged and bind any newly used facade through
+# the existing import-header stage of the same semantic candidate.
+# Idempotent: canonical `t` annotations do not match. Model and settings
+# configuration retain their distinct native contracts.
 id: config-dict-type-from-typings
 language: python
 severity: error
@@ -22,29 +10,22 @@ files:
   - "src/**/*.py"
   - "tests/**/*.py"
 rule:
-  any:
-    - pattern: "model_config: ClassVar[p.ConfigDict] = $VAL"
-    - pattern: "model_config: ClassVar[t.ConfigDict] = $VAL"
+  pattern: "model_config: ClassVar[$OWNER.$CONFIG] = $VAL"
 constraints:
+  OWNER:
+    regex: "^(c|m|p)$"
+  CONFIG:
+    regex: "^(Settings)?ConfigDict$"
   VAL:
-    regex: "^m\\.ConfigDict\\("
-fix: "model_config: ClassVar[m.ConfigDict] = $VAL"
+    regex: "^m\\.(Settings)?ConfigDict\\("
+fix: "model_config: ClassVar[t.$CONFIG] = $VAL"
 message: >-
-  model_config annotation must be m.ConfigDict, the single owner of the member. Neither p.ConfigDict nor t.ConfigDict exists, so the module crashes at import. The construction value m.ConfigDict(...) is kept.
+  model_config annotations use their native t.ConfigDict or
+  t.SettingsConfigDict contract; retain the m constructor and all arguments.
 ---
-# `c` does not own ConfigDict either: flext-core consolidated the member onto
-# `m`, so a model written against the retired constants spelling crashes at
-# import on both sides of the assignment
-# ("type object '...Constants' has no attribute 'ConfigDict'"):
-#
-#   model_config: ClassVar[c.ConfigDict] = c.ConfigDict(...)   # defect
-#                       ->
-#   model_config: ClassVar[m.ConfigDict] = m.ConfigDict(...)   # canonical
-#
-# The rewrite fires only in a module that already imports a name `m`, so it
-# never introduces an unbound name; a module without that import stays a
-# finding for its owner. Idempotent: the canonical spelling yields zero
-# matches on re-scan.
+# A constants spelling does not supply the runtime constructor. Preserve its
+# arguments while selecting the existing annotation and value owners. The
+# import-header stage binds `t`; this existing rule requires `m` to be bound.
 id: config-dict-from-constants
 language: python
 severity: error
@@ -52,7 +33,7 @@ files:
   - "src/**/*.py"
   - "tests/**/*.py"
 rule:
-  pattern: "model_config: ClassVar[c.ConfigDict] = c.ConfigDict($$$ARGS)"
+  pattern: "model_config: ClassVar[c.$CONFIG] = c.$CONFIG($$$ARGS)"
   inside:
     kind: module
     stopBy: end
@@ -60,6 +41,10 @@ rule:
       kind: import_from_statement
       regex: "(?s)\\bimport\\b.*\\bm\\b"
       stopBy: end
-fix: "model_config: ClassVar[m.ConfigDict] = m.ConfigDict($$$ARGS)"
+constraints:
+  CONFIG:
+    regex: "^(Settings)?ConfigDict$"
+fix: "model_config: ClassVar[t.$CONFIG] = m.$CONFIG($$$ARGS)"
 message: >-
-  model_config must name m.ConfigDict on both sides: the constants facade no longer carries ConfigDict, so c.ConfigDict crashes at import.
+  model_config uses t.ConfigDict for its annotation and m.ConfigDict for its
+  runtime constructor; preserve the original configuration arguments.

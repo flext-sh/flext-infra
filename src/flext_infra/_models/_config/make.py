@@ -663,6 +663,10 @@ class FlextInfraModelsConfigMake(
                 t.NonEmptyStr,
                 m.Field(description="Environment-relative creator marker file"),
             ]
+            recreate_parameter: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Make input selecting explicit native recreation"),
+            ]
             uv_key: Annotated[
                 t.NonEmptyStr,
                 m.Field(description="Marker key holding the creating uv version"),

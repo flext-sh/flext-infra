@@ -539,7 +539,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         sources: Mapping[Path, str],
     ) -> p.Infra.RopePyName | None:
         return FlextInfraUtilitiesImportLaw.resolve_declared_binding(
-            project, module_name, alias_name, root, sources
+            project, (module_name, alias_name), root, sources
         )
 
     @classmethod

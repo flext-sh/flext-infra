@@ -23,6 +23,7 @@ from pathlib import Path
 
 import rope.base.exceptions
 from flext_cli import u
+from rope.base import ast
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -44,6 +45,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
+    FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisExports,
@@ -409,9 +411,15 @@ class FlextInfraUtilitiesFacadeComponents:
         }
         declaring: dict[str, list[int]] = {}
         for key, klass in classes.items():
+            type_only = cls._facade_type_only_members(klass)
             for member in klass.get_scope().get_defined_names():
-                if not member.startswith("__") and member != namespace:
+                if (
+                    not member.startswith("__")
+                    and member != namespace
+                    and member not in type_only
+                ):
                     declaring.setdefault(member, []).append(key)
+        collisions: list[str] = []
         for member, keys in sorted(declaring.items()):
             roots = [
                 key
@@ -428,8 +436,91 @@ class FlextInfraUtilitiesFacadeComponents:
                     f"Facade composition declares {member!r} in unrelated parts "
                     f"{names}; rename one of them or let one part extend the other"
                 )
-                return r[bool].fail(message)
+                collisions.append(message)
+        if collisions:
+            return r[bool].fail("\n".join(collisions))
         return r[bool].ok(value=True)
+
+    @staticmethod
+    def _facade_type_checking_guard(
+        module: p.Infra.RopePyModule,
+        test: ast.expr,
+    ) -> bool | None:
+        """Prove a type-checking guard through its native lexical import binding.
+
+        Returns:
+            Native import proof, or None when the expression is not a typing guard.
+
+        """
+        if not FlextInfraUtilitiesRopeSourceBindingCollector.type_checking_test(test):
+            return None
+        head = test.value if isinstance(test, ast.Attribute) else test
+        offset = FlextInfraUtilitiesRopeRuntime.source_offset(module.source_code, head)
+        environment = module.get_source_binding_index().context_at(offset).environment
+        binding = environment.lookup(head.id) if isinstance(head, ast.Name) else None
+        runtime = FlextInfraUtilitiesRopeRuntimeTypes
+        imported = None
+        if isinstance(test, ast.Name) and runtime.imported_name(binding):
+            if binding.imported_name == "TYPE_CHECKING":
+                imported = binding.imported_module
+        elif isinstance(test, ast.Attribute) and runtime.imported_module(binding):
+            imported = binding
+        return (
+            imported is not None
+            and imported.level == 0
+            and imported.module_name in {"typing", "typing_extensions"}
+        )
+
+    @classmethod
+    def _facade_type_only_members(
+        cls,
+        klass: p.Infra.RopeSourceClass,
+    ) -> frozenset[str]:
+        """Exclude only declarations behind import-proven type-checking guards.
+
+        Unknown guards and any runtime declaration of the same name retain the
+        original Rope collision semantics. Nested scopes do not bind class locals.
+
+        Returns:
+            Names declared exclusively in proven type-only branches.
+
+        """
+        definition = klass.get_ast()
+        if not isinstance(definition, ast.ClassDef):
+            return frozenset()
+        module = klass.get_module()
+        type_only: set[str] = set()
+        possible_runtime: set[str] = set()
+        pending: list[tuple[ast.AST, bool]] = [
+            (node, False) for node in definition.body
+        ]
+        while pending:
+            node, guarded = pending.pop()
+            if (
+                isinstance(node, ast.If)
+                and (proven := cls._facade_type_checking_guard(module, node.test))
+                is not None
+            ):
+                pending.extend((child, guarded or proven) for child in node.body)
+                pending.extend((child, guarded) for child in node.orelse)
+                continue
+            names = type_only if guarded else possible_runtime
+            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+                names.add(node.name)
+                continue
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                names.add(node.id)
+            elif isinstance(node, ast.Import | ast.ImportFrom):
+                names.update(
+                    alias.asname or alias.name.split(".")[0] for alias in node.names
+                )
+            elif isinstance(node, ast.ExceptHandler | ast.MatchAs | ast.MatchStar):
+                if node.name is not None:
+                    names.add(node.name)
+            elif isinstance(node, ast.MatchMapping) and node.rest is not None:
+                names.add(node.rest)
+            pending.extend((child, guarded) for child in ast.iter_child_nodes(node))
+        return frozenset(type_only - possible_runtime)
 
     @classmethod
     def render_type_facade(
@@ -794,19 +885,22 @@ class FlextInfraUtilitiesFacadeComponents:
         bases = [
             (expression, base) for expression, base in bases if base not in wrappers
         ]
-        elected = (
-            owner,
-            namespace,
-            tuple(
-                (origin, provider)
-                for origin, provider in resolved.value[2]
-                if provider not in wrappers
-            ),
-            resolved.value[3],
-        )
         aliases, alias_names = cls._facade_namespace_aliases(index, namespace)
         providers = cls._facade_admitted_providers(
-            project, elected, family=family, aliases=aliases, bases=bases
+            project,
+            (
+                owner,
+                namespace,
+                tuple(
+                    (origin, provider)
+                    for origin, provider in resolved.value[2]
+                    if provider not in wrappers
+                ),
+                resolved.value[3],
+            ),
+            family=family,
+            aliases=aliases,
+            bases=bases,
         )
         if providers.failure:
             return r[
@@ -1704,21 +1798,22 @@ class FlextInfraUtilitiesFacadeComponents:
         project: p.Infra.RopeProject,
         declarations: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
     ) -> dict[str, str]:
-        """Map every family declaration to the import package that declares it.
+        """Bind each part to its actual source module, not a re-export barrel.
+
+        The same transaction may retire a barrel's old exports. A generated
+        facade must depend on the declaring source, not that previous projection.
 
         Returns:
-            Each declaration name with its declaring package.
+            Each declaration name with its defining module.
 
         """
         return {
             declaration.get_name(): (
-                FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
-                    origin.parent,
-                    project_root=Path(project.root.real_path),
-                    source_project=project,
+                FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                    declaration.get_module(), source_project=project
                 )
             )
-            for origin, declaration in declarations
+            for _origin, declaration in declarations
         }
 
     @staticmethod
@@ -1732,8 +1827,8 @@ class FlextInfraUtilitiesFacadeComponents:
 
         The rewritten text replay adds only this delta, never the module's
         original statements (a cross-epoch replay glues the class header).
-        Each binding imports from the package that declares it: the family
-        package for an immediate declaration, its domain package otherwise.
+        Each binding imports from the defining source module rather than a
+        barrel whose previous re-exports this transaction may replace.
 
         Returns:
             One declaring-package import per binding, then ``TypeAlias`` if
@@ -1824,6 +1919,24 @@ class FlextInfraUtilitiesFacadeComponents:
                 project.get_pymodule(resource)
             )
             native_imports = runtime.module_imports_for_pymodule(project, current)
+            if source.startswith(c.Infra.AUTOGEN_HEADER):
+                bindings = frozenset(
+                    alias or name
+                    for imported in added_imports
+                    for name, alias in imported.names_and_aliases
+                )
+                for statement in native_imports.imports:
+                    before = statement.import_info
+                    if FlextInfraUtilitiesRopeRuntimeTypes.from_import_info(before):
+                        statement.import_info = runtime.from_import(
+                            before.module_name,
+                            before.level,
+                            tuple(
+                                (name, alias)
+                                for name, alias in before.names_and_aliases
+                                if (alias or name) not in bindings
+                            ),
+                        )
             for import_info in added_imports:
                 native_imports.add_import(import_info)
             native_imports.remove_duplicates()

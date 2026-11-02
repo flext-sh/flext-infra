@@ -18,7 +18,6 @@ import builtins
 import re
 from collections.abc import Mapping, Sequence
 from importlib import import_module
-from importlib.util import find_spec
 from pathlib import Path, PurePosixPath
 from typing import is_protocol
 
@@ -39,6 +38,7 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
@@ -153,7 +153,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         for package, children in facts.modules.items():
             merged_modules.setdefault(package, children)
         run = FlextInfraUtilitiesPythonModel.python_model_run(snapshot.engine, {})
-        for package in cls._codemod_provider_packages(own):
+        for package in cls._codemod_provider_candidates(own):
             exports = cls._codemod_installed_package_exports(snapshot, run, package)
             if exports is None:
                 continue
@@ -168,16 +168,14 @@ class FlextInfraUtilitiesCodemodNativePackage:
         )
 
     @staticmethod
-    def _codemod_provider_packages(project: Path) -> t.StrTuple:
-        """Facade packages the project's runtime closure installs.
+    def _codemod_provider_candidates(project: Path) -> t.StrTuple:
+        """Import metadata candidates supplied by the runtime closure.
 
-        The closure's import packages come from the runtime-closure owner;
-        a package is a facade provider by the same generated-lazy-export
-        verdict ``codemod_facade_packages`` applies. The own package is
-        excluded: the repository facts already carry it.
+        Metadata names are not proof of importability or facade ownership.
+        The installed initializer's native lazy declarations elect providers.
 
         Returns:
-            The provider facade package names, sorted.
+            The metadata candidates, excluding the already-owned package.
 
         """
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
@@ -187,8 +185,67 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 for module in FlextInfraUtilitiesCodemodNative.codemod_runtime_modules(
                     project
                 )
-                if module != own and u.runtime_alias_names(module)
+                if module != own
             )
+        )
+
+    @staticmethod
+    def _codemod_installed_initializer(
+        snapshot: p.Infra.WorkspaceSnapshot,
+        package: str,
+    ) -> p.Infra.RopeSourceModule | None:
+        """Elect a native installed package initializer without executing it.
+
+        Returns:
+            The source initializer, or no package declaration for this candidate.
+
+        """
+        resource = snapshot.engine.find_module(package)
+        if resource is None or FlextInfraUtilitiesRopeRuntime.file_resource(resource):
+            return None
+        initializer = Path(resource.real_path) / c.Infra.INIT_PY
+        if not initializer.is_file():
+            return None
+        return FlextInfraUtilitiesRopeRuntime.require_source_module(
+            FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                snapshot.engine,
+                FlextInfraUtilitiesRopeRuntime.file_resource_at(
+                    snapshot.engine, initializer
+                ),
+            )
+        )
+
+    @classmethod
+    def codemod_provider_aliases(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        package: str,
+    ) -> frozenset[str]:
+        """Read the package's declared runtime aliases through the native source.
+
+        Returns:
+            Its one-letter lazy aliases, without package execution.
+
+        Raises:
+            ValueError: If an elected native initializer has no source resource.
+
+        """
+        module = cls._codemod_installed_initializer(snapshot, package)
+        if module is None:
+            return frozenset()
+        resource = module.get_resource()
+        if resource is None:
+            message = f"installed package initializer has no resource: {package}"
+            raise ValueError(message)
+        routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
+            package,
+            Path(resource.real_path),
+            module.source_code,
+            project=snapshot.engine,
+            pymodule=module,
+        )
+        return frozenset(
+            alias for alias in routes if len(alias) == 1 and alias.islower()
         )
 
     @classmethod
@@ -208,13 +265,21 @@ class FlextInfraUtilitiesCodemodNativePackage:
             The declared names, or ``None`` when the package publishes no
             initializer the static model can read.
 
+        Raises:
+            ValueError: If an elected facade loses its native initializer resource.
+
         """
-        resource = snapshot.engine.find_module(package)
-        if resource is None or FlextInfraUtilitiesRopeRuntime.file_resource(resource):
+        if not cls.codemod_provider_aliases(snapshot, package):
             return None
-        initializer = Path(resource.real_path) / "__init__.py"
-        if not initializer.is_file():
-            return None
+        declaring = cls._codemod_installed_initializer(snapshot, package)
+        if declaring is None:
+            message = f"elected facade initializer disappeared: {package}"
+            raise ValueError(message)
+        resource = declaring.get_resource()
+        if resource is None:
+            message = f"elected facade initializer has no resource: {package}"
+            raise ValueError(message)
+        initializer = Path(resource.real_path)
         module = FlextInfraUtilitiesPythonModel.python_model_module_at(
             run, initializer, package
         )
@@ -933,9 +998,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 *(
                     module
                     for module in cls.codemod_imported_top_modules(snapshot, project)
-                    if module != own
-                    and find_spec(module) is not None
-                    and u.runtime_alias_names(module)
+                    if module != own and cls.codemod_provider_aliases(snapshot, module)
                 ),
             })
         )

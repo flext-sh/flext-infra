@@ -70,6 +70,12 @@ and the index use the existing Markdown renderer with captured tooling inputs be
 their artifact digests and publication plans are built. Source revision digests still
 attest the original bytes; a rendered-output change is not a new source revision.
 Verification uses the same representation and authenticates its tooling inputs.
+Index list-item paragraphs use four spaces of indentation, as required by the
+native Markdown gate for MkDocs. The collector owns this layout; consumers
+regenerate the index rather than editing its published projection.
+The collection pass retains its original captured-state mapping by reference.
+Publication plans share one immutable input tuple after capture completes,
+preserving the same concurrency evidence without rebuilding it per output.
 Rendering applies only to the Markdown body. The existing documentation contract
 admits its boundary and preserves the frontmatter prefix, including BOM and CRLF,
 byte for byte. An opened YAML header without a closing delimiter fails before

@@ -454,7 +454,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             raise ValueError(msg)
         public_module = holder.get_name().rpartition(".")[0]
         exported_owner = cls.resolve_declared_binding(
-            project, public_module, owner.name, Path(project.root.real_path), {}
+            project, (public_module, owner.name), Path(project.root.real_path), {}
         )
         exported = (
             exported_owner.get_object().get_attributes().get(method.name)

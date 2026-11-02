@@ -189,10 +189,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         previous_snapshot = self.state.snapshot
-        with (
-            u.Infra.workspace_snapshot(root, (root,)) as snapshot,
-            self.shared_source_views(),
-        ):
+        with ExitStack() as source_scope, self.shared_source_views():
+            snapshot = self.state.snapshot
+            if snapshot is None:
+                snapshot = source_scope.enter_context(
+                    u.Infra.workspace_snapshot(root, (root,))
+                )
             self.state.snapshot = snapshot
             try:
                 cohort = tuple(self.state.provider_plans or ())
@@ -211,12 +213,15 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     )
                     if family.failure:
                         return result_type.from_failure(family)
-                return self._projected_custom_sources(
+                projected = self._projected_custom_sources(
                     root,
                     (codegen, profile),
                     cohort=cohort,
                     selection=(destination, c.Infra.FacadeFamily(family.value)),
-                ).map(operator.itemgetter(0))
+                )
+                if projected.success:
+                    self._retain_source_facts(snapshot, root)
+                return projected.map(operator.itemgetter(0))
             finally:
                 self.state.snapshot = previous_snapshot
 
@@ -423,6 +428,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     if projected.failure:
                         return result_type.from_failure(projected)
                     files.update((file.path, file) for file in projected.value[0])
+                    self._retain_source_facts(self.state.snapshot, project)
             finally:
                 self.state.snapshot, self.state.provider_plans = previous
         return result_type.ok(
@@ -918,8 +924,31 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 for name, project_root in roots.items()
             }
             outcomes = self._repository_plan_outcomes(tasks, surface, inputs, snapshots)
+            for name, snapshot in snapshots.items():
+                self._retain_source_facts(snapshot, roots[name])
             self._verify_snapshot_outcomes(snapshots)
         return self._reported_repository_plans(root, selected, outcomes)
+
+    def _retain_source_facts(
+        self, snapshot: p.Infra.WorkspaceSnapshot, member: Path
+    ) -> None:
+        """Carry original source states and import facts beyond native planning.
+
+        Raises:
+            ValueError: If planning observes conflicting source states or imports.
+
+        """
+        for path in u.Infra.workspace_python_files(snapshot, member):
+            source = u.Infra.workspace_source(snapshot, path)
+            previous = self.state.source_inputs.setdefault(path, source.state)
+            if previous != source.state:
+                message = f"generation has conflicting source witnesses: {path}"
+                raise ValueError(message)
+            imports = u.Infra.workspace_module_imports(snapshot, path)
+            known = self.state.source_imports.setdefault(path, imports)
+            if known != imports:
+                message = f"generation has conflicting source import facts: {path}"
+                raise ValueError(message)
 
     def _repository_plan_tasks(
         self,

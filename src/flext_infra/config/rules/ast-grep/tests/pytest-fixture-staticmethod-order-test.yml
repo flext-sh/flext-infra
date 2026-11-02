@@ -1,0 +1,40 @@
+id: pytest-fixture-staticmethod-order
+valid:
+- |
+  class TestsPolicy:
+      @owner.decorate
+      @staticmethod
+      @pytest.fixture
+      def policy():
+          return "console"
+- |
+  class TestsPolicy:
+      @pytest.fixture
+      @staticmethod
+      def policy():
+          return "console"
+- |
+  class TestsPolicy:
+      @staticmethod
+      @pytest.mark.parametrize("policy", ["console"])
+      def test_policy(policy):
+          return policy
+- |
+  class TestsPolicy:
+      @staticmethod
+      @owner.fixture
+      def policy():
+          return "console"
+invalid:
+- |
+  class TestsPolicy:
+      @staticmethod
+      @pytest.fixture
+      def policy():
+          return "console"
+- |
+  class TestsPolicy:
+      @staticmethod
+      @pytest.fixture(autouse=True)
+      def policy() -> str:
+          return "console"

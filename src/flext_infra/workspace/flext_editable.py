@@ -119,12 +119,22 @@ class FlextInfraWorkspaceFlextEditable:
         document = u.Cli.toml_read_document(runtime_root / c.PYPROJECT_FILENAME)
         if document.failure:
             return r[tuple[dict[str, Path], tuple[str, ...]]].from_failure(document)
+        consumer_name = canonicalize_name(
+            u.Infra.project_name_from_payload(
+                runtime_root / c.PYPROJECT_FILENAME, document.value
+            )
+        )
         declared = {
             canonicalize_name(name)
             for name in u.Infra.declared_dependency_names(document.value)
         }
+        declared.add(consumer_name)
         distributions = {
-            repository.distribution: source.resolve()
+            repository.distribution: (
+                runtime_root
+                if canonicalize_name(repository.distribution) == consumer_name
+                else source.resolve()
+            )
             for repository, source in provided
             if repository.package
             and canonicalize_name(repository.distribution) in declared

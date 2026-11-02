@@ -61,6 +61,123 @@ class TestsFlextInfraGeneratedRuntime:
     """Execute generated candidates through their real public consumers."""
 
     @staticmethod
+    def test_facade_imports_do_not_require_part_reexports(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A barrel can retire re-exports without breaking the generated facade."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        directory = package / family.directory
+        directory.mkdir(parents=True, exist_ok=True)
+        sources = {
+            directory / c.Infra.INIT_PY: "__all__ = []\n",
+            directory / "first.py": (
+                "class FirstPart:\n"
+                "    @staticmethod\n"
+                "    def first(): return 'first'\n"
+                "__all__ = ['FirstPart']\n"
+            ),
+            directory / "second.py": (
+                "class SecondPart:\n"
+                "    @staticmethod\n"
+                "    def second(): return 'second'\n"
+                "__all__ = ['SecondPart']\n"
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                f"from {package.name}.{family.directory}.first import FirstPart\n"
+                f"from {package.name}.{family.directory}.second import SecondPart\n"
+                "class Utilities(FirstPart, SecondPart): pass\n"
+                "u = Utilities\n"
+                "__all__ = ['Utilities', 'u']\n"
+            ),
+            package / c.Infra.INIT_PY: ("from .utilities import u\n__all__ = ['u']\n"),
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
+        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.UTILITIES_PY, rendered))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import u\n"
+            "assert u.first() == 'first'\n"
+            "assert u.second() == 'second'\n",
+            cwd=root,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("imports", "guard", "type_only"),
+        [
+            ("from typing import TYPE_CHECKING\n", "TYPE_CHECKING", True),
+            ("import typing\n", "typing.TYPE_CHECKING", True),
+            ("TYPE_CHECKING = True\n", "TYPE_CHECKING", False),
+            (
+                "from typing import TYPE_CHECKING\nTYPE_CHECKING = True\n",
+                "TYPE_CHECKING",
+                False,
+            ),
+            ("", "True", False),
+        ],
+    )
+    def test_facade_collisions_distinguish_type_only_placeholders(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        imports: str,
+        guard: str,
+        *,
+        type_only: bool,
+    ) -> None:
+        """Real source guards exclude stubs, never runtime duplicate members."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        facade = package / c.Infra.UTILITIES_PY
+        sources = {
+            package / family.directory / "start.py": (
+                imports
+                + "class ProcessStart:\n"
+                + f"    if {guard}:\n"
+                + "        @staticmethod\n"
+                + "        def _signal_process_tree(): ...\n"
+                + "    @classmethod\n"
+                + "    def start(cls):\n"
+                + "        return cls._signal_process_tree()\n"
+                + "__all__ = ['ProcessStart']\n"
+            ),
+            package / family.directory / "group.py": (
+                "class ProcessGroup:\n"
+                "    @staticmethod\n"
+                "    def _signal_process_tree():\n"
+                "        return 'runtime-group'\n"
+                "__all__ = ['ProcessGroup']\n"
+            ),
+            facade: (
+                f"from {package.name}.{family.directory}.start import ProcessStart\n"
+                f"from {package.name}.{family.directory}.group import ProcessGroup\n"
+                "class Utilities(ProcessStart, ProcessGroup):\n"
+                "    pass\n"
+                "u = Utilities\n"
+                "__all__ = ['Utilities', 'u']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        result = tm.not_none(u.Infra.render_utility_facade(package))
+        if not type_only:
+            tm.fail(result, has="declares '_signal_process_tree' in unrelated parts")
+            return
+        rendered = tm.ok(result)
+        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import u\n"
+            "assert u.start() == 'runtime-group'\n",
+            cwd=root,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])
     @pytest.mark.parametrize(
         "segment", ["child", "descriptive_namespace_for_deep_native_owner_projection"]

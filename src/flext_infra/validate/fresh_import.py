@@ -291,14 +291,28 @@ class FlextInfraValidateFreshImport(s[bool]):
         # exceed the kernel's single-argument limit. map preserves report order.
         # ``-B``: a validator never writes into the checkout it validates, so
         # the probed sources leave no bytecode cache behind.
-        def run_probe(probe: m.Infra.FreshImportProbe) -> p.Result[p.Cli.CommandOutput]:
-            return self.execute_probe(
+        def run_probe(
+            indexed: tuple[int, m.Infra.FreshImportProbe],
+        ) -> p.Result[p.Cli.CommandOutput]:
+            index, probe = indexed
+            u.Cli.info(f"fresh-import: probe {index} start {probe.subject}")
+            result = self.execute_probe(
                 probe,
                 source_roots=tuple(layout.src_dir for layout in layouts),
+                profile_slot=index,
             )
+            if result.failure:
+                u.Cli.error(f"fresh-import: probe {index} failed: {result.error}")
+            else:
+                output = result.value
+                succeeded = u.Cli.process_succeeded(output.outcome)
+                u.Cli.info(f"fresh-import: probe {index} end success={succeeded}")
+                if not succeeded:
+                    u.Cli.error(output.stderr)
+            return result
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            outcomes = tuple(executor.map(run_probe, probes))
+            outcomes = tuple(executor.map(run_probe, enumerate(probes)))
         for probe, smoke in zip(probes, outcomes, strict=True):
             if smoke.failure:
                 return r[m.Infra.ValidationReport].from_failure(smoke)
@@ -425,6 +439,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         probe: m.Infra.FreshImportProbe,
         *,
         source_roots: Sequence[Path] = (),
+        profile_slot: int = 0,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run the selected native consumer in its declared physical runtime.
 
@@ -451,6 +466,21 @@ class FlextInfraValidateFreshImport(s[bool]):
                 f"fresh-import target interpreter is missing: {interpreter}; "
                 "make setup provisions it",
             )
+        source = probe.code
+        if settings.Infra.profile or settings.Infra.profile_children:
+            destination = settings.Infra.profile_output
+            if destination is None:
+                return r[p.Cli.CommandOutput].fail(
+                    "fresh-import profiling requires the command profile destination"
+                )
+            source = c.Infra.FRESH_IMPORT_PROFILE_CODE.format(
+                source=source,
+                output=str(
+                    destination.with_stem(
+                        f"{destination.stem}-fresh-import-{profile_slot}"
+                    )
+                ),
+            )
         return u.Cli.run_raw(
             [
                 str(interpreter),
@@ -464,7 +494,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             timeout=c.Infra.TIMEOUT_SHORT,
             options=m.Cli.ProcessOptions(
                 env=self._workspace_import_env(source_roots),
-                input_data=probe.code,
+                input_data=source,
             ),
         )
 

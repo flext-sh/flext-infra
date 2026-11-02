@@ -13,6 +13,7 @@ from typing import cast
 from flext_cli import u
 
 from flext_infra import m, p, r, t
+from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeMatching
 
 
@@ -418,7 +419,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             msg = "native rename requires a producer project"
             raise ValueError(msg)
         producer = cls.require_semantic_module(projects[0].get_pymodule(resource))
-        module_name = producer.get_name()
+        module_name = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+            producer, source_project=projects[0]
+        )
         # Occurrences live only in files whose text carries the renamed
         # identifier, so the token pre-scan bounds the resources Rope searches.
         retired = (

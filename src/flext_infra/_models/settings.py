@@ -62,6 +62,14 @@ class FlextInfraModelsSettings:
                 "it (required when profiling is enabled)."
             ),
         )
+        profile_children: bool = m.Field(
+            default=False,
+            validation_alias="FLEXT_INFRA_PROFILE_CHILDREN",
+            description=(
+                "Profile child consumers independently of parent profiling, "
+                "using the invoking verb's declared profile destination."
+            ),
+        )
 
         use_https: bool = m.Field(
             default=False,

@@ -2,25 +2,24 @@ id: config-dict-type-from-typings
 # `valid` MUST NOT match: canonical annotation, out-of-scope member, or a
 # value that does not construct through m.ConfigDict(...).
 valid:
-  # canonical: the annotation names the single owner
+  # Canonical annotations name the existing native typing contract.
   - |
-    from flext_ldif import m
+    from flext_ldif import m, t
     from typing import ClassVar
     class A:
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
-  # different member (SettingsConfigDict) out of scope
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict()
   - |
-    from flext_ldif import m, p
+    from flext_ldif import m, t
     from typing import ClassVar
     class B:
-        model_config: ClassVar[p.SettingsConfigDict] = m.SettingsConfigDict()
+        model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict()
   # value not constructed through m.ConfigDict(...): no rewrite target is bound
   - |
     from flext_ldif import p
     from typing import ClassVar
     class C:
         model_config: ClassVar[p.ConfigDict] = ConfigDict(frozen=True)
-# `invalid` MUST match and rewrite the annotation to m.ConfigDict.
+# Invalid annotations change only the type owner, retaining configuration values.
 invalid:
   - |
     from flext_ldif import c, m, p
@@ -32,9 +31,19 @@ invalid:
     from typing import ClassVar
     class E:
         model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
-  # the retired owner is caught as well: t stopped exposing ConfigDict
+  # The value facade is not the annotation owner.
   - |
     from flext_cli import m, t
     from typing import ClassVar
     class F:
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+  - |
+    from flext_cli import m, t
+    from typing import ClassVar
+    class G:
+        model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(env_prefix="APP_")
+  - |
+    from flext_cli import c, m, t
+    from typing import ClassVar
+    class H:
+        model_config: ClassVar[c.ConfigDict] = m.ConfigDict(validate_default=True)

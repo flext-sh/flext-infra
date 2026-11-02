@@ -15,14 +15,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import concurrent.futures
 import shutil
 import tempfile
 from collections.abc import Mapping
+from itertools import islice
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, settings
+from flext_infra import c, config, m, p, settings
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesMiseBinary,
@@ -93,12 +95,9 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         shape = cls._rule_shape(rule_id)
         if stage.shapes:
             return shape in stage.shapes
-        claimed = {
-            claimed_shape
-            for other in config.Infra.tooling.mod.phases.stages
-            for claimed_shape in other.shapes
-        }
-        return shape not in claimed
+        return not any(
+            shape in other.shapes for other in config.Infra.tooling.mod.phases.stages
+        )
 
     @classmethod
     def codemod_native_stage(
@@ -142,8 +141,8 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         )
         retired = reports / f".{stage.name}-retired"
         if final.exists():
-            Path(final).replace(retired)
-        Path(staging).replace(final)
+            final.replace(retired)
+        staging.replace(final)
         if retired.exists():
             shutil.rmtree(retired)
         staged_ids = tuple(sorted(rule_ids))
@@ -203,19 +202,37 @@ class FlextInfraUtilitiesCodemodNativeCascade:
 
         Ruff reads each source on stdin under its live destination name, so
         the owning project's configuration decides first-party imports.
+        Independent calls use the configured lint worker bound. Results and
+        preview writes retain source order; the executor joins every worker
+        before the stage returns or propagates an error.
 
         """
-        for relative, original in originals.items():
+
+        def repair(relative: Path, original: bytes) -> p.Result[str] | None:
             path = preview / relative
             current = path.read_bytes()
             if current == original:
-                continue
-            repaired = FlextInfraUtilitiesProtectedEditLinting.ruff_select_fix(
+                return None
+            return FlextInfraUtilitiesProtectedEditLinting.ruff_select_fix(
                 project / relative,
                 current.decode(c.DEFAULT_ENCODING),
                 stage.select,
-            ).unwrap()
-            path.write_bytes(repaired.encode(c.DEFAULT_ENCODING))
+            )
+
+        workers = config.Infra.codegen.lint_snapshot_workers
+        pending = iter(originals.items())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+            while batch := tuple(islice(pending, workers)):
+                futures = tuple(
+                    (relative, pool.submit(repair, relative, original))
+                    for relative, original in batch
+                )
+                for relative, future in futures:
+                    repaired = future.result()
+                    if repaired is not None:
+                        (preview / relative).write_bytes(
+                            repaired.unwrap().encode(c.DEFAULT_ENCODING)
+                        )
 
     @classmethod
     def native_cascade(

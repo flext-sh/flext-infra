@@ -21,7 +21,7 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     lane census (outside CI) and documentation. The commit hook token runs
     only the stage-derived commit gates. -#}
 {%- macro local_check_body() -%}
-{{ "\t" }}@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+{{ "\t" }}@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run("fmt", " --scope $(GATE_SCOPE) --apply") }}
@@ -426,8 +426,17 @@ RECREATE_DIVERGENT_ENVIRONMENT = identity_file="$(1)/{{ identity.marker_file }}"
 			$(UV) venv --clear --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$(1)"; \
 		fi; \
 	fi
-# The runtime environment and the upgrade executor share that one rule.
-RECREATE_DIVERGENT_RUNTIME = $(call RECREATE_DIVERGENT_ENVIRONMENT,$(RUNTIME_VENV))
+# Explicit recovery uses the same native creator when artifact ownership is
+# invalid despite matching interpreter identity. It never patches site-packages.
+# The upgrade executor retains automatic identity-based recreation only.
+RECREATE_DIVERGENT_RUNTIME = case "$(strip $({{ identity.recreate_parameter }}))" in \
+    ("") $(call RECREATE_DIVERGENT_ENVIRONMENT,$(RUNTIME_VENV)) ;; \
+    ({{ make.ci.value }}) \
+        if [ -L "$(RUNTIME_VENV)" ]; then printf 'ERROR[setup] runtime environment must not be a symlink\n' >&2; exit 2; fi; \
+        printf 'setup: explicitly recreating %s through native uv\n' "$(RUNTIME_VENV)"; \
+        $(UV) venv --clear --force --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$(RUNTIME_VENV)" ;; \
+    (*) printf 'ERROR[setup] {{ identity.recreate_parameter }} must be empty or {{ make.ci.value }}\n' >&2; exit 2 ;; \
+    esac
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
 	$(RESOLVE_DESIRED_PYTHON); \

@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Callable, Mapping
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Self, override
 
@@ -170,21 +171,32 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         # One generation per tree: planning and publication read and write
         # under the same lock, so a concurrent writer waits instead of
         # invalidating this plan's observed states.
-        with u.Infra.hold_mutation_scope(root, "codegen generate"):
-            if request.what is not c.Infra.CodegenConformSurface.ALL:
-                return self._planned(request).flat_map(
-                    lambda plan: self._published(
-                        request,
-                        plan,
-                        after_publication,
-                        after_cohort_publication=after_cohort_publication,
-                    )
+        with (
+            u.Infra.hold_mutation_scope(root, "codegen generate"),
+            ExitStack() as sources,
+        ):
+            previous = self.state.snapshot
+            if request.what is c.Infra.CodegenConformSurface.FACADES:
+                self.state.snapshot = sources.enter_context(
+                    u.Infra.workspace_snapshot(root, (root,))
                 )
-            return self._execute_all_surfaces(
-                request,
-                after_publication=after_publication,
-                after_cohort_publication=after_cohort_publication,
-            )
+            try:
+                if request.what is not c.Infra.CodegenConformSurface.ALL:
+                    return self._planned(request).flat_map(
+                        lambda plan: self._published(
+                            request,
+                            plan,
+                            after_publication,
+                            after_cohort_publication=after_cohort_publication,
+                        )
+                    )
+                return self._execute_all_surfaces(
+                    request,
+                    after_publication=after_publication,
+                    after_cohort_publication=after_cohort_publication,
+                )
+            finally:
+                self.state.snapshot = previous
 
     @staticmethod
     def authorize_published_envrc(
@@ -920,6 +932,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             return result_type.fail(
                 "conformance requires facade-wired candidate admission"
             )
+        u.Cli.info("stage=admission-docs state=start")
         docs = (
             result_type.ok(prepared_files)
             if prepared_files is not None
@@ -927,16 +940,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         )
         if docs.failure:
             return result_type.from_failure(docs)
+        u.Cli.info(f"stage=admission-docs state=end files={len(docs.value)}")
         composed = result_type.create_from_callable(
             lambda: u.Infra.codegen_compose_file_plans(docs.value)
         )
         if composed.failure:
             return result_type.from_failure(composed)
         files = composed.value
+        u.Cli.info(f"stage=admission-normalization state=start files={len(files)}")
         changes = ports.file_publisher.normalized_codegen_changes(files)
         if changes.failure:
             return result_type.from_failure(changes)
+        u.Cli.info("stage=admission-normalization state=end")
         normalized = {change.path: change for change in changes.value}
+        captured = tuple(self.state.source_inputs.values())
         files = tuple(
             m.Infra.CodegenFilePlan(
                 project=file.project,
@@ -949,19 +966,17 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 tracking=file.tracking,
                 index_before=file.index_before,
                 tracking_dependencies=file.tracking_dependencies,
-                inputs=file.inputs,
+                inputs=(*file.inputs, *captured),
             )
             for file in files
         )
-        return self._validated_source_plans(
-            request, files, (ports, self.state.snapshot)
-        )
+        return self._validated_source_plans(request, files, self.state)
 
     @staticmethod
     def _validated_source_plans(
         request: p.Infra.CodegenGenerateRequest,
         files: tuple[m.Infra.CodegenFilePlan, ...],
-        run: tuple[p.Infra.CodegenConformPorts, p.Infra.WorkspaceSnapshot | None],
+        run: m.Infra.CodegenConformState,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Admit the normalized candidate through its injected runtime validator.
 
@@ -972,8 +987,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         if not any(file.path.suffix == c.Infra.EXT_PYTHON for file in files):
             return result_type.ok(files)
-        ports, snapshot = run
+        ports, snapshot = run.ports, run.snapshot
+        if ports is None:
+            return result_type.fail("candidate admission requires its bound ports")
         root = request.root.expanduser().resolve()
+        inputs: dict[Path, m.Cli.AtomicFileState] = {}
+        for file in files:
+            for state in (file.before, *file.inputs):
+                original = inputs.setdefault(state.path, state)
+                if original != state:
+                    return result_type.fail(
+                        f"candidate has conflicting source observations: {state.path}"
+                    )
+        u.Cli.info(f"stage=admission-preview state=start root={root}")
         preview = ports.source_preview.preview_sources(
             root,
             {
@@ -995,14 +1021,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             ),
             options=m.Infra.StageSourceOptions(
                 declared_files=files,
-                inputs=tuple(
-                    state for file in files for state in (file.before, *file.inputs)
-                ),
+                inputs=tuple(inputs.values()),
                 snapshot=snapshot,
+                import_edges=run.source_imports,
             ),
         ).flat_map(lambda outcome: outcome)
         if preview.failure:
             return result_type.from_failure(preview)
+        u.Cli.info("stage=admission-preview state=end")
         if not preview.value:
             return result_type.fail("native candidate admission returned no acceptance")
         return result_type.ok(files)

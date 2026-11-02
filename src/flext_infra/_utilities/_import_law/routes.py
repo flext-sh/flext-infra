@@ -131,10 +131,10 @@ class FlextInfraUtilitiesImportLawRoutes(
         def resolve(module: str, name: str) -> p.Infra.RopePyName | None:
             return cls.resolve_declared_binding(
                 project,
-                module,
-                name,
+                (module, name),
                 state.scope.project_root,
                 sources or {},
+                public_only=True,
             )
 
         def inherited(
@@ -252,14 +252,29 @@ class FlextInfraUtilitiesImportLawRoutes(
         provider = (cls.import_lazy_exports(root, module) or {}).get(name)
         if provider is None:
             return None
+        original = resolve(provider, name)
+        if original is None:
+            return None
         parts = provider.split(".")
         if parts[0] != state.scope.namespace.split(".")[0]:
-            return parts[0] if resolve(parts[0], name) is not None else None
+            return (
+                parts[0]
+                if FlextInfraUtilitiesRopeRuntime.same_name(
+                    original, resolve(parts[0], name)
+                )
+                else None
+            )
         for depth in range(len(parts), 0, -1):
             owner = ".".join(parts[:depth])
             exports = cls.import_lazy_exports(root, owner, sources=sources)
             if owner != module and exports is not None and name in exports:
-                return owner if resolve(owner, name) is not None else None
+                return (
+                    owner
+                    if FlextInfraUtilitiesRopeRuntime.same_name(
+                        original, resolve(owner, name)
+                    )
+                    else None
+                )
         return None
 
     @classmethod
@@ -404,6 +419,11 @@ class FlextInfraUtilitiesImportLawRoutes(
         original = resolve(module, alias.name)
         local = resolve(root, alias.asname or alias.name)
         if original is None or local is None:
+            return None
+        runtime = FlextInfraUtilitiesRopeRuntime
+        if runtime.semantic_module(original.get_object()) != runtime.semantic_module(
+            local.get_object()
+        ):
             return None
         return (
             root

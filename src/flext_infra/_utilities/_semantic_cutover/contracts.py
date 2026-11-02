@@ -892,6 +892,7 @@ class FlextInfraUtilitiesSemanticContracts(
         rules: Sequence[p.Infra.RopeContractRule],
     ) -> MutableMapping[t.Infra.RopeSourcePath, str]:
         # Elect receivers without making unrelated generated sources editable.
+        retirement = FlextInfraUtilitiesSemanticDeclarationRetirement
         providers: MutableMapping[t.Infra.RopeSourcePath, str] = {}
         for rule in rules:
             if rule.ownership_transfer is None:
@@ -900,8 +901,8 @@ class FlextInfraUtilitiesSemanticContracts(
                 binding = FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
                     workspace.rope_project, identity
                 )
-                module = binding.get_object().get_module()
-                resource = module.get_resource() if module is not None else None
+                module = retirement.contract_transfer_module(binding)
+                resource = module.get_resource()
                 if resource is None:
                     msg = f"{rule.id}: transfer receiver has no native source"
                     raise ValueError(msg)
@@ -2454,6 +2455,14 @@ class FlextInfraUtilitiesSemanticContracts(
                 project, rule.ownership_transfer, owned_modules
             )
             first, last = match.get_region()
+            if any(
+                left <= first and last <= right
+                for assignment in module.get_source_binding_index().assignment_layouts(
+                    scope
+                )
+                for _name, (left, right) in assignment.targets
+            ):
+                return False
             expression = ast.parse(module.source_code[first:last], mode="eval").body
             selected = (
                 expression.func if isinstance(expression, ast.Call) else expression
@@ -2482,7 +2491,10 @@ class FlextInfraUtilitiesSemanticContracts(
             unknown = FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
                 "rope.base.pyobjects", "get_unknown"
             )()
-            if actual is None or actual.get_object() == unknown:
+            if actual is None or (
+                actual.get_object() == unknown
+                and relocation.contract_assignment(actual) is None
+            ):
                 message = (
                     f"{rule.id}: unproven transferred receiver in "
                     f"{module.get_name()}:{scope.get_start()}"

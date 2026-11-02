@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import c
 
+from flext_infra._constants import FlextInfraConstantsCheck
+from flext_infra._pytest import FlextInfraPytestProfileChild
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -206,6 +209,9 @@ class FlextInfraConstantsSharedInfra:
         "import importlib, sys\n"
         "from importlib.metadata import EntryPoint\n"
         "from pathlib import Path\n"
+    )
+    FRESH_IMPORT_PROFILE_CODE: ClassVar[str] = FlextInfraPytestProfileChild.source_stub(
+        FlextInfraConstantsCheck.PYTEST_PROFILE_CLOCK_MODULE
     )
     FRESH_IMPORT_EXPORT_IMPORT_CODE: ClassVar[str] = (
         "module = importlib.import_module({package!r})\n"

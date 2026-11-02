@@ -114,6 +114,7 @@ class FlextInfraUtilitiesLazyInitLetters:
         letters = dict.fromkeys(
             name
             for package in cls._lazy_init_facade_chain(run, direct, within=None)
+            if package != current
             for name in sorted(cls._lazy_init_package_names(run, package))
             if name.isidentifier()
             and name.islower()

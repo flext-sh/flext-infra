@@ -992,7 +992,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         module = holder.get_name().rpartition(".")[0]
         cls._import_law_own_family_publication(state, project, module, owners[0])
         exported = cls.resolve_declared_binding(
-            project, module, owners[0], state.scope.project_root, state.sources or {}
+            project, (module, owners[0]), state.scope.project_root, state.sources or {}
         )
         declared = holder.get_scope().get_defined_names().get(owners[0])
         suffix = ".".join((*owners[1:], member))
