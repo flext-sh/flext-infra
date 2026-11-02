@@ -12,12 +12,12 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
 )
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesDocsApi:

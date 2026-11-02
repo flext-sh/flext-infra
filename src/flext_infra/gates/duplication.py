@@ -10,19 +10,16 @@ import socket
 import time
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 from urllib.parse import urlsplit
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
 from flext_infra.gates import (
     FlextInfraDuplicationEvidence,
     FlextInfraDuplicationReport,
     FlextInfraGates,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):

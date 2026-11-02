@@ -15,7 +15,7 @@ import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, u
+from flext_infra import c, p, u
 from flext_infra.gates import FlextInfraGates
 from flext_infra.validate import FlextInfraValidateFreshImport
 

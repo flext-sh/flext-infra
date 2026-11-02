@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r
+from flext_infra import c, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesWorkspaceManifest,
@@ -22,8 +22,6 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsScopeBuild(

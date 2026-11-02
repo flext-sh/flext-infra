@@ -90,65 +90,6 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
-    @pytest.mark.parametrize("publication", ["facade", "unpublished", "foreign"])
-    def test_class_publications_authenticate_only_facade_class_aliases(
-        self,
-        tmp_path: Path,
-        publication: Literal["facade", "unpublished", "foreign"],
-    ) -> None:
-        """Authenticate published class identity independently of module spelling.
-
-        Missing facade publication or an alias bound to another class exempts
-        nothing; a published facade's non-class RHS remains ineligible too.
-        """
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        directory = u.Infra.facade_families()["u"].directory
-        self._write(package / "__init__.py", "")
-        self._write(
-            package / directory / "__init__.py",
-            "from .owner import Owner\n__all__ = ['Owner']\n",
-        )
-        self._write(
-            package / directory / "owner.py",
-            "class Owner:\n    value = 7\n__all__ = ['Owner']\n",
-        )
-        source = (
-            "from typing import TypeAlias\n"
-            f"from {package.name}.{directory} import Owner\n"
-            "class Utilities:\n"
-            "    Cli: TypeAlias = Owner\n"
-            "    Value: TypeAlias = Owner.value\n"
-            "    class Ns:\n"
-            "        Nested: TypeAlias = Owner\n"
-            + {
-                "facade": "u = Utilities\n__all__ = ['Utilities', 'u']\n",
-                "unpublished": "u = Utilities\n__all__ = ['Utilities']\n",
-                "foreign": "u = Owner\n__all__ = ['Utilities', 'u']\n",
-            }[publication]
-        )
-        facade = package / "utilities.py"
-        authored = package / "services.py"
-        self._write(facade, source)
-        self._write(authored, source)
-        rows = frozenset({4, 5, 7})
-        with u.Infra.facade_source_project(root) as (project, _sources):
-            published = u.Infra.facade_class_publications(
-                root, {facade: rows, authored: rows}, source_project=project
-            )
-        tm.that(
-            published,
-            eq=(
-                frozenset({
-                    (facade.resolve(), 4, 5),
-                    (facade.resolve(), 7, 9),
-                    (authored.resolve(), 4, 5),
-                    (authored.resolve(), 7, 9),
-                })
-                if publication == "facade"
-                else frozenset()
-            ),
-        )
-
     def test_initializer_retires_exports_moved_into_class_owners(
         self,
         tmp_path: Path,

@@ -472,7 +472,7 @@ class TestsFlextInfraReleaseHelpers:
             )
             (project / "src" / "flext_a" / "build_hook.py").write_text(
                 "from pathlib import Path\n"
-                "from hatchling.builders.hooks.plugin.interface import "
+                "from hatchling.builders.hooks.plugin import "
                 "BuildHookInterface\n\n"
                 "class CustomBuildHook(BuildHookInterface):\n"
                 '    PLUGIN_NAME = "custom"\n\n'

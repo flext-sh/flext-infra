@@ -1394,11 +1394,6 @@ publications, ambiguous owners, overrides and unrelated unresolved attributes st
 unchanged; their failures are not suppressed. This operation resolves identifier
 chains only, never arbitrary RHS evaluation, and leaves generated-source exclusions
 and the existing publication path unchanged.
-The existing per-identity UP040 exemption authenticates the facade through its
-explicitly exported family alias and local class identity, using the same native
-publication owner as namespace discovery, not a canonical module filename. Only
-PEP 613 class publications on that elected facade or its nested namespace qualify;
-the TypeAlias import, reported location and native RHS class checks remain required.
 Generated Python imports use their absolute native package owner. The planner
 selects exports once; rendering groups those declarations without another
 name-based exclusion policy. Compact lazy-loader targets remain loader data.
@@ -1734,7 +1729,7 @@ checks remain required before completion and integration; a member-only receipt
 never claims fleet completion.
 
 Ruff's native findings exit is classified before policy can erase its explanation.
-When the existing per-identity exemption owner authenticates every original native
+When the per-identity naming exemption owner authenticates every original native
 diagnostic, the lint producer may report an effective clean execution while retaining
 the original process status and verbatim output receipt. An empty native report,
 unexplained findings exit, unauthenticated diagnostic, stderr failure, timeout or

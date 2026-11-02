@@ -15,9 +15,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesManagedConflicts,
 )
-from flext_infra._utilities._pyproject.requirements import (
-    FlextInfraUtilitiesPyprojectRequirements,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectRequirements
 
 
 class FlextInfraUtilitiesPyprojectOverlay:

@@ -16,7 +16,7 @@ from markdown import Markdown
 from markdown.extensions.toc import slugify
 from pymdownx.superfences import SuperFencesCodeExtension
 
-from flext_infra import c, m, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -26,8 +26,6 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsContract:

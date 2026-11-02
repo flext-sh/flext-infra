@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m, p
 
 from flext_infra import c, p, t
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
 class FlextInfraModelsConfigRelease:

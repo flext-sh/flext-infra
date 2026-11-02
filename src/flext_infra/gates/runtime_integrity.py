@@ -56,7 +56,7 @@ class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
             component_ctx,
         ).model_copy(
             update={
-                "process": p.Cli.ProcessOutcome.model_validate(
+                "process": m.Cli.ProcessOutcome.model_validate(
                     native.outcome, from_attributes=True
                 ),
                 "outcome": (

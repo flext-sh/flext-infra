@@ -119,7 +119,7 @@ class TestsFlextInfraLazyInitOwnership:
                 "from flext_demo import services\n"
                 "from flext_demo.services import http\n"
                 "from flext_demo.services.http import FlextDemoHttpTransport\n"
-                "from flext_demo.services.http.transport import "
+                "from flext_demo.services.http import "
                 "FlextDemoHttpTransport as owner\n"
                 "from flext_tests import tm\n"
                 "assert services is flext_demo.services\n"

@@ -16,11 +16,11 @@ from flext_infra import c, config, m
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsAuditDetectors,
+    FlextInfraUtilitiesDocsBase,
     FlextInfraUtilitiesDocsCommandContract,
     FlextInfraUtilitiesDocsGithubLinks,
     FlextInfraUtilitiesDocsScope,
 )
-from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocsAudit(

@@ -8,13 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.refactor import FlextInfraNamespaceRelocationCascade
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraCodemodLoopPhaseNamespaceRelocation:

@@ -22,7 +22,7 @@ from flext_infra import (
     workspace as workspace_services,
 )
 from flext_infra.codegen import FlextInfraCodegenLazyInit
-from flext_infra.codegen._conform.editor import FlextInfraCodegenConformEditor
+from flext_infra.codegen._conform import FlextInfraCodegenConformEditor
 
 
 class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):

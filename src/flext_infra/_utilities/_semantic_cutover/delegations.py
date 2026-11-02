@@ -13,7 +13,7 @@ from pathlib import Path
 from textwrap import indent
 
 from flext_infra import c, m, p
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )

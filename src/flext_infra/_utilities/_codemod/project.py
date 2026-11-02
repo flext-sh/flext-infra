@@ -31,8 +31,10 @@ from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodNativePackage,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )

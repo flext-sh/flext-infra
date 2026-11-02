@@ -12,13 +12,10 @@ from __future__ import annotations
 import sys
 from collections.abc import MutableSequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
-from flext_infra import c, m, r, s, u
+from flext_infra import c, m, p, r, s, u
 from flext_infra.validate import FlextInfraValidatePytest
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraPytestDiagExtractor(

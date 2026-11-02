@@ -273,17 +273,39 @@ class FlextInfra(
         Declared failures arrive as typed Results: a typed failure born for
         one module is converted at its mod phase boundary, where
         ``c.Infra.MOD_FAILURE_MODULE_KEY`` attributes it for quarantine. Every
-        other exception escapes raw with its traceback. A failed prerequisite
-        stops this invocation; later repositories are not reported as executed.
+        other exception escapes raw with its traceback. ``projects`` selects
+        exactly those repositories and an unknown name fails before any run.
+        A mutating run stops at its first failed prerequisite; later
+        repositories are not reported as executed. A check or dry-run mutates
+        nothing, so every selected repository runs and one aggregated failure
+        names each failing repository.
 
         Returns:
-            The first repository failure, or acceptance of every governed run.
+            The first repository failure for a mutating run, the aggregated
+            failure naming every failing repository for check/dry-run, or
+            acceptance of every selected run.
 
         """
         root = flext_infra.u.Infra.resolve_repository_root_or_cwd(
             request.repository_root
         )
         governed = frozenset(flext_infra.u.Infra.governed_project_roots(root))
+        selected_roots = governed
+        if request.projects:
+            resolved = flext_infra.u.Infra.resolve_projects(
+                root, tuple(request.projects)
+            )
+            if resolved.failure:
+                return r[t.Cli.ResultValue].from_failure(resolved)
+            selected_roots = frozenset(
+                project.path.resolve() for project in resolved.value
+            )
+            outside = selected_roots.difference(governed)
+            if outside:
+                return r[t.Cli.ResultValue].fail(
+                    "mod --projects selects repositories outside the governed "
+                    f"workspace: {tuple(sorted(str(item) for item in outside))}"
+                )
         if governed == frozenset({root}):
             return super().mod(request, progress)
         inputs = flext_infra.u.Infra.load_codegen_inputs(root)
@@ -316,24 +338,38 @@ class FlextInfra(
             repository.distribution: repository_root
             for repository_root, repository in by_root.items()
         }
+        failures: list[tuple[str, str]] = []
         for distribution in ordered:
             repository_root = by_distribution[distribution]
+            if repository_root not in selected_roots:
+                continue
             progress.emit(f"mod: repository {distribution} root={repository_root}")
             child_request = (
                 request
                 if repository_root == root
                 else m.Infra.ModCommand(
                     repository_root=repository_root,
+                    projects=None,
+                    verbose=request.verbose,
                     check=request.check,
                     dry_run_mode=request.dry_run_mode,
+                    rename_plan=request.rename_plan,
                     consumer_roots=request.consumer_roots,
                     rule_id=request.rule_id,
                     rule_ids=request.rule_ids,
                 )
             )
             completed = super().mod(child_request, progress)
-            if completed.failure:
+            if completed.success:
+                continue
+            if request.apply:
                 return completed
+            failures.append((distribution, completed.error or "mod failed"))
+        if failures:
+            return r[t.Cli.ResultValue].fail(
+                f"mod failed in {len(failures)} repositories: "
+                + "; ".join(f"{name}: {error}" for name, error in failures)
+            )
         return r[t.Cli.ResultValue].ok(value=True)
 
     @staticmethod

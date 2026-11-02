@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 from typing import TYPE_CHECKING, Annotated
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, p, r, t, u
 from flext_infra._models.deps import (
     GitSourceRefFromField,
     GitSourceRefToField,
@@ -29,8 +29,6 @@ from flext_infra.refactor import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraPyprojectModernizerDocument(

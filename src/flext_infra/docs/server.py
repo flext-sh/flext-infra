@@ -14,13 +14,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.docs import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraDocServer(FlextInfraDocServiceBase):

@@ -37,9 +37,7 @@ from typing import TypeGuard, TypeIs
 
 from flext_infra import c, p, t
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodNativePackage
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 
 class FlextInfraUtilitiesCodemodTypeSetRules:

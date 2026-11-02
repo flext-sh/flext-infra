@@ -25,7 +25,7 @@ from flext_infra import (
     workspace as workspace_services,
 )
 from flext_infra.codegen import FlextInfraCodegenPreconditions
-from flext_infra.codegen._conform.plan import FlextInfraCodegenConformPlan
+from flext_infra.codegen._conform import FlextInfraCodegenConformPlan
 
 
 class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):

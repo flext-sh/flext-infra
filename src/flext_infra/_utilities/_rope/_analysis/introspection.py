@@ -13,8 +13,10 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m
 from flext_infra._utilities import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

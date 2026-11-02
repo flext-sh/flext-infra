@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, p, u
@@ -30,28 +30,17 @@ class FlextInfraReadonlyNamespace:
     ) -> frozenset[tuple[tuple[Path, int, int], str]]:
         """Authenticate the findings an operator-decided exemption names.
 
-        The publication policy is authenticated per identity from source,
-        never by name or file:
-
-        - ``non-pep695-type-alias`` ("Exceção UP040 por identidade"): a PEP 613
-          facade class publication, authenticated by the facade owner;
+        The naming policy is authenticated per identity from source, never by
+        name or file: ``invalid-function-name`` on a protocol property that
+        mirrors a published settings branch field.
 
         Returns:
             ``((path, row, column), rule)`` for each authenticated finding.
 
         """
-        alias_rule = c.Infra.RUFF_NON_PEP695_TYPE_ALIAS
-        rows: MutableMapping[str, MutableMapping[Path, set[int]]] = {
-            alias_rule: {},
-        }
-        naming_rule = "invalid-function-name"
-        if not any(finding.code in {alias_rule, naming_rule} for finding in findings):
+        naming_rule = c.Infra.RUFF_INVALID_FUNCTION_NAME
+        if not any(finding.code == naming_rule for finding in findings):
             return frozenset()
-        for finding in findings:
-            if finding.code in rows:
-                rows[finding.code].setdefault(Path(finding.file).resolve(), set()).add(
-                    finding.line
-                )
         exempt: set[tuple[tuple[Path, int, int], str]] = set()
         # N802 on a protocol property mirrors a published settings branch
         # field (ADR-005: ``settings.<Namespace>.*`` carries the namespace's
@@ -60,18 +49,6 @@ class FlextInfraReadonlyNamespace:
         with u.Infra.facade_source_project(
             project_dir, source_project=source_project
         ) as (project, sources):
-            if rows[alias_rule]:
-                exempt.update(
-                    (identity, alias_rule)
-                    for identity in u.Infra.facade_class_publications(
-                        project_dir,
-                        {
-                            path: frozenset(lines)
-                            for path, lines in rows[alias_rule].items()
-                        },
-                        source_project=project,
-                    )
-                )
             exempt.update(
                 (identity, naming_rule)
                 for identity in cls._settings_branch_properties(

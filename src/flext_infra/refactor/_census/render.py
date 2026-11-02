@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from flext_infra import p
+
 
 class FlextInfraRefactorCensusRender:
     """Plain-text rendering of the census WorkspaceReport.

@@ -20,14 +20,16 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
     FlextInfraUtilitiesTransformerHeader,
 )
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeImports,
+    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeSource,
+)
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:
@@ -328,9 +330,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
 
         ``Name: TypeAlias = Owner`` binds the class itself; its PEP 695 rewrite
         binds a ``TypeAliasType`` instead, so every runtime use of ``Name`` as
-        the class breaks. A move keeps these in the PEP 613 form (operator
-        decision 2026-10-25, "Exceção UP040 por identidade"); only real aliases
-        become ``type`` statements. The class is proved by native Rope
+        the class breaks. A move keeps these in the PEP 613 form; only real
+        aliases become ``type`` statements. The class is proved by native Rope
         identity, never by spelling.
 
         Returns:

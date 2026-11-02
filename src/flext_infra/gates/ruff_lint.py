@@ -465,13 +465,12 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
     ) -> Sequence[p.Infra.Issue]:
         """Remove exactly the findings an authenticated identity exempts.
 
-        The readonly-namespace owner authenticates each operator-decided
-        publication exemption (2026-10-25: "Exceção UP040 por identidade")
-        at the reported file, row, column and rule. UP040 is
-        also unfixable at the tooling SSOT, because its fix would replace a
-        published class with a ``TypeAliasType``. Every other finding, every
+        The readonly-namespace owner authenticates each naming exemption at
+        the reported file, row, column and rule. Every other finding, every
         other rule and every unauthenticated row remains blocking; nothing is
-        exempt by name or by file.
+        exempt by name or by file. UP040 is never exempt: it is also unfixable
+        at the tooling SSOT, because its fix would replace a published class
+        with a ``TypeAliasType``.
 
         Returns:
             The findings that still block the verdict.

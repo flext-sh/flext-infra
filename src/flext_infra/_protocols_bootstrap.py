@@ -1437,6 +1437,97 @@ def _protocol_holders(
     return tuple(holders)
 
 
+def _declared_module_exports(tree: ast.Module) -> tuple[str, ...] | None:
+    """Read one module's literal ``__all__`` through its syntax tree.
+
+    Returns:
+        The declared export names in source order, or ``None`` without ``__all__``.
+
+    Raises:
+        ValueError: ``__all__`` is not a literal list or tuple of strings.
+
+    """
+    for statement in tree.body:
+        if isinstance(statement, ast.Assign):
+            targets, value = statement.targets, statement.value
+        elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
+            targets, value = [statement.target], statement.value
+        else:
+            continue
+        if not any(
+            isinstance(target, ast.Name) and target.id == "__all__"
+            for target in targets
+        ):
+            continue
+        if not isinstance(value, (ast.List, ast.Tuple)) or not all(
+            isinstance(item, ast.Constant) and isinstance(item.value, str)
+            for item in value.elts
+        ):
+            message = "__all__ is not a literal sequence of strings"
+            raise ValueError(message)
+        return tuple(
+            item.value
+            for item in value.elts
+            if isinstance(item, ast.Constant) and isinstance(item.value, str)
+        )
+    return None
+
+
+def _family_member_modules(
+    directory: Path, *, sources: Mapping[Path, str]
+) -> tuple[Path, ...]:
+    """List the direct modules of one protocol family package, initializer apart."""
+    return tuple(
+        sorted({
+            path
+            for path in (*directory.glob("*.py"), *sources)
+            if path.parent == directory
+            and path.suffix == ".py"
+            and path.name != "__init__.py"
+            and (path in sources or path.is_file())
+        })
+    )
+
+
+def _family_declaring_module(
+    protocol_root: Path,
+    prefix: str,
+    provider: str,
+    name: str,
+    *,
+    sources: Mapping[Path, str],
+) -> str | None:
+    """Resolve a name imported through a family package to its declaring module.
+
+    The family package's own initializer is a projection, never an authority:
+    the declaring module is elected by scanning the package's modules' ``__all__``.
+
+    Returns:
+        The absolute module declaring ``name``, or ``None`` when ``provider`` is
+        not a protocol family package or none of its modules declares ``name``.
+
+    Raises:
+        ValueError: More than one module of the family declares ``name``.
+
+    """
+    if not provider.startswith(f"{prefix}."):
+        return None
+    relative = provider.removeprefix(f"{prefix}.")
+    directory = protocol_root.joinpath(*relative.split("."))
+    candidates: list[str] = []
+    for path in _family_member_modules(directory, sources=sources):
+        tree = ast.parse(_protocol_source(path, sources=sources), filename=str(path))
+        if name in (_declared_module_exports(tree) or ()):
+            candidates.append(f"{provider}.{path.stem}")
+    if len(candidates) > 1:
+        message = (
+            f"protocol family export is declared by several modules: "
+            f"{provider}.{name} -> {', '.join(candidates)}"
+        )
+        raise ValueError(message)
+    return candidates[0] if candidates else None
+
+
 def _holder_base_names(
     node: ast.ClassDef,
     holders: Mapping[str, str],
@@ -1474,9 +1565,18 @@ def _holder_base_names(
                 else {}
             )
             for imported in statement.names:
+                declaring = (
+                    _family_declaring_module(
+                        package_root, prefix, provider, imported.name, sources=sources
+                    )
+                    if imported.name not in exports
+                    else None
+                )
                 origin = (
                     f"{prefix}{exports[imported.name]}.{imported.name}"
                     if imported.name in exports
+                    else f"{declaring}.{imported.name}"
+                    if declaring is not None
                     else f"{provider}.{imported.name}"
                 )
                 bindings[imported.asname or imported.name] = origin
@@ -1993,6 +2093,156 @@ def plan_protocol_facades(
     return sources
 
 
+def _family_export_key(name: str) -> tuple[int, str]:
+    """Order one public name like the lazy-init renderer: constants, classes, rest."""
+    return (0 if name.isupper() else 1 if name[:1].isupper() else 2, name)
+
+
+def _family_init_docstring(module_name: str) -> str:
+    """Return the package docstring the lazy-init renderer derives from the path."""
+    label = ". ".join(
+        " ".join(word.capitalize() for word in part.strip("_").split("_"))
+        for part in module_name.split(".")
+    )
+    return (
+        f'"""{label} package.\n\n'
+        "Copyright (c) 2026 FLEXT Team. All rights reserved.\n"
+        "SPDX-License-Identifier: MIT\n"
+        '"""'
+    )
+
+
+def _render_family_init(
+    module_name: str, members: Sequence[tuple[str, Sequence[str]]]
+) -> str:
+    """Render one protocol family initializer in the lazy-init generator layout.
+
+    The result carries the generator header, so ``make gen`` owns it afterwards.
+
+    Returns:
+        The initializer source: type-only imports, ``__all__`` and the lazy mapping.
+
+    Raises:
+        ValueError: Two modules of the family declare the same export.
+
+    """
+    owners: dict[str, str] = {}
+    for stem, names in members:
+        for name in names:
+            if name in owners:
+                message = (
+                    f"protocol family export is declared by several modules: "
+                    f"{module_name}.{name} -> {owners[name]}, {stem}"
+                )
+                raise ValueError(message)
+            owners[name] = stem
+    imports: list[str] = []
+    for stem, names in sorted(members, key=operator.itemgetter(0)):
+        if not names:
+            continue
+        ordered = sorted(names, key=_family_export_key)
+        compact = f"    from {module_name}.{stem} import {', '.join(ordered)}"
+        imports.append(
+            compact
+            if len(compact) <= _MAX_IMPORT_LINE_LENGTH
+            else f"    from {module_name}.{stem} import (\n"
+            + "".join(f"        {name},\n" for name in ordered)
+            + "    )"
+        )
+    exported = sorted(owners, key=_family_export_key)
+    inner = ", ".join(f'"{name}"' for name in exported)
+    compact_all = f"({inner},)" if len(exported) == 1 else f"({inner})"
+    exports = (
+        compact_all
+        if len("__all__: tuple[str, ...] = ") + len(compact_all)
+        <= _MAX_IMPORT_LINE_LENGTH
+        else "(\n" + "".join(f'    "{name}",\n' for name in exported) + ")"
+    )
+    entries: list[str] = []
+    for name in exported:
+        line = f'        "{name}": ".{owners[name]}",'
+        entries.append(
+            line
+            if len(line) <= _MAX_IMPORT_LINE_LENGTH
+            else f'        "{name}": (\n            ".{owners[name]}"\n        ),'
+        )
+    mapping = "\n".join(entries)
+    return (
+        "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
+        f"{_family_init_docstring(module_name)}\n\n"
+        "from __future__ import annotations\n\n"
+        "from types import MappingProxyType\n"
+        "from typing import TYPE_CHECKING\n\n"
+        "from flext_core.lazy import install_lazy_exports\n\n"
+        + (f"if TYPE_CHECKING:\n{chr(10).join(imports)}\n\n\n" if imports else "")
+        + f"__all__: tuple[str, ...] = {exports}\n\n"
+        "install_lazy_exports(\n"
+        "    __name__,\n"
+        "    globals(),\n"
+        "    MappingProxyType({\n"
+        f"{mapping}\n"
+        "    }),\n"
+        "    public_exports=__all__,\n"
+        ")\n"
+    )
+
+
+def plan_protocol_family_inits(
+    repository_root: Path,
+    *,
+    package_name: str,
+    declared_sources: Mapping[Path, str],
+) -> Mapping[Path, str]:
+    """Plan a lazy-export initializer for every protocol family package lacking one.
+
+    A family package is a private (underscore-prefixed) directory of projected
+    protocol modules. Its exports derive from the ``__all__`` of its direct
+    modules; an existing initializer is a generator projection and is never
+    rewritten here.
+
+    Returns:
+        The initializer sources to create, keyed by destination path.
+
+    Raises:
+        ValueError: A family module declares no literal ``__all__``.
+
+    """
+    sources = dict(declared_sources)
+    package_root = repository_root / "src" / Path(*package_name.split("."))
+    protocol_root = package_root / "_protocols"
+    directories = sorted({
+        path.parent
+        for path in sources
+        if path.suffix == ".py"
+        and path.name != "__init__.py"
+        and path.parent != protocol_root
+        and path.parent.is_relative_to(protocol_root)
+        and path.parent.name.startswith("_")
+    })
+    planned: dict[Path, str] = {}
+    for directory in directories:
+        initializer = directory / "__init__.py"
+        if initializer in sources:
+            continue
+        members: list[tuple[str, tuple[str, ...]]] = []
+        for path in _family_member_modules(directory, sources=sources):
+            tree = ast.parse(
+                _protocol_source(path, sources=sources), filename=str(path)
+            )
+            names = _declared_module_exports(tree)
+            if names is None:
+                message = f"protocol family module declares no __all__: {path}"
+                raise ValueError(message)
+            members.append((path.stem, names))
+        module_name = ".".join((
+            package_name,
+            "_protocols",
+            *directory.relative_to(protocol_root).parts,
+        ))
+        planned[initializer] = _render_family_init(module_name, members)
+    return planned
+
+
 def _protocol_source(path: Path, *, sources: Mapping[Path, str]) -> str:
     """Read a declared candidate without importing its runtime package.
 
@@ -2062,6 +2312,7 @@ def _publish_protocol_sources(
                         path, required=True
                     ).unwrap()
             if current != directory and current.name.startswith("_"):
+                destinations.add(current / "__init__.py")
                 destinations.add(
                     current.parent / f"{current.name.removeprefix('_')}.py"
                 )
@@ -2111,6 +2362,28 @@ def publish_protocol_facades(repository_root: Path) -> tuple[Path, ...]:
         root,
         lambda sources: plan_protocol_facades(root, declared_sources=sources),
         package_name="flext_infra",
+    )
+
+
+def publish_protocol_family_inits(repository_root: Path) -> tuple[Path, ...]:
+    """Publish the missing family initializers of the declared protocol package.
+
+    Returns:
+        The native guarded receipt, including only changed paths.
+
+    """
+    root = repository_root.resolve(strict=True)
+    package_name = _declared_protocol_package(
+        root, (root / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    return _publish_protocol_sources(
+        root,
+        lambda sources: (
+            plan_protocol_family_inits(
+                root, package_name=package_name, declared_sources=sources
+            )
+            | {}
+        ),
     )
 
 

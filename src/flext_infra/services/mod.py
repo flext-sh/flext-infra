@@ -9,12 +9,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
 
 import flext_infra
-from flext_infra import c, codemod, m, r, t
+from flext_infra import c, codemod, m, p, r, t
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod.loop import (
@@ -24,9 +23,6 @@ from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseImportNormalization,
     FlextInfraCodemodLoopPhaseNamespaceRelocation,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraModHandlers:

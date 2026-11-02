@@ -14,7 +14,7 @@ from flext_infra.codegen._conform.artifact_render import (
     FlextInfraCodegenConformArtifactRender,
 )
 from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.services._codegen.vscode import FlextInfraCodegenVscode
+from flext_infra.services._codegen import FlextInfraCodegenVscode
 
 
 class FlextInfraCodegenConformEditor(

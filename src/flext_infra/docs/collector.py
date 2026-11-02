@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, u
+from flext_infra import m, p, r, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraDocCollector:

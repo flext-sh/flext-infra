@@ -17,7 +17,7 @@ from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )

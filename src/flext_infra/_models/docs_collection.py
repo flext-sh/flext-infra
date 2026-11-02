@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, Literal, Self
 from flext_cli import m, p
 
 from flext_infra import t
-from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
+from flext_infra._models._config import FlextInfraModelsConfigArtifact
 
 if TYPE_CHECKING:
     from flext_infra import p

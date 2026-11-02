@@ -17,7 +17,10 @@ from pathlib import Path
 
 from flext_infra import c, p
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeStructure,
+)
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -30,7 +33,6 @@ from flext_infra._utilities._rope.runtime_types import (
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesCodemodBindingChain:

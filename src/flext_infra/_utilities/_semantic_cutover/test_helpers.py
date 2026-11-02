@@ -11,8 +11,8 @@ from pathlib import Path
 
 from flext_infra import c, m, p
 from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.module_patch import FlextInfraUtilitiesRopeModulePatch
-from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )

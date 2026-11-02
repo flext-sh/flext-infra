@@ -18,7 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRepository,
 )
-from flext_infra._utilities._git.remote import FlextInfraUtilitiesGitRemote
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRemote
 
 _GITHUB_REPO_PATH_SEGMENTS = 2
 """A GitHub repository path is exactly ``<organization>/<repository>``."""

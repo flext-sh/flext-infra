@@ -11,11 +11,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, config, m, r, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import t
 
 
 class FlextInfraGatesSmells(FlextInfraGates):

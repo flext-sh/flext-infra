@@ -21,10 +21,13 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesPrivateImportFacades,
 )
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeStructure,
+)
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -34,7 +37,6 @@ from flext_infra._utilities._rope.runtime_refactors import (
 from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverClassScope,

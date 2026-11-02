@@ -14,10 +14,10 @@ from flext_cli import u
 
 from flext_infra import c, config, m
 from flext_infra._utilities._docs import (
+    FlextInfraUtilitiesDocsBase,
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGithubLinks,
 )
-from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from pathlib import Path

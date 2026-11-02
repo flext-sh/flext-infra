@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from flext_infra import c, m
+from flext_infra import c, m, p
 
 
 class FlextInfraDocsAuditorReport:

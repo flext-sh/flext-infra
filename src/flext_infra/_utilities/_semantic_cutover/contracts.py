@@ -34,9 +34,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
-from flext_infra._utilities._pyproject.document import (
-    FlextInfraUtilitiesPyprojectDocument,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectDocument
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,

@@ -14,7 +14,7 @@ from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
+from flext_infra._models._git import FlextInfraModelsGitIdentity
 
 
 class FlextInfraModelsCheck:

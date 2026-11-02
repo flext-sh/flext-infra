@@ -23,7 +23,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRepository,
 )
-from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocsRender:

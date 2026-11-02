@@ -11,7 +11,7 @@ from functools import partial
 from pathlib import Path
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t, u
-from flext_infra.codegen._conform.bootstrap import FlextInfraCodegenConformBootstrap
+from flext_infra.codegen._conform import FlextInfraCodegenConformBootstrap
 from flext_infra.deps import phases as dependency_phases
 
 

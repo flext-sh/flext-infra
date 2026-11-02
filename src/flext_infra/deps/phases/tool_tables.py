@@ -22,13 +22,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeProjects
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._pyproject.toml_phases import (
     FlextInfraUtilitiesPyprojectTomlPhases,
 )
-from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraToolTablesPhase:

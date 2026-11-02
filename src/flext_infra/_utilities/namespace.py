@@ -27,12 +27,14 @@ from flext_infra._utilities import (
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeSource,
+)
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesCodegenNamespace:

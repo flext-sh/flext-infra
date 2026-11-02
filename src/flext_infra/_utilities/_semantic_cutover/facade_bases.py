@@ -41,8 +41,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+)
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -56,11 +58,9 @@ from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticComposition,
     FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
     FlextInfraUtilitiesSemanticCutoverFacadeOwners,
-)
-from flext_infra._utilities._semantic_cutover.composition import (
-    FlextInfraUtilitiesSemanticComposition,
 )
 
 if TYPE_CHECKING:

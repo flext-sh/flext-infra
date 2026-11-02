@@ -8,13 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.deps._modernizer import FlextInfraPyprojectModernizerTooling
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):

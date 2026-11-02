@@ -18,8 +18,10 @@ from importlib.util import resolve_name
 from pathlib import Path
 
 from flext_infra import c, p, t
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeRuntime,
+)
 
 
 class FlextInfraUtilitiesPrivateImportFacades:

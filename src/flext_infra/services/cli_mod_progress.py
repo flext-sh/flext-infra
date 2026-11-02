@@ -10,6 +10,8 @@ import time
 
 from flext_cli import cli
 
+from flext_infra import p
+
 
 class FlextInfraCliModProgress:
     """Render mod progress at the CLI transport boundary, timed per phase."""

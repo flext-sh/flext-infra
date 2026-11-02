@@ -18,10 +18,10 @@ from typing import ClassVar
 from rope.base import ast
 
 from flext_infra import c, p, t
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisSourceScan:

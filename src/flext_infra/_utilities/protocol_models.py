@@ -43,8 +43,8 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeSource,
 )
-from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
@@ -63,6 +63,7 @@ class _SourceFieldProjection:
 
     declaration: ast.AnnAssign
     read_only: bool
+    description: str | None = None
 
 
 class FlextInfraUtilitiesModelsProtocol:
@@ -2146,7 +2147,13 @@ class FlextInfraUtilitiesModelsProtocol:
                         annotation = ast.unparse(field.annotation)
                         if projection.read_only:
                             declarations.append(
-                                f"@property\ndef {field.target.id}(self) -> {annotation}: ..."
+                                ast.unparse(
+                                    self._source_property_declaration(
+                                        field.target.id,
+                                        field.annotation,
+                                        projection.description,
+                                    )
+                                )
                             )
                         else:
                             declarations.append(f"{field.target.id}: {annotation}")
@@ -2715,8 +2722,55 @@ class FlextInfraUtilitiesModelsProtocol:
                             f"{method.name}"
                         )
                         raise ValueError(message) from error
-            projected.body = [ast.Expr(value=ast.Constant(value=Ellipsis))]
+            projected.body = [self._source_member_docstring(ast.get_docstring(method))]
             return ast.fix_missing_locations(projected)
+
+        def _source_member_docstring(self, description: str | None) -> ast.Expr:
+            """Derive a lint-clean one-line docstring for a projected member.
+
+            The owning model's own description (``Field(description=...)`` or the
+            authored docstring) is the source; a member without one receives the
+            localized catalog message.
+
+            Returns:
+                A docstring-only body statement ending in sentence punctuation.
+
+            """
+            lines = [line.strip() for line in (description or "").splitlines()]
+            summary = next((line for line in lines if line), None)
+            if summary is None:
+                summary = c.Infra.DocumentationText.MODEL_PROTOCOL_MEMBER.localized(
+                    self.documentation_language
+                )
+            if not summary.endswith((".", "?", "!")):
+                summary = f"{summary}."
+            return ast.Expr(value=ast.Constant(value=summary))
+
+        def _source_property_declaration(
+            self, name: str, annotation: ast.expr, description: str | None
+        ) -> ast.FunctionDef:
+            """Project one read-only field as a documented Protocol property.
+
+            Returns:
+                The property declaration whose body is its derived docstring.
+
+            """
+            return ast.fix_missing_locations(
+                ast.FunctionDef(
+                    name=name,
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[ast.arg(arg="self")],
+                        kwonlyargs=[],
+                        kw_defaults=[],
+                        defaults=[],
+                    ),
+                    body=[self._source_member_docstring(description)],
+                    decorator_list=[ast.Name(id="property", ctx=ast.Load())],
+                    returns=annotation,
+                    type_params=[],
+                )
+            )
 
         def _source_declared_fields(
             self,
@@ -2755,19 +2809,26 @@ class FlextInfraUtilitiesModelsProtocol:
                     annotation = final or statement.annotation
                     metadata = [statement.value, *ast.walk(statement.annotation)]
                     field_frozen = False
+                    description = None
                     for value in metadata:
                         if not isinstance(value, ast.Call) or not self._denotes(
                             value.func, scope, "pydantic", "Field"
                         ):
                             continue
                         for keyword in value.keywords:
+                            if (
+                                keyword.arg == "description"
+                                and isinstance(keyword.value, ast.Constant)
+                                and isinstance(keyword.value.value, str)
+                            ):
+                                description = keyword.value.value
                             if keyword.arg != "frozen":
                                 continue
                             if not isinstance(
                                 keyword.value, ast.Constant
                             ) or not isinstance(keyword.value.value, bool | type(None)):
                                 message = f"field frozen metadata is not a native literal: {node.name}.{name}"
-                                raise ValueError(message)
+                                raise TypeError(message)
                             field_frozen = bool(keyword.value.value)
                     read_only = frozen or final is not None or field_frozen
                 elif isinstance(
@@ -2780,6 +2841,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         statement.returns,
                         True,
                     )
+                    description = ast.get_docstring(statement)
                 else:
                     continue
                 structural = self._source_structural_annotation(
@@ -2797,6 +2859,7 @@ class FlextInfraUtilitiesModelsProtocol:
                             simple=1,
                         ),
                         read_only=read_only,
+                        description=description,
                     )
                 )
             return fields
@@ -4789,11 +4852,7 @@ class FlextInfraUtilitiesModelsProtocol:
             consumer that reaches it through an annotation.
 
             Returns:
-                The projected dependency, or None for a non-model symbol or a
-                model declared outside this package.
-
-            Raises:
-                ValueError: A selected model has no mirrored local declaration.
+                The projected dependency, or None for a non-model symbol.
 
             """
             for route, model in self.models.items():
@@ -4807,20 +4866,6 @@ class FlextInfraUtilitiesModelsProtocol:
                         self.facades["p"], self.expression_name(scope, root)
                     )
                 )
-                if (
-                    not future_port
-                    and binding is not None
-                    and self.same_name(model, binding)
-                    and not self._owned(model)
-                ):
-                    port = self._member(self.facades["p"], route)
-                    if port is None:
-                        message = (
-                            "upstream model dependency has no published protocol: "
-                            f"{route}"
-                        )
-                        raise ValueError(message)
-                    return self._declared_port(port, route)
                 if future_port or (
                     binding is not None and self.same_name(model, binding)
                 ):

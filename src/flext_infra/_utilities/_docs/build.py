@@ -16,7 +16,7 @@ import mkdocs.config
 from flext_cli import u
 
 from flext_infra import c, m, p
-from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
+from flext_infra._utilities._docs import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from types import ModuleType

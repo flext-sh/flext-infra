@@ -9,11 +9,10 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from itertools import pairwise
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, m, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesProjectDiscovery,
@@ -24,9 +23,6 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsGeneratePlan,
     FlextInfraUtilitiesDocsRender,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsGuides:

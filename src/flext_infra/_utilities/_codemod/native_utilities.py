@@ -301,24 +301,148 @@ class FlextInfraUtilitiesCodemodNative:
         key = (root, cls._generated_key(snapshot, root, spec, rule_ids))
         rendered = snapshot.codemod_renderings.get(key)
         if rendered is None:
-            scopes = cls.codemod_native_scopes(snapshot, root, spec.scopes)
+            catalog = (
+                ()
+                if rule_ids is None
+                else cls._selected_catalog_documents(root, rule_ids)
+            )
+            scopes: Mapping[str, t.StrTuple] = (
+                cls.codemod_native_scopes(snapshot, root, spec.scopes)
+                if rule_ids is None
+                or cls._selection_consumes_scopes(spec, rule_ids, catalog)
+                else MappingProxyType({})
+            )
+            rules = cls.codemod_native_rules(
+                snapshot,
+                root,
+                spec,
+                rule_ids=rule_ids,
+                facts={
+                    c.Infra.CODEMOD_SCOPE_FACTS: m.Infra.CodemodScopeFacts(
+                        scopes=scopes
+                    )
+                },
+            )
+            utilities: Mapping[str, t.JsonMapping] = (
+                cls.native_utilities(snapshot, root, spec.producers)
+                if rule_ids is None
+                or cls._references_generated_utilities((*catalog, *rules.values()))
+                else MappingProxyType({})
+            )
             rendered = m.Infra.CodemodNativeGenerated(
-                utilities=cls.native_utilities(snapshot, root, spec.producers),
-                rules=cls.codemod_native_rules(
-                    snapshot,
-                    root,
-                    spec,
-                    rule_ids=rule_ids,
-                    facts={
-                        c.Infra.CODEMOD_SCOPE_FACTS: m.Infra.CodemodScopeFacts(
-                            scopes=scopes
-                        )
-                    },
-                ),
-                scopes=scopes,
+                utilities=utilities, rules=rules, scopes=scopes
             )
             snapshot.codemod_renderings[key] = rendered
         return rendered
+
+    @staticmethod
+    def _selected_catalog_documents(
+        root: Path, rule_ids: Sequence[str]
+    ) -> tuple[t.JsonMapping, ...]:
+        """Read the authored catalog documents of an exact rule selection.
+
+        Generated identities are not catalog rules and yield nothing here;
+        their renderers produce them.
+
+        Returns:
+            The authored document of every selected catalog rule.
+
+        """
+        selected = frozenset(rule_ids)
+        owner = FlextInfraUtilitiesCodemodRules
+        plan = owner.codemod_compose_rule_plan(root, {root: None}).unwrap()
+        documents: dict[Path, Sequence[t.JsonMapping]] = {}
+        for ruleset in plan.rulesets:
+            owner.codemod_catalog_rules(
+                ruleset.provider, ruleset.config, documents=documents
+            ).unwrap()
+        return tuple(
+            document
+            for rule in plan.rules
+            if rule.id in selected
+            for document in documents[rule.resource.resolve()]
+            if document.get("id") == rule.id
+        )
+
+    @classmethod
+    def _selection_consumes_scopes(
+        cls,
+        spec: p.Infra.CodegenAstGrepSpec,
+        rule_ids: Sequence[str],
+        catalog: Sequence[t.JsonMapping],
+    ) -> bool:
+        """Whether an exact rule selection reads the project's file scopes.
+
+        The file-scope producers are rope-backed and dominate a rendering, so
+        they run only for a consumer the selection names: a selected renderer
+        whose declared facts are the scope facts, or a selected catalog rule
+        that declares ``metadata.scope``. A selection of any other rule ids
+        reads no scope.
+
+        Returns:
+            Whether a selected rule consumes file scopes.
+
+        """
+        selected = frozenset(rule_ids)
+        if any(
+            entry.facts == c.Infra.CODEMOD_SCOPE_FACTS
+            and cls._renderer_selects_rule_ids(entry, selected)
+            for entry in spec.renderers
+        ):
+            return True
+        return any(
+            isinstance(metadata := document.get("metadata"), Mapping)
+            and metadata.get(c.Infra.CODEMOD_SCOPE_METADATA_KEY) is not None
+            for document in catalog
+        )
+
+    @classmethod
+    def _references_generated_utilities(
+        cls, documents: Sequence[t.JsonMapping]
+    ) -> bool:
+        """Whether selected rule documents call a utility outside their own.
+
+        A native ``matches`` reference resolves to a utility the document
+        declares itself (``utils``) or to one a provider publishes; the
+        producers emit the latter, so they run only when a selected document
+        references one.
+
+        Returns:
+            Whether any document references a non-local utility.
+
+        """
+        return any(
+            references.difference(
+                document["utils"] if isinstance(document.get("utils"), Mapping) else ()
+            )
+            for document in documents
+            if (references := cls._matched_utilities(document))
+        )
+
+    @classmethod
+    def _matched_utilities(cls, value: t.JsonValue | t.JsonMapping) -> frozenset[str]:
+        """Collect every utility identity a native rule references by ``matches``.
+
+        Returns:
+            The identities named by ``matches`` anywhere under the value.
+
+        """
+        if isinstance(value, Mapping):
+            found: set[str] = set()
+            for key, item in value.items():
+                if key == "matches":
+                    found.update(
+                        (item,)
+                        if isinstance(item, str)
+                        else tuple(item)
+                        if isinstance(item, Mapping)
+                        else ()
+                    )
+                found.update(cls._matched_utilities(item))
+            return frozenset(found)
+        if isinstance(value, list):
+            return frozenset().union(*(cls._matched_utilities(item) for item in value))
+        return frozenset()
 
     @staticmethod
     def _generated_key(

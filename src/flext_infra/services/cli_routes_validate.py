@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, docs, infra, m, maintenance, services, u
-from flext_infra.docs.auditor import FlextInfraDocAuditor
+from flext_infra import c, docs, infra, m, maintenance, p, services, u
+from flext_infra.docs import FlextInfraDocAuditor
 
 
 class FlextInfraValidationRoutes:

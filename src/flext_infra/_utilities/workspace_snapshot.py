@@ -26,12 +26,14 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
 )
+from flext_infra._utilities._rope import (
+    FlextInfraRopeProject,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )

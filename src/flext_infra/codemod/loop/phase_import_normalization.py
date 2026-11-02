@@ -8,14 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraCodemodLoopPhaseImportNormalization:

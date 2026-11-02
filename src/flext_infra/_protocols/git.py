@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_infra import t
-from flext_infra._protocols._git.identity import FlextInfraProtocolsGitIdentity
+from flext_infra._protocols._git import FlextInfraProtocolsGitIdentity
 from flext_infra._protocols._git.worktree_facts import (
     FlextInfraProtocolsGitWorktreeFacts,
 )

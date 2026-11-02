@@ -11,13 +11,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
-from flext_infra import c, m, r, s, t, u
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.validate import FlextInfraValidateSkill
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraSkillValidator(

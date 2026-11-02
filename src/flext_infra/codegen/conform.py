@@ -21,7 +21,7 @@ from flext_infra import (
     u,
     workspace as workspace_services,
 )
-from flext_infra.codegen._conform.execute import FlextInfraCodegenConformExecute
+from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
 
 
 class FlextInfraCodegenConform:

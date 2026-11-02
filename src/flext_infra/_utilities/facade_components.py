@@ -1072,17 +1072,7 @@ class FlextInfraUtilitiesFacadeComponents:
             cls._facade_planned_imports(
                 cls._facade_declaring_packages(project, resolved.value[2]),
                 (*composed.value[1], *published.value),
-                type_alias=bool(
-                    published.value
-                    or alias_names
-                    or (
-                        family is c.Infra.FacadeFamily.M
-                        and namespace.get_name() == "Infra"
-                        and cls._facade_model_member_aliases(
-                            namespace, composed.value[0]
-                        )
-                    )
-                ),
+                type_alias=bool(published.value or alias_names),
             ),
             alias_names,
         ))
@@ -2222,11 +2212,6 @@ class FlextInfraUtilitiesFacadeComponents:
             (layout, end),
             (alias_names, step),
             retained,
-            model_aliases=(
-                cls._facade_model_member_aliases(actual, retained)
-                if family is c.Infra.FacadeFamily.M and actual.get_name() == "Infra"
-                else ()
-            ),
         )
         class_line = scope.get_start()
         desired_bases = tuple(expression for expression, _base in retained)
@@ -2270,8 +2255,6 @@ class FlextInfraUtilitiesFacadeComponents:
         frame: tuple[p.Infra.RopeSourceClassLayout, int],
         rendering: tuple[frozenset[str], int],
         retained: Sequence[tuple[str, p.Infra.RopePyObject]],
-        *,
-        model_aliases: Sequence[tuple[str, str]],
     ) -> tuple[str | tuple[str, str], ...]:
         """Split the namespace body, retiring obsolete generated bindings.
 
@@ -2306,65 +2289,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 current.lines.get_line_start(scope.get_start()) : layout.region[0]
             ]
             return (f"\n{class_indent}{' ' * step}pass",)
-        if not model_aliases:
-            return body_source
-        _alias_names, step = rendering
-        class_indent = source[
-            current.lines.get_line_start(scope.get_start()) : layout.region[0]
-        ]
-        aliases = "".join(
-            f"\n{class_indent}{' ' * step}{name}: TypeAlias = {value}"
-            for name, value in model_aliases
-        )
-        return (*body_source, aliases)
-
-    @staticmethod
-    def _facade_model_member_aliases(
-        namespace: p.Infra.RopeSourceClass,
-        retained: Sequence[tuple[str, p.Infra.RopePyObject]],
-    ) -> tuple[tuple[str, str], ...]:
-        """Materialize model members otherwise visible only through holder MRO.
-
-        Static analyzers do not follow the runtime holder composition used by a
-        models facade. The direct aliases retain the effective MRO identity while
-        giving generated conformance evidence a declared ``m.Infra.Member``.
-
-        Returns:
-            Unique member aliases in effective holder and lexical name order.
-
-        """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
-        module = namespace.get_module()
-        defined = (
-            {}
-            if module is not None
-            and module.source_code.startswith(c.Infra.AUTOGEN_HEADER)
-            else namespace.get_scope().get_defined_names()
-        )
-        aliases: dict[str, str] = {}
-        for expression, holder in retained:
-            if not types.py_class(holder):
-                continue
-            pending = [(expression, holder)]
-            visited: set[int] = set()
-            while pending:
-                owner_expression, owner = pending.pop(0)
-                if not types.py_class(owner) or id(owner) in visited:
-                    continue
-                visited.add(id(owner))
-                pending.extend(
-                    (owner_expression, base) for base in owner.get_superclasses()
-                )
-                for name, binding in sorted(owner.get_attributes().items()):
-                    value = binding.get_object()
-                    if not types.py_class(value):
-                        continue
-                    member_expression = f"{owner_expression}.{name}"
-                    pending.append((member_expression, value))
-                    if name.startswith("_") or name in defined or name in aliases:
-                        continue
-                    aliases[name] = member_expression
-        return tuple(aliases.items())
+        return body_source
 
     @classmethod
     def _facade_retired_publications(

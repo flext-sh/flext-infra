@@ -34,6 +34,10 @@ class FlextInfraConstantsDocs:
             "Structural data contract projected from the owning model.",
             "Contrato estrutural de dados projetado do modelo responsável.",
         )
+        MODEL_PROTOCOL_MEMBER = (
+            "Structural member projected from the owning model.",
+            "Membro estrutural projetado do modelo responsável.",
+        )
         MODEL_PROTOCOL_CONFORMANCE = (
             "Static instance-to-protocol evidence required by candidate admission.",
             (

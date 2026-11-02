@@ -18,7 +18,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )

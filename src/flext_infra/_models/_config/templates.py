@@ -16,8 +16,10 @@ import flext_core
 from flext_cli import m, u
 
 from flext_infra import c, p, t
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
-from flext_infra._models._config.scaffold import FlextInfraModelsConfigScaffold
+from flext_infra._models._config import (
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigScaffold,
+)
 
 
 class FlextInfraModelsConfigTemplates:

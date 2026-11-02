@@ -16,10 +16,10 @@ from flext_cli import u
 from flext_infra import c, config, m
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
+    FlextInfraUtilitiesDocsBase,
     FlextInfraUtilitiesDocsScope,
 )
-from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesDocsAuditDetectors:

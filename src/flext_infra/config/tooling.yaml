@@ -187,12 +187,9 @@ Infra:
       # its fix turns a facade class publication `Name: TypeAlias = Owner`
       # into a PEP 695 `type` statement, replacing the class with a
       # TypeAliasType (2026-10-25: `type Cli = FlextCliUtilitiesCli` killed the
-      # flext-infra CLI fleet-wide). Operator decision 2026-10-25, "Exceção
-      # UP040 por identidade": the lint verdict exempts exactly the
-      # authenticated publication identities (file, row, column, rule); every
-      # other UP040 finding blocks and is rewritten by its declared owner.
+      # flext-infra CLI fleet-wide).
       - [ unfixable, [ multi-value-repeated-key-literal, multi-value-repeated-key-variable, non-pep695-type-alias, p-print, print, pytest-duplicate-parametrize-test-cases ] ]
-      - [ extend-safe-fixes, [ relative-imports, typing-only-first-party-import, camelcase-imported-as-lowercase ] ]
+      - [ extend-safe-fixes, [ relative-imports, camelcase-imported-as-lowercase ] ]
       - [ extend-select, [ missing-blank-line-after-last-section ] ]
       ruff.lint.flake8-tidy-imports:
       - [ ban-relative-imports, all ]
@@ -472,6 +469,7 @@ Infra:
           test-like-report-private-usage: error
           other-report-private-usage: error
       pyrefly:
+        findings-exit-codes: [ 1 ]
         path-rules:
           source-dir: src
           project-root: .

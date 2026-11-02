@@ -10,8 +10,10 @@ from typing import Annotated
 
 from flext_cli import m, t
 
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
-from flext_infra._models._config.sonarcloud import FlextInfraModelsConfigSonarcloud
+from flext_infra._models._config import (
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigSonarcloud,
+)
 
 
 class FlextInfraModelsConfigRender(FlextInfraModelsConfigSonarcloud):

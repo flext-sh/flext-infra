@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import u
+from flext_infra import p, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable

@@ -32,9 +32,7 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitWorktreeDiscovery,
     FlextInfraUtilitiesGitWorktreeRoots,
 )
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 
 class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):

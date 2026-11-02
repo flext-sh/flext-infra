@@ -20,9 +20,7 @@ from flext_infra._utilities import (
 from flext_infra._utilities._git.requirement_source import (
     FlextInfraUtilitiesGitRequirementSource,
 )
-from flext_infra._utilities._pyproject.requirements import (
-    FlextInfraUtilitiesPyprojectRequirements,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectRequirements
 
 
 class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirements):

@@ -9,9 +9,8 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r
+from flext_infra import c, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFacadeComponents,
@@ -26,9 +25,6 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
     FlextInfraUtilitiesSemanticCutoverOwnMro,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticComposition(

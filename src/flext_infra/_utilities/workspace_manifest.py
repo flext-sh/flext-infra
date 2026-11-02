@@ -16,15 +16,11 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, m, r
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
-)
+from flext_infra import c, m, p, r
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesWorkspaceManifest:

@@ -9,10 +9,10 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisExports:

@@ -8,18 +8,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, r
+from flext_infra import c, p, r
 from flext_infra.codemod.duplicate_apply import FlextInfraCodemodDuplicateApply
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusCollectHelpers,
     FlextInfraRefactorCensusFilters,
 )
 from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraCodemodLoopPhaseDuplicateApply:

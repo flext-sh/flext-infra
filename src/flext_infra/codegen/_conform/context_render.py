@@ -11,9 +11,7 @@ from functools import partial
 from pathlib import Path
 
 from flext_infra import c, check as validation_services, config, m, p, r, t, u
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra.codegen._conform.pyproject_policy import (
     FlextInfraCodegenConformPyprojectPolicy,
 )

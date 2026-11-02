@@ -14,10 +14,12 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 
 from flext_infra import c, p, t
-from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
-from flext_infra._models._config.make import FlextInfraModelsConfigMake
-from flext_infra._models._config.templates import FlextInfraModelsConfigTemplates
+from flext_infra._models._config import (
+    FlextInfraModelsConfigBeads,
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigMake,
+    FlextInfraModelsConfigTemplates,
+)
 
 
 class FlextInfraModelsConfigRepository:
