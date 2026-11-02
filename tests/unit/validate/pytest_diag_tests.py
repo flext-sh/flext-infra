@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra.validate import FlextInfraPytestDiagExtractor
 from tests import c, e, m, tm
 

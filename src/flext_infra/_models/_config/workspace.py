@@ -262,6 +262,10 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Own script command routing contract"),
         ] = None
+        verb_groups: Annotated[
+            tuple[FlextInfraModelsConfigMake.MakeVerbGroupSpec, ...],
+            m.Field(description="Own ordered `make help` sections"),
+        ] = ()
 
     class CandidateBootstrapTargetSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One declared worktree and canonical conform surface."""

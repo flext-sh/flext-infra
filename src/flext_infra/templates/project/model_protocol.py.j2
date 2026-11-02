@@ -25,6 +25,10 @@ class {{ owner }}{% if bases %}({{ bases | join(', ') }}){% endif %}:
 {{ contract.declarations | join('\n') | indent((contract.depth + 2) * 4, true) }}
 {% endif %}
 {% endfor %}
+{% for alias in aliases %}
+
+    {{ alias }}
+{% endfor %}
 
 
 __all__: list[str] = [

@@ -544,10 +544,19 @@ def _deferred_protocol_import_patches(
             )
         )
     if needs_p and canonical_import is None and type_checking not in p_only_blocks:
+        # A new ``TYPE_CHECKING`` block follows every top-level import, so the
+        # guard name is bound before the block evaluates it.
+        top_level_imports = [
+            node for node in tree.body if isinstance(node, (ast.Import, ast.ImportFrom))
+        ]
         insertion = (
             offsets[type_checking.body[0].lineno - 1]
             if type_checking is not None and type_checking not in p_only_blocks
-            else _import_insertion_offset(tree, offsets)
+            else (
+                _span(top_level_imports[-1], offsets)[1]
+                if top_level_imports
+                else _import_insertion_offset(tree, offsets)
+            )
         )
         has_type_checking = any(
             isinstance(node, ast.ImportFrom)

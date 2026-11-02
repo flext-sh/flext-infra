@@ -956,6 +956,26 @@ class FlextInfraModelsConfigMake(
             tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
             m.Field(description="Ordered canonical public verbs"),
         ]
+        cli_output_argument: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[A-Z][A-Z0-9_]*$",
+                description=(
+                    "Make input every CLI-routed verb accepts to select the "
+                    "CLI output format"
+                ),
+            ),
+        ]
+        cli_output_environment: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[A-Z][A-Z0-9_]*$",
+                description=(
+                    "Environment variable the CLI settings owner reads as its "
+                    "output format"
+                ),
+            ),
+        ]
         common_verb_group: Annotated[
             str,
             m.Field(

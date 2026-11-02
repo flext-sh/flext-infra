@@ -82,14 +82,21 @@ class FlextInfraUtilitiesProtectedEditLinting:
             return normalized
         # A protected edit never publishes bytes the destination's own format
         # policy rejects: the width is the one constraint the formatter must
-        # satisfy, so a surviving E501 means the policy is unsatisfiable and
-        # the live source stays untouched. Lint findings the repair set does
-        # not own belong to ``make check``.
+        # satisfy, so an E501 the edit introduces means the policy is
+        # unsatisfiable and the live source stays untouched. An E501 already in
+        # the authored bytes, like every other lint finding the repair set does
+        # not own, belongs to ``make check``.
         remaining = cls._ruff_stdin_codes(path, normalized.value, settings=settings)
         if remaining.failure:
             return r[str].from_failure(remaining)
         width = c.Infra.FORMATTER_UNSATISFIED_CODE
-        if width in remaining.value:
+        inherited: frozenset[str] = frozenset()
+        if before_source is not None:
+            before = cls._ruff_stdin_codes(path, before_source, settings=settings)
+            if before.failure:
+                return r[str].from_failure(before)
+            inherited = before.value
+        if width in remaining.value and width not in inherited:
             return r[str].fail(f"ruff check failed for {path}: {width}")
         return normalized
 

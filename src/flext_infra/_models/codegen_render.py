@@ -96,6 +96,13 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         contracts: tuple[ModelProtocolContract, ...] = m.Field(
             description="All data contracts declared by the corresponding model module"
         )
+        aliases: tuple[str, ...] = m.Field(
+            default=(),
+            description=(
+                "Structural mirrors of the model namespace's type aliases whose "
+                "value names projected models, as complete ``type`` statements"
+            ),
+        )
         documentation_language: t.Infra.DocumentationLanguage = m.Field(
             default="en", description="Project-local generated documentation language"
         )

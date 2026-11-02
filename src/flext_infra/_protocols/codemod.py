@@ -136,7 +136,7 @@ class FlextInfraProtocolsCodemod:
     class AstGrepReport(Protocol):
         """Structural data contract projected from the owning model."""
 
-        root: tuple[AstGrepDiagnostic, ...]
+        root: tuple[p.Infra.AstGrepDiagnostic, ...]
 
     @runtime_checkable
     class FamilyFlattenRule(Protocol):

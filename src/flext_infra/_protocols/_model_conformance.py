@@ -1199,7 +1199,7 @@ if TYPE_CHECKING:
     def _model_protocol_391() -> type[p.Infra.ModOccurrence]:
         return m.Infra.ModOccurrence
 
-    def _model_protocol_392[FindingT: ModOccurrence]() -> type[
+    def _model_protocol_392[FindingT: p.Infra.ModOccurrence]() -> type[
         p.Infra.ModOccurrenceReport[FindingT]
     ]:
         return m.Infra.ModOccurrenceReport[FindingT]
@@ -1225,7 +1225,7 @@ if TYPE_CHECKING:
     def _model_protocol_399() -> type[p.Infra.ModRuleRoute]:
         return m.Infra.ModRuleRoute
 
-    def _model_protocol_400[FindingT: ModOccurrence]() -> type[
+    def _model_protocol_400[FindingT: p.Infra.ModOccurrence]() -> type[
         p.Infra.ModScanCounts[FindingT]
     ]:
         return m.Infra.ModScanCounts[FindingT]

@@ -10,7 +10,7 @@ import ast
 import operator
 from collections.abc import Mapping, Sequence
 
-from flext_infra import c
+from flext_infra import c, p
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
 
 

@@ -22,6 +22,7 @@ from flext_infra._protocols_bootstrap import (
     plan_protocol_facades,
     publish_protocol_facades,
 )
+from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
 from tests import p, tm
 
 
@@ -395,7 +396,7 @@ class TestsProtocolSourceBootstrap:
         monkeypatch.setitem(sys.modules, "flext_infra.protocols", facade_module)
         monkeypatch.setitem(sys.modules, "flext_infra._protocols.models", source_module)
 
-        FlextInfraUtilitiesModelsProtocol._install_bootstrap_facade_members(
+        FlextInfraUtilitiesModelsProtocol(
             [
                 (
                     "flext_infra._protocols.models",

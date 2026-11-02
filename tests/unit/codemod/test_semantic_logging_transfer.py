@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra
+from flext_infra import infra, p
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, r, t, tm, u

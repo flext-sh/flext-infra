@@ -336,7 +336,9 @@ class FlextInfraModelsDeps(
         document: t.Port[t.Cli.TomlDocument] | None = m.Field(
             None,
             exclude=True,
-            description="Original parsed TOML tree retaining authored layout and comments",
+            description=(
+                "Original parsed TOML tree retaining authored layout and comments"
+            ),
         )
 
     class PackagedDataSelection(m.ContractModel):

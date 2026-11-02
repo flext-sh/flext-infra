@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
+from flext_core import t
 
 
 class FlextInfraModelsGitWorktreeState:

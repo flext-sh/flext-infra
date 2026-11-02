@@ -10,6 +10,7 @@ import ast
 from collections.abc import Mapping
 from pathlib import Path
 
+from flext_infra import p
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
 

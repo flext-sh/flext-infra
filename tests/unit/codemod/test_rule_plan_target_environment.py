@@ -6,19 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from tests import c, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraRulePlanTargetEnvironment:
     """Drive the public rule plan against target repositories."""
 
+    @staticmethod
     def test_unprovisioned_target_fails_loud_with_its_environment(
-        self,
         tmp_path: Path,
     ) -> None:
         """A target without its own environment fails before any rule election."""
@@ -33,9 +30,10 @@ class TestsFlextInfraRulePlanTargetEnvironment:
         result = u.Infra.codemod_compose_rule_plan(project, {project.resolve(): None})
         tm.fail(result, has="target repository environment is not provisioned")
 
-    def test_workspace_target_elects_from_its_own_environment(self) -> None:
+    @staticmethod
+    def test_workspace_target_elects_from_its_own_environment() -> None:
         """The provisioned workspace target composes its plan from its own venv."""
-        root = u.Infra.runtime_owner_root(c.Infra.PACKAGE_ROOT).unwrap()
+        root = u.Infra.runtime_owner_root(Path(__file__).resolve().parent).unwrap()
         observation = tm.ok(u.Infra.codemod_target_environment(root))
         tm.that(
             observation.prefix.resolve(),

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import p
 from tests import c, m, r, tm, u
 
 pytestmark = [pytest.mark.slow, pytest.mark.remote]

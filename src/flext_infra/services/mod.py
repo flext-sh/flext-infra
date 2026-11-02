@@ -633,7 +633,10 @@ class FlextInfraModHandlers:
                 repository_root=root,
                 consumer_roots=request.consumer_roots,
                 rule_id=request.rule_id,
-                rule_ids=scope if isinstance(scope, tuple) else None,
+                rule_ids=(
+                    scope if isinstance(scope, tuple) and request.laws is None else None
+                ),
+                laws=request.laws,
                 rename_plan=(
                     request.rename_plan or campaigns.semantic_plan
                     if campaigns is not None

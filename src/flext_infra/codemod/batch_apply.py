@@ -75,6 +75,10 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         default=None,
         description="Exact ast-grep catalog rules selected for this transaction",
     )
+    laws: tuple[str, ...] | None = m.Field(
+        default=None,
+        description="Theme laws re-expanded against the current plan on every read",
+    )
     _quarantine: dict[Path, m.Infra.ModModuleQuarantine] = m.PrivateAttr(
         default_factory=dict
     )
@@ -87,10 +91,17 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         """Exact AST selection of a focused transaction.
 
         Returns:
-            The plural catalog selection, the legacy single selector, or
-            ``None`` for the complete catalog.
+            The law expansion over the current plan, the plural catalog
+            selection, the single selector, or ``None`` for the complete catalog.
 
         """
+        if self.laws is not None:
+            # Generated rule ids derive from the current import layout, so a
+            # law selection is expanded again after every publication.
+            with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
+                return u.Infra.codemod_law_rule_ids(
+                    snapshot, frozenset(self.laws)
+                ).unwrap()
         if self.rule_ids is not None:
             return self.rule_ids
         return (self.rule_id,) if self.rule_id is not None else None

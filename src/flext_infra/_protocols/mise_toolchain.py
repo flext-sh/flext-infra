@@ -43,7 +43,7 @@ class FlextInfraProtocolsMiseToolchain:
     class UvOverrideEntries(Protocol):
         """Structural data contract projected from the owning model."""
 
-        root: list[t.NonEmptyStr | UvScopedOverride]
+        root: list[t.NonEmptyStr | p.Infra.UvScopedOverride]
 
     @runtime_checkable
     class BeadsToolSpec(Protocol):

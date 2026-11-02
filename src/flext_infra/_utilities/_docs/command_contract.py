@@ -11,7 +11,7 @@ from collections.abc import Mapping, MutableSequence, Sequence
 
 from flext_cli import u
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, p
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsBase
 

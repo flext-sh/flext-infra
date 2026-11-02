@@ -11,7 +11,7 @@ from typing import ClassVar
 
 from flext_cli import cli
 
-from flext_infra import config, m, p, u
+from flext_infra import config, m, p, t, u
 from flext_infra.refactor._census import FlextInfraRefactorCensusCollect
 
 

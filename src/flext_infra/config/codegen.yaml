@@ -900,6 +900,8 @@ Infra:
       # Private cross-repo doc-link entries (checkouts outside this public
       # registry) belong in the gitignored config/codegen.local.yaml; the
       # lookup appends local entries and resolves first match.
+      cli_output_argument: OUTPUT_FORMAT
+      cli_output_environment: FLEXT_CLI_CLI_OUTPUT_FORMAT
       common_verb_group: development
       verbs:
       - name: setup

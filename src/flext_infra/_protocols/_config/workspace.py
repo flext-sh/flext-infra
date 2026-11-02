@@ -190,7 +190,7 @@ class FlextInfraProtocolsConfigWorkspace:
     class DependencyGroupEntries(Protocol):
         """Structural data contract projected from the owning model."""
 
-        root: tuple[str | DependencyGroupInclude, ...]
+        root: tuple[str | p.Infra.DependencyGroupInclude, ...]
 
     @runtime_checkable
     class WorkspaceBeadsServerSpec(Protocol):

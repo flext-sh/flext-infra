@@ -598,7 +598,7 @@ class FlextInfraProtocolsDocs(Protocol):
     class DocsPhaseReports(Protocol):
         """Structural data contract projected from the owning model."""
 
-        root: tuple[DocsPhaseReport, ...]
+        root: tuple[p.Infra.DocsPhaseReport, ...]
 
 
 __all__: list[str] = ["FlextInfraProtocolsDocs"]

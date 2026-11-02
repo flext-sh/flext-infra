@@ -1974,23 +1974,31 @@ class FlextInfraUtilitiesFacadeComponents:
         project: p.Infra.RopeProject,
         declarations: Sequence[tuple[Path, p.Infra.RopeSourceClass]],
     ) -> dict[str, str]:
-        """Bind each part to its actual source module, not a re-export barrel.
+        """Bind each part to the family package that publishes it.
 
-        The same transaction may retire a barrel's old exports. A generated
-        facade must depend on the declaring source, not that previous projection.
+        A generated facade imports through the nearest package lazy export,
+        never a module path below it (ADR-028 Decision 10): a part declared in
+        a ``_<family>`` package is imported from that family package; any
+        other part keeps its defining module.
 
         Returns:
-            Each declaration name with its defining module.
+            Each declaration name with its importing package.
 
         """
-        return {
-            declaration.get_name(): (
-                FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-                    declaration.get_module(), source_project=project
-                )
+        directories = frozenset(
+            family.directory
+            for family in FlextInfraUtilitiesCodegenNamespace.facade_families().values()
+        )
+        packages: dict[str, str] = {}
+        for _origin, declaration in declarations:
+            module = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                declaration.get_module(), source_project=project
             )
-            for _origin, declaration in declarations
-        }
+            parent, _separator, _leaf = module.rpartition(".")
+            packages[declaration.get_name()] = (
+                parent if parent.rpartition(".")[2] in directories else module
+            )
+        return packages
 
     @staticmethod
     def _facade_planned_imports(
@@ -2003,18 +2011,21 @@ class FlextInfraUtilitiesFacadeComponents:
 
         The rewritten text replay adds only this delta, never the module's
         original statements (a cross-epoch replay glues the class header).
-        Each binding imports from the defining source module rather than a
-        barrel whose previous re-exports this transaction may replace.
+        Bindings of one package share one import statement.
 
         Returns:
-            One declaring-package import per binding, then ``TypeAlias`` if
-            needed.
+            One import per importing package, then ``TypeAlias`` if needed.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
+        grouped: dict[str, list[str]] = {}
+        for binding in bindings:
+            grouped.setdefault(packages[binding], []).append(binding)
         added_imports = [
-            runtime.from_import(packages[binding], 0, ((binding, None),))
-            for binding in bindings
+            runtime.from_import(
+                package, 0, tuple((binding, None) for binding in sorted(names))
+            )
+            for package, names in grouped.items()
         ]
         if type_alias:
             added_imports.append(

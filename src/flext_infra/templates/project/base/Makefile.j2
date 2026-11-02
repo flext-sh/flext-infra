@@ -22,7 +22,7 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     lane census (outside CI) and documentation. The commit hook token runs
     only the stage-derived commit gates. -#}
 {%- macro local_check_body() -%}
-{{ "\t" }}@FLEXT_INFRA_PROFILE=1 FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.check_timeout_seconds }}s $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+{{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.check_timeout_seconds }}s $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run("fmt", " --scope $(GATE_SCOPE) --apply") }}
@@ -927,6 +927,8 @@ _builtin_clean_generated: _builtin_require_interpreter
 GEN_BUDGET_SECONDS ?= 900
 GEN_KILL_RESERVE_SECONDS ?= 30
 GEN_PROFILE ?=
+# Check profiling is opt-in like generation (CHECK_PROFILE=1 make check).
+CHECK_PROFILE ?=
 
 _builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \

@@ -369,6 +369,16 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     {"not": {"matches": "binding"}},
                     {"not": {"inside": {"kind": "attribute", "field": "attribute"}}},
                     {"not": {"inside": {"kind": "keyword_argument", "field": "name"}}},
+                    # A match class pattern spells ``m.Family.Model()`` as one
+                    # dotted_name: only its first identifier is a use.
+                    {
+                        "not": {
+                            "all": [
+                                {"inside": {"kind": "dotted_name"}},
+                                {"follows": {"kind": "identifier", "stopBy": "end"}},
+                            ]
+                        }
+                    },
                 ]
             },
         }
@@ -614,6 +624,28 @@ class FlextInfraUtilitiesCodemodNativePackage:
         )
 
     @staticmethod
+    def _codemod_namespace_owner(
+        parts: Sequence[str], namespaces: frozenset[str]
+    ) -> str:
+        """Elect the facade package owning one module, at any nesting depth.
+
+        Outside a declared repository namespace the owner is the top package.
+        Inside one, it is the package holding the facade modules: the path up to
+        the first private family component (``_models``), or the module's own
+        package for a public module (``infra.pulumi.lib.models``).
+
+        Returns:
+            The dotted owner package.
+
+        """
+        if parts[0] not in namespaces:
+            return parts[0]
+        for index, part in enumerate(parts):
+            if part.startswith("_") and not part.startswith("__"):
+                return ".".join(parts[:index])
+        return ".".join(parts[:-1])
+
+    @staticmethod
     def _codemod_letter_families(
         snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> Mapping[tuple[str, str], t.StrTuple]:
@@ -663,7 +695,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
             parts = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
                 path, project_root=root
             ).split(".")
-            owner = ".".join(parts[: 2 if parts[0] in namespaces else 1])
+            owner = FlextInfraUtilitiesCodemodNativePackage._codemod_namespace_owner(
+                parts, namespaces
+            )
             for letter in letters(path).union(*map(letters, facades)):
                 grouped.setdefault((owner, letter), []).append(relative.as_posix())
         return {key: tuple(found) for key, found in sorted(grouped.items())}
@@ -718,7 +752,11 @@ class FlextInfraUtilitiesCodemodNativePackage:
                         continue
                     for base in module.classes.get(module.values.get(letter, ""), ()):
                         origin, _, leaf = module.imports.get(base, "").rpartition(".")
-                        top = origin.partition(".")[0]
+                        top = (
+                            origin
+                            if origin.partition(".")[0] in namespaces
+                            else origin.partition(".")[0]
+                        )
                         if leaf == letter and top and top != package:
                             candidates.add(top)
             if len(candidates) == 1:
@@ -1463,6 +1501,29 @@ class FlextInfraUtilitiesCodemodNativePackage:
         law = FlextInfraUtilitiesImportLaw
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         bootstrap = law.snapshot_bootstrap_dependencies(snapshot, root, package)
+        namespaces = frozenset(
+            FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(root)
+        )
+
+        def owner(module: str) -> str | None:
+            """Elect the import-law namespace that owns one module.
+
+            Returns:
+                The public package, the independent ``<namespace>.<pkg>``, or
+                None outside both.
+
+            """
+            parts = module.split(".")
+            if parts[0] == package:
+                return package
+            return (
+                FlextInfraUtilitiesCodemodNativePackage._codemod_namespace_owner(
+                    parts, namespaces
+                )
+                if parts[0] in namespaces
+                else None
+            )
+
         return tuple(
             sorted(
                 path.relative_to(root).as_posix()
@@ -1471,10 +1532,10 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 )
                 if (located := law.snapshot_import_namespace(snapshot, root, path))
                 is not None
-                and located[1].split(".")[0] == package
+                and (namespace := owner(located[1])) is not None
                 and law.import_module_role(
                     located[1],
-                    namespace=package,
+                    namespace=namespace,
                     bootstrap=located[1] in bootstrap,
                 )
                 in roles

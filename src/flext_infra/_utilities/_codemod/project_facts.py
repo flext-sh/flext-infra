@@ -929,14 +929,17 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             protocols, models = (facades.get(letter) for letter in letters)
             if protocols is None:
                 continue
-            for path, model in cls._facade_class_pairs(protocols, models):
-                if model is not None and (
-                    FlextInfraUtilitiesFacadeMembers.class_kind(
-                        model,
-                        resolver_factory=resolver_factory,
-                        source_project=project_source,
+            for path, model, orphan in cls._facade_class_pairs(protocols, models):
+                if orphan or (
+                    model is not None
+                    and (
+                        FlextInfraUtilitiesFacadeMembers.class_kind(
+                            model,
+                            resolver_factory=resolver_factory,
+                            source_project=project_source,
+                        )
+                        is c.Infra.FacadeMemberKind.MODEL
                     )
-                    is c.Infra.FacadeMemberKind.MODEL
                 ):
                     modeled.add(path)
                 else:
@@ -1050,19 +1053,22 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         cls,
         protocols: p.Infra.RopeClassObject,
         models: p.Infra.RopeClassObject | None,
-    ) -> Sequence[tuple[str, p.Infra.RopeClassObject | None]]:
+    ) -> Sequence[tuple[str, p.Infra.RopeClassObject | None, bool]]:
         """Pair every nested class of the protocol facade with its model path twin.
 
         The walk descends the published ``p`` namespaces; the ``m`` class at the
         same dotted path is resolved segment by segment, absent when any
-        segment is not a class.
+        segment is not a class. A public ``m`` class whose name ``p`` does not
+        publish at that level is an orphan path: ``p`` cannot resolve it, so a
+        ``p`` construction there names the ``m`` class.
 
         Returns:
-            Each dotted class path of ``p`` with its ``m`` class, or ``None``.
+            Each dotted class path with its ``m`` class (or ``None``) and
+            whether only ``m`` publishes it.
 
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
-        pairs: list[tuple[str, p.Infra.RopeClassObject | None]] = []
+        pairs: list[tuple[str, p.Infra.RopeClassObject | None, bool]] = []
         pending: list[
             tuple[
                 str,
@@ -1074,7 +1080,15 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         while pending:
             prefix, protocol, model, lineage = pending.pop()
             twins = {} if model is None else model.get_attributes()
-            for name, binding in protocol.get_attributes().items():
+            published = protocol.get_attributes()
+            pairs.extend(
+                (f"{prefix}{name}", None, True)
+                for name, twin in twins.items()
+                if name not in published
+                and not name.startswith("_")
+                and types.abstract_class(twin.get_object())
+            )
+            for name, binding in published.items():
                 nested = binding.get_object()
                 if name.startswith("_") or not types.abstract_class(nested):
                     continue
@@ -1084,7 +1098,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 twin_class = None if twin is None else twin.get_object()
                 path = f"{prefix}{name}"
                 counterpart = twin_class if types.abstract_class(twin_class) else None
-                pairs.append((path, counterpart))
+                pairs.append((path, counterpart, False))
                 pending.append((
                     f"{path}.",
                     nested,

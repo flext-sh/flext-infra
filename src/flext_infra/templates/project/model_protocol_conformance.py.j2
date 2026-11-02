@@ -14,12 +14,10 @@ if TYPE_CHECKING:
 {% for native, structural, parameters, arguments in checks %}
 
 {% if parameters %}
-    def _model_protocol_{{ loop.index }}[{{ parameters | join(', ') }}]() -> type[{{ structural }}{% if arguments %}[{{ arguments | join(', ') }}]{% endif %}]:
+    def model_protocol_{{ loop.index }}[{{ parameters | join(', ') }}]() -> type[{{ structural }}{% if arguments %}[{{ arguments | join(', ') }}]{% endif %}]:
         return {{ native }}{% if arguments %}[{{ arguments | join(', ') }}]{% endif %}
 {% else %}
-    def _model_protocol_{{ loop.index }}(value: object) -> {{ structural }}:
-        if not isinstance(value, {{ native }}):
-            raise TypeError("model protocol witness received another declaring owner")
+    def model_protocol_{{ loop.index }}(value: {{ native }}) -> {{ structural }}:
         return value
 {% endif %}
 {% endfor %}
