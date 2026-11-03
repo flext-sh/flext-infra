@@ -107,11 +107,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             return r[p.Infra.CodegenResult].fail(
                 "source bootstrap requires bound generation collaborators"
             )
-        bootstrap = u.Infra.bootstrap_protocol_model_sources(
-            request.root, ports=execution_context.codegen_conform_collaborators()
-        )
-        if bootstrap.failure:
-            return r[p.Infra.CodegenResult].from_failure(bootstrap)
+        # Facades and their initializers precede the protocols projected
+        # through them: those surfaces publish first, and the next generation
+        # projects the members.
+        if request.what not in {
+            c.Infra.CodegenConformSurface.FACADES,
+            c.Infra.CodegenConformSurface.LAZY_INIT,
+        }:
+            bootstrap = u.Infra.bootstrap_protocol_model_sources(
+                request.root, ports=execution_context.codegen_conform_collaborators()
+            )
+            if bootstrap.failure:
+                return r[p.Infra.CodegenResult].from_failure(bootstrap)
         admitted = m.Infra.CodegenGenerateRequest.model_validate(
             request, from_attributes=True
         )

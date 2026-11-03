@@ -496,19 +496,6 @@ rule:
                   has:
                     field: name
                     pattern: $CONSUMER
-  # Bound by a module that does not declare it.
-  - all:
-    - kind: expression_statement
-    - inside:
-        kind: module
-    - has:
-        kind: assignment
-        has:
-          field: left
-          kind: identifier
-          pattern: $NAME
-    - not:
-        matches: declared-in-module-all
   # Bound twice.
   - all:
     - kind: expression_statement
@@ -565,8 +552,6 @@ rule:
 # Each branch binds one of the own package's runtime aliases (the generated
 # local-alias utility); dunders are module protocol.
 constraints:
-  NAME:
-    matches: local-alias
   REBOUND:
     matches: local-alias
   SHADOWED:

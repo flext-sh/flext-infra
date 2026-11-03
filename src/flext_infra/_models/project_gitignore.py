@@ -14,7 +14,7 @@ from flext_infra import t
 from flext_infra._models import FlextInfraModelsDepsToolConfigProjectMise
 
 
-class FlextInfraModelsDepsToolConfigProjectGitignore(
+class FlextInfraModelsProjectGitignore(
     FlextInfraModelsDepsToolConfigProjectMise,
 ):
     """Project-local ignore patterns appended to generated gitignore output."""
@@ -79,7 +79,7 @@ class FlextInfraModelsDepsToolConfigProjectGitignore(
         ] = ()
         preserved_blocks: Annotated[
             tuple[
-                FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignorePreservedBlock,
+                FlextInfraModelsProjectGitignore.ProjectGitignorePreservedBlock,
                 ...,
             ],
             m.Field(
@@ -91,4 +91,4 @@ class FlextInfraModelsDepsToolConfigProjectGitignore(
         ] = ()
 
 
-__all__: list[str] = ["FlextInfraModelsDepsToolConfigProjectGitignore"]
+__all__: list[str] = ["FlextInfraModelsProjectGitignore"]

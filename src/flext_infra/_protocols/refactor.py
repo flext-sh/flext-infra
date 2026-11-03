@@ -20,699 +20,1366 @@ from collections.abc import (
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra import c, t
+from flext_cli import FlextCliProtocols
+
+from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
+from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_cli import p
+
+    from flext_infra._constants import FlextInfraConstantsRefactor
+    from flext_infra._protocols import (
+        FlextInfraProtocolsCensus,
+        FlextInfraProtocolsRefactorAstGrep,
+        FlextInfraProtocolsScan,
+        FlextInfraProtocolsTransformers,
+    )
+    from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRope
 
 
 class FlextInfraProtocolsRefactor:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class NamespaceRelocationRequest(Protocol):
+    class NamespaceRelocationRequest(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project_root(self) -> Path: ...
+        def project_root(self) -> Path:
+            """Selected owning project."""
+            ...
+
         @property
         def findings(
             self,
-        ) -> Sequence[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding]]: ...
+        ) -> Sequence[
+            tuple[
+                FlextInfraConstantsRefactor.CodemodRelocation,
+                FlextInfraProtocolsScan.ModScanFinding,
+            ]
+        ]:
+            """Native relocation selections."""
+            ...
+
         @property
-        def py_files(self) -> Sequence[Path]: ...
+        def py_files(self) -> Sequence[Path]:
+            """Selected Python sources."""
+            ...
+
         @property
-        def sources(self) -> Mapping[Path, str]: ...
+        def sources(self) -> Mapping[Path, str]:
+            """Immutable input sources."""
+            ...
 
     @runtime_checkable
-    class NamespaceRelocationState(Protocol):
+    class NamespaceRelocationState(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         working: MutableMapping[Path, str]
-        originals: MutableMapping[Path, p.Cli.AtomicFileState]
+
+        @property
+        def originals(self) -> Mapping[Path, p.Cli.AtomicFileState]:
+            """Complete original dependency closure."""
+            ...
+
         modes: MutableMapping[Path, int | None]
 
     @runtime_checkable
-    class SemanticBehaviorOwners(Protocol):
+    class SemanticBehaviorOwners(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def modules(self) -> Mapping[str, tuple[str, bool]]: ...
+        def modules(self) -> Mapping[str, tuple[str, bool]]:
+            """Qualified source text and package identities."""
+            ...
+
         @property
-        def owners(self) -> Mapping[tuple[str, str], tuple[tuple[str, str], ...]]: ...
+        def owners(self) -> Mapping[tuple[str, str], tuple[tuple[str, str], ...]]:
+            """Utility class candidates by package and method."""
+            ...
+
         @property
-        def contextual(self) -> frozenset[tuple[str, str, str, str]]: ...
+        def contextual(self) -> frozenset[tuple[str, str, str, str]]:
+            """Methods requiring dispatch through their facade."""
+            ...
 
     @runtime_checkable
-    class SemanticBehaviorResolution(Protocol):
+    class SemanticBehaviorResolution(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        path: Path
-        inventory: p.Infra.SemanticBehaviorOwners
-        typing_directory: str
-        identities: frozenset[tuple[str, str]]
-        lineages: MutableMapping[tuple[str, str], tuple[tuple[str, str], ...]]
-        obsolete: MutableSet[tuple[str, str]]
+        @property
+        def path(self) -> Path:
+            """Consumer source identity."""
+            ...
+
+        @property
+        def inventory(self) -> FlextInfraProtocolsRefactor.SemanticBehaviorOwners:
+            """Declared behavior owners."""
+            ...
+
+        @property
+        def typing_directory(self) -> str:
+            """Canonical typing family directory."""
+            ...
+
+        @property
+        def identities(self) -> frozenset[tuple[str, str]]:
+            """Imported module and receiver identities."""
+            ...
+
+        @property
+        def lineages(
+            self,
+        ) -> MutableMapping[tuple[str, str], tuple[tuple[str, str], ...]]:
+            """Consumer-local ancestry cache."""
+            ...
+
+        @property
+        def obsolete(self) -> MutableSet[tuple[str, str]]:
+            """Imports superseded by canonical owner references."""
+            ...
 
     @runtime_checkable
-    class ModTextCommand(Protocol):
+    class ModTextCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
         """Structural data contract projected from the owning model."""
-
-        @property
-        def repository_root(self) -> Path: ...
-        @property
-        def projects(self) -> Sequence[str] | None: ...
-        @property
-        def verbose(self) -> bool: ...
-        @property
-        def apply(self) -> bool: ...
-        @property
-        def gates(self) -> Sequence[str]: ...
-        @property
-        def dry_run(self) -> bool: ...
 
     @runtime_checkable
-    class ModuleMoveCommand(Protocol):
+    class ModuleMoveCommand(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def repository_root(self) -> Path:
+            """Owning repository root."""
+            ...
+
         @property
-        def source_file(self) -> Path: ...
+        def source_file(self) -> Path:
+            """Existing Python module."""
+            ...
+
         @property
-        def destination_directory(self) -> Path | None: ...
+        def destination_directory(self) -> Path | None:
+            """Existing destination package directory."""
+            ...
+
         @property
-        def destination_file(self) -> Path | None: ...
+        def destination_file(self) -> Path | None:
+            """Exact Python file destination for joint semantic publication."""
+            ...
 
     @runtime_checkable
-    class RopeRenameOptions(Protocol):
+    class RopeRenameOptions(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        resources: Sequence[t.Infra.RopeResource]
-        in_hierarchy: bool
-        docs: bool
+        @property
+        def resources(self) -> Sequence[FlextInfraTypesRope.RopeResource]:
+            """Resources included in the semantic rename scope."""
+            ...
+
+        @property
+        def in_hierarchy(self) -> bool:
+            """Whether the rename includes inherited declarations."""
+            ...
+
+        @property
+        def docs(self) -> bool:
+            """Include native identity-visible string and comment occurrences."""
+            ...
 
     @runtime_checkable
-    class SemanticRenameDecision(Protocol):
+    class SemanticRenameDecision(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def declaration(self) -> p.Infra.Object: ...
+        def declaration(self) -> FlextInfraProtocolsCensus.Object:
+            """Actual introducing declaration from semantic discovery."""
+            ...
+
         @property
-        def replacement_name(self) -> t.NonEmptyStr: ...
+        def replacement_name(self) -> t.NonEmptyStr:
+            """Explicit canonical domain name."""
+            ...
+
         @property
-        def reason(self) -> t.NonEmptyStr: ...
+        def reason(self) -> t.NonEmptyStr:
+            """Domain evidence supporting this name."""
+            ...
+
         @property
-        def contracts(self) -> tuple[p.Infra.Object, ...]: ...
+        def contracts(self) -> tuple[FlextInfraProtocolsCensus.Object, ...]:
+            """Observed independent typing declarations of this contract."""
+            ...
 
     @runtime_checkable
-    class SemanticRenameSelection(Protocol):
+    class SemanticRenameSelection(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def qualified_name(self) -> t.NonEmptyStr: ...
+        def qualified_name(self) -> t.NonEmptyStr:
+            """Introducing class, callable, or module identity."""
+            ...
+
         @property
-        def replacement_name(self) -> t.NonEmptyStr: ...
+        def replacement_name(self) -> t.NonEmptyStr:
+            """Canonical domain name."""
+            ...
+
         @property
-        def reason(self) -> t.NonEmptyStr: ...
+        def reason(self) -> t.NonEmptyStr:
+            """Semantic justification."""
+            ...
+
         @property
-        def contracts(self) -> Sequence[str]: ...
+        def contracts(self) -> Sequence[str]:
+            """Independent typing identities."""
+            ...
 
     @runtime_checkable
-    class SemanticRenameSelections(Protocol):
+    class SemanticRenameSelections(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def decisions(self) -> tuple[p.Infra.SemanticRenameSelection, ...]: ...
+        def decisions(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.SemanticRenameSelection, ...]:
+            """Explicit domain names for inventoried owners."""
+            ...
+
         @property
-        def consumer_roots(self) -> tuple[Path, ...]: ...
+        def consumer_roots(self) -> tuple[Path, ...]:
+            """Explicit external consumer checkout roots for this run."""
+            ...
 
     @runtime_checkable
-    class SemanticRenamePlan(Protocol):
+    class SemanticRenamePlan(
+        FlextInfraProtocolsCodegenTransaction.SemanticSourcePlan, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def candidate(self) -> p.Infra.StageSourcePlan: ...
+        def decisions(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.SemanticRenameDecision, ...]:
+            """Resolved declarations and their domain naming decisions."""
+            ...
+
         @property
-        def consumer_roots(self) -> tuple[Path, ...]: ...
+        def edits(
+            self,
+        ) -> tuple[FlextInfraProtocolsTransformers.SemanticMigrationEdit, ...]:
+            """Exact source bytes before and after the native rename."""
+            ...
+
         @property
-        def decisions(self) -> tuple[p.Infra.SemanticRenameDecision, ...]: ...
-        @property
-        def edits(self) -> tuple[p.Infra.SemanticMigrationEdit, ...]: ...
-        @property
-        def moves(self) -> tuple[tuple[Path, Path], ...]: ...
+        def moves(self) -> tuple[tuple[Path, Path], ...]:
+            """Native module source and destination effects."""
+            ...
 
     @runtime_checkable
-    class RuleDeltaOptions(Protocol):
+    class RuleDeltaOptions(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def inventory(self) -> tuple[tuple[str, str], ...]: ...
+        def inventory(self) -> tuple[tuple[str, str], ...]:
+            """Declared repository and rule pairs included in the delta."""
+            ...
+
         @property
-        def repository_root(self) -> Path | None: ...
+        def repository_root(self) -> Path | None:
+            """Root resolving text finding paths into the topology."""
+            ...
+
         @property
-        def projects(self) -> Sequence[Path]: ...
+        def projects(self) -> Sequence[Path]:
+            """Declared project topology owning text findings."""
+            ...
 
     @runtime_checkable
-    class ViolationsTotals(Protocol):
+    class ViolationsTotals(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def findings(self) -> int: ...
+        def findings(self) -> int:
+            """Total mod scan findings."""
+            ...
+
         @property
-        def actionable(self) -> int: ...
+        def actionable(self) -> int:
+            """Findings a mod rewrite would repair."""
+            ...
+
         @property
-        def detection_only(self) -> int: ...
+        def detection_only(self) -> int:
+            """Findings no rewrite repairs."""
+            ...
+
         @property
-        def non_actionable_with_fix(self) -> int: ...
+        def non_actionable_with_fix(self) -> int:
+            """Findings whose rewrite matches the current source."""
+            ...
+
         @property
-        def deferred(self) -> int: ...
+        def deferred(self) -> int:
+            """Findings deferred because their source drifted."""
+            ...
 
     @runtime_checkable
-    class ViolationsRuleDelta(Protocol):
+    class ViolationsRuleDelta(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository(self) -> str: ...
+        def repository(self) -> str:
+            """Owning repository identity."""
+            ...
+
         @property
-        def rule_id(self) -> str: ...
+        def rule_id(self) -> str:
+            """Exact detector rule identity."""
+            ...
+
         @property
-        def engine(self) -> str: ...
+        def engine(self) -> str:
+            """Native detector owning this rule identity."""
+            ...
+
         @property
-        def before(self) -> t.NonNegativeInt: ...
+        def before(self) -> t.NonNegativeInt:
+            """Before occurrences."""
+            ...
+
         @property
-        def after(self) -> t.NonNegativeInt: ...
+        def after(self) -> t.NonNegativeInt:
+            """After occurrences."""
+            ...
+
         @property
-        def resolved(self) -> t.NonNegativeInt: ...
+        def resolved(self) -> t.NonNegativeInt:
+            """Removed occurrences."""
+            ...
+
         @property
-        def persisted(self) -> t.NonNegativeInt: ...
+        def persisted(self) -> t.NonNegativeInt:
+            """Unchanged occurrences."""
+            ...
+
         @property
-        def introduced(self) -> t.NonNegativeInt: ...
+        def introduced(self) -> t.NonNegativeInt:
+            """New occurrences."""
+            ...
+
         @property
-        def before_entries(self) -> tuple[t.NonNegativeInt, ...]: ...
+        def before_entries(self) -> tuple[t.NonNegativeInt, ...]:
+            """Finding indexes in the before evidence snapshot."""
+            ...
+
         @property
-        def after_entries(self) -> tuple[t.NonNegativeInt, ...]: ...
+        def after_entries(self) -> tuple[t.NonNegativeInt, ...]:
+            """Finding indexes in the after evidence snapshot."""
+            ...
+
         @property
-        def semantic_correspondence_proven(self) -> bool: ...
+        def semantic_correspondence_proven(self) -> bool:
+            """Text multiplicity does not prove semantic identity."""
+            ...
 
     @runtime_checkable
-    class ProjectEnforcementReport(Protocol):
+    class ProjectEnforcementReport(
+        FlextInfraProtocolsMixins.ProjectNameMixin, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
-        project: t.NonEmptyStr
-        project_root: str
-        rule_deltas: tuple[p.Infra.ViolationsRuleDelta, ...]
-        relocation_resolved: t.NonNegativeInt
-        relocation_persisted: t.NonNegativeInt
-        relocation_introduced: t.NonNegativeInt
-        relocation_findings: t.NonNegativeInt
-        files_scanned: t.NonNegativeInt
+        @property
+        def project_root(self) -> str:
+            """Project root path."""
+            ...
 
         @property
-        def before_rule_counts(self) -> Mapping[str, t.NonNegativeInt]: ...
+        def rule_deltas(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.ViolationsRuleDelta, ...]:
+            """Full catalog occurrence comparison, including zero rows."""
+            ...
+
         @property
-        def after_rule_counts(self) -> Mapping[str, t.NonNegativeInt]: ...
+        def relocation_resolved(self) -> t.NonNegativeInt:
+            """Removed scoped relocation occurrences."""
+            ...
+
         @property
-        def cross_rule_delta(self) -> Mapping[str, int]: ...
+        def relocation_persisted(self) -> t.NonNegativeInt:
+            """Unchanged scoped relocation occurrences."""
+            ...
+
         @property
-        def has_violations(self) -> bool: ...
+        def relocation_introduced(self) -> t.NonNegativeInt:
+            """New scoped relocation occurrences."""
+            ...
+
+        @property
+        def relocation_findings(self) -> t.NonNegativeInt:
+            """Scoped relocation findings remaining after the pass."""
+            ...
+
+        @property
+        def files_scanned(self) -> t.NonNegativeInt:
+            """Files in the namespace relocation scope before apply."""
+            ...
+
+        @property
+        def before_rule_counts(self) -> Mapping[str, t.NonNegativeInt]:
+            """Structural member projected from the owning model.
+
+            Complete per-rule counts before relocation, including zero findings.
+            """
+            ...
+
+        @property
+        def after_rule_counts(self) -> Mapping[str, t.NonNegativeInt]:
+            """Structural member projected from the owning model.
+
+            Complete per-rule counts after relocation, including zero findings.
+            """
+            ...
+
+        @property
+        def cross_rule_delta(self) -> Mapping[str, int]:
+            """Structural member projected from the owning model.
+
+            Net changes; introduced occurrence counts remain in the shared rows.
+            """
+            ...
+
+        @property
+        def has_violations(self) -> bool:
+            """Whether catalog findings remain or new occurrences appeared."""
+            ...
 
     @runtime_checkable
-    class WorkspaceEnforcementReport(Protocol):
+    class WorkspaceEnforcementReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        workspace: t.NonEmptyStr
-        projects: Sequence[p.Infra.ProjectEnforcementReport]
+        @property
+        def workspace(self) -> t.NonEmptyStr:
+            """Repository root path."""
+            ...
 
         @property
-        def has_violations(self) -> bool: ...
+        def projects(
+            self,
+        ) -> Sequence[FlextInfraProtocolsRefactor.ProjectEnforcementReport]:
+            """Per-project enforcement reports for the workspace."""
+            ...
+
+        @property
+        def has_violations(self) -> bool:
+            """Whether any project carries a violation."""
+            ...
 
     @runtime_checkable
-    class ViolationsSweepSources(Protocol):
+    class ViolationsSweepSources(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def source_verified(self) -> bool: ...
+        def source_verified(self) -> bool:
+            """Atomic inputs reverified after native observations."""
+            ...
+
         @property
-        def plan(self) -> p.Infra.CodemodRulePlan: ...
+        def plan(self) -> FlextInfraProtocolsRefactorAstGrep.CodemodRulePlan:
+            """Elected full rule catalog and provider digests."""
+            ...
+
         @property
-        def scope(self) -> Sequence[str]: ...
+        def scope(self) -> Sequence[str]:
+            """Governed Python scan scope."""
+            ...
+
         @property
-        def states(self) -> tuple[p.Cli.AtomicFileState, ...]: ...
+        def states(self) -> tuple[p.Cli.AtomicFileState, ...]:
+            """Scan authentication states; receipts retain byte digests."""
+            ...
+
         @property
-        def sha256(self) -> Mapping[str, str]: ...
+        def sha256(self) -> Mapping[str, str]:
+            """Source and catalog byte digests."""
+            ...
+
         @property
-        def repository_roots(self) -> tuple[Path, ...]: ...
+        def repository_roots(self) -> tuple[Path, ...]:
+            """Observed governed project topology."""
+            ...
+
         @property
-        def ast_report(self) -> p.Infra.ModScanEvidence | None: ...
+        def ast_report(self) -> FlextInfraProtocolsScan.ModScanEvidence | None:
+            """Complete normalized scan evidence, None if unobserved."""
+            ...
+
         @property
-        def text_report(self) -> p.Infra.ModTextReport | None: ...
+        def text_report(self) -> FlextInfraProtocolsScan.ModTextReport | None:
+            """Actual native text scan, None if unobserved."""
+            ...
+
         @property
         def lint(
             self,
-        ) -> Mapping[str, t.Infra.LintSnapshot[p.Infra.LintGateResult]] | None: ...
+        ) -> (
+            Mapping[
+                str,
+                FlextInfraTypesBase.LintSnapshot[
+                    FlextInfraProtocolsBase.LintGateResult
+                ],
+            ]
+            | None
+        ):
+            """Canonical Ruff snapshots by source path."""
+            ...
+
         @property
-        def observation_errors(self) -> Sequence[str]: ...
+        def observation_errors(self) -> Sequence[str]:
+            """Native observation failures, never empty success proof."""
+            ...
 
     @runtime_checkable
-    class ViolationsRuleEvaluation(Protocol):
+    class ViolationsRuleEvaluation(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository(self) -> str: ...
+        def repository(self) -> str:
+            """Observed repository identity."""
+            ...
+
         @property
-        def rule_id(self) -> str: ...
+        def rule_id(self) -> str:
+            """Exact requested rule identity."""
+            ...
+
         @property
-        def engine(self) -> str: ...
+        def engine(self) -> str:
+            """Native detector owning this rule identity."""
+            ...
+
         @property
-        def catalog_digest(self) -> str | None: ...
+        def catalog_digest(self) -> str | None:
+            """Elected native rule document digest."""
+            ...
+
         @property
-        def provider(self) -> str | None: ...
+        def provider(self) -> str | None:
+            """Elected native rule provider."""
+            ...
+
         @property
-        def resource(self) -> Path | None: ...
+        def resource(self) -> Path | None:
+            """Elected native rule document resource."""
+            ...
+
         @property
-        def detection_only(self) -> bool | None: ...
+        def detection_only(self) -> bool | None:
+            """Native rule lacks an automated repair."""
+            ...
+
         @property
         def status(
             self,
-        ) -> Literal["observed", "not_applicable", "failed", "NOT_EXECUTED"]: ...
+        ) -> Literal["observed", "not_applicable", "failed", "NOT_EXECUTED"]:
+            """Native observation or explicit unavailable disposition."""
+            ...
+
         @property
-        def delta(self) -> p.Infra.ViolationsRuleDelta | None: ...
+        def delta(self) -> FlextInfraProtocolsRefactor.ViolationsRuleDelta | None:
+            """Occurrence evidence only for successful native scans."""
+            ...
+
         @property
-        def error(self) -> str | None: ...
+        def error(self) -> str | None:
+            """Original observation failure."""
+            ...
 
     @runtime_checkable
-    class ViolationsEngineCoverage(Protocol):
+    class ViolationsEngineCoverage(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository(self) -> str: ...
+        def repository(self) -> str:
+            """Governed project identity."""
+            ...
+
         @property
-        def engine(self) -> str: ...
+        def engine(self) -> str:
+            """Actual native engine name."""
+            ...
+
         @property
-        def status(self) -> Literal["observed", "incomplete", "NOT_EXECUTED"]: ...
+        def status(self) -> Literal["observed", "incomplete", "NOT_EXECUTED"]:
+            """Complete rule audit or explicit unavailable evidence."""
+            ...
+
         @property
-        def cause(self) -> str | None: ...
+        def cause(self) -> str | None:
+            """Why complete native coverage is unavailable."""
+            ...
 
     @runtime_checkable
-    class ViolationsSweepStage(Protocol):
+    class ViolationsSweepStage(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def repository_root(self) -> Path:
+            """Operation's project root."""
+            ...
+
         @property
-        def cwd(self) -> Path: ...
+        def cwd(self) -> Path:
+            """Actual Make working directory."""
+            ...
+
         @property
-        def command(self) -> Sequence[str]: ...
+        def command(self) -> Sequence[str]:
+            """Exact invoked Make argv."""
+            ...
+
         @property
-        def verb(self) -> str: ...
+        def verb(self) -> str:
+            """Canonical Make operation."""
+            ...
+
         @property
-        def duration(self) -> t.NonNegativeFloat: ...
+        def duration(self) -> t.NonNegativeFloat:
+            """Elapsed monotonic seconds."""
+            ...
+
         @property
-        def invoked(self) -> bool: ...
+        def invoked(self) -> bool:
+            """Whether Make was invoked."""
+            ...
+
         @property
-        def outcome(self) -> p.Cli.ProcessOutcome | None: ...
+        def outcome(self) -> p.Cli.ProcessOutcome | None:
+            """Original process exit, timeout and signal state."""
+            ...
+
         @property
-        def error(self) -> str | None: ...
+        def error(self) -> str | None:
+            """Original operation or inspection failure."""
+            ...
+
         @property
-        def audit_before(self) -> p.Infra.ViolationsSweepSources | None: ...
+        def audit_before(
+            self,
+        ) -> FlextInfraProtocolsRefactor.ViolationsSweepSources | None:
+            """Authenticated source snapshot immediately before audit."""
+            ...
+
         @property
-        def audit_after(self) -> p.Infra.ViolationsSweepSources | None: ...
+        def audit_after(
+            self,
+        ) -> FlextInfraProtocolsRefactor.ViolationsSweepSources | None:
+            """After audit snapshot, retained for failed operations."""
+            ...
+
         @property
-        def source_inventory_unchanged(self) -> bool | None: ...
+        def source_inventory_unchanged(self) -> bool | None:
+            """Source, inventory and plan equality; None is unproven."""
+            ...
+
         @property
-        def inspection_error(self) -> str | None: ...
+        def inspection_error(self) -> str | None:
+            """Inspection failure independent of process error."""
+            ...
+
         @property
-        def rule_evaluations(self) -> tuple[p.Infra.ViolationsRuleEvaluation, ...]: ...
+        def rule_evaluations(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.ViolationsRuleEvaluation, ...]:
+            """Every rule's actual disposition in this repository."""
+            ...
+
         @property
-        def engine_coverage(self) -> tuple[p.Infra.ViolationsEngineCoverage, ...]: ...
+        def engine_coverage(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.ViolationsEngineCoverage, ...]:
+            """Native coverage, including engines without an audit."""
+            ...
+
         @property
         def introduced_lint(
             self,
-        ) -> Mapping[str, t.Infra.LintSnapshot[Sequence[str]]] | None: ...
+        ) -> Mapping[str, FlextInfraTypesBase.LintSnapshot[Sequence[str]]] | None:
+            """Introduced Ruff occurrences, None if unobserved."""
+            ...
+
         @property
-        def introduced_text(self) -> tuple[p.Infra.ModTextFinding, ...] | None: ...
+        def introduced_text(
+            self,
+        ) -> tuple[FlextInfraProtocolsScan.ModTextFinding, ...] | None:
+            """Introduced text occurrences, None if unobserved."""
+            ...
 
     @runtime_checkable
-    class ViolationsSweepReport(Protocol):
+    class ViolationsSweepReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def schema_version(self) -> int: ...
+        def schema_version(self) -> int:
+            """Report schema version."""
+            ...
+
         @property
-        def repository_root(self) -> Path: ...
+        def repository_root(self) -> Path:
+            """Repository the sweep repaired and proved."""
+            ...
+
         @property
-        def repair_verbs(self) -> Sequence[str]: ...
+        def repair_verbs(self) -> Sequence[str]:
+            """Canonical verbs the sweep ran, in order."""
+            ...
+
         @property
-        def focused_rule_ids(self) -> Sequence[str]: ...
+        def focused_rule_ids(self) -> Sequence[str]:
+            """Requested focus; full catalog stays observed."""
+            ...
+
         @property
-        def repository_roots(self) -> tuple[Path, ...]: ...
+        def repository_roots(self) -> tuple[Path, ...]:
+            """Discovered governed project topology."""
+            ...
+
         @property
-        def stages(self) -> tuple[p.Infra.ViolationsSweepStage, ...]: ...
+        def stages(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.ViolationsSweepStage, ...]:
+            """Independent operation receipts in invocation order."""
+            ...
+
         @property
-        def before(self) -> p.Infra.ViolationsTotals | None: ...
+        def before(self) -> FlextInfraProtocolsRefactor.ViolationsTotals | None:
+            """Scan totals before the repair sequence."""
+            ...
+
         @property
-        def after(self) -> p.Infra.ViolationsTotals | None: ...
+        def after(self) -> FlextInfraProtocolsRefactor.ViolationsTotals | None:
+            """Scan totals after the repair sequence."""
+            ...
+
         @property
-        def rule_deltas(self) -> tuple[p.Infra.ViolationsRuleDelta, ...]: ...
+        def rule_deltas(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.ViolationsRuleDelta, ...]:
+            """Occurrence-aware rule and repository comparisons."""
+            ...
+
         @property
-        def rule_evaluations(self) -> tuple[p.Infra.ViolationsRuleEvaluation, ...]: ...
+        def rule_evaluations(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.ViolationsRuleEvaluation, ...]:
+            """Final project and native rule coverage dispositions."""
+            ...
+
         @property
-        def engine_coverage(self) -> tuple[p.Infra.ViolationsEngineCoverage, ...]: ...
+        def engine_coverage(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.ViolationsEngineCoverage, ...]:
+            """Complete native audits or explicit missing capabilities."""
+            ...
+
         @property
-        def completed_verbs(self) -> Sequence[str]: ...
+        def completed_verbs(self) -> Sequence[str]:
+            """Successfully completed repair verbs."""
+            ...
+
         @property
-        def failed_verb(self) -> str | None: ...
+        def failed_verb(self) -> str | None:
+            """First failed repair verb."""
+            ...
+
         @property
-        def repair_error(self) -> str | None: ...
+        def repair_error(self) -> str | None:
+            """Original repair failure diagnostic."""
+            ...
+
         @property
-        def after_scan_error(self) -> str | None: ...
+        def after_scan_error(self) -> str | None:
+            """After scan failure diagnostic."""
+            ...
+
         @property
-        def before_scan_error(self) -> str | None: ...
+        def before_scan_error(self) -> str | None:
+            """Initial scan failure; native audits still observe members."""
+            ...
+
         @property
-        def before_evidence(self) -> p.Infra.ModScanEvidenceReceipt | None: ...
+        def before_evidence(
+            self,
+        ) -> FlextInfraProtocolsScan.ModScanEvidenceReceipt | None:
+            """Invocation-local full before evidence and byte digest."""
+            ...
+
         @property
-        def after_evidence(self) -> p.Infra.ModScanEvidenceReceipt | None: ...
+        def after_evidence(
+            self,
+        ) -> FlextInfraProtocolsScan.ModScanEvidenceReceipt | None:
+            """Invocation-local full after evidence and byte digest."""
+            ...
+
         @property
-        def before_plan(self) -> p.Infra.CodemodRulePlan | None: ...
+        def before_plan(
+            self,
+        ) -> FlextInfraProtocolsRefactorAstGrep.CodemodRulePlan | None:
+            """Before elected rules, providers, sources and digests."""
+            ...
+
         @property
-        def after_plan(self) -> p.Infra.CodemodRulePlan | None: ...
+        def after_plan(
+            self,
+        ) -> FlextInfraProtocolsRefactorAstGrep.CodemodRulePlan | None:
+            """After elected rules, providers, sources and digests."""
+            ...
+
         @property
-        def before_source_sha256(self) -> Mapping[str, str] | None: ...
+        def before_source_sha256(self) -> Mapping[str, str] | None:
+            """Authenticated before source and catalog inventory."""
+            ...
+
         @property
-        def after_source_sha256(self) -> Mapping[str, str] | None: ...
+        def after_source_sha256(self) -> Mapping[str, str] | None:
+            """Authenticated after inventory, or None when unobserved."""
+            ...
+
+        @property
+        def increased_totals(self) -> Sequence[str]:
+            """Names of the totals that increased, empty when none did."""
+            ...
 
     @runtime_checkable
-    class RefactorNamespaceEnforceInput(Protocol):
+    class RefactorNamespaceEnforceInput(
+        FlextInfraProtocolsMixins.WriteMixin,
+        FlextInfraProtocolsMixins.ModuleSelectionMixin,
+        Protocol,
+    ):
+        """Structural data contract projected from the owning model."""
+
+    @runtime_checkable
+    class CensusOptions(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def module(self) -> str | None: ...
+        def consumer_roots(self) -> tuple[Path, ...]:
+            """Explicit external consumer checkout roots for this census."""
+            ...
+
         @property
-        def repository_root(self) -> Path: ...
+        def source_plan_output(self) -> Path | None:
+            """Destination for the same authenticated SemanticSourcePlan."""
+            ...
+
         @property
-        def projects(self) -> Sequence[str] | None: ...
+        def json_output(self) -> str | None:
+            """Path to write JSON report."""
+            ...
+
         @property
-        def verbose(self) -> bool: ...
+        def impact_map_output(self) -> str | None:
+            """Path to write impact map JSON."""
+            ...
+
         @property
-        def apply(self) -> bool: ...
+        def kinds(self) -> Sequence[str] | None:
+            """Optional symbol-kind filters."""
+            ...
+
         @property
-        def gates(self) -> Sequence[str]: ...
+        def rules(self) -> Sequence[str] | None:
+            """Optional violation-rule filters."""
+            ...
+
         @property
-        def dry_run(self) -> bool: ...
+        def families(self) -> Sequence[str] | None:
+            """Optional namespace-family filters."""
+            ...
+
+        @property
+        def include_local_scopes(self) -> bool:
+            """Include locals, parameters and nested scopes."""
+            ...
 
     @runtime_checkable
-    class CensusOptions(Protocol):
+    class CensusInput(CensusOptions, FlextInfraProtocolsMixins.WriteMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def consumer_roots(self) -> tuple[Path, ...]: ...
+        def check_only(self) -> bool:
+            """Validate without writing."""
+            ...
+
         @property
-        def source_plan_output(self) -> Path | None: ...
+        def dry_run_mode(self) -> bool:
+            """Inspect without writing."""
+            ...
+
         @property
-        def json_output(self) -> str | None: ...
-        @property
-        def impact_map_output(self) -> str | None: ...
-        @property
-        def kinds(self) -> Sequence[str] | None: ...
-        @property
-        def rules(self) -> Sequence[str] | None: ...
-        @property
-        def families(self) -> Sequence[str] | None: ...
-        @property
-        def include_local_scopes(self) -> bool: ...
+        def output_format(self) -> str:
+            """Output format (json|text)."""
+            ...
 
     @runtime_checkable
-    class CensusInput(Protocol):
+    class AccessorMigrationInput(
+        FlextInfraProtocolsMixins.WriteMixin,
+        FlextInfraProtocolsMixins.ModuleSelectionMixin,
+        FlextInfraProtocolsMixins.NamespaceSelectionMixin,
+        Protocol,
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
-        @property
-        def projects(self) -> Sequence[str] | None: ...
-        @property
-        def verbose(self) -> bool: ...
-        @property
-        def apply(self) -> bool: ...
-        @property
-        def gates(self) -> Sequence[str]: ...
-        @property
-        def dry_run(self) -> bool: ...
-        @property
-        def consumer_roots(self) -> tuple[Path, ...]: ...
-        @property
-        def source_plan_output(self) -> Path | None: ...
-        @property
-        def json_output(self) -> str | None: ...
-        @property
-        def impact_map_output(self) -> str | None: ...
-        @property
-        def kinds(self) -> Sequence[str] | None: ...
-        @property
-        def rules(self) -> Sequence[str] | None: ...
-        @property
-        def families(self) -> Sequence[str] | None: ...
-        @property
-        def include_local_scopes(self) -> bool: ...
-        @property
-        def check_only(self) -> bool: ...
-        @property
-        def dry_run_mode(self) -> bool: ...
-        @property
-        def output_format(self) -> str: ...
+        def preview_limit(self) -> t.PositiveInt:
+            """Maximum number of file previews to include in the report."""
+            ...
 
     @runtime_checkable
-    class AccessorMigrationInput(Protocol):
+    class Result(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def namespace(self) -> str | None: ...
+        def file_path(self) -> Path:
+            """Target file path."""
+            ...
+
         @property
-        def module(self) -> str | None: ...
+        def success(self) -> bool:
+            """Whether the operation succeeded."""
+            ...
+
         @property
-        def repository_root(self) -> Path: ...
+        def modified(self) -> bool:
+            """Whether the file was actually modified."""
+            ...
+
         @property
-        def projects(self) -> Sequence[str] | None: ...
+        def error(self) -> str | None:
+            """Error message on failure."""
+            ...
+
         @property
-        def verbose(self) -> bool: ...
+        def changes(self) -> Sequence[str]:
+            """Human-readable change descriptions."""
+            ...
+
         @property
-        def apply(self) -> bool: ...
-        @property
-        def gates(self) -> Sequence[str]: ...
-        @property
-        def dry_run(self) -> bool: ...
-        @property
-        def preview_limit(self) -> t.PositiveInt: ...
+        def refactored_code(self) -> str | None:
+            """Resulting source code after transformation."""
+            ...
 
     @runtime_checkable
-    class Result(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        file_path: Path
-        success: bool
-        modified: bool
-        error: str | None
-        changes: Sequence[str]
-        refactored_code: str | None
-
-    @runtime_checkable
-    class RefactorProjectInfo(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        name: t.NonEmptyStr
-        path: Path
-        src_path: Path
-        package_roots: MutableSet[str]
-
-    @runtime_checkable
-    class FileImportData(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        imported_modules: MutableSet[str]
-        imported_symbols: MutableSet[str]
-
-    @runtime_checkable
-    class ProjectClassification(Protocol):
+    class RefactorProjectInfo(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project_kind(self) -> t.NonEmptyStr: ...
+        def name(self) -> t.NonEmptyStr:
+            """Project directory name."""
+            ...
+
         @property
-        def family_chains(self) -> Mapping[str, Sequence[str]]: ...
+        def path(self) -> Path:
+            """Absolute project path."""
+            ...
+
+        @property
+        def src_path(self) -> Path:
+            """Absolute src/ path."""
+            ...
+
+        @property
+        def package_roots(self) -> MutableSet[str]:
+            """Top-level Python package roots in src/."""
+            ...
 
     @runtime_checkable
-    class WrapperRewriteAccumulator(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        updates: MutableMapping[Path, str]
-        expected_sources: MutableMapping[Path, str]
-        changed_files: MutableSequence[str]
-        total_replacements: int
-        total_core_replacements: int
-        import_rewrite_candidates: int
-        per_project_changes: defaultdict[str, int]
-        per_project_replacements: defaultdict[str, int]
-
-    @runtime_checkable
-    class ModRuleRoute(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def selector(self) -> t.NonEmptyStr: ...
-        @property
-        def owner(self) -> Literal["ast", "text", "csv", "semantic", "callback"]: ...
-        @property
-        def callback(self) -> str | None: ...
-
-    @runtime_checkable
-    class ModCommand(Protocol):
+    class FileImportData(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def imported_modules(self) -> MutableSet[str]:
+            """Imported module roots."""
+            ...
+
         @property
-        def projects(self) -> Sequence[str] | None: ...
-        @property
-        def verbose(self) -> bool: ...
-        @property
-        def check(self) -> bool: ...
-        @property
-        def dry_run_mode(self) -> bool: ...
-        @property
-        def rename_plan(self) -> Path | None: ...
-        @property
-        def consumer_roots(self) -> tuple[Path, ...]: ...
-        @property
-        def rule_id(self) -> t.NonEmptyStr | None: ...
-        @property
-        def rule_ids(self) -> tuple[t.NonEmptyStr, ...] | None: ...
+        def imported_symbols(self) -> MutableSet[str]:
+            """Imported symbol names."""
+            ...
 
     @runtime_checkable
-    class SemanticRenamePlanCommand(Protocol):
+    class ProjectClassification(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def project_kind(self) -> t.NonEmptyStr:
+            """Project kind (core, domain, platform, integration, app)."""
+            ...
+
         @property
-        def decisions(self) -> t.NonEmptyStr: ...
-        @property
-        def output(self) -> Path: ...
+        def family_chains(self) -> Mapping[str, Sequence[str]]:
+            """Family letter to FLEXT chain mapping."""
+            ...
 
     @runtime_checkable
-    class SemanticRenamePreviewCommand(Protocol):
+    class WrapperRewriteAccumulator(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def updates(self) -> MutableMapping[Path, str]:
+            """Pending file content updates keyed by path."""
+            ...
+
         @property
-        def plan(self) -> Path: ...
+        def expected_sources(self) -> MutableMapping[Path, str]:
+            """Original content keyed by every pending update path."""
+            ...
+
+        @property
+        def changed_files(self) -> MutableSequence[str]:
+            """String paths of files changed by the run."""
+            ...
+
+        @property
+        def total_replacements(self) -> int:
+            """Total replacements applied across the run."""
+            ...
+
+        @property
+        def total_core_replacements(self) -> int:
+            """Total Core.Tests chain rewrites applied."""
+            ...
+
+        @property
+        def import_rewrite_candidates(self) -> int:
+            """Count of wrapper import rewrite candidates."""
+            ...
+
+        @property
+        def per_project_changes(self) -> defaultdict[str, int]:
+            """Changed file count keyed by project name."""
+            ...
+
+        @property
+        def per_project_replacements(self) -> defaultdict[str, int]:
+            """Replacement count keyed by project name."""
+            ...
 
     @runtime_checkable
-    class ApplyRenamesInput(Protocol):
+    class ModRuleRoute(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def selector(self) -> t.NonEmptyStr:
+            """Exact ``--rule`` selector."""
+            ...
+
         @property
-        def projects(self) -> Sequence[str] | None: ...
+        def owner(self) -> Literal["ast", "text", "csv", "semantic", "callback"]:
+            """Elected owner family."""
+            ...
+
         @property
-        def verbose(self) -> bool: ...
-        @property
-        def apply(self) -> bool: ...
-        @property
-        def gates(self) -> Sequence[str]: ...
-        @property
-        def dry_run(self) -> bool: ...
-        @property
-        def rename_definitions(self) -> bool: ...
-        @property
-        def csv(self) -> t.NonEmptyStr: ...
-        @property
-        def roots(self) -> Sequence[str]: ...
-        @property
-        def bindings(self) -> Mapping[str, Sequence[str]]: ...
-        @property
-        def text_globs(self) -> Sequence[str]: ...
-        @property
-        def python_documentation(self) -> bool: ...
-        @property
-        def exclude_globs(self) -> Sequence[str]: ...
+        def callback(self) -> str | None:
+            """Selected callback owner when applicable."""
+            ...
 
     @runtime_checkable
-    class ApplyRenamesReport(Protocol):
+    class ModCommand(FlextInfraProtocolsMixins.ScopeMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def preview_diff(self) -> str: ...
+        def check(self) -> bool:
+            """Validate without writing."""
+            ...
+
         @property
-        def label(self) -> t.NonEmptyStr: ...
+        def dry_run_mode(self) -> bool:
+            """Inspect without writing."""
+            ...
+
         @property
-        def files_scanned(self) -> t.NonNegativeInt: ...
+        def rename_plan(self) -> Path | None:
+            """Authenticated semantic rename artifact to consume."""
+            ...
+
         @property
-        def occurrences(self) -> t.NonNegativeInt: ...
+        def consumer_roots(self) -> tuple[Path, ...]:
+            """Explicit external consumer checkout roots for this run."""
+            ...
+
         @property
-        def files_changed(self) -> t.NonNegativeInt: ...
+        def rule_id(self) -> t.NonEmptyStr | None:
+            """One exact concrete codemod rule ID."""
+            ...
+
         @property
-        def applied(self) -> bool: ...
+        def rule_ids(self) -> tuple[t.NonEmptyStr, ...] | None:
+            """Exact ast-grep catalog rule IDs; repeat for each selection."""
+            ...
+
         @property
-        def published_states(self) -> tuple[p.Cli.AtomicFileState, ...]: ...
+        def laws(self) -> tuple[FlextInfraTypesBase.EnforcementId, ...] | None:
+            """Theme law ids (ENFORCE-NNN); repeat --laws for each law."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Whether this invocation writes: neither check nor dry-run."""
+            ...
 
     @runtime_checkable
-    class ParsedPythonModule(Protocol):
+    class SemanticRenamePlanCommand(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def source(self) -> str: ...
+        def repository_root(self) -> Path:
+            """Complete governed workspace."""
+            ...
+
         @property
-        def tree(self) -> t.Infra.RopePyModule: ...
+        def decisions(self) -> t.NonEmptyStr:
+            """SemanticRenameSelections JSON."""
+            ...
+
+        @property
+        def output(self) -> Path:
+            """Workspace-contained plan artifact destination."""
+            ...
 
     @runtime_checkable
-    class ImportLawScope(Protocol):
+    class SemanticRenamePreviewCommand(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project_root(self) -> Path: ...
+        def repository_root(self) -> Path:
+            """Complete governed workspace."""
+            ...
+
         @property
-        def file_path(self) -> Path: ...
-        @property
-        def namespace_dir(self) -> Path: ...
-        @property
-        def module(self) -> str: ...
-        @property
-        def layer(self) -> int: ...
-        @property
-        def own_exports(self) -> frozenset[str]: ...
-        @property
-        def facade_dependencies(self) -> frozenset[str]: ...
-        @property
-        def family_letter(self) -> str | None: ...
-        @property
-        def direct_imports(self) -> bool: ...
-        @property
-        def bootstrap_dependency(self) -> bool: ...
-        @property
-        def namespace(self) -> str: ...
+        def plan(self) -> Path:
+            """Authenticated semantic rename artifact."""
+            ...
 
     @runtime_checkable
-    class ImportLawPass(Protocol):
+    class ApplyRenamesInput(FlextInfraProtocolsMixins.WriteMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def scope(self) -> p.Infra.ImportLawScope: ...
+        def rename_definitions(self) -> bool:
+            """Atomically rename owned declarations and references."""
+            ...
+
         @property
-        def tree(self) -> ast.Module: ...
+        def csv(self) -> t.NonEmptyStr:
+            """Path to the old,new rename-list CSV."""
+            ...
+
         @property
-        def parents(self) -> Mapping[int, ast.AST]: ...
+        def roots(self) -> Sequence[str]:
+            """Directories to scan for rename targets."""
+            ...
+
         @property
-        def bindings(self) -> Mapping[str, ast.stmt]: ...
+        def bindings(self) -> Mapping[str, Sequence[str]]:
+            """Structural member projected from the owning model.
+
+            CSV expression prefixes mapped to current public Rope owner identities.
+            """
+            ...
+
         @property
-        def root_exports(self) -> Mapping[str, str]: ...
+        def text_globs(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Explicit root-relative non-Python documentation and configuration text
+            surfaces.
+            """
+            ...
+
         @property
-        def sources(self) -> Mapping[Path, str] | None: ...
+        def python_documentation(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Rename comments and actual Python docstrings, preserving executable
+            string payloads.
+            """
+            ...
+
         @property
-        def source_project(self) -> t.Infra.RopeProject | None: ...
+        def exclude_globs(self) -> Sequence[str]:
+            """Declared generated projections excluded from campaign targets."""
+            ...
+
+    @runtime_checkable
+    class ApplyRenamesReport(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
         @property
-        def deferred_class_lines(self) -> frozenset[int]: ...
+        def preview_diff(self) -> str:
+            """Unified diff from authenticated planned source bytes."""
+            ...
+
+        @property
+        def label(self) -> t.NonEmptyStr:
+            """Rename-list label."""
+            ...
+
+        @property
+        def files_scanned(self) -> t.NonNegativeInt:
+            """Text files scanned."""
+            ...
+
+        @property
+        def occurrences(self) -> t.NonNegativeInt:
+            """Pending authenticated source edit spans from the current scan."""
+            ...
+
+        @property
+        def files_changed(self) -> t.NonNegativeInt:
+            """Files rewritten in apply mode."""
+            ...
+
+        @property
+        def applied(self) -> bool:
+            """Whether changes were applied."""
+            ...
+
+        @property
+        def published_states(self) -> tuple[p.Cli.AtomicFileState, ...]:
+            """Authenticated states of the acknowledged published paths."""
+            ...
+
+    @runtime_checkable
+    class ParsedPythonModule(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def source(self) -> str:
+            """Raw source text."""
+            ...
+
+        @property
+        def tree(self) -> FlextInfraTypesRope.RopePyModule:
+            """Parsed PyObject module representation."""
+            ...
+
+    @runtime_checkable
+    class ImportLawScope(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def project_root(self) -> Path:
+            """Governed project root."""
+            ...
+
+        @property
+        def file_path(self) -> Path:
+            """Normalized module path."""
+            ...
+
+        @property
+        def namespace_dir(self) -> Path:
+            """Directory of the namespace owning the module."""
+            ...
+
+        @property
+        def module(self) -> str:
+            """Dotted name of the module."""
+            ...
+
+        @property
+        def layer(self) -> int:
+            """Module's import-layer rank."""
+            ...
+
+        @property
+        def own_exports(self) -> frozenset[str]:
+            """Names the module declares in its own __all__."""
+            ...
+
+        @property
+        def facade_dependencies(self) -> frozenset[str]:
+            """Facade aliases whose runtime providers depend on this module."""
+            ...
+
+        @property
+        def family_letter(self) -> str | None:
+            """Structural member projected from the owning model.
+
+            Facade letter of the family package holding the module, or None outside
+            every family package.
+            """
+            ...
+
+        @property
+        def direct_imports(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Whether the module keeps direct leaf imports: a settings/config module
+            or a family base.py, which must never route through the namespace root
+            or a lazy package.
+            """
+            ...
+
+        @property
+        def bootstrap_dependency(self) -> bool:
+            """Whether the captured root graph bootstraps this module."""
+            ...
+
+        @property
+        def namespace(self) -> str:
+            """Structural member projected from the owning model.
+
+            Qualified publishing package derived from the explicit module facts.
+            """
+            ...
+
+    @runtime_checkable
+    class ImportLawPass(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def scope(self) -> FlextInfraProtocolsRefactor.ImportLawScope:
+            """Module facts of the pass."""
+            ...
+
+        @property
+        def tree(self) -> ast.Module:
+            """Parsed module."""
+            ...
+
+        @property
+        def parents(self) -> Mapping[int, ast.AST]:
+            """Child node id to parent node map."""
+            ...
+
+        @property
+        def bindings(self) -> Mapping[str, ast.stmt]:
+            """Module-level statement binding each top name."""
+            ...
+
+        @property
+        def root_exports(self) -> Mapping[str, str]:
+            """Names the namespace root publishes lazily."""
+            ...
+
+        @property
+        def sources(self) -> Mapping[Path, str] | None:
+            """Captured sources used by this normalization pass."""
+            ...
+
+        @property
+        def source_project(self) -> FlextInfraTypesRope.RopeProject | None:
+            """Native source view owning this pass."""
+            ...
+
+        @property
+        def deferred_class_lines(self) -> frozenset[int]:
+            """Class declarations with proven ordinary construction."""
+            ...
 
 
 __all__: list[str] = [

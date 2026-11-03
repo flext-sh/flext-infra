@@ -12,24 +12,26 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
+from flext_cli import FlextCliProtocols
+
 from flext_infra import t
-from flext_infra._protocols._git import FlextInfraProtocolsGitIdentity
-from flext_infra._protocols._git.worktree_facts import (
-    FlextInfraProtocolsGitWorktreeFacts,
-)
-from flext_infra._protocols._git.worktree_state import (
-    FlextInfraProtocolsGitWorktreeState,
-)
-from flext_infra._protocols.git_lane_ownership import (
+from flext_infra._protocols import (
+    FlextInfraProtocolsGitLaneInputs,
     FlextInfraProtocolsGitLaneOwnership,
+)
+from flext_infra._protocols._git import (
+    FlextInfraProtocolsGitIdentity,
+    FlextInfraProtocolsGitWorktreeFacts,
+    FlextInfraProtocolsGitWorktreeState,
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_cli import p
 
 
 class FlextInfraProtocolsGit(
     FlextInfraProtocolsGitLaneOwnership,
+    FlextInfraProtocolsGitLaneInputs,
     FlextInfraProtocolsGitIdentity,
     FlextInfraProtocolsGitWorktreeFacts,
     FlextInfraProtocolsGitWorktreeState,
@@ -37,502 +39,740 @@ class FlextInfraProtocolsGit(
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class GitRepoRequest(Protocol):
+    class GitRepoRequest(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def repo_root(self) -> Path:
+            """Repository worktree root."""
+            ...
 
     @runtime_checkable
-    class GitSigningConfigObservation(Protocol):
+    class GitSigningConfigObservation(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def key(self) -> t.NonEmptyStr: ...
+        def key(self) -> t.NonEmptyStr:
+            """Inspected native Git setting."""
+            ...
+
         @property
-        def scope(self) -> str | None: ...
+        def scope(self) -> str | None:
+            """Native effective config scope."""
+            ...
+
         @property
-        def origin(self) -> str | None: ...
+        def origin(self) -> str | None:
+            """Native effective config origin."""
+            ...
+
         @property
-        def value(self) -> str | None: ...
+        def value(self) -> str | None:
+            """Private native config value for projection."""
+            ...
+
         @property
-        def process(self) -> p.Cli.ProcessOutcome: ...
+        def process(self) -> p.Cli.ProcessOutcome:
+            """Original native query outcome."""
+            ...
 
     @runtime_checkable
-    class GitSigningIdentityReport(Protocol):
+    class GitSigningIdentityReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def repo_root(self) -> Path:
+            """Inspected repository root."""
+            ...
+
         @property
-        def signing_format(self) -> str | None: ...
+        def signing_format(self) -> str | None:
+            """Declared native signing format."""
+            ...
+
         @property
-        def key_path(self) -> Path | None: ...
+        def key_path(self) -> Path | None:
+            """Declared file key reference, unread."""
+            ...
+
         @property
-        def inline_public_key(self) -> bool: ...
+        def inline_public_key(self) -> bool:
+            """Git literal public reference: key:: or raw ssh-."""
+            ...
+
         @property
-        def public_fingerprint(self) -> str | None: ...
+        def public_fingerprint(self) -> str | None:
+            """Verified public fingerprint, unknown until verified."""
+            ...
+
         @property
-        def allowed_signers_path(self) -> Path | None: ...
+        def allowed_signers_path(self) -> Path | None:
+            """Declared public trust file, unread."""
+            ...
+
         @property
-        def observations(self) -> tuple[p.Infra.GitSigningConfigObservation, ...]: ...
+        def observations(
+            self,
+        ) -> tuple[FlextInfraProtocolsGit.GitSigningConfigObservation, ...]:
+            """Native origin, scope and raw outcome for every setting."""
+            ...
 
     @runtime_checkable
-    class GitLaneEvidence(Protocol):
+    class GitLaneEvidence(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def repo_root(self) -> Path:
+            """Receipt repository identity."""
+            ...
+
         @property
-        def captured_at(self) -> t.AwareDatetime: ...
+        def captured_at(self) -> t.AwareDatetime:
+            """Receipt capture time."""
+            ...
+
         @property
-        def pull_requests(self) -> tuple[p.Infra.GitLanePullRequest, ...] | None: ...
+        def pull_requests(
+            self,
+        ) -> tuple[FlextInfraProtocolsGitLaneInputs.GitLanePullRequest, ...] | None:
+            """Observed PRs; None means not selected/unknown."""
+            ...
+
         @property
-        def beads(self) -> tuple[p.Infra.GitLaneBead, ...] | None: ...
+        def beads(
+            self,
+        ) -> tuple[FlextInfraProtocolsGitLaneOwnership.GitLaneBead, ...] | None:
+            """Observed Beads; None means not selected/unknown."""
+            ...
 
     @runtime_checkable
-    class GitLaneReport(Protocol):
+    class GitLaneReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def repo_root(self) -> Path:
+            """Inspected repository."""
+            ...
+
         @property
-        def integration_branch(self) -> str: ...
+        def integration_branch(self) -> str:
+            """Resolved integration branch."""
+            ...
+
         @property
-        def integration_oid(self) -> str: ...
+        def integration_oid(self) -> str:
+            """Proven live integration tip."""
+            ...
+
         @property
-        def inventory(self) -> tuple[str, ...]: ...
+        def inventory(self) -> tuple[str, ...]:
+            """Full exact Git artifact inventory."""
+            ...
+
         @property
-        def findings(self) -> tuple[str, ...]: ...
+        def findings(self) -> tuple[str, ...]:
+            """All refusals and inconclusive evidence."""
+            ...
+
         @property
-        def violations(self) -> tuple[p.Infra.GitLaneViolation, ...]: ...
+        def violations(
+            self,
+        ) -> tuple[FlextInfraProtocolsGitLaneInputs.GitLaneViolation, ...]:
+            """Classified violations from the single evaluator."""
+            ...
 
     @runtime_checkable
-    class GitLaneFacts(Protocol):
+    class GitLaneFacts(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def repo_root(self) -> Path:
+            """Inspected Git repository."""
+            ...
+
         @property
-        def stash_oids(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def stash_oids(self) -> tuple[t.NonEmptyStr, ...]:
+            """All stash commit identities."""
+            ...
+
         @property
-        def refs(self) -> tuple[p.Infra.GitLaneRef, ...]: ...
+        def refs(self) -> tuple[FlextInfraProtocolsGitLaneInputs.GitLaneRef, ...]:
+            """All observed local and configured remote references."""
+            ...
+
         @property
-        def read_errors(self) -> tuple[str, ...]: ...
+        def read_errors(self) -> tuple[str, ...]:
+            """Exact first failures per native read."""
+            ...
 
     @runtime_checkable
-    class GitStatusRequest(Protocol):
+    class GitStatusRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
-
-        @property
-        def repo_root(self) -> Path: ...
 
     @runtime_checkable
-    class GitStatusReport(Protocol):
+    class GitStatusReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def repo_root(self) -> Path:
+            """Repository worktree root."""
+            ...
+
         @property
-        def porcelain(self) -> str: ...
+        def porcelain(self) -> str:
+            """Raw git status --porcelain output."""
+            ...
+
         @property
-        def dirty(self) -> bool: ...
+        def dirty(self) -> bool:
+            """Whether the worktree is dirty."""
+            ...
 
     @runtime_checkable
-    class GitPrimaryRootReport(Protocol):
+    class GitPrimaryRootReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def primary_root(self) -> Path: ...
+        def primary_root(self) -> Path:
+            """Canonical primary worktree root."""
+            ...
 
     @runtime_checkable
-    class GitRootReport(Protocol):
+    class GitRootReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def repository_root(self) -> Path:
+            """Workspace or superproject root."""
+            ...
 
     @runtime_checkable
-    class GitOidReport(Protocol):
+    class GitOidReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def oid(self) -> t.NonEmptyStr: ...
+        def oid(self) -> t.NonEmptyStr:
+            """Git object id (hex)."""
+            ...
 
     @runtime_checkable
-    class GitTextReport(Protocol):
+    class GitTextReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def text(self) -> str: ...
+        def text(self) -> str:
+            """Captured stdout text."""
+            ...
 
     @runtime_checkable
-    class GitBytesReport(Protocol):
+    class GitBytesReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def payload(self) -> bytes: ...
+        def payload(self) -> bytes:
+            """Captured stdout bytes."""
+            ...
 
     @runtime_checkable
-    class GitBoolReport(Protocol):
+    class GitBoolReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def value(self) -> bool: ...
+        def value(self) -> bool:
+            """Predicate result."""
+            ...
 
     @runtime_checkable
-    class GitWorktreeEntry(Protocol):
+    class GitWorktreeEntry(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def path(self) -> Path: ...
+        def path(self) -> Path:
+            """Registered worktree root."""
+            ...
+
         @property
-        def head(self) -> t.NonEmptyStr | None: ...
+        def head(self) -> t.NonEmptyStr | None:
+            """Checked-out commit oid; absent for a bare worktree."""
+            ...
+
         @property
-        def branch(self) -> t.NonEmptyStr | None: ...
+        def branch(self) -> t.NonEmptyStr | None:
+            """Checked-out branch short name; absent when detached."""
+            ...
+
         @property
-        def detached(self) -> bool: ...
+        def detached(self) -> bool:
+            """Whether HEAD is detached."""
+            ...
+
         @property
-        def bare(self) -> bool: ...
+        def bare(self) -> bool:
+            """Whether this is the bare main worktree."""
+            ...
+
         @property
-        def locked(self) -> bool: ...
+        def locked(self) -> bool:
+            """Whether the worktree is locked."""
+            ...
 
     @runtime_checkable
-    class GitWorktreeListReport(Protocol):
+    class GitWorktreeListReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def root(self) -> Path: ...
+        def root(self) -> Path:
+            """Repository the registry was read for."""
+            ...
+
         @property
-        def entries(self) -> tuple[p.Infra.GitWorktreeEntry, ...]: ...
+        def entries(self) -> tuple[FlextInfraProtocolsGit.GitWorktreeEntry, ...]:
+            """Every registered worktree, primary first."""
+            ...
+
         @property
-        def porcelain(self) -> str: ...
+        def porcelain(self) -> str:
+            """Raw git worktree list --porcelain output."""
+            ...
 
     @runtime_checkable
-    class GitBranchRequest(Protocol):
+    class GitBranchRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def branch(self) -> t.NonEmptyStr: ...
+        def branch(self) -> t.NonEmptyStr:
+            """Branch name."""
+            ...
 
     @runtime_checkable
-    class GitRefRequest(Protocol):
+    class GitRefRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def reference(self) -> t.NonEmptyStr: ...
+        def reference(self) -> t.NonEmptyStr:
+            """Exact Git ref."""
+            ...
 
     @runtime_checkable
-    class GitCommitishRequest(Protocol):
+    class GitCommitishRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def commitish(self) -> t.NonEmptyStr: ...
+        def commitish(self) -> t.NonEmptyStr:
+            """Commit-ish."""
+            ...
 
     @runtime_checkable
-    class GitAncestryRequest(Protocol):
+    class GitAncestryRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def ancestor(self) -> t.NonEmptyStr:
+            """Candidate ancestor."""
+            ...
+
         @property
-        def ancestor(self) -> t.NonEmptyStr: ...
-        @property
-        def descendant(self) -> t.NonEmptyStr: ...
+        def descendant(self) -> t.NonEmptyStr:
+            """Candidate descendant."""
+            ...
 
     @runtime_checkable
-    class GitPathPairRequest(Protocol):
+    class GitPathPairRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def source(self) -> t.NonEmptyStr:
+            """Source path relative."""
+            ...
+
         @property
-        def source(self) -> t.NonEmptyStr: ...
-        @property
-        def target(self) -> t.NonEmptyStr: ...
+        def target(self) -> t.NonEmptyStr:
+            """Target path relative."""
+            ...
 
     @runtime_checkable
-    class GitRelativePathRequest(Protocol):
+    class GitRelativePathRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def relative_path(self) -> t.NonEmptyStr: ...
+        def relative_path(self) -> t.NonEmptyStr:
+            """Path relative to repo root."""
+            ...
 
     @runtime_checkable
-    class GitDeleteRefRequest(Protocol):
+    class GitDeleteRefRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def reference(self) -> t.NonEmptyStr:
+            """Exact Git ref."""
+            ...
+
         @property
-        def reference(self) -> t.NonEmptyStr: ...
-        @property
-        def expected_oid(self) -> t.NonEmptyStr: ...
+        def expected_oid(self) -> t.NonEmptyStr:
+            """Expected tip oid for CAS delete."""
+            ...
 
     @runtime_checkable
-    class GitPushRequest(Protocol):
+    class GitPushRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def remote(self) -> t.NonEmptyStr:
+            """Remote name."""
+            ...
+
         @property
-        def remote(self) -> t.NonEmptyStr: ...
+        def branch(self) -> t.NonEmptyStr:
+            """Branch to publish."""
+            ...
+
         @property
-        def branch(self) -> t.NonEmptyStr: ...
-        @property
-        def source(self) -> t.NonEmptyStr: ...
+        def source(self) -> t.NonEmptyStr:
+            """Local commit-ish pushed to the remote branch."""
+            ...
 
     @runtime_checkable
-    class GitRemoteRequest(Protocol):
+    class GitRemoteRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def remote(self) -> t.NonEmptyStr: ...
+        def remote(self) -> t.NonEmptyStr:
+            """Remote name."""
+            ...
 
     @runtime_checkable
-    class GitRemoteBranchRequest(Protocol):
+    class GitRemoteBranchRequest(GitRemoteRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def branch(self) -> t.NonEmptyStr:
+            """Remote branch name."""
+            ...
+
         @property
-        def remote(self) -> t.NonEmptyStr: ...
-        @property
-        def branch(self) -> t.NonEmptyStr: ...
-        @property
-        def expected_oid(self) -> t.NonEmptyStr | None: ...
+        def expected_oid(self) -> t.NonEmptyStr | None:
+            """Remote tip the mutation is leased on."""
+            ...
 
     @runtime_checkable
-    class GitLaneOwnershipRequest(Protocol):
+    class GitLaneOwnershipRequest(GitRemoteRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def checkpoint_ref(self) -> t.NonEmptyStr:
+            """Existing dedicated checkpoint ref."""
+            ...
+
         @property
-        def remote(self) -> t.NonEmptyStr: ...
-        @property
-        def checkpoint_ref(self) -> t.NonEmptyStr: ...
-        @property
-        def expected_tip(self) -> t.NonEmptyStr | None: ...
+        def expected_tip(self) -> t.NonEmptyStr | None:
+            """Previously observed integration tip, when selected."""
+            ...
 
     @runtime_checkable
-    class GitLaneVerificationRequest(Protocol):
+    class GitLaneVerificationRequest(GitRemoteRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def declared(self) -> str | None:
+            """Governing integration declaration."""
+            ...
+
         @property
-        def remote(self) -> t.NonEmptyStr: ...
+        def evidence_file(self) -> Path | None:
+            """Coordinator ownership receipt."""
+            ...
+
         @property
-        def declared(self) -> str | None: ...
+        def governance_file(self) -> Path | None:
+            """Coordination governance SSOT."""
+            ...
+
         @property
-        def evidence_file(self) -> Path | None: ...
+        def read_pull_requests(self) -> bool:
+            """Authorize public PR ownership reads."""
+            ...
+
         @property
-        def governance_file(self) -> Path | None: ...
+        def read_beads(self) -> bool:
+            """Authorize declared Beads ownership reads."""
+            ...
+
         @property
-        def read_pull_requests(self) -> bool: ...
+        def operation(self) -> Literal["verify", "create", "retire"]:
+            """Boundary being verified, not an effect selector."""
+            ...
+
         @property
-        def read_beads(self) -> bool: ...
+        def candidate(self) -> t.NonEmptyStr:
+            """Commit requiring integration ancestry."""
+            ...
+
         @property
-        def operation(self) -> Literal["verify", "create", "retire"]: ...
+        def expected_tip(self) -> t.NonEmptyStr | None:
+            """Previously observed tip."""
+            ...
+
         @property
-        def candidate(self) -> t.NonEmptyStr: ...
-        @property
-        def expected_tip(self) -> t.NonEmptyStr | None: ...
-        @property
-        def ownership(self) -> p.Infra.GitLaneOwnershipReceipt | None: ...
+        def ownership(
+            self,
+        ) -> FlextInfraProtocolsGitWorktreeState.GitLaneOwnershipReceipt | None:
+            """Required integrated preservation receipt for creation."""
+            ...
 
     @runtime_checkable
-    class GitRefHeadsRequest(Protocol):
+    class GitRefHeadsRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def namespace(self) -> t.NonEmptyStr: ...
+        def namespace(self) -> t.NonEmptyStr:
+            """Ref namespace."""
+            ...
 
     @runtime_checkable
-    class GitRefHeadsReport(Protocol):
+    class GitRefHeadsReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def heads(self) -> Mapping[str, str]: ...
+        def heads(self) -> Mapping[str, str]:
+            """Name relative to the namespace -> tip oid."""
+            ...
 
     @runtime_checkable
-    class GitOidListReport(Protocol):
+    class GitOidListReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def oids(self) -> Sequence[str]: ...
+        def oids(self) -> Sequence[str]:
+            """Object ids in order."""
+            ...
 
     @runtime_checkable
-    class GitBranchCreateRequest(Protocol):
+    class GitBranchCreateRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def branch(self) -> t.NonEmptyStr:
+            """New branch name."""
+            ...
+
         @property
-        def branch(self) -> t.NonEmptyStr: ...
+        def start(self) -> t.NonEmptyStr:
+            """Commit-ish the branch starts at."""
+            ...
+
         @property
-        def start(self) -> t.NonEmptyStr: ...
-        @property
-        def switch(self) -> bool: ...
+        def switch(self) -> bool:
+            """Switch the worktree to it, carrying local changes."""
+            ...
 
     @runtime_checkable
-    class GitStashDropRequest(Protocol):
+    class GitStashDropRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def oid(self) -> t.NonEmptyStr: ...
+        def oid(self) -> t.NonEmptyStr:
+            """Stash commit oid."""
+            ...
 
     @runtime_checkable
-    class GitMergeProbeRequest(Protocol):
+    class GitMergeProbeRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def base(self) -> t.NonEmptyStr:
+            """Merge target commit-ish."""
+            ...
+
         @property
-        def base(self) -> t.NonEmptyStr: ...
-        @property
-        def commitish(self) -> t.NonEmptyStr: ...
+        def commitish(self) -> t.NonEmptyStr:
+            """Merged commit-ish."""
+            ...
 
     @runtime_checkable
-    class GitTimestampReport(Protocol):
+    class GitTimestampReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def epoch_seconds(self) -> t.NonNegativeInt: ...
+        def epoch_seconds(self) -> t.NonNegativeInt:
+            """Seconds since the Unix epoch."""
+            ...
 
     @runtime_checkable
-    class GitWorktreeAddRequest(Protocol):
+    class GitWorktreeAddRequest(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def repo_root(self) -> Path:
+            """Primary repository root."""
+            ...
+
         @property
-        def lane(self) -> Path: ...
+        def lane(self) -> Path:
+            """Absolute lane worktree path."""
+            ...
+
         @property
-        def branch(self) -> t.NonEmptyStr: ...
+        def branch(self) -> t.NonEmptyStr:
+            """Lane branch name."""
+            ...
+
         @property
-        def base(self) -> t.NonEmptyStr: ...
+        def base(self) -> t.NonEmptyStr:
+            """Base commit-ish when creating branch."""
+            ...
+
         @property
-        def track_remote(self) -> bool: ...
+        def track_remote(self) -> bool:
+            """Track origin/<branch> when creating."""
+            ...
+
         @property
-        def local_branch_exists(self) -> bool: ...
+        def local_branch_exists(self) -> bool:
+            """Whether refs/heads/<branch> already exists."""
+            ...
 
     @runtime_checkable
-    class GitNumstatReport(Protocol):
+    class GitNumstatReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def subject(self) -> str: ...
+        def subject(self) -> str:
+            """HEAD commit subject."""
+            ...
+
         @property
-        def numstat(self) -> str: ...
+        def numstat(self) -> str:
+            """Git diff --numstat HEAD~1 HEAD."""
+            ...
 
     @runtime_checkable
-    class GitFingerprintInputsReport(Protocol):
+    class GitFingerprintInputsReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def paths_z(self) -> bytes: ...
+        def paths_z(self) -> bytes:
+            """NUL-delimited ls-files path list."""
+            ...
+
         @property
-        def index_z(self) -> bytes: ...
+        def index_z(self) -> bytes:
+            """NUL-delimited ls-files --stage list."""
+            ...
+
         @property
-        def head(self) -> bytes: ...
+        def head(self) -> bytes:
+            """HEAD oid bytes or UNBORN."""
+            ...
 
     @runtime_checkable
-    class GitUpdateIndexGitlinkRequest(Protocol):
+    class GitUpdateIndexGitlinkRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def oid(self) -> t.NonEmptyStr:
+            """Gitlink commit oid."""
+            ...
+
         @property
-        def oid(self) -> t.NonEmptyStr: ...
-        @property
-        def relative_path(self) -> t.NonEmptyStr: ...
+        def relative_path(self) -> t.NonEmptyStr:
+            """Gitlink path relative to repo."""
+            ...
 
     @runtime_checkable
-    class GitPathsRequest(Protocol):
+    class GitPathsRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def paths(self) -> Sequence[t.NonEmptyStr]: ...
+        def paths(self) -> Sequence[t.NonEmptyStr]:
+            """Relative paths to operate on."""
+            ...
 
     @runtime_checkable
-    class GitCommitRequest(Protocol):
+    class GitCommitRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def message(self) -> t.NonEmptyStr: ...
+        def message(self) -> t.NonEmptyStr:
+            """Commit message."""
+            ...
 
     @runtime_checkable
-    class GitRemoteUrlRequest(Protocol):
+    class GitRemoteUrlRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def remote(self) -> t.NonEmptyStr: ...
+        def remote(self) -> t.NonEmptyStr:
+            """Remote name."""
+            ...
 
     @runtime_checkable
-    class GitSubmoduleContractRequest(Protocol):
+    class GitSubmoduleContractRequest(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def repo_root(self) -> Path:
+            """Superproject worktree root."""
+            ...
+
         @property
-        def member_path(self) -> t.NonEmptyStr: ...
+        def member_path(self) -> t.NonEmptyStr:
+            """Submodule path relative to the superproject root."""
+            ...
 
     @runtime_checkable
-    class GitLaneRequest(Protocol):
+    class GitLaneRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def branch(self) -> t.NonEmptyStr:
+            """Lane branch."""
+            ...
+
         @property
-        def branch(self) -> t.NonEmptyStr: ...
+        def base(self) -> t.NonEmptyStr:
+            """Integration branch the lane starts from and targets."""
+            ...
+
         @property
-        def base(self) -> t.NonEmptyStr: ...
+        def subject(self) -> t.NonEmptyStr:
+            """Commit subject and pull-request title."""
+            ...
+
         @property
-        def subject(self) -> t.NonEmptyStr: ...
+        def body_file(self) -> Path:
+            """Pull-request body file."""
+            ...
+
         @property
-        def body_file(self) -> Path: ...
-        @property
-        def ownership(self) -> p.Infra.GitLaneOwnershipReceipt | None: ...
+        def ownership(
+            self,
+        ) -> FlextInfraProtocolsGitWorktreeState.GitLaneOwnershipReceipt | None:
+            """Live retained and integrated prior owned repository state."""
+            ...
 
     @runtime_checkable
-    class GitIndexScope(Protocol):
+    class GitIndexScope(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
+        def repo_root(self) -> Path:
+            """Exact repository owning the scope."""
+            ...
+
         @property
-        def index_file(self) -> Path: ...
+        def index_file(self) -> Path:
+            """Git owner's isolated native index."""
+            ...
 
     @runtime_checkable
-    class GitCheckoutPathsRequest(Protocol):
+    class GitCheckoutPathsRequest(GitRepoRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repo_root(self) -> Path: ...
-        @property
-        def paths(self) -> Sequence[t.NonEmptyStr]: ...
+        def paths(self) -> Sequence[t.NonEmptyStr]:
+            """Relative paths to restore; empty restores all."""
+            ...
 
 
 __all__: list[str] = [

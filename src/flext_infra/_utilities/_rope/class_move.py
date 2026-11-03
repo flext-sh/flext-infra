@@ -1139,7 +1139,8 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         before_scopes = cls._module_scopes(before_module)
         current_scopes = cls._module_scopes(module)
         cls._validate_module_quoted_scopes(before_scopes, current_scopes, paths)
-        positions = {id(scope): key for key, scope in current_scopes.items()}
+        # The rewrite reads the pre-move text: its scopes are ``before_module``'s.
+        positions = {id(scope): key for key, scope in before_scopes.items()}
         required: dict[tuple[t.StrTuple, str], int] = {}
         binding: str | None = None
 
@@ -1149,7 +1150,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             selected, elected, count = cls._module_quoted_reference(
                 composed,
                 module,
-                (before_scopes[identity], scope),
+                (scope, current_scopes[identity]),
                 expression,
                 ((paths[0], paths[1]), identities, destination),
             )
@@ -1169,7 +1170,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         rewritten = FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
-            composed, resource, text, replacement
+            composed, resource, text, replacement, module=before_module
         )
         if binding is not None:
             rewritten, elected = runtime.import_binding(

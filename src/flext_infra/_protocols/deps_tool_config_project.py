@@ -10,25 +10,46 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from flext_cli import FlextCliProtocols
+
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra._protocols import (
+        FlextInfraProtocolsDepsToolConfigProjectMise,
+        FlextInfraProtocolsProjectGitignore,
+    )
 
 
 class FlextInfraProtocolsDepsToolConfigProject:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ProjectManagedArtifactsFragment(Protocol):
+    class ProjectManagedArtifactsFragment(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        Mise: p.Infra.ProjectMiseConfig | None
-        Gitignore: p.Infra.ProjectGitignoreConfig | None
+        @property
+        def Mise(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig | None:
+            """Mise section declared by this source."""
+            ...
+
+        @property
+        def Gitignore(
+            self,
+        ) -> FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig | None:
+            """Gitignore section declared by this source."""
+            ...
 
     @runtime_checkable
-    class ProjectConfigDocument(Protocol):
+    class ProjectConfigDocument(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        ManagedArtifacts: p.Infra.ProjectManagedArtifactsFragment
+        @property
+        def ManagedArtifacts(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfigProject.ProjectManagedArtifactsFragment:
+            """Project-local managed artifact configuration."""
+            ...
 
 
 __all__: list[str] = [

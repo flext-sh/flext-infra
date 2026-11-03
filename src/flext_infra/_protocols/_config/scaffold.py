@@ -10,113 +10,233 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_infra import c, t
+from flext_infra import t
+from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra._constants import FlextInfraConstantsConfig
 
 
 class FlextInfraProtocolsConfigScaffold:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ScaffoldBuildSpec(Protocol):
+    class ScaffoldBuildSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def backend(self) -> t.NonEmptyStr: ...
+        def backend(self) -> t.NonEmptyStr:
+            """PEP 517 backend."""
+            ...
+
         @property
-        def requirements(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def requirements(self) -> tuple[t.NonEmptyStr, ...]:
+            """Build-system requirements."""
+            ...
 
     @runtime_checkable
-    class ScaffoldConfigBaseSpec(Protocol):
+    class ScaffoldConfigBaseSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def distribution(self) -> t.NonEmptyStr: ...
+        def distribution(self) -> t.NonEmptyStr:
+            """Distribution owning the base."""
+            ...
+
         @property
-        def module(self) -> t.NonEmptyStr: ...
+        def module(self) -> t.NonEmptyStr:
+            """Import module exposing the base."""
+            ...
+
         @property
-        def class_name(self) -> t.NonEmptyStr: ...
+        def class_name(self) -> t.NonEmptyStr:
+            """Config base class name."""
+            ...
 
     @runtime_checkable
-    class ScaffoldProjectSpec(Protocol):
+    class ScaffoldProjectSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def readme(self) -> t.NonEmptyStr: ...
+        def readme(self) -> t.NonEmptyStr:
+            """PEP 621 readme path."""
+            ...
+
         @property
-        def supported_licenses(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def supported_licenses(self) -> tuple[t.NonEmptyStr, ...]:
+            """Licenses with complete templates."""
+            ...
+
         @property
-        def classifiers(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def classifiers(self) -> tuple[t.NonEmptyStr, ...]:
+            """Default PyPI classifiers."""
+            ...
+
         @property
-        def keywords(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def keywords(self) -> tuple[t.NonEmptyStr, ...]:
+            """Default project keywords."""
+            ...
+
         @property
-        def copyright_year(self) -> int: ...
+        def copyright_year(self) -> int:
+            """Structural member projected from the owning model.
+
+            LICENSE/NOTICE year for existing-tree ProjectSpec. Override
+            scaffold.project.copyright_year; gen must not use the clock.
+            """
+            ...
+
         @property
-        def dev(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def dev(self) -> tuple[t.NonEmptyStr, ...]:
+            """Canonical development and validation requirements."""
+            ...
+
         @property
-        def retired_dev(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def retired_dev(self) -> tuple[t.NonEmptyStr, ...]:
+            """Development distributions retired from managed groups."""
+            ...
+
         @property
-        def required_flext_dev(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def required_flext_dev(self) -> tuple[t.NonEmptyStr, ...]:
+            """Development suppliers required only by internal FLEXT projects."""
+            ...
+
         @property
-        def config_bases(self) -> tuple[p.Infra.ScaffoldConfigBaseSpec, ...]: ...
+        def config_bases(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigScaffold.ScaffoldConfigBaseSpec, ...]:
+            """Structural member projected from the owning model.
+
+            Config base classes in precedence order; a project composes the first
+            one whose distribution it depends on.
+            """
+            ...
 
     @runtime_checkable
-    class ScaffoldPingExampleSpec(Protocol):
+    class ScaffoldPingExampleSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def command_name(self) -> t.NonEmptyStr: ...
+        def command_name(self) -> t.NonEmptyStr:
+            """Public CLI command."""
+            ...
+
         @property
-        def help_text(self) -> t.NonEmptyStr: ...
+        def help_text(self) -> t.NonEmptyStr:
+            """Public CLI command help."""
+            ...
+
         @property
-        def success_message(self) -> t.NonEmptyStr: ...
+        def success_message(self) -> t.NonEmptyStr:
+            """CLI success message."""
+            ...
+
         @property
-        def enabled_default(self) -> bool: ...
+        def enabled_default(self) -> bool:
+            """Default runtime enablement."""
+            ...
+
         @property
-        def reply(self) -> t.NonEmptyStr: ...
+        def reply(self) -> t.NonEmptyStr:
+            """Enabled ping response."""
+            ...
+
         @property
-        def disabled_reply(self) -> t.NonEmptyStr: ...
+        def disabled_reply(self) -> t.NonEmptyStr:
+            """Disabled ping response."""
+            ...
 
     @runtime_checkable
-    class ScaffoldGitignoreSectionSpec(Protocol):
+    class ScaffoldGitignoreSectionSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def name(self) -> t.NonEmptyStr: ...
+        def name(self) -> t.NonEmptyStr:
+            """Section heading."""
+            ...
+
         @property
-        def patterns(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def patterns(self) -> tuple[t.NonEmptyStr, ...]:
+            """Ignored path patterns."""
+            ...
+
         @property
-        def profiles(self) -> tuple[c.Infra.MakeProfile, ...]: ...
+        def profiles(self) -> tuple[FlextInfraConstantsConfig.MakeProfile, ...]:
+            """Structural member projected from the owning model.
+
+            Make profiles this section applies to; empty means every profile
+            (universal). Sections that only make sense at the superproject root
+            (subproject-directory allowlists, workspace manifest, submodule/Beads
+            coordination) declare [workspace] so subprojects and standalone projects
+            never receive the phantom entries.
+            """
+            ...
 
     @runtime_checkable
-    class ScaffoldDependencyProfileSpec(Protocol):
+    class ScaffoldDependencyProfileSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def upstream(self) -> t.NonEmptyStr: ...
+        def upstream(self) -> t.NonEmptyStr:
+            """Supported upstream facade package."""
+            ...
+
         @property
-        def project(self) -> t.NonEmptyStr | None: ...
+        def project(self) -> t.NonEmptyStr | None:
+            """Structural member projected from the owning model.
+
+            Distribution receiving additional requirements; unset selects the shared
+            upstream profile.
+            """
+            ...
+
         @property
-        def runtime(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def runtime(self) -> tuple[t.NonEmptyStr, ...]:
+            """Runtime requirements."""
+            ...
+
         @property
-        def codegen(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def codegen(self) -> tuple[t.NonEmptyStr, ...]:
+            """Code-generation requirements."""
+            ...
 
     @runtime_checkable
-    class ScaffoldSpec(Protocol):
+    class ScaffoldSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def build(self) -> p.Infra.ScaffoldBuildSpec: ...
+        def build(self) -> FlextInfraProtocolsConfigScaffold.ScaffoldBuildSpec:
+            """Build-system policy."""
+            ...
+
         @property
-        def project(self) -> p.Infra.ScaffoldProjectSpec: ...
+        def project(self) -> FlextInfraProtocolsConfigScaffold.ScaffoldProjectSpec:
+            """Project metadata and dependency policy."""
+            ...
+
         @property
-        def ping_example(self) -> p.Infra.ScaffoldPingExampleSpec: ...
+        def ping_example(
+            self,
+        ) -> FlextInfraProtocolsConfigScaffold.ScaffoldPingExampleSpec:
+            """Functional scaffold example."""
+            ...
+
         @property
         def gitignore_sections(
             self,
-        ) -> tuple[p.Infra.ScaffoldGitignoreSectionSpec, ...]: ...
+        ) -> tuple[FlextInfraProtocolsConfigScaffold.ScaffoldGitignoreSectionSpec, ...]:
+            """Generated Git ignore sections."""
+            ...
 
 
 __all__: list[str] = [

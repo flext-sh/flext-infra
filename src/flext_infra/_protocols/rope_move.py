@@ -12,37 +12,67 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra._typings import FlextInfraTypesRope
 
 
 class FlextInfraProtocolsRopeMove:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ClassMoveRequest(Protocol):
+    class ClassMoveRequest(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        line: t.PositiveInt
-        rope_project: t.Infra.RopeProject
-        source_file: Path
-        target_file: Path
-        class_name: t.NonEmptyStr
-        apply: bool
+        @property
+        def rope_project(self) -> FlextInfraTypesRope.RopeProject:
+            """Active Rope project that owns both files."""
+            ...
+
+        @property
+        def source_file(self) -> Path:
+            """Existing module that declares the class."""
+            ...
+
+        @property
+        def target_file(self) -> Path:
+            """Canonical destination module for the class."""
+            ...
+
+        @property
+        def class_name(self) -> t.NonEmptyStr:
+            """Top-level class selected by Rope."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Whether to execute the validated move."""
+            ...
 
     @runtime_checkable
-    class ResolvedClassMove(Protocol):
+    class ResolvedClassMove(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def request(self) -> p.Infra.ClassMoveRequest: ...
+        def request(self) -> FlextInfraProtocolsRopeMove.ClassMoveRequest:
+            """Prevalidated class-move request being planned."""
+            ...
+
         @property
-        def declaration(self) -> t.Infra.RopePyName: ...
+        def declaration(self) -> FlextInfraTypesRope.RopePyName:
+            """Original Rope identity of the moved declaration."""
+            ...
+
         @property
-        def origin_module(self) -> str: ...
+        def origin_module(self) -> str:
+            """Rope module declaring the class before the move."""
+            ...
+
         @property
-        def target_module(self) -> str: ...
+        def target_module(self) -> str:
+            """Rope module receiving the moved class."""
+            ...
 
 
 __all__: list[str] = [

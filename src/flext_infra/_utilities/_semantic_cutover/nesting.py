@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import time
 import traceback
 from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
@@ -14,6 +15,7 @@ from difflib import SequenceMatcher
 from fnmatch import fnmatch
 from pathlib import Path
 
+from flext_cli import u
 from rope.base.fscommands import file_data_to_unicode
 
 from flext_infra import c, m, p, r, t
@@ -977,8 +979,13 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                         "required"
                     )
                     raise ValueError(msg)
+                started = time.monotonic()
                 cls._rename_test_class(
                     workspace, working, path, (declaration, replacement)
+                )
+                u.Cli.info(
+                    f"stage=class-nesting step=prefix rename={declaration.name}"
+                    f"->{replacement} elapsed={time.monotonic() - started:.3f}s"
                 )
                 if working[path] == previous_source:
                     msg = f"native test class rename made no progress: {path}"
@@ -1065,8 +1072,16 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         path: Path,
         rename: tuple[ast.ClassDef, str],
     ) -> None:
+        # A test class is visible only inside its own internal tier: the
+        # public package never imports tests, so the overlay, the rename and
+        # its quoted spellings are resolved over that tier, not the repository.
+        live_root = Path(workspace.rope_project.root.real_path)
+        tier = live_root / path.relative_to(live_root).parts[0]
+        scope = {
+            item: text for item, text in working.items() if item.is_relative_to(tier)
+        }
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
-            workspace.rope_project, working
+            workspace.rope_project, scope
         )
         try:
             root = Path(project.root.real_path)
@@ -1091,14 +1106,14 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 options=m.Infra.RopeRenameOptions(
                     resources=tuple(
                         project.get_resource(item.relative_to(root).as_posix())
-                        for item in working
+                        for item in scope
                     ),
                     in_hierarchy=True,
                 ),
             )
             rewrites = cls._test_content_rewrites(changes, working)
             cls._test_prefix_quote_edits(
-                project, working, (declaration.name, expected, replacement), rewrites
+                project, scope, (declaration.name, expected, replacement), rewrites
             )
             exports = cls._test_export_rename_edits(
                 project, resource, offset, replacement, working
@@ -1252,14 +1267,15 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 for begin, end, _kind in (
                     FlextInfraUtilitiesRopeRuntimeRefactors.ignored_regions(source)
                 )
-                if FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(
-                    source[begin:end]
-                )
-                is not None
-                and any(
+                if any(
                     item.start_offset <= begin < end <= item.end_offset + 1
                     for item in exports
                 )
+                and not source[begin:end].startswith("#")
+                and FlextInfraUtilitiesRopeRuntimeRefactors.literal_string(
+                    source[begin:end]
+                )
+                is not None
             )
             edits = tuple(
                 m.Infra.SourceRewrite(
@@ -1276,6 +1292,21 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             if edits:
                 planned[path] = edits
         return planned
+
+    @staticmethod
+    def _report_nesting_step(step: str, edits: int, started: float) -> float:
+        """Emit one class-nesting sub-step's elapsed time and edit count.
+
+        Returns:
+            The monotonic instant that starts the next sub-step.
+
+        """
+        now = time.monotonic()
+        u.Cli.info(
+            f"stage=class-nesting step={step} state=end "
+            f"elapsed={now - started:.3f}s edits={edits}"
+        )
+        return now
 
     @classmethod
     def _plan_class_nesting(
@@ -1296,6 +1327,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         # A promotion ValueError IS the rejected move's loud contract (one
         # utilities facade, unshadowed destination, unchanged bindings), so it
         # propagates instead of demoting to a Result the caller would retry.
+        clock = time.monotonic()
         promotion = planned.create_from_callable(
             lambda: cls._test_helper_edits(rope_workspace, sources),
         )
@@ -1305,22 +1337,27 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
                 raise error
             return promotion
         promoted = promotion.value
+        clock = cls._report_nesting_step("promotion", len(promoted), clock)
         proposed = dict(sources)
         merged = {edit.file_path: edit for edit in promoted}
         for edit in promoted:
             proposed[edit.file_path] = edit.updated_source
         consolidated = cls._facade_namespace_edits(rope_workspace, proposed)
+        clock = cls._report_nesting_step("consolidation", len(consolidated), clock)
         for edit in consolidated:
             proposed[edit.file_path] = edit.updated_source
         flattened = cls._family_flatten_edits(rope_workspace, proposed)
+        clock = cls._report_nesting_step("flatten", len(flattened), clock)
         for edit in flattened:
             proposed[edit.file_path] = edit.updated_source
         prefixed = cls._test_prefix_edits(rope_workspace, proposed)
+        clock = cls._report_nesting_step("prefix", len(prefixed), clock)
         for edit in prefixed:
             proposed[edit.file_path] = edit.updated_source
         nested = cls._plan_orphan_nesting(rope_workspace, proposed, codegen)
         if nested.failure:
             return planned.from_failure(nested)
+        clock = cls._report_nesting_step("orphan", len(nested.value), clock)
         for edit in (*consolidated, *flattened, *prefixed, *nested.value):
             previous = merged.get(edit.file_path)
             merged[edit.file_path] = m.Infra.SemanticMigrationEdit(

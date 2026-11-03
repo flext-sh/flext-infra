@@ -406,16 +406,19 @@ def _protocol_import_provider(
         for alias in node.names
         if (alias.asname or alias.name) == "p"
     }
-    if len(providers) > 1 or (foreign and local):
+    if len(providers) > 1:
         origins = "; ".join(ast.unparse(node) for node in imports)
         message = f"protocol facade has competing import origins: {origins}"
         raise ValueError(message)
     if foreign:
+        # Inside the protocol family the own letter is the facade under
+        # assembly (ENFORCE-051): a local binding beside the upstream one is a
+        # duplicate and is dropped; the upstream provider is bound once.
         original = foreign[0]
         binding = next(
             alias for alias in original.names if (alias.asname or alias.name) == "p"
         )
-        return foreign, ast.ImportFrom(
+        return (*foreign, *local), ast.ImportFrom(
             module=original.module, names=[binding], level=original.level
         )
     return local, ast.ImportFrom(

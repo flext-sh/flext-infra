@@ -9,7 +9,9 @@ from __future__ import annotations
 import ast
 import concurrent.futures
 import difflib
+import json
 import os
+import re
 import sys
 from collections import Counter
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
@@ -437,15 +439,81 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         declared = config.Infra.codegen.make.ruff
-        return cls._ruff_stdin_pass(
-            path, source, (c.Infra.CHECK, *declared.lint_fix), settings=settings
-        ).flat_map(
-            lambda repaired: cls._ruff_stdin_pass(
-                path,
-                repaired,
-                (c.Infra.FORMAT, *declared.format_apply),
-                settings=settings,
+        return (
+            cls
+            ._ruff_stdin_pass(
+                path, source, (c.Infra.CHECK, *declared.lint_fix), settings=settings
             )
+            .flat_map(
+                lambda repaired: cls._ruff_stdin_pass(
+                    path,
+                    repaired,
+                    (c.Infra.FORMAT, *declared.format_apply),
+                    settings=settings,
+                )
+            )
+            .flat_map(
+                lambda formatted: cls._wrap_long_annotations(
+                    path, formatted, settings=settings
+                )
+            )
+        )
+
+    @classmethod
+    def _wrap_long_annotations(
+        cls, path: Path, source: str, *, settings: Sequence[str] = ()
+    ) -> p.Result[str]:
+        """Parenthesize annotated parameters the formatter cannot split.
+
+        A ``name: Holder.Member,`` line longer than the project's limit has no
+        break point; inside parentheses the formatter splits it. The long
+        lines are those Ruff itself reports (E501) under the destination's
+        configuration, so no limit is restated here.
+
+        Returns:
+            The source with only its long annotation lines reformatted.
+
+        """
+        listed = cls._ruff_stdin_pass(
+            path,
+            source,
+            (
+                c.Infra.CHECK,
+                "--select",
+                "E501",
+                "--output-format",
+                "json",
+                "--exit-zero",
+                "--no-fix",
+            ),
+            settings=settings,
+        )
+        if listed.failure:
+            return listed
+        rows = {
+            int(finding["location"]["row"])
+            for finding in json.loads(listed.value or "[]")
+        }
+        lines = source.splitlines(keepends=True)
+        wrapped = False
+        for row in rows:
+            match = re.fullmatch(
+                r"([ \t]+)(\w+): ([\w.\[\], |]+?)(,?)\n", lines[row - 1]
+            )
+            if match is None:
+                continue
+            indent, name, annotation, comma = match.groups()
+            lines[row - 1] = (
+                f"{indent}{name}: (\n{indent}    {annotation}\n{indent}){comma}\n"
+            )
+            wrapped = True
+        if not wrapped:
+            return r[str].ok(source)
+        return cls._ruff_stdin_pass(
+            path,
+            "".join(lines),
+            (c.Infra.FORMAT, *config.Infra.codegen.make.ruff.format_apply),
+            settings=settings,
         )
 
     @classmethod

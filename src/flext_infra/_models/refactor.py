@@ -711,10 +711,10 @@ class FlextInfraModelsRefactor(
         """Public census request separated from injected execution capabilities."""
 
         check_only: bool = m.Field(
-            False, alias="check", description="Validate without writing"
+            default=False, alias="check", description="Validate without writing"
         )
         dry_run_mode: bool = m.Field(
-            False, alias="dry-run", description="Inspect without writing"
+            default=False, alias="dry-run", description="Inspect without writing"
         )
         output_format: Annotated[
             str, m.Field(description="Output format (json|text)")
@@ -871,7 +871,7 @@ class FlextInfraModelsRefactor(
 
         check: Annotated[bool, m.Field(description="Validate without writing")] = False
         dry_run_mode: bool = m.Field(
-            False, alias="dry-run", description="Inspect without writing"
+            default=False, alias="dry-run", description="Inspect without writing"
         )
         rename_plan: Annotated[
             Path | None,

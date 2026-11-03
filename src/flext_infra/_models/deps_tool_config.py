@@ -74,7 +74,7 @@ class FlextInfraModelsDepsToolConfig(
         """Component selection for ``make mod`` phases (toggles are data)."""
 
         import_alignment: bool = m.Field(
-            True,
+            default=True,
             alias="import-alignment",
             description="Run the rope-native import-alignment phase of make mod.",
         )

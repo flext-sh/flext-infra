@@ -11,7 +11,7 @@ rule:
   - any:
     - has:
         field: module_name
-        regex: "^flext(?:_[a-z0-9_]+)?$"
+        regex: "^(?:flext(?:_[a-z0-9_]+)?|tests|examples|scripts)$"
     - has:
         kind: relative_import
   - not:

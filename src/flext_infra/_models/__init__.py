@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -28,12 +27,6 @@ if TYPE_CHECKING:
     )
     from flext_infra._models.deps_tool_config_project import (
         FlextInfraModelsDepsToolConfigProject,
-    )
-    from flext_infra._models.deps_tool_config_project_artifacts import (
-        FlextInfraModelsDepsToolConfigProjectArtifacts,
-    )
-    from flext_infra._models.deps_tool_config_project_gitignore import (
-        FlextInfraModelsDepsToolConfigProjectGitignore,
     )
     from flext_infra._models.deps_tool_config_project_mise import (
         FlextInfraModelsDepsToolConfigProjectMise,
@@ -61,6 +54,8 @@ if TYPE_CHECKING:
         FlextInfraModelsMiseToolchainRepair,
     )
     from flext_infra._models.mixins import FlextInfraModelsMixins
+    from flext_infra._models.project_artifacts import FlextInfraModelsProjectArtifacts
+    from flext_infra._models.project_gitignore import FlextInfraModelsProjectGitignore
     from flext_infra._models.promoted import FlextInfraModelsPromoted
     from flext_infra._models.refactor import FlextInfraModelsRefactor
     from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
@@ -95,8 +90,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolConfig",
     "FlextInfraModelsDepsToolConfigLinters",
     "FlextInfraModelsDepsToolConfigProject",
-    "FlextInfraModelsDepsToolConfigProjectArtifacts",
-    "FlextInfraModelsDepsToolConfigProjectGitignore",
     "FlextInfraModelsDepsToolConfigProjectMise",
     "FlextInfraModelsDepsToolConfigTypeCheckers",
     "FlextInfraModelsDocs",
@@ -114,6 +107,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsMiseToolchainRepair",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
+    "FlextInfraModelsProjectArtifacts",
+    "FlextInfraModelsProjectGitignore",
     "FlextInfraModelsPromoted",
     "FlextInfraModelsRefactor",
     "FlextInfraModelsRefactorGrep",
@@ -133,7 +128,7 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "FlextInfraModelsBase": ".base",
         "FlextInfraModelsCensus": ".census",
         "FlextInfraModelsCheck": ".check",
@@ -147,12 +142,6 @@ install_lazy_exports(
         "FlextInfraModelsDepsToolConfig": ".deps_tool_config",
         "FlextInfraModelsDepsToolConfigLinters": ".deps_tool_config_linters",
         "FlextInfraModelsDepsToolConfigProject": ".deps_tool_config_project",
-        "FlextInfraModelsDepsToolConfigProjectArtifacts": (
-            ".deps_tool_config_project_artifacts"
-        ),
-        "FlextInfraModelsDepsToolConfigProjectGitignore": (
-            ".deps_tool_config_project_gitignore"
-        ),
         "FlextInfraModelsDepsToolConfigProjectMise": ".deps_tool_config_project_mise",
         "FlextInfraModelsDepsToolConfigTypeCheckers": ".deps_tool_config_type_checkers",
         "FlextInfraModelsDocs": ".docs",
@@ -170,6 +159,8 @@ install_lazy_exports(
         "FlextInfraModelsMiseToolchainRepair": ".mise_toolchain_repair",
         "FlextInfraModelsMixins": ".mixins",
         "FlextInfraModelsNamespaceEnforcer": ".refactor_namespace_enforcer",
+        "FlextInfraModelsProjectArtifacts": ".project_artifacts",
+        "FlextInfraModelsProjectGitignore": ".project_gitignore",
         "FlextInfraModelsPromoted": ".promoted",
         "FlextInfraModelsRefactor": ".refactor",
         "FlextInfraModelsRefactorGrep": ".refactor_ast_grep",
@@ -184,6 +175,6 @@ install_lazy_exports(
         "FlextInfraModelsWorkspace": ".workspace",
         "FlextInfraModelsWorkspaceSnapshot": ".workspace_snapshot",
         "FlextInfraModelsWorktree": ".worktree",
-    }),
+    },
     public_exports=__all__,
 )

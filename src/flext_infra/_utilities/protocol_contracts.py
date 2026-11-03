@@ -19,6 +19,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeRuntime,
 )
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 
 class FlextInfraUtilitiesModelsProtocolContracts:
@@ -81,6 +82,8 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         chain: Sequence[p.Infra.RopePyObject],
         package: Path,
         port: p.Infra.RopeSourceClass,
+        *,
+        source_project: p.Infra.RopeProject,
     ) -> tuple[str, str]:
         """Elect the nearest upstream published ``p`` facade that exposes ``port``.
 
@@ -115,7 +118,14 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                 or exposed.get_object() is not port
             ):
                 continue
-            provider = analysis.package_name_for_module(module.get_name(), resource)
+            # The declared source identity, not Rope's source-folder-relative
+            # name: a repository namespace package keeps its namespace prefix.
+            provider = analysis.package_name_for_module(
+                FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                    module, source_project=source_project
+                ),
+                resource,
+            )
             name = ancestor.get_name()
             return name, f"from {provider} import {name}"
         message = f"protocol facade chain has no upstream owner of {port.get_name()}"

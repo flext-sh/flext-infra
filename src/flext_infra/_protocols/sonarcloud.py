@@ -8,107 +8,172 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
+
+from flext_cli import FlextCliProtocols
 
 from flext_infra import t
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraProtocolsSonarcloud:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class SonarcloudIssueFieldValue(Protocol):
+    class SonarcloudIssueFieldValue(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def rule_key(self) -> t.NonEmptyStr: ...
+        def rule_key(self) -> t.NonEmptyStr:
+            """Sonar rule key."""
+            ...
+
         @property
-        def resource_key(self) -> t.NonEmptyStr: ...
+        def resource_key(self) -> t.NonEmptyStr:
+            """Project-relative resource."""
+            ...
 
     @runtime_checkable
-    class SonarcloudSetting(Protocol):
+    class SonarcloudSetting(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def key(self) -> t.NonEmptyStr: ...
+        def key(self) -> t.NonEmptyStr:
+            """Setting key."""
+            ...
+
         @property
-        def field_values(self) -> tuple[p.Infra.SonarcloudIssueFieldValue, ...]: ...
+        def field_values(
+            self,
+        ) -> tuple[FlextInfraProtocolsSonarcloud.SonarcloudIssueFieldValue, ...]:
+            """PROPERTY_SET entries."""
+            ...
 
     @runtime_checkable
-    class SonarcloudSettingsValues(Protocol):
+    class SonarcloudSettingsValues(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def settings(self) -> tuple[p.Infra.SonarcloudSetting, ...]: ...
+        def settings(
+            self,
+        ) -> tuple[FlextInfraProtocolsSonarcloud.SonarcloudSetting, ...]:
+            """Effective settings for the requested keys."""
+            ...
 
     @runtime_checkable
-    class SonarcloudAuthentication(Protocol):
+    class SonarcloudAuthentication(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def valid(self) -> bool: ...
+        def valid(self) -> bool:
+            """Whether the token is valid."""
+            ...
 
     @runtime_checkable
-    class SonarcloudSettingsPlan(Protocol):
+    class SonarcloudSettingsPlan(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def api_url(self) -> t.NonEmptyStr: ...
+        def api_url(self) -> t.NonEmptyStr:
+            """Web API origin."""
+            ...
+
         @property
-        def timeout_seconds(self) -> t.PositiveInt: ...
+        def timeout_seconds(self) -> t.PositiveInt:
+            """Per-request timeout."""
+            ...
+
         @property
-        def project_key(self) -> t.NonEmptyStr: ...
+        def project_key(self) -> t.NonEmptyStr:
+            """<organization>_<repository>."""
+            ...
+
         @property
-        def setting_key(self) -> t.NonEmptyStr: ...
+        def setting_key(self) -> t.NonEmptyStr:
+            """PROPERTY_SET setting key."""
+            ...
+
         @property
-        def field_values(self) -> tuple[p.Infra.SonarcloudIssueFieldValue, ...]: ...
+        def field_values(
+            self,
+        ) -> tuple[FlextInfraProtocolsSonarcloud.SonarcloudIssueFieldValue, ...]:
+            """Entries in SSOT order; empty means reset."""
+            ...
 
     @runtime_checkable
-    class SonarcloudSettingsWriteRequest(Protocol):
+    class SonarcloudSettingsWriteRequest(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def api_path(self) -> t.NonEmptyStr: ...
+        def api_path(self) -> t.NonEmptyStr:
+            """Web API endpoint."""
+            ...
+
         @property
-        def form(self) -> tuple[tuple[str, str], ...]: ...
+        def form(self) -> tuple[tuple[str, str], ...]:
+            """Ordered form fields for the endpoint."""
+            ...
 
     @runtime_checkable
-    class SonarcloudIssue(Protocol):
+    class SonarcloudIssue(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def key(self) -> t.NonEmptyStr: ...
+        def key(self) -> t.NonEmptyStr:
+            """Stable issue key."""
+            ...
+
         @property
-        def rule(self) -> t.NonEmptyStr: ...
+        def rule(self) -> t.NonEmptyStr:
+            """Rule key."""
+            ...
+
         @property
-        def component(self) -> t.NonEmptyStr: ...
+        def component(self) -> t.NonEmptyStr:
+            """Project and file key."""
+            ...
+
         @property
-        def line(self) -> int | None: ...
+        def line(self) -> int | None:
+            """Source line, when assigned."""
+            ...
+
         @property
-        def message(self) -> t.NonEmptyStr: ...
+        def message(self) -> t.NonEmptyStr:
+            """Observed finding."""
+            ...
 
     @runtime_checkable
-    class SonarcloudIssuePaging(Protocol):
+    class SonarcloudIssuePaging(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def page_index(self) -> t.PositiveInt: ...
+        def page_index(self) -> t.PositiveInt:
+            """One-based page index."""
+            ...
+
         @property
-        def page_size(self) -> t.PositiveInt: ...
+        def page_size(self) -> t.PositiveInt:
+            """Issues per page."""
+            ...
+
         @property
-        def total(self) -> int: ...
+        def total(self) -> int:
+            """Total issues matching the server query."""
+            ...
 
     @runtime_checkable
-    class SonarcloudIssueSearch(Protocol):
+    class SonarcloudIssueSearch(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def paging(self) -> p.Infra.SonarcloudIssuePaging: ...
+        def paging(self) -> FlextInfraProtocolsSonarcloud.SonarcloudIssuePaging:
+            """Server-side page accounting of this page."""
+            ...
+
         @property
-        def issues(self) -> tuple[p.Infra.SonarcloudIssue, ...]: ...
+        def issues(self) -> tuple[FlextInfraProtocolsSonarcloud.SonarcloudIssue, ...]:
+            """Issues returned on this page."""
+            ...
 
 
 __all__: list[str] = [

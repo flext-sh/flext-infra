@@ -32,14 +32,16 @@ class FlextInfraModelsBase:
             description="Repository root",
         )
         apply_changes: bool = m.Field(
-            False,
+            default=False,
             alias="apply",
             description="Apply changes",
             json_schema_extra={
                 "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
             },
         )
-        check_only: bool = m.Field(False, alias="check", description="Check mode")
+        check_only: bool = m.Field(
+            default=False, alias="check", description="Check mode"
+        )
         dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
         output_format: Annotated[
             str,

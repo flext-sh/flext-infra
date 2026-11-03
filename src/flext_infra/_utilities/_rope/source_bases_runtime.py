@@ -64,9 +64,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             The existing resolver's member operation for this source view.
 
         """
-        return cls._RuntimeBaseResolver(
-            project, MappingProxyType(dict(sources)), (), None
-        )
+        return cls._RuntimeBaseResolver(project, MappingProxyType(dict(sources)))
 
     @classmethod
     def source_member_resolver_factory(
@@ -119,7 +117,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Whether every source ancestor leaves the member undeclared.
 
         """
-        return cls._RuntimeBaseResolver(project, {}, (), None).member_relocation_origin(
+        return cls._RuntimeBaseResolver(project, {}).member_relocation_origin(
             receiver, canonical, member
         )
 
@@ -264,8 +262,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self,
             project: p.Infra.RopeProject,
             sources: Mapping[str, tuple[Path, str]],
-            roots: Sequence[str],
-            extra_module_aliases: Mapping[str, str] | None,
         ) -> None:
             """Bind the resolution inputs and initialize the derived state.
 
@@ -276,8 +272,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Parameters:
                 project: The open Rope project scoped to the analysis roots.
                 sources: The qualified module name to captured path and source.
-                roots: The configured root qualified names.
-                extra_module_aliases: Facade alias maps read outside the sources.
 
             """
             self._project = project
@@ -288,8 +282,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._source_names_by_path: Mapping[Path, t.StrTuple] = {
                 path: tuple(names) for path, names in names_by_path.items()
             }
-            self._roots = roots
-            self._extra_module_aliases = extra_module_aliases
             self._definitions: MutableMapping[str, m.Infra.SourceClassDefinition] = {}
             self._modules: MutableMapping[
                 str,
@@ -313,19 +305,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 "BuiltinModule",
             )
             self._object_id = ""
-
-        def run(self) -> t.StrTuple:
-            """Index every captured module and derive the ordered base set.
-
-            Returns:
-                Sorted configured roots and derived Ruff-qualified base
-                expressions.
-
-            """
-            self._index_modules()
-            self._build_module_alias_map()
-            self._object_id = self._external_reference("builtins", ("object",))
-            return self._derived_roots()
 
         def class_order(
             self,
@@ -588,40 +567,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     ):
                         continue
                     self._module_aliases.setdefault(qualified_alias, binding)
-            for alias, absolute in (self._extra_module_aliases or {}).items():
-                if alias in self._modules or alias in self._namespaces:
-                    continue
-                self._module_aliases.setdefault(
-                    alias,
-                    m.Infra.SourceClassReference(
-                        target=absolute,
-                        attributes=(alias.rpartition(".")[2],),
-                        qualified_base=alias,
-                    ),
-                )
-
-        def _derived_roots(self) -> t.StrTuple:
-            """Linearize every owned definition and collect the derived bases.
-
-            Required provider parents participate in C3, but only captured
-            project expressions belong to the project's generated Ruff
-            configuration.
-
-            Returns:
-                The sorted union of configured roots and derived bases.
-
-            """
-            root_ids = frozenset(
-                self._resolve(self._root_reference(root)) for root in self._roots
-            )
-            derived = set(self._roots)
-            for definition in tuple(self._definitions.values()):
-                self._linearize(definition.identity)
-                for reference in definition.bases:
-                    lineage = self._linearize(self._resolve(reference))
-                    if root_ids.intersection(lineage):
-                        derived.add(reference.qualified_base)
-            return tuple(sorted(derived))
 
         def _inventory(
             self,
@@ -2124,7 +2069,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             bindings = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
                 request, self._definitions, provider=None
             )
-            return bindings.get(name)
+            declared = bindings.get(name)
+            if declared is not None:
+                return declared
+            # A part this run projects is planned for the initializer's lazy
+            # exports but absent from the captured initializer bytes: the
+            # single captured submodule declaring the name is its route.
+            routes = [
+                binding
+                for submodule, inventory in self._modules.items()
+                if submodule.rpartition(".")[0] == module
+                and (binding := inventory.get(name)) is not None
+            ]
+            return routes[0] if len(routes) == 1 else None
 
         def _bases(self, identity: str) -> t.StrTuple:
             """Return one identity's declared or native base identities.
@@ -2355,7 +2312,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Each group's declaration spellings in consistent precedence order.
 
         """
-        resolver = cls._RuntimeBaseResolver(project, sources, (), None)
+        resolver = cls._RuntimeBaseResolver(project, sources)
         return tuple(resolver.class_order(group) for group in groups)
 
     @classmethod
@@ -2375,36 +2332,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Per declaration, the anchor spellings its source C3 order holds.
 
         """
-        return cls._RuntimeBaseResolver(project, sources, (), None).class_reaches(
+        return cls._RuntimeBaseResolver(project, sources).class_reaches(
             declarations, anchors
         )
-
-    @classmethod
-    def runtime_bases(
-        cls,
-        project: p.Infra.RopeProject,
-        sources: Mapping[str, tuple[Path, str]],
-        roots: Sequence[str],
-        extra_module_aliases: Mapping[str, str] | None = None,
-    ) -> t.StrTuple:
-        """Resolve owned classes in C3 order and external classes through Rope.
-
-        Only configured roots mark model evaluation boundaries. No first-party
-        module is imported or resolved from disk when its planned source exists.
-        Provider reexports follow Rope's declared import provenance. Their source
-        declarations, not Rope's possibly incomplete superclass inference, supply
-        the ordered bases. Missing references and invalid inheritance fail loudly.
-
-        Returns:
-            Sorted configured roots and derived Ruff-qualified base expressions.
-
-        """
-        return cls._RuntimeBaseResolver(
-            project,
-            sources,
-            roots,
-            extra_module_aliases,
-        ).run()
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeSourceBasesRuntime"]

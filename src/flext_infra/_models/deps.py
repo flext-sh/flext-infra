@@ -262,14 +262,14 @@ class FlextInfraModelsDeps(
             str | None,
             m.Field(None, description="Optional output report path"),
         ] = None
-        quiet: bool = m.Field(False, description="Reduce command output")
+        quiet: bool = m.Field(default=False, description="Reduce command output")
         no_fail: bool = m.Field(
-            False,
+            default=False,
             alias="no-fail",
             description="Exit successfully even when issues are found",
         )
         no_pip_check: bool = m.Field(
-            False, alias="no-pip-check", description="Skip workspace pip check"
+            default=False, alias="no-pip-check", description="Skip workspace pip check"
         )
 
         @property
@@ -498,7 +498,7 @@ class FlextInfraModelsDeps(
     class PipCheckReport(m.ArbitraryTypesModel):
         """Pip check execution report with status and output lines."""
 
-        ok: bool = m.Field(True, description="Whether pip check passed")
+        ok: bool = m.Field(default=True, description="Whether pip check passed")
         lines: Annotated[
             Sequence[str],
             m.Field(description="Pip check output lines"),

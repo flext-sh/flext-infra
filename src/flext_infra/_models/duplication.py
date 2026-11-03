@@ -236,7 +236,7 @@ class FlextInfraModelsDuplication:
             m.Field(description="Duplicated source fragment"),
         ]
         is_new: t.StrictBool = m.Field(
-            False,
+            default=False,
             alias="isNew",
             description="Whether jscpd marked the clone new; the flag is absent from some jscpd report versions and defaults to False",
         )

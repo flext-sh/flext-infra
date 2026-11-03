@@ -11,41 +11,65 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from flext_infra import t
+from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 
 class FlextInfraProtocolsConfigStatic:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class SourceScanSpec(Protocol):
+    class SourceScanSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def roots(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def roots(self) -> tuple[t.NonEmptyStr, ...]:
+            """Ordered production source directory names."""
+            ...
 
     @runtime_checkable
-    class MutationLockSpec(Protocol):
+    class MutationLockSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def wait_deadline_seconds(self) -> t.PositiveFloat: ...
+        def wait_deadline_seconds(self) -> t.PositiveFloat:
+            """Longest wait before failing with the last holder."""
+            ...
+
         @property
-        def poll_interval_seconds(self) -> t.PositiveFloat: ...
+        def poll_interval_seconds(self) -> t.PositiveFloat:
+            """Interval between read-only lock availability polls."""
+            ...
+
         @property
-        def report_interval_seconds(self) -> t.PositiveFloat: ...
+        def report_interval_seconds(self) -> t.PositiveFloat:
+            """Interval between progress lines naming the holder."""
+            ...
 
     @runtime_checkable
-    class ConsolidationOutcome(Protocol):
+    class ConsolidationOutcome(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def found(self) -> int: ...
+        def found(self) -> int:
+            """Canonical matches found in the file."""
+            ...
+
         @property
-        def lines(self) -> tuple[str, ...]: ...
+        def lines(self) -> tuple[str, ...]:
+            """Report lines for the file."""
+            ...
+
         @property
-        def record(self) -> t.JsonMapping | None: ...
+        def record(self) -> t.JsonMapping | None:
+            """Applied-change record; none outside application."""
+            ...
+
         @property
-        def applied(self) -> int: ...
+        def applied(self) -> int:
+            """Replacements applied to the file."""
+            ...
 
 
 __all__: list[str] = [

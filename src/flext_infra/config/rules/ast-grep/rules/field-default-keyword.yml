@@ -1,0 +1,21 @@
+# A Pydantic field default is passed by keyword: a positional boolean
+# (`m.Field(True, ...)`) is the boolean-trap shape ruff FBT003 rejects, and the
+# keyword form is the native Pydantic spelling. Only boolean literals are
+# rewritten; every other argument is preserved. Idempotent: keyword defaults
+# do not match.
+id: field-default-keyword
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/config/rules/ast-grep/tests/**"
+rule:
+  pattern: m.Field($DEFAULT, $$$REST)
+constraints:
+  DEFAULT:
+    regex: "^(True|False)$"
+fix: m.Field(default=$DEFAULT, $$$REST)
+message: >-
+  Pass a boolean field default by keyword (m.Field(default=...)), never
+  positionally.

@@ -181,8 +181,7 @@ class FlextInfraUtilitiesDocsGuides:
             body_lines = lines[heading.line :]
         body = "\n".join(body_lines).lstrip()
         header = (
-            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
-            "from the workspace root. -->\n"
+            f"{c.Infra.DOCS_PROJECTION_MARKER}\n"
             f"<!-- Source of truth: `<workspace-root>/docs/guides/{guide_name}`; "
             "adjust that workspace source, never this member projection. -->\n\n"
             f"# {project_name} - {title}\n\n"
@@ -252,10 +251,7 @@ class FlextInfraUtilitiesDocsGuides:
         owned: set[Path] = set()
         for path, content in destinations.items():
             lines = content.splitlines()
-            generated = (
-                "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
-                "from the workspace root. -->"
-            )
+            generated = c.Infra.DOCS_PROJECTION_MARKER
             source_headers = {
                 (
                     f"<!-- Source of truth: `docs/guides/{path.name}`; "
@@ -280,8 +276,7 @@ class FlextInfraUtilitiesDocsGuides:
             ).partition("\n\n")[0]
             previous_ownership = ownership.replace("`<workspace-root>/", "`")
             legacy_ownership = (
-                "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
-                "from the workspace root. -->\n"
+                f"{c.Infra.DOCS_PROJECTION_MARKER}\n"
                 f"<!-- Source of truth: `docs/guides/{path.name}`; "
                 "adjust that workspace source, never this member projection. -->"
             )

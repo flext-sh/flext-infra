@@ -40,14 +40,18 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
         protected: tuple[int, int] | None = None,
+        module: p.Infra.RopePyModule | None = None,
     ) -> tuple[p.Infra.SourceRewrite, ...]:
-        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-            project,
-            source,
-            resource=FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-                resource, resource.path
-            ),
-        )
+        # A caller that already parsed ``source`` passes its module, so the
+        # scopes handed to ``replacement`` are the caller's own objects.
+        if module is None:
+            module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project,
+                source,
+                resource=FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+                    resource, resource.path
+                ),
+            )
         edits: list[p.Infra.SourceRewrite] = []
         tree = ast.parse(source)
         generic_scopes = tuple(
@@ -134,6 +138,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
         protected: tuple[int, int] | None = None,
+        module: p.Infra.RopePyModule | None = None,
     ) -> str:
         edits = cls.quoted_type_edits(
             project,
@@ -141,6 +146,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
             source,
             replacement,
             protected=protected,
+            module=module,
         )
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource,

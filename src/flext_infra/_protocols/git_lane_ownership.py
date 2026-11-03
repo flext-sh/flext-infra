@@ -10,36 +10,58 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from flext_cli import FlextCliProtocols
+
 from flext_infra import t
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra._protocols import FlextInfraProtocolsGitLaneInputs
 
 
 class FlextInfraProtocolsGitLaneOwnership:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class GitLaneBead(Protocol):
+    class GitLaneBead(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def id(self) -> str: ...
+        def id(self) -> str:
+            """Canonical Bead identifier."""
+            ...
+
         @property
-        def status(self) -> str: ...
+        def status(self) -> str:
+            """Current Bead lifecycle status."""
+            ...
+
         @property
-        def assignee(self) -> str | None: ...
+        def assignee(self) -> str | None:
+            """Claimed execution owner."""
+            ...
+
         @property
-        def updated_at(self) -> t.AwareDatetime: ...
+        def updated_at(self) -> t.AwareDatetime:
+            """Latest Bead activity."""
+            ...
+
         @property
-        def metadata(self) -> p.Infra.GitLaneBeadMetadata | None: ...
+        def metadata(
+            self,
+        ) -> FlextInfraProtocolsGitLaneInputs.GitLaneBeadMetadata | None:
+            """Explicit branch/worktree ownership correlation."""
+            ...
 
     @runtime_checkable
-    class GitLaneGovernance(Protocol):
+    class GitLaneGovernance(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def coordination(self) -> p.Infra.GitLaneCoordinationPolicy: ...
+        def coordination(
+            self,
+        ) -> FlextInfraProtocolsGitLaneInputs.GitLaneCoordinationPolicy:
+            """Global coordination policy."""
+            ...
 
 
 __all__: list[str] = [

@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -42,6 +41,8 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
     from flext_infra._utilities.generation_inventory import (
+        FlextInfraGenerationInventory,
+        FlextInfraGenerationSource,
         FlextInfraUtilitiesGenerationInventory,
     )
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
@@ -119,7 +120,13 @@ if TYPE_CHECKING:
     from flext_infra._utilities.protected_edit_writes import (
         FlextInfraUtilitiesProtectedEditWrites,
     )
+    from flext_infra._utilities.protocol_contracts import (
+        FlextInfraUtilitiesModelsProtocolContracts,
+    )
     from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
+    from flext_infra._utilities.protocol_retirement import (
+        FlextInfraUtilitiesModelsProtocolRetirement,
+    )
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
@@ -158,6 +165,8 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraGenerationInventory",
+    "FlextInfraGenerationSource",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacades",
@@ -190,6 +199,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesMiseBinary",
     "FlextInfraUtilitiesModelsProtocol",
+    "FlextInfraUtilitiesModelsProtocolContracts",
+    "FlextInfraUtilitiesModelsProtocolRetirement",
     "FlextInfraUtilitiesMypy",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesNativeTooling",
@@ -235,7 +246,9 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
+        "FlextInfraGenerationInventory": ".generation_inventory",
+        "FlextInfraGenerationSource": ".generation_inventory",
         "FlextInfraUtilitiesBase": ".base",
         "FlextInfraUtilitiesCodegen": ".codegen",
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
@@ -272,6 +285,8 @@ install_lazy_exports(
         "FlextInfraUtilitiesManagedConflicts": ".managed_conflicts",
         "FlextInfraUtilitiesMiseBinary": ".mise_binary",
         "FlextInfraUtilitiesModelsProtocol": ".protocol_models",
+        "FlextInfraUtilitiesModelsProtocolContracts": ".protocol_contracts",
+        "FlextInfraUtilitiesModelsProtocolRetirement": ".protocol_retirement",
         "FlextInfraUtilitiesMypy": ".mypy",
         "FlextInfraUtilitiesNamespaceConfig": ".namespace_config",
         "FlextInfraUtilitiesNativeTooling": ".native_tooling",
@@ -312,6 +327,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesWorkspaceSnapshot": ".workspace_snapshot",
         "FlextInfraWorktreeLifecycle": ".worktree_lifecycle",
         "FlextInfraWorktreeProvisioning": ".worktree_provisioning",
-    }),
+    },
     public_exports=__all__,
 )

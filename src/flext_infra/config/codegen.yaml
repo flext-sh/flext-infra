@@ -918,7 +918,7 @@ Infra:
         requires_activation: false
       - name: mod
         arguments: [ LAWS, RULES ]
-        description: Check and fix one theme globally (LAWS=ENFORCE ids or RULES=rule ids, ADR-028 Decision 18 item 2); a run without a selection is refused.
+        description: Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
       - name: fix
         description: Apply declared repairs to authored inputs through their canonical owners.
       - name: fmt

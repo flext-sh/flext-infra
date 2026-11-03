@@ -14,13 +14,13 @@ from flext_cli import m, p
 
 from flext_infra import t
 from flext_infra._models import (
-    FlextInfraModelsDepsToolConfigProjectGitignore,
     FlextInfraModelsDepsToolConfigProjectMise,
+    FlextInfraModelsProjectGitignore,
 )
 
 
-class FlextInfraModelsDepsToolConfigProjectArtifacts(
-    FlextInfraModelsDepsToolConfigProjectGitignore,
+class FlextInfraModelsProjectArtifacts(
+    FlextInfraModelsProjectGitignore,
 ):
     """Managed-artifact models composed from project-owned slices."""
 
@@ -32,7 +32,7 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
             m.Field(description="Mise additions owned by the current project."),
         ]
         Gitignore: Annotated[
-            FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignoreConfig,
+            FlextInfraModelsProjectGitignore.ProjectGitignoreConfig,
             m.Field(description="Ignore patterns owned by the current project."),
         ]
 
@@ -40,7 +40,7 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
         """Composed project configuration plus selector provenance."""
 
         artifacts: Annotated[
-            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsConfig,
+            FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsConfig,
             m.Field(description="Composed managed-artifact configuration."),
         ]
         mise_tool_sources: Annotated[
@@ -56,9 +56,9 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
             m.Field(description="Ordered exact project configuration sources."),
         ]
         resolution: Annotated[
-            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsResolution,
+            FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsResolution,
             m.Field(description="Managed artifacts parsed from those exact sources."),
         ]
 
 
-__all__: list[str] = ["FlextInfraModelsDepsToolConfigProjectArtifacts"]
+__all__: list[str] = ["FlextInfraModelsProjectArtifacts"]

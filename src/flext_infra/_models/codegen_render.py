@@ -36,6 +36,9 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             description="Authenticated public package"
         )
         imports: tuple[str, ...] = m.Field(description="Native generic-bound imports")
+        facades: tuple[str, str] = m.Field(
+            description="Published model and protocol facade classes of the package"
+        )
         checks: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...]], ...] = m.Field(
             description="Native constructor, structural port, parameters and arguments"
         )

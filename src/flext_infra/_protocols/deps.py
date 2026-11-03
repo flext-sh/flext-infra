@@ -6,14 +6,25 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+from flext_cli import FlextCliProtocols
+
+from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableSequence
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_cli import p
+
+    from flext_infra import t
+    from flext_infra._protocols import (
+        FlextInfraProtocolsGates,
+        FlextInfraProtocolsWorkspace,
+    )
+    from flext_infra._protocols._config import FlextInfraProtocolsConfigArtifact
 
 
 @runtime_checkable
@@ -27,9 +38,9 @@ class FlextInfraProtocolsDeps(Protocol):
         def __call__(
             self,
             project_root: Path,
-            scan: p.Infra.DeptryScan,
+            scan: FlextInfraProtocolsGates.DeptryScan,
             /,
-        ) -> p.Result[p.Infra.RuntimeDependencyInputs]:
+        ) -> p.Result[FlextInfraProtocolsDeps.RuntimeDependencyInputs]:
             """Return the elected lock, supplier metadata and own applicability."""
             ...
 
@@ -48,280 +59,593 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class DetectCommand(Protocol):
+    class DetectCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def output_format(self) -> str:
+            """Output format for dependency report."""
+            ...
+
         @property
-        def projects(self) -> Sequence[str] | None: ...
+        def output(self) -> str | None:
+            """Optional output report path."""
+            ...
+
         @property
-        def verbose(self) -> bool: ...
+        def quiet(self) -> bool:
+            """Reduce command output."""
+            ...
+
         @property
-        def apply(self) -> bool: ...
+        def no_fail(self) -> bool:
+            """Exit successfully even when issues are found."""
+            ...
+
         @property
-        def gates(self) -> Sequence[str]: ...
+        def no_pip_check(self) -> bool:
+            """Skip workspace pip check."""
+            ...
+
         @property
-        def dry_run(self) -> bool: ...
-        @property
-        def output_format(self) -> str: ...
-        @property
-        def output(self) -> str | None: ...
-        @property
-        def quiet(self) -> bool: ...
-        @property
-        def no_fail(self) -> bool: ...
-        @property
-        def no_pip_check(self) -> bool: ...
+        def output_path(self) -> Path | None:
+            """Resolved explicit output path when provided."""
+            ...
 
     @runtime_checkable
-    class GitSourceReferenceMigration(Protocol):
+    class GitSourceReferenceMigration(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def url_prefix(self) -> t.NonEmptyStr: ...
+        def url_prefix(self) -> t.NonEmptyStr:
+            """Canonical Git URL directory prefix selecting dependency sources."""
+            ...
+
         @property
-        def source_ref(self) -> t.NonEmptyStr: ...
+        def source_ref(self) -> t.NonEmptyStr:
+            """Only this existing explicit Git reference may change."""
+            ...
+
         @property
-        def target_ref(self) -> t.NonEmptyStr: ...
+        def target_ref(self) -> t.NonEmptyStr:
+            """Operator-declared replacement Git reference."""
+            ...
 
     @runtime_checkable
-    class PackagedDataSelection(Protocol):
+    class PackagedDataSelection(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def files(self) -> t.StrTuple: ...
+        def files(self) -> t.StrTuple:
+            """Explicit data files included individually."""
+            ...
+
         @property
-        def directories(self) -> t.StrTuple: ...
+        def directories(self) -> t.StrTuple:
+            """Data directories selected with VCS filters."""
+            ...
 
     @runtime_checkable
-    class RuffProjectFacts(Protocol):
+    class RuffProjectFacts(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def first_party(self) -> Sequence[str]: ...
+        def first_party(self) -> Sequence[str]:
+            """Detected first-party namespaces."""
+            ...
+
         @property
-        def analysis_exclusions(self) -> Sequence[str] | None: ...
+        def analysis_exclusions(self) -> Sequence[str] | None:
+            """Declared analysis exclusions; None derives workspace globs."""
+            ...
+
         @property
-        def generated_python_roots(self) -> Sequence[str]: ...
+        def generated_python_roots(self) -> Sequence[str]:
+            """Generated python roots to exclude."""
+            ...
+
         @property
-        def repository_namespace_packages(self) -> t.StrTuple: ...
+        def repository_namespace_packages(self) -> t.StrTuple:
+            """Declared repository-root namespace packages."""
+            ...
 
     @runtime_checkable
-    class PyprojectDeclaredTopology(Protocol):
+    class PyprojectDeclaredTopology(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def root_modules(self) -> t.StrTuple: ...
+        def root_modules(self) -> t.StrTuple:
+            """Top-level single-file modules the package ships."""
+            ...
+
         @property
-        def root_packages(self) -> t.StrTuple: ...
+        def root_packages(self) -> t.StrTuple:
+            """Top-level packages shipped beyond the primary one."""
+            ...
+
         @property
-        def repository_namespace_packages(self) -> t.StrTuple: ...
+        def repository_namespace_packages(self) -> t.StrTuple:
+            """Implicit namespace directories shipped from the repository root."""
+            ...
+
         @property
-        def packaged_data_paths(self) -> t.StrTuple: ...
+        def packaged_data_paths(self) -> t.StrTuple:
+            """Repository-declared relative data paths to ship."""
+            ...
+
         @property
-        def packaged_data_excludes(self) -> t.StrTuple: ...
+        def packaged_data_excludes(self) -> t.StrTuple:
+            """Repository-relative files omitted from declared data directories."""
+            ...
+
         @property
-        def hatch_build_hook_path(self) -> Path | None: ...
+        def hatch_build_hook_path(self) -> Path | None:
+            """Declared project-relative Hatch build hook module."""
+            ...
+
         @property
-        def planned_data_files(self) -> t.StrTuple: ...
+        def planned_data_files(self) -> t.StrTuple:
+            """Exact scaffold file destinations planned before publication."""
+            ...
+
         @property
-        def declared_python_dirs(self) -> t.StrTuple: ...
+        def declared_python_dirs(self) -> t.StrTuple:
+            """Python roots declared for the project."""
+            ...
+
         @property
-        def declared_python_dirs_are_complete(self) -> bool: ...
+        def declared_python_dirs_are_complete(self) -> bool:
+            """Declared roots are the full set; discovery must not widen it."""
+            ...
+
         @property
-        def project_kind(self) -> str | None: ...
+        def project_kind(self) -> str | None:
+            """Declared project kind; absent classifies on demand."""
+            ...
+
         @property
-        def analysis_exclusions(self) -> t.StrTuple | None: ...
+        def analysis_exclusions(self) -> t.StrTuple | None:
+            """Structural member projected from the owning model.
+
+            Workspace-relative paths excluded from analysis; absent derives them
+            from the workspace.
+            """
+            ...
 
     @runtime_checkable
-    class PyprojectAnalyzerContext(Protocol):
+    class PyprojectAnalyzerContext(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def is_root(self) -> bool: ...
+        def is_root(self) -> bool:
+            """Whether the pyproject is the repository root."""
+            ...
+
         @property
-        def repository_root(self) -> Path | None: ...
+        def repository_root(self) -> Path | None:
+            """Repository root on disk."""
+            ...
+
         @property
-        def project_dir(self) -> Path | None: ...
+        def project_dir(self) -> Path | None:
+            """Project directory on disk."""
+            ...
+
         @property
-        def declared_python_dirs(self) -> t.StrTuple: ...
+        def declared_python_dirs(self) -> t.StrTuple:
+            """Python roots declared for the project."""
+            ...
+
         @property
-        def declared_python_dirs_are_complete(self) -> bool: ...
+        def declared_python_dirs_are_complete(self) -> bool:
+            """Declared roots are the full set; discovery must not widen it."""
+            ...
 
     @runtime_checkable
-    class RequirementsProvenance(Protocol):
+    class RequirementsProvenance(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def declared_sources(self) -> Mapping[str, str]: ...
+        def declared_sources(self) -> Mapping[str, str]:
+            """Declared member Git origins."""
+            ...
+
         @property
-        def candidate_sources(self) -> Mapping[str, str]: ...
+        def candidate_sources(self) -> Mapping[str, str]:
+            """Selected candidate Git origins."""
+            ...
+
         @property
-        def native_sources(self) -> Sequence[str]: ...
+        def native_sources(self) -> Sequence[str]:
+            """Names with explicit native UV source declarations."""
+            ...
+
         @property
-        def override_references(self) -> Mapping[str, str]: ...
+        def override_references(self) -> Mapping[str, str]:
+            """Structural member projected from the owning model.
+
+            Direct reference each declared UV override elects, by canonical name;
+            every requirement line of that name carries exactly it.
+            """
+            ...
 
     @runtime_checkable
-    class ProjectPackagingDeclaration(Protocol):
+    class ProjectPackagingDeclaration(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def uv_package(self) -> bool | None: ...
+        def uv_package(self) -> bool | None:
+            """Explicit native UV package participation declaration."""
+            ...
+
         @property
-        def build_backend(self) -> t.NonEmptyStr | None: ...
+        def build_backend(self) -> t.NonEmptyStr | None:
+            """Declared native Python build backend."""
+            ...
 
     @runtime_checkable
-    class ProjectMetadataState(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        source: p.Cli.AtomicFileState
-        metadata: p.ProjectMetadata
-        packaging: p.Infra.ProjectPackagingDeclaration
-
-    @runtime_checkable
-    class RuntimeDependencyProvider(Protocol):
+    class ProjectMetadataState(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def modules(self) -> t.StrTuple: ...
+        def source(self) -> p.Cli.AtomicFileState:
+            """Original TOML observation parsed here."""
+            ...
+
         @property
-        def package(self) -> p.Infra.LockedPackage: ...
+        def metadata(self) -> p.ProjectMetadata:
+            """Original canonical PEP 621 and FLEXT metadata."""
+            ...
+
         @property
-        def requirement(self) -> t.NonEmptyStr: ...
-        @property
-        def inputs(self) -> tuple[p.Cli.AtomicFileState, ...]: ...
+        def packaging(self) -> FlextInfraProtocolsDeps.ProjectPackagingDeclaration:
+            """Packaging facts from the same parsed document."""
+            ...
 
     @runtime_checkable
-    class RuntimeDependencyInputs(Protocol):
+    class RuntimeDependencyProvider(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def target_root(self) -> Path: ...
+        def modules(self) -> t.StrTuple:
+            """Native import identities supplied by metadata."""
+            ...
+
         @property
-        def python(self) -> Path: ...
+        def package(self) -> FlextInfraProtocolsWorkspace.LockedPackage:
+            """Exact package selected by the target's native lock."""
+            ...
+
         @property
-        def lock(self) -> p.Cli.AtomicFileState: ...
+        def requirement(self) -> t.NonEmptyStr:
+            """Target-qualified PEP 508 requirement retaining its source."""
+            ...
+
         @property
-        def providers(self) -> tuple[p.Infra.RuntimeDependencyProvider, ...]: ...
-        @property
-        def development_only(self) -> t.StrTuple: ...
-        @property
-        def invoked_executables(self) -> t.StrTuple: ...
-        @property
-        def loaded_plugins(self) -> t.StrTuple: ...
-        @property
-        def inputs(self) -> tuple[p.Cli.AtomicFileState, ...]: ...
+        def inputs(self) -> tuple[p.Cli.AtomicFileState, ...]:
+            """Authenticated distribution metadata states."""
+            ...
 
     @runtime_checkable
-    class RuntimeDependencyPlan(Protocol):
+    class RuntimeDependencyInputs(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def source(self) -> tuple[p.Cli.AtomicPhysicalTreeManifest, ...]: ...
+        def target_root(self) -> Path:
+            """Selected repository root."""
+            ...
+
         @property
-        def before(self) -> p.Cli.AtomicFileState: ...
+        def python(self) -> Path:
+            """Elected consumer interpreter."""
+            ...
+
         @property
-        def dependencies(self) -> t.StrTuple: ...
+        def lock(self) -> p.Cli.AtomicFileState:
+            """Captured native UV lock of the selected runtime."""
+            ...
+
         @property
-        def unresolved_modules(self) -> t.StrTuple: ...
+        def providers(
+            self,
+        ) -> tuple[FlextInfraProtocolsDeps.RuntimeDependencyProvider, ...]:
+            """All matching suppliers; ambiguity is preserved."""
+            ...
+
         @property
-        def inputs(self) -> tuple[p.Cli.AtomicFileState, ...]: ...
+        def development_only(self) -> t.StrTuple:
+            """Contract-owned requirements forbidden in runtime."""
+            ...
+
+        @property
+        def invoked_executables(self) -> t.StrTuple:
+            """Structural member projected from the owning model.
+
+            Canonical unimported requirements whose installed console scripts the
+            project's own files invoke.
+            """
+            ...
+
+        @property
+        def loaded_plugins(self) -> t.StrTuple:
+            """Structural member projected from the owning model.
+
+            Canonical unimported requirements whose installed distribution registers
+            a pytest plugin entry point, which pytest autoloads.
+            """
+            ...
+
+        @property
+        def inputs(self) -> tuple[p.Cli.AtomicFileState, ...]:
+            """Native lock and production-source input states."""
+            ...
 
     @runtime_checkable
-    class DependencyMarkerEnvironment(Protocol):
+    class RuntimeDependencyPlan(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def prefix(self) -> Path: ...
+        def source(self) -> tuple[p.Cli.AtomicPhysicalTreeManifest, ...]:
+            """Production trees establishing applicability."""
+            ...
+
         @property
-        def implementation_name(self) -> str: ...
+        def before(self) -> p.Cli.AtomicFileState:
+            """Authenticated pyproject state consumed by native deptry."""
+            ...
+
         @property
-        def implementation_version(self) -> str: ...
+        def dependencies(self) -> t.StrTuple:
+            """Calculated runtime requirements, including marker variants."""
+            ...
+
         @property
-        def os_name(self) -> str: ...
+        def unresolved_modules(self) -> t.StrTuple:
+            """Missing or ambiguous import suppliers remaining red."""
+            ...
+
         @property
-        def platform_machine(self) -> str: ...
-        @property
-        def platform_release(self) -> str: ...
-        @property
-        def platform_system(self) -> str: ...
-        @property
-        def platform_version(self) -> str: ...
-        @property
-        def platform_python_implementation(self) -> str: ...
-        @property
-        def python_full_version(self) -> str: ...
-        @property
-        def python_version(self) -> str: ...
-        @property
-        def sys_platform(self) -> str: ...
+        def inputs(self) -> tuple[p.Cli.AtomicFileState, ...]:
+            """Every metadata, lock and source state backing this plan."""
+            ...
 
     @runtime_checkable
-    class PyprojectDocumentState(Protocol):
+    class DependencyMarkerEnvironment(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        pyproject_path: Path
-        before: p.Cli.AtomicFileState | None
-        original_rendered: str
-        rendered: str
-        payload: t.MutableJsonMapping
-        document: t.Cli.TomlDocument | None
+        @property
+        def prefix(self) -> Path:
+            """Consumer interpreter environment prefix."""
+            ...
+
+        @property
+        def implementation_name(self) -> str:
+            """PEP 508 implementation name."""
+            ...
+
+        @property
+        def implementation_version(self) -> str:
+            """PEP 508 implementation version."""
+            ...
+
+        @property
+        def os_name(self) -> str:
+            """PEP 508 operating system name."""
+            ...
+
+        @property
+        def platform_machine(self) -> str:
+            """PEP 508 machine architecture."""
+            ...
+
+        @property
+        def platform_release(self) -> str:
+            """PEP 508 platform release."""
+            ...
+
+        @property
+        def platform_system(self) -> str:
+            """PEP 508 platform system."""
+            ...
+
+        @property
+        def platform_version(self) -> str:
+            """PEP 508 platform version."""
+            ...
+
+        @property
+        def platform_python_implementation(self) -> str:
+            """PEP 508 Python implementation."""
+            ...
+
+        @property
+        def python_full_version(self) -> str:
+            """PEP 508 complete Python version."""
+            ...
+
+        @property
+        def python_version(self) -> str:
+            """PEP 508 Python major and minor version."""
+            ...
+
+        @property
+        def sys_platform(self) -> str:
+            """PEP 508 interpreter platform."""
+            ...
 
     @runtime_checkable
-    class PipCheckReport(Protocol):
+    class PyprojectDocumentState(FlextCliProtocols.Model, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def pyproject_path(self) -> Path:
+            """Resolved pyproject path."""
+            ...
+
+        @property
+        def before(self) -> p.Cli.AtomicFileState | None:
+            """Original physical read; absent for pure source rendering."""
+            ...
+
+        @property
+        def original_rendered(self) -> str:
+            """Original TOML source text."""
+            ...
+
+        @property
+        def rendered(self) -> str:
+            """Canonical rendered TOML source text."""
+            ...
+
+        @property
+        def payload(self) -> t.MutableJsonMapping:
+            """Validated plain TOML payload."""
+            ...
+
+        @property
+        def document(self) -> t.Cli.TomlDocument | None:
+            """Original parsed TOML tree retaining authored layout and comments."""
+            ...
+
+    @runtime_checkable
+    class PipCheckReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         ok: bool
-        lines: Sequence[str]
+
+        @property
+        def lines(self) -> Sequence[str]:
+            """Pip check output lines."""
+            ...
 
     @runtime_checkable
-    class DeptryIssueGroups(Protocol):
+    class DeptryIssueGroups(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        dep001: MutableSequence[Mapping[str, t.Primitives | None]]
-        dep002: MutableSequence[Mapping[str, t.Primitives | None]]
-        dep003: MutableSequence[Mapping[str, t.Primitives | None]]
-        dep004: MutableSequence[Mapping[str, t.Primitives | None]]
+        @property
+        def dep001(self) -> MutableSequence[Mapping[str, t.Primitives | None]]:
+            """DEP001 issues."""
+            ...
+
+        @property
+        def dep002(self) -> MutableSequence[Mapping[str, t.Primitives | None]]:
+            """DEP002 issues."""
+            ...
+
+        @property
+        def dep003(self) -> MutableSequence[Mapping[str, t.Primitives | None]]:
+            """DEP003 issues."""
+            ...
+
+        @property
+        def dep004(self) -> MutableSequence[Mapping[str, t.Primitives | None]]:
+            """DEP004 issues."""
+            ...
 
     @runtime_checkable
-    class DeptryReport(Protocol):
+    class DeptryReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        missing: Sequence[str]
-        unused: Sequence[str]
-        transitive: Sequence[str]
-        dev_in_runtime: Sequence[str]
-        raw_count: t.NonNegativeInt
+        @property
+        def missing(self) -> Sequence[str]:
+            """Missing dependencies."""
+            ...
+
+        @property
+        def unused(self) -> Sequence[str]:
+            """Unused dependencies."""
+            ...
+
+        @property
+        def transitive(self) -> Sequence[str]:
+            """Transitive dependencies."""
+            ...
+
+        @property
+        def dev_in_runtime(self) -> Sequence[str]:
+            """Dev dependencies in runtime."""
+            ...
+
+        @property
+        def raw_count(self) -> t.NonNegativeInt:
+            """Raw issue count."""
+            ...
 
     @runtime_checkable
-    class ProjectDependencyReport(Protocol):
+    class ProjectDependencyReport(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        project: t.NonEmptyStr
-        deptry: p.Infra.DeptryReport
+        @property
+        def deptry(self) -> FlextInfraProtocolsDeps.DeptryReport:
+            """Deptry report."""
+            ...
 
     @runtime_checkable
-    class WorkspaceDependencyReport(Protocol):
+    class WorkspaceDependencyReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        workspace: str
-        projects: MutableMapping[str, p.Infra.ProjectDependencyReport]
-        pip_check: p.Infra.PipCheckReport | None
+        @property
+        def workspace(self) -> str:
+            """Workspace name."""
+            ...
+
+        @property
+        def projects(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsDeps.ProjectDependencyReport]:
+            """Per-project reports."""
+            ...
+
+        @property
+        def pip_check(self) -> FlextInfraProtocolsDeps.PipCheckReport | None:
+            """Pip check report."""
+            ...
 
     @runtime_checkable
-    class ToolingContextRequest(Protocol):
+    class ToolingContextRequest(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        environment_dir: Path
+        @property
+        def environment_dir(self) -> Path:
+            """Declared environment directory owned by project runtime."""
+            ...
+
         planned_sources: Mapping[Path, str]
-        project_name: t.NonEmptyStr
-        package_name: t.NonEmptyStr
-        path: Path
-        topology: p.Infra.PyprojectDeclaredTopology
-        codegen: p.Infra.CodegenConfigSpec
-        runtime_dependency_overlay: Sequence[str]
-        declared_project_dependencies: Sequence[str]
+
+        @property
+        def project_name(self) -> t.NonEmptyStr:
+            """Distribution name of the project."""
+            ...
+
+        @property
+        def package_name(self) -> t.NonEmptyStr:
+            """Importable package name of the project."""
+            ...
+
+        @property
+        def path(self) -> Path:
+            """Absolute path of the project's pyproject file."""
+            ...
+
+        @property
+        def topology(self) -> FlextInfraProtocolsDeps.PyprojectDeclaredTopology:
+            """Declared repository topology."""
+            ...
+
+        @property
+        def codegen(self) -> FlextInfraProtocolsConfigArtifact.CodegenConfigSpec:
+            """Elected effective target codegen policy."""
+            ...
+
+        @property
+        def runtime_dependency_overlay(self) -> Sequence[str]:
+            """Runtime dependency overlay requirement lines."""
+            ...
+
+        @property
+        def declared_project_dependencies(self) -> Sequence[str]:
+            """Declared project dependency requirement lines."""
+            ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsDeps"]

@@ -491,7 +491,8 @@ class FlextInfraModelsMiseToolchain:
                 default_factory=dict,
                 description=(
                     "Additional installed distributions bound to explicit local "
-                    "sources by make setup FLEXT; cannot conflict with that workspace"
+                    "sources by make setup FLEXT; a relative source resolves "
+                    "against that FLEXT workspace; cannot conflict with it"
                 ),
             ),
         ]

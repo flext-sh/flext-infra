@@ -11,83 +11,140 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra import c, t
+from flext_cli import FlextCliProtocols
+
+from flext_infra import t
+from flext_infra._protocols._config import FlextInfraProtocolsConfigWorkspace
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra._constants import FlextInfraConstantsBase
 
 
 class FlextInfraProtocolsDepsToml:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class MemberRequirements(Protocol):
+    class MemberRequirements(
+        FlextInfraProtocolsConfigWorkspace.DependencyGroupDeclarations, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def dependency_groups(
-            self,
-        ) -> Mapping[str, tuple[str | p.Infra.DependencyGroupInclude, ...]]: ...
+        def name(self) -> t.NonEmptyStr:
+            """Declared distribution identity."""
+            ...
+
         @property
-        def name(self) -> t.NonEmptyStr: ...
+        def dependencies(self) -> Sequence[str]:
+            """Production requirement lines."""
+            ...
+
         @property
-        def dependencies(self) -> Sequence[str]: ...
-        @property
-        def optional_dependencies(self) -> Mapping[str, Sequence[str]]: ...
+        def optional_dependencies(self) -> Mapping[str, Sequence[str]]:
+            """Every declared optional requirement group."""
+            ...
 
     @runtime_checkable
-    class SetOp(Protocol):
+    class SetOp(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def kind(self) -> Literal["set"]: ...
+        def kind(self) -> Literal["set"]:
+            """Operation kind."""
+            ...
+
         @property
-        def key(self) -> str: ...
+        def key(self) -> str:
+            """TOML key name."""
+            ...
+
         @property
-        def value(self) -> t.JsonValue: ...
+        def value(self) -> t.JsonValue:
+            """JSON-compatible value."""
+            ...
 
     @runtime_checkable
-    class ListOp(Protocol):
+    class ListOp(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def kind(self) -> Literal["list"]: ...
+        def kind(self) -> Literal["list"]:
+            """Operation kind."""
+            ...
+
         @property
-        def key(self) -> str: ...
+        def key(self) -> str:
+            """TOML key name."""
+            ...
+
         @property
-        def values(self) -> Sequence[str]: ...
+        def values(self) -> Sequence[str]:
+            """Expected values."""
+            ...
+
         @property
-        def strategy(self) -> c.Infra.TomlMergeMode: ...
+        def strategy(self) -> FlextInfraConstantsBase.TomlMergeMode:
+            """Merge strategy."""
+            ...
+
         @property
-        def sort(self) -> bool: ...
+        def sort(self) -> bool:
+            """Sort values before sync."""
+            ...
 
     @runtime_checkable
-    class RemoveOp(Protocol):
+    class RemoveOp(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def kind(self) -> Literal["remove"]: ...
+        def kind(self) -> Literal["remove"]:
+            """Operation kind."""
+            ...
+
         @property
-        def key(self) -> str: ...
+        def key(self) -> str:
+            """Key to remove."""
+            ...
+
         @property
-        def table_path(self) -> Sequence[str]: ...
+        def table_path(self) -> Sequence[str]:
+            """Relative sub-table path."""
+            ...
 
     @runtime_checkable
-    class PhaseConfig(Protocol):
+    class PhaseConfig(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def name(self) -> str: ...
+        def name(self) -> str:
+            """Phase name."""
+            ...
+
         @property
-        def root_path(self) -> Sequence[str]: ...
+        def root_path(self) -> Sequence[str]:
+            """Root path before table_path."""
+            ...
+
         @property
-        def table_path(self) -> Sequence[str]: ...
+        def table_path(self) -> Sequence[str]:
+            """Primary table path."""
+            ...
+
         @property
         def operations(
             self,
-        ) -> Sequence[p.Infra.SetOp | p.Infra.ListOp | p.Infra.RemoveOp]: ...
+        ) -> Sequence[
+            FlextInfraProtocolsDepsToml.SetOp
+            | FlextInfraProtocolsDepsToml.ListOp
+            | FlextInfraProtocolsDepsToml.RemoveOp
+        ]:
+            """Declarative TOML operations."""
+            ...
+
         @property
-        def nested_tables(self) -> Sequence[p.Infra.PhaseConfig]: ...
+        def nested_tables(self) -> Sequence[FlextInfraProtocolsDepsToml.PhaseConfig]:
+            """Nested TOML phase configs."""
+            ...
 
 
 __all__: list[str] = [

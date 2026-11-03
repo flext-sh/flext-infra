@@ -12,122 +12,250 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
+from flext_cli import FlextCliProtocols
+
 from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra._constants import FlextInfraConstantsDocs
+    from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
+    from flext_infra._protocols._config import FlextInfraProtocolsConfigWorkspace
+    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsDocsGeneration:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class DocsCatalogEntry(Protocol):
+    class DocsCatalogEntry(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def name(self) -> str: ...
+        def name(self) -> str:
+            """Project name."""
+            ...
+
         @property
-        def project_class(self) -> str: ...
+        def project_class(self) -> str:
+            """Project class."""
+            ...
+
         @property
-        def package_name(self) -> str: ...
+        def package_name(self) -> str:
+            """Import package name."""
+            ...
+
         @property
-        def description(self) -> str: ...
+        def description(self) -> str:
+            """Project description."""
+            ...
+
         @property
-        def api_page(self) -> str: ...
+        def api_page(self) -> str:
+            """Generated API page."""
+            ...
 
     @runtime_checkable
-    class DocsDependencyReference(Protocol):
+    class DocsDependencyReference(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def name(self) -> t.NonEmptyStr: ...
+        def name(self) -> t.NonEmptyStr:
+            """Normalized distribution name."""
+            ...
+
         @property
-        def documentation_url(self) -> t.NonEmptyStr: ...
+        def documentation_url(self) -> t.NonEmptyStr:
+            """Official publisher-declared or verified documentation URL."""
+            ...
+
         @property
-        def installed_version(self) -> str | None: ...
+        def installed_version(self) -> str | None:
+            """Observed installed distribution version."""
+            ...
+
         @property
-        def locked_versions(self) -> tuple[str, ...]: ...
+        def locked_versions(self) -> tuple[str, ...]:
+            """Distinct versions declared by governed locks."""
+            ...
+
         @property
-        def source(self) -> t.NonEmptyStr: ...
+        def source(self) -> t.NonEmptyStr:
+            """Metadata or configured source establishing URL ownership."""
+            ...
 
     @runtime_checkable
-    class DocsLlmsContext(Protocol):
+    class DocsLlmsContext(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def title(self) -> t.NonEmptyStr: ...
+        def title(self) -> t.NonEmptyStr:
+            """Owning workspace title."""
+            ...
+
         @property
-        def projects(self) -> tuple[p.Infra.DocsCatalogEntry, ...]: ...
+        def projects(
+            self,
+        ) -> tuple[FlextInfraProtocolsDocsGeneration.DocsCatalogEntry, ...]:
+            """Generated first-party project references."""
+            ...
+
         @property
-        def dependencies(self) -> tuple[p.Infra.DocsDependencyReference, ...]: ...
+        def dependencies(
+            self,
+        ) -> tuple[FlextInfraProtocolsDocsGeneration.DocsDependencyReference, ...]:
+            """Official external documentation references."""
+            ...
 
     @runtime_checkable
-    class DocsRootInputs(Protocol):
+    class DocsRootInputs(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def workspace_contract(self) -> t.JsonMapping: ...
+        def workspace_contract(self) -> t.JsonMapping:
+            """Validated workspace contract of the repository."""
+            ...
+
         @property
-        def markdown_width(self) -> int: ...
+        def markdown_width(self) -> int:
+            """Prose width elected once for the destination repository."""
+            ...
+
         @property
-        def exclude_docs(self) -> Sequence[str]: ...
+        def exclude_docs(self) -> Sequence[str]:
+            """Repository-relative publication exclusion globs from codegen."""
+            ...
 
     @runtime_checkable
-    class DocScope(Protocol):
+    class DocScope(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def declared_files(self) -> tuple[p.Infra.CodegenFilePlan, ...]: ...
+        def declared_files(
+            self,
+        ) -> tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]:
+            """Captured presentation candidates."""
+            ...
+
         @property
-        def name(self) -> t.NonEmptyStr: ...
+        def name(self) -> t.NonEmptyStr:
+            """Scope name."""
+            ...
+
         @property
-        def path(self) -> Path: ...
+        def path(self) -> Path:
+            """Absolute lexical scope root."""
+            ...
+
         @property
-        def report_dir(self) -> Path: ...
+        def report_dir(self) -> Path:
+            """Absolute lexical report output directory."""
+            ...
+
         @property
-        def project_class(self) -> str: ...
+        def project_class(self) -> str:
+            """Docs scope classification."""
+            ...
+
         @property
-        def package_name(self) -> str: ...
+        def package_name(self) -> str:
+            """Primary package name for scope."""
+            ...
+
         @property
-        def documentation_language(self) -> t.Infra.DocumentationLanguage: ...
+        def documentation_language(self) -> FlextInfraTypesBase.DocumentationLanguage:
+            """Project-local generated documentation language."""
+            ...
+
         @property
-        def governance_source(self) -> p.Infra.CodegenBootstrapSource | None: ...
+        def governance_source(
+            self,
+        ) -> FlextInfraProtocolsConfigWorkspace.CodegenBootstrapSource | None:
+            """Captured source and ref owning governance links."""
+            ...
+
         @property
-        def repository_root_override(self) -> Path | None: ...
+        def repository_root_override(self) -> Path | None:
+            """Structural member projected from the owning model.
+
+            Physical repository root when it differs from `path` (a member project
+            scope inside a declared workspace); absent for a scope that owns its own
+            docs policy.
+            """
+            ...
+
         @property
-        def repository_root(self) -> Path: ...
+        def repository_root(self) -> Path:
+            """The physical repository root owning this scope's docs policy."""
+            ...
+
+        def documentation_text(
+            self, message: FlextInfraConstantsDocs.DocumentationText
+        ) -> str:
+            """Structural member projected from the owning model.
+
+            Resolve one finite presentation message without changing source prose.
+            """
+            ...
 
     @runtime_checkable
-    class DocsRenderedArtifact(Protocol):
+    class DocsRenderedArtifact(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def relative_path(self) -> Path: ...
+        def relative_path(self) -> Path:
+            """Normalized scope-relative destination."""
+            ...
+
         @property
-        def desired_content(self) -> bytes | None: ...
+        def desired_content(self) -> bytes | None:
+            """Exact desired bytes, or absence."""
+            ...
+
         @property
-        def desired_mode(self) -> Literal[420] | None: ...
+        def desired_mode(self) -> Literal[420] | None:
+            """Exact desired mode, or absence."""
+            ...
 
     @runtime_checkable
-    class DocsScopeArtifacts(Protocol):
+    class DocsScopeArtifacts(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def scope(self) -> p.Infra.DocScope: ...
+        def scope(self) -> FlextInfraProtocolsDocsGeneration.DocScope:
+            """Exact scope that owns every relative artifact."""
+            ...
+
         @property
-        def artifacts(self) -> tuple[p.Infra.DocsRenderedArtifact, ...]: ...
+        def artifacts(
+            self,
+        ) -> tuple[FlextInfraProtocolsDocsGeneration.DocsRenderedArtifact, ...]:
+            """Complete ordered desired artifact inventory."""
+            ...
 
     @runtime_checkable
-    class DocsGenerationBundle(Protocol):
+    class DocsGenerationBundle(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def scopes(self) -> tuple[p.Infra.DocsScopeArtifacts, ...]: ...
+        def scopes(
+            self,
+        ) -> tuple[FlextInfraProtocolsDocsGeneration.DocsScopeArtifacts, ...]:
+            """Ordered selected scope inventories."""
+            ...
+
         @property
-        def metadata_files(self) -> tuple[p.Infra.CodegenFilePlan, ...]: ...
+        def metadata_files(
+            self,
+        ) -> tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]:
+            """Owned metadata published with this render."""
+            ...
+
         @property
-        def repository_root(self) -> Path: ...
+        def repository_root(self) -> Path:
+            """Absolute lexical physical workspace root."""
+            ...
 
 
 __all__: list[str] = [

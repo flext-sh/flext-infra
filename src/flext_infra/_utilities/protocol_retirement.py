@@ -35,21 +35,6 @@ class FlextInfraUtilitiesModelsProtocolRetirement:
     """Plan the retirement of authored Protocols displaced by their projection."""
 
     @staticmethod
-    def file_resource(project: p.Infra.RopeProject, path: Path) -> p.Infra.RopeFile:
-        """Bind one physical module path to its native project resource.
-
-        Returns:
-            The native file resource of ``path``.
-
-        """
-        return FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
-            project.get_resource(
-                path.resolve().relative_to(Path(project.root.real_path)).as_posix()
-            ),
-            path,
-        )
-
-    @staticmethod
     def _identifier_offset(
         source: str,
         node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef | ast.AnnAssign,
@@ -90,7 +75,7 @@ class FlextInfraUtilitiesModelsProtocolRetirement:
         sites: list[tuple[Path, int, int]] = []
         for location in FlextInfraUtilitiesRopeRuntimeModules.runtime_find_occurrences(
             project,
-            cls.file_resource(project, path),
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
             offset,
             resources=None,
             in_hierarchy=False,
@@ -205,7 +190,10 @@ class FlextInfraUtilitiesModelsProtocolRetirement:
                 expression = source[start:end]
                 owner = expression.rpartition(".")[0]
                 module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    project, cls.file_resource(project, site)
+                    project,
+                    FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                        project, site
+                    ),
                 )
                 scope = runtime.scope_at(module, position)
                 binding = runtime.expression_name(scope, owner) if owner else None
@@ -250,7 +238,9 @@ class FlextInfraUtilitiesModelsProtocolRetirement:
         for path, entries in retirements.items():
             relative = path.resolve().relative_to(root)
             original = rendered.get(relative, project.source_text(path))
-            resource = cls.file_resource(project, path)
+            resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                project, path
+            )
             tree = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
                 project, original, resource=resource
             ).get_ast()

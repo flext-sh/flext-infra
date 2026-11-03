@@ -143,6 +143,102 @@ class TestsProtocolHolderComposition:
         )
 
     @classmethod
+    def test_mirror_inherits_local_base_mirror_without_repeating_fields(
+        cls, tmp_path: Path, native_consumer: p.Tests.NativeConsumer
+    ) -> None:
+        """A model inheriting a sibling model gets a protocol inheriting its mirror."""
+        root, package = cls._domain_workspace(tmp_path, None)
+        cls._write(
+            package,
+            {
+                "_models/_git/part.py": (
+                    "from pydantic import BaseModel\n"
+                    "class ModelsGitPart:\n"
+                    "    class Scope(BaseModel):\n        root: str\n"
+                    "    class Remote(Scope):\n        url: str\n"
+                    "__all__ = ['ModelsGitPart']\n"
+                ),
+            },
+        )
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        part = projected[(package / "_protocols/_git/part.py").relative_to(root)]
+        holder = next(
+            node for node in ast.parse(part).body if isinstance(node, ast.ClassDef)
+        )
+        contracts = {
+            node.name: node for node in holder.body if isinstance(node, ast.ClassDef)
+        }
+        remote_bases = tuple(ast.unparse(base) for base in contracts["Remote"].bases)
+        tm.that(remote_bases, has="Scope")
+        remote_members = {
+            node.name
+            for node in contracts["Remote"].body
+            if isinstance(node, ast.FunctionDef)
+        }
+        tm.that(remote_members, has="url")
+        tm.fail("root" in remote_members)
+        for relative, source in projected.items():
+            path = root / relative
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name}.models import m\n"
+            f"from {package.name}.protocols import p\n"
+            "from flext_tests import tm\n"
+            "remote = m.Remote(root='physical', url='git@host:r')\n"
+            "tm.ok(isinstance(remote, p.Remote))\n"
+            "tm.ok(isinstance(remote, p.Scope))\n",
+            cwd=root,
+        )
+
+    @classmethod
+    def test_new_mirror_package_receives_importable_initializer(
+        cls, tmp_path: Path, native_consumer: p.Tests.NativeConsumer
+    ) -> None:
+        """A mirror in a ``_protocols`` subpackage that does not exist yet imports."""
+        root, package = cls._domain_workspace(tmp_path, None)
+        (package / "_protocols/_git/__init__.py").unlink()
+        (package / "_protocols/_git").rmdir()
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        part = (package / "_protocols/_git/part.py").relative_to(root)
+        initializer = (package / "_protocols/_git/__init__.py").relative_to(root)
+        tm.ok(initializer in projected)
+        holder = next(
+            node.name
+            for node in ast.parse(projected[part]).body
+            if isinstance(node, ast.ClassDef)
+        )
+        family = f"{package.name}._protocols._git"
+        for relative, source in projected.items():
+            path = root / relative
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {family} import {holder}\n"
+            "from flext_tests import tm\n"
+            f"tm.ok({holder}.__module__ == {family + '.part'!r})\n",
+            cwd=root,
+        )
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name}.protocols import p\n"
+            f"from {family} import {holder}\n"
+            "from flext_tests import tm\n"
+            f"tm.ok(p.Scope is {holder}.Scope)\n",
+            cwd=root,
+        )
+
+    @classmethod
     @pytest.mark.parametrize(
         ("authored_scope", "equivalent"),
         [

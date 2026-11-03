@@ -461,10 +461,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 "model protocol projection requires the authenticated run snapshot"
             )
         with self._source_view(root, declared_files=declared_files) as binding:
-            rendered = u.Infra.protocol_model_sources_from_source(root, binding[0])
-            if rendered.failure:
-                return result_type.from_failure(rendered)
-            rendered_sources = rendered.value
+            rendered_sources: dict[Path, str] = {}
+            for package_name in u.Infra.protocol_model_package_names(root, binding[0]):
+                rendered = u.Infra.protocol_model_sources_from_source(
+                    root, binding[0], package_name=package_name
+                )
+                if rendered.failure:
+                    return result_type.from_failure(rendered)
+                rendered_sources.update(rendered.value)
             plans: list[p.Infra.CodegenFilePlan] = []
             for path, content in rendered_sources.items():
                 planned = self.file_plan(root, path.as_posix(), content)
@@ -712,7 +716,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         by_path = {item.path: item for item in planned}
         for barrel in barrels:
             existing = by_path.get(barrel.path)
-            if existing is not None and existing != barrel:
+            # Lazy-init owns every initializer. A protocol mirror package's
+            # seed exists only so the package is enumerable and importable;
+            # it yields to the initializer planned for the same path.
+            if (
+                existing is not None
+                and existing != barrel
+                and not u.Infra.is_mirror_package_seed(existing)
+            ):
                 return result_type.fail(
                     f"runtime barrel has competing bootstrap plans: {barrel.path}"
                 )
@@ -778,7 +789,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         return modernizer.resolve_tooling_context(
             request,
             source_project=source_project,
-            derive_runtime=False,
         )
 
     def _existing_tooling_request(
@@ -1155,7 +1165,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     ),
                 ),
             ),
-            derive_runtime=False,
         )
 
     def _control_bootstrap_outcome(

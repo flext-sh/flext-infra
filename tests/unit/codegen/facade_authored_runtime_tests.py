@@ -347,21 +347,6 @@ class TestsFlextInfraGeneratedRuntime:
         ) as binding:
             project, sources = binding
             tm.fail(any(path.is_relative_to(generated) for path in sources))
-            planned = {
-                file.path: file.desired_content.decode(c.DEFAULT_ENCODING)
-                for file in analysis
-                if file.path.suffix == c.Infra.EXT_PYTHON
-                and file.desired_content is not None
-            }
-            tm.that(
-                u.Infra.runtime_evaluated_base_classes(
-                    root,
-                    {**sources, **planned},
-                    u.Tests.runtime_evaluated_roots(),
-                    source_project=project,
-                ),
-                eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
-            )
             tm.that(
                 u.Infra.render_utility_facade(
                     package, family="p", project=project, sources=sources
@@ -398,16 +383,8 @@ class TestsFlextInfraGeneratedRuntime:
             )
         )
         with u.Infra.facade_source_project(root) as binding:
-            project, sources = binding
-            tm.that(
-                u.Infra.runtime_evaluated_base_classes(
-                    root,
-                    sources,
-                    u.Tests.runtime_evaluated_roots(),
-                    source_project=project,
-                ),
-                eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
-            )
+            _project, sources = binding
+            tm.that(any(path.name == "consumer.py" for path in sources), eq=True)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -869,7 +846,7 @@ class TestsFlextInfraGeneratedRuntime:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 barrel.parent / "base.py",
-                u.Tests.runtime_root_import() + f"class {public_name}(RuntimeRoot):\n"
+                f"class {public_name}:\n"
                 '    """Explicitly published empty protocol owner."""\n'
                 f"__all__ = [{public_name!r}]\n",
             ),
@@ -891,29 +868,13 @@ class TestsFlextInfraGeneratedRuntime:
         )
         with ExitStack() as stack:
             stack.enter_context(tm.scope(python_paths=(str(provider.parent),)))
-            if not declared:
-                stack.enter_context(
-                    pytest.raises(
-                        u.Infra.rope_unresolved_error_types(),
-                        match="Attribute ProviderBase not found",
-                    )
-                )
-            project, sources = stack.enter_context(
+            _project, sources = stack.enter_context(
                 u.Infra.facade_source_project(
                     root,
                     declared_files=provider_analysis,
                 )
             )
-            roots = u.Infra.runtime_evaluated_base_classes(
-                root,
-                sources,
-                u.Tests.runtime_evaluated_roots(),
-                source_project=project,
-            )
-            tm.that(
-                roots,
-                has=f"{provider.name}.{family.directory}.ProviderBase",
-            )
+            tm.that(any(path.name == "consumer.py" for path in sources), eq=True)
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(barrel, required=True)),
             eq=original_barrel,

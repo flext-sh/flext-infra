@@ -11,23 +11,29 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsMixins
 
 
 class FlextInfraProtocolsRefactorNamespaceEnforcer:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ParseFailureViolation(Protocol):
+    class ParseFailureViolation(
+        FlextInfraProtocolsMixins.FilePathMixin,
+        FlextInfraProtocolsMixins.ErrorDetailMixin,
+        Protocol,
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def detail(self) -> str: ...
+        def stage(self) -> t.NonEmptyStr:
+            """Parse stage."""
+            ...
+
         @property
-        def file(self) -> t.NonEmptyStr: ...
-        @property
-        def stage(self) -> t.NonEmptyStr: ...
-        @property
-        def error_type(self) -> t.NonEmptyStr: ...
+        def error_type(self) -> t.NonEmptyStr:
+            """Error type."""
+            ...
 
 
 __all__: list[str] = [

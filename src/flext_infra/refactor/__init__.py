@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -49,7 +48,7 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "FlextInfraAccessorMigrationOrchestrator": ".accessor_migration",
         "FlextInfraNamespaceEnforcer": ".namespace_enforcer",
         "FlextInfraNamespaceRelocationCascade": ".namespace_relocations",
@@ -61,6 +60,6 @@ install_lazy_exports(
         "FlextInfraRefactorViolationsSweep": ".violations_sweep",
         "FlextInfraRefactorWrapper": ".wrapper",
         "FlextInfraWrapperRootNamespaceRefactor": ".wrapper_root_namespace",
-    }),
+    },
     public_exports=__all__,
 )

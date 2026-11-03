@@ -883,30 +883,53 @@ class FlextInfraUtilitiesImportLawNormalization(
                 "Own-family repair requires native source identity; use make mod",
             )
         routes: dict[t.StrTuple, tuple[str, str, str]] = {}
+        upstream: dict[str, str] = {}
         for bound, (module, name) in elected.items():
             paths = cls._import_law_consumed_facade_paths(state, bound)
             if not paths:
                 return r[str].fail(
-                    "Own-family facade-value reads require make mod: "
+                    "Own-family facade-value reads have no declaring route: "
                     f"path={scope.file_path} binding={bound} "
                     f"provider={module}.{name} "
                     f"published_by={state.root_exports.get(name)}",
                 )
+            providers: set[str] = set()
             for path in paths:
+                qualified = f"{module}.{name}.{'.'.join(path)}"
                 route = cls._import_law_own_family_route(
                     state,
-                    f"{module}.{name}.{'.'.join(path)}",
+                    qualified,
                     path[-1],
                     member_resolver=member_resolver,
                 )
+                if route is None:
+                    # Declared upstream: the route keeps the letter, bound to
+                    # the upstream package that publishes it (ADR-028 D10).
+                    providers.add(
+                        cls._import_law_upstream_letter_provider(
+                            state, member_resolver(qualified), name
+                        )
+                    )
+                    continue
                 if any(
                     owner == route[1] and provider != route[0]
                     for provider, owner, _ in routes.values()
                 ):
                     return r[str].fail(
-                        "Own-family exports have competing bindings; use make mod",
+                        "Own-family exports have competing declaring owners: "
+                        f"path={scope.file_path} owner={route[1]}",
                     )
                 routes[bound, *path] = route
+            if len(providers) > 1:
+                return r[str].fail(
+                    "Own-family upstream routes need more than one provider: "
+                    f"path={scope.file_path} binding={bound} "
+                    f"providers={sorted(providers)}",
+                )
+            if providers and not cls._import_law_binds_from(
+                state, bound, next(iter(providers))
+            ):
+                upstream[bound] = next(iter(providers))
         cls._import_law_own_family_annotations(state.tree, scope.file_path)
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
             scope.project_root,
@@ -920,6 +943,8 @@ class FlextInfraUtilitiesImportLawNormalization(
                     {bound: route[0] for bound, route in elected.items()},
                     source_project=project,
                     file_path=scope.file_path,
+                    local_module=scope.module,
+                    upstream=upstream,
                 ),
             )
 
@@ -973,11 +998,16 @@ class FlextInfraUtilitiesImportLawNormalization(
         member: str,
         *,
         member_resolver: p.Infra.RopeSourceMemberResolver,
-    ) -> tuple[str, str, str]:
-        """Prove a member and its exported declaring owner share native identities.
+    ) -> tuple[str, str, str] | None:
+        """Prove a member and its declaring owner share native identities.
+
+        A member declared in the module itself is spelled through its local
+        class; one declared in another module of the own package through that
+        module's family package; one declared upstream keeps the letter route.
 
         Returns:
-            Published module, declaring owner and relative member path.
+            Import target (the module itself for a local owner), declaring
+            owner and relative member path; ``None`` for an upstream member.
 
         Raises:
             ValueError: The native member or exported owner changes identity.
@@ -985,17 +1015,27 @@ class FlextInfraUtilitiesImportLawNormalization(
         """
         project = state.source_project
         if project is None:
-            message = "Own-family repair requires a native project; use make mod"
+            message = "Own-family repair requires a native project"
             raise ValueError(message)
         before = member_resolver(qualified)
-        holder, owners = cls._import_law_own_family_owner(before, state.scope.module)
-        module = holder.get_name().rpartition(".")[0]
+        holder, owners = cls._import_law_own_family_owner(before)
+        declaring = holder.get_name()
+        namespace = state.scope.namespace
+        if declaring != namespace and not declaring.startswith(f"{namespace}."):
+            return None
+        suffix = ".".join((*owners[1:], member))
+        if declaring == state.scope.module:
+            after = member_resolver(f"{declaring}.{owners[0]}.{suffix}")
+            if not FlextInfraUtilitiesRopeRuntime.same_name(before, after):
+                message = "Own-family local spelling changes native identity"
+                raise ValueError(message)
+            return declaring, owners[0], suffix
+        module = declaring.rpartition(".")[0]
         cls._import_law_own_family_publication(state, project, module, owners[0])
         exported = cls.resolve_declared_binding(
             project, (module, owners[0]), state.scope.project_root, state.sources or {}
         )
         declared = holder.get_scope().get_defined_names().get(owners[0])
-        suffix = ".".join((*owners[1:], member))
         after = member_resolver(f"{module}.{owners[0]}.{suffix}")
         if (
             exported is None
@@ -1003,13 +1043,68 @@ class FlextInfraUtilitiesImportLawNormalization(
             or not FlextInfraUtilitiesRopeRuntime.same_name(exported, declared)
             or not FlextInfraUtilitiesRopeRuntime.same_name(before, after)
         ):
-            message = "Own-family replacement changes native identity; use make mod"
+            message = "Own-family replacement changes native identity"
             raise ValueError(message)
         return module, owners[0], suffix
 
+    @classmethod
+    def _import_law_upstream_letter_provider(
+        cls,
+        state: p.Infra.ImportLawPass,
+        binding: p.Infra.RopePyName,
+        letter: str,
+    ) -> str:
+        """Elect the upstream package that publishes the letter for a member.
+
+        The provider is the deepest enclosing package of the member's declaring
+        module whose native publication binds the letter.
+
+        Returns:
+            The upstream package name.
+
+        Raises:
+            ValueError: No enclosing package publishes the letter.
+
+        """
+        project = state.source_project
+        holder, _owners = cls._import_law_own_family_owner(binding)
+        parts = holder.get_name().split(".")
+        for size in range(len(parts) - 1, 0, -1):
+            package = ".".join(parts[:size])
+            if project is not None and cls.resolve_declared_binding(
+                project,
+                (package, letter),
+                state.scope.project_root,
+                state.sources or {},
+            ):
+                return package
+        message = (
+            f"No upstream package publishes letter {letter} for "
+            f"{holder.get_name()}: {state.scope.file_path}"
+        )
+        raise ValueError(message)
+
+    @classmethod
+    def _import_law_binds_from(
+        cls, state: p.Infra.ImportLawPass, bound: str, provider: str
+    ) -> bool:
+        """Return whether the module already binds a name from one provider.
+
+        Returns:
+            Whether an absolute ``from provider import`` binds ``bound``.
+
+        """
+        return any(
+            isinstance(node, ast.ImportFrom)
+            and not node.level
+            and node.module == provider
+            and any((alias.asname or alias.name) == bound for alias in node.names)
+            for node in cls._import_law_iter_imports(state.tree)
+        )
+
     @staticmethod
     def _import_law_own_family_owner(
-        binding: p.Infra.RopePyName, current_module: str
+        binding: p.Infra.RopePyName,
     ) -> tuple[p.Infra.RopeParsedModule, t.StrTuple]:
         """Read enclosing native class scopes at the exact declaration location.
 
@@ -1017,12 +1112,12 @@ class FlextInfraUtilitiesImportLawNormalization(
             Declaring native module and nonempty outer-to-inner class path.
 
         Raises:
-            ValueError: The declaration is unresolved, self-owned or not in a facade.
+            ValueError: The declaration is unresolved or not in a class.
 
         """
         holder, line = binding.get_definition_location()
-        if holder is None or line is None or holder.get_name() == current_module:
-            message = "Own-family repair has an unresolved or self owner; use make mod"
+        if holder is None or line is None:
+            message = "Own-family member declaration is unresolved"
             raise ValueError(message)
         scope = holder.get_scope().get_inner_scope_for_line(line)
         if scope.get_start() == line:
@@ -1032,7 +1127,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             owners.append(scope.pyobject.get_name())
             scope = scope.parent
         if not owners:
-            message = "Own-family member has no declaring facade; use make mod"
+            message = "Own-family member has no declaring class"
             raise ValueError(message)
         return holder, tuple(reversed(owners))
 

@@ -25,6 +25,8 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesLazyInitRender,
     FlextInfraUtilitiesLogParser,
     FlextInfraUtilitiesMiseBinary,
+    FlextInfraUtilitiesModelsProtocolContracts,
+    FlextInfraUtilitiesModelsProtocolRetirement,
     FlextInfraUtilitiesMypy,
     FlextInfraUtilitiesNetwork,
     FlextInfraUtilitiesPrivateImportAncestry,
@@ -46,12 +48,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRope,
     FlextInfraUtilitiesSemanticCutover,
     FlextInfraUtilitiesTransformerHeader,
+    FlextInfraWorktreeLifecycle,
+    FlextInfraWorktreeProvisioning,
 )
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
-from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
-from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 
 
 class FlextInfraUtilities(flext_cli_u):
@@ -68,8 +70,10 @@ class FlextInfraUtilities(flext_cli_u):
     """
 
     class Infra(
+        FlextInfraUtilitiesRopeAnalysisIntrospection,
         FlextInfraUtilitiesRefactorCensus,
         FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesCodemod,
         FlextInfraUtilitiesCompatibilityAliasValidation,
         FlextInfraUtilitiesDeferredSelfReferenceRewrite,
         FlextInfraUtilitiesDocs,
@@ -80,6 +84,7 @@ class FlextInfraUtilities(flext_cli_u):
         FlextInfraUtilitiesLazyInitRender,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesMiseBinary,
+        FlextInfraUtilitiesMypy,
         FlextInfraUtilitiesRefactorNamespaceFlext,
         FlextInfraUtilitiesRefactorNamespaceMoves,
         FlextInfraUtilitiesNetwork,
@@ -89,21 +94,20 @@ class FlextInfraUtilities(flext_cli_u):
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesPromoted,
         FlextInfraUtilitiesProtectedEdit,
+        FlextInfraUtilitiesModelsProtocolContracts,
+        FlextInfraUtilitiesModelsProtocolRetirement,
         FlextInfraUtilitiesPyrefly,
         FlextInfraUtilitiesPytestCollection,
+        FlextInfraUtilitiesPytest,
         FlextInfraUtilitiesPythonModel,
         FlextInfraUtilitiesQualifiedNames,
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesResourceLimits,
-        FlextInfraUtilitiesTransformerHeader,
-        FlextInfraUtilitiesCodemod,
-        FlextInfraUtilitiesPytest,
-        FlextInfraUtilitiesRopeAnalysisIntrospection,
+        FlextInfraUtilitiesRope,
         FlextInfraUtilitiesSemanticCutover,
+        FlextInfraUtilitiesTransformerHeader,
         FlextInfraWorktreeLifecycle,
         FlextInfraWorktreeProvisioning,
-        FlextInfraUtilitiesMypy,
-        FlextInfraUtilitiesRope,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

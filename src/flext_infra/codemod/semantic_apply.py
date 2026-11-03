@@ -1692,8 +1692,13 @@ class FlextInfraCodemodSemanticApply(
         preflight: p.Infra.ModOccurrenceReport[FindingT],
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         original: Mapping[Path, str],
+        *,
+        phases: frozenset[c.Infra.SemanticCutoverPhase] | None = None,
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Compose semantic phases on planned bytes without publishing originals.
+
+        ``phases`` restricts the cutover loop to a selected theme's phases;
+        ``None`` composes every phase of the complete catalog.
 
         Returns:
             Complete edits relative to the supplied planned input, or its first failure.
@@ -1738,6 +1743,8 @@ class FlextInfraCodemodSemanticApply(
         for phase in c.Infra.SemanticCutoverPhase:
             if residue.failure:
                 return result_type.from_failure(residue)
+            if phases is not None and phase not in phases:
+                continue
             cli.display_text(f"mod: plan semantic phase {phase}")
             phase_sources = cls._semantic_phase_sources(root, phase, working)
             planned = u.Infra.plan_semantic_cutover(

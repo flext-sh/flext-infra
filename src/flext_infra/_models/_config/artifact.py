@@ -18,9 +18,9 @@ from flext_cli import m, p, t
 from flext_infra import c
 from flext_infra._models import (
     FlextInfraModelsDepsToolConfig,
-    FlextInfraModelsDepsToolConfigProjectArtifacts,
     FlextInfraModelsLayout,
     FlextInfraModelsMiseToolchain,
+    FlextInfraModelsProjectArtifacts,
 )
 from flext_infra._models._codegen import FlextInfraModelsCodegenTransaction
 from flext_infra._models._config import (
@@ -34,7 +34,7 @@ from flext_infra._models._config import (
     FlextInfraModelsConfigTemplates,
     FlextInfraModelsConfigWorkspace,
 )
-from flext_infra._protocols import FlextInfraProtocolsBase
+from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenPipeline
 from flext_infra._typings import FlextInfraTypesAdapters, FlextInfraTypesBase
 
 
@@ -1341,7 +1341,7 @@ class FlextInfraModelsConfigArtifact(
             )
         )
         managed_artifacts: Annotated[
-            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsSnapshot,
+            FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsSnapshot,
             m.Field(
                 description="Project managed-artifact catalog overlaid on renders",
             ),
@@ -1372,7 +1372,7 @@ class FlextInfraModelsConfigArtifact(
         """One repository's read-only planning inputs sent to a fleet worker."""
 
         ports: Annotated[
-            t.Port[FlextInfraProtocolsBase.CodegenConformPorts] | None,
+            t.Port[FlextInfraProtocolsCodegenPipeline.CodegenConformPorts] | None,
             m.Field(
                 description="Caller-bound capabilities shared by repository phases",
             ),

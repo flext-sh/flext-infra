@@ -307,6 +307,11 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(encoding=c.DEFAULT_ENCODING)
+            if content.startswith(c.Infra.DOCS_PROJECTION_MARKER):
+                # A projected guide's fences are validated once at their
+                # workspace source; re-linting the copy under the member's
+                # import order only reports the projection context.
+                continue
             for index, fence in enumerate(
                 filter(
                     FlextInfraUtilitiesDocsBase.docs_is_python_fence,

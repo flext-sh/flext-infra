@@ -342,6 +342,11 @@ class FlextInfraConstantsDocs:
         "tel",
     })
     DOCS_FRAGMENT_PREFIX: ClassVar[str] = "#"
+    DOCS_PROJECTION_MARKER: ClassVar[str] = (
+        "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
+        "from the workspace root. -->"
+    )
+    "First line of a member guide projected from the workspace source."
     PYTHON_FENCE_RUFF_EXTEND_IGNORE: ClassVar[Sequence[str]] = (
         "undocumented-public-module",
         "undocumented-public-function",

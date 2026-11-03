@@ -434,7 +434,7 @@ class FlextInfraWorkspaceFlextEditable:
         if provided.failure:
             return result_type.from_failure(provided)
         distributions, metadata_paths = provided.value
-        configured = cls._configured_sources(runtime_root, metadata_paths)
+        configured = cls._configured_sources(runtime_root, flext_root, metadata_paths)
         if configured.failure:
             return result_type.from_failure(configured)
         for name, source in configured.value.items():
@@ -457,9 +457,13 @@ class FlextInfraWorkspaceFlextEditable:
 
     @staticmethod
     def _configured_sources(
-        runtime_root: Path, metadata_paths: tuple[str, ...]
+        runtime_root: Path, flext_root: Path, metadata_paths: tuple[str, ...]
     ) -> p.Result[Mapping[str, Path]]:
         """Elect explicitly configured sources from the installed dependency graph.
+
+        A relative source resolves against the selected FLEXT workspace, the
+        one physical root every checkout of the consumer shares, never against
+        the consumer checkout (a linked worktree has other siblings).
 
         Returns:
             Validated project names and their physical source directories.
@@ -471,9 +475,9 @@ class FlextInfraWorkspaceFlextEditable:
         selected: dict[str, Path] = {}
         for name, declared in inputs.value.spec.toolchain.editable_sources.items():
             source = declared.expanduser()
-            source = (
-                source if source.is_absolute() else runtime_root / source
-            ).resolve(strict=True)
+            source = (source if source.is_absolute() else flext_root / source).resolve(
+                strict=True
+            )
             manifest = source / c.PYPROJECT_FILENAME
             actual = u.Infra.project_name_from_payload(
                 manifest, u.Infra.pyproject_payload(manifest)

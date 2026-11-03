@@ -449,6 +449,8 @@ class FlextInfraValidateFreshImport(s[bool]):
 
         Raises:
             c.PydanticSchemaGenerationError: For the first such field.
+            AttributeError: A field annotation does not resolve in its module.
+            NameError: A field annotation names an unbound symbol.
             UnsupportedFieldAttributeWarning: For field metadata on an alias.
 
         """
@@ -462,28 +464,64 @@ class FlextInfraValidateFreshImport(s[bool]):
             key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
         )
         for klass in models:
+            # The model is built natively first, in its own module namespace
+            # (Pydantic's resolution), so each field annotation below is the
+            # resolved type rather than a forward reference of another frame.
+            u.type_adapter(klass)
             fields: Mapping[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
-            namespace = (
-                vars(sys.modules[klass.__module__])
-                | dict(vars(klass))
-                | {
-                    parameter.__name__: parameter
-                    for parameter in getattr(klass, "__type_params__", ())
-                }
-                | {klass.__name__: klass}
-            )
             for name, info in fields.items():
                 if info.annotation is None:
                     continue
+                # An inherited field's annotation is written in its declaring
+                # class's module; resolving it in the subclass module reads
+                # a different binding of the same letter.
+                owner = next(
+                    (
+                        base
+                        for base in klass.__mro__
+                        if name in vars(base).get("__annotations__", {})
+                    ),
+                    klass,
+                )
+                namespace = (
+                    vars(sys.modules[klass.__module__])
+                    | vars(sys.modules[owner.__module__])
+                    | dict(vars(owner))
+                    | {
+                        parameter.__name__: parameter
+                        for parameter in getattr(klass, "__type_params__", ())
+                    }
+                    | {klass.__name__: klass, owner.__name__: owner}
+                )
                 try:
-                    u.type_adapter(info.rebuild_annotation()).rebuild(
-                        raise_errors=True, _types_namespace=namespace
-                    )
+                    # Deferred build: an eager adapter resolves forward
+                    # references in this probe's own frame (whose letters are
+                    # flext-infra's), not in the declaring module namespace.
+                    annotation = info.rebuild_annotation()
+                    # The probe body runs in a fresh script that binds only
+                    # flext-core's ``c, p, r, t, u``: no ``m`` here.
+                    if isinstance(annotation, type) and (
+                        "__pydantic_fields__" in vars(annotation)
+                    ):
+                        # A model field type builds in its own module namespace.
+                        u.type_adapter(annotation)
+                    else:
+                        u.type_adapter(
+                            annotation, config={"defer_build": True}
+                        ).rebuild(
+                            force=True, raise_errors=True, _types_namespace=namespace
+                        )
                 except c.PydanticSchemaGenerationError as exc:
                     exc.add_note(
                         f"{klass.__module__}.{klass.__qualname__}.{name} needs "
                         "arbitrary_types_allowed: declare its type through t.Port "
                         "or a validated t alias"
+                    )
+                    raise
+                except (AttributeError, NameError) as exc:
+                    exc.add_note(
+                        f"{klass.__module__}.{klass.__qualname__}.{name} annotation "
+                        f"does not resolve in {owner.__module__}"
                     )
                     raise
                 except UnsupportedFieldAttributeWarning as exc:

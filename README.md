@@ -58,7 +58,7 @@ required validation.
   classes listed under Module Map above.
 - Public extensions exposed by this project: `FlextInfra`, `FlextInfraCli`,
   `FlextInfraConfig`, `FlextInfraConstants`, `FlextInfraFlextInfraConfig`,
-  `FlextInfraFlextInfraConform` (+17 more).
+  `FlextInfraFlextInfraConform` (+16 more).
 - Library abstraction boundaries: see the project `AGENTS.md` and the referenced parent
   architecture rules.
 

@@ -12,410 +12,601 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra import c, t
+from flext_cli import FlextCliProtocols
+
+from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_cli import p
+
+    from flext_infra._constants import FlextInfraConstantsRefactor
+    from flext_infra._protocols import (
+        FlextInfraProtocolsCodemod,
+        FlextInfraProtocolsRefactorAstGrep,
+    )
 
 
 class FlextInfraProtocolsScan:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ModScanPublication(Protocol):
+    class ModScanPublication(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def command(self) -> c.Infra.ModScanCommand: ...
+        def command(self) -> FlextInfraConstantsRefactor.ModScanCommand:
+            """Actual native scan operation."""
+            ...
+
         @property
-        def scope(self) -> Sequence[str]: ...
+        def scope(self) -> Sequence[str]:
+            """Actual governed scan scope."""
+            ...
+
         @property
-        def relative_path(self) -> Path: ...
+        def relative_path(self) -> Path:
+            """Invocation evidence destination under root."""
+            ...
+
         @property
-        def repositories(self) -> Sequence[str]: ...
+        def repositories(self) -> Sequence[str]:
+            """Observed repository inventory."""
+            ...
+
         @property
-        def rule_ids(self) -> Sequence[str]: ...
+        def rule_ids(self) -> Sequence[str]:
+            """Actual elected rule inventory."""
+            ...
 
     @runtime_checkable
-    class ScanViolation(Protocol):
+    class ScanViolation(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def line(self) -> t.PositiveInt: ...
+        def message(self) -> str:
+            """Human-readable violation description."""
+            ...
+
         @property
-        def message(self) -> str: ...
+        def severity(self) -> str:
+            """Violation severity level."""
+            ...
+
         @property
-        def severity(self) -> str: ...
-        @property
-        def rule_id(self) -> str | None: ...
+        def rule_id(self) -> str | None:
+            """Optional rule identifier."""
+            ...
 
     @runtime_checkable
-    class ScanResult(Protocol):
+    class ScanResult(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        file_path: Path
-        violations: Sequence[p.Infra.ScanViolation]
-        detector_name: str
+        @property
+        def file_path(self) -> Path:
+            """Path to the scanned file."""
+            ...
+
+        @property
+        def violations(self) -> Sequence[FlextInfraProtocolsScan.ScanViolation]:
+            """Violations found in the file."""
+            ...
+
+        @property
+        def detector_name(self) -> str:
+            """Name of the detector that produced this result."""
+            ...
 
     @runtime_checkable
-    class ModNativeRecord(Protocol):
+    class ModNativeRecord(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def offset(self) -> int: ...
+        def offset(self) -> int:
+            """Record start byte in the native artifact."""
+            ...
+
         @property
-        def length(self) -> int: ...
+        def length(self) -> int:
+            """Complete native record byte length."""
+            ...
+
         @property
-        def sha256(self) -> str: ...
+        def sha256(self) -> str:
+            """Digest of the complete native record bytes."""
+            ...
 
     @runtime_checkable
-    class ModReplacementOffsets(Protocol):
+    class ModReplacementOffsets(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def start(self) -> int: ...
+        def start(self) -> int:
+            """Inclusive start byte."""
+            ...
+
         @property
-        def end(self) -> int: ...
+        def end(self) -> int:
+            """Exclusive end byte."""
+            ...
 
     @runtime_checkable
-    class ModOccurrence(Protocol):
+    class ModOccurrence(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def rule_file(self) -> t.NonEmptyStr: ...
+        def rule_file(self) -> t.NonEmptyStr:
+            """Rule document file producing the finding."""
+            ...
+
         @property
-        def rule_id(self) -> t.NonEmptyStr: ...
+        def rule_id(self) -> t.NonEmptyStr:
+            """Exact ast-grep rule identifier."""
+            ...
+
         @property
-        def repository(self) -> t.NonEmptyStr: ...
+        def repository(self) -> t.NonEmptyStr:
+            """Workspace repository owning the file."""
+            ...
+
         @property
-        def catalog_digest(self) -> str | None: ...
+        def catalog_digest(self) -> str | None:
+            """Authenticated native rule document digest."""
+            ...
+
         @property
-        def message(self) -> str | None: ...
+        def message(self) -> str | None:
+            """Rule catalog message for the finding, when declared."""
+            ...
+
         @property
-        def module_absence(self) -> bool: ...
+        def module_absence(self) -> bool:
+            """Occurrence anchored by native module absence predicate."""
+            ...
+
         @property
-        def file(self) -> Path: ...
+        def file(self) -> Path:
+            """Workspace-relative finding path."""
+            ...
+
         @property
-        def source_owner(self) -> Literal["authored", "generator"]: ...
+        def source_owner(self) -> Literal["authored", "generator"]:
+            """Writable authority for the finding source."""
+            ...
+
         @property
-        def source_state(self) -> p.Cli.AtomicFileState | None: ...
+        def source_state(self) -> p.Cli.AtomicFileState | None:
+            """Live source snapshot; evidence stores its input once."""
+            ...
+
         @property
-        def range(self) -> t.JsonMapping: ...
+        def range(self) -> t.JsonMapping:
+            """Exact ast-grep source range payload."""
+            ...
+
         @property
-        def text(self) -> str: ...
+        def text(self) -> str:
+            """Exact matched source text."""
+            ...
+
         @property
-        def replacement(self) -> str | None: ...
+        def replacement(self) -> str | None:
+            """Exact replacement when the rule provides one."""
+            ...
+
         @property
-        def actionable(self) -> bool: ...
+        def actionable(self) -> bool:
+            """Whether applying the rule changes source bytes."""
+            ...
+
         @property
-        def classification(self) -> c.Infra.ModScanFindingClass: ...
+        def classification(self) -> FlextInfraConstantsRefactor.ModScanFindingClass:
+            """Rule mutability and byte-change classification."""
+            ...
+
         @property
-        def replacement_offsets(self) -> p.Infra.ModReplacementOffsets | None: ...
+        def replacement_offsets(
+            self,
+        ) -> FlextInfraProtocolsScan.ModReplacementOffsets | None:
+            """Native byte span for the proposed replacement."""
+            ...
 
     @runtime_checkable
-    class ModScanFinding(Protocol):
+    class ModScanFinding(ModOccurrence, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def rule_file(self) -> t.NonEmptyStr: ...
-        @property
-        def rule_id(self) -> t.NonEmptyStr: ...
-        @property
-        def repository(self) -> t.NonEmptyStr: ...
-        @property
-        def catalog_digest(self) -> str | None: ...
-        @property
-        def message(self) -> str | None: ...
-        @property
-        def module_absence(self) -> bool: ...
-        @property
-        def file(self) -> Path: ...
-        @property
-        def source_owner(self) -> Literal["authored", "generator"]: ...
-        @property
-        def source_state(self) -> p.Cli.AtomicFileState | None: ...
-        @property
-        def range(self) -> t.JsonMapping: ...
-        @property
-        def text(self) -> str: ...
-        @property
-        def replacement(self) -> str | None: ...
-        @property
-        def actionable(self) -> bool: ...
-        @property
-        def classification(self) -> c.Infra.ModScanFindingClass: ...
-        @property
-        def replacement_offsets(self) -> p.Infra.ModReplacementOffsets | None: ...
-        @property
-        def severity(self) -> Literal["error", "warning", "info", "hint"]: ...
+        def severity(self) -> Literal["error", "warning", "info", "hint"]:
+            """Severity supplied by the native rule result."""
+            ...
+
         @property
         def origin(
             self,
         ) -> Literal[
-            c.Infra.ModFindingOrigin.AST_GREP, c.Infra.ModFindingOrigin.OWNED_PATH
-        ]: ...
+            FlextInfraConstantsRefactor.ModFindingOrigin.AST_GREP,
+            FlextInfraConstantsRefactor.ModFindingOrigin.OWNED_PATH,
+        ]:
+            """Syntax scan or owned inventory admission."""
+            ...
+
         @property
-        def native_record(self) -> p.Infra.ModNativeRecord: ...
+        def native_record(self) -> FlextInfraProtocolsScan.ModNativeRecord:
+            """Authenticated range and digest of the complete finding record."""
+            ...
+
         @property
-        def native_receipt(self) -> p.Cli.AtomicFileReceipt | None: ...
+        def native_receipt(self) -> p.Cli.AtomicFileReceipt | None:
+            """Shared native artifact; persisted by index."""
+            ...
 
     @runtime_checkable
-    class ModScanSourceContext(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        project_source_roots: Mapping[Path, Path] | None
-        inventory: Mapping[Path, p.Cli.AtomicFileState]
-        repository_roots: tuple[Path, ...]
-        authenticated: MutableMapping[str, p.Result[tuple[Path, p.Cli.AtomicFileState]]]
-        repositories: MutableMapping[Path, str]
-
-    @runtime_checkable
-    class ModScanFindingReference(Protocol):
+    class ModScanSourceContext(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def rule_file(self) -> t.NonEmptyStr: ...
+        def project_source_roots(self) -> Mapping[Path, Path] | None:
+            """Physical scan roots for logical catalog projects."""
+            ...
+
         @property
-        def rule_id(self) -> t.NonEmptyStr: ...
+        def inventory(self) -> Mapping[Path, p.Cli.AtomicFileState]:
+            """Exact sources captured before the native scan."""
+            ...
+
         @property
-        def repository(self) -> t.NonEmptyStr: ...
+        def repository_roots(self) -> tuple[Path, ...]:
+            """Governed roots in nearest-owner precedence."""
+            ...
+
         @property
-        def catalog_digest(self) -> str | None: ...
-        @property
-        def message(self) -> str | None: ...
-        @property
-        def module_absence(self) -> bool: ...
-        @property
-        def file(self) -> Path: ...
-        @property
-        def source_owner(self) -> Literal["authored", "generator"]: ...
-        @property
-        def source_state(self) -> p.Cli.AtomicFileState | None: ...
-        @property
-        def range(self) -> t.JsonMapping: ...
-        @property
-        def text(self) -> str: ...
-        @property
-        def replacement(self) -> str | None: ...
-        @property
-        def actionable(self) -> bool: ...
-        @property
-        def classification(self) -> c.Infra.ModScanFindingClass: ...
-        @property
-        def replacement_offsets(self) -> p.Infra.ModReplacementOffsets | None: ...
-        @property
-        def severity(self) -> Literal["error", "warning", "info", "hint"]: ...
-        @property
-        def origin(
+        def authenticated(
             self,
-        ) -> Literal[
-            c.Infra.ModFindingOrigin.AST_GREP, c.Infra.ModFindingOrigin.OWNED_PATH
-        ]: ...
+        ) -> Mapping[str, p.Result[tuple[Path, p.Cli.AtomicFileState]]]:
+            """One authentication per file."""
+            ...
+
         @property
-        def native_record(self) -> p.Infra.ModNativeRecord: ...
-        @property
-        def native_receipt(self) -> p.Cli.AtomicFileReceipt | None: ...
-        @property
-        def source_path(self) -> Path | None: ...
-        @property
-        def native_artifact(self) -> int: ...
+        def repositories(self) -> MutableMapping[Path, str]:
+            """One ownership election per file."""
+            ...
 
     @runtime_checkable
-    class ModScanCounts[FindingT: ModOccurrence](Protocol):
+    class ModScanFindingReference(ModScanFinding, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def entries(self) -> tuple[p.Infra.ModScanFinding, ...]: ...
+        def source_path(self) -> Path | None:
+            """Authenticated source input, or absent on source drift."""
+            ...
+
         @property
-        def findings(self) -> t.NonNegativeInt: ...
-        @property
-        def actionable(self) -> t.NonNegativeInt: ...
-        @property
-        def detection_only(self) -> t.NonNegativeInt: ...
-        @property
-        def non_actionable_with_fix(self) -> t.NonNegativeInt: ...
-        @property
-        def deferred(self) -> t.NonNegativeInt: ...
+        def native_artifact(self) -> int:
+            """Complete native artifact index."""
+            ...
 
     @runtime_checkable
-    class ModOccurrenceReport[FindingT: ModOccurrence](Protocol):
+    class ModScanCounts[FindingT: ModOccurrence](FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def entries(self) -> tuple[p.Infra.ModScanFindingReference, ...]: ...
+        def entries(self) -> tuple[FindingT, ...]:
+            """Every validated ast-grep finding in stable order."""
+            ...
+
         @property
-        def findings(self) -> t.NonNegativeInt: ...
+        def findings(self) -> t.NonNegativeInt:
+            """Complete native occurrence count, including source drift."""
+            ...
+
         @property
-        def actionable(self) -> t.NonNegativeInt: ...
+        def actionable(self) -> t.NonNegativeInt:
+            """Native occurrences whose admitted fix changes source bytes."""
+            ...
+
         @property
-        def detection_only(self) -> t.NonNegativeInt: ...
+        def detection_only(self) -> t.NonNegativeInt:
+            """Native occurrences produced by rules without a fix."""
+            ...
+
         @property
-        def non_actionable_with_fix(self) -> t.NonNegativeInt: ...
+        def non_actionable_with_fix(self) -> t.NonNegativeInt:
+            """Native occurrences whose declared fix leaves identical bytes."""
+            ...
+
         @property
-        def deferred(self) -> t.NonNegativeInt: ...
-        @property
-        def files(self) -> frozenset[Path]: ...
+        def deferred(self) -> t.NonNegativeInt:
+            """Structural member projected from the owning model.
+
+            Drifted native occurrences retained as evidence, never admitted edits.
+            """
+            ...
 
     @runtime_checkable
-    class ModScanReport(Protocol):
+    class ModOccurrenceReport[FindingT: ModOccurrence](ModScanCounts, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def entries(self) -> tuple[p.Infra.ModScanFinding, ...]: ...
-        @property
-        def findings(self) -> t.NonNegativeInt: ...
-        @property
-        def actionable(self) -> t.NonNegativeInt: ...
-        @property
-        def detection_only(self) -> t.NonNegativeInt: ...
-        @property
-        def non_actionable_with_fix(self) -> t.NonNegativeInt: ...
-        @property
-        def deferred(self) -> t.NonNegativeInt: ...
-        @property
-        def files(self) -> frozenset[Path]: ...
-        @property
-        def repository_root(self) -> Path | None: ...
-        @property
-        def source_files(self) -> tuple[Path, ...] | None: ...
-        @property
-        def rule_plan(self) -> p.Infra.CodemodRulePlan | None: ...
-        @property
-        def catalog_states(self) -> tuple[p.Cli.AtomicFileState, ...] | None: ...
-        @property
-        def native_artifacts(self) -> tuple[p.Cli.AtomicFileReceipt, ...]: ...
+        def files(self) -> frozenset[Path]:
+            """Files containing findings."""
+            ...
 
     @runtime_checkable
-    class ModModuleQuarantine(Protocol):
+    class ModScanReport(ModOccurrenceReport, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def path(self) -> Path: ...
+        def repository_root(self) -> Path | None:
+            """Repository elected by the original native scan."""
+            ...
+
         @property
-        def cause(self) -> str: ...
+        def source_files(self) -> tuple[Path, ...] | None:
+            """Explicit original source selection, when supplied."""
+            ...
+
         @property
-        def error_code(self) -> str | None: ...
+        def rule_plan(
+            self,
+        ) -> FlextInfraProtocolsRefactorAstGrep.CodemodRulePlan | None:
+            """Actual rule plan consumed by the native scan."""
+            ...
+
+        @property
+        def catalog_states(self) -> tuple[p.Cli.AtomicFileState, ...] | None:
+            """Original rule and configuration input snapshots."""
+            ...
+
+        @property
+        def native_artifacts(self) -> tuple[p.Cli.AtomicFileReceipt, ...]:
+            """Complete authenticated native output inventory."""
+            ...
 
     @runtime_checkable
-    class ModQuarantineExclusion(Protocol):
+    class ModModuleQuarantine(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def phase(self) -> str: ...
+        def path(self) -> Path:
+            """Absolute source module the failure names."""
+            ...
+
         @property
-        def modules(self) -> tuple[Path, ...]: ...
+        def cause(self) -> str:
+            """Original failure message of the planner."""
+            ...
+
         @property
-        def paths(self) -> tuple[Path, ...]: ...
+        def error_code(self) -> str | None:
+            """Original failure code, when declared."""
+            ...
 
     @runtime_checkable
-    class ModPhaseAdvance(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        report: p.Infra.ModScanReport
-        phase_states: tuple[tuple[tuple[str, str], ...], ...]
-        drifted: tuple[Path, ...]
-        quarantined: p.Infra.ModModuleQuarantine | None
-
-    @runtime_checkable
-    class ModTextRule(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def rule_id(self) -> t.NonEmptyStr: ...
-        @property
-        def description(self) -> str: ...
-        @property
-        def include(self) -> Sequence[str]: ...
-        @property
-        def exclude(self) -> Sequence[str]: ...
-        @property
-        def distributions(self) -> Sequence[str]: ...
-        @property
-        def find(self) -> t.NonEmptyStr: ...
-        @property
-        def replace(self) -> str: ...
-        @property
-        def flags(self) -> Sequence[str]: ...
-        @property
-        def capture_equals(self) -> Mapping[str, str]: ...
-        @property
-        def expected(self) -> int | None: ...
-
-    @runtime_checkable
-    class ModTextFinding(Protocol):
+    class ModQuarantineExclusion(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def rule_id(self) -> t.NonEmptyStr: ...
+        def phase(self) -> str:
+            """Phase whose complete contribution was dropped."""
+            ...
+
         @property
-        def file(self) -> Path: ...
+        def modules(self) -> tuple[Path, ...]:
+            """Quarantined modules the dropped change touched."""
+            ...
+
         @property
-        def line(self) -> t.NonNegativeInt: ...
-        @property
-        def text(self) -> str: ...
-        @property
-        def replacement(self) -> str: ...
+        def paths(self) -> tuple[Path, ...]:
+            """Every target of the dropped coherent change."""
+            ...
 
     @runtime_checkable
-    class ModTextReport(Protocol):
+    class ModPhaseAdvance(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def findings(self) -> t.NonNegativeInt: ...
+        def report(self) -> FlextInfraProtocolsScan.ModScanReport:
+            """Scan of the post-iteration sources."""
+            ...
+
         @property
-        def actionable(self) -> t.NonNegativeInt: ...
+        def phase_states(self) -> tuple[tuple[tuple[str, str], ...], ...]:
+            """Fingerprints the cross-phase cycle check observes."""
+            ...
+
         @property
-        def files(self) -> frozenset[Path]: ...
+        def drifted(self) -> tuple[Path, ...]:
+            """Captured inputs another actor changed on disk."""
+            ...
+
         @property
-        def entries(self) -> tuple[p.Infra.ModTextFinding, ...]: ...
+        def quarantined(self) -> FlextInfraProtocolsScan.ModModuleQuarantine | None:
+            """Module whose attributed failure voided the plan."""
+            ...
 
     @runtime_checkable
-    class ModScanEvidence(Protocol):
+    class ModTextRule(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def entries(self) -> tuple[p.Infra.ModScanFindingReference, ...]: ...
+        def rule_id(self) -> t.NonEmptyStr:
+            """Exact unique text-rule identifier."""
+            ...
+
         @property
-        def findings(self) -> t.NonNegativeInt: ...
+        def description(self) -> str:
+            """Human-readable rewrite intent."""
+            ...
+
         @property
-        def actionable(self) -> t.NonNegativeInt: ...
+        def include(self) -> Sequence[str]:
+            """Fnmatch globs a target path must match."""
+            ...
+
         @property
-        def detection_only(self) -> t.NonNegativeInt: ...
+        def exclude(self) -> Sequence[str]:
+            """Fnmatch globs a target path must not match."""
+            ...
+
         @property
-        def non_actionable_with_fix(self) -> t.NonNegativeInt: ...
+        def distributions(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Declared project distributions selected for this rule; empty selects
+            all.
+            """
+            ...
+
         @property
-        def deferred(self) -> t.NonNegativeInt: ...
+        def find(self) -> t.NonEmptyStr:
+            """Regex source pattern to locate."""
+            ...
+
         @property
-        def schema_version(self) -> int: ...
+        def replace(self) -> str:
+            """Expansion template replacing each match."""
+            ...
+
         @property
-        def inputs(self) -> p.Infra.CodemodBindingSnapshot: ...
+        def flags(self) -> Sequence[str]:
+            """Regex flag names from the SSOT map."""
+            ...
+
         @property
-        def native_artifacts(self) -> tuple[p.Cli.AtomicFileReceipt, ...]: ...
+        def capture_equals(self) -> Mapping[str, str]:
+            """Named regex captures and their required exact values."""
+            ...
+
         @property
-        def command(self) -> c.Infra.ModScanCommand: ...
+        def expected(self) -> int | None:
+            """Exact finding count the rule must produce when set."""
+            ...
+
+    @runtime_checkable
+    class ModTextFinding(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
         @property
-        def root(self) -> Path: ...
+        def rule_id(self) -> t.NonEmptyStr:
+            """Exact text-rule identifier."""
+            ...
+
         @property
-        def scope(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def file(self) -> Path:
+            """Workspace-relative target path."""
+            ...
+
+        @property
+        def line(self) -> t.NonNegativeInt:
+            """One-based match line."""
+            ...
+
+        @property
+        def text(self) -> str:
+            """Exact matched source text."""
+            ...
+
+        @property
+        def replacement(self) -> str:
+            """Expanded replacement for the match."""
+            ...
+
+    @runtime_checkable
+    class ModTextReport(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def findings(self) -> t.NonNegativeInt:
+            """Complete finding count."""
+            ...
+
+        @property
+        def actionable(self) -> t.NonNegativeInt:
+            """Matches whose replacement differs from the text."""
+            ...
+
+        @property
+        def files(self) -> frozenset[Path]:
+            """Files containing findings."""
+            ...
+
+        @property
+        def entries(self) -> tuple[FlextInfraProtocolsScan.ModTextFinding, ...]:
+            """Every validated text finding in stable order."""
+            ...
+
+    @runtime_checkable
+    class ModScanEvidence(ModScanCounts, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def schema_version(self) -> int:
+            """Exact structured evidence schema."""
+            ...
+
+        @property
+        def inputs(self) -> FlextInfraProtocolsCodemod.CodemodBindingSnapshot:
+            """Single authenticated inventory for all occurrences."""
+            ...
+
+        @property
+        def native_artifacts(self) -> tuple[p.Cli.AtomicFileReceipt, ...]:
+            """Structural member projected from the owning model.
+
+            Durable native artifacts stored once for all occurrence references.
+            """
+            ...
+
+        @property
+        def command(self) -> FlextInfraConstantsRefactor.ModScanCommand:
+            """Public mod scan mode."""
+            ...
+
+        @property
+        def root(self) -> Path:
+            """Absolute scanned workspace root."""
+            ...
+
+        @property
+        def scope(self) -> tuple[t.NonEmptyStr, ...]:
+            """Exact ast-grep target scope."""
+            ...
+
         @property
         def totals_by_class(
             self,
-        ) -> Mapping[c.Infra.ModScanFindingClass, t.NonNegativeInt]: ...
+        ) -> Mapping[FlextInfraConstantsRefactor.ModScanFindingClass, t.NonNegativeInt]:
+            """Complete finding totals by mutability class."""
+            ...
+
         @property
-        def totals_by_repository(self) -> Mapping[str, t.NonNegativeInt]: ...
+        def totals_by_repository(self) -> Mapping[str, t.NonNegativeInt]:
+            """Complete finding totals by repository."""
+            ...
+
         @property
-        def totals_by_rule(self) -> Mapping[str, t.NonNegativeInt]: ...
+        def totals_by_rule(self) -> Mapping[str, t.NonNegativeInt]:
+            """Complete finding totals by rule identifier."""
+            ...
 
     @runtime_checkable
-    class ModScanEvidenceReceipt(Protocol):
+    class ModScanEvidenceReceipt(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def path(self) -> Path: ...
+        def path(self) -> Path:
+            """Published evidence destination."""
+            ...
+
         @property
-        def sha256(self) -> t.NonEmptyStr: ...
+        def sha256(self) -> t.NonEmptyStr:
+            """Published byte digest."""
+            ...
+
         @property
-        def evidence(self) -> p.Infra.ModScanEvidence: ...
+        def evidence(self) -> FlextInfraProtocolsScan.ModScanEvidence:
+            """Exact structured evidence that was published."""
+            ...
 
 
 __all__: list[str] = [

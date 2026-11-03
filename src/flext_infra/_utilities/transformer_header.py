@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import operator
 from collections.abc import MutableSequence
 
 from flext_infra import c
@@ -86,8 +87,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             Source with the required runtime or deferred import.
 
         Raises:
-            ValueError: The declaration is not one explicit import binding, or a
-                runtime consumer has only a deferred binding.
+            ValueError: The declaration is not one explicit import binding.
 
         """
         if not alias:
@@ -118,12 +118,8 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             )
             if cls.has_runtime_alias_import(source, alias) or deferred:
                 return source
-            if not runtime_required:
-                msg = (
-                    f"canonical alias {alias!r} has only deferred or conditional "
-                    "imports but its consumer requires a runtime binding"
-                )
-                raise ValueError(msg)
+            # A use outside annotations is a runtime requirement the source
+            # itself proves; the deferred binding is promoted to runtime.
             source = cls._promote_deferred_alias_import(source, alias)
         if cls.alias_locally_bound(source, alias):
             return source
@@ -331,6 +327,49 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             if any(entry.name == "TYPE_CHECKING" for entry in node.names):
                 return True
         return False
+
+    @classmethod
+    def bind_sibling_letters(cls, source: str) -> str:
+        """Bind each used but unbound facade letter from its siblings' provider.
+
+        A rewrite that introduces a family letter (``p.X`` beside an existing
+        ``m.X``) reads it from the module-level provider that binds most of the
+        module's other letters; a tie or no provider leaves the source to the
+        lint delta gate.
+
+        Returns:
+            Source with every resolvable missing letter imported at runtime.
+
+        """
+        letters = {family.value for family in c.Infra.FacadeFamily}
+        tree = ast.parse(source)
+        counts: dict[str, int] = {}
+        for node in tree.body:
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module is not None
+                and node.level == 0
+            ):
+                bound = sum(
+                    alias.name in letters and alias.asname is None
+                    for alias in node.names
+                )
+                if bound:
+                    counts[node.module] = counts.get(node.module, 0) + bound
+        ranked = sorted(counts.items(), key=operator.itemgetter(1), reverse=True)
+        if not ranked or (len(ranked) > 1 and ranked[0][1] == ranked[1][1]):
+            return source
+        provider = ranked[0][0]
+        for letter in sorted(letters):
+            if (
+                cls.alias_used(source, letter)
+                and not cls.has_alias_import(source, letter)
+                and not cls.alias_locally_bound(source, letter)
+            ):
+                source = cls.ensure_alias_import(
+                    source, provider, letter, runtime_required=True
+                )
+        return source
 
     @staticmethod
     def alias_used(source: str, alias: str) -> bool:

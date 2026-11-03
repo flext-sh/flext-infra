@@ -597,13 +597,12 @@ class FlextInfraEnsurePyrightConfigPhase:
             ValueError: When the pyright owner produces no native table.
 
         """
-        desired: t.MutableJsonMapping = {
-            c.Infra.TOOL: {
-                c.Infra.PYRIGHT: u.Infra.native_tool_configuration(
-                    self._tool_config, c.Infra.PYRIGHT
-                )
-            }
-        }
+        native = u.Infra.native_tool_configuration(self._tool_config, c.Infra.PYRIGHT)
+        # Operator-authorized global axioms render as level none in every
+        # project; the declaration lives once, in tools.pyright.
+        for rule in self._tool_config.tools.pyright.ruling_disabled_rules:
+            native[rule] = "none"
+        desired: t.MutableJsonMapping = {c.Infra.TOOL: {c.Infra.PYRIGHT: native}}
         u.Infra.apply_toml_phases(
             desired,
             self._phase(

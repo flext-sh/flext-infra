@@ -9,207 +9,363 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_infra import c, t
+from flext_cli import FlextCliProtocols
+
+from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra._constants import FlextInfraConstantsRelease
+    from flext_infra._protocols._git import FlextInfraProtocolsGitWorktreeState
+    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsRelease:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ReleaseOptions(Protocol):
+    class ReleaseOptions(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        phase: c.Infra.ReleasePhase
-        index: bool
-        pr_title: str
-        ownership: p.Infra.GitLaneOwnershipReceipt | None
+        @property
+        def phase(self) -> FlextInfraConstantsRelease.ReleasePhase:
+            """Release phase to execute."""
+            ...
+
+        @property
+        def index(self) -> bool:
+            """Publish receipt-verified artifacts to the package index."""
+            ...
+
+        @property
+        def pr_title(self) -> str:
+            """Pull-request title to validate against the protocol."""
+            ...
+
+        @property
+        def ownership(
+            self,
+        ) -> FlextInfraProtocolsGitWorktreeState.GitLaneOwnershipReceipt | None:
+            """Authenticated integrated prior-state ownership receipt."""
+            ...
 
     @runtime_checkable
-    class ReleaseRunCommand(Protocol):
+    class ReleaseRunCommand(
+        FlextInfraProtocolsBase.CommandContext, ReleaseOptions, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
-        phase: c.Infra.ReleasePhase
-        index: bool
-        pr_title: str
-        ownership: p.Infra.GitLaneOwnershipReceipt | None
-        repository_root: Path
-        apply_changes: bool
-        check_only: bool
-        dry_run: bool
-        output_format: str
-        project_filter: str | None
-        report_path: Path | None
-        output_dir: Path | None
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process."""
+            ...
 
         @property
-        def root(self) -> Path: ...
-        @property
-        def effective_dry_run(self) -> bool: ...
-
-        projects: Sequence[str] | None
-        checkpoint_ref: t.NonEmptyStr | None
+        def checkpoint_ref(self) -> t.NonEmptyStr | None:
+            """Existing published checkpoint resolved by native Git."""
+            ...
 
     @runtime_checkable
-    class GithubReleaseAsset(Protocol):
+    class GithubReleaseAsset(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def name(self) -> t.NonEmptyStr: ...
+        def name(self) -> t.NonEmptyStr:
+            """Native asset filename."""
+            ...
+
         @property
-        def digest(self) -> str | None: ...
+        def digest(self) -> str | None:
+            """Native digest, if available."""
+            ...
+
         @property
-        def state(self) -> t.NonEmptyStr: ...
+        def state(self) -> t.NonEmptyStr:
+            """Native upload state."""
+            ...
 
     @runtime_checkable
-    class GithubReleaseAssets(Protocol):
+    class GithubReleaseAssets(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def assets(self) -> tuple[p.Infra.GithubReleaseAsset, ...]: ...
+        def assets(self) -> tuple[FlextInfraProtocolsRelease.GithubReleaseAsset, ...]:
+            """All release assets across API pages."""
+            ...
 
     @runtime_checkable
-    class GithubReleaseIdentity(Protocol):
+    class GithubReleaseIdentity(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def id(self) -> t.PositiveInt: ...
+        def id(self) -> t.PositiveInt:
+            """Native release identifier."""
+            ...
+
         @property
-        def tag_name(self) -> t.NonEmptyStr: ...
+        def tag_name(self) -> t.NonEmptyStr:
+            """Exact release tag."""
+            ...
 
     @runtime_checkable
-    class GithubReleaseInventory(Protocol):
+    class GithubReleaseInventory(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def releases(self) -> tuple[p.Infra.GithubReleaseIdentity, ...]: ...
+        def releases(
+            self,
+        ) -> tuple[FlextInfraProtocolsRelease.GithubReleaseIdentity, ...]:
+            """All repository releases across API pages."""
+            ...
 
     @runtime_checkable
-    class SourceSnapshot(Protocol):
+    class SourceSnapshot(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def commit_oid(self) -> t.Infra.ReleaseCommitOid: ...
+        def commit_oid(self) -> FlextInfraTypesBase.ReleaseCommitOid:
+            """Source commit object ID."""
+            ...
+
         @property
-        def source_date_epoch(self) -> t.NonNegativeInt: ...
+        def source_date_epoch(self) -> t.NonNegativeInt:
+            """Source commit Unix epoch."""
+            ...
 
     @runtime_checkable
-    class BuildPolicy(Protocol):
+    class BuildPolicy(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def build_constraints_path(self) -> t.Infra.ReleaseAbsolutePath: ...
+        def build_constraints_path(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+            """Snapshotted build constraints absolute path."""
+            ...
+
         @property
-        def build_constraints_sha256(self) -> t.Infra.ReleaseArtifactSha256: ...
+        def build_constraints_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+            """Pinned build constraint policy SHA-256."""
+            ...
+
         @property
-        def gitleaks_policy_path(self) -> t.Infra.ReleaseAbsolutePath: ...
+        def gitleaks_policy_path(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+            """Snapshotted Gitleaks policy absolute path."""
+            ...
+
         @property
-        def gitleaks_policy_sha256(self) -> t.Infra.ReleaseArtifactSha256: ...
+        def gitleaks_policy_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+            """Trusted Gitleaks policy SHA-256."""
+            ...
 
     @runtime_checkable
-    class BuildArtifact(Protocol):
+    class BuildArtifact(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def path(self) -> t.Infra.ReleaseAbsolutePath: ...
+        def path(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+            """Artifact absolute path."""
+            ...
+
         @property
-        def kind(self) -> t.Infra.ReleaseArtifactKind: ...
+        def kind(self) -> FlextInfraTypesBase.ReleaseArtifactKind:
+            """Wheel or sdist."""
+            ...
+
         @property
-        def sha256(self) -> t.Infra.ReleaseArtifactSha256: ...
+        def sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+            """Artifact SHA-256 digest."""
+            ...
 
     @runtime_checkable
-    class ArtifactExpectation(Protocol):
+    class ArtifactExpectation(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project(self) -> t.NonEmptyStr: ...
+        def project(self) -> t.NonEmptyStr:
+            """Distribution name."""
+            ...
+
         @property
-        def version(self) -> t.NonEmptyStr: ...
+        def version(self) -> t.NonEmptyStr:
+            """Distribution version."""
+            ...
+
         @property
-        def license_sha256(self) -> t.Infra.ReleaseArtifactSha256: ...
+        def license_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+            """Committed source LICENSE SHA-256."""
+            ...
+
         @property
-        def allowed_roots(self) -> t.StrTuple: ...
+        def allowed_roots(self) -> t.StrTuple:
+            """Validated public source roots in the sdist."""
+            ...
+
         @property
-        def versions(self) -> Mapping[str, str]: ...
+        def versions(self) -> Mapping[str, str]:
+            """Resolved internal dependency versions."""
+            ...
 
     @runtime_checkable
-    class BuildRecord(Protocol):
+    class BuildRecord(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project(self) -> t.NonEmptyStr: ...
+        def path(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+            """Project absolute path."""
+            ...
+
         @property
-        def path(self) -> t.Infra.ReleaseAbsolutePath: ...
+        def exit_code(self) -> t.StrictInt:
+            """Artifact build command exit code, including signals."""
+            ...
+
         @property
-        def exit_code(self) -> t.StrictInt: ...
+        def log(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+            """Build log absolute path."""
+            ...
+
         @property
-        def log(self) -> t.Infra.ReleaseAbsolutePath: ...
+        def artifacts(self) -> tuple[FlextInfraProtocolsRelease.BuildArtifact, ...]:
+            """Validated wheel and sdist artifacts."""
+            ...
+
         @property
-        def artifacts(self) -> tuple[p.Infra.BuildArtifact, ...]: ...
+        def commit_oid(self) -> FlextInfraTypesBase.ReleaseCommitOid | None:
+            """Source commit object ID."""
+            ...
+
         @property
-        def commit_oid(self) -> t.Infra.ReleaseCommitOid | None: ...
+        def source_date_epoch(self) -> t.NonNegativeInt | None:
+            """Source commit Unix epoch."""
+            ...
+
         @property
-        def source_date_epoch(self) -> t.NonNegativeInt | None: ...
-        @property
-        def source_license_sha256(self) -> t.Infra.ReleaseArtifactSha256 | None: ...
+        def source_license_sha256(
+            self,
+        ) -> FlextInfraTypesBase.ReleaseArtifactSha256 | None:
+            """Committed source LICENSE SHA-256."""
+            ...
 
     @runtime_checkable
-    class ReleasePlan(Protocol):
+    class ReleasePlan(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def current(self) -> t.NonEmptyStr: ...
+        def current(self) -> t.NonEmptyStr:
+            """Version declared by pyproject.toml."""
+            ...
+
         @property
-        def next(self) -> t.NonEmptyStr: ...
+        def next(self) -> t.NonEmptyStr:
+            """Version to release."""
+            ...
+
         @property
-        def bump(self) -> c.Infra.VersionBump: ...
+        def bump(self) -> FlextInfraConstantsRelease.VersionBump:
+            """Bump derived from merged PRs."""
+            ...
+
         @property
-        def previous_tag(self) -> t.NonEmptyStr | None: ...
+        def previous_tag(self) -> t.NonEmptyStr | None:
+            """Latest release tag, if any."""
+            ...
+
         @property
-        def merges(self) -> tuple[str, ...]: ...
+        def merges(self) -> tuple[str, ...]:
+            """Merged PR subjects since previous_tag."""
+            ...
+
         @property
-        def declared(self) -> bool: ...
+        def declared(self) -> bool:
+            """Structural member projected from the owning model.
+
+            ``next`` is the declared version itself (first release, finalized pre-
+            release, or a version written beyond the last tag): decided when it was
+            written, still untagged.
+            """
+            ...
+
         @property
-        def tag(self) -> str: ...
+        def tag(self) -> str:
+            """Tag that will identify ``next``."""
+            ...
+
         @property
-        def releasable(self) -> bool: ...
+        def releasable(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Whether a release commit is due: a declared release, or a real bump.
+            """
+            ...
 
     @runtime_checkable
-    class BuildReport(Protocol):
+    class BuildReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def version(self) -> t.NonEmptyStr: ...
+        def version(self) -> t.NonEmptyStr:
+            """Release version."""
+            ...
+
         @property
-        def total(self) -> t.NonNegativeInt: ...
+        def total(self) -> t.NonNegativeInt:
+            """Total projects attempted."""
+            ...
+
         @property
-        def failures(self) -> t.NonNegativeInt: ...
+        def failures(self) -> t.NonNegativeInt:
+            """Total projects with non-zero exit."""
+            ...
+
         @property
-        def records(self) -> tuple[p.Infra.BuildRecord, ...]: ...
+        def records(self) -> tuple[FlextInfraProtocolsRelease.BuildRecord, ...]:
+            """Per-project build records."""
+            ...
+
         @property
-        def dry_run(self) -> bool: ...
+        def dry_run(self) -> bool:
+            """Metadata-only build report."""
+            ...
+
         @property
-        def build_constraints_sha256(self) -> t.Infra.ReleaseArtifactSha256: ...
+        def build_constraints_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+            """Pinned build constraint policy SHA-256."""
+            ...
+
         @property
-        def gitleaks_policy_sha256(self) -> t.Infra.ReleaseArtifactSha256: ...
+        def gitleaks_policy_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+            """Trusted Gitleaks policy SHA-256."""
+            ...
 
     @runtime_checkable
-    class ReleasePhaseDispatchConfig(Protocol):
+    class ReleasePhaseDispatchConfig(
+        FlextInfraProtocolsMixins.ProjectNamesListMixin,
+        FlextInfraProtocolsMixins.RepositoryRootPathMixin,
+        FlextInfraProtocolsMixins.VersionTagMixin,
+        Protocol,
+    ):
         """Structural data contract projected from the owning model."""
 
-        version: str
-        tag: str
-        repository_root: Path
-        project_names: Sequence[str]
-        dry_run: bool
-        phase: c.Infra.ReleasePhase
-        index: bool
-        pr_title: str
+        @property
+        def dry_run(self) -> bool:
+            """Dry run flag."""
+            ...
+
+        @property
+        def phase(self) -> FlextInfraConstantsRelease.ReleasePhase:
+            """Release phase."""
+            ...
+
+        @property
+        def index(self) -> bool:
+            """Publish verified artifacts to the package index."""
+            ...
+
+        @property
+        def pr_title(self) -> str:
+            """Pull-request title to validate, when known."""
+            ...
 
 
 __all__: list[str] = [

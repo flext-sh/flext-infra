@@ -313,6 +313,11 @@ class FlextInfraModReplacements:
             gates=(c.Infra.LINT,),
             source=before.decode(c.DEFAULT_ENCODING),
         )
+        # A rewrite that introduces a family letter binds it from the provider
+        # of the module's other letters before normalization judges it.
+        candidate = u.Infra.bind_sibling_letters(
+            candidate.decode(c.DEFAULT_ENCODING)
+        ).encode(c.DEFAULT_ENCODING)
         if exact_replacements:
             final: p.Result[str] = r[str].ok(candidate.decode(c.DEFAULT_ENCODING))
             ast.parse(final.value, filename=str(path))

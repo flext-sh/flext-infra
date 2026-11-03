@@ -1080,8 +1080,9 @@ while occupied destinations, receiver dependencies and changed global bindings
 must refuse the complete plan without modifying any source. A planner result or
 an installed SDK version alone does not establish those contracts.
 
-Facade composition retains direct imports of discovered component declarations;
-the renderer does not redirect them through private-family package exports.
+Facade composition imports its component declarations in one statement per
+publishing family package, as the import-law owner computes them (ADR-028
+Decision 10); it never emits module-path imports.
 Existing behavioral base chains retain their native C3 ordering. This is not a
 class-only export cutover: qualifying component consumers through the facade
 class and retiring module/package exports must join the same authenticated
@@ -3298,9 +3299,10 @@ absolute owner. Module reexports retain their explicit same-name binding;
 ordinary symbols keep their published names. The rename rule distinguishes
 that static reexport from a changed local name in both runtime and
 `TYPE_CHECKING` imports.
-Imports with the same bound name but different lexical providers cannot be
-hoisted into one global binding. Normalization rejects that collision before
-publishing the candidate.
+When one name is bound from different providers, the import-law election decides
+the single binding (ADR-028 Decision 10) and rewrites the others. Only distinct
+native identities that the election cannot reconcile fail before publication, with
+both providers as evidence.
 
 Layer-zero config/settings obey their own-namespace boundary in every lexical
 scope, including `TYPE_CHECKING`. Private family assembly retains its declared
@@ -4307,8 +4309,11 @@ bytes so non-ASCII annotations and metadata cannot shift adjacent declarations.
 Concrete class imports use the nearest package that actually publishes that
 source identity. Application modules consume their local facade when its native
 MRO includes the imported provider and the consumed member paths resolve through
-that composition. Declaration families, facade construction, bootstrap inputs and
-runtime dependencies that would introduce a cycle retain their original provider.
+that composition. Inside declaration families, letters follow the calculated
+election: the own letter never appears, earlier layers come from the own package
+root, and the own and later layers come from the elected upstream. Facade
+construction composes the aliased upstream letters. A binding that would close a
+cycle is placed by the import law's cycle calculation, never kept by exemption.
 Import aliases keep their lexical binding. Unknown origins, conflicting owners
 and incompatible member paths fail before publication; a matching letter or
 directory name never proves identity.
@@ -4324,28 +4329,26 @@ publication that forwards an upstream facade retains the upstream identity;
 sharing the same facade letter does not make it an own-family dependency.
 Native member identity must also prove every consumed reference's declaring
 owner and its nearest published export. The semantic cutover owner preserves
-lexical bindings and the original import's typing-only placement. Same-module
-owners, unresolved identities, captured bindings and unsupported quoted annotations
-remain blocking and require the canonical structural `make mod` route; generation
-does not relax the own-family ban. The rewritten candidate is reparsed and subject
-to the unchanged boundary, placement and native runtime-cycle validation.
+lexical bindings and the placement the import law calculates. Same-module owners
+are spelled locally and quoted annotations are rewritten by the same owner; only
+unresolved native identities and captured bindings fail, with their evidence.
+Neither `gen` nor `mod` relaxes the own-family ban. The rewritten candidate is
+reparsed and subject to the unchanged boundary, placement and native runtime-cycle
+validation.
 Corrective imports are emitted as separate native statement lines, never as
 semicolon-separated small statements. This preserves each import's physical span
 for subsequent line-based placement, including when runtime reads promote only
 some imports out of a typing guard. Leading and trailing comments remain attached
 to the rewritten statement group; no empty guard is masked with a synthetic pass.
 
-Module-level import order is the formatter's own isort order, because the Ruff
-`I001` repair is the last stage of every mod and generation normalization:
-`__future__`, standard library, third party, then first party (the module's
+The import-law owner renders module-level imports in the formatter's own isort
+order: `__future__`, standard library, third party, then first party (the module's
 namespace and the project's `src` packages); inside each section every `import x`
-precedes every `from x import y`, each by module path without case. A module the
-formatter already sorted therefore produces no plan. Publication normalizes a
-rewrite of existing bytes by repairing only the Ruff codes the rewrite introduced.
-A generated projection (one carrying the auto-generated header) is then formatted
-in full; an authored module is formatted only when its existing bytes are already
-formatter-clean. Authored format debt and pre-existing lint findings stay for
-`make fmt` and `make fix`; generation never reformats untouched authored lines.
+precedes every `from x import y`, each by module path without case. Generated and
+rewritten modules are therefore gate-clean by construction, and no Ruff post-pass
+decides or repairs imports (ADR-028 Decision 8.2; epic `flext-lqfqo`). Authored
+format debt and pre-existing lint findings stay for `make fmt` and `make fix`;
+generation never reformats untouched authored lines.
 
 Deferred class annotations stay typing-only when native source ancestry proves
 ordinary class construction through `object`: undecorated declarations, no class
@@ -4415,11 +4418,10 @@ Matcher patterns give captured expressions a parenthesized grammar context;
 their authenticated source bytes and original coordinate checks stay intact.
 
 `flext-infra refactor mod --rule <id>` is the diagnostic and repair route for
-one concrete rule identity. It resolves the ID before provider generation and
-loads only the owning AST, text, CSV, or semantic rule engine; unrelated rules,
-receipts, callbacks, campaigns, and generated providers do not enter its
-candidate or fixed-point verification. The same resolved identity governs
-`--check`, `--dry-run`, and fix mode. Empty, ambiguous, partition, duplicate,
+one concrete rule identity. It resolves the ID before fact binding and loads only
+the owning AST, text, CSV, or semantic rule engine; unrelated rules, receipts,
+callbacks and campaigns do not enter its candidate or fixed-point verification. The
+same resolved identity governs `--check`, `--dry-run`, and fix mode. Empty, ambiguous, duplicate,
 or unknown IDs fail before source observation or publication. Plain `make mod`
 remains the complete-catalog convergence route and is not weakened by the
 single-rule command.
@@ -4846,9 +4848,10 @@ engine and frozen epoch. Opening another project rereads unbound source and repe
 its layout work; re-entering `frozen_layout()` would clear the outer epoch on exit.
 The public `mod` composition preflights the selected repository references and
 uses the existing dependency-order owner before invoking each repository handler
-in the same process. Each rule plan contains only that repository's generated
-provider. Authored fixture discovery collects resources from separate repository
-plans and verifies each fixture owner once; it does not union generated rule IDs.
+in the same process. Each rule plan contains only that repository's staged provider:
+the authored catalog with that repository's computed fact utilities. Authored
+fixture discovery collects resources from separate repository plans and verifies
+each fixture owner once.
 
 Each repository snapshot owns exactly one analysis project rooted at that repository's
 runtime owner root (`u.Infra.runtime_owner_root`). It does not merge sibling repository
@@ -5162,16 +5165,16 @@ Native staging serializes already validated rule mappings through the existing
 JSON adapter, using JSON-form YAML rather than the generic runtime-value YAML
 normalizer. A scan stage writes its elected rules as one native document stream;
 global utilities remain single-document files. The same document writer serves
-generated providers and staged fixture rules. Source catalogs and golden
+staged providers and staged fixture rules. Source catalogs and golden
 snapshots are not rewritten by this optimization.
 Fixture staging also groups its bound rules into one native document stream,
 retaining every declared rule and test. Durability remains with the atomic
 publisher; one publication replaces per-rule file and parent-directory syncs.
-Internal scope metadata uses its declared JSON manifest: its derived selector
-keys may be longer than a YAML flow mapping permits. The generated provider's content
-identity hashes the exact serialized paths and bytes, including that format
-choice, so a different encoding cannot reuse an older directory's identity.
-Reusing a generated provider also verifies its complete physical inventory and
+Computed fact selectors use their declared JSON form: derived selector keys may be
+longer than a YAML flow mapping permits. The staged provider's content identity
+hashes the exact serialized paths and bytes, including that format choice, so a
+different encoding cannot reuse an older directory's identity. Reusing a staged
+provider also verifies its complete physical inventory and
 every expected file digest through the existing authenticated tree owner.
 Directory existence alone does not admit a materialization; missing, unexpected
 or altered entries fail before native execution.

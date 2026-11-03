@@ -9,28 +9,37 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
+
+from flext_cli import FlextCliProtocols
 
 from flext_infra import t
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraProtocolsDepsToolConfigProjectMise:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ProjectMiseTool(Protocol):
+    class ProjectMiseTool(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        version: t.NonEmptyStr
+        @property
+        def version(self) -> t.NonEmptyStr:
+            """Exact version written to the generated .mise.toml."""
+            ...
 
     @runtime_checkable
-    class ProjectMiseConfig(Protocol):
+    class ProjectMiseConfig(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        tools: Mapping[t.NonEmptyStr, p.Infra.ProjectMiseTool]
+        @property
+        def tools(
+            self,
+        ) -> Mapping[
+            t.NonEmptyStr, FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseTool
+        ]:
+            """Project-local Mise tools added to generated config."""
+            ...
 
 
 __all__: list[str] = [

@@ -10,11 +10,11 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra._models import FlextInfraModelsDepsToolConfigProjectArtifacts
+from flext_infra._models import FlextInfraModelsProjectArtifacts
 
 
 class FlextInfraModelsDepsToolConfigProject(
-    FlextInfraModelsDepsToolConfigProjectArtifacts,
+    FlextInfraModelsProjectArtifacts,
 ):
     """Document layer composing every project-owned managed-artifact model."""
 
@@ -22,12 +22,11 @@ class FlextInfraModelsDepsToolConfigProject(
         """Optional project-owned sections present in one configuration source."""
 
         Mise: Annotated[
-            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectMiseConfig | None,
+            FlextInfraModelsProjectArtifacts.ProjectMiseConfig | None,
             m.Field(description="Mise section declared by this source"),
         ] = None
         Gitignore: Annotated[
-            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectGitignoreConfig
-            | None,
+            FlextInfraModelsProjectArtifacts.ProjectGitignoreConfig | None,
             m.Field(description="Gitignore section declared by this source"),
         ] = None
 

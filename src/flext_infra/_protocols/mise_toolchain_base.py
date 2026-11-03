@@ -10,12 +10,14 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from flext_cli import FlextCliProtocols
+
 
 class FlextInfraProtocolsMiseToolchainBase:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class SchemaRecord(Protocol):
+    class SchemaRecord(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
 

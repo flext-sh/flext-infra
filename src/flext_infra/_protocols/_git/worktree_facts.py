@@ -10,20 +10,30 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from flext_cli import FlextCliProtocols
+
 
 class FlextInfraProtocolsGitWorktreeFacts:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class GitTreeStats(Protocol):
+    class GitTreeStats(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def total_bytes(self) -> int: ...
+        def total_bytes(self) -> int:
+            """Sum of file sizes."""
+            ...
+
         @property
-        def newest_mtime(self) -> float: ...
+        def newest_mtime(self) -> float:
+            """Newest file mtime as epoch seconds."""
+            ...
+
         @property
-        def exact(self) -> bool: ...
+        def exact(self) -> bool:
+            """Whether the walk completed without skipping."""
+            ...
 
 
 __all__: list[str] = [

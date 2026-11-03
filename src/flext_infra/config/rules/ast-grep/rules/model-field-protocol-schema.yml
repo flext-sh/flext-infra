@@ -1,0 +1,63 @@
+# ADR-018 operator amendment 2026-11-02 (strict protocol typing): a model field
+# is typed by the canonical `p.*` protocol of its payload, and the payload keeps
+# the actual model's native validation, serialization and JSON Schema through
+# `GetPydanticSchema` metadata delegating to that model
+# (`t.schema_for_model(m.X)`, flext-core `_typings/pydantic.py`). The model
+# reference survives only as the runtime metadata expression, never as the
+# type operand. `t.Port[...]` stays reserved for DI capabilities (ADR-019).
+#
+# Scope: the type annotation of an annotated assignment directly in a class
+# whose bases name a model owner (`m.*`, `Flext*Models*`, `*Model`, `*Settings`).
+# Out of scope: `ClassVar[...]` members, class objects (`type[...]`,
+# `t.ModelClass[...]`), callable signatures (`Callable[...]`), metadata calls
+# (`m.Field(...)`, an existing `t.schema_for_model(...)`), protocols. Idempotent:
+# the rewritten operand is `p.*`.
+id: model-field-protocol-schema
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/protocols.py"
+  - "**/_protocols/**"
+  - "**/config/rules/ast-grep/tests/**"
+rule:
+  pattern: $REF
+  kind: attribute
+  regex: "^m(?:\\.[A-Z][A-Za-z0-9_]*)+$"
+  not:
+    any:
+      - inside:
+          kind: attribute
+      - inside:
+          kind: call
+          stopBy: end
+      - inside:
+          kind: generic_type
+          stopBy: end
+          regex: "^(ClassVar|Final|type|t\\.ModelClass|Callable|t\\.Port)\\["
+  inside:
+    kind: type
+    stopBy: end
+    inside:
+      kind: assignment
+      field: type
+      inside:
+        kind: expression_statement
+        inside:
+          kind: block
+          inside:
+            kind: class_definition
+            has:
+              field: superclasses
+              regex: "(\\bm\\.|Models|Model\\b|Settings\\b)"
+transform:
+  PROTOCOL:
+    replace:
+      source: $REF
+      replace: "^m\\."
+      by: "p."
+fix: Annotated[$PROTOCOL, t.schema_for_model($REF)]
+message: >-
+  A model field is typed by its p.* protocol; the model keeps native validation
+  through t.schema_for_model(m.X) metadata (ADR-018 strict protocol typing).

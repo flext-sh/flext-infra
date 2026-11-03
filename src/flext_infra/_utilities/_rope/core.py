@@ -208,19 +208,39 @@ class FlextInfraUtilitiesRopeCore(
     @staticmethod
     @contextmanager
     def open_import_project(source_root: Path) -> Generator[t.Infra.RopeProject]:
-        """Resolve imports against the containing declared workspace, if attached.
+        """Open the native project of the repository that owns ``source_root``.
 
-        Invalid workspace declarations propagate from the declaration reader.
+        One native project per repository (ADR-028 Decision 17): the project is
+        rooted at the owning repository, and every other repository of the
+        declared graph resolves through Rope's native ``python_path`` as a
+        provider. A workspace member, a separate workspace and a standalone
+        repository are opened the same way. Invalid workspace declarations
+        propagate from the declaration reader.
 
         Yields:
-            A source-scoped project or its declared workspace import graph.
+            The owning repository's native project.
 
         """
-        roots = FlextInfraUtilitiesRopeCore.import_project_roots(source_root)
-        with FlextInfraUtilitiesRopeCore.open_project(
-            roots[0],
-            project_roots=roots,
-        ) as project:
+        resolved = source_root.resolve()
+        roots = FlextInfraUtilitiesRopeCore.import_project_roots(resolved)
+        owner = max(
+            (
+                root.resolve()
+                for root in roots
+                if resolved.is_relative_to(root.resolve())
+            ),
+            key=lambda root: len(root.parts),
+        )
+        with FlextInfraUtilitiesRopeCore.open_project(owner) as project:
+            for provider in roots:
+                provider_root = provider.resolve()
+                if provider_root == owner or owner.is_relative_to(provider_root):
+                    continue
+                source = provider_root / c.Infra.DEFAULT_SRC_DIR
+                project.get_prefs().add(
+                    "python_path",
+                    str(source if source.is_dir() else provider_root),
+                )
             yield project
 
     @staticmethod

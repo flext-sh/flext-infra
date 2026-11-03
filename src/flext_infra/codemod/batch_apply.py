@@ -1099,15 +1099,28 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     ) -> p.Result[p.Infra.SemanticSourcePlan]:
         """Compose all native semantic effects on the prepared candidate.
 
-        A selected theme composes no semantic phase: the census constants and
-        semantic edits belong to no selected rule.
+        A selected theme composes only the semantic phases that repair one of
+        its rule families; census constants belong to no rule and stay with
+        the complete catalog. A theme claiming no phase returns its seed.
 
         Returns:
-            The staged semantic candidate, or the seed for a selected theme.
+            The staged semantic candidate, or the seed for a phase-less theme.
 
         """
-        if self.selected_rule_ids is not None:
-            return r[p.Infra.SemanticSourcePlan].ok(seed)
+        selection = self.selected_rule_ids
+        phases: frozenset[c.Infra.SemanticCutoverPhase] | None = None
+        if selection is not None:
+            families = {
+                rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
+                for rule_id in selection
+            }
+            phases = frozenset(
+                c.Infra.SemanticCutoverPhase(phase)
+                for phase, rule_ids in c.Infra.SEMANTIC_CUTOVER_RULE_IDS.items()
+                if families.intersection(rule_ids)
+            )
+            if not phases:
+                return r[p.Infra.SemanticSourcePlan].ok(seed)
         outcome = r[p.Infra.SemanticSourcePlan]
         syntax = seed.candidate
         semantic_preflight = self._preview_ast_candidate(
@@ -1126,27 +1139,31 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             )
         )
         changed: set[Path] = set()
-        constants = FlextInfraCodemodSemanticApply.plan_census_constants(
-            root,
-            graph,
-            sources=working,
-        )
-        if constants.failure:
-            return outcome.from_failure(constants)
-        if self._coherent(
-            "census-constants", [edit.file_path for edit in constants.value]
-        ):
-            FlextInfraCodemodSemanticApply.apply_plan(working, constants.value, changed)
-        graph.bind_candidate(
-            declared_files=FlextInfraCodemodSemanticApply.planning_file_plans(
-                root, syntax, working
+        if phases is None:
+            constants = FlextInfraCodemodSemanticApply.plan_census_constants(
+                root,
+                graph,
+                sources=working,
             )
-        )
+            if constants.failure:
+                return outcome.from_failure(constants)
+            if self._coherent(
+                "census-constants", [edit.file_path for edit in constants.value]
+            ):
+                FlextInfraCodemodSemanticApply.apply_plan(
+                    working, constants.value, changed
+                )
+            graph.bind_candidate(
+                declared_files=FlextInfraCodemodSemanticApply.planning_file_plans(
+                    root, syntax, working
+                )
+            )
         semantic = FlextInfraCodemodSemanticApply.plan_semantic_edits(
             root,
             FlextInfraModGateEngine.authored(semantic_preflight.value),
             graph,
             working,
+            phases=phases,
         )
         if semantic.failure:
             return outcome.from_failure(semantic)

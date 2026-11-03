@@ -437,7 +437,7 @@ class TestsModelProtocolCallableContracts:
         tm.fail("def child(" in generated)
         tm.fail("def pages(" in generated)
         conformance = planned[
-            (package / "_protocols" / "_model_conformance.py").relative_to(root)
+            (package / "_protocols" / "model_conformance.py").relative_to(root)
         ]
         tm.ok("isinstance(value, m.Envelope)" in conformance)
         native_consumer(

@@ -1,5 +1,5 @@
-# AUTO-GENERATED FILE - Source bootstrap protocol exports.
-"""Lazy protocol mirror exports.
+# AUTO-GENERATED FILE — Regenerate with: make gen
+"""Flext Infra. Protocols package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -33,12 +32,6 @@ if TYPE_CHECKING:
     )
     from flext_infra._protocols.deps_tool_config_project import (
         FlextInfraProtocolsDepsToolConfigProject,
-    )
-    from flext_infra._protocols.deps_tool_config_project_artifacts import (
-        FlextInfraProtocolsDepsToolConfigProjectArtifacts,
-    )
-    from flext_infra._protocols.deps_tool_config_project_gitignore import (
-        FlextInfraProtocolsDepsToolConfigProjectGitignore,
     )
     from flext_infra._protocols.deps_tool_config_project_mise import (
         FlextInfraProtocolsDepsToolConfigProjectMise,
@@ -68,6 +61,12 @@ if TYPE_CHECKING:
         FlextInfraProtocolsMiseToolchainRepair,
     )
     from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
+    from flext_infra._protocols.project_artifacts import (
+        FlextInfraProtocolsProjectArtifacts,
+    )
+    from flext_infra._protocols.project_gitignore import (
+        FlextInfraProtocolsProjectGitignore,
+    )
     from flext_infra._protocols.promoted import FlextInfraProtocolsPromoted
     from flext_infra._protocols.refactor import FlextInfraProtocolsRefactor
     from flext_infra._protocols.refactor_ast_grep import (
@@ -92,6 +91,7 @@ if TYPE_CHECKING:
     )
     from flext_infra._protocols.worktree import FlextInfraProtocolsWorktree
 
+
 __all__: tuple[str, ...] = (
     "FlextInfraProtocolsBase",
     "FlextInfraProtocolsCensus",
@@ -106,8 +106,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsDepsToolConfig",
     "FlextInfraProtocolsDepsToolConfigLinters",
     "FlextInfraProtocolsDepsToolConfigProject",
-    "FlextInfraProtocolsDepsToolConfigProjectArtifacts",
-    "FlextInfraProtocolsDepsToolConfigProjectGitignore",
     "FlextInfraProtocolsDepsToolConfigProjectMise",
     "FlextInfraProtocolsDepsToolConfigTypeCheckers",
     "FlextInfraProtocolsDocs",
@@ -124,6 +122,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsMiseToolchainBase",
     "FlextInfraProtocolsMiseToolchainRepair",
     "FlextInfraProtocolsMixins",
+    "FlextInfraProtocolsProjectArtifacts",
+    "FlextInfraProtocolsProjectGitignore",
     "FlextInfraProtocolsPromoted",
     "FlextInfraProtocolsRefactor",
     "FlextInfraProtocolsRefactorAstGrep",
@@ -143,67 +143,62 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsWorktree",
 )
 
-# fmt: off
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType(
-        {
-            "FlextInfraProtocolsBase": ".base",
-            "FlextInfraProtocolsCensus": ".census",
-            "FlextInfraProtocolsCheck": ".check",
-            "FlextInfraProtocolsCodegen": ".codegen",
-            "FlextInfraProtocolsCodegenRender": ".codegen_render",
-            "FlextInfraProtocolsCodegenToolchain": ".codegen_toolchain",
-            "FlextInfraProtocolsCodemod": ".codemod",
-            "FlextInfraProtocolsConfig": ".config",
-            "FlextInfraProtocolsDeps": ".deps",
-            "FlextInfraProtocolsDepsToml": ".deps_toml",
-            "FlextInfraProtocolsDepsToolConfig": ".deps_tool_config",
-            "FlextInfraProtocolsDepsToolConfigLinters": ".deps_tool_config_linters",
-            "FlextInfraProtocolsDepsToolConfigProject": ".deps_tool_config_project",
-            "FlextInfraProtocolsDepsToolConfigProjectArtifacts":
-                ".deps_tool_config_project_artifacts",
-            "FlextInfraProtocolsDepsToolConfigProjectGitignore":
-                ".deps_tool_config_project_gitignore",
-            "FlextInfraProtocolsDepsToolConfigProjectMise":
-                ".deps_tool_config_project_mise",
-            "FlextInfraProtocolsDepsToolConfigTypeCheckers":
-                ".deps_tool_config_type_checkers",
-            "FlextInfraProtocolsDocs": ".docs",
-            "FlextInfraProtocolsDocsCollection": ".docs_collection",
-            "FlextInfraProtocolsDocsGeneration": ".docs_generation",
-            "FlextInfraProtocolsDuplication": ".duplication",
-            "FlextInfraProtocolsEnforcementCatalog": ".enforcement_catalog",
-            "FlextInfraProtocolsGates": ".gates",
-            "FlextInfraProtocolsGit": ".git",
-            "FlextInfraProtocolsGitLaneInputs": ".git_lane_inputs",
-            "FlextInfraProtocolsGitLaneOwnership": ".git_lane_ownership",
-            "FlextInfraProtocolsLayout": ".layout",
-            "FlextInfraProtocolsMiseToolchain": ".mise_toolchain",
-            "FlextInfraProtocolsMiseToolchainBase": ".mise_toolchain_base",
-            "FlextInfraProtocolsMiseToolchainRepair": ".mise_toolchain_repair",
-            "FlextInfraProtocolsMixins": ".mixins",
-            "FlextInfraProtocolsPromoted": ".promoted",
-            "FlextInfraProtocolsRefactor": ".refactor",
-            "FlextInfraProtocolsRefactorAstGrep": ".refactor_ast_grep",
-            "FlextInfraProtocolsRefactorNamespaceEnforcer":
-                ".refactor_namespace_enforcer",
-            "FlextInfraProtocolsRelease": ".release",
-            "FlextInfraProtocolsRope": ".rope",
-            "FlextInfraProtocolsRopeMove": ".rope_move",
-            "FlextInfraProtocolsRopeRuntime": ".rope_runtime",
-            "FlextInfraProtocolsScan": ".scan",
-            "FlextInfraProtocolsSettings": ".settings",
-            "FlextInfraProtocolsSonarcloud": ".sonarcloud",
-            "FlextInfraProtocolsTestmon": ".testmon",
-            "FlextInfraProtocolsTransformers": ".transformers",
-            "FlextInfraProtocolsValidate": ".validate",
-            "FlextInfraProtocolsWorkspace": ".workspace",
-            "FlextInfraProtocolsWorkspaceSnapshot": ".workspace_snapshot",
-            "FlextInfraProtocolsWorktree": ".worktree",
-        }
-    ),
+    {
+        "FlextInfraProtocolsBase": ".base",
+        "FlextInfraProtocolsCensus": ".census",
+        "FlextInfraProtocolsCheck": ".check",
+        "FlextInfraProtocolsCodegen": ".codegen",
+        "FlextInfraProtocolsCodegenRender": ".codegen_render",
+        "FlextInfraProtocolsCodegenToolchain": ".codegen_toolchain",
+        "FlextInfraProtocolsCodemod": ".codemod",
+        "FlextInfraProtocolsConfig": ".config",
+        "FlextInfraProtocolsDeps": ".deps",
+        "FlextInfraProtocolsDepsToml": ".deps_toml",
+        "FlextInfraProtocolsDepsToolConfig": ".deps_tool_config",
+        "FlextInfraProtocolsDepsToolConfigLinters": ".deps_tool_config_linters",
+        "FlextInfraProtocolsDepsToolConfigProject": ".deps_tool_config_project",
+        "FlextInfraProtocolsDepsToolConfigProjectMise": (
+            ".deps_tool_config_project_mise"
+        ),
+        "FlextInfraProtocolsDepsToolConfigTypeCheckers": (
+            ".deps_tool_config_type_checkers"
+        ),
+        "FlextInfraProtocolsDocs": ".docs",
+        "FlextInfraProtocolsDocsCollection": ".docs_collection",
+        "FlextInfraProtocolsDocsGeneration": ".docs_generation",
+        "FlextInfraProtocolsDuplication": ".duplication",
+        "FlextInfraProtocolsEnforcementCatalog": ".enforcement_catalog",
+        "FlextInfraProtocolsGates": ".gates",
+        "FlextInfraProtocolsGit": ".git",
+        "FlextInfraProtocolsGitLaneInputs": ".git_lane_inputs",
+        "FlextInfraProtocolsGitLaneOwnership": ".git_lane_ownership",
+        "FlextInfraProtocolsLayout": ".layout",
+        "FlextInfraProtocolsMiseToolchain": ".mise_toolchain",
+        "FlextInfraProtocolsMiseToolchainBase": ".mise_toolchain_base",
+        "FlextInfraProtocolsMiseToolchainRepair": ".mise_toolchain_repair",
+        "FlextInfraProtocolsMixins": ".mixins",
+        "FlextInfraProtocolsProjectArtifacts": ".project_artifacts",
+        "FlextInfraProtocolsProjectGitignore": ".project_gitignore",
+        "FlextInfraProtocolsPromoted": ".promoted",
+        "FlextInfraProtocolsRefactor": ".refactor",
+        "FlextInfraProtocolsRefactorAstGrep": ".refactor_ast_grep",
+        "FlextInfraProtocolsRefactorNamespaceEnforcer": ".refactor_namespace_enforcer",
+        "FlextInfraProtocolsRelease": ".release",
+        "FlextInfraProtocolsRope": ".rope",
+        "FlextInfraProtocolsRopeMove": ".rope_move",
+        "FlextInfraProtocolsRopeRuntime": ".rope_runtime",
+        "FlextInfraProtocolsScan": ".scan",
+        "FlextInfraProtocolsSettings": ".settings",
+        "FlextInfraProtocolsSonarcloud": ".sonarcloud",
+        "FlextInfraProtocolsTestmon": ".testmon",
+        "FlextInfraProtocolsTransformers": ".transformers",
+        "FlextInfraProtocolsValidate": ".validate",
+        "FlextInfraProtocolsWorkspace": ".workspace",
+        "FlextInfraProtocolsWorkspaceSnapshot": ".workspace_snapshot",
+        "FlextInfraProtocolsWorktree": ".worktree",
+    },
     public_exports=__all__,
 )
-# fmt: on

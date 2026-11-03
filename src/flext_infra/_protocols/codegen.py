@@ -17,10 +17,10 @@ from flext_infra._protocols.codegen_toolchain import FlextInfraProtocolsCodegenT
 class FlextInfraProtocolsCodegen(
     FlextInfraProtocolsCodegenToolchain,
     FlextInfraProtocolsCodegenRender,
+    FlextInfraProtocolsCodegenLazyInit,
     FlextInfraProtocolsCodegenTransaction,
     FlextInfraProtocolsCodegenScaffold,
     FlextInfraProtocolsCodegenFix,
-    FlextInfraProtocolsCodegenLazyInit,
     FlextInfraProtocolsCodegenPipeline,
 ):
     """Canonical structural contracts for the codegen domain."""

@@ -5,14 +5,24 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Literal
 
-    from flext_infra import p, t
+    from flext_cli import p
+
+    from flext_infra import t
+    from flext_infra._protocols._config import (
+        FlextInfraProtocolsConfigBeads,
+        FlextInfraProtocolsConfigMake,
+        FlextInfraProtocolsConfigRepository,
+    )
 
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from flext_cli import FlextCliProtocols
+
 from flext_infra._constants.config import FlextInfraConstantsConfig
+from flext_infra._protocols._config.contract import FlextInfraProtocolsConfigContract
 
 # Copyright (c) 2026 FLEXT Team. All rights reserved.
 # SPDX-License-Identifier: MIT
@@ -27,359 +37,765 @@ class FlextInfraProtocolsConfigWorkspace:
     """Runtime-checkable contracts declared by the workspace model module."""
 
     @runtime_checkable
-    class GitSubmoduleDeclaration(Protocol):
-        """One declared Git submodule section."""
+    class GitSubmoduleDeclaration(FlextCliProtocols.Model, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def path(self) -> Path:
-            """Path relative to the superproject root."""
+            """Submodule path relative to the superproject root."""
             ...
 
         @property
         def url(self) -> str:
-            """Declared upstream URL."""
+            """Declared URL; empty when undeclared."""
             ...
 
         @property
         def branch(self) -> str:
-            """Declared branch, when present."""
+            """Declared branch; empty when undeclared."""
             ...
 
         @property
         def managed(self) -> bool | None:
-            """Native participation flag."""
+            """Structural member projected from the owning model.
+
+            Native Git boolean: absent inherits participation; true participates and
+            false does not.
+            """
             ...
 
         @property
         def layer(self) -> FlextInfraConstantsConfig.MemberArchitectureLayer | None:
-            """Optional architecture layer."""
+            """Structural member projected from the owning model.
+
+            Declared architecture layer (domain or platform); absent leaves the
+            member outside the layered sets.
+            """
             ...
 
     @runtime_checkable
-    class DependencyGroupInclude(Protocol):
+    class DependencyGroupInclude(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def include_group(self) -> t.NonEmptyStr: ...
+        def include_group(self) -> t.NonEmptyStr:
+            """Referenced dependency group."""
+            ...
 
     @runtime_checkable
-    class DependencyGroupDeclarations(Protocol):
+    class DependencyGroupDeclarations(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
         def dependency_groups(
             self,
-        ) -> Mapping[str, tuple[str | p.Infra.DependencyGroupInclude, ...]]: ...
+        ) -> Mapping[
+            str,
+            tuple[str | FlextInfraProtocolsConfigWorkspace.DependencyGroupInclude, ...],
+        ]:
+            """Ordered native group entries."""
+            ...
 
     @runtime_checkable
-    class DependencyManifestSpec(Protocol):
+    class DependencyManifestSpec(DependencyGroupDeclarations, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def dependency_groups(
-            self,
-        ) -> Mapping[str, tuple[str | p.Infra.DependencyGroupInclude, ...]]: ...
+        def name(self) -> t.NonEmptyStr:
+            """PEP 621 distribution name."""
+            ...
+
         @property
-        def name(self) -> t.NonEmptyStr: ...
-        @property
-        def dependencies(self) -> Sequence[str]: ...
+        def dependencies(self) -> Sequence[str]:
+            """PEP 621 runtime requirements."""
+            ...
 
     @runtime_checkable
-    class DependencyEdgeSpec(Protocol):
+    class DependencyEdgeSpec(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def dependent(self) -> t.NonEmptyStr: ...
+        def dependent(self) -> t.NonEmptyStr:
+            """Member distribution declaring the requirement."""
+            ...
+
         @property
-        def dependency(self) -> t.NonEmptyStr: ...
+        def dependency(self) -> t.NonEmptyStr:
+            """Member distribution it requires."""
+            ...
 
     @runtime_checkable
-    class RefactorConfigSpec(Protocol):
+    class RefactorConfigSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project_scan_dirs(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def project_scan_dirs(self) -> tuple[t.NonEmptyStr, ...]:
+            """Relative directories scanned for candidate files."""
+            ...
+
         @property
-        def file_extensions(self) -> tuple[t.NonEmptyStr, ...]: ...
+        def file_extensions(self) -> tuple[t.NonEmptyStr, ...]:
+            """Allowed file extensions (empty = all by pattern)."""
+            ...
 
     @runtime_checkable
-    class DependencyCommitSourceSpec(Protocol):
+    class DependencyCommitSourceSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def distribution(self) -> t.NonEmptyStr: ...
+        def distribution(self) -> t.NonEmptyStr:
+            """Exact dependency distribution name."""
+            ...
+
         @property
-        def url(self) -> t.NonEmptyStr: ...
+        def url(self) -> t.NonEmptyStr:
+            """Canonical HTTPS Git repository URL."""
+            ...
+
         @property
-        def commit(self) -> t.NonEmptyStr: ...
+        def commit(self) -> t.NonEmptyStr:
+            """Full immutable Git commit OID."""
+            ...
 
     @runtime_checkable
-    class CandidateDependenciesSpec(Protocol):
+    class CandidateDependenciesSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
         def candidate_dependencies(
             self,
-        ) -> tuple[p.Infra.DependencyCommitSourceSpec, ...]: ...
+        ) -> tuple[FlextInfraProtocolsConfigWorkspace.DependencyCommitSourceSpec, ...]:
+            """Candidate-only exact dependency Git sources."""
+            ...
 
     @runtime_checkable
-    class RepositoryDeltaSpec(Protocol):
+    class RepositoryDeltaSpec(CandidateDependenciesSpec, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def candidate_dependencies(
+        def docs_audit(
             self,
-        ) -> tuple[p.Infra.DependencyCommitSourceSpec, ...]: ...
+        ) -> FlextInfraProtocolsConfigContract.DocsAuditOverridesSpec:
+            """Universal documentation-audit declarations."""
+            ...
+
         @property
-        def docs_audit(self) -> p.Infra.DocsAuditOverridesSpec: ...
+        def project(self) -> FlextInfraProtocolsConfigRepository.ProjectSpec | None:
+            """Explicit metadata for a new project scaffold."""
+            ...
+
         @property
-        def project(self) -> p.Infra.ProjectSpec | None: ...
+        def integration(
+            self,
+        ) -> FlextInfraProtocolsConfigRepository.WorkspaceIntegrationSpec | None:
+            """Explicit repository integration contract."""
+            ...
+
         @property
-        def integration(self) -> p.Infra.WorkspaceIntegrationSpec | None: ...
-        @property
-        def namespace_scan_dirs(self) -> Sequence[str]: ...
+        def namespace_scan_dirs(self) -> Sequence[str]:
+            """Own namespace analysis roots."""
+            ...
+
         @property
         def candidate_bootstrap_targets(
             self,
-        ) -> tuple[p.Infra.CandidateBootstrapTargetSpec, ...]: ...
+        ) -> tuple[
+            FlextInfraProtocolsConfigWorkspace.CandidateBootstrapTargetSpec, ...
+        ]:
+            """Declared candidate worktrees and recovery surfaces."""
+            ...
+
         @property
-        def workspace_inventory_command(self) -> Sequence[str]: ...
+        def workspace_inventory_command(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Own public host inventory argv; empty leaves host discovery unselected,
+            with no external participant catalogue.
+            """
+            ...
+
         @property
-        def refactor(self) -> p.Infra.RefactorConfigSpec | None: ...
+        def refactor(
+            self,
+        ) -> FlextInfraProtocolsConfigWorkspace.RefactorConfigSpec | None:
+            """Own refactor file-selection declaration."""
+            ...
+
         @property
-        def beads_enabled(self) -> bool: ...
+        def beads_enabled(self) -> bool:
+            """Repository participates in the Beads contract."""
+            ...
+
         @property
-        def gascity_enabled(self) -> bool: ...
+        def gascity_enabled(self) -> bool:
+            """Repository consumes the Gas City runtime contract."""
+            ...
+
         @property
-        def ci_enabled(self) -> bool: ...
+        def ci_enabled(self) -> bool:
+            """Repository projects its canonical CI surface."""
+            ...
+
         @property
-        def ci_matrix_auto_run(self) -> bool: ...
+        def ci_matrix_auto_run(self) -> bool:
+            """Repository enables automatic CI matrix execution."""
+            ...
+
         @property
-        def codegen(self) -> FlextInfraConstantsConfig.CodegenKind: ...
+        def codegen(self) -> FlextInfraConstantsConfig.CodegenKind:
+            """Own canonical generation policy."""
+            ...
+
         @property
-        def kind(self) -> FlextInfraConstantsConfig.ProjectKind | None: ...
+        def kind(self) -> FlextInfraConstantsConfig.ProjectKind | None:
+            """Structural member projected from the owning model.
+
+            Own governance profile and architecture boundary. The package base
+            bundle declares no project and so no kind; every project declares it in
+            its own layer, and the project-boundary read fails closed when it is
+            absent.
+            """
+            ...
+
         @property
-        def state(self) -> FlextInfraConstantsConfig.RepositoryState: ...
+        def state(self) -> FlextInfraConstantsConfig.RepositoryState:
+            """Own lifecycle participation policy."""
+            ...
+
         @property
-        def read_only(self) -> bool: ...
+        def read_only(self) -> bool:
+            """Repository rejects generated mutations."""
+            ...
+
         @property
-        def publishes_release(self) -> bool: ...
+        def publishes_release(self) -> bool:
+            """Repository declares the generated release protocol."""
+            ...
+
         @property
         def uv_link_mode(
             self,
-        ) -> Literal["clone", "copy", "hardlink", "symlink"] | None: ...
-        @property
-        def duplication_trees(self) -> tuple[t.NonEmptyStr, ...]: ...
-        @property
-        def examples_module(self) -> t.NonEmptyStr | None: ...
-        @property
-        def extra_verbs(self) -> tuple[p.Infra.MakeVerbSpec, ...]: ...
-        @property
-        def script_dispatch(self) -> p.Infra.ScriptDispatchSpec | None: ...
-
-    @runtime_checkable
-    class CandidateBootstrapTargetSpec(Protocol):
-        """Structural data contract projected from the owning model."""
+        ) -> Literal["clone", "copy", "hardlink", "symlink"] | None:
+            """Own uv installation link-mode declaration."""
+            ...
 
         @property
-        def path(self) -> Path: ...
-        @property
-        def what(self) -> FlextInfraConstantsConfig.CodegenConformSurface: ...
-
-    @runtime_checkable
-    class DependencyGroupEntries(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        root: tuple[str | p.Infra.DependencyGroupInclude, ...]
-
-    @runtime_checkable
-    class WorkspaceBeadsServerSpec(Protocol):
-        """Structural data contract projected from the owning model."""
+        def duplication_trees(self) -> tuple[t.NonEmptyStr, ...]:
+            """Own additional duplication-analysis trees."""
+            ...
 
         @property
-        def backend(self) -> Literal["dolt"]: ...
-        @property
-        def mode(self) -> Literal["server"]: ...
-        @property
-        def shared_server(self) -> Literal[False]: ...
-        @property
-        def host(self) -> t.NonEmptyStr: ...
-        @property
-        def port(self) -> int: ...
-        @property
-        def user(self) -> t.NonEmptyStr: ...
-        @property
-        def auto_commit(self) -> Literal["off", "on", "batch"]: ...
-
-    @runtime_checkable
-    class RepositoryPolicyOverlaySpec(Protocol):
-        """Structural data contract projected from the owning model."""
+        def examples_module(self) -> t.NonEmptyStr | None:
+            """Own explicit examples module."""
+            ...
 
         @property
-        def project(self) -> t.NonEmptyStr: ...
-        @property
-        def beads_enabled(self) -> bool: ...
-        @property
-        def ci_enabled(self) -> bool: ...
-        @property
-        def ci_matrix_auto_run(self) -> bool: ...
-        @property
-        def gascity_enabled(self) -> bool: ...
-
-    @runtime_checkable
-    class WorkspaceExclusionSpec(Protocol):
-        """Structural data contract projected from the owning model."""
+        def extra_verbs(self) -> tuple[FlextInfraProtocolsConfigMake.MakeVerbSpec, ...]:
+            """Own additional public Make commands."""
+            ...
 
         @property
-        def path(self) -> Path: ...
-        @property
-        def reason(self) -> t.NonEmptyStr: ...
-
-    @runtime_checkable
-    class WorkspaceManifestSpec(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def candidate_dependencies(
+        def script_dispatch(
             self,
-        ) -> tuple[p.Infra.DependencyCommitSourceSpec, ...]: ...
+        ) -> FlextInfraProtocolsConfigRepository.ScriptDispatchSpec | None:
+            """Own script command routing contract."""
+            ...
+
         @property
-        def version(self) -> int: ...
+        def verb_groups(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigMake.MakeVerbGroupSpec, ...]:
+            """Own ordered `make help` sections."""
+            ...
+
+    @runtime_checkable
+    class CandidateBootstrapTargetSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
         @property
-        def name(self) -> t.NonEmptyStr: ...
+        def path(self) -> Path:
+            """Relative candidate worktree path."""
+            ...
+
         @property
-        def docs_audit(self) -> p.Infra.DocsAuditOverridesSpec: ...
+        def what(self) -> FlextInfraConstantsConfig.CodegenConformSurface:
+            """Canonical generator surface for this target."""
+            ...
+
+    @runtime_checkable
+    class DependencyGroupEntries(FlextCliProtocols.Model, Protocol):
+        """Structural data contract projected from the owning model."""
+
         @property
-        def namespace_scan_dirs(self) -> Sequence[str]: ...
+        def root(
+            self,
+        ) -> tuple[
+            str | FlextInfraProtocolsConfigWorkspace.DependencyGroupInclude, ...
+        ]:
+            """Structural member projected from the owning model."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceBeadsServerSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
         @property
-        def ledger_id(self) -> t.NonEmptyStr | None: ...
+        def backend(self) -> Literal["dolt"]:
+            """Workspace ledger storage engine."""
+            ...
+
         @property
-        def ledger_prefix(self) -> t.NonEmptyStr | None: ...
+        def mode(self) -> Literal["server"]:
+            """Workspace ledger connection mode."""
+            ...
+
         @property
-        def beads_server(self) -> p.Infra.WorkspaceBeadsServerSpec | None: ...
+        def shared_server(self) -> Literal[False]:
+            """Workspace ledger uses an external Dolt endpoint."""
+            ...
+
         @property
-        def repository(self) -> p.Infra.RepositoryRef: ...
+        def host(self) -> t.NonEmptyStr:
+            """Dolt server host."""
+            ...
+
         @property
-        def project(self) -> p.Infra.ProjectSpec | None: ...
+        def port(self) -> int:
+            """Dolt server TCP port."""
+            ...
+
         @property
-        def members(self) -> tuple[p.Infra.RepositoryRef, ...]: ...
+        def user(self) -> t.NonEmptyStr:
+            """Dolt server user."""
+            ...
+
         @property
-        def external_dependency_paths(self) -> tuple[Path, ...]: ...
+        def auto_commit(self) -> Literal["off", "on", "batch"]:
+            """Dolt auto-commit policy."""
+            ...
+
+    @runtime_checkable
+    class RepositoryPolicyOverlaySpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
         @property
-        def content_only(self) -> tuple[Path, ...]: ...
+        def project(self) -> t.NonEmptyStr:
+            """Canonical project distribution."""
+            ...
+
         @property
-        def exclusions(self) -> tuple[p.Infra.WorkspaceExclusionSpec, ...]: ...
+        def beads_enabled(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Whether the repository participates in Beads; an overlay that omits it
+            means the same as no overlay (enabled).
+            """
+            ...
+
         @property
-        def integration(self) -> p.Infra.WorkspaceIntegrationSpec | None: ...
+        def ci_enabled(self) -> bool:
+            """Whether conform owns the CI surface."""
+            ...
+
+        @property
+        def ci_matrix_auto_run(self) -> bool:
+            """Whether the CI matrix runs automatically."""
+            ...
+
+        @property
+        def gascity_enabled(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Whether the repository consumes the Gas City runtime contract (city-
+            owned Dolt server, gc tool projection, inherited endpoint keys). False
+            renders the standalone shape: repository-local Dolt server owned by
+            Beads.
+            """
+            ...
+
+    @runtime_checkable
+    class WorkspaceExclusionSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def path(self) -> Path:
+            """Workspace-relative path."""
+            ...
+
+        @property
+        def reason(self) -> t.NonEmptyStr:
+            """Exclusion rationale."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceManifestSpec(CandidateDependenciesSpec, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def version(self) -> int:
+            """Workspace manifest schema version."""
+            ...
+
+        @property
+        def name(self) -> t.NonEmptyStr:
+            """Workspace name."""
+            ...
+
+        @property
+        def docs_audit(
+            self,
+        ) -> FlextInfraProtocolsConfigContract.DocsAuditOverridesSpec:
+            """Repository-owned documentation audit declarations."""
+            ...
+
+        @property
+        def namespace_scan_dirs(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Repository-level production roots the namespace validator enforces; an
+            empty declaration keeps every root in scope, and an explicit project-
+            level declaration wins.
+            """
+            ...
+
+        @property
+        def ledger_id(self) -> t.NonEmptyStr | None:
+            """Optional workspace ledger database identity."""
+            ...
+
+        @property
+        def ledger_prefix(self) -> t.NonEmptyStr | None:
+            """Optional workspace issue-prefix identity."""
+            ...
+
+        @property
+        def beads_server(
+            self,
+        ) -> FlextInfraProtocolsConfigWorkspace.WorkspaceBeadsServerSpec | None:
+            """Optional workspace-local Dolt connection."""
+            ...
+
+        @property
+        def repository(self) -> FlextInfraProtocolsConfigRepository.RepositoryRef:
+            """Root repository declaration."""
+            ...
+
+        @property
+        def project(self) -> FlextInfraProtocolsConfigRepository.ProjectSpec | None:
+            """Optional project creation metadata."""
+            ...
+
+        @property
+        def members(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigRepository.RepositoryRef, ...]:
+            """Declared member repository contracts."""
+            ...
+
+        @property
+        def external_dependency_paths(self) -> tuple[Path, ...]:
+            """Declared external dependency paths."""
+            ...
+
+        @property
+        def content_only(self) -> tuple[Path, ...]:
+            """Content-only Gitlink paths."""
+            ...
+
+        @property
+        def exclusions(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigWorkspace.WorkspaceExclusionSpec, ...]:
+            """Explicit workspace exclusions."""
+            ...
+
+        @property
+        def integration(
+            self,
+        ) -> FlextInfraProtocolsConfigRepository.WorkspaceIntegrationSpec | None:
+            """Optional integration provider overlay."""
+            ...
+
         @property
         def candidate_bootstrap_targets(
             self,
-        ) -> tuple[p.Infra.CandidateBootstrapTargetSpec, ...]: ...
+        ) -> tuple[
+            FlextInfraProtocolsConfigWorkspace.CandidateBootstrapTargetSpec, ...
+        ]:
+            """Declared candidate worktrees conformed by Infra."""
+            ...
+
         @property
         def repository_policy_overlays(
             self,
-        ) -> tuple[p.Infra.RepositoryPolicyOverlaySpec, ...]: ...
+        ) -> tuple[FlextInfraProtocolsConfigWorkspace.RepositoryPolicyOverlaySpec, ...]:
+            """Repository-local policy overlays."""
+            ...
+
         @property
-        def external_consumers(self) -> tuple[p.Infra.ExternalConsumerSpec, ...]: ...
+        def external_consumers(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigWorkspace.ExternalConsumerSpec, ...]:
+            """Structural member projected from the owning model.
+
+            Out-of-workspace repositories propagation adjusts as guests through
+            their own make verbs.
+            """
+            ...
+
         @property
-        def refactor(self) -> p.Infra.RefactorConfigSpec | None: ...
+        def refactor(
+            self,
+        ) -> FlextInfraProtocolsConfigWorkspace.RefactorConfigSpec | None:
+            """Refactor file-selection configuration."""
+            ...
 
     @runtime_checkable
-    class CodegenBootstrapSource(Protocol):
+    class CodegenBootstrapSource(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def url(self) -> t.NonEmptyStr: ...
+        def url(self) -> t.NonEmptyStr:
+            """Infrastructure Git URL."""
+            ...
+
         @property
-        def ref(self) -> t.NonEmptyStr: ...
+        def ref(self) -> t.NonEmptyStr:
+            """Infrastructure Git ref."""
+            ...
 
     @runtime_checkable
-    class HostWorkspaceInventoryEntry(Protocol):
+    class HostWorkspaceInventoryEntry(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project_id(self) -> t.NonEmptyStr: ...
+        def project_id(self) -> t.NonEmptyStr:
+            """Forge project identity."""
+            ...
+
         @property
-        def owner(self) -> t.NonEmptyStr: ...
+        def owner(self) -> t.NonEmptyStr:
+            """Resolved forge owner."""
+            ...
+
         @property
-        def path(self) -> Path: ...
+        def path(self) -> Path:
+            """Physical checkout root."""
+            ...
+
         @property
-        def checkout_id(self) -> t.NonEmptyStr: ...
+        def checkout_id(self) -> t.NonEmptyStr:
+            """Checkout identity."""
+            ...
+
         @property
-        def governing_checkout_id(self) -> t.NonEmptyStr: ...
+        def governing_checkout_id(self) -> t.NonEmptyStr:
+            """Project's governing checkout identity."""
+            ...
+
         @property
         def project_profile(
             self,
-        ) -> FlextInfraConstantsConfig.ProjectKind | Literal["unclassified"]: ...
+        ) -> FlextInfraConstantsConfig.ProjectKind | Literal["unclassified"]:
+            """Host's declared governance and architecture profile."""
+            ...
+
         @property
-        def upstream_project_id(self) -> str | None: ...
+        def upstream_project_id(self) -> str | None:
+            """Declared fork upstream identity."""
+            ...
+
         @property
-        def effective_ref(self) -> str | None: ...
+        def effective_ref(self) -> str | None:
+            """Host's resolved checkout reference."""
+            ...
 
     @runtime_checkable
-    class HostWorkspaceInventory(Protocol):
+    class HostWorkspaceInventory(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def entries(self) -> tuple[p.Infra.HostWorkspaceInventoryEntry, ...]: ...
-
-    @runtime_checkable
-    class ExternalConsumerSpec(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def name(self) -> t.NonEmptyStr: ...
-        @property
-        def root(self) -> Path: ...
-        @property
-        def integration_branch(self) -> t.NonEmptyStr | None: ...
-        @property
-        def fix_namespace(self) -> bool: ...
-        @property
-        def fix_accessors(self) -> bool: ...
-
-    @runtime_checkable
-    class WorkspaceSpec(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def candidate_dependencies(
+        def entries(
             self,
-        ) -> tuple[p.Infra.DependencyCommitSourceSpec, ...]: ...
+        ) -> tuple[FlextInfraProtocolsConfigWorkspace.HostWorkspaceInventoryEntry, ...]:
+            """Canonical discovered checkout identities."""
+            ...
+
+    @runtime_checkable
+    class ExternalConsumerSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
         @property
-        def inputs(self) -> tuple[p.Cli.AtomicFileState, ...]: ...
+        def name(self) -> t.NonEmptyStr:
+            """Consumer display name."""
+            ...
+
         @property
-        def name(self) -> t.NonEmptyStr: ...
+        def root(self) -> Path:
+            """Structural member projected from the owning model.
+
+            Absolute checkout root of the consumer repository outside this
+            workspace.
+            """
+            ...
+
         @property
-        def docs_audit(self) -> p.Infra.DocsAuditOverridesSpec: ...
+        def integration_branch(self) -> t.NonEmptyStr | None:
+            """Structural member projected from the owning model.
+
+            Consumer integration branch; absent defers to the resolver's provider
+            fallback.
+            """
+            ...
+
         @property
-        def beads(self) -> p.Infra.BeadsProjectSpec | None: ...
+        def fix_namespace(self) -> bool:
+            """Run the consumer's make fix-namespace verb."""
+            ...
+
         @property
-        def gascity_enabled(self) -> bool: ...
+        def fix_accessors(self) -> bool:
+            """Run the consumer's make fix-accessors verb."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceSpec(CandidateDependenciesSpec, Protocol):
+        """Structural data contract projected from the owning model."""
+
         @property
-        def repository(self) -> p.Infra.RepositoryRef: ...
+        def inputs(self) -> tuple[p.Cli.AtomicFileState, ...]:
+            """Original topology and declaration observations."""
+            ...
+
         @property
-        def project(self) -> p.Infra.ProjectSpec | None: ...
+        def name(self) -> t.NonEmptyStr:
+            """Workspace name."""
+            ...
+
         @property
-        def flext_source(self) -> p.Infra.CodegenBootstrapSource | None: ...
+        def docs_audit(
+            self,
+        ) -> FlextInfraProtocolsConfigContract.DocsAuditOverridesSpec:
+            """Validated local documentation audit declarations."""
+            ...
+
         @property
-        def namespace_scan_dirs(self) -> Sequence[str]: ...
+        def beads(self) -> FlextInfraProtocolsConfigBeads.BeadsProjectSpec | None:
+            """Repository-local Beads identity when enabled."""
+            ...
+
         @property
-        def integration(self) -> p.Infra.WorkspaceIntegrationSpec | None: ...
+        def gascity_enabled(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Gas City runtime-contract participation resolved from the matched
+            repository policy overlay; True when the checkout declares no manifest
+            or no overlay.
+            """
+            ...
+
+        @property
+        def repository(self) -> FlextInfraProtocolsConfigRepository.RepositoryRef:
+            """Local repository Git contract."""
+            ...
+
+        @property
+        def project(self) -> FlextInfraProtocolsConfigRepository.ProjectSpec | None:
+            """Metadata required only when materializing a new tree."""
+            ...
+
+        @property
+        def flext_source(
+            self,
+        ) -> FlextInfraProtocolsConfigWorkspace.CodegenBootstrapSource | None:
+            """Structural member projected from the owning model.
+
+            FLEXT dependency source required before the first pyproject exists;
+            generated dependencies own provenance afterwards.
+            """
+            ...
+
+        @property
+        def namespace_scan_dirs(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Repository-level production roots the namespace validator enforces; an
+            empty declaration keeps every root in scope, and an explicit project-
+            level declaration wins.
+            """
+            ...
+
+        @property
+        def integration(
+            self,
+        ) -> FlextInfraProtocolsConfigRepository.WorkspaceIntegrationSpec | None:
+            """Structural member projected from the owning model.
+
+            Declared integration provider and branch from the workspace manifest;
+            the resolver consults it before any Git fact.
+            """
+            ...
+
         @property
         def candidate_bootstrap_targets(
             self,
-        ) -> tuple[p.Infra.CandidateBootstrapTargetSpec, ...]: ...
+        ) -> tuple[
+            FlextInfraProtocolsConfigWorkspace.CandidateBootstrapTargetSpec, ...
+        ]:
+            """Declared candidate worktrees for bootstrap."""
+            ...
+
         @property
-        def subprojects(self) -> tuple[p.Infra.RepositoryRef, ...]: ...
+        def subprojects(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigRepository.RepositoryRef, ...]:
+            """Direct governed repositories from local .gitmodules."""
+            ...
+
         @property
         def pending_subprojects(
             self,
-        ) -> tuple[p.Infra.GitSubmoduleDeclaration, ...]: ...
+        ) -> tuple[FlextInfraProtocolsConfigWorkspace.GitSubmoduleDeclaration, ...]:
+            """Managed Git declarations awaiting checkout provisioning."""
+            ...
+
         @property
-        def external_dependency_paths(self) -> tuple[Path, ...]: ...
+        def external_dependency_paths(self) -> tuple[Path, ...]:
+            """Observed external or fork Git submodule paths."""
+            ...
+
         @property
-        def external_consumers(self) -> tuple[p.Infra.ExternalConsumerSpec, ...]: ...
+        def external_consumers(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigWorkspace.ExternalConsumerSpec, ...]:
+            """Structural member projected from the owning model.
+
+            Out-of-workspace repositories propagation adjusts as guests through
+            their own make verbs.
+            """
+            ...
 
 
 __all__: tuple[str, ...] = ("FlextInfraProtocolsConfigWorkspace",)

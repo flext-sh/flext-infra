@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -57,6 +56,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._semantic_cutover.edits import (
         FlextInfraUtilitiesSemanticCutoverEdits,
+    )
+    from flext_infra._utilities._semantic_cutover.external_model_owner import (
+        FlextInfraUtilitiesSemanticCutoverExternalModelOwner,
     )
     from flext_infra._utilities._semantic_cutover.facade_base_cst import (
         FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
@@ -136,6 +138,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverClassScope",
     "FlextInfraUtilitiesSemanticCutoverDynamicEnvironment",
     "FlextInfraUtilitiesSemanticCutoverEdits",
+    "FlextInfraUtilitiesSemanticCutoverExternalModelOwner",
     "FlextInfraUtilitiesSemanticCutoverFacadeBaseCst",
     "FlextInfraUtilitiesSemanticCutoverFacadeBases",
     "FlextInfraUtilitiesSemanticCutoverFacadeOwners",
@@ -165,7 +168,7 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "FlextInfraUtilitiesDeclarationPayload": ".declaration_payload",
         "FlextInfraUtilitiesSemanticComposition": ".composition",
         "FlextInfraUtilitiesSemanticConstantConsumers": ".constant_consumers",
@@ -178,6 +181,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticCutoverClassScope": ".class_scope",
         "FlextInfraUtilitiesSemanticCutoverDynamicEnvironment": ".dynamic_environment",
         "FlextInfraUtilitiesSemanticCutoverEdits": ".edits",
+        "FlextInfraUtilitiesSemanticCutoverExternalModelOwner": ".external_model_owner",
         "FlextInfraUtilitiesSemanticCutoverFacadeBaseCst": ".facade_base_cst",
         "FlextInfraUtilitiesSemanticCutoverFacadeBases": ".facade_bases",
         "FlextInfraUtilitiesSemanticCutoverFacadeOwners": ".facade_owners",
@@ -206,6 +210,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticModelAliases": ".model_aliases",
         "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
         "FlextInfraUtilitiesTypesSemanticNesting": ".nesting_types",
-    }),
+    },
     public_exports=__all__,
 )

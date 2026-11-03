@@ -1,0 +1,19 @@
+id: field-default-keyword
+valid:
+- |
+  from flext_core import m
+  class A(m.BaseModel):
+      flag: bool = m.Field(default=True, description="x")
+- |
+  from flext_core import m
+  class B(m.BaseModel):
+      name: str = m.Field("n", description="x")
+invalid:
+- |
+  from flext_core import m
+  class C(m.BaseModel):
+      flag: bool = m.Field(True, description="x")
+- |
+  from flext_core import m
+  class D(m.BaseModel):
+      quiet: bool = m.Field(False, description="y")

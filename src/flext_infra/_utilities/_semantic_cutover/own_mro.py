@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Generator, Iterator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
@@ -27,8 +28,14 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         *,
         source_project: p.Infra.RopeProject,
         file_path: Path,
+        local_module: str,
+        upstream: Mapping[str, str],
     ) -> str:
         """Plan member and import changes without moving an import's suite.
+
+        A route whose owner is declared in ``local_module`` is spelled through
+        the local class and imports nothing; ``upstream`` binds each elected
+        name from the upstream package that publishes it.
 
         Returns:
             The native candidate with exact lexical owner bindings.
@@ -38,14 +45,25 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
 
         """
         module = cls._module(source_project, file_path, source)
-        declarations = cls._family_declarations(module, source_project, imports, routes)
+        declarations = cls._family_declarations(
+            module,
+            source_project,
+            imports,
+            {path: route for path, route in routes.items() if route[0] != local_module},
+            upstream,
+        )
         updated = source
-        for path, (_provider, owner, suffix) in routes.items():
+        for path, (target, owner, suffix) in routes.items():
             updated = cls._restructure(
                 (source_project, file_path, updated),
                 ".".join(path),
                 f"{owner}.{suffix}",
-                admission=cls._family_admission(path[0], owner, imports[path[0]]),
+                admission=cls._family_admission(
+                    path[0],
+                    owner,
+                    imports[path[0]],
+                    local=target == local_module,
+                ),
             )
         for pattern, goal in declarations:
             updated = cls._restructure(
@@ -129,7 +147,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
 
     @staticmethod
     def _family_admission(
-        root: str, owner: str, provider: str
+        root: str, owner: str, provider: str, *, local: bool
     ) -> t.Infra.RopeMatchFilter:
         """Bind a family route once for native lexical admission.
 
@@ -158,7 +176,10 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
                 or binding.imported_module.level
             ):
                 return False
-            if scope.lookup(owner) is not None:
+            captured = scope.lookup(owner)
+            if captured is not None and (
+                not local or isinstance(captured, p.Infra.RopeImportedName)
+            ):
                 msg = "Own-family repair would capture a binding"
                 raise ValueError(msg)
             return True
@@ -714,6 +735,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         project: p.Infra.RopeProject,
         imports: Mapping[str, str],
         routes: Mapping[t.StrTuple, tuple[str, str, str]],
+        upstream: Mapping[str, str],
     ) -> tuple[tuple[str, str], ...]:
         """Read scoped declarations from the native source binding index.
 
@@ -751,7 +773,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             ):
                 msg = "Native import aliases do not prove the whole declaration"
                 raise ValueError(msg)
-            goals = cls._import_goals(provider, aliases, imports, routes)
+            goals = cls._import_goals(provider, aliases, imports, routes, upstream)
             replacements[region] = cls._import_replacement(module, statement, goals)
         return tuple(replacements.values())
 
@@ -772,37 +794,36 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             ValueError: The provider or scoped declaration cannot be authenticated.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntime
         fragments = module.get_source_binding_index().fragments
+        source = module.source_code
+        elected: set[tuple[int, int]] = set()
         for name, provider in imports.items():
-            binding = module.get_scope().lookup(name)
-            if not isinstance(binding, p.Infra.RopeImportedName):
-                msg = f"Own-family import lacks its native binding: {name}"
-                raise TypeError(msg)
-            if (
-                binding.imported_module.module_name != provider
-                or binding.imported_module.level
-            ):
-                msg = f"Own-family import differs from its declared provider: {name}"
-                raise ValueError(msg)
-            occurrences = runtime.create_occurrence_finder(
-                project, name, binding, imports=True, in_hierarchy=False
-            ).find_occurrences(pymodule=module)
-            for occurrence in occurrences:
-                if not finder.is_a_name_after_from_import(occurrence.offset):
+            declared = False
+            for fragment in fragments:
+                if finder.get_word_at(fragment.start) != "from":
                     continue
-                enclosing = tuple(
-                    fragment
-                    for fragment in fragments
-                    if fragment.start <= occurrence.offset < fragment.end
-                    and finder.get_word_at(fragment.start) == "from"
-                )
-                if not enclosing:
-                    msg = (
-                        "Rope has no scoped import declaration for the elected binding"
+                statement = ast.parse(source[fragment.start : fragment.end]).body[0]
+                if not (
+                    isinstance(statement, ast.ImportFrom)
+                    and not statement.level
+                    and statement.module == provider
+                    and any(
+                        (alias.asname or alias.name) == name
+                        for alias in statement.names
                     )
-                    raise ValueError(msg)
-                yield provider, min(enclosing, key=lambda item: item.end - item.start)
+                ):
+                    continue
+                declared = True
+                region = (fragment.start, fragment.end)
+                if region not in elected:
+                    elected.add(region)
+                    yield provider, fragment
+            if not declared:
+                msg = (
+                    "Rope has no scoped import declaration for the elected "
+                    f"binding: {name} from {provider}"
+                )
+                raise ValueError(msg)
 
     @staticmethod
     def _import_aliases(
@@ -844,6 +865,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
         aliases: tuple[tuple[str, str | None], ...],
         imports: Mapping[str, str],
         routes: Mapping[t.StrTuple, tuple[str, str, str]],
+        upstream: Mapping[str, str],
     ) -> t.StrTuple:
         """Compose native declarations while retaining unrelated aliases.
 
@@ -875,6 +897,13 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
                     for path, (target, owner, _) in routes.items()
                     if path[0] in elected
                 })
+            ),
+            *(
+                runtime.from_import(
+                    upstream[name], 0, ((name, None),)
+                ).get_import_statement()
+                for name in sorted(elected)
+                if name in upstream
             ),
         )
 

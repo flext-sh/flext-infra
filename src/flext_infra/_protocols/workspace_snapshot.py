@@ -9,12 +9,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_cli import p
+
+    from flext_infra._protocols import FlextInfraProtocolsRefactorAstGrep
+    from flext_infra._protocols._codegen import (
+        FlextInfraProtocolsCodegenLazyInit,
+        FlextInfraProtocolsCodegenTransaction,
+    )
+    from flext_infra._typings import FlextInfraTypesRope, FlextInfraTypesRopeNative
 
 
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import AbstractContextManager
 from typing import Literal, Protocol, Self, runtime_checkable
+
+from flext_cli import FlextCliProtocols
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -115,12 +124,17 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         """Source reads through the project's overlaid filesystem view."""
 
         @property
-        def source_plans(self) -> tuple[p.Infra.CodegenFilePlan, ...]: ...
+        def source_plans(
+            self,
+        ) -> tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]: ...
 
         def source_view(
             self,
             *,
-            declared_files: tuple[p.Infra.CodegenFilePlan, ...] | None = (),
+            declared_files: tuple[
+                FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...
+            ]
+            | None = (),
             additional_source_folders: tuple[str, ...] | None = (),
             analysis_files: Mapping[Path, str] | None = None,
         ) -> AbstractContextManager[Self]: ...
@@ -230,8 +244,8 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         def frozen_layout(self) -> AbstractContextManager[Self]: ...
 
     @runtime_checkable
-    class WorkspaceSnapshotSource(Protocol):
-        """One workspace file as the run read it."""
+    class WorkspaceSnapshotSource(FlextCliProtocols.Model, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def path(self) -> Path:
@@ -244,7 +258,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
-        def digest(self) -> str:
+        def digest(self) -> t.NonEmptyStr:
             """SHA-256 of the exact file bytes."""
             ...
 
@@ -264,35 +278,42 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceBootstrapDependencies(Protocol):
-        """Bootstrap closure and the native source epoch that established it."""
+    class WorkspaceBootstrapDependencies(FlextCliProtocols.Model, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
-        def namespace(self) -> str: ...
+        def namespace(self) -> str:
+            """Publishing namespace."""
+            ...
 
         @property
-        def modules(self) -> tuple[t.Infra.RopeSourceModule, ...]: ...
+        def modules(self) -> tuple[FlextInfraTypesRope.RopeSourceModule, ...]:
+            """Native modules of the source epoch."""
+            ...
 
         @property
-        def source_folders(self) -> tuple[str, ...]: ...
+        def source_folders(self) -> tuple[str, ...]:
+            """Native source folder election."""
+            ...
 
         @property
-        def python_path_folders(self) -> tuple[str, ...]: ...
+        def python_path_folders(self) -> tuple[str, ...]:
+            """Native Python path election."""
+            ...
 
         @property
-        def source_digests(self) -> tuple[str, ...]: ...
+        def source_digests(self) -> tuple[str, ...]:
+            """Digests of the elected source bytes."""
+            ...
 
         @property
-        def dependencies(self) -> frozenset[str]: ...
+        def dependencies(self) -> frozenset[str]:
+            """Runtime bootstrap dependencies."""
+            ...
 
     @runtime_checkable
-    class WorkspaceSnapshot(Protocol):
-        """Read surface of the one Rope model a workspace run shares.
-
-        Stages depend on this surface, never on the concrete model; the run's
-        composition root builds the snapshot once and injects it. Queries go
-        through the ``u.Infra`` snapshot owner, which fills these memos.
-        """
+    class WorkspaceSnapshot(FlextCliProtocols.Model, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def workspace_root(self) -> Path:
@@ -305,110 +326,107 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
-        def engine(self) -> p.Infra.RopeProject:
+        def engine(self) -> FlextInfraTypesRope.RopeProject:
             """The one source engine project; planned effects enter its overlay."""
             ...
 
         @property
-        def python_files(self) -> Mapping[Path, tuple[Path, ...]]:
-            """Python sources of each member, listed on first query."""
+        def python_files(self) -> dict[Path, tuple[Path, ...]]:
+            """Python sources of each member."""
             ...
 
         @property
-        def directory_facts(
-            self,
-        ) -> Mapping[Path, tuple[Path | None, str]]:
+        def directory_facts(self) -> dict[Path, tuple[Path | None, str]]:
             """Physical directory owner and package name."""
             ...
 
         @property
         def python_module_facts(
             self,
-        ) -> Mapping[t.Infra.RopeNativeParsedModule, p.Infra.PythonModuleFacts]:
-            """Static facts keyed by the original engine's parsed module."""
+        ) -> Mapping[
+            FlextInfraTypesRopeNative.RopeNativeParsedModule,
+            FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
+        ]:
+            """Shared static facts keyed by the original engine parse."""
             ...
 
         @property
         def sources(
             self,
-        ) -> Mapping[
-            Path, FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshotSource
-        ]:
-            """Authenticated reads of this run, made on first query."""
+        ) -> dict[Path, FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshotSource]:
+            """Authenticated reads of this run."""
             ...
 
         @property
-        def packages(self) -> Mapping[Path, str]:
-            """Dotted package of each queried directory."""
+        def packages(self) -> dict[Path, str]:
+            """Dotted package of each directory."""
             ...
 
         @property
-        def import_edges(
-            self,
-        ) -> Mapping[Path, tuple[frozenset[str], frozenset[str]]]:
-            """Runtime and typing-only imported modules per queried source."""
+        def import_edges(self) -> dict[Path, tuple[frozenset[str], frozenset[str]]]:
+            """Runtime and typing-only imported modules per source."""
             ...
 
         @property
         def bootstrap_dependencies(
             self,
-        ) -> Mapping[
+        ) -> dict[
             Path, FlextInfraProtocolsWorkspaceSnapshot.WorkspaceBootstrapDependencies
         ]:
-            """Bootstrap closure bound to native modules and resolver roots."""
+            """Bootstrap facts per native source epoch."""
             ...
 
         @property
-        def absolute_import_roots(self) -> Mapping[Path, t.StrTuple]:
+        def absolute_import_roots(self) -> dict[Path, t.StrTuple]:
             """Absolute imported package roots per captured member."""
             ...
 
         @property
-        def import_namespaces(
-            self,
-        ) -> Mapping[tuple[Path, Path], tuple[Path, str] | None]:
+        def import_namespaces(self) -> dict[tuple[Path, Path], tuple[Path, str] | None]:
             """Import-law namespace election per consumer and source."""
             ...
 
         @property
-        def class_ancestors(self) -> Mapping[str, t.StrTuple]:
+        def class_ancestors(self) -> dict[str, t.StrTuple]:
             """C3 method order per qualified class identity."""
             ...
 
         @property
-        def exports(self) -> Mapping[Path, Sequence[str]]:
+        def exports(self) -> dict[Path, Sequence[str]]:
             """Declared public names per module."""
             ...
 
         @property
-        def bindings(self) -> Mapping[Path, Mapping[str, str]]:
+        def bindings(self) -> dict[Path, dict[str, str]]:
             """Module-level name to bound qualified source per module."""
             ...
 
         @property
-        def initializer_aliases(self) -> Mapping[Path, Mapping[str, str]]:
+        def initializer_aliases(self) -> dict[Path, dict[str, str]]:
             """Aliases each initializer publishes."""
             ...
 
         @property
-        def receiver_bindings(self) -> Mapping[tuple[Path, str], Path | None]:
+        def receiver_bindings(self) -> dict[tuple[Path, str], Path | None]:
             """Module each source binds a facade letter from."""
             ...
 
         @property
-        def facade_paths(self) -> Mapping[tuple[Path, str], Path]:
+        def facade_paths(self) -> dict[tuple[Path, str], Path]:
             """Facade module per package and letter."""
             ...
 
         @property
-        def pyproject_texts(self) -> Mapping[tuple[Path, str], str]:
+        def pyproject_texts(self) -> dict[tuple[Path, str], str]:
             """Recovered pyproject text per path and digest."""
             ...
 
         @property
         def codemod_renderings(
             self,
-        ) -> Mapping[tuple[Path, str], p.Infra.CodemodNativeGenerated]:
+        ) -> Mapping[
+            tuple[Path, str], FlextInfraProtocolsRefactorAstGrep.CodemodNativeGenerated
+        ]:
             """Native codemod rendering per member root and render-input digest."""
             ...
 

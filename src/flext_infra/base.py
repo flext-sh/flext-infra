@@ -48,8 +48,8 @@ class FlextInfraServiceBase[TDomainResult](
 
     def _filtered_projects(
         self,
-        projects: Sequence[FlextInfraProtocolsBase.ProjectInfo],
-    ) -> Sequence[FlextInfraProtocolsBase.ProjectInfo]:
+        projects: Sequence[p.Infra.ProjectInfo],
+    ) -> Sequence[p.Infra.ProjectInfo]:
         """Apply the comma-separated ``project_filter`` when one is configured.
 
         Returns:

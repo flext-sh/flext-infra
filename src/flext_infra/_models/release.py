@@ -267,7 +267,7 @@ class FlextInfraModelsRelease:
             (), description="Merged PR subjects since previous_tag"
         )
         declared: bool = m.Field(
-            False,
+            default=False,
             description="``next`` is the declared version itself (first release, finalized pre-release, or a version written beyond the last tag): decided when it was written, still untagged",
         )
 

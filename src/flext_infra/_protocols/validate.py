@@ -12,304 +12,673 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra import c, t
+from flext_cli import FlextCliProtocols
+
+from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra._constants import FlextInfraConstantsBase, FlextInfraConstantsMake
 
 
 class FlextInfraProtocolsValidate:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ValidationReport(Protocol):
+    class ValidationReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        passed: bool
-        violations: Sequence[str]
-        summary: str
+        @property
+        def passed(self) -> bool:
+            """Validation status."""
+            ...
+
+        @property
+        def violations(self) -> Sequence[str]:
+            """Collected validation violations."""
+            ...
+
+        @property
+        def summary(self) -> str:
+            """Human-readable validation summary."""
+            ...
 
     @runtime_checkable
-    class FreshImportProbe(Protocol):
+    class FreshImportProbe(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def subject(self) -> str: ...
+        def subject(self) -> str:
+            """Public contract verified by this process."""
+            ...
+
         @property
-        def code(self) -> str: ...
+        def code(self) -> str:
+            """Python program rendered from typed contracts."""
+            ...
 
     @runtime_checkable
-    class FreshImportEntryPoints(Protocol):
+    class FreshImportEntryPoints(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def scripts(self) -> Mapping[str, str] | None: ...
+        def scripts(self) -> Mapping[str, str] | None:
+            """Declared console entrypoints when present."""
+            ...
+
         @property
-        def gui_scripts(self) -> Mapping[str, str] | None: ...
+        def gui_scripts(self) -> Mapping[str, str] | None:
+            """Declared graphical entrypoints when present."""
+            ...
+
         @property
-        def entry_points(self) -> Mapping[str, Mapping[str, str]] | None: ...
+        def entry_points(self) -> Mapping[str, Mapping[str, str]] | None:
+            """Declared plugin entrypoint groups when present."""
+            ...
 
     @runtime_checkable
-    class FreshImportMetadata(Protocol):
+    class FreshImportMetadata(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project(self) -> p.Infra.FreshImportEntryPoints: ...
+        def project(self) -> FlextInfraProtocolsValidate.FreshImportEntryPoints:
+            """Executable metadata from the published project table."""
+            ...
 
     @runtime_checkable
-    class SkillRuleEvaluationContext(Protocol):
+    class SkillRuleEvaluationContext(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        rules_list: t.JsonList
-        skill_dir: Path
-        root: Path
-        mode: c.Infra.OperationMode
-        include_globs: Sequence[str]
-        exclude_globs: Sequence[str]
+        @property
+        def rules_list(self) -> t.JsonList:
+            """Rules to evaluate."""
+            ...
+
+        @property
+        def skill_dir(self) -> Path:
+            """Skill directory path."""
+            ...
+
+        @property
+        def root(self) -> Path:
+            """Repository root path."""
+            ...
+
+        @property
+        def mode(self) -> FlextInfraConstantsBase.OperationMode:
+            """Skill validation mode."""
+            ...
+
+        @property
+        def include_globs(self) -> Sequence[str]:
+            """Include globs."""
+            ...
+
+        @property
+        def exclude_globs(self) -> Sequence[str]:
+            """Exclude globs."""
+            ...
 
     @runtime_checkable
-    class SkillReportContext(Protocol):
+    class SkillReportContext(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        rules: Mapping[str, t.JsonValue]
-        root: Path
-        skill_name: str
-        mode: c.Infra.OperationMode
-        counts: t.IntMapping
-        violations: Sequence[str]
+        @property
+        def rules(self) -> Mapping[str, t.JsonValue]:
+            """Rules payload."""
+            ...
+
+        @property
+        def root(self) -> Path:
+            """Repository root path."""
+            ...
+
+        @property
+        def skill_name(self) -> str:
+            """Skill folder name."""
+            ...
+
+        @property
+        def mode(self) -> FlextInfraConstantsBase.OperationMode:
+            """Skill validation mode."""
+            ...
+
+        @property
+        def counts(self) -> t.IntMapping:
+            """Violation counts."""
+            ...
+
+        @property
+        def violations(self) -> Sequence[str]:
+            """Violations."""
+            ...
 
     @runtime_checkable
-    class StubAnalysisReport(Protocol):
+    class StubAnalysisReport(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        project: t.NonEmptyStr
-        mypy_hints: MutableSequence[str]
-        internal_missing: MutableSequence[str]
-        unresolved_missing: MutableSequence[str]
-        total_missing: t.NonNegativeInt
+        @property
+        def mypy_hints(self) -> MutableSequence[str]:
+            """Install-package hints extracted from mypy output."""
+            ...
+
+        @property
+        def internal_missing(self) -> MutableSequence[str]:
+            """Missing internal imports."""
+            ...
+
+        @property
+        def unresolved_missing(self) -> MutableSequence[str]:
+            """Missing external imports without an installed typed dependency."""
+            ...
+
+        @property
+        def total_missing(self) -> t.NonNegativeInt:
+            """Total missing imports."""
+            ...
 
     @runtime_checkable
-    class PytestMarkdownOrigin(Protocol):
+    class PytestMarkdownOrigin(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def source_path(self) -> str: ...
+        def source_path(self) -> str:
+            """Repository-relative source identity."""
+            ...
+
         @property
-        def start_line(self) -> int: ...
+        def start_line(self) -> int:
+            """Plugin first-code-line offset."""
+            ...
+
         @property
-        def source_sha256(self) -> str: ...
+        def source_sha256(self) -> str:
+            """Digest of the exact plugin-defined executable source."""
+            ...
+
         @property
-        def max_retries(self) -> int: ...
+        def max_retries(self) -> int:
+            """Plugin-declared retry policy."""
+            ...
 
     @runtime_checkable
-    class PytestMarkdownItem(Protocol):
+    class PytestMarkdownItem(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def node_id(self) -> t.NonEmptyStr: ...
+        def node_id(self) -> t.NonEmptyStr:
+            """Actual collected pytest node ID."""
+            ...
+
         @property
-        def origin(self) -> p.Infra.PytestMarkdownOrigin: ...
+        def origin(self) -> FlextInfraProtocolsValidate.PytestMarkdownOrigin:
+            """Definition supplied by the installed Markdown collector."""
+            ...
 
     @runtime_checkable
-    class PytestMarkdownCollection(Protocol):
+    class PytestMarkdownCollection(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        eligible: MutableSequence[p.Infra.PytestMarkdownOrigin]
-        collected: MutableSequence[p.Infra.PytestMarkdownItem]
+        @property
+        def eligible(
+            self,
+        ) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownOrigin]:
+            """Independently parsed origins."""
+            ...
+
+        @property
+        def collected(self) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownItem]:
+            """Observed pre-selection items."""
+            ...
+
         deselected: MutableSequence[str]
 
     @runtime_checkable
-    class PytestMarkdownAttempt(Protocol):
+    class PytestMarkdownAttempt(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def node_id(self) -> t.NonEmptyStr: ...
+        def node_id(self) -> t.NonEmptyStr:
+            """Actual executed Markdown node."""
+            ...
+
         @property
-        def attempts(self) -> int: ...
+        def attempts(self) -> int:
+            """Observed native runner entries."""
+            ...
+
         @property
-        def first_exception_type(self) -> str | None: ...
+        def first_exception_type(self) -> str | None:
+            """First exception escaping the SDK runner."""
+            ...
+
         @property
-        def first_exception_traceback(self) -> str | None: ...
+        def first_exception_traceback(self) -> str | None:
+            """Original first exception traceback."""
+            ...
 
     @runtime_checkable
-    class PytestCollectionManifest(Protocol):
+    class PytestCollectionManifest(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def node_ids(self) -> t.StrTuple: ...
+        def node_ids(self) -> t.StrTuple:
+            """Unique node IDs in execution order."""
+            ...
+
         @property
-        def markdown_eligible(self) -> tuple[p.Infra.PytestMarkdownOrigin, ...]: ...
+        def markdown_eligible(
+            self,
+        ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownOrigin, ...]:
+            """Independent plugin eligibility."""
+            ...
+
         @property
-        def markdown_collected(self) -> tuple[p.Infra.PytestMarkdownItem, ...]: ...
+        def markdown_collected(
+            self,
+        ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownItem, ...]:
+            """Collection before deselection."""
+            ...
+
         @property
-        def markdown_deselected(self) -> t.StrTuple: ...
+        def markdown_deselected(self) -> t.StrTuple:
+            """Explicit Markdown deselection node IDs."""
+            ...
 
     @runtime_checkable
-    class PytestSelectionPlan(Protocol):
+    class PytestSelectionPlan(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def manifest_path(self) -> Path: ...
+        def manifest_path(self) -> Path:
+            """Canonical node-ID manifest."""
+            ...
+
         @property
-        def node_ids(self) -> t.StrTuple: ...
+        def node_ids(self) -> t.StrTuple:
+            """Selected node IDs in execution order."""
+            ...
+
         @property
-        def whole_target(self) -> bool: ...
+        def whole_target(self) -> bool:
+            """Whether the selection covers the complete test target."""
+            ...
+
         @property
-        def inventory_collected(self) -> bool: ...
+        def inventory_collected(self) -> bool:
+            """Whether this run executed the complete inventory phase."""
+            ...
+
         @property
-        def owns_no_tests(self) -> bool: ...
+        def owns_no_tests(self) -> bool:
+            """Structural member projected from the owning model.
+
+            The project declares no test files under the config-owned collection
+            roots: an empty suite by design, not a broken run.
+            """
+            ...
 
     @runtime_checkable
-    class PytestInvocation(Protocol):
+    class PytestInvocation(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def manifest_path(self) -> Path | None: ...
+        def manifest_path(self) -> Path | None:
+            """Collection manifest enforcing a nonempty selection."""
+            ...
+
         @property
-        def serialize(self) -> bool: ...
+        def serialize(self) -> bool:
+            """Run serially without xdist workers."""
+            ...
+
         @property
-        def whole_target(self) -> bool: ...
+        def whole_target(self) -> bool:
+            """Selection covers the complete test target."""
+            ...
+
         @property
-        def execution_mode(self) -> c.Infra.PytestExecutionMode: ...
+        def execution_mode(self) -> FlextInfraConstantsMake.PytestExecutionMode:
+            """Canonical execution mode for this invocation."""
+            ...
 
     @runtime_checkable
-    class PytestRunContext(Protocol):
+    class PytestRunContext(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def execution_mode(self) -> c.Infra.PytestExecutionMode: ...
+        def execution_mode(self) -> FlextInfraConstantsMake.PytestExecutionMode:
+            """Canonical test operation for this report directory."""
+            ...
+
         @property
-        def testmon_db(self) -> Path | None: ...
+        def testmon_db(self) -> Path | None:
+            """Structural member projected from the owning model.
+
+            External pytest-testmon database for incremental operations; absent for
+            full and coverage execution.
+            """
+            ...
+
         @property
-        def testmon_lease_acquired(self) -> bool | None: ...
+        def testmon_lease_acquired(self) -> bool | None:
+            """Structural member projected from the owning model.
+
+            Whether an incremental phase acquired its Testmon lease; absent for full
+            and coverage execution.
+            """
+            ...
+
         @property
-        def deadline_monotonic(self) -> float: ...
+        def deadline_monotonic(self) -> float:
+            """Shared absolute deadline across all execution phases."""
+            ...
+
         @property
-        def report_directory(self) -> Path | None: ...
+        def report_directory(self) -> Path | None:
+            """Explicit directory binding profiled parent and children."""
+            ...
+
         @property
-        def profile_sha256(self) -> str | None: ...
+        def profile_sha256(self) -> str | None:
+            """Digest binding a profile sidecar to its exact pstats artifact."""
+            ...
 
     @runtime_checkable
-    class PytestReportEvent(Protocol):
+    class PytestReportEvent(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def report_type(self) -> str: ...
+        def report_type(self) -> str:
+            """Pytest event kind."""
+            ...
+
         @property
-        def category(self) -> str | None: ...
+        def category(self) -> str | None:
+            """Warning category name."""
+            ...
+
         @property
-        def filename(self) -> str | None: ...
+        def filename(self) -> str | None:
+            """Warning source filename."""
+            ...
+
         @property
-        def lineno(self) -> int | None: ...
+        def lineno(self) -> int | None:
+            """Warning source line."""
+            ...
+
         @property
-        def message(self) -> str | None: ...
+        def message(self) -> str | None:
+            """Complete warning message."""
+            ...
+
         @property
-        def nodeid(self) -> str | None: ...
+        def nodeid(self) -> str | None:
+            """TestReport node ID."""
+            ...
+
         @property
-        def when(self) -> str | None: ...
+        def when(self) -> str | None:
+            """Pytest lifecycle phase."""
+            ...
+
         @property
-        def outcome(self) -> Literal["passed", "failed", "skipped"] | None: ...
+        def outcome(self) -> Literal["passed", "failed", "skipped"] | None:
+            """TestReport outcome."""
+            ...
+
         @property
-        def user_properties(self) -> tuple[tuple[str, t.JsonValue], ...]: ...
+        def user_properties(self) -> tuple[tuple[str, t.JsonValue], ...]:
+            """Public pytest item properties transported by report-log."""
+            ...
 
     @runtime_checkable
-    class PytestWarningEvent(Protocol):
+    class PytestWarningEvent(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def category(self) -> str: ...
+        def category(self) -> str:
+            """Runtime warning class name."""
+            ...
+
         @property
-        def category_module(self) -> str: ...
+        def category_module(self) -> str:
+            """Declaring warning module."""
+            ...
+
         @property
-        def category_qualname(self) -> str: ...
+        def category_qualname(self) -> str:
+            """Qualified runtime class name."""
+            ...
+
         @property
-        def filename(self) -> str: ...
+        def filename(self) -> str:
+            """Warning source filename."""
+            ...
+
         @property
-        def lineno(self) -> int: ...
+        def lineno(self) -> int:
+            """Warning source line."""
+            ...
+
         @property
-        def message(self) -> str: ...
+        def message(self) -> str:
+            """Complete warning message."""
+            ...
 
     @runtime_checkable
-    class PytestPhaseOutcome(Protocol):
+    class PytestPhaseOutcome(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def node_id(self) -> t.NonEmptyStr: ...
+        def node_id(self) -> t.NonEmptyStr:
+            """Actual TestReport node ID."""
+            ...
+
         @property
-        def phase(self) -> Literal["setup", "call", "teardown", "???"]: ...
+        def phase(self) -> Literal["setup", "call", "teardown", "???"]:
+            """Observed public pytest runtest phase."""
+            ...
+
         @property
-        def outcome(self) -> Literal["passed", "failed", "skipped"]: ...
+        def outcome(self) -> Literal["passed", "failed", "skipped"]:
+            """Unmodified TestReport outcome."""
+            ...
 
     @runtime_checkable
-    class PytestDiagnostics(Protocol):
+    class PytestDiagnostics(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
-        failed_count: t.NonNegativeInt
-        error_count: t.NonNegativeInt
-        warning_count: t.NonNegativeInt
-        skipped_count: t.NonNegativeInt
+        @property
+        def failed_count(self) -> t.NonNegativeInt:
+            """Failed test case count."""
+            ...
+
+        @property
+        def error_count(self) -> t.NonNegativeInt:
+            """Errored test case count."""
+            ...
+
+        @property
+        def warning_count(self) -> t.NonNegativeInt:
+            """Recorded warning event count."""
+            ...
+
+        @property
+        def skipped_count(self) -> t.NonNegativeInt:
+            """Skipped test case count."""
+            ...
+
         connectivity_skip_cases: t.StrTuple
         collection_failed_count: t.NonNegativeInt
         collection_skipped_count: t.NonNegativeInt
         collection_failed_cases: t.StrTuple
         collection_skip_cases: t.StrTuple
         reported_node_ids: t.StrTuple
-        phase_outcomes: tuple[p.Infra.PytestPhaseOutcome, ...]
-        markdown_attempts: tuple[p.Infra.PytestMarkdownAttempt, ...]
-        markdown_items: tuple[p.Infra.PytestMarkdownItem, ...]
-        failed_cases: Sequence[str]
-        error_traces: Sequence[str]
-        warning_lines: Sequence[str]
-        skip_cases: Sequence[str]
-        slow_entries: Sequence[str]
+
+        @property
+        def phase_outcomes(
+            self,
+        ) -> tuple[FlextInfraProtocolsValidate.PytestPhaseOutcome, ...]:
+            """Complete observed runtest outcomes, including failures."""
+            ...
+
+        @property
+        def markdown_attempts(
+            self,
+        ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownAttempt, ...]:
+            """Observed SDK execution attempts."""
+            ...
+
+        @property
+        def markdown_items(
+            self,
+        ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownItem, ...]:
+            """Executed call-phase origins."""
+            ...
+
+        @property
+        def failed_cases(self) -> Sequence[str]:
+            """Failed test labels."""
+            ...
+
+        @property
+        def error_traces(self) -> Sequence[str]:
+            """Collected error traces."""
+            ...
+
+        @property
+        def warning_lines(self) -> Sequence[str]:
+            """Captured warning lines."""
+            ...
+
+        @property
+        def skip_cases(self) -> Sequence[str]:
+            """Skipped test labels."""
+            ...
+
+        @property
+        def slow_entries(self) -> Sequence[str]:
+            """Slow test entries."""
+            ...
 
     @runtime_checkable
-    class PytestMarkdownReconciliation(Protocol):
+    class PytestMarkdownReconciliation(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def eligible(self) -> tuple[p.Infra.PytestMarkdownOrigin, ...]: ...
+        def eligible(
+            self,
+        ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownOrigin, ...]:
+            """Independent parser eligibility."""
+            ...
+
         @property
-        def selected(self) -> tuple[p.Infra.PytestMarkdownItem, ...]: ...
+        def selected(
+            self,
+        ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownItem, ...]:
+            """Actual selected identities."""
+            ...
+
         @property
-        def deselected(self) -> tuple[p.Infra.PytestMarkdownItem, ...]: ...
+        def deselected(
+            self,
+        ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownItem, ...]:
+            """Origins not executed in this phase."""
+            ...
+
         @property
-        def diagnostics(self) -> p.Infra.PytestDiagnostics: ...
+        def diagnostics(self) -> FlextInfraProtocolsValidate.PytestDiagnostics:
+            """Unmodified observed phases, attempts and first causes."""
+            ...
+
         @property
-        def cache_hit(self) -> bool: ...
+        def cache_hit(self) -> bool:
+            """Separate typed incremental cache receipt."""
+            ...
+
         @property
-        def violations(self) -> t.StrTuple: ...
+        def violations(self) -> t.StrTuple:
+            """Reconciliation failures."""
+            ...
 
     @runtime_checkable
-    class DiagResult(Protocol):
+    class DiagResult(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         reported_phases: MutableMapping[str, t.MutableStrMapping]
         connectivity_skip_cases: MutableSequence[str]
-        markdown_attempts: MutableSequence[p.Infra.PytestMarkdownAttempt]
-        markdown_items: MutableSequence[p.Infra.PytestMarkdownItem]
+
+        @property
+        def markdown_attempts(
+            self,
+        ) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownAttempt]:
+            """Call-phase attempt observations."""
+            ...
+
+        @property
+        def markdown_items(
+            self,
+        ) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownItem]:
+            """Call-phase origin observations."""
+            ...
+
         collection_failed_cases: MutableSequence[str]
         collection_skip_cases: MutableSequence[str]
-        failed_cases: MutableSequence[str]
-        error_cases: MutableSequence[str]
-        error_traces: MutableSequence[str]
-        skip_cases: MutableSequence[str]
-        warning_lines: MutableSequence[str]
-        slow_entries: MutableSequence[str]
+
+        @property
+        def failed_cases(self) -> MutableSequence[str]:
+            """Collected failed test-case labels."""
+            ...
+
+        @property
+        def error_cases(self) -> MutableSequence[str]:
+            """Collected error test-case labels."""
+            ...
+
+        @property
+        def error_traces(self) -> MutableSequence[str]:
+            """Collected error trace chunks."""
+            ...
+
+        @property
+        def skip_cases(self) -> MutableSequence[str]:
+            """Collected skipped test-case labels."""
+            ...
+
+        @property
+        def warning_lines(self) -> MutableSequence[str]:
+            """Collected warning lines."""
+            ...
+
+        @property
+        def slow_entries(self) -> MutableSequence[str]:
+            """Collected slow-test entries."""
+            ...
 
     @runtime_checkable
-    class InventoryReport(Protocol):
-        """Structural data contract projected from the owning model."""
-
-        total_scripts: t.NonNegativeInt
-        reports_written: MutableSequence[str]
-
-    @runtime_checkable
-    class NamespaceValidateCommand(Protocol):
+    class InventoryReport(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def total_scripts(self) -> t.NonNegativeInt:
+            """Total discovered scripts."""
+            ...
+
+        @property
+        def reports_written(self) -> MutableSequence[str]:
+            """Written report file paths."""
+            ...
+
+    @runtime_checkable
+    class NamespaceValidateCommand(FlextCliProtocols.Model, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root whose namespace contract is validated."""
+            ...
 
 
 __all__: list[str] = [

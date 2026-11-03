@@ -11,24 +11,37 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from flext_cli import t
+from flext_cli import FlextCliProtocols
+
+from flext_infra import t
 
 
 class FlextInfraProtocolsMiseToolchainRepair:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class MiseToolchainRepairPlan(Protocol):
+    class MiseToolchainRepairPlan(FlextCliProtocols.Model, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def repository_root(self) -> Path: ...
+        def repository_root(self) -> Path:
+            """Repository owning the declaration and lock."""
+            ...
+
         @property
-        def tool(self) -> t.NonEmptyStr: ...
+        def tool(self) -> t.NonEmptyStr:
+            """Declared native backend selector."""
+            ...
+
         @property
-        def mise_executable(self) -> Path: ...
+        def mise_executable(self) -> Path:
+            """Qualified self-managed Mise executable."""
+            ...
+
         @property
-        def uv_executable(self) -> Path: ...
+        def uv_executable(self) -> Path:
+            """Qualified UV executable for the complete proof."""
+            ...
 
 
 __all__: list[str] = [

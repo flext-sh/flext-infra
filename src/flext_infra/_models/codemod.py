@@ -245,11 +245,15 @@ class FlextInfraModelsCodemod:
         id: Annotated[t.NonEmptyStr, m.Field(description="Exact rule receipt identity")]
         operation: Annotated[
             c.Infra.FamilyFlattenOperation,
-            m.Field(description="Supported semantic family transformation"),
+            m.Field(
+                description="Supported semantic family transformation", strict=False
+            ),
         ]
         collision: Annotated[
             c.Infra.FamilyCollisionPolicy,
-            m.Field(description="Member-name collision resolution policy"),
+            m.Field(
+                description="Member-name collision resolution policy", strict=False
+            ),
         ]
 
     class RopeContractOrigin(m.ContractModel):

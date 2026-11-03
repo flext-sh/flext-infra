@@ -334,6 +334,7 @@ class FlextInfraConstantsRefactor:
         SemanticCutoverPhase.DECLARATION_RELOCATION: (
             "ban-nested-payload-outside-models",
         ),
+        SemanticCutoverPhase.CLASS_NESTING: ("ban-loose-module-object",),
         SemanticCutoverPhase.COMPAT_ALIAS: ("ban-compat-alias",),
         SemanticCutoverPhase.PRIVATE_IMPORT: ("ban-private-import",),
         SemanticCutoverPhase.FACADE_BASE: (

@@ -99,15 +99,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 raise ValueError(msg)
             return self
 
-    class RuffTypeCheckingConfig(m.ArbitraryTypesModel):
-        """Ruff flake8-type-checking settings loaded from YAML."""
-
-        runtime_evaluated_roots: Sequence[t.NonEmptyStr] = m.Field(
-            alias="runtime-evaluated-roots",
-            min_length=1,
-            description="Qualified base classes whose subclasses evaluate their annotations at runtime; codegen derives every project base inheriting one into runtime-evaluated-base-classes.",
-        )
-
     class RuffLintConfig(m.ArbitraryTypesModel):
         """Ruff lint settings loaded from YAML."""
 
@@ -165,10 +156,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         fix_recipe_phases: tuple[tuple[c.Infra.LintFixRecipe, ...], ...] = m.Field(
             alias="fix-recipe-phases",
             description="Recipe phases make fix applies in order; Ruff re-reads the tree after each phase so a later phase sees the findings an earlier one created or cured.",
-        )
-        flake8_type_checking: FlextInfraModelsDepsToolConfigLinters.RuffTypeCheckingConfig = m.Field(
-            alias="flake8-type-checking",
-            description="Ruff flake8-type-checking configuration",
         )
 
     class RuffConfig(m.ArbitraryTypesModel):

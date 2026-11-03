@@ -170,6 +170,15 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             alias="path-rules",
             description="Pyright path resolution and execution-env rules.",
         )
+        ruling_disabled_rules: tuple[t.NonEmptyStr, ...] = m.Field(
+            (),
+            alias="ruling-disabled-rules",
+            strict=False,
+            description=(
+                "Operator-authorized global axioms: Pyright rules disabled at "
+                "the SSOT for every project, projected as level none."
+            ),
+        )
 
     class PyreflyConfig(m.ArbitraryTypesModel):
         """Pyrefly execution and path policy; native options live in settings."""
@@ -195,7 +204,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 description="Canonical directories used to build project-includes.",
             )
             workspace_include_children: bool = m.Field(
-                False,
+                default=False,
                 alias="workspace-include-children",
                 description="Whether root pyrefly should include child projects.",
             )

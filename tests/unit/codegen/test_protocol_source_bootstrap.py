@@ -858,8 +858,8 @@ class TestsProtocolSourceBootstrap:
             ("zeta", "FlextInfraProtocolsZeta"),
             ("alpha", "FlextInfraProtocolsAlpha"),
             (
-                "deps_tool_config_project_artifacts",
-                "FlextInfraProtocolsDepsToolConfigProjectArtifacts",
+                "project_artifacts",
+                "FlextInfraProtocolsProjectArtifacts",
             ),
         ):
             (protocol_root / f"{module}.py").write_text(
@@ -879,8 +879,8 @@ class TestsProtocolSourceBootstrap:
         for module, holder in (
             ("alpha", "FlextInfraProtocolsAlpha"),
             (
-                "deps_tool_config_project_artifacts",
-                "FlextInfraProtocolsDepsToolConfigProjectArtifacts",
+                "project_artifacts",
+                "FlextInfraProtocolsProjectArtifacts",
             ),
             ("zeta", "FlextInfraProtocolsZeta"),
         ):

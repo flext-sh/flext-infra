@@ -1,0 +1,28 @@
+id: field-default-keyword
+snapshots:
+  ? |
+    from flext_core import m
+    class C(m.BaseModel):
+        flag: bool = m.Field(True, description="x")
+  : fixed: |
+      from flext_core import m
+      class C(m.BaseModel):
+          flag: bool = m.Field(default=True, description="x")
+    labels:
+    - source: m.Field(True, description="x")
+      style: primary
+      start: 64
+      end: 94
+  ? |
+    from flext_core import m
+    class D(m.BaseModel):
+        quiet: bool = m.Field(False, description="y")
+  : fixed: |
+      from flext_core import m
+      class D(m.BaseModel):
+          quiet: bool = m.Field(default=False, description="y")
+    labels:
+    - source: m.Field(False, description="y")
+      style: primary
+      start: 65
+      end: 96

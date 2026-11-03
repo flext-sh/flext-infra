@@ -246,7 +246,27 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     TEMPLATE_MODEL_PROTOCOL_CONFORMANCE: ClassVar[str] = (
         "model_protocol_conformance.py.j2"
     )
-    MODEL_PROTOCOL_CONFORMANCE_FILENAME: ClassVar[str] = "_model_conformance.py"
+    MODEL_PROTOCOL_CONFORMANCE_FILENAME: ClassVar[str] = "model_conformance.py"
+    PROTOCOL_EXCLUDED_DUNDERS: ClassVar[frozenset[str]] = frozenset({
+        "__init__",
+        "__new__",
+        "__init_subclass__",
+        "__class_getitem__",
+        "__get_pydantic_core_schema__",
+        "__get_pydantic_json_schema__",
+        "__pydantic_init_subclass__",
+        "__repr__",
+        "__str__",
+        "__hash__",
+        "__eq__",
+        "__ne__",
+        "__setattr__",
+        "__delattr__",
+        "__getattr__",
+        "__copy__",
+        "__deepcopy__",
+    })
+    "Model dunders that are construction or identity machinery, never projected."
     "Protocol module template consumed by the existing source projector."
     CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
     INFRA_CONFIG_FILENAME: ClassVar[str] = "infra.yaml"

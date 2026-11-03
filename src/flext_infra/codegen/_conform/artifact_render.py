@@ -167,27 +167,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             raise ValueError(msg)
         parsed = u.Cli.toml_mapping_from_text_result(tooling.configuration).unwrap()
         payload: t.MutableJsonMapping = dict(parsed)
-        runtime = u.Cli.toml_mapping_ensure_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "flake8-type-checking"),
-        )
-        current_runtime = u.validate_value(
-            t.Infra.STR_SEQ_ADAPTER,
-            runtime.get("runtime-evaluated-base-classes", []),
-            strict=True,
-        ).unwrap()
         tool_config = tooling.document
         if tool_config is None:
             msg = "Python source rendering requires elected tooling inputs"
             raise ValueError(msg)
-        policy = tool_config.tools.ruff.lint.flake8_type_checking
-        # The one runtime-base derivation of generation, over the final sources.
-        runtime_bases = u.Infra.runtime_evaluated_base_classes(
-            root,
-            sources,
-            policy.runtime_evaluated_roots,
-            source_project=source_project,
-        )
         first_party: list[t.JsonValue] = list(
             FlextInfraToolTablesPhase.first_party_namespaces(
                 path=root,
@@ -198,12 +181,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         isort = u.Cli.toml_mapping_ensure_path(
             payload, (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, c.Infra.ISORT)
         )
-        if first_party == isort.get(c.Infra.KNOWN_FIRST_PARTY_HYPHEN) and list(
-            runtime_bases
-        ) == list(current_runtime):
+        if first_party == isort.get(c.Infra.KNOWN_FIRST_PARTY_HYPHEN):
             return tooling
         isort[c.Infra.KNOWN_FIRST_PARTY_HYPHEN] = first_party
-        runtime["runtime-evaluated-base-classes"] = list(runtime_bases)
         return (
             dependency_services.FlextInfraPyprojectModernizer.tooling_context_from_payload
         )(
