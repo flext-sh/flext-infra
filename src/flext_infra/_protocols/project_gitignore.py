@@ -8,42 +8,29 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraProtocolsProjectGitignore:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ProjectGitignorePreservedBlock(FlextCliProtocols.Model, Protocol):
+    class ProjectGitignorePreservedBlock(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def begin(self) -> t.NonEmptyStr:
-            """Opening marker line."""
-            ...
-
-        @property
-        def end(self) -> t.NonEmptyStr:
-            """Closing marker line."""
-            ...
+        begin: t.NonEmptyStr
+        end: t.NonEmptyStr
 
     @runtime_checkable
-    class ProjectGitignoreConfig(FlextCliProtocols.Model, Protocol):
+    class ProjectGitignoreConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def patterns(self) -> tuple[t.NonEmptyStr, ...]:
-            """Structural member projected from the owning model.
-
-            Ignore patterns appended, in declaration order, as one project-owned
-            section of the generated .gitignore.
-            """
-            ...
+        patterns: tuple[t.NonEmptyStr, ...]
 
         @property
         def preserved_blocks(

@@ -6,20 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
+from flext_infra import t
 from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, MutableSequence
-    from pathlib import Path
-
     from flext_cli import p
 
-    from flext_infra import t
     from flext_infra._protocols import (
         FlextInfraProtocolsGates,
         FlextInfraProtocolsWorkspace,
@@ -93,7 +91,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class GitSourceReferenceMigration(FlextCliProtocols.Model, Protocol):
+    class GitSourceReferenceMigration(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -112,7 +110,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class PackagedDataSelection(FlextCliProtocols.Model, Protocol):
+    class PackagedDataSelection(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -126,7 +124,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class RuffProjectFacts(FlextCliProtocols.Model, Protocol):
+    class RuffProjectFacts(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -150,7 +148,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class PyprojectDeclaredTopology(FlextCliProtocols.Model, Protocol):
+    class PyprojectDeclaredTopology(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -213,7 +211,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class PyprojectAnalyzerContext(FlextCliProtocols.Model, Protocol):
+    class PyprojectAnalyzerContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -242,7 +240,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class RequirementsProvenance(FlextCliProtocols.Model, Protocol):
+    class RequirementsProvenance(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -270,7 +268,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class ProjectPackagingDeclaration(FlextCliProtocols.Model, Protocol):
+    class ProjectPackagingDeclaration(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -284,13 +282,10 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class ProjectMetadataState(FlextCliProtocols.Model, Protocol):
+    class ProjectMetadataState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def source(self) -> p.Cli.AtomicFileState:
-            """Original TOML observation parsed here."""
-            ...
+        source: p.Cli.AtomicFileState
 
         @property
         def metadata(self) -> p.ProjectMetadata:
@@ -303,7 +298,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class RuntimeDependencyProvider(FlextCliProtocols.Model, Protocol):
+    class RuntimeDependencyProvider(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -327,7 +322,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class RuntimeDependencyInputs(FlextCliProtocols.Model, Protocol):
+    class RuntimeDependencyInputs(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -381,7 +376,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class RuntimeDependencyPlan(FlextCliProtocols.Model, Protocol):
+    class RuntimeDependencyPlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -410,7 +405,7 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class DependencyMarkerEnvironment(FlextCliProtocols.Model, Protocol):
+    class DependencyMarkerEnvironment(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -474,33 +469,14 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class PyprojectDocumentState(FlextCliProtocols.Model, Protocol):
+    class PyprojectDocumentState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def pyproject_path(self) -> Path:
-            """Resolved pyproject path."""
-            ...
-
-        @property
-        def before(self) -> p.Cli.AtomicFileState | None:
-            """Original physical read; absent for pure source rendering."""
-            ...
-
-        @property
-        def original_rendered(self) -> str:
-            """Original TOML source text."""
-            ...
-
-        @property
-        def rendered(self) -> str:
-            """Canonical rendered TOML source text."""
-            ...
-
-        @property
-        def payload(self) -> t.MutableJsonMapping:
-            """Validated plain TOML payload."""
-            ...
+        pyproject_path: Path
+        before: p.Cli.AtomicFileState | None
+        original_rendered: str
+        rendered: str
+        payload: t.MutableJsonMapping
 
         @property
         def document(self) -> t.Cli.TomlDocument | None:
@@ -508,68 +484,30 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class PipCheckReport(FlextCliProtocols.Model, Protocol):
+    class PipCheckReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         ok: bool
-
-        @property
-        def lines(self) -> Sequence[str]:
-            """Pip check output lines."""
-            ...
+        lines: Sequence[str]
 
     @runtime_checkable
-    class DeptryIssueGroups(FlextCliProtocols.Model, Protocol):
+    class DeptryIssueGroups(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def dep001(self) -> MutableSequence[Mapping[str, t.Primitives | None]]:
-            """DEP001 issues."""
-            ...
-
-        @property
-        def dep002(self) -> MutableSequence[Mapping[str, t.Primitives | None]]:
-            """DEP002 issues."""
-            ...
-
-        @property
-        def dep003(self) -> MutableSequence[Mapping[str, t.Primitives | None]]:
-            """DEP003 issues."""
-            ...
-
-        @property
-        def dep004(self) -> MutableSequence[Mapping[str, t.Primitives | None]]:
-            """DEP004 issues."""
-            ...
+        dep001: MutableSequence[Mapping[str, t.Primitives | None]]
+        dep002: MutableSequence[Mapping[str, t.Primitives | None]]
+        dep003: MutableSequence[Mapping[str, t.Primitives | None]]
+        dep004: MutableSequence[Mapping[str, t.Primitives | None]]
 
     @runtime_checkable
-    class DeptryReport(FlextCliProtocols.Model, Protocol):
+    class DeptryReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def missing(self) -> Sequence[str]:
-            """Missing dependencies."""
-            ...
-
-        @property
-        def unused(self) -> Sequence[str]:
-            """Unused dependencies."""
-            ...
-
-        @property
-        def transitive(self) -> Sequence[str]:
-            """Transitive dependencies."""
-            ...
-
-        @property
-        def dev_in_runtime(self) -> Sequence[str]:
-            """Dev dependencies in runtime."""
-            ...
-
-        @property
-        def raw_count(self) -> t.NonNegativeInt:
-            """Raw issue count."""
-            ...
+        missing: Sequence[str]
+        unused: Sequence[str]
+        transitive: Sequence[str]
+        dev_in_runtime: Sequence[str]
+        raw_count: t.NonNegativeInt
 
     @runtime_checkable
     class ProjectDependencyReport(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
@@ -581,13 +519,10 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceDependencyReport(FlextCliProtocols.Model, Protocol):
+    class WorkspaceDependencyReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def workspace(self) -> str:
-            """Workspace name."""
-            ...
+        workspace: str
 
         @property
         def projects(
@@ -602,30 +537,14 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
     @runtime_checkable
-    class ToolingContextRequest(FlextCliProtocols.Model, Protocol):
+    class ToolingContextRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def environment_dir(self) -> Path:
-            """Declared environment directory owned by project runtime."""
-            ...
-
+        environment_dir: Path
         planned_sources: Mapping[Path, str]
-
-        @property
-        def project_name(self) -> t.NonEmptyStr:
-            """Distribution name of the project."""
-            ...
-
-        @property
-        def package_name(self) -> t.NonEmptyStr:
-            """Importable package name of the project."""
-            ...
-
-        @property
-        def path(self) -> Path:
-            """Absolute path of the project's pyproject file."""
-            ...
+        project_name: t.NonEmptyStr
+        package_name: t.NonEmptyStr
+        path: Path
 
         @property
         def topology(self) -> FlextInfraProtocolsDeps.PyprojectDeclaredTopology:
@@ -637,15 +556,8 @@ class FlextInfraProtocolsDeps(Protocol):
             """Elected effective target codegen policy."""
             ...
 
-        @property
-        def runtime_dependency_overlay(self) -> Sequence[str]:
-            """Runtime dependency overlay requirement lines."""
-            ...
-
-        @property
-        def declared_project_dependencies(self) -> Sequence[str]:
-            """Declared project dependency requirement lines."""
-            ...
+        runtime_dependency_overlay: Sequence[str]
+        declared_project_dependencies: Sequence[str]
 
 
 __all__: list[str] = ["FlextInfraProtocolsDeps"]

@@ -17,7 +17,7 @@ class FlextInfraProtocolsMiseToolchainBase:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class SchemaRecord(FlextCliProtocols.Model, Protocol):
+    class SchemaRecord(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
 

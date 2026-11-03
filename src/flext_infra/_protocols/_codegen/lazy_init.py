@@ -14,11 +14,11 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsMixins
 from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsBase
     from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 
@@ -27,7 +27,7 @@ class FlextInfraProtocolsCodegenLazyInit:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class PythonModuleFacts(FlextCliProtocols.Model, Protocol):
+    class PythonModuleFacts(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -75,23 +75,12 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class PythonModuleFactsDraft(FlextCliProtocols.Model, Protocol):
+    class PythonModuleFactsDraft(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def path(self) -> Path:
-            """Source file being read."""
-            ...
-
-        @property
-        def name(self) -> str:
-            """Dotted module name."""
-            ...
-
-        @property
-        def is_init(self) -> bool:
-            """Whether it is a package init."""
-            ...
+        path: Path
+        name: str
+        is_init: bool
 
         @property
         def members(self) -> dict[str, FlextInfraTypesBase.PythonMemberKind]:
@@ -124,7 +113,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class PythonModelRun(FlextCliProtocols.Model, Protocol):
+    class PythonModelRun(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -132,10 +121,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             """Source view every module is read through."""
             ...
 
-        @property
-        def module_files(self) -> Mapping[str, Path]:
-            """Indexed module names elected before installed ones."""
-            ...
+        module_files: Mapping[str, Path]
 
         @property
         def modules(
@@ -159,7 +145,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class LazyInitPackageContext(FlextCliProtocols.Model, Protocol):
+    class LazyInitPackageContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -193,7 +179,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class LazyInitPlan(FlextCliProtocols.Model, Protocol):
+    class LazyInitPlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -250,7 +236,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class RopeModuleIndexEntry(FlextCliProtocols.Model, Protocol):
+    class RopeModuleIndexEntry(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -289,7 +275,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class RopePackageIndexEntry(FlextCliProtocols.Model, Protocol):
+    class RopePackageIndexEntry(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -330,7 +316,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class RopeWorkspaceIndex(FlextCliProtocols.Model, Protocol):
+    class RopeWorkspaceIndex(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -368,18 +354,11 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class LazyInitRun(FlextCliProtocols.Model, Protocol):
+    class LazyInitRun(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def root(self) -> Path:
-            """Repository root being planned."""
-            ...
-
-        @property
-        def scoped(self) -> bool:
-            """Whether conformance selected the repository roots."""
-            ...
+        root: Path
+        scoped: bool
 
         @property
         def index(self) -> FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex:
@@ -435,7 +414,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class RopeProjectLayout(FlextCliProtocols.Model, Protocol):
+    class RopeProjectLayout(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -489,7 +468,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class LazyInitRootRender(FlextCliProtocols.Model, Protocol):
+    class LazyInitRootRender(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -533,28 +512,13 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
     @runtime_checkable
-    class QualityGateCheck(FlextCliProtocols.Model, Protocol):
+    class QualityGateCheck(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def name(self) -> t.NonEmptyStr:
-            """Check identifier."""
-            ...
-
-        @property
-        def passed(self) -> bool:
-            """Whether check passed."""
-            ...
-
-        @property
-        def detail(self) -> str:
-            """Human-readable check detail."""
-            ...
-
-        @property
-        def critical(self) -> bool:
-            """Whether failure is critical."""
-            ...
+        name: t.NonEmptyStr
+        passed: bool
+        detail: str
+        critical: bool
 
     @runtime_checkable
     class QualityGateProjectFinding(
@@ -562,15 +526,8 @@ class FlextInfraProtocolsCodegenLazyInit:
     ):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def violations_total(self) -> t.NonNegativeInt:
-            """Total violations."""
-            ...
-
-        @property
-        def validator_passed(self) -> bool:
-            """Whether validator passed."""
-            ...
+        violations_total: t.NonNegativeInt
+        validator_passed: bool
 
 
 __all__: list[str] = [

@@ -13,9 +13,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._protocols import FlextInfraProtocolsDepsToolConfigLinters
 
 
@@ -23,7 +22,7 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class DiagnosticPathException(FlextCliProtocols.Model, Protocol):
+    class DiagnosticPathException(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -54,7 +53,7 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
             ...
 
     @runtime_checkable
-    class PyrightConfig(FlextCliProtocols.Model, Protocol):
+    class PyrightConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -64,8 +63,10 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
             """Pyright path resolution and execution-env rules."""
             ...
 
+        ruling_disabled_rules: tuple[t.NonEmptyStr, ...]
+
     @runtime_checkable
-    class PyrightConfigExecutionEnvironment(FlextCliProtocols.Model, Protocol):
+    class PyrightConfigExecutionEnvironment(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -93,7 +94,7 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
             ...
 
     @runtime_checkable
-    class PyrightConfigPathRulesConfig(FlextCliProtocols.Model, Protocol):
+    class PyrightConfigPathRulesConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         project_root_env_dirs: Sequence[str]
@@ -122,7 +123,7 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
         other_report_private_usage: str
 
     @runtime_checkable
-    class PyreflyConfig(FlextCliProtocols.Model, Protocol):
+    class PyreflyConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         findings_exit_codes: tuple[int, ...]
@@ -135,7 +136,7 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
             ...
 
     @runtime_checkable
-    class PyreflyConfigPathRulesConfig(FlextCliProtocols.Model, Protocol):
+    class PyreflyConfigPathRulesConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         source_dir: str

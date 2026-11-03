@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import (
     FlextInfraProtocolsGitLaneInputs,
     FlextInfraProtocolsGitLaneOwnership,
@@ -28,6 +27,8 @@ from flext_infra._protocols._git import (
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
+
 
 class FlextInfraProtocolsGit(
     FlextInfraProtocolsGitLaneOwnership,
@@ -39,7 +40,7 @@ class FlextInfraProtocolsGit(
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class GitRepoRequest(FlextCliProtocols.Model, Protocol):
+    class GitRepoRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -48,7 +49,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitSigningConfigObservation(FlextCliProtocols.Model, Protocol):
+    class GitSigningConfigObservation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -77,7 +78,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitSigningIdentityReport(FlextCliProtocols.Model, Protocol):
+    class GitSigningIdentityReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -118,7 +119,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitLaneEvidence(FlextCliProtocols.Model, Protocol):
+    class GitLaneEvidence(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -146,7 +147,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitLaneReport(FlextCliProtocols.Model, Protocol):
+    class GitLaneReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -182,7 +183,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitLaneFacts(FlextCliProtocols.Model, Protocol):
+    class GitLaneFacts(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -210,7 +211,7 @@ class FlextInfraProtocolsGit(
         """Structural data contract projected from the owning model."""
 
     @runtime_checkable
-    class GitStatusReport(FlextCliProtocols.Model, Protocol):
+    class GitStatusReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -229,7 +230,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitPrimaryRootReport(FlextCliProtocols.Model, Protocol):
+    class GitPrimaryRootReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -238,7 +239,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitRootReport(FlextCliProtocols.Model, Protocol):
+    class GitRootReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -247,7 +248,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitOidReport(FlextCliProtocols.Model, Protocol):
+    class GitOidReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -256,7 +257,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitTextReport(FlextCliProtocols.Model, Protocol):
+    class GitTextReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -265,7 +266,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitBytesReport(FlextCliProtocols.Model, Protocol):
+    class GitBytesReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -274,7 +275,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitBoolReport(FlextCliProtocols.Model, Protocol):
+    class GitBoolReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -283,7 +284,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitWorktreeEntry(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeEntry(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -317,7 +318,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitWorktreeListReport(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeListReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -530,7 +531,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitRefHeadsReport(FlextCliProtocols.Model, Protocol):
+    class GitRefHeadsReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -539,7 +540,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitOidListReport(FlextCliProtocols.Model, Protocol):
+    class GitOidListReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -590,7 +591,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitTimestampReport(FlextCliProtocols.Model, Protocol):
+    class GitTimestampReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -599,7 +600,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitWorktreeAddRequest(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeAddRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -633,7 +634,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitNumstatReport(FlextCliProtocols.Model, Protocol):
+    class GitNumstatReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -647,7 +648,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitFingerprintInputsReport(FlextCliProtocols.Model, Protocol):
+    class GitFingerprintInputsReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -707,7 +708,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitSubmoduleContractRequest(FlextCliProtocols.Model, Protocol):
+    class GitSubmoduleContractRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -752,7 +753,7 @@ class FlextInfraProtocolsGit(
             ...
 
     @runtime_checkable
-    class GitIndexScope(FlextCliProtocols.Model, Protocol):
+    class GitIndexScope(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

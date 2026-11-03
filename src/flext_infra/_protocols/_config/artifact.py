@@ -14,13 +14,13 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 from flext_infra._typings import FlextInfraTypesBase
 
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._constants import (
         FlextInfraConstantsCodegenProject,
         FlextInfraConstantsConfig,
@@ -789,7 +789,7 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
     @runtime_checkable
-    class CodegenConformSurfaceContract(FlextCliProtocols.Model, Protocol):
+    class CodegenConformSurfaceContract(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -868,7 +868,7 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
     @runtime_checkable
-    class ArtifactRenderRoute(FlextCliProtocols.Model, Protocol):
+    class ArtifactRenderRoute(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -876,15 +876,8 @@ class FlextInfraProtocolsConfigArtifact:
             """Catalog entry being rendered."""
             ...
 
-        @property
-        def destination(self) -> str:
-            """Repository-relative destination path."""
-            ...
-
-        @property
-        def failure_prefix(self) -> str:
-            """Stage banner prepended to render failures."""
-            ...
+        destination: str
+        failure_prefix: str
 
         @property
         def project_context(
@@ -901,7 +894,7 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
     @runtime_checkable
-    class CodegenRenderInputs(FlextCliProtocols.Model, Protocol):
+    class CodegenRenderInputs(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -933,16 +926,7 @@ class FlextInfraProtocolsConfigArtifact:
             """Project managed-artifact catalog overlaid on renders."""
             ...
 
-        @property
-        def integration_branch(self) -> str | None:
-            """Structural member projected from the owning model.
-
-            Integration branch the repository integrates on, resolved once per plan
-            for the project context and every workflow; None when Git publishes
-            none, so a render that needs it fails with the resolver's own cause.
-            """
-            ...
-
+        integration_branch: str | None
         planned_direct_sources: tuple[str, ...] | None
 
     @runtime_checkable

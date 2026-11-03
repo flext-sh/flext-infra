@@ -11,10 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._typings import FlextInfraTypesRope
 
 
@@ -30,25 +30,10 @@ class FlextInfraProtocolsRopeMove:
             """Active Rope project that owns both files."""
             ...
 
-        @property
-        def source_file(self) -> Path:
-            """Existing module that declares the class."""
-            ...
-
-        @property
-        def target_file(self) -> Path:
-            """Canonical destination module for the class."""
-            ...
-
-        @property
-        def class_name(self) -> t.NonEmptyStr:
-            """Top-level class selected by Rope."""
-            ...
-
-        @property
-        def apply(self) -> bool:
-            """Whether to execute the validated move."""
-            ...
+        source_file: Path
+        target_file: Path
+        class_name: t.NonEmptyStr
+        apply: bool
 
     @runtime_checkable
     class ResolvedClassMove(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):

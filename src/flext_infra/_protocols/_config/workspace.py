@@ -37,7 +37,7 @@ class FlextInfraProtocolsConfigWorkspace:
     """Runtime-checkable contracts declared by the workspace model module."""
 
     @runtime_checkable
-    class GitSubmoduleDeclaration(FlextCliProtocols.Model, Protocol):
+    class GitSubmoduleDeclaration(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -74,7 +74,7 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
     @runtime_checkable
-    class DependencyGroupInclude(FlextCliProtocols.Model, Protocol):
+    class DependencyGroupInclude(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -83,7 +83,7 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
     @runtime_checkable
-    class DependencyGroupDeclarations(FlextCliProtocols.Model, Protocol):
+    class DependencyGroupDeclarations(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -111,7 +111,7 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
     @runtime_checkable
-    class DependencyEdgeSpec(FlextCliProtocols.Model, Protocol):
+    class DependencyEdgeSpec(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -331,7 +331,7 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
     @runtime_checkable
-    class DependencyGroupEntries(FlextCliProtocols.Model, Protocol):
+    class DependencyGroupEntries(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

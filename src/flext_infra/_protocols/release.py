@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsRelease
     from flext_infra._protocols._git import FlextInfraProtocolsGitWorktreeState
     from flext_infra._typings import FlextInfraTypesBase
@@ -26,7 +26,7 @@ class FlextInfraProtocolsRelease:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ReleaseOptions(FlextCliProtocols.Model, Protocol):
+    class ReleaseOptions(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -34,15 +34,8 @@ class FlextInfraProtocolsRelease:
             """Release phase to execute."""
             ...
 
-        @property
-        def index(self) -> bool:
-            """Publish receipt-verified artifacts to the package index."""
-            ...
-
-        @property
-        def pr_title(self) -> str:
-            """Pull-request title to validate against the protocol."""
-            ...
+        index: bool
+        pr_title: str
 
         @property
         def ownership(
@@ -57,18 +50,11 @@ class FlextInfraProtocolsRelease:
     ):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def projects(self) -> Sequence[str] | None:
-            """Projects to process."""
-            ...
-
-        @property
-        def checkpoint_ref(self) -> t.NonEmptyStr | None:
-            """Existing published checkpoint resolved by native Git."""
-            ...
+        projects: Sequence[str] | None
+        checkpoint_ref: t.NonEmptyStr | None
 
     @runtime_checkable
-    class GithubReleaseAsset(FlextCliProtocols.Model, Protocol):
+    class GithubReleaseAsset(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -87,7 +73,7 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class GithubReleaseAssets(FlextCliProtocols.Model, Protocol):
+    class GithubReleaseAssets(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -96,7 +82,7 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class GithubReleaseIdentity(FlextCliProtocols.Model, Protocol):
+    class GithubReleaseIdentity(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -110,7 +96,7 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class GithubReleaseInventory(FlextCliProtocols.Model, Protocol):
+    class GithubReleaseInventory(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -121,7 +107,7 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class SourceSnapshot(FlextCliProtocols.Model, Protocol):
+    class SourceSnapshot(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -135,7 +121,7 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class BuildPolicy(FlextCliProtocols.Model, Protocol):
+    class BuildPolicy(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -159,7 +145,7 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class BuildArtifact(FlextCliProtocols.Model, Protocol):
+    class BuildArtifact(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -178,7 +164,7 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class ArtifactExpectation(FlextCliProtocols.Model, Protocol):
+    class ArtifactExpectation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -248,7 +234,7 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class ReleasePlan(FlextCliProtocols.Model, Protocol):
+    class ReleasePlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -300,7 +286,7 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class BuildReport(FlextCliProtocols.Model, Protocol):
+    class BuildReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -347,25 +333,15 @@ class FlextInfraProtocolsRelease:
     ):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def dry_run(self) -> bool:
-            """Dry run flag."""
-            ...
+        dry_run: bool
 
         @property
         def phase(self) -> FlextInfraConstantsRelease.ReleasePhase:
             """Release phase."""
             ...
 
-        @property
-        def index(self) -> bool:
-            """Publish verified artifacts to the package index."""
-            ...
-
-        @property
-        def pr_title(self) -> str:
-            """Pull-request title to validate, when known."""
-            ...
+        index: bool
+        pr_title: str
 
 
 __all__: list[str] = [

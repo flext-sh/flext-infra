@@ -890,11 +890,11 @@ class FlextInfraProtocolsBase(Protocol):
         impact_map_output: Path | None
 
     @runtime_checkable
-    class FrozenArbitrary(FlextCliProtocols.Model, Protocol):
+    class FrozenArbitrary(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
     @runtime_checkable
-    class ProcessExit(FlextCliProtocols.Model, Protocol):
+    class ProcessExit(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -908,7 +908,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class SummaryStats(FlextCliProtocols.Model, Protocol):
+    class SummaryStats(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -961,7 +961,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class LintGateResult(FlextCliProtocols.Model, Protocol):
+    class LintGateResult(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -985,7 +985,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class TransformStep(FlextCliProtocols.Model, Protocol):
+    class TransformStep(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -1008,23 +1008,14 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class CommandContext(FlextCliProtocols.Model, Protocol):
+    class CommandContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         repository_root: Path
         apply_changes: bool
         check_only: bool
-
-        @property
-        def dry_run(self) -> bool:
-            """Dry-run mode."""
-            ...
-
-        @property
-        def output_format(self) -> str:
-            """Output format (json|text)."""
-            ...
-
+        dry_run: bool
+        output_format: str
         project_filter: str | None
         report_path: Path | None
         output_dir: Path | None
@@ -1040,61 +1031,23 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class ProtectedSourceWritesRequest(FlextCliProtocols.Model, Protocol):
+    class ProtectedSourceWritesRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def workspace(self) -> Path:
-            """Repository root used for lint and pytest checks."""
-            ...
-
-        @property
-        def expected_sources(self) -> Mapping[Path, str | None]:
-            """Structural member projected from the owning model.
-
-            Expected current source bytes keyed by updated path; None requires the
-            path to be absent.
-            """
-            ...
-
-        @property
-        def gates(self) -> Sequence[str] | None:
-            """Optional lint gate selection for validation."""
-            ...
-
-        @property
-        def post_write(self) -> Callable[[], None] | None:
-            """Optional callback invoked after writes land."""
-            ...
-
-        @property
-        def skip_pytest(self) -> bool:
-            """Whether to bypass per-file pytest validation."""
-            ...
+        workspace: Path
+        expected_sources: Mapping[Path, str | None]
+        gates: Sequence[str] | None
+        post_write: Callable[[], None] | None
+        skip_pytest: bool
 
     @runtime_checkable
-    class ProtectedFileEditRequest(FlextCliProtocols.Model, Protocol):
+    class ProtectedFileEditRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def workspace(self) -> Path:
-            """Repository root used for lint and pytest checks."""
-            ...
-
-        @property
-        def before_source(self) -> str:
-            """Original source text used for validation evidence."""
-            ...
-
-        @property
-        def edit_fn(self) -> Callable[[], None]:
-            """Callback that applies the file mutation."""
-            ...
-
-        @property
-        def gates(self) -> Sequence[str] | None:
-            """Optional lint gate selection for validation."""
-            ...
+        workspace: Path
+        before_source: str
+        edit_fn: Callable[[], None]
+        gates: Sequence[str] | None
 
 
 __all__: list[str] = ["FlextInfraProtocolsBase"]

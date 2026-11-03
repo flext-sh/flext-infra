@@ -22,13 +22,13 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
 
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsRefactor
     from flext_infra._protocols import (
         FlextInfraProtocolsCensus,
@@ -74,7 +74,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class NamespaceRelocationState(FlextCliProtocols.Model, Protocol):
+    class NamespaceRelocationState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         working: MutableMapping[Path, str]
@@ -87,7 +87,7 @@ class FlextInfraProtocolsRefactor:
         modes: MutableMapping[Path, int | None]
 
     @runtime_checkable
-    class SemanticBehaviorOwners(FlextCliProtocols.Model, Protocol):
+    class SemanticBehaviorOwners(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -106,47 +106,27 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class SemanticBehaviorResolution(FlextCliProtocols.Model, Protocol):
+    class SemanticBehaviorResolution(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def path(self) -> Path:
-            """Consumer source identity."""
-            ...
+        path: Path
 
         @property
         def inventory(self) -> FlextInfraProtocolsRefactor.SemanticBehaviorOwners:
             """Declared behavior owners."""
             ...
 
-        @property
-        def typing_directory(self) -> str:
-            """Canonical typing family directory."""
-            ...
-
-        @property
-        def identities(self) -> frozenset[tuple[str, str]]:
-            """Imported module and receiver identities."""
-            ...
-
-        @property
-        def lineages(
-            self,
-        ) -> MutableMapping[tuple[str, str], tuple[tuple[str, str], ...]]:
-            """Consumer-local ancestry cache."""
-            ...
-
-        @property
-        def obsolete(self) -> MutableSet[tuple[str, str]]:
-            """Imports superseded by canonical owner references."""
-            ...
+        typing_directory: str
+        identities: frozenset[tuple[str, str]]
+        lineages: MutableMapping[tuple[str, str], tuple[tuple[str, str], ...]]
+        obsolete: MutableSet[tuple[str, str]]
 
     @runtime_checkable
     class ModTextCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
     @runtime_checkable
-    class ModuleMoveCommand(FlextCliProtocols.Model, Protocol):
+    class ModuleMoveCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -170,7 +150,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class RopeRenameOptions(FlextCliProtocols.Model, Protocol):
+    class RopeRenameOptions(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -178,18 +158,11 @@ class FlextInfraProtocolsRefactor:
             """Resources included in the semantic rename scope."""
             ...
 
-        @property
-        def in_hierarchy(self) -> bool:
-            """Whether the rename includes inherited declarations."""
-            ...
-
-        @property
-        def docs(self) -> bool:
-            """Include native identity-visible string and comment occurrences."""
-            ...
+        in_hierarchy: bool
+        docs: bool
 
     @runtime_checkable
-    class SemanticRenameDecision(FlextCliProtocols.Model, Protocol):
+    class SemanticRenameDecision(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -213,7 +186,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class SemanticRenameSelection(FlextCliProtocols.Model, Protocol):
+    class SemanticRenameSelection(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -237,7 +210,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class SemanticRenameSelections(FlextCliProtocols.Model, Protocol):
+    class SemanticRenameSelections(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -297,7 +270,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ViolationsTotals(FlextCliProtocols.Model, Protocol):
+    class ViolationsTotals(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -326,7 +299,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ViolationsRuleDelta(FlextCliProtocols.Model, Protocol):
+    class ViolationsRuleDelta(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -390,10 +363,7 @@ class FlextInfraProtocolsRefactor:
     ):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def project_root(self) -> str:
-            """Project root path."""
-            ...
+        project_root: str
 
         @property
         def rule_deltas(
@@ -402,30 +372,11 @@ class FlextInfraProtocolsRefactor:
             """Full catalog occurrence comparison, including zero rows."""
             ...
 
-        @property
-        def relocation_resolved(self) -> t.NonNegativeInt:
-            """Removed scoped relocation occurrences."""
-            ...
-
-        @property
-        def relocation_persisted(self) -> t.NonNegativeInt:
-            """Unchanged scoped relocation occurrences."""
-            ...
-
-        @property
-        def relocation_introduced(self) -> t.NonNegativeInt:
-            """New scoped relocation occurrences."""
-            ...
-
-        @property
-        def relocation_findings(self) -> t.NonNegativeInt:
-            """Scoped relocation findings remaining after the pass."""
-            ...
-
-        @property
-        def files_scanned(self) -> t.NonNegativeInt:
-            """Files in the namespace relocation scope before apply."""
-            ...
+        relocation_resolved: t.NonNegativeInt
+        relocation_persisted: t.NonNegativeInt
+        relocation_introduced: t.NonNegativeInt
+        relocation_findings: t.NonNegativeInt
+        files_scanned: t.NonNegativeInt
 
         @property
         def before_rule_counts(self) -> Mapping[str, t.NonNegativeInt]:
@@ -457,13 +408,10 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class WorkspaceEnforcementReport(FlextCliProtocols.Model, Protocol):
+    class WorkspaceEnforcementReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def workspace(self) -> t.NonEmptyStr:
-            """Repository root path."""
-            ...
+        workspace: t.NonEmptyStr
 
         @property
         def projects(
@@ -478,7 +426,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ViolationsSweepSources(FlextCliProtocols.Model, Protocol):
+    class ViolationsSweepSources(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -542,7 +490,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ViolationsRuleEvaluation(FlextCliProtocols.Model, Protocol):
+    class ViolationsRuleEvaluation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -598,7 +546,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ViolationsEngineCoverage(FlextCliProtocols.Model, Protocol):
+    class ViolationsEngineCoverage(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -622,7 +570,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ViolationsSweepStage(FlextCliProtocols.Model, Protocol):
+    class ViolationsSweepStage(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -718,7 +666,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ViolationsSweepReport(FlextCliProtocols.Model, Protocol):
+    class ViolationsSweepReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -861,7 +809,7 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
     @runtime_checkable
-    class CensusOptions(FlextCliProtocols.Model, Protocol):
+    class CensusOptions(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -938,76 +886,31 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class Result(FlextCliProtocols.Model, Protocol):
+    class Result(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def file_path(self) -> Path:
-            """Target file path."""
-            ...
-
-        @property
-        def success(self) -> bool:
-            """Whether the operation succeeded."""
-            ...
-
-        @property
-        def modified(self) -> bool:
-            """Whether the file was actually modified."""
-            ...
-
-        @property
-        def error(self) -> str | None:
-            """Error message on failure."""
-            ...
-
-        @property
-        def changes(self) -> Sequence[str]:
-            """Human-readable change descriptions."""
-            ...
-
-        @property
-        def refactored_code(self) -> str | None:
-            """Resulting source code after transformation."""
-            ...
+        file_path: Path
+        success: bool
+        modified: bool
+        error: str | None
+        changes: Sequence[str]
+        refactored_code: str | None
 
     @runtime_checkable
-    class RefactorProjectInfo(FlextCliProtocols.Model, Protocol):
+    class RefactorProjectInfo(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def name(self) -> t.NonEmptyStr:
-            """Project directory name."""
-            ...
-
-        @property
-        def path(self) -> Path:
-            """Absolute project path."""
-            ...
-
-        @property
-        def src_path(self) -> Path:
-            """Absolute src/ path."""
-            ...
-
-        @property
-        def package_roots(self) -> MutableSet[str]:
-            """Top-level Python package roots in src/."""
-            ...
+        name: t.NonEmptyStr
+        path: Path
+        src_path: Path
+        package_roots: MutableSet[str]
 
     @runtime_checkable
-    class FileImportData(FlextCliProtocols.Model, Protocol):
+    class FileImportData(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def imported_modules(self) -> MutableSet[str]:
-            """Imported module roots."""
-            ...
-
-        @property
-        def imported_symbols(self) -> MutableSet[str]:
-            """Imported symbol names."""
-            ...
+        imported_modules: MutableSet[str]
+        imported_symbols: MutableSet[str]
 
     @runtime_checkable
     class ProjectClassification(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
@@ -1024,51 +927,20 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class WrapperRewriteAccumulator(FlextCliProtocols.Model, Protocol):
+    class WrapperRewriteAccumulator(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def updates(self) -> MutableMapping[Path, str]:
-            """Pending file content updates keyed by path."""
-            ...
-
-        @property
-        def expected_sources(self) -> MutableMapping[Path, str]:
-            """Original content keyed by every pending update path."""
-            ...
-
-        @property
-        def changed_files(self) -> MutableSequence[str]:
-            """String paths of files changed by the run."""
-            ...
-
-        @property
-        def total_replacements(self) -> int:
-            """Total replacements applied across the run."""
-            ...
-
-        @property
-        def total_core_replacements(self) -> int:
-            """Total Core.Tests chain rewrites applied."""
-            ...
-
-        @property
-        def import_rewrite_candidates(self) -> int:
-            """Count of wrapper import rewrite candidates."""
-            ...
-
-        @property
-        def per_project_changes(self) -> defaultdict[str, int]:
-            """Changed file count keyed by project name."""
-            ...
-
-        @property
-        def per_project_replacements(self) -> defaultdict[str, int]:
-            """Replacement count keyed by project name."""
-            ...
+        updates: MutableMapping[Path, str]
+        expected_sources: MutableMapping[Path, str]
+        changed_files: MutableSequence[str]
+        total_replacements: int
+        total_core_replacements: int
+        import_rewrite_candidates: int
+        per_project_changes: defaultdict[str, int]
+        per_project_replacements: defaultdict[str, int]
 
     @runtime_checkable
-    class ModRuleRoute(FlextCliProtocols.Model, Protocol):
+    class ModRuleRoute(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -1131,7 +1003,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class SemanticRenamePlanCommand(FlextCliProtocols.Model, Protocol):
+    class SemanticRenamePlanCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -1150,7 +1022,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class SemanticRenamePreviewCommand(FlextCliProtocols.Model, Protocol):
+    class SemanticRenamePreviewCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

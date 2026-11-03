@@ -14,12 +14,12 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsRefactor
     from flext_infra._protocols import (
         FlextInfraProtocolsCodemod,
@@ -31,7 +31,7 @@ class FlextInfraProtocolsScan:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ModScanPublication(FlextCliProtocols.Model, Protocol):
+    class ModScanPublication(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -79,26 +79,20 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ScanResult(FlextCliProtocols.Model, Protocol):
+    class ScanResult(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def file_path(self) -> Path:
-            """Path to the scanned file."""
-            ...
+        file_path: Path
 
         @property
         def violations(self) -> Sequence[FlextInfraProtocolsScan.ScanViolation]:
             """Violations found in the file."""
             ...
 
-        @property
-        def detector_name(self) -> str:
-            """Name of the detector that produced this result."""
-            ...
+        detector_name: str
 
     @runtime_checkable
-    class ModNativeRecord(FlextCliProtocols.Model, Protocol):
+    class ModNativeRecord(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -117,7 +111,7 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ModReplacementOffsets(FlextCliProtocols.Model, Protocol):
+    class ModReplacementOffsets(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -241,23 +235,12 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ModScanSourceContext(FlextCliProtocols.Model, Protocol):
+    class ModScanSourceContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def project_source_roots(self) -> Mapping[Path, Path] | None:
-            """Physical scan roots for logical catalog projects."""
-            ...
-
-        @property
-        def inventory(self) -> Mapping[Path, p.Cli.AtomicFileState]:
-            """Exact sources captured before the native scan."""
-            ...
-
-        @property
-        def repository_roots(self) -> tuple[Path, ...]:
-            """Governed roots in nearest-owner precedence."""
-            ...
+        project_source_roots: Mapping[Path, Path] | None
+        inventory: Mapping[Path, p.Cli.AtomicFileState]
+        repository_roots: tuple[Path, ...]
 
         @property
         def authenticated(
@@ -266,10 +249,7 @@ class FlextInfraProtocolsScan:
             """One authentication per file."""
             ...
 
-        @property
-        def repositories(self) -> MutableMapping[Path, str]:
-            """One ownership election per file."""
-            ...
+        repositories: MutableMapping[Path, str]
 
     @runtime_checkable
     class ModScanFindingReference(ModScanFinding, Protocol):
@@ -286,7 +266,7 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ModScanCounts[FindingT: ModOccurrence](FlextCliProtocols.Model, Protocol):
+    class ModScanCounts[FindingT: ModOccurrence](FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -323,7 +303,9 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ModOccurrenceReport[FindingT: ModOccurrence](ModScanCounts, Protocol):
+    class ModOccurrenceReport[FindingT: ModOccurrence](
+        ModScanCounts[FindingT], Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -332,7 +314,7 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ModScanReport(ModOccurrenceReport, Protocol):
+    class ModScanReport(ModOccurrenceReport[ModScanFinding], Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -363,7 +345,7 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ModModuleQuarantine(FlextCliProtocols.Model, Protocol):
+    class ModModuleQuarantine(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -382,7 +364,7 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ModQuarantineExclusion(FlextCliProtocols.Model, Protocol):
+    class ModQuarantineExclusion(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -401,7 +383,7 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ModPhaseAdvance(FlextCliProtocols.Model, Protocol):
+    class ModPhaseAdvance(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -409,15 +391,8 @@ class FlextInfraProtocolsScan:
             """Scan of the post-iteration sources."""
             ...
 
-        @property
-        def phase_states(self) -> tuple[tuple[tuple[str, str], ...], ...]:
-            """Fingerprints the cross-phase cycle check observes."""
-            ...
-
-        @property
-        def drifted(self) -> tuple[Path, ...]:
-            """Captured inputs another actor changed on disk."""
-            ...
+        phase_states: tuple[tuple[tuple[str, str], ...], ...]
+        drifted: tuple[Path, ...]
 
         @property
         def quarantined(self) -> FlextInfraProtocolsScan.ModModuleQuarantine | None:
@@ -536,7 +511,7 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ModScanEvidence(ModScanCounts, Protocol):
+    class ModScanEvidence(ModScanCounts[ModScanFindingReference], Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

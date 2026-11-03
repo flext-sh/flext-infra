@@ -10,85 +10,49 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraProtocolsMixins:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ModuleSelectionMixin(FlextCliProtocols.Model, Protocol):
+    class ModuleSelectionMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def module(self) -> str | None:
-            """Structural member projected from the owning model.
-
-            Dotted module path to scope verb to a single module (e.g.
-            flext_core.result). Mutually compatible with --projects/--repository-
-            root; narrows the run.
-            """
-            ...
+        module: str | None
 
     @runtime_checkable
-    class NamespaceSelectionMixin(FlextCliProtocols.Model, Protocol):
+    class NamespaceSelectionMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def namespace(self) -> str | None:
-            """Structural member projected from the owning model.
-
-            Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope the verb to a
-            single facade slot.
-            """
-            ...
+        namespace: str | None
 
     @runtime_checkable
-    class ScopeMixin(FlextCliProtocols.Model, Protocol):
+    class ScopeMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def repository_root(self) -> Path:
-            """Repository root."""
-            ...
-
-        @property
-        def projects(self) -> Sequence[str] | None:
-            """Projects to process; repeat --projects NAME as needed."""
-            ...
-
-        @property
-        def verbose(self) -> bool:
-            """Verbose output."""
-            ...
+        repository_root: Path
+        projects: Sequence[str] | None
+        verbose: bool
 
     @runtime_checkable
     class ReadMixin(ScopeMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def report(self) -> str | None:
-            """Output report file path."""
-            ...
-
-        @property
-        def output_dir(self) -> str | None:
-            """Output directory for reports."""
-            ...
+        report: str | None
+        output_dir: str | None
 
     @runtime_checkable
     class WriteMixin(ScopeMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def apply(self) -> bool:
-            """Apply changes instead of running in dry-run mode."""
-            ...
-
+        apply: bool
         gates: Sequence[str]
 
         @property
@@ -97,133 +61,90 @@ class FlextInfraProtocolsMixins:
             ...
 
     @runtime_checkable
-    class VersionTagMixin(FlextCliProtocols.Model, Protocol):
+    class VersionTagMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def version(self) -> str:
-            """Version string."""
-            ...
-
-        @property
-        def tag(self) -> str:
-            """Git tag (e.g. v1.0.0)."""
-            ...
+        version: str
+        tag: str
 
     @runtime_checkable
-    class FilePathMixin(FlextCliProtocols.Model, Protocol):
+    class FilePathMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def file(self) -> t.NonEmptyStr:
-            """File path."""
-            ...
+        file: t.NonEmptyStr
 
     @runtime_checkable
-    class AbsoluteFilePathTextMixin(FlextCliProtocols.Model, Protocol):
+    class AbsoluteFilePathTextMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def file_path(self) -> t.NonEmptyStr:
-            """Absolute file path."""
-            ...
+        file_path: t.NonEmptyStr
 
     @runtime_checkable
-    class PositiveLineMixin(FlextCliProtocols.Model, Protocol):
+    class PositiveLineMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def line(self) -> t.PositiveInt:
-            """Line number."""
-            ...
+        line: t.PositiveInt
 
     @runtime_checkable
-    class RequiredNonNegativeLineMixin(FlextCliProtocols.Model, Protocol):
+    class RequiredNonNegativeLineMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def line(self) -> t.NonNegativeInt:
-            """Line number."""
-            ...
+        line: t.NonNegativeInt
 
     @runtime_checkable
-    class NonNegativeLineMixin(FlextCliProtocols.Model, Protocol):
+    class NonNegativeLineMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def line(self) -> t.NonNegativeInt:
-            """Line number."""
-            ...
+        line: t.NonNegativeInt
 
     @runtime_checkable
-    class NestedClassPathMixin(FlextCliProtocols.Model, Protocol):
+    class NestedClassPathMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def class_path(self) -> str:
-            """Nested class path."""
-            ...
+        class_path: str
 
     @runtime_checkable
     class FileLineViolationMixin(FilePathMixin, PositiveLineMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
     @runtime_checkable
-    class CurrentImportMixin(FlextCliProtocols.Model, Protocol):
+    class CurrentImportMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def current_import(self) -> str:
-            """Current import statement."""
-            ...
+        current_import: str
 
     @runtime_checkable
-    class ErrorDetailMixin(FlextCliProtocols.Model, Protocol):
+    class ErrorDetailMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def detail(self) -> str:
-            """Error detail."""
-            ...
+        detail: str
 
     @runtime_checkable
-    class ProjectNameMixin(FlextCliProtocols.Model, Protocol):
+    class ProjectNameMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def project(self) -> t.NonEmptyStr:
-            """Project name."""
-            ...
+        project: t.NonEmptyStr
 
     @runtime_checkable
-    class ProjectEntryNameMixin(FlextCliProtocols.Model, Protocol):
+    class ProjectEntryNameMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def name(self) -> t.NonEmptyStr:
-            """Project name."""
-            ...
+        name: t.NonEmptyStr
 
     @runtime_checkable
-    class RepositoryRootPathMixin(FlextCliProtocols.Model, Protocol):
+    class RepositoryRootPathMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def repository_root(self) -> Path:
-            """Repository root path."""
-            ...
+        repository_root: Path
 
     @runtime_checkable
-    class ProjectNamesOptionalMixin(FlextCliProtocols.Model, Protocol):
+    class ProjectNamesOptionalMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def project_names(self) -> Sequence[str] | None:
-            """Project names."""
-            ...
+        project_names: Sequence[str] | None
 
     @runtime_checkable
-    class ProjectNamesListMixin(FlextCliProtocols.Model, Protocol):
+    class ProjectNamesListMixin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         project_names: Sequence[str]

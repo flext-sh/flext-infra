@@ -9,18 +9,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraProtocolsDuplication:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ProjectDuplicationOverrides(FlextCliProtocols.Model, Protocol):
+    class ProjectDuplicationOverrides(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -74,7 +75,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdProjectOverlay(FlextCliProtocols.Model, Protocol):
+    class JscpdProjectOverlay(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -87,7 +88,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdConfig(FlextCliProtocols.Model, Protocol):
+    class JscpdConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -156,7 +157,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdSemantic(FlextCliProtocols.Model, Protocol):
+    class JscpdSemantic(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -180,7 +181,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdLocation(FlextCliProtocols.Model, Protocol):
+    class JscpdLocation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -199,7 +200,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdFile(FlextCliProtocols.Model, Protocol):
+    class JscpdFile(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -233,7 +234,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdDuplicate(FlextCliProtocols.Model, Protocol):
+    class JscpdDuplicate(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -295,7 +296,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdStatisticsSummary(FlextCliProtocols.Model, Protocol):
+    class JscpdStatisticsSummary(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -349,7 +350,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdStatistics(FlextCliProtocols.Model, Protocol):
+    class JscpdStatistics(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -370,7 +371,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdReport(FlextCliProtocols.Model, Protocol):
+    class JscpdReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -384,7 +385,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class DuplicationSpanMeasure(FlextCliProtocols.Model, Protocol):
+    class DuplicationSpanMeasure(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -423,7 +424,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class DuplicationClassification(FlextCliProtocols.Model, Protocol):
+    class DuplicationClassification(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -482,7 +483,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class DuplicationAssessment(FlextCliProtocols.Model, Protocol):
+    class DuplicationAssessment(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -548,7 +549,7 @@ class FlextInfraProtocolsDuplication:
             ...
 
     @runtime_checkable
-    class JscpdScan(FlextCliProtocols.Model, Protocol):
+    class JscpdScan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

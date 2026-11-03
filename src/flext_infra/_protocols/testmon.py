@@ -18,7 +18,7 @@ class FlextInfraProtocolsTestmon:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class TestmonCacheState(FlextCliProtocols.Model, Protocol):
+    class TestmonCacheState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -47,7 +47,7 @@ class FlextInfraProtocolsTestmon:
             ...
 
     @runtime_checkable
-    class TestmonCachePublication(FlextCliProtocols.Model, Protocol):
+    class TestmonCachePublication(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -66,7 +66,7 @@ class FlextInfraProtocolsTestmon:
             ...
 
     @runtime_checkable
-    class TestmonRunAccounting(FlextCliProtocols.Model, Protocol):
+    class TestmonRunAccounting(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

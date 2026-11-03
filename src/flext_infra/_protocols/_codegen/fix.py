@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenScaffold
 
 
@@ -44,7 +44,7 @@ class FlextInfraProtocolsCodegenFix:
         files_modified: Sequence[str]
 
     @runtime_checkable
-    class ConsolidatorFileResult(FlextCliProtocols.Model, Protocol):
+    class ConsolidatorFileResult(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -63,7 +63,7 @@ class FlextInfraProtocolsCodegenFix:
             ...
 
     @runtime_checkable
-    class ConsolidatorReport(FlextCliProtocols.Model, Protocol):
+    class ConsolidatorReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -89,7 +89,7 @@ class FlextInfraProtocolsCodegenFix:
             ...
 
     @runtime_checkable
-    class FacadeFamily(FlextCliProtocols.Model, Protocol):
+    class FacadeFamily(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -123,63 +123,26 @@ class FlextInfraProtocolsCodegenFix:
             ...
 
     @runtime_checkable
-    class NamespaceModulePolicy(FlextCliProtocols.Model, Protocol):
+    class NamespaceModulePolicy(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def enforce_contract(self) -> bool:
-            """Whether gen-init must enforce namespace shape."""
-            ...
-
-        @property
-        def export_symbols(self) -> bool:
-            """Whether gen-init should discover public symbols."""
-            ...
-
-        @property
-        def include_in_lazy_init(self) -> bool:
-            """Whether lazy-init should index this module at all."""
-            ...
-
-        @property
-        def project_prefix(self) -> str:
-            """Canonical class prefix expected for the module."""
-            ...
-
-        @property
-        def expected_alias(self) -> str | None:
-            """Canonical module-level alias allowed for the file."""
-            ...
-
-        @property
-        def expected_family(self) -> str | None:
-            """Canonical namespace family suffix for the file."""
-            ...
-
+        enforce_contract: bool
+        export_symbols: bool
+        include_in_lazy_init: bool
+        project_prefix: str
+        expected_alias: str | None
+        expected_family: str | None
         inherited_namespaces: Sequence[str]
         is_internal_namespace: bool
         family_tokens: Sequence[str]
         accepted_suffixes: Sequence[str]
-
-        @property
-        def allow_main_export(self) -> bool:
-            """Whether the file may export a module-level main()."""
-            ...
-
-        @property
-        def allow_type_alias(self) -> bool:
-            """Whether the module may keep TypeAlias declarations."""
-            ...
-
-        @property
-        def is_fixture_module(self) -> bool:
-            """Whether the module belongs to a private fixtures package."""
-            ...
-
+        allow_main_export: bool
+        allow_type_alias: bool
+        is_fixture_module: bool
         type_checking_imports: Sequence[str]
 
     @runtime_checkable
-    class FixContext(FlextCliProtocols.Model, Protocol):
+    class FixContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -212,7 +175,7 @@ class FlextInfraProtocolsCodegenFix:
             ...
 
     @runtime_checkable
-    class ViolationKey(FlextCliProtocols.Model, Protocol):
+    class ViolationKey(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

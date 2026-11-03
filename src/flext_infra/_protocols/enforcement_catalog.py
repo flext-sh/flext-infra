@@ -12,9 +12,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsCheck
     from flext_infra._typings import FlextInfraTypesBase
 
@@ -23,7 +22,7 @@ class FlextInfraProtocolsEnforcementCatalog:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class EnforcementClaim(FlextCliProtocols.Model, Protocol):
+    class EnforcementClaim(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -56,7 +55,7 @@ class FlextInfraProtocolsEnforcementCatalog:
             ...
 
     @runtime_checkable
-    class EnforcementCatalog(FlextCliProtocols.Model, Protocol):
+    class EnforcementCatalog(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

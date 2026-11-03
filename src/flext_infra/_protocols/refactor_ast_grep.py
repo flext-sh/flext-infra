@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsRefactor
     from flext_infra._typings import FlextInfraTypesBase
 
@@ -300,7 +300,7 @@ class FlextInfraProtocolsRefactorAstGrep:
             ...
 
     @runtime_checkable
-    class AccessorMigrationRule(FlextCliProtocols.Model, Protocol):
+    class AccessorMigrationRule(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -373,7 +373,7 @@ class FlextInfraProtocolsRefactorAstGrep:
             ...
 
     @runtime_checkable
-    class AccessorMigrationFile(FlextCliProtocols.Model, Protocol):
+    class AccessorMigrationFile(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -425,7 +425,7 @@ class FlextInfraProtocolsRefactorAstGrep:
             ...
 
     @runtime_checkable
-    class AccessorMigrationReport(FlextCliProtocols.Model, Protocol):
+    class AccessorMigrationReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

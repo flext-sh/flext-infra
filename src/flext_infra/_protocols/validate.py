@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsBase, FlextInfraConstantsMake
 
 
@@ -25,26 +25,15 @@ class FlextInfraProtocolsValidate:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ValidationReport(FlextCliProtocols.Model, Protocol):
+    class ValidationReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def passed(self) -> bool:
-            """Validation status."""
-            ...
-
-        @property
-        def violations(self) -> Sequence[str]:
-            """Collected validation violations."""
-            ...
-
-        @property
-        def summary(self) -> str:
-            """Human-readable validation summary."""
-            ...
+        passed: bool
+        violations: Sequence[str]
+        summary: str
 
     @runtime_checkable
-    class FreshImportProbe(FlextCliProtocols.Model, Protocol):
+    class FreshImportProbe(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -58,7 +47,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class FreshImportEntryPoints(FlextCliProtocols.Model, Protocol):
+    class FreshImportEntryPoints(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -77,7 +66,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class FreshImportMetadata(FlextCliProtocols.Model, Protocol):
+    class FreshImportMetadata(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -86,99 +75,48 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class SkillRuleEvaluationContext(FlextCliProtocols.Model, Protocol):
+    class SkillRuleEvaluationContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def rules_list(self) -> t.JsonList:
-            """Rules to evaluate."""
-            ...
-
-        @property
-        def skill_dir(self) -> Path:
-            """Skill directory path."""
-            ...
-
-        @property
-        def root(self) -> Path:
-            """Repository root path."""
-            ...
+        rules_list: t.JsonList
+        skill_dir: Path
+        root: Path
 
         @property
         def mode(self) -> FlextInfraConstantsBase.OperationMode:
             """Skill validation mode."""
             ...
 
-        @property
-        def include_globs(self) -> Sequence[str]:
-            """Include globs."""
-            ...
-
-        @property
-        def exclude_globs(self) -> Sequence[str]:
-            """Exclude globs."""
-            ...
+        include_globs: Sequence[str]
+        exclude_globs: Sequence[str]
 
     @runtime_checkable
-    class SkillReportContext(FlextCliProtocols.Model, Protocol):
+    class SkillReportContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def rules(self) -> Mapping[str, t.JsonValue]:
-            """Rules payload."""
-            ...
-
-        @property
-        def root(self) -> Path:
-            """Repository root path."""
-            ...
-
-        @property
-        def skill_name(self) -> str:
-            """Skill folder name."""
-            ...
+        rules: Mapping[str, t.JsonValue]
+        root: Path
+        skill_name: str
 
         @property
         def mode(self) -> FlextInfraConstantsBase.OperationMode:
             """Skill validation mode."""
             ...
 
-        @property
-        def counts(self) -> t.IntMapping:
-            """Violation counts."""
-            ...
-
-        @property
-        def violations(self) -> Sequence[str]:
-            """Violations."""
-            ...
+        counts: t.IntMapping
+        violations: Sequence[str]
 
     @runtime_checkable
     class StubAnalysisReport(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def mypy_hints(self) -> MutableSequence[str]:
-            """Install-package hints extracted from mypy output."""
-            ...
-
-        @property
-        def internal_missing(self) -> MutableSequence[str]:
-            """Missing internal imports."""
-            ...
-
-        @property
-        def unresolved_missing(self) -> MutableSequence[str]:
-            """Missing external imports without an installed typed dependency."""
-            ...
-
-        @property
-        def total_missing(self) -> t.NonNegativeInt:
-            """Total missing imports."""
-            ...
+        mypy_hints: MutableSequence[str]
+        internal_missing: MutableSequence[str]
+        unresolved_missing: MutableSequence[str]
+        total_missing: t.NonNegativeInt
 
     @runtime_checkable
-    class PytestMarkdownOrigin(FlextCliProtocols.Model, Protocol):
+    class PytestMarkdownOrigin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -202,7 +140,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestMarkdownItem(FlextCliProtocols.Model, Protocol):
+    class PytestMarkdownItem(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -216,7 +154,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestMarkdownCollection(FlextCliProtocols.Model, Protocol):
+    class PytestMarkdownCollection(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -234,7 +172,7 @@ class FlextInfraProtocolsValidate:
         deselected: MutableSequence[str]
 
     @runtime_checkable
-    class PytestMarkdownAttempt(FlextCliProtocols.Model, Protocol):
+    class PytestMarkdownAttempt(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -258,7 +196,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestCollectionManifest(FlextCliProtocols.Model, Protocol):
+    class PytestCollectionManifest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -286,7 +224,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestSelectionPlan(FlextCliProtocols.Model, Protocol):
+    class PytestSelectionPlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -319,7 +257,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestInvocation(FlextCliProtocols.Model, Protocol):
+    class PytestInvocation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -343,7 +281,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestRunContext(FlextCliProtocols.Model, Protocol):
+    class PytestRunContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -385,7 +323,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestReportEvent(FlextCliProtocols.Model, Protocol):
+    class PytestReportEvent(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -434,7 +372,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestWarningEvent(FlextCliProtocols.Model, Protocol):
+    class PytestWarningEvent(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -468,7 +406,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestPhaseOutcome(FlextCliProtocols.Model, Protocol):
+    class PytestPhaseOutcome(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -487,29 +425,13 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class PytestDiagnostics(FlextCliProtocols.Model, Protocol):
+    class PytestDiagnostics(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def failed_count(self) -> t.NonNegativeInt:
-            """Failed test case count."""
-            ...
-
-        @property
-        def error_count(self) -> t.NonNegativeInt:
-            """Errored test case count."""
-            ...
-
-        @property
-        def warning_count(self) -> t.NonNegativeInt:
-            """Recorded warning event count."""
-            ...
-
-        @property
-        def skipped_count(self) -> t.NonNegativeInt:
-            """Skipped test case count."""
-            ...
-
+        failed_count: t.NonNegativeInt
+        error_count: t.NonNegativeInt
+        warning_count: t.NonNegativeInt
+        skipped_count: t.NonNegativeInt
         connectivity_skip_cases: t.StrTuple
         collection_failed_count: t.NonNegativeInt
         collection_skipped_count: t.NonNegativeInt
@@ -538,33 +460,14 @@ class FlextInfraProtocolsValidate:
             """Executed call-phase origins."""
             ...
 
-        @property
-        def failed_cases(self) -> Sequence[str]:
-            """Failed test labels."""
-            ...
-
-        @property
-        def error_traces(self) -> Sequence[str]:
-            """Collected error traces."""
-            ...
-
-        @property
-        def warning_lines(self) -> Sequence[str]:
-            """Captured warning lines."""
-            ...
-
-        @property
-        def skip_cases(self) -> Sequence[str]:
-            """Skipped test labels."""
-            ...
-
-        @property
-        def slow_entries(self) -> Sequence[str]:
-            """Slow test entries."""
-            ...
+        failed_cases: Sequence[str]
+        error_traces: Sequence[str]
+        warning_lines: Sequence[str]
+        skip_cases: Sequence[str]
+        slow_entries: Sequence[str]
 
     @runtime_checkable
-    class PytestMarkdownReconciliation(FlextCliProtocols.Model, Protocol):
+    class PytestMarkdownReconciliation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -604,7 +507,7 @@ class FlextInfraProtocolsValidate:
             ...
 
     @runtime_checkable
-    class DiagResult(FlextCliProtocols.Model, Protocol):
+    class DiagResult(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         reported_phases: MutableMapping[str, t.MutableStrMapping]
@@ -626,53 +529,22 @@ class FlextInfraProtocolsValidate:
 
         collection_failed_cases: MutableSequence[str]
         collection_skip_cases: MutableSequence[str]
-
-        @property
-        def failed_cases(self) -> MutableSequence[str]:
-            """Collected failed test-case labels."""
-            ...
-
-        @property
-        def error_cases(self) -> MutableSequence[str]:
-            """Collected error test-case labels."""
-            ...
-
-        @property
-        def error_traces(self) -> MutableSequence[str]:
-            """Collected error trace chunks."""
-            ...
-
-        @property
-        def skip_cases(self) -> MutableSequence[str]:
-            """Collected skipped test-case labels."""
-            ...
-
-        @property
-        def warning_lines(self) -> MutableSequence[str]:
-            """Collected warning lines."""
-            ...
-
-        @property
-        def slow_entries(self) -> MutableSequence[str]:
-            """Collected slow-test entries."""
-            ...
+        failed_cases: MutableSequence[str]
+        error_cases: MutableSequence[str]
+        error_traces: MutableSequence[str]
+        skip_cases: MutableSequence[str]
+        warning_lines: MutableSequence[str]
+        slow_entries: MutableSequence[str]
 
     @runtime_checkable
-    class InventoryReport(FlextCliProtocols.Model, Protocol):
+    class InventoryReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def total_scripts(self) -> t.NonNegativeInt:
-            """Total discovered scripts."""
-            ...
-
-        @property
-        def reports_written(self) -> MutableSequence[str]:
-            """Written report file paths."""
-            ...
+        total_scripts: t.NonNegativeInt
+        reports_written: MutableSequence[str]
 
     @runtime_checkable
-    class NamespaceValidateCommand(FlextCliProtocols.Model, Protocol):
+    class NamespaceValidateCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

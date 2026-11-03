@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsDocs
     from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
     from flext_infra._protocols._config import FlextInfraProtocolsConfigWorkspace
@@ -28,7 +28,7 @@ class FlextInfraProtocolsDocsGeneration:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class DocsCatalogEntry(FlextCliProtocols.Model, Protocol):
+    class DocsCatalogEntry(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -57,7 +57,7 @@ class FlextInfraProtocolsDocsGeneration:
             ...
 
     @runtime_checkable
-    class DocsDependencyReference(FlextCliProtocols.Model, Protocol):
+    class DocsDependencyReference(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -86,7 +86,7 @@ class FlextInfraProtocolsDocsGeneration:
             ...
 
     @runtime_checkable
-    class DocsLlmsContext(FlextCliProtocols.Model, Protocol):
+    class DocsLlmsContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -109,7 +109,7 @@ class FlextInfraProtocolsDocsGeneration:
             ...
 
     @runtime_checkable
-    class DocsRootInputs(FlextCliProtocols.Model, Protocol):
+    class DocsRootInputs(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

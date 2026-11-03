@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_infra import t
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._protocols import FlextInfraProtocolsDepsToolConfig
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigArtifact,
@@ -76,10 +76,7 @@ class FlextInfraProtocolsConfigRoot:
     class Root(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def Infra(self) -> FlextInfraProtocolsConfigRoot.Infra:
-            """Validated flext-infra namespace."""
-            ...
+        Infra: FlextInfraProtocolsConfigRoot.Infra
 
 
 __all__: list[str] = [

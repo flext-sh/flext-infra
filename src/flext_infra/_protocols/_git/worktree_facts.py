@@ -17,7 +17,7 @@ class FlextInfraProtocolsGitWorktreeFacts:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class GitTreeStats(FlextCliProtocols.Model, Protocol):
+    class GitTreeStats(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

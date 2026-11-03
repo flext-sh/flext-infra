@@ -54,7 +54,7 @@ class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
 
     @runtime_checkable
-    class RopeWorkspaceSession(FlextCliProtocols.Model, Protocol):
+    class RopeWorkspaceSession(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -160,7 +160,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class ModuleSemanticState(FlextCliProtocols.Model, Protocol):
+    class ModuleSemanticState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -179,7 +179,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class SourceScanRequest(FlextCliProtocols.Model, Protocol):
+    class SourceScanRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -495,7 +495,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class SubscriptRebind(FlextCliProtocols.Model, Protocol):
+    class SubscriptRebind(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -519,7 +519,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class ExportOptions(FlextCliProtocols.Model, Protocol):
+    class ExportOptions(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -548,7 +548,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class SourceClassReference(FlextCliProtocols.Model, Protocol):
+    class SourceClassReference(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -567,7 +567,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class RopeAttributeReadProof(FlextCliProtocols.Model, Protocol):
+    class RopeAttributeReadProof(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -646,7 +646,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class SourceClassDefinition(FlextCliProtocols.Model, Protocol):
+    class SourceClassDefinition(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -667,7 +667,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class SourceBindingCollectorSpec(FlextCliProtocols.Model, Protocol):
+    class SourceBindingCollectorSpec(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -719,7 +719,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class SourceBindingInventoryRequest(FlextCliProtocols.Model, Protocol):
+    class SourceBindingInventoryRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -908,7 +908,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class RopeModuleConvention(FlextCliProtocols.Model, Protocol):
+    class RopeModuleConvention(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -995,7 +995,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class RopeProjectElection(FlextCliProtocols.Model, Protocol):
+    class RopeProjectElection(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -1019,7 +1019,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class RopeInventoryRecordInput(FlextCliProtocols.Model, Protocol):
+    class RopeInventoryRecordInput(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -1032,55 +1032,26 @@ class FlextInfraProtocolsRope(Protocol):
             """Rope resource containing the symbol definition."""
             ...
 
-        @property
-        def source(self) -> str:
-            """Full source text used to compute fingerprints."""
-            ...
-
-        @property
-        def parameter_lines(self) -> Mapping[tuple[int, str], int]:
-            """Parameter positions from the module snapshot."""
-            ...
-
-        @property
-        def constant_bindings(self) -> frozenset[tuple[int, str]]:
-            """Identity-proven immutable declarations in the snapshot."""
-            ...
-
-        @property
-        def name(self) -> str:
-            """Resolved symbol name being recorded."""
-            ...
+        source: str
+        parameter_lines: Mapping[tuple[int, str], int]
+        constant_bindings: frozenset[tuple[int, str]]
+        name: str
 
         @property
         def pyname(self) -> FlextInfraTypesRope.RopePyName:
             """Rope pyname node for the symbol."""
             ...
 
-        @property
-        def module_name(self) -> str:
-            """Resolved module name for the symbol."""
-            ...
-
-        @property
-        def project_name(self) -> str:
-            """Resolved project name for census attribution."""
-            ...
+        module_name: str
+        project_name: str
 
         @property
         def convention(self) -> FlextInfraProtocolsRope.RopeModuleConvention:
             """Module convention metadata for tier/facade checks."""
             ...
 
-        @property
-        def scope_chain(self) -> Sequence[str]:
-            """Nested scope path leading to the symbol."""
-            ...
-
-        @property
-        def class_chain(self) -> Sequence[str]:
-            """Nested class path leading to the symbol."""
-            ...
+        scope_chain: Sequence[str]
+        class_chain: Sequence[str]
 
         @property
         def child_scope(self) -> FlextInfraProtocolsRope.RopeScopeDsl | None:

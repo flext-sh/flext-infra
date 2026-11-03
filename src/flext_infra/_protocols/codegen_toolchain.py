@@ -13,17 +13,17 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
     from flext_cli import p
+
+    from flext_infra import t
 
 
 class FlextInfraProtocolsCodegenToolchain:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class MiseToolchainProjectLayout(FlextCliProtocols.Model, Protocol):
+    class MiseToolchainProjectLayout(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -47,7 +47,7 @@ class FlextInfraProtocolsCodegenToolchain:
             ...
 
     @runtime_checkable
-    class CodegenFileParticipant(FlextCliProtocols.Model, Protocol):
+    class CodegenFileParticipant(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -76,7 +76,7 @@ class FlextInfraProtocolsCodegenToolchain:
             ...
 
     @runtime_checkable
-    class MiseToolchainWorkspaceLayout(FlextCliProtocols.Model, Protocol):
+    class MiseToolchainWorkspaceLayout(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -114,7 +114,7 @@ class FlextInfraProtocolsCodegenToolchain:
             ...
 
     @runtime_checkable
-    class MiseToolchainConfigState(FlextCliProtocols.Model, Protocol):
+    class MiseToolchainConfigState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -138,7 +138,7 @@ class FlextInfraProtocolsCodegenToolchain:
             ...
 
     @runtime_checkable
-    class MiseToolchainProjectState(FlextCliProtocols.Model, Protocol):
+    class MiseToolchainProjectState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -156,7 +156,7 @@ class FlextInfraProtocolsCodegenToolchain:
             ...
 
     @runtime_checkable
-    class MiseToolchainWorkspacePlan(FlextCliProtocols.Model, Protocol):
+    class MiseToolchainWorkspacePlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

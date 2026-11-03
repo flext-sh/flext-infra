@@ -15,12 +15,12 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._typings import FlextInfraTypesRope
 
 
@@ -28,7 +28,7 @@ class FlextInfraProtocolsTransformers:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class SemanticPublicationOptions(FlextCliProtocols.Model, Protocol):
+    class SemanticPublicationOptions(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -58,7 +58,7 @@ class FlextInfraProtocolsTransformers:
             ...
 
     @runtime_checkable
-    class AliasMigrationContext(FlextCliProtocols.Model, Protocol):
+    class AliasMigrationContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -72,7 +72,7 @@ class FlextInfraProtocolsTransformers:
             ...
 
     @runtime_checkable
-    class SemanticFilePlan(FlextCliProtocols.Model, Protocol):
+    class SemanticFilePlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -106,7 +106,7 @@ class FlextInfraProtocolsTransformers:
             ...
 
     @runtime_checkable
-    class SemanticMigrationEdit(FlextCliProtocols.Model, Protocol):
+    class SemanticMigrationEdit(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -139,46 +139,21 @@ class FlextInfraProtocolsTransformers:
             ...
 
     @runtime_checkable
-    class SemanticBehaviorRewriteRequest(FlextCliProtocols.Model, Protocol):
+    class SemanticBehaviorRewriteRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def path(self) -> Path:
-            """Consumer source identity."""
-            ...
-
-        @property
-        def source(self) -> str:
-            """Consumer source text."""
-            ...
-
-        @property
-        def modules(self) -> Mapping[str, tuple[str, bool]]:
-            """Qualified source text and package identities."""
-            ...
-
-        @property
-        def ownership(
-            self,
-        ) -> tuple[
+        path: Path
+        source: str
+        modules: Mapping[str, tuple[str, bool]]
+        ownership: tuple[
             Mapping[tuple[str, str], Sequence[tuple[str, str]]],
             frozenset[tuple[str, str, str, str]],
-        ]:
-            """Declared utility owners and facade dispatch needs."""
-            ...
-
-        @property
-        def utility_imports(self) -> frozenset[tuple[str, str]]:
-            """Elected self-facade import identities."""
-            ...
-
-        @property
-        def declaration_imports(self) -> frozenset[tuple[str, str]]:
-            """External declaration receivers eligible for proven lower binding."""
-            ...
+        ]
+        utility_imports: frozenset[tuple[str, str]]
+        declaration_imports: frozenset[tuple[str, str]]
 
     @runtime_checkable
-    class DeclarationRelocationFinding(FlextCliProtocols.Model, Protocol):
+    class DeclarationRelocationFinding(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -267,7 +242,7 @@ class FlextInfraProtocolsTransformers:
             ...
 
     @runtime_checkable
-    class Tier0ImportAnalysis(FlextCliProtocols.Model, Protocol):
+    class Tier0ImportAnalysis(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -330,36 +305,17 @@ class FlextInfraProtocolsTransformers:
             ...
 
     @runtime_checkable
-    class HeaderSpan(FlextCliProtocols.Model, Protocol):
+    class HeaderSpan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def shebang_end(self) -> int:
-            """Byte offset just after the shebang line."""
-            ...
-
-        @property
-        def encoding_end(self) -> int:
-            """Byte offset just after the encoding cookie."""
-            ...
-
-        @property
-        def comments_end(self) -> int:
-            """Byte offset after the leading comment block."""
-            ...
-
-        @property
-        def docstring_end(self) -> int:
-            """Byte offset after the module docstring."""
-            ...
-
-        @property
-        def last_import_end(self) -> int:
-            """Byte offset after the last import statement."""
-            ...
+        shebang_end: int
+        encoding_end: int
+        comments_end: int
+        docstring_end: int
+        last_import_end: int
 
     @runtime_checkable
-    class ClassBlockLayout(FlextCliProtocols.Model, Protocol):
+    class ClassBlockLayout(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -407,7 +363,7 @@ class FlextInfraProtocolsTransformers:
             ...
 
     @runtime_checkable
-    class FacadeNamespaceCutover(FlextCliProtocols.Model, Protocol):
+    class FacadeNamespaceCutover(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

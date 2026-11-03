@@ -12,9 +12,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsGit
 
 
@@ -22,7 +21,7 @@ class FlextInfraProtocolsGitLaneInputs:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class GitLaneRef(FlextCliProtocols.Model, Protocol):
+    class GitLaneRef(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -36,7 +35,7 @@ class FlextInfraProtocolsGitLaneInputs:
             ...
 
     @runtime_checkable
-    class GitLaneViolation(FlextCliProtocols.Model, Protocol):
+    class GitLaneViolation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -55,7 +54,7 @@ class FlextInfraProtocolsGitLaneInputs:
             ...
 
     @runtime_checkable
-    class GitLanePullRequest(FlextCliProtocols.Model, Protocol):
+    class GitLanePullRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -74,7 +73,7 @@ class FlextInfraProtocolsGitLaneInputs:
             ...
 
     @runtime_checkable
-    class GitLaneBeadMetadata(FlextCliProtocols.Model, Protocol):
+    class GitLaneBeadMetadata(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -98,7 +97,7 @@ class FlextInfraProtocolsGitLaneInputs:
             ...
 
     @runtime_checkable
-    class GitLaneCoordinationPolicy(FlextCliProtocols.Model, Protocol):
+    class GitLaneCoordinationPolicy(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

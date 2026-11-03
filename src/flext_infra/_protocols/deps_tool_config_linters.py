@@ -14,9 +14,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsCheck
     from flext_infra._typings import FlextInfraTypesBase
 
@@ -25,7 +24,7 @@ class FlextInfraProtocolsDepsToolConfigLinters:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class TrackerAuthorization(FlextCliProtocols.Model, Protocol):
+    class TrackerAuthorization(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -34,7 +33,7 @@ class FlextInfraProtocolsDepsToolConfigLinters:
             ...
 
     @runtime_checkable
-    class OperatorAuthorization(FlextCliProtocols.Model, Protocol):
+    class OperatorAuthorization(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -53,7 +52,7 @@ class FlextInfraProtocolsDepsToolConfigLinters:
             ...
 
     @runtime_checkable
-    class DiagnosticRuleChange(FlextCliProtocols.Model, Protocol):
+    class DiagnosticRuleChange(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -77,7 +76,7 @@ class FlextInfraProtocolsDepsToolConfigLinters:
             ...
 
     @runtime_checkable
-    class RuffLintConfig(FlextCliProtocols.Model, Protocol):
+    class RuffLintConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -128,7 +127,7 @@ class FlextInfraProtocolsDepsToolConfigLinters:
             ...
 
     @runtime_checkable
-    class RuffConfig(FlextCliProtocols.Model, Protocol):
+    class RuffConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         findings_exit_codes: tuple[int, ...]
@@ -139,44 +138,24 @@ class FlextInfraProtocolsDepsToolConfigLinters:
             ...
 
     @runtime_checkable
-    class MypyOverrideConfig(FlextCliProtocols.Model, Protocol):
+    class MypyOverrideConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def modules(self) -> Sequence[str]:
-            """Module patterns for this override."""
-            ...
+        modules: Sequence[str]
 
         @property
         def settings(self) -> FlextInfraTypesBase.SettingsPairs:
             """Native override options as ordered key/value pairs."""
             ...
 
-        @property
-        def justification(self) -> str:
-            """Structural member projected from the owning model.
-
-            Required citation (GitHub issue / PEP / mypy docs) justifying this
-            override. AGENTS.md:319 forbids suppressions without evidence; leave
-            empty only for strictly transitional overrides with a TODO in the module
-            comment.
-            """
-            ...
+        justification: str
 
     @runtime_checkable
-    class MypyConfig(FlextCliProtocols.Model, Protocol):
+    class MypyConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def timeout_seconds(self) -> int:
-            """Default Mypy wall-time budget in seconds."""
-            ...
-
-        @property
-        def max_timeout_seconds(self) -> int:
-            """Finite project budget ceiling in seconds."""
-            ...
-
+        timeout_seconds: int
+        max_timeout_seconds: int
         ruling_disable_error_codes: tuple[t.NonEmptyStr, ...]
 
         @property

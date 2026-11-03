@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra import t
+from flext_infra._constants import FlextInfraConstantsConfig
 from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._protocols._config import (
     FlextInfraProtocolsConfigContract,
@@ -20,10 +20,8 @@ from flext_infra._protocols._config import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra._constants import (
-        FlextInfraConstantsCheck,
-        FlextInfraConstantsConfig,
-    )
+    from flext_infra import t
+    from flext_infra._constants import FlextInfraConstantsCheck
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigMakeClean,
         FlextInfraProtocolsConfigMakeDocs,
@@ -74,7 +72,9 @@ class FlextInfraProtocolsConfigMake:
             ...
 
     @runtime_checkable
-    class RuffCacheSpec(FlextInfraProtocolsConfigExternalCache.Directory, Protocol):
+    class RuffCacheSpec(
+        FlextInfraProtocolsConfigExternalCache.Directory[str], Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -316,7 +316,9 @@ class FlextInfraProtocolsConfigMake:
 
     @runtime_checkable
     class MypyCacheSpec(
-        FlextInfraProtocolsConfigExternalCache.Directory,
+        FlextInfraProtocolsConfigExternalCache.Directory[
+            FlextInfraConstantsConfig.MypyCacheEnvironment
+        ],
         FlextInfraProtocolsConfigContract.ConfigContract,
         Protocol,
     ):
@@ -753,7 +755,9 @@ class FlextInfraProtocolsConfigMake:
 
     @runtime_checkable
     class MakeSpecTestmonCacheSpec(
-        FlextInfraProtocolsConfigExternalCache.Directory,
+        FlextInfraProtocolsConfigExternalCache.Directory[
+            FlextInfraConstantsConfig.PytestCacheEnvironment
+        ],
         FlextInfraProtocolsConfigContract.ConfigContract,
         Protocol,
     ):

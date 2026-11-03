@@ -14,12 +14,12 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._constants import (
         FlextInfraConstantsCheck,
         FlextInfraConstantsCodegenProject,
@@ -39,7 +39,7 @@ class FlextInfraProtocolsWorkspace:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class CodegenSourceAuthority(FlextCliProtocols.Model, Protocol):
+    class CodegenSourceAuthority(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -100,7 +100,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class NativeCodeEvidence(FlextCliProtocols.Model, Protocol):
+    class NativeCodeEvidence(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -137,7 +137,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class NativeBindingEvidence(FlextCliProtocols.Model, Protocol):
+    class NativeBindingEvidence(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -185,7 +185,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class NativeObservationContext(FlextCliProtocols.Model, Protocol):
+    class NativeObservationContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         paths: tuple[tuple[Path, Path], ...]
@@ -294,7 +294,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class NativeFunctionObservationContext(FlextCliProtocols.Model, Protocol):
+    class NativeFunctionObservationContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -341,7 +341,7 @@ class FlextInfraProtocolsWorkspace:
         operational_globals: frozenset[str]
 
     @runtime_checkable
-    class NativeImportObservation(FlextCliProtocols.Model, Protocol):
+    class NativeImportObservation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -460,7 +460,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class FlextEditableSelection(FlextCliProtocols.Model, Protocol):
+    class FlextEditableSelection(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -478,7 +478,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class WorkspaceRuntimeContext(FlextCliProtocols.Model, Protocol):
+    class WorkspaceRuntimeContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -530,7 +530,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class WorkspaceOperationReceipt(FlextCliProtocols.Model, Protocol):
+    class WorkspaceOperationReceipt(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -593,7 +593,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class WorkspaceOperationTarget(FlextCliProtocols.Model, Protocol):
+    class WorkspaceOperationTarget(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -607,7 +607,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class WorkspaceOperationApplicability(FlextCliProtocols.Model, Protocol):
+    class WorkspaceOperationApplicability(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -621,7 +621,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class WorkspaceOperationReport(FlextCliProtocols.Model, Protocol):
+    class WorkspaceOperationReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -657,7 +657,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class SubprojectLoadContext(FlextCliProtocols.Model, Protocol):
+    class SubprojectLoadContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -705,7 +705,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class WorkspaceProjectContext(FlextCliProtocols.Model, Protocol):
+    class WorkspaceProjectContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -743,7 +743,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class DirectUrlDirectoryInfo(FlextCliProtocols.Model, Protocol):
+    class DirectUrlDirectoryInfo(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -752,7 +752,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class DirectUrlVcsInfo(FlextCliProtocols.Model, Protocol):
+    class DirectUrlVcsInfo(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -766,7 +766,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class PythonEnvironmentObservation(FlextCliProtocols.Model, Protocol):
+    class PythonEnvironmentObservation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -795,7 +795,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class DirectUrlReceipt(FlextCliProtocols.Model, Protocol):
+    class DirectUrlReceipt(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -816,7 +816,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class LockedPackageSource(FlextCliProtocols.Model, Protocol):
+    class LockedPackageSource(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -850,7 +850,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class LockedDependency(FlextCliProtocols.Model, Protocol):
+    class LockedDependency(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -879,7 +879,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class LockedPackage(FlextCliProtocols.Model, Protocol):
+    class LockedPackage(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -924,7 +924,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class LockedEnvironment(FlextCliProtocols.Model, Protocol):
+    class LockedEnvironment(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -938,7 +938,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class EditableDirectUrl(FlextCliProtocols.Model, Protocol):
+    class EditableDirectUrl(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -952,7 +952,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class FleetPullRequest(FlextCliProtocols.Model, Protocol):
+    class FleetPullRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -976,7 +976,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class FleetRepoGaps(FlextCliProtocols.Model, Protocol):
+    class FleetRepoGaps(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -1047,7 +1047,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class FleetGapsReport(FlextCliProtocols.Model, Protocol):
+    class FleetGapsReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -1115,7 +1115,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class ProjectPyprojectState(FlextCliProtocols.Model, Protocol):
+    class ProjectPyprojectState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

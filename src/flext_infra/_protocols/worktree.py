@@ -11,18 +11,19 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraProtocolsWorktree:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class LintSnapshot(FlextCliProtocols.Model, Protocol):
+    class LintSnapshot(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -51,7 +52,7 @@ class FlextInfraProtocolsWorktree:
             ...
 
     @runtime_checkable
-    class RepositoryDelta(FlextCliProtocols.Model, Protocol):
+    class RepositoryDelta(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -85,7 +86,7 @@ class FlextInfraProtocolsWorktree:
             ...
 
     @runtime_checkable
-    class RepositoryWorktree(FlextCliProtocols.Model, Protocol):
+    class RepositoryWorktree(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -109,7 +110,7 @@ class FlextInfraProtocolsWorktree:
             ...
 
     @runtime_checkable
-    class WorktreeFactsPolicy(FlextCliProtocols.Model, Protocol):
+    class WorktreeFactsPolicy(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -123,7 +124,7 @@ class FlextInfraProtocolsWorktree:
             ...
 
     @runtime_checkable
-    class WorktreeFactsQuery(FlextCliProtocols.Model, Protocol):
+    class WorktreeFactsQuery(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -157,7 +158,7 @@ class FlextInfraProtocolsWorktree:
             ...
 
     @runtime_checkable
-    class WorktreeCandidate(FlextCliProtocols.Model, Protocol):
+    class WorktreeCandidate(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -176,7 +177,7 @@ class FlextInfraProtocolsWorktree:
             ...
 
     @runtime_checkable
-    class WorktreeFact(FlextCliProtocols.Model, Protocol):
+    class WorktreeFact(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -250,7 +251,7 @@ class FlextInfraProtocolsWorktree:
             ...
 
     @runtime_checkable
-    class PruneAction(FlextCliProtocols.Model, Protocol):
+    class PruneAction(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -293,7 +294,7 @@ class FlextInfraProtocolsWorktree:
             ...
 
     @runtime_checkable
-    class PrunePlan(FlextCliProtocols.Model, Protocol):
+    class PrunePlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -322,7 +323,7 @@ class FlextInfraProtocolsWorktree:
             ...
 
     @runtime_checkable
-    class WorktreesReport(FlextCliProtocols.Model, Protocol):
+    class WorktreesReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

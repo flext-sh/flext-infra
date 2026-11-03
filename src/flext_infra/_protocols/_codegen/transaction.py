@@ -28,7 +28,7 @@ class FlextInfraProtocolsCodegenTransaction:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class CodegenFilePlan(FlextCliProtocols.Model, Protocol):
+    class CodegenFilePlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -204,7 +204,7 @@ class FlextInfraProtocolsCodegenTransaction:
             ...
 
     @runtime_checkable
-    class SemanticSourcePlan(FlextCliProtocols.Model, Protocol):
+    class SemanticSourcePlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

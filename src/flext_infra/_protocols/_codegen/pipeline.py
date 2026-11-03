@@ -14,12 +14,12 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
     from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
     from flext_infra._protocols._config import (
@@ -57,7 +57,7 @@ class FlextInfraProtocolsCodegenPipeline:
             ...
 
     @runtime_checkable
-    class CandidateBootstrapCommand(FlextCliProtocols.Model, Protocol):
+    class CandidateBootstrapCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -81,13 +81,10 @@ class FlextInfraProtocolsCodegenPipeline:
             ...
 
     @runtime_checkable
-    class CodegenRepositoryPlanOutcome(FlextCliProtocols.Model, Protocol):
+    class CodegenRepositoryPlanOutcome(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def repository(self) -> t.NonEmptyStr:
-            """Planned repository name."""
-            ...
+        repository: t.NonEmptyStr
 
         @property
         def files(
@@ -103,13 +100,10 @@ class FlextInfraProtocolsCodegenPipeline:
             """Uv environment plan of the repository."""
             ...
 
-        @property
-        def elapsed(self) -> float:
-            """Planning wall seconds."""
-            ...
+        elapsed: float
 
     @runtime_checkable
-    class CodegenPlan(FlextCliProtocols.Model, Protocol):
+    class CodegenPlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -172,7 +166,7 @@ class FlextInfraProtocolsCodegenPipeline:
             ...
 
     @runtime_checkable
-    class CodegenConformPorts(FlextCliProtocols.Model, Protocol):
+    class CodegenConformPorts(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -203,7 +197,7 @@ class FlextInfraProtocolsCodegenPipeline:
             ...
 
     @runtime_checkable
-    class CodegenConformState(FlextCliProtocols.Model, Protocol):
+    class CodegenConformState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

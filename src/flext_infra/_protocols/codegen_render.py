@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsConfig
     from flext_infra._protocols import FlextInfraProtocolsMiseToolchain
     from flext_infra._protocols._config import (
@@ -33,7 +33,7 @@ class FlextInfraProtocolsCodegenRender:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ModelProtocolConformanceRenderContext(FlextCliProtocols.Model, Protocol):
+    class ModelProtocolConformanceRenderContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -79,7 +79,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
     @runtime_checkable
-    class ModelProtocolRenderContext(FlextCliProtocols.Model, Protocol):
+    class ModelProtocolRenderContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -153,7 +153,7 @@ class FlextInfraProtocolsCodegenRender:
 
     @runtime_checkable
     class ModelProtocolRenderContextModelProtocolContract(
-        FlextCliProtocols.Model, Protocol
+        FlextCliProtocols.BaseModel, Protocol
     ):
         """Structural data contract projected from the owning model."""
 
@@ -538,7 +538,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
     @runtime_checkable
-    class MarkdownLintRenderSpec(FlextCliProtocols.Model, Protocol):
+    class MarkdownLintRenderSpec(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -552,11 +552,11 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
     @runtime_checkable
-    class QltyRenderSpec(FlextCliProtocols.Model, Protocol):
+    class QltyRenderSpec(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
     @runtime_checkable
-    class ModuleSkeletonRenderContext(FlextCliProtocols.Model, Protocol):
+    class ModuleSkeletonRenderContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         class_name: t.NonEmptyStr
@@ -578,7 +578,7 @@ class FlextInfraProtocolsCodegenRender:
         managed_header: str | None
 
     @runtime_checkable
-    class TestModuleSkeletonRenderContext(FlextCliProtocols.Model, Protocol):
+    class TestModuleSkeletonRenderContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -617,7 +617,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
     @runtime_checkable
-    class MkdocsRenderContext(FlextCliProtocols.Model, Protocol):
+    class MkdocsRenderContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

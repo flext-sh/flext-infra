@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols._config import FlextInfraProtocolsConfigWorkspace
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsBase
 
 
@@ -45,7 +45,7 @@ class FlextInfraProtocolsDepsToml:
             ...
 
     @runtime_checkable
-    class SetOp(FlextCliProtocols.Model, Protocol):
+    class SetOp(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -64,7 +64,7 @@ class FlextInfraProtocolsDepsToml:
             ...
 
     @runtime_checkable
-    class ListOp(FlextCliProtocols.Model, Protocol):
+    class ListOp(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -93,7 +93,7 @@ class FlextInfraProtocolsDepsToml:
             ...
 
     @runtime_checkable
-    class RemoveOp(FlextCliProtocols.Model, Protocol):
+    class RemoveOp(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -112,7 +112,7 @@ class FlextInfraProtocolsDepsToml:
             ...
 
     @runtime_checkable
-    class PhaseConfig(FlextCliProtocols.Model, Protocol):
+    class PhaseConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

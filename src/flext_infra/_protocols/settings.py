@@ -9,18 +9,19 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import c, t
+if TYPE_CHECKING:
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsSettings:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class InfraSettings(FlextCliProtocols.Model, Protocol):
+    class InfraSettings(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

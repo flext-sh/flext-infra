@@ -244,7 +244,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         def frozen_layout(self) -> AbstractContextManager[Self]: ...
 
     @runtime_checkable
-    class WorkspaceSnapshotSource(FlextCliProtocols.Model, Protocol):
+    class WorkspaceSnapshotSource(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -278,7 +278,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceBootstrapDependencies(FlextCliProtocols.Model, Protocol):
+    class WorkspaceBootstrapDependencies(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -312,7 +312,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceSnapshot(FlextCliProtocols.Model, Protocol):
+    class WorkspaceSnapshot(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

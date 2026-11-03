@@ -14,11 +14,10 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._protocols import (
         FlextInfraProtocolsDepsToolConfigProjectMise,
         FlextInfraProtocolsProjectGitignore,
@@ -29,25 +28,14 @@ class FlextInfraProtocolsProjectArtifacts:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ProjectManagedArtifactsConfig(FlextCliProtocols.Model, Protocol):
+    class ProjectManagedArtifactsConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def Mise(
-            self,
-        ) -> FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig:
-            """Mise additions owned by the current project."""
-            ...
-
-        @property
-        def Gitignore(
-            self,
-        ) -> FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig:
-            """Ignore patterns owned by the current project."""
-            ...
+        Mise: FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig
+        Gitignore: FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig
 
     @runtime_checkable
-    class ProjectManagedArtifactsResolution(FlextCliProtocols.Model, Protocol):
+    class ProjectManagedArtifactsResolution(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -57,13 +45,10 @@ class FlextInfraProtocolsProjectArtifacts:
             """Composed managed-artifact configuration."""
             ...
 
-        @property
-        def mise_tool_sources(self) -> Mapping[t.NonEmptyStr, Path]:
-            """Source YAML path for every local Mise selector."""
-            ...
+        mise_tool_sources: Mapping[t.NonEmptyStr, Path]
 
     @runtime_checkable
-    class ProjectManagedArtifactsSnapshot(FlextCliProtocols.Model, Protocol):
+    class ProjectManagedArtifactsSnapshot(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

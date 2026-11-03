@@ -14,12 +14,12 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._constants import (
         FlextInfraConstantsRefactor,
         FlextInfraConstantsRope,
@@ -30,7 +30,7 @@ class FlextInfraProtocolsCodemod:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class RopeSignatureAddition(FlextCliProtocols.Model, Protocol):
+    class RopeSignatureAddition(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -64,7 +64,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class RopeSignatureRemoval(FlextCliProtocols.Model, Protocol):
+    class RopeSignatureRemoval(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -88,7 +88,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class RopeMethodTransfer(FlextCliProtocols.Model, Protocol):
+    class RopeMethodTransfer(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -178,14 +178,10 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class AstGrepDiagnostic(FlextCliProtocols.Model, Protocol):
+    class AstGrepDiagnostic(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def file(self) -> str:
-            """Reported source path."""
-            ...
-
+        file: str
         rule_id: str
 
         @property
@@ -193,21 +189,9 @@ class FlextInfraProtocolsCodemod:
             """Native rule severity."""
             ...
 
-        @property
-        def message(self) -> str:
-            """Native rule diagnostic."""
-            ...
-
-        @property
-        def text(self) -> str:
-            """Exact matched source text."""
-            ...
-
-        @property
-        def lines(self) -> str:
-            """Source lines containing the match."""
-            ...
-
+        message: str
+        text: str
+        lines: str
         line: int
         column: int
         end_line: int
@@ -225,7 +209,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class AstGrepReport(FlextCliProtocols.Model, Protocol):
+    class AstGrepReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -234,7 +218,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class FamilyFlattenRule(FlextCliProtocols.Model, Protocol):
+    class FamilyFlattenRule(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -253,7 +237,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class RopeContractOrigin(FlextCliProtocols.Model, Protocol):
+    class RopeContractOrigin(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -262,7 +246,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class RopeContractScopeTarget(FlextCliProtocols.Model, Protocol):
+    class RopeContractScopeTarget(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -276,7 +260,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class RopeContractScope(FlextCliProtocols.Model, Protocol):
+    class RopeContractScope(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -287,7 +271,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class RopeContractRule(FlextCliProtocols.Model, Protocol):
+    class RopeContractRule(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -482,7 +466,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class RopeContractRules(FlextCliProtocols.Model, Protocol):
+    class RopeContractRules(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

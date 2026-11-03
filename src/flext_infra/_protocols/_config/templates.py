@@ -12,12 +12,12 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra import t
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsConfig
     from flext_infra._protocols._config import FlextInfraProtocolsConfigScaffold
     from flext_infra._typings import FlextInfraTypesBase

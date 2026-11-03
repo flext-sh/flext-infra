@@ -8,18 +8,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraProtocolsSonarcloud:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class SonarcloudIssueFieldValue(FlextCliProtocols.Model, Protocol):
+    class SonarcloudIssueFieldValue(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -33,7 +34,7 @@ class FlextInfraProtocolsSonarcloud:
             ...
 
     @runtime_checkable
-    class SonarcloudSetting(FlextCliProtocols.Model, Protocol):
+    class SonarcloudSetting(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -49,7 +50,7 @@ class FlextInfraProtocolsSonarcloud:
             ...
 
     @runtime_checkable
-    class SonarcloudSettingsValues(FlextCliProtocols.Model, Protocol):
+    class SonarcloudSettingsValues(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -60,7 +61,7 @@ class FlextInfraProtocolsSonarcloud:
             ...
 
     @runtime_checkable
-    class SonarcloudAuthentication(FlextCliProtocols.Model, Protocol):
+    class SonarcloudAuthentication(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -69,7 +70,7 @@ class FlextInfraProtocolsSonarcloud:
             ...
 
     @runtime_checkable
-    class SonarcloudSettingsPlan(FlextCliProtocols.Model, Protocol):
+    class SonarcloudSettingsPlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -100,7 +101,7 @@ class FlextInfraProtocolsSonarcloud:
             ...
 
     @runtime_checkable
-    class SonarcloudSettingsWriteRequest(FlextCliProtocols.Model, Protocol):
+    class SonarcloudSettingsWriteRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -114,7 +115,7 @@ class FlextInfraProtocolsSonarcloud:
             ...
 
     @runtime_checkable
-    class SonarcloudIssue(FlextCliProtocols.Model, Protocol):
+    class SonarcloudIssue(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -143,7 +144,7 @@ class FlextInfraProtocolsSonarcloud:
             ...
 
     @runtime_checkable
-    class SonarcloudIssuePaging(FlextCliProtocols.Model, Protocol):
+    class SonarcloudIssuePaging(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -162,7 +163,7 @@ class FlextInfraProtocolsSonarcloud:
             ...
 
     @runtime_checkable
-    class SonarcloudIssueSearch(FlextCliProtocols.Model, Protocol):
+    class SonarcloudIssueSearch(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

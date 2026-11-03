@@ -14,11 +14,10 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._constants import (
         FlextInfraConstantsCheck,
         FlextInfraConstantsConfig,
@@ -32,14 +31,14 @@ class FlextInfraProtocolsGates:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class SccFile(FlextCliProtocols.Model, Protocol):
+    class SccFile(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         location: str
         code: int
 
     @runtime_checkable
-    class SccLanguage(FlextCliProtocols.Model, Protocol):
+    class SccLanguage(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         name: str
@@ -50,7 +49,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class SccReport(FlextCliProtocols.Model, Protocol):
+    class SccReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -59,7 +58,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class DeptryError(FlextCliProtocols.Model, Protocol):
+    class DeptryError(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -73,7 +72,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class DeptryLocation(FlextCliProtocols.Model, Protocol):
+    class DeptryLocation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -92,7 +91,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class DeptryDiagnostic(FlextCliProtocols.Model, Protocol):
+    class DeptryDiagnostic(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -111,7 +110,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class DeptryNativeReport(FlextCliProtocols.Model, Protocol):
+    class DeptryNativeReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -120,7 +119,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class DeptryScan(FlextCliProtocols.Model, Protocol):
+    class DeptryScan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -164,7 +163,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateContext(FlextCliProtocols.Model, Protocol):
+    class GateContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -257,7 +256,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class MypyDiagnostic(FlextCliProtocols.Model, Protocol):
+    class MypyDiagnostic(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -306,7 +305,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class PyrightPosition(FlextCliProtocols.Model, Protocol):
+    class PyrightPosition(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -320,7 +319,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class PyrightRange(FlextCliProtocols.Model, Protocol):
+    class PyrightRange(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -334,7 +333,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class PyrightDiagnostic(FlextCliProtocols.Model, Protocol):
+    class PyrightDiagnostic(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -363,7 +362,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class PyrightSummary(FlextCliProtocols.Model, Protocol):
+    class PyrightSummary(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -392,7 +391,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class PyrightReport(FlextCliProtocols.Model, Protocol):
+    class PyrightReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -418,7 +417,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class PyreflyDiagnostic(FlextCliProtocols.Model, Protocol):
+    class PyreflyDiagnostic(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -472,7 +471,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class PyreflyReport(FlextCliProtocols.Model, Protocol):
+    class PyreflyReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -481,7 +480,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateReportEvidence(FlextCliProtocols.Model, Protocol):
+    class GateReportEvidence(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -500,7 +499,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateTestIntent(FlextCliProtocols.Model, Protocol):
+    class GateTestIntent(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -534,7 +533,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateExecutionIntent(FlextCliProtocols.Model, Protocol):
+    class GateExecutionIntent(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -553,7 +552,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateExecutionFacts(FlextCliProtocols.Model, Protocol):
+    class GateExecutionFacts(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -671,7 +670,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateCaptureBeginRequest(FlextCliProtocols.Model, Protocol):
+    class GateCaptureBeginRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -700,7 +699,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateCaptureStart(FlextCliProtocols.Model, Protocol):
+    class GateCaptureStart(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -774,7 +773,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateCaptureRequest(FlextCliProtocols.Model, Protocol):
+    class GateCaptureRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -802,7 +801,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateCaptureFinishRequest(FlextCliProtocols.Model, Protocol):
+    class GateCaptureFinishRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -831,7 +830,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateCaptureReport(FlextCliProtocols.Model, Protocol):
+    class GateCaptureReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -850,7 +849,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateAttestationPredicate(FlextCliProtocols.Model, Protocol):
+    class GateAttestationPredicate(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -894,7 +893,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateAttestationCreateRequest(FlextCliProtocols.Model, Protocol):
+    class GateAttestationCreateRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -938,7 +937,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateAttestationVerifyRequest(FlextCliProtocols.Model, Protocol):
+    class GateAttestationVerifyRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -982,7 +981,7 @@ class FlextInfraProtocolsGates:
             ...
 
     @runtime_checkable
-    class GateAttestationReport(FlextCliProtocols.Model, Protocol):
+    class GateAttestationReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

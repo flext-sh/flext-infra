@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._protocols import (
         FlextInfraProtocolsRope,
         FlextInfraProtocolsTransformers,
@@ -298,7 +298,7 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class ScanFindings(FlextCliProtocols.Model, Protocol):
+    class ScanFindings(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -393,7 +393,7 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class DuplicateDeletion(FlextCliProtocols.Model, Protocol):
+    class DuplicateDeletion(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -456,7 +456,7 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class DuplicateCureEdit(FlextCliProtocols.Model, Protocol):
+    class DuplicateCureEdit(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -480,7 +480,7 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class DuplicateCurePlan(FlextCliProtocols.Model, Protocol):
+    class DuplicateCurePlan(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -524,7 +524,7 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class DuplicateCureOutcome(FlextCliProtocols.Model, Protocol):
+    class DuplicateCureOutcome(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -605,48 +605,22 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class WorkspaceReport(FlextCliProtocols.Model, Protocol):
+    class WorkspaceReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def constant_consumer_files(self) -> t.NonNegativeInt:
-            """Files with identity-proven constant consumer rewrites."""
-            ...
-
-        @property
-        def constant_consumer_bindings(self) -> t.NonNegativeInt:
-            """Imported bindings rewired to canonical constants facades."""
-            ...
-
-        @property
-        def duplicate_cure_files(self) -> t.NonNegativeInt:
-            """Files rewritten by the applied duplicate cure."""
-            ...
-
-        @property
-        def duplicate_cure_copies(self) -> t.NonNegativeInt:
-            """Duplicate copies the applied duplicate cure deleted."""
-            ...
-
-        @property
-        def duplicate_cure_bindings(self) -> t.NonNegativeInt:
-            """Consumer imports the applied duplicate cure rebound."""
-            ...
+        constant_consumer_files: t.NonNegativeInt
+        constant_consumer_bindings: t.NonNegativeInt
+        duplicate_cure_files: t.NonNegativeInt
+        duplicate_cure_copies: t.NonNegativeInt
+        duplicate_cure_bindings: t.NonNegativeInt
 
         @property
         def projects(self) -> tuple[FlextInfraProtocolsCensus.ProjectReport, ...]:
             """Per-project reports."""
             ...
 
-        @property
-        def total_objects(self) -> t.NonNegativeInt:
-            """Total objects across workspace."""
-            ...
-
-        @property
-        def total_violations(self) -> t.NonNegativeInt:
-            """Total violations across workspace."""
-            ...
+        total_objects: t.NonNegativeInt
+        total_violations: t.NonNegativeInt
 
         @property
         def duplicates(self) -> tuple[FlextInfraProtocolsCensus.DuplicateGroup, ...]:
@@ -660,15 +634,8 @@ class FlextInfraProtocolsCensus:
             """Manual assisted-cure plans for structural duplicates."""
             ...
 
-        @property
-        def unused_count(self) -> t.NonNegativeInt:
-            """Total unused objects."""
-            ...
-
-        @property
-        def removal_candidate_count(self) -> t.NonNegativeInt:
-            """Total objects eligible for aggressive removal review."""
-            ...
+        unused_count: t.NonNegativeInt
+        removal_candidate_count: t.NonNegativeInt
 
         @property
         def removal_candidates(
@@ -677,15 +644,8 @@ class FlextInfraProtocolsCensus:
             """Explicit aggressive-removal candidates across workspace."""
             ...
 
-        @property
-        def scan_duration_seconds(self) -> float:
-            """Wall-clock scan duration."""
-            ...
-
-        @property
-        def parse_errors(self) -> t.NonNegativeInt:
-            """Files that failed to parse."""
-            ...
+        scan_duration_seconds: float
+        parse_errors: t.NonNegativeInt
 
 
 __all__: list[str] = [

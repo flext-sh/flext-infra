@@ -13,11 +13,10 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
     from flext_cli import p
 
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsRefactor
     from flext_infra._protocols import (
         FlextInfraProtocolsDepsToolConfigLinters,
@@ -31,35 +30,21 @@ class FlextInfraProtocolsDepsToolConfig:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ModStageConfig(FlextCliProtocols.Model, Protocol):
+    class ModStageConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def name(self) -> t.NonEmptyStr:
-            """Stage identity."""
-            ...
+        name: t.NonEmptyStr
 
         @property
         def kind(self) -> FlextInfraConstantsRefactor.ModStageKind:
             """Native ast-grep apply or Ruff import repair."""
             ...
 
-        @property
-        def shapes(self) -> t.StrTuple:
-            """Structural member projected from the owning model.
-
-            Generated rule shapes (id prefix before '--') a native stage owns; empty
-            for the catalog stage, which owns every other native rule.
-            """
-            ...
-
-        @property
-        def select(self) -> t.StrTuple:
-            """Ruff rule codes the ruff stage repairs."""
-            ...
+        shapes: t.StrTuple
+        select: t.StrTuple
 
     @runtime_checkable
-    class ModPhasesConfig(FlextCliProtocols.Model, Protocol):
+    class ModPhasesConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         import_alignment: bool
@@ -77,7 +62,7 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
     @runtime_checkable
-    class ModConfig(FlextCliProtocols.Model, Protocol):
+    class ModConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -86,25 +71,14 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
     @runtime_checkable
-    class PytestWorkerCeiling(FlextCliProtocols.Model, Protocol):
+    class PytestWorkerCeiling(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def workers(self) -> int | None:
-            """Absolute xdist worker ceiling for the project."""
-            ...
-
-        @property
-        def cpu_fraction(self) -> str | None:
-            """Structural member projected from the owning model.
-
-            CPU-fraction worker ceiling (numerator/denominator of the process CPU
-            count), e.g. "1/4".
-            """
-            ...
+        workers: int | None
+        cpu_fraction: str | None
 
     @runtime_checkable
-    class PytestConfig(FlextCliProtocols.Model, Protocol):
+    class PytestConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         slow_timeout_seconds: int
@@ -185,19 +159,16 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
     @runtime_checkable
-    class TomlsortConfig(FlextCliProtocols.Model, Protocol):
+    class TomlsortConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         process_timeout_seconds: int
 
     @runtime_checkable
-    class JscpdToolConfig(FlextCliProtocols.Model, Protocol):
+    class JscpdToolConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def similarity(self) -> float:
-            """Lowest structural similarity reported (--similarity)."""
-            ...
+        similarity: float
 
         @property
         def semantic(self) -> FlextInfraProtocolsDuplication.JscpdSemantic:
@@ -205,38 +176,18 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
         ignore_patterns: t.StrTuple
-
-        @property
-        def ignore(self) -> Sequence[str]:
-            """Structural member projected from the owning model.
-
-            Operator-authorized file globs jscpd skips; one project's tooling
-            overlay extends the duplication gate's rendered scan exclusions with
-            them.
-            """
-            ...
+        ignore: Sequence[str]
 
     @runtime_checkable
-    class MarkdownProjectedBlock(FlextCliProtocols.Model, Protocol):
+    class MarkdownProjectedBlock(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def writer(self) -> t.NonEmptyStr:
-            """Foreign writer that owns the projected block."""
-            ...
-
-        @property
-        def begin(self) -> t.RegexPattern:
-            """Full-line pattern of the block's begin marker."""
-            ...
-
-        @property
-        def end(self) -> t.RegexPattern:
-            """Full-line pattern of the block's end marker."""
-            ...
+        writer: t.NonEmptyStr
+        begin: t.RegexPattern
+        end: t.RegexPattern
 
     @runtime_checkable
-    class MarkdownConfig(FlextCliProtocols.Model, Protocol):
+    class MarkdownConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -268,7 +219,7 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
     @runtime_checkable
-    class ToolConfigTools(FlextCliProtocols.Model, Protocol):
+    class ToolConfigTools(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -316,7 +267,7 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
     @runtime_checkable
-    class LazyInitConfig(FlextCliProtocols.Model, Protocol):
+    class LazyInitConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         import_layer_order: tuple[t.NonEmptyStr, ...]
@@ -326,7 +277,7 @@ class FlextInfraProtocolsDepsToolConfig:
         forward_import_form: Literal["absolute"]
 
     @runtime_checkable
-    class FacadeMembersConfig(FlextCliProtocols.Model, Protocol):
+    class FacadeMembersConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -345,7 +296,7 @@ class FlextInfraProtocolsDepsToolConfig:
         type_constructor_modules: tuple[t.NonEmptyStr, ...]
 
     @runtime_checkable
-    class SmellsConfig(FlextCliProtocols.Model, Protocol):
+    class SmellsConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -367,7 +318,7 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
     @runtime_checkable
-    class AccessorPolicyConfig(FlextCliProtocols.Model, Protocol):
+    class AccessorPolicyConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -380,7 +331,7 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
     @runtime_checkable
-    class ToolConfigDocument(FlextCliProtocols.Model, Protocol):
+    class ToolConfigDocument(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -446,7 +397,7 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
     @runtime_checkable
-    class ToolingInputs(FlextCliProtocols.Model, Protocol):
+    class ToolingInputs(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -460,7 +411,7 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
     @runtime_checkable
-    class ToolingRuntimeContext(FlextCliProtocols.Model, Protocol):
+    class ToolingRuntimeContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -470,20 +421,9 @@ class FlextInfraProtocolsDepsToolConfig:
             """The elected tooling policy shared by every render context."""
             ...
 
-        @property
-        def project_kind(self) -> t.NonEmptyStr:
-            """Resolved project classification."""
-            ...
-
-        @property
-        def configuration(self) -> str:
-            """Native TOML for every declared managed tool table."""
-            ...
-
-        @property
-        def tool_options(self) -> Mapping[str, t.JsonMapping]:
-            """Conformed native tables keyed by declared table path."""
-            ...
+        project_kind: t.NonEmptyStr
+        configuration: str
+        tool_options: Mapping[str, t.JsonMapping]
 
         @property
         def sources(self) -> tuple[p.Cli.AtomicFileState, ...]:

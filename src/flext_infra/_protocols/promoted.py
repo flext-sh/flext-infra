@@ -23,7 +23,7 @@ class FlextInfraProtocolsPromoted(Protocol):
     """flext-command registry protocol namespace."""
 
     @runtime_checkable
-    class PromotedParam(FlextCliProtocols.Model, Protocol):
+    class PromotedParam(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -52,7 +52,7 @@ class FlextInfraProtocolsPromoted(Protocol):
             ...
 
     @runtime_checkable
-    class PromotedCommand(FlextCliProtocols.Model, Protocol):
+    class PromotedCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -111,7 +111,7 @@ class FlextInfraProtocolsPromoted(Protocol):
             ...
 
     @runtime_checkable
-    class PromotedAliasTarget(FlextCliProtocols.Model, Protocol):
+    class PromotedAliasTarget(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -125,7 +125,7 @@ class FlextInfraProtocolsPromoted(Protocol):
             ...
 
     @runtime_checkable
-    class PromotedWorkspaceSpec(FlextCliProtocols.Model, Protocol):
+    class PromotedWorkspaceSpec(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

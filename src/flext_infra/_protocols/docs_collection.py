@@ -13,9 +13,8 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
     from flext_infra._typings import FlextInfraTypesBase
 
@@ -24,7 +23,7 @@ class FlextInfraProtocolsDocsCollection:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class PlanCollectionTimestamp(FlextCliProtocols.Model, Protocol):
+    class PlanCollectionTimestamp(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -33,7 +32,7 @@ class FlextInfraProtocolsDocsCollection:
             ...
 
     @runtime_checkable
-    class PlanCollectionSource(FlextCliProtocols.Model, Protocol):
+    class PlanCollectionSource(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -92,7 +91,7 @@ class FlextInfraProtocolsDocsCollection:
             ...
 
     @runtime_checkable
-    class PlanCollectionConfig(FlextCliProtocols.Model, Protocol):
+    class PlanCollectionConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -118,7 +117,7 @@ class FlextInfraProtocolsDocsCollection:
             ...
 
     @runtime_checkable
-    class PlanCollectionRevision(FlextCliProtocols.Model, Protocol):
+    class PlanCollectionRevision(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -190,7 +189,7 @@ class FlextInfraProtocolsDocsCollection:
             ...
 
     @runtime_checkable
-    class PlanCollectionOwnedArtifact(FlextCliProtocols.Model, Protocol):
+    class PlanCollectionOwnedArtifact(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -204,7 +203,7 @@ class FlextInfraProtocolsDocsCollection:
             ...
 
     @runtime_checkable
-    class PlanCollectionManifest(FlextCliProtocols.Model, Protocol):
+    class PlanCollectionManifest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -237,7 +236,7 @@ class FlextInfraProtocolsDocsCollection:
             ...
 
     @runtime_checkable
-    class PlanCollectionCoverage(FlextCliProtocols.Model, Protocol):
+    class PlanCollectionCoverage(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -276,7 +275,7 @@ class FlextInfraProtocolsDocsCollection:
             ...
 
     @runtime_checkable
-    class PlanCollectionBundle(FlextCliProtocols.Model, Protocol):
+    class PlanCollectionBundle(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

@@ -19,7 +19,7 @@ class FlextInfraProtocolsGitWorktreeState:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class GitMutationScope(FlextCliProtocols.Model, Protocol):
+    class GitMutationScope(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -33,7 +33,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class MutationLockHolder(FlextCliProtocols.Model, Protocol):
+    class MutationLockHolder(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -62,7 +62,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitWorktreeCheckpointPublication(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeCheckpointPublication(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -86,7 +86,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitWorktreeStateRequest(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeStateRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -105,7 +105,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitWorktreeIndexEntry(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeIndexEntry(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -124,7 +124,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitIndexFileState(FlextCliProtocols.Model, Protocol):
+    class GitIndexFileState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -140,7 +140,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitIndexRetirementRequest(FlextCliProtocols.Model, Protocol):
+    class GitIndexRetirementRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -154,7 +154,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitWorktreeObservedFile(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeObservedFile(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -173,7 +173,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitWorktreeFileState(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeFileState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -197,7 +197,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitWorktreeObservedContent(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeObservedContent(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -221,7 +221,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitWorktreeStateSnapshot(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeStateSnapshot(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -276,7 +276,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitWorktreeStateCheckpoint(FlextCliProtocols.Model, Protocol):
+    class GitWorktreeStateCheckpoint(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -305,7 +305,7 @@ class FlextInfraProtocolsGitWorktreeState:
             ...
 
     @runtime_checkable
-    class GitLaneOwnershipReceipt(FlextCliProtocols.Model, Protocol):
+    class GitLaneOwnershipReceipt(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

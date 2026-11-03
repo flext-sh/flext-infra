@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
@@ -18,7 +19,6 @@ from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from pathlib import Path
 
     from flext_cli import p
 
@@ -36,7 +36,7 @@ class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
 
     @runtime_checkable
-    class SarifLocation(FlextCliProtocols.Model, Protocol):
+    class SarifLocation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -70,7 +70,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class Issue(FlextCliProtocols.Model, Protocol):
+    class Issue(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -247,7 +247,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class MypyResourceLimit(FlextCliProtocols.Model, Protocol):
+    class MypyResourceLimit(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -270,7 +270,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class MypyInvocation(FlextCliProtocols.Model, Protocol):
+    class MypyInvocation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -308,7 +308,7 @@ class FlextInfraProtocolsCheck(Protocol):
         """Structural data contract projected from the owning model."""
 
     @runtime_checkable
-    class LineWrapLiteral(FlextCliProtocols.Model, Protocol):
+    class LineWrapLiteral(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -337,7 +337,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class GateOutputReceipt(FlextCliProtocols.Model, Protocol):
+    class GateOutputReceipt(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -351,7 +351,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class GateExecutionParams(FlextCliProtocols.Model, Protocol):
+    class GateExecutionParams(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -385,7 +385,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class SarifRule(FlextCliProtocols.Model, Protocol):
+    class SarifRule(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -404,7 +404,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class SarifResult(FlextCliProtocols.Model, Protocol):
+    class SarifResult(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -435,7 +435,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class SarifRun(FlextCliProtocols.Model, Protocol):
+    class SarifRun(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -459,7 +459,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class CheckReportSummary(FlextCliProtocols.Model, Protocol):
+    class CheckReportSummary(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -509,7 +509,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class BanditFinding(FlextCliProtocols.Model, Protocol):
+    class BanditFinding(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -533,7 +533,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class BanditScanError(FlextCliProtocols.Model, Protocol):
+    class BanditScanError(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -547,7 +547,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class BanditReport(FlextCliProtocols.Model, Protocol):
+    class BanditReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -561,7 +561,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class CheckProjectTarget(FlextCliProtocols.Model, Protocol):
+    class CheckProjectTarget(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -590,21 +590,13 @@ class FlextInfraProtocolsCheck(Protocol):
     class GateResult(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def gate(self) -> str:
-            """Gate name."""
-            ...
-
-        @property
-        def passed(self) -> bool:
-            """Gate execution status."""
-            ...
-
+        gate: str
+        passed: bool
         errors: Sequence[str]
         duration: float
 
     @runtime_checkable
-    class GateExecution(FlextCliProtocols.Model, Protocol):
+    class GateExecution(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -617,15 +609,7 @@ class FlextInfraProtocolsCheck(Protocol):
             """Complete native gate diagnostics, including informative findings."""
             ...
 
-        @property
-        def raw_output(self) -> str:
-            """Structural member projected from the owning model.
-
-            In-memory native output; persisted once at raw_receipt rather than
-            duplicated inside serialized execution summaries.
-            """
-            ...
-
+        raw_output: str
         raw_receipt: Path | None
 
         @property
@@ -633,20 +617,14 @@ class FlextInfraProtocolsCheck(Protocol):
             """Native process/report verdict, independent of findings policy."""
             ...
 
-        @property
-        def process(self) -> p.Cli.ProcessOutcome | None:
-            """Original native process, when this gate invoked one."""
-            ...
+        process: p.Cli.ProcessOutcome | None
 
         @property
         def components(self) -> Mapping[str, FlextInfraProtocolsCheck.GateExecution]:
             """Executions owned by a composite gate."""
             ...
 
-        @property
-        def requested_components(self) -> Sequence[str]:
-            """Native component inventory elected before execution."""
-            ...
+        requested_components: Sequence[str]
 
         @property
         def complete(self) -> bool:
@@ -686,7 +664,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class LoopOutcome(FlextCliProtocols.Model, Protocol):
+    class LoopOutcome(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -694,18 +672,11 @@ class FlextInfraProtocolsCheck(Protocol):
             """Individual project execution results."""
             ...
 
-        @property
-        def failed(self) -> int:
-            """Number of projects that failed one or more gates."""
-            ...
-
-        @property
-        def total_elapsed(self) -> float:
-            """Total time elapsed in seconds for the entire loop."""
-            ...
+        failed: int
+        total_elapsed: float
 
     @runtime_checkable
-    class SarifReport(FlextCliProtocols.Model, Protocol):
+    class SarifReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

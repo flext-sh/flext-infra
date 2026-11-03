@@ -10,12 +10,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsMiseToolchainBase
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraProtocolsMiseToolchain:
@@ -56,7 +58,7 @@ class FlextInfraProtocolsMiseToolchain:
             ...
 
     @runtime_checkable
-    class UvOverrideEntries(FlextCliProtocols.Model, Protocol):
+    class UvOverrideEntries(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -347,7 +349,7 @@ class FlextInfraProtocolsMiseToolchain:
             ...
 
     @runtime_checkable
-    class MiseToolchainProofOptions(FlextCliProtocols.Model, Protocol):
+    class MiseToolchainProofOptions(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
