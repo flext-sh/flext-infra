@@ -124,7 +124,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             evidence,
         ).model_copy(
             update={
-                "process": p.Cli.ProcessOutcome.model_validate(
+                "process": m.Cli.ProcessOutcome.model_validate(
                     scan.outcome, from_attributes=True
                 ),
             }
