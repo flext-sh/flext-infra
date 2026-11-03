@@ -44,11 +44,21 @@ class FlextInfraModelsCheck:
         """Required Bandit JSON arrays, including a clean pair of empty arrays."""
 
         results: Annotated[
-            Sequence[FlextInfraModelsCheck.BanditFinding],
+            Sequence[
+                Annotated[
+                    p.Infra.BanditFinding,
+                    t.schema_for_model(FlextInfraModelsCheck.BanditFinding),
+                ]
+            ],
             m.Field(description="Native security findings"),
         ]
         errors: Annotated[
-            Sequence[FlextInfraModelsCheck.BanditScanError],
+            Sequence[
+                Annotated[
+                    p.Infra.BanditScanError,
+                    t.schema_for_model(FlextInfraModelsCheck.BanditScanError),
+                ]
+            ],
             m.Field(description="Source files that were not audited"),
         ]
 
@@ -145,7 +155,11 @@ class FlextInfraModelsCheck:
             m.Field(description="Requested gates elected for this project's inputs"),
         ] = ()
         source_identity: Annotated[
-            FlextInfraModelsGitIdentity.GitIdentityReport | None,
+            Annotated[
+                p.Infra.GitIdentityReport,
+                t.schema_for_model(FlextInfraModelsGitIdentity.GitIdentityReport),
+            ]
+            | None,
             m.Field(description="Original exact repository identity before gates"),
         ] = None
 
@@ -389,7 +403,9 @@ class FlextInfraModelsCheck:
     class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
-        result: FlextInfraModelsCheck.GateResult = m.Field(
+        result: Annotated[
+            p.Infra.GateResult, t.schema_for_model(FlextInfraModelsCheck.GateResult)
+        ] = m.Field(
             description="Gate result model",
         )
         issues: tuple[Issue, ...] = m.Field(
@@ -417,11 +433,18 @@ class FlextInfraModelsCheck:
             description="Native process/report verdict, independent of findings policy",
         )
         process: Annotated[
-            m.Cli.ProcessOutcome | None,
+            Annotated[p.Cli.ProcessOutcome, t.schema_for_model(m.Cli.ProcessOutcome)]
+            | None,
             m.Field(description="Original native process, when this gate invoked one"),
         ] = None
         components: Annotated[
-            MutableMapping[str, FlextInfraModelsCheck.GateExecution],
+            MutableMapping[
+                str,
+                Annotated[
+                    p.Infra.GateExecution,
+                    t.schema_for_model(FlextInfraModelsCheck.GateExecution),
+                ],
+            ],
             m.Field(description="Executions owned by a composite gate"),
         ] = m.Field(default_factory=dict)
         requested_components: Annotated[
@@ -472,7 +495,13 @@ class FlextInfraModelsCheck:
         dict per instance.
         """
 
-        gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = m.Field(
+        gates: MutableMapping[
+            str,
+            Annotated[
+                p.Infra.GateExecution,
+                t.schema_for_model(FlextInfraModelsCheck.GateExecution),
+            ],
+        ] = m.Field(
             default_factory=dict[str, "FlextInfraModelsCheck.GateExecution"],
             description="Gate name to execution mapping",
         )
@@ -507,7 +536,13 @@ class FlextInfraModelsCheck:
         # Why: owned by m.Infra; ArbitraryTypesModel keeps protocol field writability.
 
         results: Annotated[
-            tuple[FlextInfraModelsCheck.ProjectResult, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ProjectResult,
+                    t.schema_for_model(FlextInfraModelsCheck.ProjectResult),
+                ],
+                ...,
+            ],
             m.Field(description="Individual project execution results."),
         ]
         failed: Annotated[
@@ -564,10 +599,22 @@ class FlextInfraModelsCheck:
             validation_alias=m.AliasPath("message", "text"),
             description="Result message",
         )
-        locations: tuple[FlextInfraModelsCheck.SarifLocation, ...] = m.Field(
+        locations: tuple[
+            Annotated[
+                p.Infra.SarifLocation,
+                t.schema_for_model(FlextInfraModelsCheck.SarifLocation),
+            ],
+            ...,
+        ] = m.Field(
             description="Result locations",
         )
-        related_locations: tuple[FlextInfraModelsCheck.SarifLocation, ...] = m.Field(
+        related_locations: tuple[
+            Annotated[
+                p.Infra.SarifLocation,
+                t.schema_for_model(FlextInfraModelsCheck.SarifLocation),
+            ],
+            ...,
+        ] = m.Field(
             (),
             validation_alias="relatedLocations",
             description="Native related source spans",
@@ -613,12 +660,23 @@ class FlextInfraModelsCheck:
             description="Tool documentation URL",
             validate_default=True,
         )
-        rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
+        rules: tuple[
+            Annotated[
+                p.Infra.SarifRule, t.schema_for_model(FlextInfraModelsCheck.SarifRule)
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             validation_alias=m.AliasPath("tool", "driver", "rules"),
             description="Rule descriptors",
         )
-        results: tuple[FlextInfraModelsCheck.SarifResult, ...] = m.Field(
+        results: tuple[
+            Annotated[
+                p.Infra.SarifResult,
+                t.schema_for_model(FlextInfraModelsCheck.SarifResult),
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             description="Run results",
         )
@@ -678,11 +736,23 @@ class FlextInfraModelsCheck:
             ),
         ] = ()
         targets: Annotated[
-            tuple[FlextInfraModelsCheck.CheckProjectTarget, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CheckProjectTarget,
+                    t.schema_for_model(FlextInfraModelsCheck.CheckProjectTarget),
+                ],
+                ...,
+            ],
             m.Field(description="Canonical project roots selected for this invocation"),
         ]
         results: Annotated[
-            tuple[FlextInfraModelsCheck.ProjectResult, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ProjectResult,
+                    t.schema_for_model(FlextInfraModelsCheck.ProjectResult),
+                ],
+                ...,
+            ],
             m.Field(description="Only executions reached by this invocation"),
         ]
         selected_files: Annotated[
@@ -690,7 +760,14 @@ class FlextInfraModelsCheck:
             m.Field(description="File selection; empty means full-project execution"),
         ]
         global_targets: Annotated[
-            tuple[FlextInfraModelsCheck.CheckProjectTarget, ...] | None,
+            tuple[
+                Annotated[
+                    p.Infra.CheckProjectTarget,
+                    t.schema_for_model(FlextInfraModelsCheck.CheckProjectTarget),
+                ],
+                ...,
+            ]
+            | None,
             m.Field(
                 min_length=1,
                 description=(
@@ -738,11 +815,22 @@ class FlextInfraModelsCheck:
             description="SARIF version",
             validate_default=True,
         )
-        runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
+        runs: tuple[
+            Annotated[
+                p.Infra.SarifRun, t.schema_for_model(FlextInfraModelsCheck.SarifRun)
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             description="SARIF runs",
         )
-        properties: FlextInfraModelsCheck.CheckReportSummary | None = m.Field(
+        properties: (
+            Annotated[
+                p.Infra.CheckReportSummary,
+                t.schema_for_model(FlextInfraModelsCheck.CheckReportSummary),
+            ]
+            | None
+        ) = m.Field(
             None,
             description="Typed invocation targets and executions; absent is unknown",
         )

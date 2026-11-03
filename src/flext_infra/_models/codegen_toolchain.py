@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-from flext_cli import m, p
+from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraModelsCodegenToolchain:
@@ -103,11 +103,27 @@ class FlextInfraModelsCodegenToolchain:
             ),
         ] = None
         projects: Annotated[
-            tuple[FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MiseToolchainProjectLayout,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered Mise workspace participants"),
         ]
         file_participants: Annotated[
-            tuple[FlextInfraModelsCodegenToolchain.CodegenFileParticipant, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CodegenFileParticipant,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenToolchain.CodegenFileParticipant
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Explicit non-Mise publication capabilities"),
         ] = ()
 
@@ -134,7 +150,7 @@ class FlextInfraModelsCodegenToolchain:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         before: Annotated[
-            m.Cli.AtomicFileState,
+            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
             m.Field(description="Exact preflight state of the live configuration"),
         ]
         replacement_content: Annotated[
@@ -165,11 +181,21 @@ class FlextInfraModelsCodegenToolchain:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
-            FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout,
+            Annotated[
+                p.Infra.MiseToolchainProjectLayout,
+                t.schema_for_model(
+                    FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout
+                ),
+            ],
             m.Field(description="Stable project layout owning this snapshot"),
         ]
         config: Annotated[
-            FlextInfraModelsCodegenToolchain.MiseToolchainConfigState,
+            Annotated[
+                p.Infra.MiseToolchainConfigState,
+                t.schema_for_model(
+                    FlextInfraModelsCodegenToolchain.MiseToolchainConfigState
+                ),
+            ],
             m.Field(description="Planned generated Mise configuration state"),
         ]
 
@@ -195,11 +221,24 @@ class FlextInfraModelsCodegenToolchain:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
-            FlextInfraModelsCodegenToolchain.MiseToolchainWorkspaceLayout,
+            Annotated[
+                p.Infra.MiseToolchainWorkspaceLayout,
+                t.schema_for_model(
+                    FlextInfraModelsCodegenToolchain.MiseToolchainWorkspaceLayout
+                ),
+            ],
             m.Field(description="Stable workspace topology"),
         ]
         projects: Annotated[
-            tuple[FlextInfraModelsCodegenToolchain.MiseToolchainProjectState, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MiseToolchainProjectState,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenToolchain.MiseToolchainProjectState
+                    ),
+                ],
+                ...,
+            ],
             m.Field(min_length=1, description="Ordered complete workspace topology"),
         ]
 

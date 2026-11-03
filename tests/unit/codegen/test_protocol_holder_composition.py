@@ -143,6 +143,45 @@ class TestsProtocolHolderComposition:
         )
 
     @classmethod
+    def test_annotated_field_of_mutable_model_stays_writable(
+        cls, tmp_path: Path
+    ) -> None:
+        """Pydantic metadata alone never turns a mutable field into a property."""
+        root, package = cls._domain_workspace(tmp_path, None)
+        cls._write(
+            package,
+            {
+                "_models/_git/part.py": (
+                    "from typing import Annotated\n"
+                    "from pydantic import BaseModel, Field\n"
+                    "class ModelsGitPart:\n"
+                    "    class Scope(BaseModel):\n"
+                    "        root: Annotated[str, Field(description='Root.')]\n"
+                    "__all__ = ['ModelsGitPart']\n"
+                ),
+            },
+        )
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        part = projected[(package / "_protocols/_git/part.py").relative_to(root)]
+        scope = next(
+            node
+            for holder in ast.parse(part).body
+            if isinstance(holder, ast.ClassDef)
+            for node in holder.body
+            if isinstance(node, ast.ClassDef) and node.name == "Scope"
+        )
+        attributes = {
+            statement.target.id
+            for statement in scope.body
+            if isinstance(statement, ast.AnnAssign)
+            and isinstance(statement.target, ast.Name)
+        }
+        tm.that(attributes, has="root")
+
+    @classmethod
     def test_mirror_inherits_local_base_mirror_without_repeating_fields(
         cls, tmp_path: Path, native_consumer: p.Tests.NativeConsumer
     ) -> None:

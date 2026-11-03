@@ -1,0 +1,104 @@
+# One binary comparison per assert becomes one tm.that expression. Unlike the
+# truth rules, nothing short-circuits here: `assert` already evaluates both
+# operands exactly once, and tm.that evaluates them once as arguments, so the
+# rewrite preserves evaluation order and binds no new name. A branchless
+# expression also keeps the enclosing test's complexity unchanged.
+id: rewire-test-assert-contains
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A in $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: "tm.that($B, has=$A)"
+message: Assert the contained operand through tm.that.
+---
+id: rewire-test-assert-excludes
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A not in $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: "tm.that($B, lacks=$A)"
+message: Assert the excluded operand through tm.that.
+---
+id: rewire-test-assert-equal
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A == $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: "tm.that($A, eq=$B)"
+message: Assert the equal operands through tm.that.
+---
+id: rewire-test-assert-unequal
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $A != $B"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          matches: tm-imported-from-flext
+          stopBy: end
+fix: "tm.that($A, ne=$B)"
+message: Assert the unequal operands through tm.that.

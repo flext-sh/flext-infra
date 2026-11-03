@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 import flext_core
-from flext_cli import m, p, t
+from flext_cli import m, t
 
-from flext_infra import c
+from flext_infra import c, p
 from flext_infra._models import (
     FlextInfraModelsDepsToolConfig,
     FlextInfraModelsLayout,
@@ -254,7 +254,10 @@ class FlextInfraModelsConfigArtifact(
             m.Field(description="Artifact path relative to the repository root"),
         ]
         governed: Annotated[
-            FlextInfraModelsConfigTemplates.ManagedFileSpec,
+            Annotated[
+                p.Infra.ManagedFileSpec,
+                t.schema_for_model(FlextInfraModelsConfigTemplates.ManagedFileSpec),
+            ],
             m.Field(description="Declared governance for the artifact"),
         ]
         current: Annotated[
@@ -262,7 +265,11 @@ class FlextInfraModelsConfigArtifact(
             m.Field(description="Current on-disk text; empty when absent"),
         ]
         vscode_spec: Annotated[
-            FlextInfraModelsConfigTemplates.CodegenVscodeSpec | None,
+            Annotated[
+                p.Infra.CodegenVscodeSpec,
+                t.schema_for_model(FlextInfraModelsConfigTemplates.CodegenVscodeSpec),
+            ]
+            | None,
             m.Field(description="Declared vscode settings spec when present"),
         ] = None
 
@@ -345,7 +352,15 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         renderers: Annotated[
-            tuple[FlextInfraModelsConfigArtifact.CodegenAstGrepRendererSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CodegenAstGrepRendererSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigArtifact.CodegenAstGrepRendererSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Renderers emitting generated native rule documents, run "
@@ -413,7 +428,15 @@ class FlextInfraModelsConfigArtifact(
         """Declared artifacts and their editor, source and generated-tree views."""
 
         artifacts: Annotated[
-            tuple[FlextInfraModelsConfigArtifact.CodegenArtifactSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CodegenArtifactSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigArtifact.CodegenArtifactSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 description=(
@@ -1138,7 +1161,10 @@ class FlextInfraModelsConfigArtifact(
         """Self-owned topology policy and the exact consulted configuration states."""
 
         spec: Annotated[
-            FlextInfraModelsConfigWorkspace.RepositoryDeltaSpec,
+            Annotated[
+                p.Infra.RepositoryDeltaSpec,
+                t.schema_for_model(FlextInfraModelsConfigWorkspace.RepositoryDeltaSpec),
+            ],
             m.Field(description="Validated repository declaration subsection"),
         ]
         kind: Annotated[
@@ -1161,7 +1187,10 @@ class FlextInfraModelsConfigArtifact(
         """Full effective codegen policy and its ordered consulted snapshots."""
 
         spec: Annotated[
-            FlextInfraModelsConfigArtifact.CodegenConfigSpec,
+            Annotated[
+                p.Infra.CodegenConfigSpec,
+                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenConfigSpec),
+            ],
             m.Field(description="Validated effective repository codegen declaration"),
         ]
         kind: Annotated[
@@ -1301,7 +1330,10 @@ class FlextInfraModelsConfigArtifact(
         """One artifact render dispatch: entry, destination and its context."""
 
         entry: Annotated[
-            FlextInfraModelsConfigTemplates.TemplateEntrySpec,
+            Annotated[
+                p.Infra.TemplateEntrySpec,
+                t.schema_for_model(FlextInfraModelsConfigTemplates.TemplateEntrySpec),
+            ],
             m.Field(frozen=True, description="Catalog entry being rendered"),
         ]
         destination: Annotated[
@@ -1312,11 +1344,21 @@ class FlextInfraModelsConfigArtifact(
             m.Field(description="Stage banner prepended to render failures"),
         ]
         project_context: Annotated[
-            FlextInfraModelsConfigContexts.ProjectRenderContext | None,
+            Annotated[
+                p.Infra.ProjectRenderContext,
+                t.schema_for_model(FlextInfraModelsConfigContexts.ProjectRenderContext),
+            ]
+            | None,
             m.Field(description="Project-scoped render context, when declared"),
         ]
         planned_manifests: Annotated[
-            tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CodegenFilePlan,
+                    t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+                ],
+                ...,
+            ],
             m.Field(description="Planned manifests the bootstrap closure reads"),
         ] = ()
 
@@ -1324,24 +1366,46 @@ class FlextInfraModelsConfigArtifact(
         """One repository planner's managed state over frozen policy references."""
 
         target: Annotated[
-            FlextInfraModelsConfigContexts.RepositoryConformTarget,
+            Annotated[
+                p.Infra.RepositoryConformTarget,
+                t.schema_for_model(
+                    FlextInfraModelsConfigContexts.RepositoryConformTarget
+                ),
+            ],
             m.Field(description="Conformance identity and root being rendered"),
         ]
         workspace: Annotated[
-            FlextInfraModelsConfigWorkspace.WorkspaceSpec,
+            Annotated[
+                p.Infra.WorkspaceSpec,
+                t.schema_for_model(FlextInfraModelsConfigWorkspace.WorkspaceSpec),
+            ],
             m.Field(description="Workspace manifest governing the repository"),
         ]
         codegen: Annotated[
-            FlextInfraModelsConfigArtifact.CodegenConfigSpec,
+            Annotated[
+                p.Infra.CodegenConfigSpec,
+                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenConfigSpec),
+            ],
             m.Field(description="Codegen contract the repository renders under"),
         ]
-        tooling_runtime: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext | None = (
-            m.Field(
-                description="Tooling values resolved only when outputs consume them"
-            )
+        tooling_runtime: (
+            Annotated[
+                p.Infra.ToolingRuntimeContext,
+                t.schema_for_model(
+                    FlextInfraModelsDepsToolConfig.ToolingRuntimeContext
+                ),
+            ]
+            | None
+        ) = m.Field(
+            description="Tooling values resolved only when outputs consume them"
         )
         managed_artifacts: Annotated[
-            FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsSnapshot,
+            Annotated[
+                p.Infra.ProjectManagedArtifactsSnapshot,
+                t.schema_for_model(
+                    FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsSnapshot
+                ),
+            ],
             m.Field(
                 description="Project managed-artifact catalog overlaid on renders",
             ),
@@ -1378,7 +1442,14 @@ class FlextInfraModelsConfigArtifact(
             ),
         ] = None
         provider_plans: Annotated[
-            tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] | None,
+            tuple[
+                Annotated[
+                    p.Infra.CodegenFilePlan,
+                    t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+                ],
+                ...,
+            ]
+            | None,
             m.Field(
                 description=(
                     "Original lazy plans of the selected cohort, supplied as "
@@ -1387,26 +1458,45 @@ class FlextInfraModelsConfigArtifact(
             ),
         ] = None
         selected_inputs: Annotated[
-            FlextInfraModelsConfigArtifact.CodegenInputs | None,
+            Annotated[
+                p.Infra.CodegenInputs,
+                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenInputs),
+            ]
+            | None,
             m.Field(
                 description="Invoking repository's already captured configuration",
             ),
         ] = None
         root: Annotated[Path, m.Field(description="Generation scope root")]
         workspace: Annotated[
-            FlextInfraModelsConfigWorkspace.WorkspaceSpec,
+            Annotated[
+                p.Infra.WorkspaceSpec,
+                t.schema_for_model(FlextInfraModelsConfigWorkspace.WorkspaceSpec),
+            ],
             m.Field(description="Workspace governing the selection"),
         ]
         initial_workspace: Annotated[
-            FlextInfraModelsConfigWorkspace.WorkspaceSpec | None,
+            Annotated[
+                p.Infra.WorkspaceSpec,
+                t.schema_for_model(FlextInfraModelsConfigWorkspace.WorkspaceSpec),
+            ]
+            | None,
             m.Field(description="Validated scaffold specification, when any"),
         ] = None
         current_target: Annotated[
-            FlextInfraModelsConfigContexts.RepositoryConformTarget,
+            Annotated[
+                p.Infra.RepositoryConformTarget,
+                t.schema_for_model(
+                    FlextInfraModelsConfigContexts.RepositoryConformTarget
+                ),
+            ],
             m.Field(description="Conform target of the invoking repository"),
         ]
         repository: Annotated[
-            FlextInfraModelsConfigContexts.RepositoryRef,
+            Annotated[
+                p.Infra.RepositoryRef,
+                t.schema_for_model(FlextInfraModelsConfigContexts.RepositoryRef),
+            ],
             m.Field(description="Repository this task plans"),
         ]
         surface: Annotated[
@@ -1462,7 +1552,15 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         files: Annotated[
-            tuple[FlextInfraModelsConfigArtifact.CodegenPlanningFileEvidence, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CodegenPlanningFileEvidence,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigArtifact.CodegenPlanningFileEvidence
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Planned destination identities and content digests"),
         ]
         elapsed: Annotated[float, m.Field(ge=0, description="Planning wall seconds")]
@@ -1473,7 +1571,13 @@ class FlextInfraModelsConfigArtifact(
         root: Annotated[Path, m.Field(description="Invoking generation scope")]
         outcomes: Annotated[
             tuple[
-                FlextInfraModelsConfigArtifact.CodegenPlanningRepositoryEvidence, ...
+                Annotated[
+                    p.Infra.CodegenPlanningRepositoryEvidence,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigArtifact.CodegenPlanningRepositoryEvidence
+                    ),
+                ],
+                ...,
             ],
             m.Field(description="Every selected repository's native planning outcome"),
         ]

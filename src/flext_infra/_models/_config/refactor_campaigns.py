@@ -13,7 +13,7 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
@@ -184,11 +184,27 @@ class FlextInfraModelsConfigRefactorCampaigns:
         """Declared CSV-driven rename campaigns for the mod verb's rename phase."""
 
         campaigns: Annotated[
-            tuple[FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RenameCampaignSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(default=(), description="Ordered rename campaigns"),
         ] = ()
         owners: Annotated[
-            tuple[FlextInfraModelsConfigRefactorCampaigns.ModOwnerSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ModOwnerSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigRefactorCampaigns.ModOwnerSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 default=(), description="Explicit semantic and callback mod owners"
             ),

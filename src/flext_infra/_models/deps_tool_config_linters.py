@@ -13,7 +13,7 @@ from typing import Annotated, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsDepsToolConfigProject
 
 
@@ -104,7 +104,10 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
 
         rule_owners: Mapping[t.Infra.RuffRule, t.NonEmptyStr] = m.Field(
             alias="rule-owners",
-            description="Rules enforced by another registered canonical gate, never waived; projection verifies its complete check/repair election.",
+            description=(
+                "Rules enforced by another registered canonical gate, never waived; "
+                "projection verifies its complete check/repair election."
+            ),
         )
 
         @m.field_validator("rule_owners")
@@ -138,7 +141,11 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             (),
             alias="ruling-disabled-rules",
             strict=False,
-            description="Operator-ruled rules disabled at the SSOT because the lazy facade architecture requires what they forbid; projected into lint ignore, never silenced by manual hints.",
+            description=(
+                "Operator-ruled rules disabled at the SSOT because the lazy facade "
+                "architecture requires what they forbid; projected into lint ignore, "
+                "never silenced by manual hints."
+            ),
         )
         enforce: Annotated[
             Mapping[t.Infra.RuffRule, t.Infra.EnforcementIds],
@@ -151,11 +158,18 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         ]
         fix_recipes: Mapping[t.Infra.RuffRule, c.Infra.LintFixRecipe] = m.Field(
             alias="fix-recipes",
-            description="Ruff rule name -> repair make fix applies to the findings Ruff reports without a fix of its own.",
+            description=(
+                "Ruff rule name -> repair make fix applies to the findings Ruff reports"
+                " without a fix of its own."
+            ),
         )
         fix_recipe_phases: tuple[tuple[c.Infra.LintFixRecipe, ...], ...] = m.Field(
             alias="fix-recipe-phases",
-            description="Recipe phases make fix applies in order; Ruff re-reads the tree after each phase so a later phase sees the findings an earlier one created or cured.",
+            description=(
+                "Recipe phases make fix applies in order; Ruff re-reads the tree after "
+                "each phase so a later phase sees the findings an earlier one created "
+                "or cured."
+            ),
         )
 
     class RuffConfig(m.ArbitraryTypesModel):
@@ -166,7 +180,10 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             strict=False,
             description="Exit statuses with which Ruff reports its findings.",
         )
-        lint: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig = m.Field(
+        lint: Annotated[
+            p.Infra.RuffLintConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfigLinters.RuffLintConfig),
+        ] = m.Field(
             description="Ruff lint configuration",
         )
 
@@ -236,7 +253,15 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             description="Operator-authorized suspended diagnostics.",
         )
         overrides: Annotated[
-            tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MypyOverrideConfig,
+                    t.schema_for_model(
+                        FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Module scopes and justified native option pairs."),
         ] = ()
 

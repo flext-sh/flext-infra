@@ -202,7 +202,15 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = True
         console_scripts: Annotated[
-            tuple[FlextInfraModelsConfigRepository.ConsoleScriptSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ConsoleScriptSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigRepository.ConsoleScriptSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 default=(),
                 description=(
@@ -413,7 +421,13 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = None
         extra_verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbSpec),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Additional public Make verbs this repository dispatches "
@@ -422,7 +436,11 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         script_dispatch: Annotated[
-            FlextInfraModelsConfigRepository.ScriptDispatchSpec | None,
+            Annotated[
+                p.Infra.ScriptDispatchSpec,
+                t.schema_for_model(FlextInfraModelsConfigRepository.ScriptDispatchSpec),
+            ]
+            | None,
             m.Field(
                 description=(
                     "Opt-in script command-framework routing for non-builtin "
@@ -431,7 +449,13 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = None
         verb_groups: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbGroupSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbGroupSpec,
+                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbGroupSpec),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Ordered `make help` sections; empty keeps one flat listing "
@@ -473,7 +497,10 @@ class FlextInfraModelsConfigRepository:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
-            FlextInfraModelsConfigRepository.RepositoryRef,
+            Annotated[
+                p.Infra.RepositoryRef,
+                t.schema_for_model(FlextInfraModelsConfigRepository.RepositoryRef),
+            ],
             m.Field(description="Declared immutable repository identity"),
         ]
         root: Annotated[
@@ -487,7 +514,11 @@ class FlextInfraModelsConfigRepository:
             ),
         ]
         vscode_spec: Annotated[
-            FlextInfraModelsConfigTemplates.CodegenVscodeSpec | None,
+            Annotated[
+                p.Infra.CodegenVscodeSpec,
+                t.schema_for_model(FlextInfraModelsConfigTemplates.CodegenVscodeSpec),
+            ]
+            | None,
             m.Field(description="Repository-rooted resolved editor declarations"),
         ] = None
         vscode_sources: Annotated[
@@ -501,11 +532,19 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Make profile inferred from live Git topology"),
         ]
         beads: Annotated[
-            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
+            Annotated[
+                p.Infra.BeadsProjectSpec,
+                t.schema_for_model(FlextInfraModelsConfigBeads.BeadsProjectSpec),
+            ]
+            | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         project: Annotated[
-            FlextInfraModelsConfigRepository.ProjectSpec | None,
+            Annotated[
+                p.Infra.ProjectSpec,
+                t.schema_for_model(FlextInfraModelsConfigRepository.ProjectSpec),
+            ]
+            | None,
             m.Field(
                 description=(
                     "Declared project metadata of the manifest, when the "

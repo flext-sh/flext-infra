@@ -12,7 +12,7 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m, t
 
-from flext_infra import c
+from flext_infra import c, p
 from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._models._config import FlextInfraModelsConfigContract
 from flext_infra._models._config.external_cache import (
@@ -809,7 +809,10 @@ class FlextInfraModelsConfigMake(
             m.Field(ge=1, le=32, description="Concurrent governed submodule clones"),
         ]
         ruff: Annotated[
-            FlextInfraModelsConfigMake.MakeRuffSpec,
+            Annotated[
+                p.Infra.MakeRuffSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeRuffSpec),
+            ],
             m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
         ]
         fmt_gates: Annotated[
@@ -839,17 +842,34 @@ class FlextInfraModelsConfigMake(
             ),
         ] = False
         workflow: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeWorkflowStepSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeWorkflowStepSpec,
+                    t.schema_for_model(FlextInfraModelsConfigMake.MakeWorkflowStepSpec),
+                ],
+                ...,
+            ],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
         lifecycle_steps: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeLifecycleStepSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeLifecycleStepSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigMake.MakeLifecycleStepSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1, description="Ordered public runtime acceptance steps"
             ),
         ]
         ci: Annotated[
-            FlextInfraModelsConfigMake.MakeCiSpec,
+            Annotated[
+                p.Infra.MakeCiSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeCiSpec),
+            ],
             m.Field(description="Config-owned CI-only environment delta"),
         ]
         native_environment_unset: Annotated[
@@ -934,7 +954,10 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         testmon_cache_policy: Annotated[
-            FlextInfraModelsConfigMake.TestmonCachePolicySpec,
+            Annotated[
+                p.Infra.TestmonCachePolicySpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.TestmonCachePolicySpec),
+            ],
             m.Field(
                 description=(
                     "Declarative save/budget/quota policy for the shared"
@@ -943,17 +966,29 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         mypy_cache: Annotated[
-            FlextInfraModelsConfigMake.MypyCacheSpec,
+            Annotated[
+                p.Infra.MypyCacheSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MypyCacheSpec),
+            ],
             m.Field(
                 description="Project-keyed shared Mypy analysis cache policy",
             ),
         ]
         ruff_cache: Annotated[
-            FlextInfraModelsConfigMake.RuffCacheSpec,
+            Annotated[
+                p.Infra.RuffCacheSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.RuffCacheSpec),
+            ],
             m.Field(description="External project-keyed native Ruff cache policy"),
         ]
         verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbSpec),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered canonical public verbs"),
         ]
         cli_output_argument: Annotated[
@@ -1005,26 +1040,48 @@ class FlextInfraModelsConfigMake(
             m.Field(description="Named controls accepted by every generated Make verb"),
         ] = ()
         clean: Annotated[
-            FlextInfraModelsConfigMake.MakeCleanSpec,
+            Annotated[
+                p.Infra.MakeCleanSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeCleanSpec),
+            ],
             m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
-            FlextInfraModelsConfigMake.MakeDocsSpec,
+            Annotated[
+                p.Infra.MakeDocsSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeDocsSpec),
+            ],
             m.Field(description="Public documentation lifecycle policy"),
         ]
         custom_handler_policy: Annotated[
-            FlextInfraModelsConfigMake.CustomHandlerPolicy,
+            Annotated[
+                p.Infra.CustomHandlerPolicy,
+                t.schema_for_model(FlextInfraModelsConfigMake.CustomHandlerPolicy),
+            ],
             m.Field(description="Private custom target policy"),
         ]
         custom_handler_profile_overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                FlextInfraModelsConfigMake.CustomHandlerPolicyOverride,
+                Annotated[
+                    p.Infra.CustomHandlerPolicyOverride,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigMake.CustomHandlerPolicyOverride
+                    ),
+                ],
             ],
             m.Field(description="Per-profile overrides of the custom handler policy"),
         ]
         project_check_gates: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeProjectCheckGateSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeProjectCheckGateSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigMake.MakeProjectCheckGateSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 default=(),
                 description=(

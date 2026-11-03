@@ -94,7 +94,10 @@ class FlextInfraModelsSettings:
         toolchain_repair_tool: t.NonEmptyStr | None = m.Field(
             None,
             validation_alias="FLEXT_INFRA_TOOLCHAIN_REPAIR_TOOL",
-            description="Explicit declared tool selected by fix-toolchain; unset refuses installation repair before effects.",
+            description=(
+                "Explicit declared tool selected by fix-toolchain; unset refuses "
+                "installation repair before effects."
+            ),
         )
         runtime_root: Path | None = m.Field(
             default=None,

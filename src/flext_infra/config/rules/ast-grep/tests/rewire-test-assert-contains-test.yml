@@ -1,0 +1,10 @@
+id: rewire-test-assert-contains
+valid:
+- assert left in right
+- |
+  from tests import tm
+  assert left in right, "message"
+invalid:
+- |
+  from tests import tm
+  assert left in right

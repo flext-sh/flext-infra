@@ -35,7 +35,7 @@ class FlextInfraGatesBandit(FlextInfraGates):
         self,
         result: p.Cli.CommandOutput,
         project_dir: t.DirectoryPath,
-        ctx: p.Model,
+        ctx: p.BaseModel,
     ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Read Bandit's JSON report; every reported result blocks the gate.
 

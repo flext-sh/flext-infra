@@ -93,15 +93,24 @@ class FlextInfraModelsCodemod:
         class_alias_only: bool = m.Field(
             default=False, description="Limit admission to class-alias contracts"
         )
-        signature_additions: Sequence[FlextInfraModelsCodemod.RopeSignatureAddition] = (
-            m.Field(default=(), description="Native additions in this same source pass")
-        )
-        method_transfers: Sequence[FlextInfraModelsCodemod.RopeMethodTransfer] = (
-            m.Field(default=(), description="Native transfers in this same source pass")
-        )
-        signature_removals: Sequence[FlextInfraModelsCodemod.RopeSignatureRemoval] = (
-            m.Field(default=(), description="Native body and parameter retirements")
-        )
+        signature_additions: Sequence[
+            Annotated[
+                p.Infra.RopeSignatureAddition,
+                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureAddition),
+            ]
+        ] = m.Field(default=(), description="Native additions in this same source pass")
+        method_transfers: Sequence[
+            Annotated[
+                p.Infra.RopeMethodTransfer,
+                t.schema_for_model(FlextInfraModelsCodemod.RopeMethodTransfer),
+            ]
+        ] = m.Field(default=(), description="Native transfers in this same source pass")
+        signature_removals: Sequence[
+            Annotated[
+                p.Infra.RopeSignatureRemoval,
+                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureRemoval),
+            ]
+        ] = m.Field(default=(), description="Native body and parameter retirements")
 
     class AstGrepCapture(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticate an occurrence against native UTF-8 capture coordinates."""
@@ -292,7 +301,12 @@ class FlextInfraModelsCodemod:
         """Closed rule target set; unlisted source modules are never candidates."""
 
         targets: Annotated[
-            Sequence[FlextInfraModelsCodemod.RopeContractScopeTarget],
+            Sequence[
+                Annotated[
+                    p.Infra.RopeContractScopeTarget,
+                    t.schema_for_model(FlextInfraModelsCodemod.RopeContractScopeTarget),
+                ]
+            ],
             m.Field(min_length=1, description="Exact distribution/module target pairs"),
         ]
 
@@ -322,9 +336,9 @@ class FlextInfraModelsCodemod:
         @classmethod
         def _document_origin(
             cls,
-            value: t.ValidationInput[p.Model],
+            value: t.ValidationInput[p.BaseModel],
             info: p.ValidationInfo,
-        ) -> t.ValidationInput[p.Model]:
+        ) -> t.ValidationInput[p.BaseModel]:
             """Bind operational ownership without modifying the document mapping.
 
             Returns:
@@ -359,7 +373,13 @@ class FlextInfraModelsCodemod:
             description="Explicit Git revision authenticating retired provider "
             "declarations",
         )
-        scope: FlextInfraModelsCodemod.RopeContractScope | None = m.Field(
+        scope: (
+            Annotated[
+                p.Infra.RopeContractScope,
+                t.schema_for_model(FlextInfraModelsCodemod.RopeContractScope),
+            ]
+            | None
+        ) = m.Field(
             default=None,
             description=(
                 "Closed distribution/module admission set; absent keeps the rule "
@@ -594,18 +614,32 @@ class FlextInfraModelsCodemod:
         """The packaged semantic contract policy, validated once on input."""
 
         rules: Annotated[
-            Sequence[FlextInfraModelsCodemod.RopeContractRule],
+            Sequence[
+                Annotated[
+                    p.Infra.RopeContractRule,
+                    t.schema_for_model(FlextInfraModelsCodemod.RopeContractRule),
+                ]
+            ],
             m.Field(description="Ordered, identity-constrained Rope contract rules"),
         ]
-        signature_additions: Sequence[FlextInfraModelsCodemod.RopeSignatureAddition] = (
-            m.Field(default=(), description="Ordered native required keyword additions")
-        )
-        method_transfers: Sequence[FlextInfraModelsCodemod.RopeMethodTransfer] = (
-            m.Field(default=(), description="Ordered native method ownership transfers")
-        )
-        signature_removals: Sequence[FlextInfraModelsCodemod.RopeSignatureRemoval] = (
-            m.Field(default=(), description="Ordered native parameter retirements")
-        )
+        signature_additions: Sequence[
+            Annotated[
+                p.Infra.RopeSignatureAddition,
+                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureAddition),
+            ]
+        ] = m.Field(default=(), description="Ordered native required keyword additions")
+        method_transfers: Sequence[
+            Annotated[
+                p.Infra.RopeMethodTransfer,
+                t.schema_for_model(FlextInfraModelsCodemod.RopeMethodTransfer),
+            ]
+        ] = m.Field(default=(), description="Ordered native method ownership transfers")
+        signature_removals: Sequence[
+            Annotated[
+                p.Infra.RopeSignatureRemoval,
+                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureRemoval),
+            ]
+        ] = m.Field(default=(), description="Ordered native parameter retirements")
 
     class ModFixtureDirectories(FlextInfraModelsBase.FrozenArbitrary):
         """Validated physical directories selected by one ast-grep owner."""

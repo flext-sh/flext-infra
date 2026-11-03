@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraModelsWorktree:
@@ -117,7 +117,10 @@ class FlextInfraModelsWorktree:
             m.Field(description="Repository roots whose registry is scanned"),
         ]
         policy: Annotated[
-            FlextInfraModelsWorktree.WorktreeFactsPolicy,
+            Annotated[
+                p.Infra.WorktreeFactsPolicy,
+                t.schema_for_model(FlextInfraModelsWorktree.WorktreeFactsPolicy),
+            ],
             m.Field(description="Layout and dependency vocabulary to apply"),
         ]
         now: Annotated[float, m.Field(description="Current epoch seconds")]
@@ -214,7 +217,13 @@ class FlextInfraModelsWorktree:
         mode: Annotated[str, m.Field(description="Detected execution mode")]
         apply: Annotated[bool, m.Field(description="Whether this plan will execute")]
         actions: Annotated[
-            tuple[FlextInfraModelsWorktree.PruneAction, ...],
+            tuple[
+                Annotated[
+                    p.Infra.PruneAction,
+                    t.schema_for_model(FlextInfraModelsWorktree.PruneAction),
+                ],
+                ...,
+            ],
             m.Field(description="Planned actions in stable order"),
         ] = ()
         total_reclaim_bytes: Annotated[
@@ -226,11 +235,21 @@ class FlextInfraModelsWorktree:
         """The worktree facts report: measured facts plus the planned actions."""
 
         facts: Annotated[
-            tuple[FlextInfraModelsWorktree.WorktreeFact, ...],
+            tuple[
+                Annotated[
+                    p.Infra.WorktreeFact,
+                    t.schema_for_model(FlextInfraModelsWorktree.WorktreeFact),
+                ],
+                ...,
+            ],
             m.Field(description="Every measured registered worktree"),
         ] = ()
         plan: Annotated[
-            FlextInfraModelsWorktree.PrunePlan | None,
+            Annotated[
+                p.Infra.PrunePlan,
+                t.schema_for_model(FlextInfraModelsWorktree.PrunePlan),
+            ]
+            | None,
             m.Field(description="Planned stale-deps pruning, when any"),
         ] = None
 

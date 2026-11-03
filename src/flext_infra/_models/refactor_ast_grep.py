@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase
 
 
@@ -176,11 +176,23 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Dependency-first provider precedence"),
         ]
         rules: Annotated[
-            tuple[FlextInfraModelsRefactorGrep.CodemodRule, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CodemodRule,
+                    t.schema_for_model(FlextInfraModelsRefactorGrep.CodemodRule),
+                ],
+                ...,
+            ],
             m.Field(description="Unique semantic rules with their elected owner"),
         ]
         rulesets: Annotated[
-            tuple[FlextInfraModelsRefactorGrep.CodemodRuleset, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CodemodRuleset,
+                    t.schema_for_model(FlextInfraModelsRefactorGrep.CodemodRuleset),
+                ],
+                ...,
+            ],
             m.Field(description="Executable provider configs in precedence order"),
         ]
         project_rule_ids: Annotated[
@@ -396,16 +408,28 @@ class FlextInfraModelsRefactorGrep:
             description="Selected lint tools used for preview rendering",
         )
         automated_changes: tuple[
-            FlextInfraModelsRefactorGrep.AccessorMigrationChange, ...
+            Annotated[
+                p.Infra.AccessorMigrationChange,
+                t.schema_for_model(
+                    FlextInfraModelsRefactorGrep.AccessorMigrationChange
+                ),
+            ],
+            ...,
         ] = m.Field(
             default_factory=tuple,
             description="Automated rewrites captured for this file",
         )
-        warnings: tuple[FlextInfraModelsRefactorGrep.AccessorMigrationChange, ...] = (
-            m.Field(
-                default_factory=tuple,
-                description="Manual follow-up warnings for this file",
-            )
+        warnings: tuple[
+            Annotated[
+                p.Infra.AccessorMigrationChange,
+                t.schema_for_model(
+                    FlextInfraModelsRefactorGrep.AccessorMigrationChange
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            default_factory=tuple,
+            description="Manual follow-up warnings for this file",
         )
         diff: Annotated[
             str,
@@ -467,7 +491,13 @@ class FlextInfraModelsRefactorGrep:
             t.IntMapping,
             m.Field(description="Per-tool count of newly introduced lint lines"),
         ]
-        files: tuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile, ...] = m.Field(
+        files: tuple[
+            Annotated[
+                p.Infra.AccessorMigrationFile,
+                t.schema_for_model(FlextInfraModelsRefactorGrep.AccessorMigrationFile),
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             description="Preview entries included in this report",
         )

@@ -24,6 +24,12 @@ rule:
         field: superclasses
         has:
           regex: "^(?:[A-Za-z_][A-Za-z0-9_]*\\.)*BaseModel$"
+    # A structural Protocol over the model contract is not a model.
+    - not:
+        has:
+          field: superclasses
+          has:
+            regex: "^(?:typing\\.)?Protocol$"
     - not:
         has:
           field: superclasses

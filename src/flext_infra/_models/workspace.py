@@ -167,19 +167,26 @@ class FlextInfraModelsWorkspace:
             ),
             description="Observed suppliers and physical declaration sources",
         )
-        evidence: MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
-            m.Field(
-                default_factory=u.empty(
-                    contract_factory=lambda: TypeForm(
-                        MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence]
-                    ),
+        evidence: MutableSequence[
+            Annotated[
+                p.Infra.NativeBindingEvidence,
+                t.schema_for_model(FlextInfraModelsWorkspace.NativeBindingEvidence),
+            ]
+        ] = m.Field(
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence]
                 ),
-                validate_default=True,
-                description="Ordered native binding and executable observations",
-            )
+            ),
+            validate_default=True,
+            description="Ordered native binding and executable observations",
         )
         evidence_index: MutableMapping[
-            str, FlextInfraModelsWorkspace.NativeBindingEvidence
+            str,
+            Annotated[
+                p.Infra.NativeBindingEvidence,
+                t.schema_for_model(FlextInfraModelsWorkspace.NativeBindingEvidence),
+            ],
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
@@ -386,14 +393,23 @@ class FlextInfraModelsWorkspace:
         runtime_root: Path = m.Field(
             description="Declared resolution owner of the elected physical runtime",
         )
-        modules: tuple[FlextInfraModelsRope.SourceClassReference, ...] = m.Field(
+        modules: tuple[
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+            ],
+            ...,
+        ] = m.Field(
             min_length=1,
             description="Source-owned module/binding selections for this epoch",
         )
         import_roots: tuple[Path, ...] = m.Field(
             description="Physical import roots carrying the elected producer sources",
         )
-        source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
+        source_authority: Annotated[
+            p.Infra.CodegenSourceAuthority,
+            t.schema_for_model(FlextInfraModelsWorkspace.CodegenSourceAuthority),
+        ] = m.Field(
             description="Cold authority for reference consumption, not publication",
         )
         inputs: tuple[t.Port[p.Cli.AtomicFileState], ...] = m.Field(
@@ -513,7 +529,11 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Shared native qualification evidence."),
         ] = ()
         runtime_context: Annotated[
-            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
+            Annotated[
+                p.Infra.WorkspaceRuntimeContext,
+                t.schema_for_model(FlextInfraModelsWorkspace.WorkspaceRuntimeContext),
+            ]
+            | None,
             m.Field(description="Authenticated installed runtime association."),
         ] = None
         root: Annotated[Path, m.Field(description="Repository actually attempted.")]
@@ -545,7 +565,12 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Paths returned by the original operation owner."),
         ] = ()
         issues: Annotated[
-            tuple[FlextInfraModelsCheck.Issue, ...],
+            tuple[
+                Annotated[
+                    p.Infra.Issue, t.schema_for_model(FlextInfraModelsCheck.Issue)
+                ],
+                ...,
+            ],
             m.Field(description="Native findings at their actual repository."),
         ] = ()
 
@@ -582,7 +607,15 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Roots discovered before the batch."),
         ]
         receipts: Annotated[
-            tuple[FlextInfraModelsWorkspace.WorkspaceOperationReceipt, ...],
+            tuple[
+                Annotated[
+                    p.Infra.WorkspaceOperationReceipt,
+                    t.schema_for_model(
+                        FlextInfraModelsWorkspace.WorkspaceOperationReceipt
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Original receipts in discovered order."),
         ]
         candidate_read_exit_code: Annotated[
@@ -608,7 +641,11 @@ class FlextInfraModelsWorkspace:
             ),
         ]
         workspace_beads: Annotated[
-            FlextInfraModelsConfig.BeadsProjectSpec | None,
+            Annotated[
+                p.Infra.BeadsProjectSpec,
+                t.schema_for_model(FlextInfraModelsConfig.BeadsProjectSpec),
+            ]
+            | None,
             m.Field(description="Workspace Beads ledger spec; absent disables routing"),
         ] = None
         allow_unprovisioned_members: Annotated[
@@ -622,7 +659,11 @@ class FlextInfraModelsWorkspace:
         ] = False
 
         declared_member: Annotated[
-            FlextInfraModelsConfigContexts.RepositoryRef | None,
+            Annotated[
+                p.Infra.RepositoryRef,
+                t.schema_for_model(FlextInfraModelsConfigContexts.RepositoryRef),
+            ]
+            | None,
             m.Field(
                 description="Catalog-declared member reference for this entry",
             ),
@@ -653,15 +694,27 @@ class FlextInfraModelsWorkspace:
 
         cwd: Annotated[Path, m.Field(description="Resolved submitted directory")]
         identity: Annotated[
-            FlextInfraModelsGitIdentity.GitIdentityReport | None,
+            Annotated[
+                p.Infra.GitIdentityReport,
+                t.schema_for_model(FlextInfraModelsGitIdentity.GitIdentityReport),
+            ]
+            | None,
             m.Field(description="Observed Git identity, absent outside a repository"),
         ] = None
         workspace: Annotated[
-            FlextInfraModelsConfig.WorkspaceSpec | None,
+            Annotated[
+                p.Infra.WorkspaceSpec,
+                t.schema_for_model(FlextInfraModelsConfig.WorkspaceSpec),
+            ]
+            | None,
             m.Field(description="Governed workspace contract when declared"),
         ] = None
         target: Annotated[
-            FlextInfraModelsConfig.RepositoryConformTarget | None,
+            Annotated[
+                p.Infra.RepositoryConformTarget,
+                t.schema_for_model(FlextInfraModelsConfig.RepositoryConformTarget),
+            ]
+            | None,
             m.Field(description="Effective governed project properties"),
         ] = None
         governed: Annotated[
@@ -669,7 +722,11 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Whether repository-local FLEXT governance exists"),
         ] = False
         runtime: Annotated[
-            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
+            Annotated[
+                p.Infra.WorkspaceRuntimeContext,
+                t.schema_for_model(FlextInfraModelsWorkspace.WorkspaceRuntimeContext),
+            ]
+            | None,
             m.Field(description="Physical environment and native resolver ownership"),
         ] = None
 
@@ -720,14 +777,24 @@ class FlextInfraModelsWorkspace:
         """
 
         dir_info: Annotated[
-            FlextInfraModelsWorkspace.DirectUrlDirectoryInfo | None,
+            Annotated[
+                p.Infra.DirectUrlDirectoryInfo,
+                t.schema_for_model(FlextInfraModelsWorkspace.DirectUrlDirectoryInfo),
+            ]
+            | None,
             m.Field(description="Directory metadata of a local install"),
         ] = None
         url: Annotated[
             t.NonEmptyStr,
             m.Field(description="Required PEP 610 origin URL"),
         ]
-        vcs_info: FlextInfraModelsWorkspace.DirectUrlVcsInfo | None = m.Field(
+        vcs_info: (
+            Annotated[
+                p.Infra.DirectUrlVcsInfo,
+                t.schema_for_model(FlextInfraModelsWorkspace.DirectUrlVcsInfo),
+            ]
+            | None
+        ) = m.Field(
             default=None,
             description="Installed immutable VCS identity",
         )
@@ -757,7 +824,11 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Locked edge version when needed to disambiguate"),
         ] = None
         source: Annotated[
-            FlextInfraModelsWorkspace.LockedPackageSource | None,
+            Annotated[
+                p.Infra.LockedPackageSource,
+                t.schema_for_model(FlextInfraModelsWorkspace.LockedPackageSource),
+            ]
+            | None,
             m.Field(description="Locked edge source when needed to disambiguate"),
         ] = None
         marker: Annotated[
@@ -776,15 +847,31 @@ class FlextInfraModelsWorkspace:
             t.NonEmptyStr, m.Field(description="Locked distribution version")
         ]
         source: Annotated[
-            FlextInfraModelsWorkspace.LockedPackageSource,
+            Annotated[
+                p.Infra.LockedPackageSource,
+                t.schema_for_model(FlextInfraModelsWorkspace.LockedPackageSource),
+            ],
             m.Field(description="Locked source identity"),
         ]
         dependencies: Annotated[
-            tuple[FlextInfraModelsWorkspace.LockedDependency, ...],
+            tuple[
+                Annotated[
+                    p.Infra.LockedDependency,
+                    t.schema_for_model(FlextInfraModelsWorkspace.LockedDependency),
+                ],
+                ...,
+            ],
             m.Field(description="Resolved package edges; absent for a leaf package"),
         ] = ()
         optional_dependencies: Mapping[
-            str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
+            str,
+            tuple[
+                Annotated[
+                    p.Infra.LockedDependency,
+                    t.schema_for_model(FlextInfraModelsWorkspace.LockedDependency),
+                ],
+                ...,
+            ],
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
@@ -796,7 +883,14 @@ class FlextInfraModelsWorkspace:
             description="Resolved edges by extra; absent when no extras exist",
         )
         dev_dependencies: Mapping[
-            str, tuple[FlextInfraModelsWorkspace.LockedDependency, ...]
+            str,
+            tuple[
+                Annotated[
+                    p.Infra.LockedDependency,
+                    t.schema_for_model(FlextInfraModelsWorkspace.LockedDependency),
+                ],
+                ...,
+            ],
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
@@ -817,7 +911,13 @@ class FlextInfraModelsWorkspace:
         """Typed installation identities, never a dependency resolver."""
 
         package: Annotated[
-            tuple[FlextInfraModelsWorkspace.LockedPackage, ...],
+            tuple[
+                Annotated[
+                    p.Infra.LockedPackage,
+                    t.schema_for_model(FlextInfraModelsWorkspace.LockedPackage),
+                ],
+                ...,
+            ],
             m.Field(min_length=1, description="Nonempty lock-owned package inventory"),
         ]
         members: tuple[str, ...] = m.Field(
@@ -831,7 +931,10 @@ class FlextInfraModelsWorkspace:
 
         url: Annotated[t.NonEmptyStr, m.Field(description="Editable source URL")]
         dir_info: Annotated[
-            FlextInfraModelsWorkspace.DirectUrlDirectoryInfo,
+            Annotated[
+                p.Infra.DirectUrlDirectoryInfo,
+                t.schema_for_model(FlextInfraModelsWorkspace.DirectUrlDirectoryInfo),
+            ],
             m.Field(description="Editable directory metadata"),
         ]
 
@@ -870,7 +973,13 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Porcelain status paths of the checkout"),
         ]
         open_pull_requests: Annotated[
-            tuple[FlextInfraModelsWorkspace.FleetPullRequest, ...],
+            tuple[
+                Annotated[
+                    p.Infra.FleetPullRequest,
+                    t.schema_for_model(FlextInfraModelsWorkspace.FleetPullRequest),
+                ],
+                ...,
+            ],
             m.Field(description="Open pull requests; empty when the query fails"),
         ]
         unmerged_branches: Annotated[
@@ -937,7 +1046,13 @@ class FlextInfraModelsWorkspace:
         ]
         workspace_name: Annotated[str, m.Field(description="Workspace identity name")]
         repos: Annotated[
-            tuple[FlextInfraModelsWorkspace.FleetRepoGaps, ...],
+            tuple[
+                Annotated[
+                    p.Infra.FleetRepoGaps,
+                    t.schema_for_model(FlextInfraModelsWorkspace.FleetRepoGaps),
+                ],
+                ...,
+            ],
             m.Field(description="One row per declared member and external consumer"),
         ]
 

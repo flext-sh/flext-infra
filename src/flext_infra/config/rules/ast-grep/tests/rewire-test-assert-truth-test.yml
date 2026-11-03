@@ -29,9 +29,6 @@ invalid:
   assert path.is_file()
 - |
   from tests import tm
-  assert len(lines) == _EXPECTED_LINES
-- |
-  from tests import tm
   assert 0 < count < limit
 - |
   from tests import tm

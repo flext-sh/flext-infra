@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, t
 
-from flext_infra import c
+from flext_infra import c, p
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
@@ -104,7 +104,12 @@ class FlextInfraModelsCodegenLazyInit:
             t.Port[
                 MutableMapping[
                     FlextInfraTypesRopeNative.RopeNativeParsedModule,
-                    FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
+                    Annotated[
+                        p.Infra.PythonModuleFacts,
+                        t.schema_for_model(
+                            FlextInfraModelsCodegenLazyInit.PythonModuleFacts
+                        ),
+                    ],
                 ]
             ],
             m.Field(
@@ -146,7 +151,10 @@ class FlextInfraModelsCodegenLazyInit:
     class LazyInitPlan(m.ContractModel):
         """Immutable resolved decision and its original source consumption."""
 
-        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext = m.Field(
+        context: Annotated[
+            p.Infra.LazyInitPackageContext,
+            t.schema_for_model(FlextInfraModelsCodegenLazyInit.LazyInitPackageContext),
+        ] = m.Field(
             description="Discovered package context.",
         )
         action: Annotated[
@@ -244,7 +252,15 @@ class FlextInfraModelsCodegenLazyInit:
             ),
         ] = None
         modules: Annotated[
-            tuple[FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RopeModuleIndexEntry,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Direct Python module resources that belong to this package"
@@ -280,11 +296,27 @@ class FlextInfraModelsCodegenLazyInit:
             ),
         ] = ()
         packages_by_dir: Annotated[
-            Mapping[str, FlextInfraModelsCodegenLazyInit.RopePackageIndexEntry],
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.RopePackageIndexEntry,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenLazyInit.RopePackageIndexEntry
+                    ),
+                ],
+            ],
             m.Field(description="Package entries keyed by absolute directory path"),
         ]
         modules_by_path: Annotated[
-            Mapping[str, FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry],
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.RopeModuleIndexEntry,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry
+                    ),
+                ],
+            ],
             m.Field(description="Module entries keyed by absolute file path"),
         ]
         package_dir_by_name: Annotated[
@@ -307,19 +339,45 @@ class FlextInfraModelsCodegenLazyInit:
             m.Field(description="Whether conformance selected the repository roots"),
         ]
         index: Annotated[
-            FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex,
+            Annotated[
+                p.Infra.RopeWorkspaceIndex,
+                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex),
+            ],
             m.Field(description="The repository's shared source inventory"),
         ]
         model: Annotated[
-            FlextInfraModelsCodegenLazyInit.PythonModelRun,
+            Annotated[
+                p.Infra.PythonModelRun,
+                t.schema_for_model(FlextInfraModelsCodegenLazyInit.PythonModelRun),
+            ],
             m.Field(description="The run's parse-once static Python model"),
         ]
         plans: Annotated[
-            t.Port[dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]],
+            t.Port[
+                dict[
+                    Path,
+                    Annotated[
+                        p.Infra.LazyInitPlan,
+                        t.schema_for_model(
+                            FlextInfraModelsCodegenLazyInit.LazyInitPlan
+                        ),
+                    ],
+                ]
+            ],
             m.Field(description="Decided plans, children first"),
         ]
         contexts: Annotated[
-            t.Port[dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPackageContext]],
+            t.Port[
+                dict[
+                    Path,
+                    Annotated[
+                        p.Infra.LazyInitPackageContext,
+                        t.schema_for_model(
+                            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
+                        ),
+                    ],
+                ]
+            ],
             m.Field(description="Package contexts by directory"),
         ]
         parents: Annotated[

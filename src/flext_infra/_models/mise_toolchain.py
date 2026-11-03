@@ -14,7 +14,7 @@ from typing import Annotated, Literal, Self
 
 from flext_core import c, m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
 
 
@@ -50,7 +50,10 @@ class FlextInfraModelsMiseToolchain:
         """One native UV scoped override, never a global dependency override."""
 
         package: Annotated[
-            FlextInfraModelsMiseToolchain.UvOverridePackage,
+            Annotated[
+                p.Infra.UvOverridePackage,
+                t.schema_for_model(FlextInfraModelsMiseToolchain.UvOverridePackage),
+            ],
             m.Field(description="Package selector owning this override's scope"),
         ]
         dependencies: Annotated[
@@ -353,7 +356,11 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = "scalar"
         http: Annotated[
-            FlextInfraModelsMiseToolchain.MiseHttpToolOptions | None,
+            Annotated[
+                p.Infra.MiseHttpToolOptions,
+                t.schema_for_model(FlextInfraModelsMiseToolchain.MiseHttpToolOptions),
+            ]
+            | None,
             m.Field(
                 description="Native HTTP backend options for a declared source artifact"
             ),
@@ -369,7 +376,13 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
         postinstall: Annotated[
-            FlextInfraModelsMiseToolchain.MisePostinstallOptions | None,
+            Annotated[
+                p.Infra.MisePostinstallOptions,
+                t.schema_for_model(
+                    FlextInfraModelsMiseToolchain.MisePostinstallOptions
+                ),
+            ]
+            | None,
             m.Field(
                 description="Native source build or qualification after installation"
             ),
@@ -386,7 +399,10 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = True
         version_probe: Annotated[
-            FlextInfraModelsMiseToolchain.MiseToolVersionProbe,
+            Annotated[
+                p.Infra.MiseToolVersionProbe,
+                t.schema_for_model(FlextInfraModelsMiseToolchain.MiseToolVersionProbe),
+            ],
             m.Field(
                 description=(
                     "Command whose output proves the provisioned version in "
@@ -399,7 +415,10 @@ class FlextInfraModelsMiseToolchain:
         """Validated immutable inputs for one native toolchain proof."""
 
         entry: Annotated[
-            FlextInfraModelsMiseToolchain.MiseToolEntry,
+            Annotated[
+                p.Infra.MiseToolEntry,
+                t.schema_for_model(FlextInfraModelsMiseToolchain.MiseToolEntry),
+            ],
             m.Field(description="Declared tool entry currently under proof."),
         ]
         lock: Annotated[
@@ -417,7 +436,12 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         declared: Annotated[
-            Sequence[FlextInfraModelsMiseToolchain.MiseToolEntry],
+            Sequence[
+                Annotated[
+                    p.Infra.MiseToolEntry,
+                    t.schema_for_model(FlextInfraModelsMiseToolchain.MiseToolEntry),
+                ]
+            ],
             m.Field(
                 description="All declared tool entries electable as probe owners.",
             ),
@@ -497,7 +521,14 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         uv_override_dependencies: Annotated[
-            tuple[t.NonEmptyStr | FlextInfraModelsMiseToolchain.UvScopedOverride, ...],
+            tuple[
+                t.NonEmptyStr
+                | Annotated[
+                    p.Infra.UvScopedOverride,
+                    t.schema_for_model(FlextInfraModelsMiseToolchain.UvScopedOverride),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Native global or scoped overrides rendered into every generated "
@@ -597,7 +628,13 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         tools: Annotated[
-            tuple[FlextInfraModelsMiseToolchain.MiseToolEntry, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MiseToolEntry,
+                    t.schema_for_model(FlextInfraModelsMiseToolchain.MiseToolEntry),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 description=(
@@ -640,7 +677,10 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         beads: Annotated[
-            FlextInfraModelsMiseToolchain.BeadsToolSpec,
+            Annotated[
+                p.Infra.BeadsToolSpec,
+                t.schema_for_model(FlextInfraModelsMiseToolchain.BeadsToolSpec),
+            ],
             m.Field(description="Beads ledger projection (.beads config)"),
         ]
 

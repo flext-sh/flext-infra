@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m, u
 from typing_extensions import TypeForm
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsDepsToolConfigLinters
 
 
@@ -37,13 +37,31 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         ]
         authorization: Annotated[
             (
-                FlextInfraModelsDepsToolConfigLinters.TrackerAuthorization
-                | FlextInfraModelsDepsToolConfigLinters.OperatorAuthorization
+                Annotated[
+                    p.Infra.TrackerAuthorization,
+                    t.schema_for_model(
+                        FlextInfraModelsDepsToolConfigLinters.TrackerAuthorization
+                    ),
+                ]
+                | Annotated[
+                    p.Infra.OperatorAuthorization,
+                    t.schema_for_model(
+                        FlextInfraModelsDepsToolConfigLinters.OperatorAuthorization
+                    ),
+                ]
             ),
             m.Field(description="Tracker key or verbatim operator approval."),
         ]
         changes: Annotated[
-            tuple[FlextInfraModelsDepsToolConfigLinters.DiagnosticRuleChange, ...],
+            tuple[
+                Annotated[
+                    p.Infra.DiagnosticRuleChange,
+                    t.schema_for_model(
+                        FlextInfraModelsDepsToolConfigLinters.DiagnosticRuleChange
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 strict=False,
@@ -106,7 +124,10 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             diagnostic_levels: Mapping[str, str] = m.Field(
                 default_factory=u.empty(TypeForm(Mapping[str, str])),
                 exclude=True,
-                description="Authorized native rule levels the renderer adds to this environment's payload.",
+                description=(
+                    "Authorized native rule levels the renderer adds to this "
+                    "environment's payload."
+                ),
             )
 
         class PathRulesConfig(m.ArbitraryTypesModel):
@@ -115,7 +136,9 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             project_root_env_dirs: Sequence[str] = m.Field(
                 (),
                 alias="project-root-env-dirs",
-                description="Included directories resolved from their project package parent.",
+                description=(
+                    "Included directories resolved from their project package parent."
+                ),
             )
 
             source_dir: str = m.Field(
@@ -144,14 +167,26 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             ignored_diagnostic_globs: Sequence[str] = m.Field(
                 (),
                 alias="ignored-diagnostic-globs",
-                description="Pyright ignore globs for files that remain on search paths but must not emit diagnostics.",
+                description=(
+                    "Pyright ignore globs for files that remain on search paths but "
+                    "must not emit diagnostics."
+                ),
             )
             diagnostic_path_exceptions: tuple[
-                FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException, ...
+                Annotated[
+                    p.Infra.DiagnosticPathException,
+                    t.schema_for_model(
+                        FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException
+                    ),
+                ],
+                ...,
             ] = m.Field(
                 (),
                 alias="diagnostic-path-exceptions",
-                description="Authorized rule exceptions; each entry renders its Pyright environment and its Pyrefly sub-config.",
+                description=(
+                    "Authorized rule exceptions; each entry renders its Pyright "
+                    "environment and its Pyrefly sub-config."
+                ),
             )
             source_report_private_usage: str = m.Field(
                 alias="source-report-private-usage",
@@ -163,7 +198,9 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             )
             other_report_private_usage: str = m.Field(
                 alias="other-report-private-usage",
-                description="reportPrivateUsage value for non-source/non-test-like envs.",
+                description=(
+                    "reportPrivateUsage value for non-source/non-test-like envs."
+                ),
             )
 
         path_rules: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig = m.Field(
@@ -216,7 +253,10 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             project_shared_search_paths: Sequence[str] = m.Field(
                 (),
                 alias="project-shared-search-paths",
-                description="Additional shared workspace paths for declared_repository pyrefly search-path.",
+                description=(
+                    "Additional shared workspace paths for declared_repository pyrefly "
+                    "search-path."
+                ),
             )
 
         path_rules: FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig = m.Field(

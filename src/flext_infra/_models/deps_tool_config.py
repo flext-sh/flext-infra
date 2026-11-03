@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Literal, Self
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models import (
@@ -81,10 +81,19 @@ class FlextInfraModelsDepsToolConfig(
         pass_cap: int = m.Field(
             alias="pass-cap",
             gt=0,
-            description="Most passes of the native stage sequence before the cascade must reach its fixed point; reaching it fails.",
+            description=(
+                "Most passes of the native stage sequence before the cascade must reach"
+                " its fixed point; reaching it fails."
+            ),
         )
         stages: Annotated[
-            tuple[FlextInfraModelsDepsToolConfig.ModStageConfig, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ModStageConfig,
+                    t.schema_for_model(FlextInfraModelsDepsToolConfig.ModStageConfig),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 description=(
@@ -133,7 +142,10 @@ class FlextInfraModelsDepsToolConfig(
     class ModConfig(m.ArbitraryTypesModel):
         """Declarative policy for the unified modernize verb ``mod``."""
 
-        phases: FlextInfraModelsDepsToolConfig.ModPhasesConfig = m.Field(
+        phases: Annotated[
+            p.Infra.ModPhasesConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.ModPhasesConfig),
+        ] = m.Field(
             description="Phase toggles read from config/tooling.yaml.",
         )
 
@@ -216,7 +228,13 @@ class FlextInfraModelsDepsToolConfig(
             alias="run-timeout-seconds",
             gt=0,
             le=1800,
-            description="Fleet-default wall-clock maximum for one testmon runner operation. Repositories whose session prepares a real local runtime (for example the Docker OUD stack) may declare a higher budget; the previous 120s fleet ceiling predates in-session real-runtime preparation and is recorded in the fleet policy notes.",
+            description=(
+                "Fleet-default wall-clock maximum for one testmon runner operation. "
+                "Repositories whose session prepares a real local runtime (for example "
+                "the Docker OUD stack) may declare a higher budget; the previous 120s "
+                "fleet ceiling predates in-session real-runtime preparation and is "
+                "recorded in the fleet policy notes."
+            ),
         )
         termination_grace_seconds: int = m.Field(
             alias="termination-grace-seconds",
@@ -260,7 +278,10 @@ class FlextInfraModelsDepsToolConfig(
             alias="parallel-worker-memory-gb",
             gt=0,
             le=64,
-            description="Physical-memory reservation per xdist worker; the runner also bounds workers by available CPU.",
+            description=(
+                "Physical-memory reservation per xdist worker; the runner also bounds "
+                "workers by available CPU."
+            ),
         )
         parallel_distribution: Literal["load", "loadscope"] = m.Field(
             alias="parallel-distribution",
@@ -274,14 +295,31 @@ class FlextInfraModelsDepsToolConfig(
         parallel_schedule_chunk: int = m.Field(
             alias="parallel-schedule-chunk",
             ge=1,
-            description="Maximum tests scheduled per dispatch step under the load distribution. One makes the declared max-failures stop take effect at the next item boundary in every worker instead of after each worker drains a large pre-assigned chunk, so a red suite exits typed and early at fleet scale inside the fixed run budget.",
+            description=(
+                "Maximum tests scheduled per dispatch step under the load distribution."
+                " One makes the declared max-failures stop take effect at the next item"
+                " boundary in every worker instead of after each worker drains a large "
+                "pre-assigned chunk, so a red suite exits typed and early at fleet "
+                "scale inside the fixed run budget."
+            ),
         )
         parallel_worker_overrides: Mapping[
-            str, FlextInfraModelsDepsToolConfig.PytestWorkerCeiling
+            str,
+            Annotated[
+                p.Infra.PytestWorkerCeiling,
+                t.schema_for_model(FlextInfraModelsDepsToolConfig.PytestWorkerCeiling),
+            ],
         ] = m.Field(
             {},
             alias="parallel-worker-overrides",
-            description="Per declared-project worker ceilings (``[project].name`` → absolute ``workers`` or CPU ``cpu_fraction``) resolved by the runner over the fleet-wide ``parallel-workers`` default: a consumer whose measured suite cannot fit the single-worker process boundary declares its ceiling here, inside the fleet cycle. The legacy bare-integer form still reads as an absolute ``workers`` ceiling.",
+            description=(
+                "Per declared-project worker ceilings (``[project].name`` → absolute "
+                "``workers`` or CPU ``cpu_fraction``) resolved by the runner over the "
+                "fleet-wide ``parallel-workers`` default: a consumer whose measured "
+                "suite cannot fit the single-worker process boundary declares its "
+                "ceiling here, inside the fleet cycle. The legacy bare-integer form "
+                "still reads as an absolute ``workers`` ceiling."
+            ),
         )
         profile_sort: Literal[
             "calls",
@@ -317,7 +355,10 @@ class FlextInfraModelsDepsToolConfig(
         external_gate_markers: tuple[str, ...] = m.Field(
             alias="external-gate-markers",
             strict=False,
-            description="Markers of external-token gates deselected by offline verification and reported as NOT EXECUTED; each must be declared in standard-markers.",
+            description=(
+                "Markers of external-token gates deselected by offline verification and"
+                " reported as NOT EXECUTED; each must be declared in standard-markers."
+            ),
         )
 
         @property
@@ -491,12 +532,17 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         semantic: Annotated[
-            FlextInfraModelsDuplication.JscpdSemantic,
+            Annotated[
+                p.Infra.JscpdSemantic,
+                t.schema_for_model(FlextInfraModelsDuplication.JscpdSemantic),
+            ],
             m.Field(description="Embedding pass host (--semantic)."),
         ]
         ignore_patterns: t.StrTuple = m.Field(
             alias="ignore-patterns",
-            description="Operator-authorized code-level regexes jscpd skips (--ignore-pattern).",
+            description=(
+                "Operator-authorized code-level regexes jscpd skips (--ignore-pattern)."
+            ),
         )
         ignore: Annotated[
             Sequence[str],
@@ -537,10 +583,19 @@ class FlextInfraModelsDepsToolConfig(
         """Markdown rules; artifact and exclusion declarations own file scope."""
 
         projected_blocks: tuple[
-            FlextInfraModelsDepsToolConfig.MarkdownProjectedBlock, ...
+            Annotated[
+                p.Infra.MarkdownProjectedBlock,
+                t.schema_for_model(
+                    FlextInfraModelsDepsToolConfig.MarkdownProjectedBlock
+                ),
+            ],
+            ...,
         ] = m.Field(
             alias="projected-blocks",
-            description="Foreign writers whose marker-delimited blocks the Markdown lint reads as masked lines; FLEXT-owned blocks never appear.",
+            description=(
+                "Foreign writers whose marker-delimited blocks the Markdown lint reads "
+                "as masked lines; FLEXT-owned blocks never appear."
+            ),
         )
 
         findings_exit_codes: tuple[int, ...] = m.Field(
@@ -565,28 +620,52 @@ class FlextInfraModelsDepsToolConfig(
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
-        markdown: FlextInfraModelsDepsToolConfig.MarkdownConfig = m.Field(
+        markdown: Annotated[
+            p.Infra.MarkdownConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.MarkdownConfig),
+        ] = m.Field(
             description="Markdown lint settings",
         )
-        ruff: FlextInfraModelsDepsToolConfig.RuffConfig = m.Field(
+        ruff: Annotated[
+            p.Infra.RuffConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.RuffConfig),
+        ] = m.Field(
             description="Ruff settings",
         )
-        mypy: FlextInfraModelsDepsToolConfig.MypyConfig = m.Field(
+        mypy: Annotated[
+            p.Infra.MypyConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.MypyConfig),
+        ] = m.Field(
             description="Mypy settings",
         )
-        pyright: FlextInfraModelsDepsToolConfig.PyrightConfig = m.Field(
+        pyright: Annotated[
+            p.Infra.PyrightConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.PyrightConfig),
+        ] = m.Field(
             description="Pyright settings",
         )
-        pyrefly: FlextInfraModelsDepsToolConfig.PyreflyConfig = m.Field(
+        pyrefly: Annotated[
+            p.Infra.PyreflyConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.PyreflyConfig),
+        ] = m.Field(
             description="Pyrefly settings",
         )
-        pytest: FlextInfraModelsDepsToolConfig.PytestConfig = m.Field(
+        pytest: Annotated[
+            p.Infra.PytestConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.PytestConfig),
+        ] = m.Field(
             description="Pytest settings",
         )
-        tomlsort: FlextInfraModelsDepsToolConfig.TomlsortConfig = m.Field(
+        tomlsort: Annotated[
+            p.Infra.TomlsortConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.TomlsortConfig),
+        ] = m.Field(
             description="Tomlsort settings",
         )
-        jscpd: FlextInfraModelsDepsToolConfig.JscpdToolConfig = m.Field(
+        jscpd: Annotated[
+            p.Infra.JscpdToolConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.JscpdToolConfig),
+        ] = m.Field(
             description="jscpd clone-semantics passes",
         )
 
@@ -595,23 +674,48 @@ class FlextInfraModelsDepsToolConfig(
 
         import_layer_order: tuple[t.NonEmptyStr, ...] = m.Field(
             alias="import-layer-order",
-            description="Canonical dependency layer order for project imports. Lower index = lower layer. A module may runtime-import modules at equal or lower index (relative-dot within the same package); importing a module at higher index is a reverse dependency and the engine emits it under ``if TYPE_CHECKING:`` (see ``reverse_import_mode``). Any value not in the fleet SSOT is rejected.",
+            description=(
+                "Canonical dependency layer order for project imports. Lower index = "
+                "lower layer. A module may runtime-import modules at equal or lower "
+                "index (relative-dot within the same package); importing a module at "
+                "higher index is a reverse dependency and the engine emits it under "
+                "``if TYPE_CHECKING:`` (see ``reverse_import_mode``). Any value not in "
+                "the fleet SSOT is rejected."
+            ),
         )
         layer_aliases: Mapping[t.NonEmptyStr, t.NonEmptyStr] = m.Field(
             alias="layer-aliases",
-            description="Runtime aliases of the core package that rank inside a declared layer instead of forming their own: the alias and the module the core package binds it to share that layer's rank. Same-rank imports are runtime-legal; the import-cycle law keeps them acyclic.",
+            description=(
+                "Runtime aliases of the core package that rank inside a declared layer "
+                "instead of forming their own: the alias and the module the core "
+                "package binds it to share that layer's rank. Same-rank imports are "
+                "runtime-legal; the import-cycle law keeps them acyclic."
+            ),
         )
         stdlib_backports: tuple[t.NonEmptyStr, ...] = m.Field(
             alias="stdlib-backports",
-            description="Import roots of stdlib backports that every module may import like the standard library itself (operator decision 2026-10-24, ADR-028). The facade boundary derives stdlib from ``sys.stdlib_module_names`` and adds only these declared roots.",
+            description=(
+                "Import roots of stdlib backports that every module may import like the"
+                " standard library itself (operator decision 2026-10-24, ADR-028). The "
+                "facade boundary derives stdlib from ``sys.stdlib_module_names`` and "
+                "adds only these declared roots."
+            ),
         )
         reverse_import_mode: Literal["type_checking"] = m.Field(
             alias="reverse-import-mode",
-            description="How reverse (upward) runtime dependencies are emitted. ``type_checking`` moves the import into an ``if TYPE_CHECKING:`` block. The engine rejects any other value; reverse runtime imports are a module defect fixed at the module root cause.",
+            description=(
+                "How reverse (upward) runtime dependencies are emitted. "
+                "``type_checking`` moves the import into an ``if TYPE_CHECKING:`` "
+                "block. The engine rejects any other value; reverse runtime imports are"
+                " a module defect fixed at the module root cause."
+            ),
         )
         forward_import_form: Literal["absolute"] = m.Field(
             alias="forward-import-form",
-            description="How forward (downward) intra-project imports are emitted. ``absolute`` names the full module path; relative imports are banned.",
+            description=(
+                "How forward (downward) intra-project imports are emitted. ``absolute``"
+                " names the full module path; relative imports are banned."
+            ),
         )
 
         @m.model_validator(mode="after")
@@ -651,12 +755,18 @@ class FlextInfraModelsDepsToolConfig(
         model_declaration_modules: tuple[t.NonEmptyStr, ...] = m.Field(
             alias="model-declaration-modules",
             strict=False,
-            description="Modules of the model library whose callables declare models (field specifiers, validators, serializers).",
+            description=(
+                "Modules of the model library whose callables declare models (field "
+                "specifiers, validators, serializers)."
+            ),
         )
         type_constructor_modules: tuple[t.NonEmptyStr, ...] = m.Field(
             alias="type-constructor-modules",
             strict=False,
-            description="Modules of the model library whose callables build constrained types (``constr``, ``conint``) used in annotations.",
+            description=(
+                "Modules of the model library whose callables build constrained types "
+                "(``constr``, ``conint``) used in annotations."
+            ),
         )
 
         @m.model_validator(mode="after")
@@ -682,7 +792,10 @@ class FlextInfraModelsDepsToolConfig(
         fix_text: Mapping[t.NonEmptyStr, t.NonEmptyStr] = m.Field(
             alias="fix-text",
             min_length=1,
-            description="Repair text appended to each qlty finding, keyed by the qlty check name (the SARIF ruleId suffix).",
+            description=(
+                "Repair text appended to each qlty finding, keyed by the qlty check "
+                "name (the SARIF ruleId suffix)."
+            ),
         )
         enforce: Annotated[
             Mapping[t.NonEmptyStr, t.Infra.EnforcementIds],
@@ -701,7 +814,10 @@ class FlextInfraModelsDepsToolConfig(
         forbidden_prefixes: Mapping[t.NonEmptyStr, t.NonEmptyStr] = m.Field(
             alias="forbidden-prefixes",
             min_length=1,
-            description="Public method-name prefixes that declare an accessor, mapped to the domain-verb guidance that replaces them.",
+            description=(
+                "Public method-name prefixes that declare an accessor, mapped to the "
+                "domain-verb guidance that replaces them."
+            ),
         )
 
     class ToolConfigDocument(m.ContractModel, str_strip_whitespace=False):
@@ -723,7 +839,10 @@ class FlextInfraModelsDepsToolConfig(
         derived_tool_roots: tuple[t.NonEmptyStr, ...] = m.Field(
             alias="derived-tool-roots",
             strict=False,
-            description="Native roots whose owner combines declared options with typed topology or execution policy.",
+            description=(
+                "Native roots whose owner combines declared options with typed topology"
+                " or execution policy."
+            ),
         )
 
         derived_settings: Mapping[
@@ -737,26 +856,44 @@ class FlextInfraModelsDepsToolConfig(
             pattern="^\\.[A-Za-z0-9_.-]+$",
             description="Filename suffix for verbatim native check receipts.",
         )
-        tools: FlextInfraModelsDepsToolConfig.ToolConfigTools = m.Field(
+        tools: Annotated[
+            p.Infra.ToolConfigTools,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.ToolConfigTools),
+        ] = m.Field(
             description="Tools",
         )
-        lazy_init: FlextInfraModelsDepsToolConfig.LazyInitConfig = m.Field(
+        lazy_init: Annotated[
+            p.Infra.LazyInitConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.LazyInitConfig),
+        ] = m.Field(
             alias="lazy-init",
             description="Declarative lazy-init generation policy.",
         )
-        facade_members: FlextInfraModelsDepsToolConfig.FacadeMembersConfig = m.Field(
+        facade_members: Annotated[
+            p.Infra.FacadeMembersConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.FacadeMembersConfig),
+        ] = m.Field(
             alias="facade-members",
             description="Declarative single-owner policy for facade members.",
         )
-        smells: FlextInfraModelsDepsToolConfig.SmellsConfig = m.Field(
+        smells: Annotated[
+            p.Infra.SmellsConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.SmellsConfig),
+        ] = m.Field(
             description="Repair guidance for qlty smell findings.",
         )
-        accessor_policy: FlextInfraModelsDepsToolConfig.AccessorPolicyConfig = m.Field(
+        accessor_policy: Annotated[
+            p.Infra.AccessorPolicyConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.AccessorPolicyConfig),
+        ] = m.Field(
             alias="accessor-policy",
             description="Accessor naming policy of the accessor migration.",
         )
 
-        mod: FlextInfraModelsDepsToolConfig.ModConfig = m.Field(
+        mod: Annotated[
+            p.Infra.ModConfig,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.ModConfig),
+        ] = m.Field(
             description="Declarative make-mod phase policy.",
         )
 
@@ -1039,7 +1176,10 @@ class FlextInfraModelsDepsToolConfig(
         """One elected tooling document and its publication preimages."""
 
         document: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
+            Annotated[
+                p.Infra.ToolConfigDocument,
+                t.schema_for_model(FlextInfraModelsDepsToolConfig.ToolConfigDocument),
+            ],
             m.Field(description="Validated project-specific tooling configuration."),
         ]
         sources: Annotated[
@@ -1050,7 +1190,13 @@ class FlextInfraModelsDepsToolConfig(
     class ToolingRuntimeContext(m.ArbitraryTypesModel):
         """Resolved topology and native tool tables consumed by every template."""
 
-        document: FlextInfraModelsDepsToolConfig.ToolConfigDocument | None = m.Field(
+        document: (
+            Annotated[
+                p.Infra.ToolConfigDocument,
+                t.schema_for_model(FlextInfraModelsDepsToolConfig.ToolConfigDocument),
+            ]
+            | None
+        ) = m.Field(
             None,
             exclude=True,
             description="The elected tooling policy shared by every render context.",

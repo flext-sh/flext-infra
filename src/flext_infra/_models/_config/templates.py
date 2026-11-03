@@ -264,7 +264,13 @@ class FlextInfraModelsConfigTemplates:
             m.Field(min_length=1, description="Profiles that consume the artifact"),
         ]
         ownership: Annotated[
-            FlextInfraModelsConfigTemplates.ManagedFileOwnership | None,
+            Annotated[
+                p.Infra.ManagedFileOwnership,
+                t.schema_for_model(
+                    FlextInfraModelsConfigTemplates.ManagedFileOwnership
+                ),
+            ]
+            | None,
             m.Field(
                 description=(
                     "Explicit generated-file ownership, or null for an authored "
@@ -431,7 +437,12 @@ class FlextInfraModelsConfigTemplates:
         root: Annotated[Path, m.Field(description="Package-relative template root")]
         catalog: Mapping[
             t.NonEmptyStr,
-            FlextInfraModelsConfigTemplates.TemplateDeclarationSpec,
+            Annotated[
+                p.Infra.TemplateDeclarationSpec,
+                t.schema_for_model(
+                    FlextInfraModelsConfigTemplates.TemplateDeclarationSpec
+                ),
+            ],
         ] = m.Field(
             alias="entries",
             description="Ordered template bodies keyed by destination",
@@ -550,7 +561,15 @@ class FlextInfraModelsConfigTemplates:
         """Profile-filtered input consumed by the Git ignore template."""
 
         gitignore_sections: Annotated[
-            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ScaffoldGitignoreSectionSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
@@ -558,7 +577,15 @@ class FlextInfraModelsConfigTemplates:
         """Typed, profile-filtered input for the generated Git ignore file."""
 
         gitignore_sections: Annotated[
-            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ScaffoldGitignoreSectionSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 description="Canonical ignore sections applicable to one profile",

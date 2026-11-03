@@ -25,7 +25,7 @@ class FlextInfraModelsWorkspaceSnapshot:
 
         path: Annotated[Path, m.Field(description="Resolved file path")]
         state: Annotated[
-            m.Cli.AtomicFileState,
+            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
             m.Field(description="Authenticated state the run reads and publishes"),
         ]
         digest: Annotated[
@@ -86,7 +86,9 @@ class FlextInfraModelsWorkspaceSnapshot:
         ]
         engine: t.Port[t.Infra.RopeProject] = m.Field(
             exclude=True,
-            description="The one source engine project; planned effects enter its overlay",
+            description=(
+                "The one source engine project; planned effects enter its overlay"
+            ),
         )
         python_files: t.Port[dict[Path, tuple[Path, ...]]] = m.Field(
             exclude=True, description="Python sources of each member"
@@ -97,7 +99,12 @@ class FlextInfraModelsWorkspaceSnapshot:
         python_module_facts: t.Port[
             dict[
                 t.Infra.RopeNativeParsedModule,
-                FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
+                Annotated[
+                    p.Infra.PythonModuleFacts,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenLazyInit.PythonModuleFacts
+                    ),
+                ],
             ]
         ] = m.Field(
             exclude=True,
@@ -151,10 +158,20 @@ class FlextInfraModelsWorkspaceSnapshot:
             exclude=True, description="Recovered pyproject text per path and digest"
         )
         codemod_renderings: t.Port[
-            dict[tuple[Path, str], FlextInfraModelsRefactorGrep.CodemodNativeGenerated]
+            dict[
+                tuple[Path, str],
+                Annotated[
+                    p.Infra.CodemodNativeGenerated,
+                    t.schema_for_model(
+                        FlextInfraModelsRefactorGrep.CodemodNativeGenerated
+                    ),
+                ],
+            ]
         ] = m.Field(
             exclude=True,
-            description="Native codemod rendering per member root and render-input digest",
+            description=(
+                "Native codemod rendering per member root and render-input digest"
+            ),
         )
 
 

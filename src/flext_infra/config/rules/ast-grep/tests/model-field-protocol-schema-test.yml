@@ -16,6 +16,12 @@ valid:
   from flext_core import m
   class Plain:
       value: m.Cli.Item
+- |
+  from collections.abc import MutableMapping
+  from typing import Annotated
+  from flext_core import m
+  class Wrapped(m.ContractModel):
+      index: Annotated[m.InstanceOf[MutableMapping[str, int]], m.Field()]
 invalid:
 - |
   from flext_core import m, p, t

@@ -11,8 +11,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-from flext_cli import m, p, t
+from flext_cli import m, t
 
+from flext_infra import p
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInit
 from flext_infra._models._git import FlextInfraModelsGitWorktreeState
@@ -120,7 +121,11 @@ class FlextInfraModelsCodegenTransaction:
             default=None, description="Declared source modes preserved during staging"
         )
         declared_files: tuple[
-            FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...
+            Annotated[
+                p.Infra.CodegenFilePlan,
+                t.schema_for_model(FlextInfraModelsCodegenTransaction.CodegenFilePlan),
+            ],
+            ...,
         ] = m.Field(default=(), description="Authenticated candidate file declarations")
         inputs: tuple[
             Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
@@ -197,23 +202,35 @@ class FlextInfraModelsCodegenTransaction:
             description="Desired file-effect modes derived from original move sources",
         )
         declared_files: tuple[
-            FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...
+            Annotated[
+                p.Infra.CodegenFilePlan,
+                t.schema_for_model(FlextInfraModelsCodegenTransaction.CodegenFilePlan),
+            ],
+            ...,
         ] = m.Field(
             default=(),
             description=(
                 "Original file/absence witnesses with the current desired effects"
             ),
         )
-        layouts: tuple[FlextInfraModelsCodegenLazyInit.RopeProjectLayout, ...] = (
-            m.Field(
-                description="Original project layouts in the desired import closure",
-            )
+        layouts: tuple[
+            Annotated[
+                p.Infra.RopeProjectLayout,
+                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeProjectLayout),
+            ],
+            ...,
+        ] = m.Field(
+            description="Original project layouts in the desired import closure",
         )
         workspace_packages: tuple[str, ...] = m.Field(
             description="Original elected workspace namespaces",
         )
         candidate_layouts: tuple[
-            FlextInfraModelsCodegenLazyInit.RopeProjectLayout, ...
+            Annotated[
+                p.Infra.RopeProjectLayout,
+                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeProjectLayout),
+            ],
+            ...,
         ] = m.Field(
             description="Prospective import closure of the authenticated declarations",
         )
@@ -224,7 +241,10 @@ class FlextInfraModelsCodegenTransaction:
     class SemanticSourcePlan(m.ImmutableValueModel):
         """Authenticated source campaign independent of explicit rename intent."""
 
-        candidate: FlextInfraModelsCodegenTransaction.StageSourcePlan = m.Field(
+        candidate: Annotated[
+            p.Infra.StageSourcePlan,
+            t.schema_for_model(FlextInfraModelsCodegenTransaction.StageSourcePlan),
+        ] = m.Field(
             description="Authenticated complete source and runtime candidate closure",
         )
         consumer_roots: tuple[Path, ...] = m.Field(

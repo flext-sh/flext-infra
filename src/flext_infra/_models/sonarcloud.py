@@ -10,7 +10,7 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraModelsSonarcloud:
@@ -49,7 +49,13 @@ class FlextInfraModelsSonarcloud:
         )
         key: Annotated[t.NonEmptyStr, m.Field(description="Setting key")]
         field_values: tuple[
-            FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue, ...
+            Annotated[
+                p.Infra.SonarcloudIssueFieldValue,
+                t.schema_for_model(
+                    FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue
+                ),
+            ],
+            ...,
         ] = m.Field(
             (),
             validation_alias="fieldValues",
@@ -61,7 +67,13 @@ class FlextInfraModelsSonarcloud:
         """The ``api/settings/values`` response body."""
 
         settings: Annotated[
-            tuple[FlextInfraModelsSonarcloud.SonarcloudSetting, ...],
+            tuple[
+                Annotated[
+                    p.Infra.SonarcloudSetting,
+                    t.schema_for_model(FlextInfraModelsSonarcloud.SonarcloudSetting),
+                ],
+                ...,
+            ],
             m.Field(description="Effective settings for the requested keys"),
         ]
 
@@ -87,7 +99,15 @@ class FlextInfraModelsSonarcloud:
             m.Field(description="PROPERTY_SET setting key"),
         ]
         field_values: Annotated[
-            tuple[FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue, ...],
+            tuple[
+                Annotated[
+                    p.Infra.SonarcloudIssueFieldValue,
+                    t.schema_for_model(
+                        FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Entries in SSOT order; empty means reset"),
         ]
 
@@ -133,11 +153,20 @@ class FlextInfraModelsSonarcloud:
         """A complete typed page returned by ``api/issues/search``."""
 
         paging: Annotated[
-            FlextInfraModelsSonarcloud.SonarcloudIssuePaging,
+            Annotated[
+                p.Infra.SonarcloudIssuePaging,
+                t.schema_for_model(FlextInfraModelsSonarcloud.SonarcloudIssuePaging),
+            ],
             m.Field(description="Server-side page accounting of this page"),
         ]
         issues: Annotated[
-            tuple[FlextInfraModelsSonarcloud.SonarcloudIssue, ...],
+            tuple[
+                Annotated[
+                    p.Infra.SonarcloudIssue,
+                    t.schema_for_model(FlextInfraModelsSonarcloud.SonarcloudIssue),
+                ],
+                ...,
+            ],
             m.Field(description="Issues returned on this page"),
         ]
 

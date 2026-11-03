@@ -1,11 +1,7 @@
 id: model-field-protocol-schema
 snapshots:
-  ? |
-    from collections.abc import Sequence
-    from flext_core import m, p, t
-    class D(m.ContractModel):
-        items: Sequence[m.Cli.Item] = m.Field(default_factory=tuple)
-  : fixed: |
+  "from collections.abc import Sequence\nfrom flext_core import m, p, t\nclass D(m.ContractModel):\n    items: Sequence[m.Cli.Item] = m.Field(default_factory=tuple)\n":
+    fixed: |
       from collections.abc import Sequence
       from flext_core import m, p, t
       class D(m.ContractModel):
@@ -25,15 +21,15 @@ snapshots:
       style: secondary
       start: 68
       end: 158
-    - source: 'items: Sequence[m.Cli.Item] = m.Field(default_factory=tuple)'
+    - source: "items: Sequence[m.Cli.Item] = m.Field(default_factory=tuple)"
       style: secondary
       start: 98
       end: 158
-    - source: 'items: Sequence[m.Cli.Item] = m.Field(default_factory=tuple)'
+    - source: "items: Sequence[m.Cli.Item] = m.Field(default_factory=tuple)"
       style: secondary
       start: 98
       end: 158
-    - source: 'items: Sequence[m.Cli.Item] = m.Field(default_factory=tuple)'
+    - source: "items: Sequence[m.Cli.Item] = m.Field(default_factory=tuple)"
       style: secondary
       start: 98
       end: 158
@@ -41,11 +37,8 @@ snapshots:
       style: secondary
       start: 105
       end: 125
-  ? |
-    from flext_core import m, p, t
-    class C(m.ContractModel):
-        color: m.Cli.Color | None = None
-  : fixed: |
+  "from flext_core import m, p, t\nclass C(m.ContractModel):\n    color: m.Cli.Color | None = None\n":
+    fixed: |
       from flext_core import m, p, t
       class C(m.ContractModel):
           color: Annotated[p.Cli.Color, t.schema_for_model(m.Cli.Color)] | None = None
@@ -64,15 +57,15 @@ snapshots:
       style: secondary
       start: 31
       end: 93
-    - source: 'color: m.Cli.Color | None = None'
+    - source: "color: m.Cli.Color | None = None"
       style: secondary
       start: 61
       end: 93
-    - source: 'color: m.Cli.Color | None = None'
+    - source: "color: m.Cli.Color | None = None"
       style: secondary
       start: 61
       end: 93
-    - source: 'color: m.Cli.Color | None = None'
+    - source: "color: m.Cli.Color | None = None"
       style: secondary
       start: 61
       end: 93

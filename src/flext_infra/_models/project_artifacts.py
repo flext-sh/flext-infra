@@ -10,9 +10,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated
 
-from flext_cli import m, p
+from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models import (
     FlextInfraModelsDepsToolConfigProjectMise,
     FlextInfraModelsProjectGitignore,
@@ -28,11 +28,15 @@ class FlextInfraModelsProjectArtifacts(
         """Project-owned configuration for generated artifacts."""
 
         Mise: Annotated[
-            FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig,
+            p.Infra.ProjectMiseConfig,
+            t.schema_for_model(
+                FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig
+            ),
             m.Field(description="Mise additions owned by the current project."),
         ]
         Gitignore: Annotated[
-            FlextInfraModelsProjectGitignore.ProjectGitignoreConfig,
+            p.Infra.ProjectGitignoreConfig,
+            t.schema_for_model(FlextInfraModelsProjectGitignore.ProjectGitignoreConfig),
             m.Field(description="Ignore patterns owned by the current project."),
         ]
 
@@ -40,7 +44,12 @@ class FlextInfraModelsProjectArtifacts(
         """Composed project configuration plus selector provenance."""
 
         artifacts: Annotated[
-            FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsConfig,
+            Annotated[
+                p.Infra.ProjectManagedArtifactsConfig,
+                t.schema_for_model(
+                    FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsConfig
+                ),
+            ],
             m.Field(description="Composed managed-artifact configuration."),
         ]
         mise_tool_sources: Annotated[
@@ -56,7 +65,12 @@ class FlextInfraModelsProjectArtifacts(
             m.Field(description="Ordered exact project configuration sources."),
         ]
         resolution: Annotated[
-            FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsResolution,
+            Annotated[
+                p.Infra.ProjectManagedArtifactsResolution,
+                t.schema_for_model(
+                    FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsResolution
+                ),
+            ],
             m.Field(description="Managed artifacts parsed from those exact sources."),
         ]
 

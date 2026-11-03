@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
-from flext_cli import m, p
+from flext_cli import m
 
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsMixins
@@ -211,19 +211,32 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Native receiver access category"),
         ]
         base: Annotated[
-            FlextInfraModelsRope.SourceClassReference,
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+            ],
             m.Field(description="Native module or class identity of the receiver"),
         ]
         accessor: Annotated[
-            FlextInfraModelsRope.SourceClassReference,
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+            ],
             m.Field(description="Native __getattribute__ declaration identity"),
         ]
         member: Annotated[
-            FlextInfraModelsRope.SourceClassReference,
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+            ],
             m.Field(description="Native owner and identity of the requested member"),
         ]
         descriptor: Annotated[
-            FlextInfraModelsRope.SourceClassReference | None,
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+            ]
+            | None,
             m.Field(
                 description="Builtin descriptor identity, or none for a plain value"
             ),
@@ -253,11 +266,24 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Qualified identity of the declared class"),
         ]
         bases: Annotated[
-            tuple[FlextInfraModelsRope.SourceClassReference, ...],
+            tuple[
+                Annotated[
+                    p.Infra.SourceClassReference,
+                    t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered base references of the declaration"),
         ]
         members: Annotated[
-            Mapping[str, FlextInfraModelsRope.SourceClassReference | None],
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.SourceClassReference,
+                    t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                ]
+                | None,
+            ],
             m.Field(description="Member name to shadowing reference mapping"),
         ]
 
@@ -306,7 +332,13 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         ]
         definitions: Annotated[
             m.InstanceOf[
-                MutableMapping[str, FlextInfraModelsRope.SourceClassDefinition]
+                MutableMapping[
+                    str,
+                    Annotated[
+                        p.Infra.SourceClassDefinition,
+                        t.schema_for_model(FlextInfraModelsRope.SourceClassDefinition),
+                    ],
+                ]
             ],
             m.Field(
                 description="Cross-module definition inventory the walk extends",
@@ -314,7 +346,14 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         ]
         lexical: Annotated[
             m.InstanceOf[
-                MutableMapping[str, FlextInfraModelsRope.SourceClassReference | None]
+                MutableMapping[
+                    str,
+                    Annotated[
+                        p.Infra.SourceClassReference,
+                        t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                    ]
+                    | None,
+                ]
             ],
             m.Field(
                 description="Module-scope bindings visible to every nested base",
@@ -483,7 +522,16 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Source captured at scan; restored on failed gates"),
         ]
         matches: Annotated[
-            Sequence[tuple[FlextInfraModelsRope.SymbolInfo, str, str]],
+            Sequence[
+                tuple[
+                    Annotated[
+                        p.Infra.SymbolInfo,
+                        t.schema_for_model(FlextInfraModelsRope.SymbolInfo),
+                    ],
+                    str,
+                    str,
+                ]
+            ],
             m.Field(description="Matched symbol, canonical reference, and raw value"),
         ]
 
@@ -491,7 +539,13 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         """Unified semantic snapshot for one Rope module analysis pass."""
 
         class_infos: Annotated[
-            tuple[FlextInfraModelsRope.ClassInfo, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ClassInfo,
+                    t.schema_for_model(FlextInfraModelsRope.ClassInfo),
+                ],
+                ...,
+            ],
             m.Field(description="Local classes discovered in the module"),
         ] = ()
         declared_imports: Annotated[
@@ -521,15 +575,27 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Resolved package directory containing the module"),
         ]
         package_context: Annotated[
-            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
+            Annotated[
+                p.Infra.LazyInitPackageContext,
+                t.schema_for_model(
+                    FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
+                ),
+            ],
             m.Field(description="Resolved lazy-init package context for the module"),
         ]
         module_policy: Annotated[
-            FlextInfraModelsCodegenFix.NamespaceModulePolicy,
+            Annotated[
+                p.Infra.NamespaceModulePolicy,
+                t.schema_for_model(FlextInfraModelsCodegenFix.NamespaceModulePolicy),
+            ],
             m.Field(description="Canonical module policy derived for the module"),
         ]
         project_layout: Annotated[
-            FlextInfraModelsRope.RopeProjectLayout | None,
+            Annotated[
+                p.Infra.RopeProjectLayout,
+                t.schema_for_model(FlextInfraModelsRope.RopeProjectLayout),
+            ]
+            | None,
             m.Field(
                 description="Resolved project layout, when the module belongs to one",
             ),
@@ -574,7 +640,10 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Resolved project name for census attribution"),
         ]
         convention: Annotated[
-            FlextInfraModelsRope.RopeModuleConvention,
+            Annotated[
+                p.Infra.RopeModuleConvention,
+                t.schema_for_model(FlextInfraModelsRope.RopeModuleConvention),
+            ],
             m.Field(description="Module convention metadata for tier/facade checks"),
         ]
         scope_chain: Annotated[
@@ -608,7 +677,10 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         # Policy stays in config.Infra;
         # this field-only model retains only materialized session state.
         workspace_index: Annotated[
-            FlextInfraModelsRope.RopeWorkspaceIndex,
+            Annotated[
+                p.Infra.RopeWorkspaceIndex,
+                t.schema_for_model(FlextInfraModelsRope.RopeWorkspaceIndex),
+            ],
             m.Field(description="Materialized workspace index for the open session"),
         ]
 

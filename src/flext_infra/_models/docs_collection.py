@@ -7,15 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, Self
+from typing import Annotated, Literal, Self
 
-from flext_cli import m, p
+from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models._config import FlextInfraModelsConfigArtifact
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraModelsDocsCollection:
@@ -120,7 +117,15 @@ class FlextInfraModelsDocsCollection:
             m.Field(description="Separately authorized absolute projection owner"),
         ] = None
         sources: Annotated[
-            tuple[FlextInfraModelsDocsCollection.PlanCollectionSource, ...],
+            tuple[
+                Annotated[
+                    p.Infra.PlanCollectionSource,
+                    t.schema_for_model(
+                        FlextInfraModelsDocsCollection.PlanCollectionSource
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 strict=False,
                 description="Complete explicitly associated source inventory",
@@ -210,20 +215,38 @@ class FlextInfraModelsDocsCollection:
                 "Typed source association digest; None only before first collection"
             ),
         )
-        coverage: tuple[FlextInfraModelsDocsCollection.PlanCollectionCoverage, ...] = (
-            m.Field(
-                description="Complete source coverage from the published collection",
-            )
+        coverage: tuple[
+            Annotated[
+                p.Infra.PlanCollectionCoverage,
+                t.schema_for_model(
+                    FlextInfraModelsDocsCollection.PlanCollectionCoverage
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            description="Complete source coverage from the published collection",
         )
 
-        revisions: tuple[FlextInfraModelsDocsCollection.PlanCollectionRevision, ...] = (
-            m.Field(
-                default=(),
-                description="Immutable observed source revision history",
-            )
+        revisions: tuple[
+            Annotated[
+                p.Infra.PlanCollectionRevision,
+                t.schema_for_model(
+                    FlextInfraModelsDocsCollection.PlanCollectionRevision
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            default=(),
+            description="Immutable observed source revision history",
         )
         artifacts: tuple[
-            FlextInfraModelsDocsCollection.PlanCollectionOwnedArtifact, ...
+            Annotated[
+                p.Infra.PlanCollectionOwnedArtifact,
+                t.schema_for_model(
+                    FlextInfraModelsDocsCollection.PlanCollectionOwnedArtifact
+                ),
+            ],
+            ...,
         ] = m.Field(
             default=(),
             description="Digest-attested generated artifact ownership",
@@ -274,19 +297,35 @@ class FlextInfraModelsDocsCollection:
     class PlanCollectionBundle(m.ArbitraryTypesModel):
         """Read-only planning result consumed by the existing publisher."""
 
-        files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = m.Field(
-            description="Effects published through the shared publisher"
-        )
+        files: tuple[
+            Annotated[
+                p.Infra.CodegenFilePlan,
+                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+            ],
+            ...,
+        ] = m.Field(description="Effects published through the shared publisher")
         prunable_directories: tuple[Path, ...] = m.Field(
             default=(),
             description="Owned empty directories removed after publication",
         )
-        revisions: tuple[FlextInfraModelsDocsCollection.PlanCollectionRevision, ...] = (
-            m.Field(description="Latest newly observed revision per plan")
-        )
-        coverage: tuple[FlextInfraModelsDocsCollection.PlanCollectionCoverage, ...] = (
-            m.Field(description="Explicit per-source collection coverage")
-        )
+        revisions: tuple[
+            Annotated[
+                p.Infra.PlanCollectionRevision,
+                t.schema_for_model(
+                    FlextInfraModelsDocsCollection.PlanCollectionRevision
+                ),
+            ],
+            ...,
+        ] = m.Field(description="Latest newly observed revision per plan")
+        coverage: tuple[
+            Annotated[
+                p.Infra.PlanCollectionCoverage,
+                t.schema_for_model(
+                    FlextInfraModelsDocsCollection.PlanCollectionCoverage
+                ),
+            ],
+            ...,
+        ] = m.Field(description="Explicit per-source collection coverage")
 
 
 __all__: list[str] = ["FlextInfraModelsDocsCollection"]

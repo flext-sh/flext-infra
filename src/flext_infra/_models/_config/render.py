@@ -10,6 +10,7 @@ from typing import Annotated
 
 from flext_cli import m, t
 
+from flext_infra import p
 from flext_infra._models._config import (
     FlextInfraModelsConfigContract,
     FlextInfraModelsConfigSonarcloud,
@@ -48,7 +49,15 @@ class FlextInfraModelsConfigRender(FlextInfraModelsConfigSonarcloud):
             m.Field(description="Per-request SonarCloud web API timeout"),
         ]
         issue_exclusions: Annotated[
-            tuple[FlextInfraModelsConfigSonarcloud.SonarcloudIssueExclusionSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.SonarcloudIssueExclusionSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigSonarcloud.SonarcloudIssueExclusionSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Server-side issue exclusions applied through SonarCloud "

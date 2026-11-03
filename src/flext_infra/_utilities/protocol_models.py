@@ -2805,10 +2805,39 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             model = self._source_model_class(node, classes)
+            tree = next(
+                source for candidate, _path, source in classes if candidate is node
+            )
+            # A subscripted model base keeps its type arguments on the protocol
+            # base, projected like any field annotation (model -> protocol).
+            subscripts = {
+                ast.unparse(base.value).rpartition(".")[2]: base.slice
+                for base in node.bases
+                if isinstance(base, ast.Subscript)
+            }
             bases: list[tuple[str, dict[str, str], str | None, frozenset[str]]] = []
             for ancestor in model.get_superclasses():
                 if not self.py_class(ancestor):
                     continue
+                arguments = subscripts.get(ancestor.get_name())
+                suffix = (
+                    ""
+                    if arguments is None
+                    else "[{}]".format(
+                        ", ".join(
+                            ast.unparse(
+                                self._source_structural_annotation(
+                                    argument, tree, node, classes
+                                )
+                            )
+                            for argument in (
+                                arguments.elts
+                                if isinstance(arguments, ast.Tuple)
+                                else (arguments,)
+                            )
+                        )
+                    )
+                )
                 module_name, qualified = self._source_class_identity(ancestor)
                 route = f"{module_name}.{qualified}"
                 target = self.source_model_protocol_destinations.get(route)
@@ -2833,11 +2862,26 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
                 name = self.source_model_protocols[route]
                 if target == destination:
-                    bases.append((name, fields, None, methods))
+                    bases.append((f"{name}{suffix}", fields, None, methods))
                     continue
                 holder = self._source_destination_holder(target)
                 if self.package is None:
                     message = "cross-module mirror base requires an elected package"
+                    raise ValueError(message)
+                # The base is read at class creation: the protocol layer order
+                # must follow the model layer order, so the base's module may
+                # never import this destination's holder at runtime.
+                own = self._source_destination_holder(destination)
+                if any(
+                    isinstance(statement, ast.ImportFrom)
+                    and any(alias.name == own for alias in statement.names)
+                    for statement in ast.parse(self.project.source_text(target)).body
+                ):
+                    message = (
+                        f"mirror base {holder}.{name} in {target} imports {own} "
+                        f"from {destination} at runtime: protocol layer order "
+                        "must follow the model layer order"
+                    )
                     raise ValueError(message)
                 # Import law form 1: a sibling holder is read through the family
                 # package that contains it, never through its deep module.
@@ -2846,7 +2890,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     *target.parent.relative_to(self.package).parts,
                 ))
                 bases.append((
-                    f"{holder}.{name}",
+                    f"{holder}.{name}{suffix}",
                     fields,
                     f"from {family} import {holder}",
                     methods,
@@ -2887,7 +2931,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     contract
                     for contract in pending
                     if all(
-                        base in placed or base not in names for base in contract.bases
+                        base.partition("[")[0] in placed
+                        or base.partition("[")[0] not in names
+                        for base in contract.bases
                     )
                 )
                 ordered.append(ready)
@@ -2955,6 +3001,15 @@ class FlextInfraUtilitiesModelsProtocol:
                         field.target.id
                     ) == ast.unparse(field.annotation):
                         continue
+                    # A root model's root type flows through its subscripted
+                    # root base (``RootModel[X]``); redeclaring it overrides
+                    # the base's member with an incompatible kind.
+                    if (
+                        isinstance(field.target, ast.Name)
+                        and field.target.id == "root"
+                        and "root" in inherited
+                    ):
+                        continue
                     if isinstance(field.target, ast.Name):
                         annotation = ast.unparse(field.annotation)
                         target = (
@@ -2988,6 +3043,10 @@ class FlextInfraUtilitiesModelsProtocol:
                         self._source_model_class(node, classes), destination, owner
                     )
                 )
+                if copy_base == name:
+                    # The root model mirrors the core model contract itself:
+                    # its single declaration is the port, never its own base.
+                    copy_base = ""
                 if copy_base:
                     evaluated_bases.add(copy_base)
                 contracts.append(
@@ -3013,7 +3072,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 "from typing import AbstractSet, TYPE_CHECKING, Protocol, runtime_checkable",
                 *self._source_runtime_base_imports(evaluated_bases),
                 *sorted(base_imports),
-                *self.source_annotation_imports(classes, package_name, destination),
+                *self._source_promote_base_reads(
+                    self.source_annotation_imports(classes, package_name, destination),
+                    contracts,
+                ),
             )
             context = m.Infra.ModelProtocolRenderContext(
                 header=c.Infra.AUTOGEN_HEADER,
@@ -3050,6 +3112,51 @@ class FlextInfraUtilitiesModelsProtocol:
                 / c.Infra.TEMPLATE_MODEL_PROTOCOL
             )
             return u.Cli.template_render(template, context).unwrap()
+
+        @staticmethod
+        def _source_promote_base_reads(
+            imports: Sequence[str],
+            contracts: Sequence[
+                p.Infra.ModelProtocolRenderContext.ModelProtocolContract
+            ],
+        ) -> list[str]:
+            """Import at runtime every name a contract base reads.
+
+            Class bases, type arguments included, evaluate at class creation;
+            an import deferred under ``TYPE_CHECKING`` would leave them unbound.
+
+            Returns:
+                The imports with base-read names moved out of ``TYPE_CHECKING``.
+
+            """
+            reads = {
+                name.id
+                for contract in contracts
+                for base in contract.bases
+                for name in ast.walk(ast.parse(base, mode="eval"))
+                if isinstance(name, ast.Name)
+            }
+            runtime: list[str] = []
+            deferred: list[str] = []
+            for item in imports:
+                if not item.startswith("if TYPE_CHECKING:"):
+                    runtime.append(item)
+                    continue
+                block = ast.parse(item).body[0]
+                for statement in block.body if isinstance(block, ast.If) else ():
+                    bound = {
+                        alias.asname or alias.name.partition(".")[0]
+                        for alias in getattr(statement, "names", ())
+                    }
+                    (runtime if bound & reads else deferred).append(
+                        ast.unparse(statement)
+                    )
+            if deferred:
+                runtime.append(
+                    "if TYPE_CHECKING:\n"
+                    + "\n".join(f"    {line}" for line in deferred)
+                )
+            return runtime
 
         @staticmethod
         def _source_validate_generated_module(
@@ -3419,11 +3526,11 @@ class FlextInfraUtilitiesModelsProtocol:
             facade = self.qualified_name(
                 self.project,
                 "p",
-                module_name=f"{p.Model.__module__.partition('.')[0]}.protocols",
+                module_name=f"{p.BaseModel.__module__.partition('.')[0]}.protocols",
             ).get_object()
             # The protocol mirrors the concrete base: a model of the core model
             # base composes the core model contract (dump and copy).
-            port = self._source_class(facade.get_attribute(p.Model.__name__))
+            port = self._source_class(facade.get_attribute(p.BaseModel.__name__))
             protocol = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
@@ -3870,9 +3977,19 @@ class FlextInfraUtilitiesModelsProtocol:
                         ),
                         # A field whose type the projection rewrote to a
                         # protocol is covariant: only a read-only property lets
-                        # the concrete model satisfy its own contract.
-                        read_only=read_only
-                        or ast.dump(structural) != ast.dump(annotation),
+                        # the concrete model satisfy its own contract. Pydantic
+                        # metadata is no rewrite: compare against the declared
+                        # value type with its ``Annotated`` wrappers removed.
+                        # A capitalized namespace field stays an attribute in
+                        # every case, exactly as the concrete model declares it.
+                        read_only=(
+                            read_only
+                            or ast.dump(structural)
+                            != ast.dump(
+                                self._source_without_annotated(annotation, tree, node)
+                            )
+                        )
+                        and name == name.lower(),
                         description=description,
                     )
                 )
@@ -3919,6 +4036,31 @@ class FlextInfraUtilitiesModelsProtocol:
                 return self._source_structural_annotation(value, tree, model, classes)
             spelled = f"{model_facade}{route.removeprefix('m')}"
             return ast.parse(spelled, mode="eval").body
+
+        def _source_without_annotated(
+            self, annotation: ast.expr, tree: ast.Module, model: ast.ClassDef
+        ) -> ast.expr:
+            """Remove every ``Annotated`` wrapper, keeping each declared value type.
+
+            Returns:
+                The annotation as written, without its Pydantic metadata.
+
+            """
+            bindings = self._source_typing_bindings(tree, model, "Annotated")
+
+            class Unwrap(ast.NodeTransformer):
+                @override
+                def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
+                    if ast.unparse(node.value) in bindings:
+                        value = (
+                            node.slice.elts[0]
+                            if isinstance(node.slice, ast.Tuple)
+                            else node.slice
+                        )
+                        return self.visit(value)
+                    return self.generic_visit(node)
+
+            return Unwrap().visit(copy.deepcopy(annotation))
 
         def _source_structural_annotation(
             self,
@@ -4301,13 +4443,24 @@ class FlextInfraUtilitiesModelsProtocol:
                 base = pending.pop()
                 if not self.py_class(base):
                     continue
-                root = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-                    base.get_module(), source_project=self.project
-                ).partition(".")[0]
-                if root == self.source_package_name:
+                module = base.get_module()
+                name = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                    module, source_project=self.project
+                )
+                if self._source_within_package(name, self.source_package_name):
                     pending.extend(base.get_superclasses())
-                else:
-                    providers.add(root)
+                    continue
+                # The provider is the facade's whole declaring package: a
+                # repository namespace package (``infra.pulumi.lib``) keeps its
+                # namespace prefix and never collapses to its first segment.
+                resource = module.get_resource()
+                providers.add(
+                    name.rpartition(".")[0]
+                    if resource is None
+                    else FlextInfraUtilitiesRopeAnalysis.package_name_for_module(
+                        name, resource
+                    )
+                )
             if not providers:
                 # The foundation package composes no foreign facade: its own
                 # facade is the only provider of its letter.
@@ -4440,12 +4593,12 @@ class FlextInfraUtilitiesModelsProtocol:
             """Name the public members of the mirrored core model contract.
 
             Returns:
-                Every public member the ``p.Model`` protocol chain declares.
+                Every public member the ``p.BaseModel`` protocol chain declares.
 
             """
             return frozenset(
                 name
-                for contract in p.Model.__mro__
+                for contract in p.BaseModel.__mro__
                 if is_protocol(contract)
                 for name in vars(contract)
                 if not name.startswith("_")
@@ -5064,17 +5217,28 @@ class FlextInfraUtilitiesModelsProtocol:
                     )
                     # An authored contract the projection fully covers yields to
                     # the projected one in place: the concrete model owns it.
-                    covered = set(actual) <= set(expected) and {
+                    # The authored core model port itself declares the base
+                    # members every mirror inherits; it is never covered.
+                    authored_methods = {
                         statement.name
                         for statement in present.body
                         if isinstance(
                             statement, (ast.FunctionDef, ast.AsyncFunctionDef)
                         )
-                    } <= {
+                    }
+                    projected_methods = {
                         *expected,
                         *(method.name for method in self.source_methods(node, classes)),
-                        *self._source_model_base_members(),
                     }
+                    covered = (
+                        set(actual) <= set(expected)
+                        and authored_methods
+                        <= projected_methods | self._source_model_base_members()
+                        and not (
+                            (authored_methods - projected_methods)
+                            & self._source_model_base_members()
+                        )
+                    )
                     if projected or covered:
                         emitted = next(
                             declaration
@@ -5125,12 +5289,15 @@ class FlextInfraUtilitiesModelsProtocol:
             for start, end, replacement in sorted(annotation_updates, reverse=True):
                 source = source[:start] + replacement + source[end:]
             generated_tree = ast.parse(generated_source)
+            # Every name a base expression reads, its type arguments included,
+            # is evaluated at class creation and needs its provider at runtime.
             base_roots = {
-                base.value.id
+                name.id
                 for declaration in ast.walk(generated_tree)
                 if isinstance(declaration, ast.ClassDef)
                 for base in declaration.bases
-                if isinstance(base, ast.Attribute) and isinstance(base.value, ast.Name)
+                for name in ast.walk(base)
+                if isinstance(name, ast.Name)
             }
             # A cross-module mirror base evaluates at class creation, so the
             # generated module's runtime import of its holder travels with it.
@@ -5143,17 +5310,15 @@ class FlextInfraUtilitiesModelsProtocol:
                 }),
                 *(
                     ast.unparse(statement)
-                    for statement in generated_tree.body
+                    for statement in ast.walk(generated_tree)
                     if isinstance(statement, ast.ImportFrom)
                     and any(alias.name in base_roots for alias in statement.names)
-                    and (statement.module or "").startswith(
-                        f"{package_name}._protocols"
-                    )
+                    and (statement.module or "").startswith(f"{package_name}._")
                 ),
             )
             if not additions:
                 return self._source_complete_imports(
-                    source,
+                    self._source_authored_bases_first(source, owner),
                     classes,
                     package_name,
                     destination,
@@ -5179,12 +5344,65 @@ class FlextInfraUtilitiesModelsProtocol:
                     updated, "typing", name, runtime_required=True
                 )
             return self._source_complete_imports(
-                updated,
+                self._source_authored_bases_first(updated, owner),
                 classes,
                 package_name,
                 destination,
                 runtime_imports=runtime_imports,
             )
+
+        @staticmethod
+        def _source_authored_bases_first(source: str, owner: str) -> str:
+            """Move each holder-local base contract above its first heir.
+
+            Class bases evaluate at class creation, so a projected heir whose
+            base is declared later in the authored holder cannot be created.
+            Authored order is kept everywhere else.
+
+            Returns:
+                The source with every local base declared before its heirs.
+
+            """
+            while True:
+                holder = next(
+                    node
+                    for node in ast.parse(source).body
+                    if isinstance(node, ast.ClassDef) and node.name == owner
+                )
+                nested = [
+                    node for node in holder.body if isinstance(node, ast.ClassDef)
+                ]
+                position = {node.name: index for index, node in enumerate(nested)}
+                move = next(
+                    (
+                        (nested[position[base.id]], heir)
+                        for index, heir in enumerate(nested)
+                        for base in heir.bases
+                        if isinstance(base, ast.Name)
+                        and position.get(base.id, -1) > index
+                    ),
+                    None,
+                )
+                if move is None:
+                    return source
+                base, heir = move
+                lines = source.splitlines(keepends=True)
+                start = min((
+                    base.lineno,
+                    *(item.lineno for item in base.decorator_list),
+                ))
+                end = base.end_lineno or base.lineno
+                block = lines[start - 1 : end]
+                while end < len(lines) and not lines[end].strip():
+                    block.append(lines[end])
+                    end += 1
+                del lines[start - 1 : end]
+                target = min((
+                    heir.lineno,
+                    *(item.lineno for item in heir.decorator_list),
+                ))
+                lines[target - 1 : target - 1] = block
+                source = "".join(lines)
 
         @staticmethod
         def _source_sibling_spelling(
@@ -5305,13 +5523,22 @@ class FlextInfraUtilitiesModelsProtocol:
                         destination, package_name, node.attr
                     ):
                         planned_spellings[route] = sibling
+            local_holders = frozenset(
+                statement.name
+                for statement in tree.body
+                if isinstance(statement, ast.ClassDef)
+            )
             for route, (spelling, family) in planned_spellings.items():
                 source = re.sub(
                     rf"(?<![\w.]){re.escape(route)}(?![\w])", spelling, source
                 )
-                source = FlextInfraUtilitiesTransformerHeader.ensure_alias_import(
-                    source, family, spelling.partition(".")[0]
-                )
+                holder = spelling.partition(".")[0]
+                # A holder this very module declares resolves locally: binding
+                # it from its family package would make the module import itself.
+                if holder not in local_holders:
+                    source = FlextInfraUtilitiesTransformerHeader.ensure_alias_import(
+                        source, family, holder
+                    )
             for route, spelling in authored_spellings.items():
                 source = re.sub(
                     rf"(?<![\w.]){re.escape(route)}(?![\w])", spelling, source

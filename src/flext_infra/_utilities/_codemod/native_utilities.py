@@ -806,7 +806,7 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         entry: p.Infra.CodegenAstGrepRendererSpec,
-        facts: dict[str, p.Model],
+        facts: dict[str, p.BaseModel],
     ) -> Mapping[str, t.JsonMapping]:
         """Run one renderer, passing its facts model computed once per generation.
 
@@ -834,7 +834,7 @@ class FlextInfraUtilitiesCodemodNative:
                 msg = f"ast-grep facts producer is not declared: {entry.facts}"
                 raise TypeError(msg)
             model = producer(snapshot, project)
-            if not isinstance(model, p.Model):
+            if not isinstance(model, p.BaseModel):
                 msg = f"ast-grep facts producer returned no model: {entry.facts}"
                 raise TypeError(msg)
             facts[entry.facts] = model
@@ -874,7 +874,7 @@ class FlextInfraUtilitiesCodemodNative:
         project: Path,
         spec: p.Infra.CodegenAstGrepSpec,
         *,
-        facts: Mapping[str, p.Model] | None = None,
+        facts: Mapping[str, p.BaseModel] | None = None,
         rule_ids: Sequence[str] | None = None,
     ) -> Mapping[str, t.JsonMapping]:
         """Run every registered renderer and merge its rule documents by id.
@@ -905,7 +905,7 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         entries: Sequence[p.Infra.CodegenAstGrepRendererSpec],
-        facts: Mapping[str, p.Model] | None,
+        facts: Mapping[str, p.BaseModel] | None,
         keep: Callable[[str, frozenset[str]], bool],
     ) -> Mapping[str, t.JsonMapping]:
         """Render the given renderers and keep the documents ``keep`` admits.
@@ -923,7 +923,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         documents: dict[str, t.JsonMapping] = {}
-        computed: dict[str, p.Model] = dict(facts or {})
+        computed: dict[str, p.BaseModel] = dict(facts or {})
         for entry in entries:
             with cls._producer_progress(entry.name, project):
                 rendered = cls.codemod_native_render(snapshot, project, entry, computed)

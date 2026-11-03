@@ -1,7 +1,11 @@
 id: require-protocol-inner-kind
 snapshots:
-  "class FlextDemoProtocols:\n    class Demo:\n        class Status(StrEnum):\n            ACTIVE = \"active\"\n":
-    labels:
+  ? |
+    class FlextDemoProtocols:
+        class Demo:
+            class Status(StrEnum):
+                ACTIVE = "active"
+  : labels:
     - source: |-
         class Status(StrEnum):
                     ACTIVE = "active"
@@ -27,8 +31,11 @@ snapshots:
       style: secondary
       start: 56
       end: 62
-  "class FlextDemoProtocols:\n    class Order(m.FrozenModel):\n        total: int\n":
-    labels:
+  ? |
+    class FlextDemoProtocols:
+        class Order(m.FrozenModel):
+            total: int
+  : labels:
     - source: |-
         class Order(m.FrozenModel):
                 total: int

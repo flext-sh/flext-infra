@@ -114,7 +114,15 @@ class FlextInfraModelsConfigWorkspace:
         """Share candidate-source validation without changing declaration shape."""
 
         candidate_dependencies: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.DependencyCommitSourceSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Candidate-only exact dependency Git sources"),
         ] = ()
 
@@ -327,7 +335,16 @@ class FlextInfraModelsConfigWorkspace:
 
         dependency_groups: Mapping[
             str,
-            tuple[str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...],
+            tuple[
+                str
+                | Annotated[
+                    p.Infra.DependencyGroupInclude,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                    ),
+                ],
+                ...,
+            ],
         ] = m.Field(
             alias="dependency-groups", description="Ordered native group entries"
         )
@@ -431,7 +448,16 @@ class FlextInfraModelsConfigWorkspace:
         )
         dependency_groups: Mapping[
             str,
-            tuple[str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...],
+            tuple[
+                str
+                | Annotated[
+                    p.Infra.DependencyGroupInclude,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                    ),
+                ],
+                ...,
+            ],
         ] = m.Field(
             default_factory=lambda: MappingProxyType[
                 str,
@@ -709,7 +735,15 @@ class FlextInfraModelsConfigWorkspace:
         """Exact public host inventory envelope parsed once at ingress."""
 
         entries: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry, ...],
+            tuple[
+                Annotated[
+                    p.Infra.HostWorkspaceInventoryEntry,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Canonical discovered checkout identities"),
         ]
 

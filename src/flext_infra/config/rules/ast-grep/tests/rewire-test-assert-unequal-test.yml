@@ -1,0 +1,10 @@
+id: rewire-test-assert-unequal
+valid:
+- assert left != right
+- |
+  from tests import tm
+  assert left != right, "message"
+invalid:
+- |
+  from tests import tm
+  assert left != right

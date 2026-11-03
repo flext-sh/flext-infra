@@ -179,7 +179,7 @@ class FlextInfraUtilitiesDocsRender:
         return "/".join(parts[-FlextInfraUtilitiesDocsRender._MIN_REPO_PARTS :])
 
     @staticmethod
-    def _render_template(template: str, context: p.Model) -> str:
+    def _render_template(template: str, context: p.BaseModel) -> str:
         """Render one packaged template through the flext-cli template owner.
 
         Returns:
