@@ -3157,7 +3157,7 @@ class FlextInfraUtilitiesModelsProtocol:
                             f"{method.name}"
                         )
                         raise ValueError(message) from error
-            projected.body = [self._source_member_docstring(ast.get_docstring(method))]
+            projected.body = self._source_member_stub_body(ast.get_docstring(method))
             return ast.fix_missing_locations(projected)
 
         def _source_member_docstring(self, description: str | None) -> ast.Expr:
@@ -3200,16 +3200,28 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
             )
 
+        def _source_member_stub_body(self, description: str | None) -> list[ast.stmt]:
+            """Body of every projected Protocol member: docstring, then ``...``.
+
+            Without the stub a member that only carries its docstring reads as
+            an implemented function with no return to type checkers.
+
+            Returns:
+                The derived docstring followed by the Protocol stub ``...``.
+
+            """
+            return [
+                self._source_member_docstring(description),
+                ast.Expr(value=ast.Constant(value=...)),
+            ]
+
         def _source_property_declaration(
             self, name: str, annotation: ast.expr, description: str | None
         ) -> ast.FunctionDef:
             """Project one read-only field as a documented Protocol property.
 
             Returns:
-                The property declaration whose body is its derived docstring
-                followed by the Protocol stub ``...``, so type checkers read it
-                as an unimplemented contract rather than a function without
-                a return.
+                The property declaration with the shared Protocol stub body.
 
             """
             return ast.fix_missing_locations(
@@ -3222,10 +3234,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         kw_defaults=[],
                         defaults=[],
                     ),
-                    body=[
-                        self._source_member_docstring(description),
-                        ast.Expr(value=ast.Constant(value=...)),
-                    ],
+                    body=self._source_member_stub_body(description),
                     decorator_list=[ast.Name(id="property", ctx=ast.Load())],
                     returns=annotation,
                     type_params=[],

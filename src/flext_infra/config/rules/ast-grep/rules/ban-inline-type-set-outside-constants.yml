@@ -31,6 +31,8 @@ note: >-
   Where: this call. Why: FLEXT law — only c/t/p/m/u declare their objects, and a
   runtime type set is a constant (ENFORCE-079, FlextConstantsGuards); spelling it
   inline is a second, hidden owner. How: declare
-  `<NAME>_TYPES: Final[tuple[type, ...]] = (A, B)` in this project's constants
-  family (third-party classes reach it through the family that owns the
-  library), then write `isinstance(value, c.<Namespace>.<NAME>_TYPES)`.
+  `<NAME>_TYPES: Final = (A, B)` in this project's constants family, with the
+  type inferred: an explicit tuple[type, ...] erases the members and
+  isinstance stops narrowing generic classes (third-party classes reach it
+  through the family that owns the library), then write
+  `isinstance(value, c.<Namespace>.<NAME>_TYPES)`.
