@@ -239,6 +239,11 @@ class FlextInfraUtilitiesMiseBinary:
             (str(reader), "-C", str(owner_root), "which", name),
             cwd=owner_root,
             timeout=c.Infra.TIMEOUT_SHORT,
+            # The caller's ceiling belongs to its own checkout; resolving in
+            # another owner uses that owner's ceiling, as the recipes do.
+            options=m.Cli.ProcessOptions(
+                env={"MISE_CEILING_PATHS": str(owner_root.parent)},
+            ),
         )
         if located.failure:
             return r[Path].from_failure(located)
