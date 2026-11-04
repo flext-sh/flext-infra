@@ -796,10 +796,11 @@ Infra:
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
         # incremental selection. Pre-commit never runs tests. The pre-push hook
-        # runs every pre_push row below. Local make setup installs both hooks through the
-        # declared prek runner; CI=Y installs none.
+        # CI owns the complete gate. A pre-push row that runs make check/tests over
+        # the whole tree blocks every push for minutes, so only the commit-stage
+        # incremental hook is emitted.
       pre_commit: true
-      pre_push: true
+      pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
       violations_sweep_repair_verbs: [ fix, fmt, mod ]
       type_contract_rules:
