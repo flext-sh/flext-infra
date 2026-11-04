@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import (
     FlextInfraProtocolsGitLaneInputs,
     FlextInfraProtocolsGitLaneOwnership,
@@ -27,6 +26,8 @@ from flext_infra._protocols._git import (
 
 if TYPE_CHECKING:
     from flext_cli import p
+
+    from flext_infra import t
 
 
 class FlextInfraProtocolsGit(

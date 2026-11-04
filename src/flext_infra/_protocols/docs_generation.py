@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsDocs
     from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
     from flext_infra._protocols._config import FlextInfraProtocolsConfigWorkspace

@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
 from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._constants import FlextInfraConstantsRelease
     from flext_infra._protocols._git import FlextInfraProtocolsGitWorktreeState
     from flext_infra._typings import FlextInfraTypesBase

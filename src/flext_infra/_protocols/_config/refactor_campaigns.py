@@ -10,10 +10,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra import t
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraProtocolsConfigRefactorCampaigns:

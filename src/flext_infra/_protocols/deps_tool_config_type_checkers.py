@@ -13,9 +13,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra import t
-
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra._protocols import FlextInfraProtocolsDepsToolConfigLinters
 
 
@@ -63,6 +62,8 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
         ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyrightConfigPathRulesConfig:
             """Pyright path resolution and execution-env rules."""
             ...
+
+        ruling_disabled_rules: tuple[t.NonEmptyStr, ...]
 
     @runtime_checkable
     class PyrightConfigExecutionEnvironment(FlextCliProtocols.Model, Protocol):

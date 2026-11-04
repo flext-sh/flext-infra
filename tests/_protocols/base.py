@@ -10,11 +10,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_tests import FlextTestsProtocols
 
-from tests import t
+if TYPE_CHECKING:
+    from tests import t
 
 
 class TestsFlextInfraProtocolsBase:

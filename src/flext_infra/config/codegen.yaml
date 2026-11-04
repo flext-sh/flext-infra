@@ -560,7 +560,7 @@ Infra:
       - main
       # The one versioned line this fleet integrates on (SSOT — no fallback
       # probe list; the model probes exactly this line against live Git).
-      integration_branch: "0.12.0-dev"
+      integration_branch: "upload-20261007"
       # WIP preservation namespaces: a push whose every remote ref falls inside
       # one runs no gate matrix at pre-push (rendered into validate-git-hook.sh).
       preservation_ref_namespaces:
