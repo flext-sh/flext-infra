@@ -362,7 +362,12 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         findings: Sequence[p.Infra.ModOccurrence],
         import_normalizer: p.Infra.SourceImportNormalizer | None,
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
-        """Plan local alias removal and binding-proven consumer rewrites atomically.
+        """Plan every authored compat-alias removal and its consumer rewrites.
+
+        The ``ban-compat-alias`` finding is shape-based, so an alias outside
+        ``api.py`` (a model, constants, or facade module) is the same defect:
+        keep the canonical target, delete the local name, and rewire every
+        binding-proven consumer in the same cutover.
 
         Returns:
             The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
@@ -372,9 +377,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         service_aliases, service_graph = cls._service_aliases(workspace, sources)
         specs = cls._api_alias_specs(
             root,
-            tuple(
-                finding for finding in findings if finding.file.name == c.Infra.API_PY
-            ),
+            findings,
             service_aliases,
         )
         if specs.failure:

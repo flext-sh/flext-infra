@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
+from flext_infra import c
 from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
@@ -23,10 +24,6 @@ if TYPE_CHECKING:
     from flext_cli import p
 
     from flext_infra import t
-    from flext_infra._constants import (
-        FlextInfraConstantsCheck,
-        FlextInfraConstantsCodegenProject,
-    )
     from flext_infra._protocols import FlextInfraProtocolsValidate
     from flext_infra._protocols._git import FlextInfraProtocolsGitIdentity
 
@@ -188,7 +185,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
         @property
-        def gate_set(self) -> FlextInfraConstantsCheck.CheckGateSet:
+        def gate_set(self) -> c.Infra.CheckGateSet:
             """Structural member projected from the owning model.
 
             Gate inventory resolved at runtime when --gates is empty: check (CI or
@@ -197,12 +194,12 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
         @property
-        def phase(self) -> FlextInfraConstantsCheck.CheckPhase:
+        def phase(self) -> c.Infra.CheckPhase:
             """Primary source admission or complete checker phase."""
             ...
 
         @property
-        def scope(self) -> FlextInfraConstantsCodegenProject.CodegenConformScope:
+        def scope(self) -> c.Infra.CodegenConformScope:
             """Structural member projected from the owning model.
 
             Omitted-project selection: self checks the invoked repository; all adds
@@ -365,7 +362,7 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
         @property
-        def outcome(self) -> FlextInfraConstantsCheck.ToolOutcome | None:
+        def outcome(self) -> c.Infra.ToolOutcome | None:
             """Declared native tool outcome; absent derives it from findings."""
             ...
 
@@ -463,7 +460,7 @@ class FlextInfraProtocolsCheck(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def phase(self) -> FlextInfraConstantsCheck.CheckPhase:
+        def phase(self) -> c.Infra.CheckPhase:
             """Original checker phase; primary is never complete check proof."""
             ...
 
@@ -611,12 +608,7 @@ class FlextInfraProtocolsCheck(Protocol):
 
         raw_output: str
         raw_receipt: Path | None
-
-        @property
-        def outcome(self) -> FlextInfraConstantsCheck.ToolOutcome:
-            """Native process/report verdict, independent of findings policy."""
-            ...
-
+        outcome: c.Infra.ToolOutcome
         process: p.Cli.ProcessOutcome | None
 
         @property
@@ -679,15 +671,8 @@ class FlextInfraProtocolsCheck(Protocol):
     class SarifReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def schema_uri(self) -> FlextInfraConstantsCheck.SarifSchema:
-            """SARIF schema URI."""
-            ...
-
-        @property
-        def version(self) -> FlextInfraConstantsCheck.SarifVersion:
-            """SARIF version."""
-            ...
+        schema_uri: c.Infra.SarifSchema
+        version: c.Infra.SarifVersion
 
         @property
         def runs(self) -> tuple[FlextInfraProtocolsCheck.SarifRun, ...]:

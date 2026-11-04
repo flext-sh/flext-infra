@@ -20,11 +20,7 @@ from flext_infra._typings import FlextInfraTypesBase
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import (
-        FlextInfraConstantsCodegenProject,
-        FlextInfraConstantsConfig,
-    )
+    from flext_infra import c, t
     from flext_infra._protocols import (
         FlextInfraProtocolsDepsToolConfig,
         FlextInfraProtocolsLayout,
@@ -752,7 +748,7 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
         @property
-        def kind(self) -> FlextInfraConstantsConfig.ProjectKind:
+        def kind(self) -> c.Infra.ProjectKind:
             """Structural member projected from the owning model.
 
             Governance kind the repository declares, validated once when the
@@ -775,7 +771,7 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
         @property
-        def kind(self) -> FlextInfraConstantsConfig.ProjectKind:
+        def kind(self) -> c.Infra.ProjectKind:
             """Structural member projected from the owning model.
 
             Governance kind the repository declares, validated once when the
@@ -839,12 +835,12 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
         @property
-        def what(self) -> FlextInfraConstantsConfig.CodegenConformSurface:
+        def what(self) -> c.Infra.CodegenConformSurface:
             """Managed file selection."""
             ...
 
         @property
-        def scope(self) -> FlextInfraConstantsCodegenProject.CodegenConformScope:
+        def scope(self) -> c.Infra.CodegenConformScope:
             """Repository selection scope."""
             ...
 
@@ -858,12 +854,12 @@ class FlextInfraProtocolsConfigArtifact:
         """Structural data contract projected from the owning model."""
 
         @property
-        def mode(self) -> FlextInfraConstantsCodegenProject.CodegenConformMode:
+        def mode(self) -> c.Infra.CodegenConformMode:
             """Read-only check or atomic apply."""
             ...
 
         @property
-        def declaration_kind(self) -> FlextInfraConstantsConfig.ProjectKind | None:
+        def declaration_kind(self) -> c.Infra.ProjectKind | None:
             """Explicit self-owned kind supplied by native bootstrap."""
             ...
 
@@ -990,7 +986,7 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
         @property
-        def surface(self) -> FlextInfraConstantsConfig.CodegenConformSurface:
+        def surface(self) -> c.Infra.CodegenConformSurface:
             """Requested surface resolved against each target policy."""
             ...
 

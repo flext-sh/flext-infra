@@ -279,6 +279,129 @@ class FlextInfraModelsCensus:
             m.Field(description="Projects whose modules produced a census outcome"),
         ]
 
+    class AliasCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One compatibility alias with its canonical target and users."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Alias declaration name")]
+        canonical: Annotated[str, m.Field(description="Canonical target name")] = ""
+        owner_module: Annotated[
+            str, m.Field(description="Module owning the alias declaration")
+        ] = ""
+        kind: Annotated[
+            str,
+            m.Field(description="Alias kind (assignment/import-alias/all-entry)"),
+        ]
+        users: tuple[
+            Annotated[
+                p.Infra.ReferenceSite,
+                t.schema_for_model(FlextInfraModelsCensus.ReferenceSite),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Reference sites using alias")
+        fixable: Annotated[
+            bool, m.Field(description="Whether the existing cutover can cure it")
+        ] = False
+        reason: Annotated[
+            str, m.Field(description="Why the row is review-only, when it is")
+        ] = ""
+        cure: Annotated[str, m.Field(description="Canonical cure owner or command")] = (
+            "ban-compat-alias"
+        )
+
+    class DuplicateCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One duplicate declaration group with elected canonical owner."""
+
+        name: Annotated[
+            t.NonEmptyStr, m.Field(description="Duplicate declaration name")
+        ]
+        kind: Annotated[str, m.Field(description="Duplicate object kind")]
+        canonical_owner: Annotated[
+            str, m.Field(description="Elected canonical owner module")
+        ] = ""
+        modules: tuple[str, ...] = m.Field(
+            default_factory=tuple, description="Modules declaring the name"
+        )
+        payload_fingerprint: Annotated[
+            str, m.Field(description="Diagnostic declaration fingerprint")
+        ] = ""
+        users: tuple[
+            Annotated[
+                p.Infra.ReferenceSite,
+                t.schema_for_model(FlextInfraModelsCensus.ReferenceSite),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Reference sites using copies")
+        fixable: Annotated[
+            bool, m.Field(description="Whether the duplicate cure can apply it")
+        ] = False
+        reason: Annotated[
+            str, m.Field(description="Why the row is review-only, when it is")
+        ] = ""
+        cure: Annotated[str, m.Field(description="Canonical cure owner or command")] = (
+            "duplicate-apply"
+        )
+
+    class ShortestFormCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One declaration or use that is longer than its canonical form."""
+
+        target: Annotated[t.NonEmptyStr, m.Field(description="Declaration or use")]
+        current_form: Annotated[str, m.Field(description="Current longer form")] = ""
+        canonical_form: Annotated[
+            str, m.Field(description="Canonical shortest form")
+        ] = ""
+        kind: Annotated[
+            str,
+            m.Field(description="Shortest-form kind (wrapper/ceremony/all-entry)"),
+        ]
+        users: tuple[
+            Annotated[
+                p.Infra.ReferenceSite,
+                t.schema_for_model(FlextInfraModelsCensus.ReferenceSite),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Reference sites using form")
+        fixable: Annotated[
+            bool, m.Field(description="Whether the existing owner can cure it")
+        ] = False
+        reason: Annotated[
+            str, m.Field(description="Why the row is review-only, when it is")
+        ] = ""
+        cure: Annotated[str, m.Field(description="Canonical cure owner or command")] = (
+            "manual-review"
+        )
+
+    class CensusFixPlan(FlextInfraModelsBase.FrozenArbitrary):
+        """Typed extermination plan over the census rows."""
+
+        alias: tuple[
+            Annotated[
+                p.Infra.AliasCensus,
+                t.schema_for_model(FlextInfraModelsCensus.AliasCensus),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Fixable alias rows")
+        duplicate: tuple[
+            Annotated[
+                p.Infra.DuplicateCensus,
+                t.schema_for_model(FlextInfraModelsCensus.DuplicateCensus),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Fixable duplicate rows")
+        shortest_form: tuple[
+            Annotated[
+                p.Infra.ShortestFormCensus,
+                t.schema_for_model(FlextInfraModelsCensus.ShortestFormCensus),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Fixable shortest-form rows")
+        commands: tuple[str, ...] = m.Field(
+            default_factory=tuple, description="Canonical cure commands per owner"
+        )
+        expected_rescan: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Rows expected to disappear after cure"),
+        ] = 0
+
     class DuplicateDefinition(FlextInfraModelsBase.FrozenArbitrary):
         """One verified duplicate definition and its Rope-owned source region."""
 
@@ -640,6 +763,41 @@ class FlextInfraModelsCensus:
             default_factory=tuple,
             description="Explicit aggressive-removal candidates across workspace",
         )
+        alias_census: tuple[
+            Annotated[
+                p.Infra.AliasCensus,
+                t.schema_for_model(FlextInfraModelsCensus.AliasCensus),
+            ],
+            ...,
+        ] = m.Field(
+            default_factory=tuple,
+            description="Compatibility aliases with canonical target and users",
+        )
+        duplicate_census: tuple[
+            Annotated[
+                p.Infra.DuplicateCensus,
+                t.schema_for_model(FlextInfraModelsCensus.DuplicateCensus),
+            ],
+            ...,
+        ] = m.Field(
+            default_factory=tuple,
+            description="Duplicate declarations with elected canonical owner",
+        )
+        shortest_form_census: tuple[
+            Annotated[
+                p.Infra.ShortestFormCensus,
+                t.schema_for_model(FlextInfraModelsCensus.ShortestFormCensus),
+            ],
+            ...,
+        ] = m.Field(
+            default_factory=tuple,
+            description="Declarations or uses longer than their canonical form",
+        )
+        census_fix_plan: Annotated[
+            p.Infra.CensusFixPlan,
+            t.schema_for_model(FlextInfraModelsCensus.CensusFixPlan),
+            m.Field(description="Typed extermination plan over this report's rows"),
+        ]
         scan_duration_seconds: Annotated[
             float,
             m.Field(description="Wall-clock scan duration"),

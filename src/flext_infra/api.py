@@ -262,7 +262,7 @@ class FlextInfra(
         ).build_report()
 
     @staticmethod
-    def _mod_selection(request: p.Infra.ModRequest) -> p.Result[bool]:
+    def _mod_selection(request: p.Infra.ModCommand) -> p.Result[bool]:
         """Require one theme selection and only laws the catalog derives.
 
         Returns:
@@ -295,7 +295,7 @@ class FlextInfra(
     @staticmethod
     def _mod_selected_roots(
         root: Path,
-        request: p.Infra.ModRequest,
+        request: p.Infra.ModCommand,
         governed: frozenset[Path],
     ) -> p.Result[frozenset[Path]]:
         """Resolve ``projects`` into governed repository roots before any run.
@@ -322,7 +322,7 @@ class FlextInfra(
     @override
     def mod(
         self,
-        request: p.Infra.ModRequest,
+        request: p.Infra.ModCommand,
         progress: p.Infra.ModProgress,
     ) -> p.Result[t.Cli.ResultValue]:
         """Compose repository codemod runs in the declared dependency order.

@@ -417,7 +417,7 @@ class TestsModelProtocolCallableContracts:
             "from typing import Annotated\n"
             "from pydantic import BaseModel\n"
             "from flext_core import t\n"
-            "from flext_test_project.protocols import p\n"
+            "from flext_tes_project import p\n"
             "class ModelsPayload:\n"
             "    class Envelope(BaseModel):\n"
             "        class Page(BaseModel):\n"

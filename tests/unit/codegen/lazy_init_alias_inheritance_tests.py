@@ -204,7 +204,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that((child / c.Infra.INIT_PY).read_bytes(), eq=first)
         probe = (
-            "from flext_bootstrap_child.consumer import execute\n"
+            "from flext_bootstra_child import execute\n"
             "import flext_bootstrap_child as generated\n"
             "from flext_core import r\n"
             "print(generated.r is r)\n"

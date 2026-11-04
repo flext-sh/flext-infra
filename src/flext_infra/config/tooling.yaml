@@ -235,9 +235,24 @@ Infra:
         - writer: beads
           begin: '<!-- BEGIN BEADS (?P<block>[A-Z]+(?: [A-Z]+)*)(?:[: ].*)? -->'
           end: '<!-- END BEADS (?P<block>[A-Z]+(?: [A-Z]+)*) -->'
+        # Rules not named in `rules` stay enabled. Turning this off would make
+        # `rules` a strict allowlist; the fleet keeps rumdl's complete default
+        # set and declares every intentional configuration below.
+        default-enabled: true
+        # Opt-in rule activated on top of the default set. MD060 is the
+        # canonical table formatter; it is configured in native_rules because
+        # its aligned form is a rumdl-owned formatting surface.
+        extend-enable: [ MD060 ]
         rules:
-        - [ default, true ]
-        - [ MD001, false ]
+        # Wave 1 (active): every rule here is either repaired by `rumdl fmt`
+        # (`make fmt`) or was already enforced, so the policy lands together
+        # with its automatic repair and no consumer is left red. Measured on
+        # the fleet (2026-11-04): 18040 findings, 15573 repaired by rumdl fmt.
+        # Wave 2 (disabled below, per-repo text migration, bead flext-5yu64):
+        # MD036/MD041/MD042/MD051/MD057 have no automatic repair (2467 sites).
+        - [ MD001, true ]
+        - [ MD003, { style: atx } ]
+        - [ MD004, { style: dash } ]
           # MD013 prose and code lengths are THE markdown line contract for
           # both rumdl surfaces: `rumdl check` (markdown gate, `make fix`) and
           # `rumdl fmt` (markdown-format gate, `make fmt`) read this one rule
@@ -248,8 +263,10 @@ Infra:
           # joins a hand-wrapped paragraph into one line and cannot re-split
           # lines containing inline-code spans. With reflow off, nobody
           # rewrites an author's breaks, and MD013 stays the check-only line
-          # contract: a genuinely long line is a finding the author fixes by
-          # wrapping.
+          # contract. Neither `strict` nor `stern` is set: measured on the
+          # consumers (merges 801, devops-oud-iac +212 unfixable lines), both
+          # turn hand-wrapped legacy prose into findings no tool can repair.
+          # Tightening MD013 is a separate, per-repo text migration.
         - - MD013
           - line_length: *formatting_width
             heading_line_length: 200
@@ -258,24 +275,34 @@ Infra:
             # leniency as headings.
             code_block_line_length: 200
             tables: false
-        - [ MD022, false ]
-        - [ MD023, false ]
+        - [ MD022, true ]
+        - [ MD023, true ]
         - [ MD024, { siblings_only: true } ]
-        - [ MD025, false ]
-        - [ MD031, false ]
+        - [ MD025, { level: 1, front-matter-title: title } ]
+        # one_or_ordered (markdownlint default) accepts lazy `1. 1. 1.` and
+        # sequential numbering, consistent per list; `ordered` produced 3057
+        # findings with no repair value (inventory 2026-11-04, flext-2vrgl).
+        - [ MD029, { style: one_or_ordered } ]
+        - [ MD031, true ]
         - [ MD033, { allowed_elements: [ br, details, summary, kbd ] } ]
         - [ MD036, false ]
-        - [ MD040, false ]
+        - [ MD040, true ]
         - [ MD041, false ]
         - [ MD042, false ]
-        - [ MD046, false ]
-        - [ MD050, { style: consistent } ]
+        - [ MD046, { style: fenced } ]
+        - [ MD048, { style: backtick } ]
+        - [ MD049, { style: asterisk } ]
+        - [ MD050, { style: asterisk } ]
         - [ MD051, false ]
-        - [ MD060, false ]
+        - [ MD055, { style: leading_and_trailing } ]
         native_rules:
+        # rumdl-only options: markdownlint has no reflow and owns no aligned
+        # table formatter. Keeping both here makes the execution-only surface
+        # explicit instead of silently diverging from the editor policy.
+        # MD057 (relative link targets) has no repair: wave 2 with MD051.
         - [ MD013, { reflow: false } ]
         - [ MD057, false ]
-        - [ MD076, false ]
+        - [ MD060, { style: aligned } ]
         native_settings:
         - [ per-file-flavor, { 'docs/**/*.md': mkdocs } ]
       ruff:
@@ -614,9 +641,6 @@ Infra:
         # TYPE_CHECKING / install_lazy_exports scaffolding), so they are
         # mandated boilerplate, not clones to repair. Per-package import
         # lists and every non-mandated line stay scanned.
-        ignore:
-        - "**/_protocols/**"
-        - "**/__init__.py"
         ignore-patterns:
         - "Copyright \\(c\\) [0-9]{4} FLEXT Team\\. All rights reserved\\."
         - "SPDX-License-Identifier: MIT"

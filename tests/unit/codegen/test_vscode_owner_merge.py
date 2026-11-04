@@ -878,7 +878,10 @@ class TestsFlextInfraMarkdownEditorProjection:
         """The derivation copies the common MD* rules and no native surface."""
         markdown = config.Infra.tooling.tools.markdown
         derived = u.Infra.markdown_editor_configuration(markdown)
-        tm.that(derived, eq=dict(markdown.rules))
+        tm.that(
+            derived,
+            eq={"default": markdown.default_enabled, **dict(markdown.rules)},
+        )
         common = dict(markdown.rules)
         native_only = {name for name, _value in markdown.native_rules} - common.keys()
         tm.that(native_only & derived.keys(), eq=set())
@@ -902,6 +905,24 @@ class TestsFlextInfraMarkdownEditorProjection:
         )
 
     @staticmethod
+    def test_workspace_globs_derive_from_markdown_excludes(tmp_path: Path) -> None:
+        """The editor scope is the codegen exclusion projection, not a copy."""
+        root = TestsFlextInfraMarkdownEditorProjection._governed_root(
+            tmp_path,
+            "markdown-scope",
+        )
+        rendered = tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root))
+        document = u.Tests.json_payload(rendered)
+        expected = [
+            *(f"!{pattern}" for pattern in config.Infra.codegen.markdown_exclude_globs),
+            c.Infra.MARKDOWN_DOCUMENT_GLOB,
+        ]
+        tm.that(
+            document[c.Infra.MARKDOWNLINT_WORKSPACE_GLOBS_SETTING],
+            eq=expected,
+        )
+
+    @staticmethod
     def test_render_replaces_stale_markdownlint_config(tmp_path: Path) -> None:
         """A stale editor policy converges to the canonical derived value."""
         root = TestsFlextInfraMarkdownEditorProjection._governed_root(
@@ -921,7 +942,9 @@ class TestsFlextInfraMarkdownEditorProjection:
         document = u.Tests.json_payload(rendered)
         tm.that(
             document[c.Infra.MARKDOWNLINT_CONFIG_SETTING],
-            eq=dict(config.Infra.tooling.tools.markdown.rules),
+            eq=u.Infra.markdown_editor_configuration(
+                config.Infra.tooling.tools.markdown
+            ),
         )
 
     @staticmethod

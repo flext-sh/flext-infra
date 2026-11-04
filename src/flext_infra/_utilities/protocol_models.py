@@ -549,7 +549,7 @@ class FlextInfraUtilitiesModelsProtocol:
     def _publish_bootstrap_protocol_facades(
         cls,
         repository_root: Path,
-        members: list[tuple[str, str, tuple[str, ...]]],
+        _members: list[tuple[str, str, tuple[str, ...]]],
     ) -> p.Result[bool]:
         """Materialize the canonical facade plan in the staged source candidate.
 
@@ -562,7 +562,8 @@ class FlextInfraUtilitiesModelsProtocol:
 
         """
         changed = False
-        for path, source in plan_protocol_facades(repository_root).items():
+        for path, raw_source in plan_protocol_facades(repository_root).items():
+            source = raw_source
             if source.startswith("# AUTO-GENERATED FILE"):
                 source = c.Infra.AUTOGEN_HEADER + "\n" + source.partition("\n")[2]
             if not path.is_file() or path.read_text(encoding="utf-8") != source:
@@ -679,7 +680,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
         @property
         def workspace(self) -> p.Infra.RopeWorkspaceDsl:
-            """Return the semantic workspace required by the full projector.
+            """Semantic workspace required by the full projector.
 
             Raises:
                 RuntimeError: The source-only bootstrap has no Rope workspace.
@@ -2312,7 +2313,7 @@ class FlextInfraUtilitiesModelsProtocol:
             return exports
 
         def _source_model_facade_owners(
-            self, package_dir: Path, package_name: str
+            self, _package_dir: Path, package_name: str
         ) -> dict[str, str]:
             """Index facade inheritance using native declaring identities.
 
@@ -3391,7 +3392,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 and "._" not in statement.module
                 and not self._source_within_package(statement.module, package_name)
             )
-            for statement in statements:
+            for statement in tuple(statements):
                 if isinstance(statement, ast.If) and (
                     (
                         isinstance(statement.test, ast.Name)

@@ -157,8 +157,8 @@ def test_models_infra_materializes_holder_members_for_static_consumers(
     (directory / c.Infra.INIT_PY).write_text("", encoding=c.Infra.ENCODING_DEFAULT)
     facade = package / "models.py"
     facade.write_text(
-        "from flext_test_project._models.actions import Actions\n"
-        "from flext_test_project._models.health import Healths\n"
+        "from flext_test_project_models import Actions\n"
+        "from flext_test_project_models import Healths\n"
         "class FlextTestProjectModels:\n"
         "    class Infra(Actions, Healths):\n"
         "        pass\n"
@@ -174,9 +174,9 @@ def test_models_infra_materializes_holder_members_for_static_consumers(
     facade.write_text(rendered, encoding=c.Infra.ENCODING_DEFAULT)
     native_consumer(
         f"sys.path.insert(0, {str(package.parent)!r})\n"
-        "from flext_test_project.models import m\n"
-        "from flext_test_project._models.actions import Actions\n"
-        "from flext_test_project._models.health import Healths\n"
+        "from flext_tes_project import m\n"
+        "from flext_test_project_models import Actions\n"
+        "from flext_test_project_models import Healths\n"
         "assert m.Infra.Operation is Actions.Operation\n"
         "assert m.Infra.Health is Healths.Health\n"
         "assert m.Infra.__dict__['Operation'] is Actions.Operation\n"

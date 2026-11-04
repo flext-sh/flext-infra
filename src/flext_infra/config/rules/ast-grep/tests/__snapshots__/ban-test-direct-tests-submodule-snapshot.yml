@@ -1,8 +1,7 @@
 id: ban-test-direct-tests-submodule
 snapshots:
-  ? |
-    from tests._utilities import build
-  : labels:
+  "from tests._utilities import build\n":
+    labels:
     - source: from tests._utilities import build
       style: primary
       start: 0
@@ -11,9 +10,8 @@ snapshots:
       style: secondary
       start: 5
       end: 21
-  ? |
-    from tests.constants import c
-  : labels:
+  "from tests.constants import c\n":
+    labels:
     - source: from tests.constants import c
       style: primary
       start: 0
@@ -22,9 +20,8 @@ snapshots:
       style: secondary
       start: 5
       end: 20
-  ? |
-    from tests.fixtures.sandbox import Sandbox
-  : labels:
+  "from tests.fixtures.sandbox import Sandbox\n":
+    labels:
     - source: from tests.fixtures.sandbox import Sandbox
       style: primary
       start: 0
@@ -33,9 +30,8 @@ snapshots:
       style: secondary
       start: 5
       end: 27
-  ? |
-    import tests.models
-  : labels:
+  "import tests.models\n":
+    labels:
     - source: import tests.models
       style: primary
       start: 0

@@ -1,9 +1,7 @@
 id: ban-object-type
 snapshots:
-  ? |
-    class Base(object):
-        pass
-  : labels:
+  "class Base(object):\n    pass\n":
+    labels:
     - source: |-
         class Base(object):
             pass
@@ -18,9 +16,14 @@ snapshots:
       style: secondary
       start: 11
       end: 17
-  ? |
-    value: object
-  : labels:
+  "class Value:\n    def compare(self, other: object) -> bool:\n        return other is self\n":
+    labels:
+    - source: object
+      style: primary
+      start: 42
+      end: 48
+  "value: object\n":
+    labels:
     - source: object
       style: primary
       start: 7

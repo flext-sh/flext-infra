@@ -13,7 +13,7 @@ import pytest
 
 from flext_infra import FlextInfraCli
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import c, p, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerPackaging:
@@ -260,7 +260,7 @@ class TestsFlextInfraDepsModernizerPackaging:
                 u.Infra.workspace_manifest_path(infra_git_repo),
                 manifest.model_copy(
                     update={
-                        "project": p.Infra.ProjectSpec.model_validate({
+                        "project": m.Infra.ProjectSpec.model_validate({
                             **project.model_dump(),
                             "hatch_build_hook_path": hook,
                             "repository_namespace_packages": (namespace,),

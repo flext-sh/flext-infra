@@ -204,6 +204,8 @@ class FlextInfraUtilitiesCodemodNative:
             The import packages whose distributions the closure contains.
 
         """
+        if not (root / c.PYPROJECT_FILENAME).is_file():
+            return frozenset()
         project = FlextInfraUtilitiesCodemodRules.project_requirements(
             root,
         ).unwrap()

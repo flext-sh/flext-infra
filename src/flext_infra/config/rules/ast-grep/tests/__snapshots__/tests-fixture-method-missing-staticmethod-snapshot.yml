@@ -1,0 +1,82 @@
+id: tests-fixture-method-missing-staticmethod
+snapshots:
+  "class TestsSample:\n    @pytest.fixture\n    def settings() -> int:\n        return 1\n":
+    fixed: |
+      class TestsSample:
+          @pytest.fixture
+          @staticmethod
+          def settings() -> int:
+              return 1
+    labels:
+    - source: |-
+        def settings() -> int:
+                return 1
+      style: primary
+      start: 43
+      end: 82
+    - source: "@pytest.fixture"
+      style: secondary
+      start: 23
+      end: 38
+    - source: |-
+        class TestsSample:
+            @pytest.fixture
+            def settings() -> int:
+                return 1
+      style: secondary
+      start: 0
+      end: 82
+    - source: |-
+        @pytest.fixture
+            def settings() -> int:
+                return 1
+      style: secondary
+      start: 23
+      end: 82
+    - source: |-
+        @pytest.fixture
+            def settings() -> int:
+                return 1
+      style: secondary
+      start: 23
+      end: 82
+  "class TestsSample:\n    @u.Tests.fixture\n    def settings(tmp_path: Path) -> Path:\n        return tmp_path\n":
+    fixed: |
+      class TestsSample:
+          @u.Tests.fixture
+          @staticmethod
+          def settings(tmp_path: Path) -> Path:
+              return tmp_path
+    labels:
+    - source: |-
+        def settings(tmp_path: Path) -> Path:
+                return tmp_path
+      style: primary
+      start: 44
+      end: 105
+    - source: "@u.Tests.fixture"
+      style: secondary
+      start: 23
+      end: 39
+    - source: |-
+        class TestsSample:
+            @u.Tests.fixture
+            def settings(tmp_path: Path) -> Path:
+                return tmp_path
+      style: secondary
+      start: 0
+      end: 105
+    - source: |-
+        @u.Tests.fixture
+            def settings(tmp_path: Path) -> Path:
+                return tmp_path
+      style: secondary
+      start: 23
+      end: 105
+    - source: |-
+        @u.Tests.fixture
+            def settings(tmp_path: Path) -> Path:
+                return tmp_path
+      style: secondary
+      start: 23
+      end: 105

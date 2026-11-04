@@ -221,6 +221,27 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                     custom=False,
                 )
             case (
+                c.Infra.CodegenConformSurface.MARKDOWN
+                | c.Infra.CodegenConformSurface.EDITOR_MARKDOWN
+            ):
+                # Markdown projections are self-owned configuration: the native
+                # files are templates, the editor settings are not; neither
+                # touches facades or codemods.
+                native = surface is c.Infra.CodegenConformSurface.MARKDOWN
+                contract = m.Infra.CodegenConformSurfaceContract(
+                    destinations=frozenset({
+                        c.Infra.MARKDOWN_CONFIG_FILENAME,
+                        c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
+                    })
+                    if native
+                    else cls._editor_markdown_destinations(),
+                    delegates=False,
+                    pyproject=False,
+                    templates=native,
+                    tooling=native,
+                    custom=False,
+                )
+            case (
                 c.Infra.CodegenConformSurface.MAKEFILE
                 | c.Infra.CodegenConformSurface.DOCS_CONFIG
             ):
@@ -270,6 +291,21 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
             case _:
                 assert_never(surface)
         return contract
+
+    @staticmethod
+    def _editor_markdown_destinations() -> frozenset[str]:
+        """Select the editor file that carries the Markdown policy.
+
+        Returns:
+            The versioned workspace settings path.
+
+        """
+        return frozenset({
+            Path(
+                c.Infra.VSCODE_DIRNAME,
+                c.Infra.VSCODE_SETTINGS_FILENAME,
+            ).as_posix()
+        })
 
     @staticmethod
     def _editor_destinations(

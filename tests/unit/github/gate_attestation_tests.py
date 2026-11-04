@@ -979,7 +979,7 @@ class TestsFlextInfraGithubGateAttestation:
         updated = source.model_copy(
             update={
                 "command_digest": command_digest,
-                "process": p.Cli.ProcessOutcome.model_validate(
+                "process": m.Cli.ProcessOutcome.model_validate(
                     interrupted.outcome,
                     from_attributes=True,
                 ),

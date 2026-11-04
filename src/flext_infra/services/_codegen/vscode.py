@@ -119,7 +119,11 @@ class FlextInfraCodegenVscode:
             for key, value in sorted(portable.items())
             if key not in spec.stripped_keys
             and key not in artifact_settings
-            and key != c.Infra.MARKDOWNLINT_CONFIG_SETTING
+            and key
+            not in (
+                c.Infra.MARKDOWNLINT_CONFIG_SETTING,
+                c.Infra.MARKDOWNLINT_WORKSPACE_GLOBS_SETTING,
+            )
             and (key not in expected or value != expected[key])
         ]
         deltas: t.MutableJsonMapping = {"settings": pairs} if pairs else {}
@@ -380,6 +384,10 @@ class FlextInfraCodegenVscode:
         )
         if markdown_applied.failure:
             return r[bool].from_failure(markdown_applied)
+        markdown_scope_applied = cls._apply_markdown_workspace_globs(
+            settings,
+            codegen.markdown_exclude_globs,
+        )
         # Stripped keys are owned canonically by pyproject.toml [tool.pyright];
         # keeping them in settings.json makes Pylance emit settingsNotOverridable
         # warnings. Actively delete every retired key so existing files converge
@@ -387,7 +395,11 @@ class FlextInfraCodegenVscode:
         stripped_changed = cls._strip_retired_keys(settings, spec.stripped_keys)
         stripped_changed |= cls._strip_retired_map_keys(settings, spec)
         return r[bool].ok(
-            artifacts_changed or markdown_applied.value or stripped_changed or changed,
+            artifacts_changed
+            or markdown_applied.value
+            or markdown_scope_applied
+            or stripped_changed
+            or changed,
         )
 
     @classmethod
@@ -415,6 +427,28 @@ class FlextInfraCodegenVscode:
         if not unchanged:
             settings[key] = canonical
         return r[bool].ok(not unchanged)
+
+    @classmethod
+    def _apply_markdown_workspace_globs(
+        cls,
+        settings: t.MutableJsonMapping,
+        excludes: Sequence[str],
+    ) -> bool:
+        """Replace the editor Markdown scope with its codegen-derived projection.
+
+        Returns:
+            True when the rendered scope changed the settings mapping.
+
+        """
+        key = c.Infra.MARKDOWNLINT_WORKSPACE_GLOBS_SETTING
+        canonical: list[t.JsonValue] = [
+            *(f"!{pattern}" for pattern in excludes),
+            c.Infra.MARKDOWN_DOCUMENT_GLOB,
+        ]
+        unchanged = settings.get(key) == canonical
+        if not unchanged:
+            settings[key] = canonical
+        return not unchanged
 
     @classmethod
     def _apply_declared_settings(

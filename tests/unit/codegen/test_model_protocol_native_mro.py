@@ -11,12 +11,14 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_infra_models import (
+    FlextInfraModelsDeps,
+    FlextInfraModelsGates,
+    FlextInfraModelsWorkspace,
+)
 
 from flext_infra import c, infra
 from flext_infra._models.codegen_toolchain import FlextInfraModelsCodegenToolchain
-from flext_infra._models.deps import FlextInfraModelsDeps
-from flext_infra._models.gates import FlextInfraModelsGates
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
 from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
 from tests import p, tm, u
 
@@ -253,7 +255,7 @@ class TestsModelProtocolNativeMro:
             ValueError,
             match=(
                 "generated Protocol source is invalid: "
-                "owner=ProtocolsPayload path=generated-payload.py"
+                r"owner=ProtocolsPayload path=generated-payload\.py"
             ),
         ):
             FlextInfraUtilitiesModelsProtocol._ModelProtocolProjection._source_validate_generated_module(

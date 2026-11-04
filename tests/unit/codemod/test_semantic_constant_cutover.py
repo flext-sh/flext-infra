@@ -490,3 +490,14 @@ class TestsFlextInfraSemanticConstantCutover:
                 sources={path: source},
             )
         tm.fail(planned, has="requires exactly one declared module owner")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "rule_id", ["require-uppercase-constant-name", "ban-mutable-constant-value"]
+    )
+    def test_constants_theme_selects_the_constant_consumer_phase(
+        rule_id: str,
+    ) -> None:
+        """A selected constants rule runs the consumer cutover on its own."""
+        phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+        tm.that(c.Infra.SEMANTIC_CUTOVER_RULE_IDS[phase], has=rule_id)

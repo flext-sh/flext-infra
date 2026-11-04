@@ -12,15 +12,14 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra._constants import FlextInfraConstantsConfig
+from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._protocols._config import (
     FlextInfraProtocolsConfigContract,
     FlextInfraProtocolsConfigExternalCache,
 )
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsCheck
+    from flext_infra import c, t
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigMakeClean,
         FlextInfraProtocolsConfigMakeDocs,
@@ -199,7 +198,7 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
-        def phase(self) -> FlextInfraConstantsCheck.CheckPhase:
+        def phase(self) -> c.Infra.CheckPhase:
             """Checker evidence phase; other verbs are complete."""
             ...
 

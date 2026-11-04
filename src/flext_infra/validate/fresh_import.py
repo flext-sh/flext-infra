@@ -481,7 +481,14 @@ class FlextInfraValidateFreshImport(s[bool]):
                     (klass,),
                     {"__module__": probe_module.__name__},
                 )
-                u.type_adapter(probe_subclass).rebuild(force=True, raise_errors=True)
+                parent_namespace = dict(vars(sys.modules[klass.__module__])) | {
+                    klass.__name__: klass,
+                }
+                u.type_adapter(probe_subclass).rebuild(
+                    force=True,
+                    raise_errors=True,
+                    _types_namespace=parent_namespace,
+                )
                 fields: Mapping[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
                 for name, info in fields.items():
                     if info.annotation is None:

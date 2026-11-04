@@ -10,9 +10,7 @@ from collections.abc import Callable
 from functools import partial
 from pathlib import Path
 
-from flext_cli import u
-
-from flext_infra import c, codemod, m, p, r, t
+from flext_infra import c, codemod, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod.loop import (
@@ -31,7 +29,7 @@ class FlextInfraModHandlers:
     def _mod_semantic_rule(
         context: p.Infra.ModExecutionContext,
         root: Path,
-        request: p.Infra.ModRequest,
+        request: p.Infra.ModCommand,
         selected: p.Infra.RopeContractRules,
         catalogue_inputs: tuple[p.Cli.AtomicFileState, ...],
     ) -> p.Result[t.Cli.ResultValue]:
@@ -147,7 +145,7 @@ class FlextInfraModHandlers:
         root: Path,
         decisions: Path,
         output: Path | None,
-        request: p.Infra.ModRequest,
+        request: p.Infra.ModCommand,
     ) -> tuple[p.Infra.SemanticRenamePlanCommand, p.Cli.AtomicFileState]:
         """Validate configured decisions at their required-content boundary.
 
@@ -448,7 +446,7 @@ class FlextInfraModHandlers:
     def _declared_selection(
         context: p.Infra.ModExecutionContext,
         root: Path,
-        request: p.Infra.ModRequest,
+        request: p.Infra.ModCommand,
         progress: p.Infra.ModProgress,
         campaigns: p.Infra.RefactorCsvCampaignsSpec,
     ) -> p.Result[t.Cli.ResultValue] | None:
@@ -517,7 +515,7 @@ class FlextInfraModHandlers:
     def _selected_rule(
         context: p.Infra.ModExecutionContext,
         root: Path,
-        request: p.Infra.ModRequest,
+        request: p.Infra.ModCommand,
         progress: p.Infra.ModProgress,
         campaigns: p.Infra.RefactorCsvCampaignsSpec,
     ) -> p.Result[t.Cli.ResultValue]:
@@ -620,7 +618,7 @@ class FlextInfraModHandlers:
     def _execute_batch(
         context: p.Infra.ModExecutionContext,
         root: Path,
-        request: p.Infra.ModRequest,
+        request: p.Infra.ModCommand,
         progress: p.Infra.ModProgress,
         scope: p.Infra.RefactorCsvCampaignsSpec | tuple[str, ...] | None,
     ) -> p.Result[t.Cli.ResultValue]:
@@ -686,7 +684,7 @@ class FlextInfraModHandlers:
     def _execute_exact(
         context: p.Infra.ModExecutionContext,
         root: Path,
-        request: p.Infra.ModRequest,
+        request: p.Infra.ModCommand,
         progress: p.Infra.ModProgress,
     ) -> p.Result[t.Cli.ResultValue]:
         """Run one theme over exact AST rule IDs: its own or its expanded laws.
@@ -721,7 +719,7 @@ class FlextInfraModHandlers:
 
     def mod(
         self: p.Infra.ModExecutionContext,
-        request: p.Infra.ModRequest,
+        request: p.Infra.ModCommand,
         progress: p.Infra.ModProgress,
     ) -> p.Result[t.Cli.ResultValue]:
         """Execute the codemod use case through the invocation-owned Rope session.

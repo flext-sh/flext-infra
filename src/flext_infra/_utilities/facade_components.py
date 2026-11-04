@@ -708,7 +708,7 @@ class FlextInfraUtilitiesFacadeComponents:
             if projected.failure:
                 return r[str].from_failure(projected)
             rendered = cls._facade_rendered_class(
-                projected.value, source, composition, step, family=selected
+                projected.value, source, composition, step
             )
         return rendered.flat_map(
             lambda text: cls._facade_rendered_order(
@@ -2266,8 +2266,6 @@ class FlextInfraUtilitiesFacadeComponents:
             frozenset[str],
         ],
         step: int,
-        *,
-        family: c.Infra.FacadeFamily,
     ) -> p.Result[str]:
         """Fill the module skeleton from the projected namespace layout.
 

@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Constants for FLEXT infra tests.
 
 Provides TestsFlextInfraConstants, extending FlextTestsConstants with
@@ -20,7 +21,7 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_tests import c as flext_tests_c
 
 from flext_infra import c as flext_infra_c
-from tests._constants.semantic_cutover import TestsFlextInfraConstantsSemanticCutover
+from tests._constants import TestsFlextInfraConstantsSemanticCutover
 from tests.constants_scan import TestsFlextInfraConstantsScan
 
 if TYPE_CHECKING:

@@ -1,29 +1,25 @@
 id: ban-test-assert
 snapshots:
-  ? |
-    assert isinstance(value, str)
-  : labels:
+  "assert isinstance(value, str)\n":
+    labels:
     - source: assert isinstance(value, str)
       style: primary
       start: 0
       end: 29
-  ? |
-    assert value
-  : labels:
+  "assert value\n":
+    labels:
     - source: assert value
       style: primary
       start: 0
       end: 12
-  ? |
-    assert value == expected
-  : labels:
+  "assert value == expected\n":
+    labels:
     - source: assert value == expected
       style: primary
       start: 0
       end: 24
-  ? |
-    assert value is None
-  : labels:
+  "assert value is None\n":
+    labels:
     - source: assert value is None
       style: primary
       start: 0

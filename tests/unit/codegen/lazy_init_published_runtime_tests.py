@@ -310,7 +310,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         child = package / "child"
         child.mkdir()
         child.joinpath("api.py").write_text(
-            "from flext_source_only.api import FlextSourceOnlyApi\n"
+            "from flext_sourc_only import FlextSourceOnlyApi\n"
             "class FlextSourceOnlyChild(FlextSourceOnlyApi):\n"
             '    """Authored child using the real public parent."""\n'
             "__all__ = ('FlextSourceOnlyChild',)\n",
@@ -356,7 +356,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
                 "import sys\nimport flext_source_only as package\n"
                 "print('flext_source_only.api' not in sys.modules)\n"
                 "print('flext_source_only.child.api' not in sys.modules)\n"
-                "from flext_source_only.api import FlextSourceOnlyApi\n"
+                "from flext_sourc_only import FlextSourceOnlyApi\n"
                 "print(package.FlextSourceOnlyApi is FlextSourceOnlyApi)\n"
                 "print(issubclass(package.child.FlextSourceOnlyChild, "
                 "FlextSourceOnlyApi))\n"
@@ -401,7 +401,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         child = package / "child"
         child.mkdir()
         (child / "api.py").write_text(
-            "from flext_source_only.api import FlextSourceOnlyApi\n"
+            "from flext_sourc_only import FlextSourceOnlyApi\n"
             "class FlextSourceOnlyChild:\n    pass\n"
             "__all__ = ('FlextSourceOnlyChild',)\n",
             encoding=c.DEFAULT_ENCODING,

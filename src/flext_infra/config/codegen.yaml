@@ -1224,7 +1224,9 @@ Infra:
       - [ git.repositoryScanMaxDepth, 2 ]
       - [ githubPullRequests.autoRepositoryDetection, true ]
       - [ githubPullRequests.ignoreSubmodules, false ]
-      - [ markdownlint.lintWorkspaceGlobs, [ '!**/.git/**', '!**/.planning/**', '!**/.reports/**', '!**/.venv/**', '!**/*.code-search', '!**/bower_components/**', '!**/build/**', '!**/dist/**', '!**/node_modules/**', '!**/output/**', '!**/tmp/**', '!**/vendor/**', '**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}' ] ]
+      # markdownlint.lintWorkspaceGlobs is derived at render time from
+      # codegen.markdown_exclude_globs; declaring it here would create a
+      # second owner for the same scope.
       - [ yaml.disableSchemaDetection, [ '**/.github/workflows/*.yml', '**/.github/workflows/*.yaml', '**/.gitea/workflows/*.yml', '**/.gitea/workflows/*.yaml', '**/.forgejo/workflows/*.yml', '**/.forgejo/workflows/*.yaml' ] ]
       map_union_settings:
         '[python]':

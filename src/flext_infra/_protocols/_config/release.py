@@ -15,8 +15,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsRelease
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsConfigRelease:
@@ -118,9 +117,7 @@ class FlextInfraProtocolsConfigRelease:
             ...
 
         @property
-        def bump_types(
-            self,
-        ) -> Mapping[t.NonEmptyStr, FlextInfraConstantsRelease.VersionBump]:
+        def bump_types(self) -> Mapping[t.NonEmptyStr, c.Infra.VersionBump]:
             """Conventional Commits type -> semantic version bump."""
             ...
 

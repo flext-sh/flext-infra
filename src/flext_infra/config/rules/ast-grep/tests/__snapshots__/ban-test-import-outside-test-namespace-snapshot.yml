@@ -1,8 +1,7 @@
 id: ban-test-import-outside-test-namespace
 snapshots:
-  ? |
-    from examples import ExamplesFlextCliSettings
-  : labels:
+  "from examples import ExamplesFlextCliSettings\n":
+    labels:
     - source: from examples import ExamplesFlextCliSettings
       style: primary
       start: 0
@@ -11,9 +10,8 @@ snapshots:
       style: secondary
       start: 5
       end: 13
-  ? |
-    from flext_core import FlextCore
-  : labels:
+  "from flext_core import FlextCore\n":
+    labels:
     - source: from flext_core import FlextCore
       style: primary
       start: 0
@@ -22,9 +20,8 @@ snapshots:
       style: secondary
       start: 5
       end: 15
-  ? |
-    from flext_tests import tm
-  : labels:
+  "from flext_tests import tm\n":
+    labels:
     - source: from flext_tests import tm
       style: primary
       start: 0
@@ -33,9 +30,8 @@ snapshots:
       style: secondary
       start: 5
       end: 16
-  ? |
-    from scripts.generate_runtime import build
-  : labels:
+  "from scripts.generate_runtime import build\n":
+    labels:
     - source: from scripts.generate_runtime import build
       style: primary
       start: 0
@@ -44,16 +40,14 @@ snapshots:
       style: secondary
       start: 5
       end: 29
-  ? |
-    import ai_hub
-  : labels:
+  "import ai_hub\n":
+    labels:
     - source: import ai_hub
       style: primary
       start: 0
       end: 13
-  ? |
-    import flext_tests
-  : labels:
+  "import flext_tests\n":
+    labels:
     - source: import flext_tests
       style: primary
       start: 0

@@ -1100,8 +1100,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         """Compose all native semantic effects on the prepared candidate.
 
         A selected theme composes only the semantic phases that repair one of
-        its rule families; census constants belong to no rule and stay with
-        the complete catalog. A theme claiming no phase returns its seed.
+        its rule families (the constants family selects the constant-consumer
+        phase); the census constants sweep stays with the complete catalog.
+        A theme claiming no phase returns its seed.
 
         Returns:
             The staged semantic candidate, or the seed for a phase-less theme.

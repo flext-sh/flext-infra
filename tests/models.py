@@ -13,8 +13,10 @@ from __future__ import annotations
 from flext_tests import m as flext_tests_m
 
 from flext_infra import m as flext_infra_m
-from tests._models import TestsFlextInfraModelsBase
-from tests._models.semantic_cutover import TestsFlextInfraModelsSemanticCutover
+from tests._models import (
+    TestsFlextInfraModelsBase,
+    TestsFlextInfraModelsSemanticCutover,
+)
 
 
 class TestsFlextInfraModels(flext_infra_m):

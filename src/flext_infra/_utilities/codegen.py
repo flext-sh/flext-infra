@@ -36,11 +36,11 @@ from flext_infra._utilities._rope import FlextInfraUtilitiesRopeModulePatch
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
+from flext_infra._utilities.markdown_tooling import FlextInfraUtilitiesMarkdownTooling
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
 class FlextInfraUtilitiesCodegen(
-    FlextInfraUtilitiesBase,
     FlextInfraConfigMakeContract,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -48,6 +48,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesGenerationInventory,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesMarkdownTooling,
     FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
@@ -60,6 +61,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesWorkspaceInventory,
     FlextInfraUtilitiesWorkspaceManifest,
+    FlextInfraUtilitiesBase,
 ):
     """Compose the source helpers consumed by the generation operation."""
 

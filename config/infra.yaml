@@ -32,6 +32,9 @@ Infra:
       - id: semantic:test-assert-to-matcher
         kind: semantic
         phase: test-assert-to-matcher
+      - id: semantic:compat-alias
+        kind: semantic
+        phase: compat-alias
       - id: callback:import-normalization
         kind: callback
         callback: import-normalization

@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flext_infra import c
-    from flext_infra._constants import FlextInfraConstantsRope
     from flext_infra._protocols import (
         FlextInfraProtocolsCensus,
         FlextInfraProtocolsWorkspace,
@@ -16,7 +15,6 @@ if TYPE_CHECKING:
         FlextInfraProtocolsCodegenPipeline,
         FlextInfraProtocolsCodegenTransaction,
     )
-    from flext_infra._typings import FlextInfraTypesRope
 
 
 from collections.abc import Mapping, MutableSequence, Sequence
@@ -456,7 +454,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
         @property
-        def match_filter(self) -> FlextInfraTypesRope.RopeMatchFilter | None:
+        def match_filter(self) -> t.Infra.RopeMatchFilter | None:
             """Domain proof admitting each native source occurrence."""
             ...
 
@@ -723,7 +721,7 @@ class FlextInfraProtocolsRope(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project(self) -> FlextInfraTypesRope.RopeProject:
+        def project(self) -> t.Infra.RopeProject:
             """Open Rope project scoped to the analysis roots."""
             ...
 
@@ -762,7 +760,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
         @property
-        def kind(self) -> FlextInfraConstantsRope.RopeScopeKind:
+        def kind(self) -> c.Infra.RopeScopeKind:
             """Rope scope kind (Module/Function/Class/Unknown)."""
             ...
 
@@ -796,12 +794,12 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
         @property
-        def category(self) -> FlextInfraConstantsRope.StatementCategory:
+        def category(self) -> c.Infra.StatementCategory:
             """Lexical category of the leading token."""
             ...
 
         @property
-        def enclosing_kind(self) -> FlextInfraConstantsRope.RopeScopeKind:
+        def enclosing_kind(self) -> c.Infra.RopeScopeKind:
             """Kind of the nearest enclosing def/class scope."""
             ...
 
@@ -825,7 +823,7 @@ class FlextInfraProtocolsRope(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def project(self) -> FlextInfraTypesRope.RopeProject:
+        def project(self) -> t.Infra.RopeProject:
             """Rope snapshot project resolving every consumer."""
             ...
 
@@ -840,7 +838,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
         @property
-        def wrapper(self) -> FlextInfraTypesRope.RopePyName:
+        def wrapper(self) -> t.Infra.RopePyName:
             """Rope identity of the flattened namespace wrapper."""
             ...
 
@@ -891,7 +889,7 @@ class FlextInfraProtocolsRope(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def resource(self) -> FlextInfraTypesRope.RopeResource:
+        def resource(self) -> t.Infra.RopeResource:
             """Rope resource of the scanned module."""
             ...
 
@@ -990,7 +988,7 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
         @property
-        def claims(self) -> FlextInfraTypesRope.FacadeComponentClaims:
+        def claims(self) -> t.Infra.FacadeComponentClaims:
             """Component methods with their composing facade targets."""
             ...
 
@@ -1023,12 +1021,12 @@ class FlextInfraProtocolsRope(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def rope_project(self) -> FlextInfraTypesRope.RopeProject:
+        def rope_project(self) -> t.Infra.RopeProject:
             """Rope project used for reference discovery."""
             ...
 
         @property
-        def resource(self) -> FlextInfraTypesRope.RopeResource:
+        def resource(self) -> t.Infra.RopeResource:
             """Rope resource containing the symbol definition."""
             ...
 
@@ -1038,7 +1036,7 @@ class FlextInfraProtocolsRope(Protocol):
         name: str
 
         @property
-        def pyname(self) -> FlextInfraTypesRope.RopePyName:
+        def pyname(self) -> t.Infra.RopePyName:
             """Rope pyname node for the symbol."""
             ...
 

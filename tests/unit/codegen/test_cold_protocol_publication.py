@@ -41,7 +41,7 @@ class TestsColdProtocolPublication:
             encoding="utf-8",
         )
         (protocols / "child.py").write_text(
-            "from flext_infra._protocols.parent import "
+            "from flext_infra_protocols import "
             "FlextInfraProtocolsParent as Parent\n"
             "class FlextInfraProtocolsChild(Parent): pass\n",
             encoding="utf-8",
@@ -163,8 +163,8 @@ class TestsColdProtocolPublication:
             ("Right", "FlextInfraProtocolsSecond, FlextInfraProtocolsFirst"),
         ):
             (protocols / f"{owner.lower()}.py").write_text(
-                "from flext_infra._protocols.first import FlextInfraProtocolsFirst\n"
-                "from flext_infra._protocols.second import FlextInfraProtocolsSecond\n"
+                "from flext_infra_protocols import FlextInfraProtocolsFirst\n"
+                "from flext_infra_protocols import FlextInfraProtocolsSecond\n"
                 f"class FlextInfraProtocols{owner}({bases}): pass\n",
                 encoding="utf-8",
             )

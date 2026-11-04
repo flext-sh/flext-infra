@@ -18,7 +18,6 @@ from flext_infra._protocols import (
 
 if TYPE_CHECKING:
     from flext_infra import t
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsLayout:
@@ -201,7 +200,7 @@ class FlextInfraProtocolsLayout:
         """Structural data contract projected from the owning model."""
 
         @property
-        def rule(self) -> FlextInfraTypesBase.LayoutRule:
+        def rule(self) -> t.Infra.LayoutRule:
             """Decision kind."""
             ...
 
@@ -221,7 +220,7 @@ class FlextInfraProtocolsLayout:
             ...
 
         @property
-        def status(self) -> FlextInfraTypesBase.LayoutStatus:
+        def status(self) -> t.Infra.LayoutStatus:
             """Execution status."""
             ...
 

@@ -19,12 +19,7 @@ from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsM
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import (
-        FlextInfraConstantsCheck,
-        FlextInfraConstantsCodegenProject,
-        FlextInfraConstantsConfig,
-    )
+    from flext_infra import c, t
     from flext_infra._protocols import FlextInfraProtocolsCheck, FlextInfraProtocolsRope
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigBeads,
@@ -32,7 +27,6 @@ if TYPE_CHECKING:
         FlextInfraProtocolsConfigWorkspace,
     )
     from flext_infra._protocols._git import FlextInfraProtocolsGitIdentity
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsWorkspace:
@@ -192,7 +186,7 @@ class FlextInfraProtocolsWorkspace:
         origins: MutableMapping[str, Path]
 
         @property
-        def module_anchors(self) -> Mapping[str, FlextInfraTypesBase.NativeOperand]:
+        def module_anchors(self) -> Mapping[str, t.Infra.NativeOperand]:
             """Structural member projected from the owning model.
 
             Strong native identities of elected module anchors; live interpreter
@@ -200,10 +194,7 @@ class FlextInfraProtocolsWorkspace:
             """
             ...
 
-        @property
-        def sources(self) -> FlextInfraTypesBase.MutableSetOf[tuple[str, str, str]]:
-            """Observed suppliers and physical declaration sources."""
-            ...
+        sources: t.Infra.MutableSetOf[tuple[str, str, str]]
 
         @property
         def evidence(
@@ -227,7 +218,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def references(self) -> Sequence[tuple[str, FlextInfraTypesBase.NativeOperand]]:
+        def references(self) -> Sequence[tuple[str, t.Infra.NativeOperand]]:
             """Structural member projected from the owning model.
 
             Native operand registrations awaiting graph traversal; live interpreter
@@ -241,7 +232,7 @@ class FlextInfraProtocolsWorkspace:
         ) -> Sequence[
             tuple[
                 str,
-                FlextInfraTypesBase.NativeOperand,
+                t.Infra.NativeOperand,
                 str,
                 str,
                 Literal["execution", "storage_type"],
@@ -254,20 +245,9 @@ class FlextInfraProtocolsWorkspace:
             """
             ...
 
-        @property
-        def expanded_classes(self) -> FlextInfraTypesBase.MutableSetOf[int]:
-            """Strongly retained classes whose executable children were queued."""
-            ...
-
+        expanded_classes: t.Infra.MutableSetOf[int]
         role: Literal["execution", "storage_type"]
-
-        @property
-        def compiled(
-            self,
-        ) -> MutableMapping[Path, FlextInfraTypesBase.NativeClassDeclarations]:
-            """Immutable class compiler facts within this observation."""
-            ...
-
+        compiled: MutableMapping[Path, t.Infra.NativeClassDeclarations]
         lexical: bool
         binding_context: str
         incoming: str
@@ -276,9 +256,7 @@ class FlextInfraProtocolsWorkspace:
         owner_source: str
 
         @property
-        def visited(
-            self,
-        ) -> Mapping[int, tuple[FlextInfraTypesBase.NativeOperand, str]]:
+        def visited(self) -> Mapping[int, tuple[t.Infra.NativeOperand, str]]:
             """Structural member projected from the owning model.
 
             Strong exact identities in original first-visit order; live interpreter
@@ -287,18 +265,14 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         edges: MutableMapping[str, str]
-
-        @property
-        def absent_edges(self) -> FlextInfraTypesBase.MutableSetOf[str]:
-            """Actual lexical bindings observed as absent."""
-            ...
+        absent_edges: t.Infra.MutableSetOf[str]
 
     @runtime_checkable
     class NativeFunctionObservationContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def value(self) -> tuple[FlextInfraTypesBase.NativeFunction]:
+        def value(self) -> tuple[t.Infra.NativeFunction]:
             """Structural member projected from the owning model.
 
             One exact native function: a live interpreter object carried as a
@@ -307,7 +281,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def code(self) -> FlextInfraTypesBase.NativeCode:
+        def code(self) -> t.Infra.NativeCode:
             """Structural member projected from the owning model.
 
             Native executable code after the declared source relocation: a live
@@ -321,7 +295,7 @@ class FlextInfraProtocolsWorkspace:
         generated_operands: tuple[tuple[str, str], ...]
 
         @property
-        def nonlocals(self) -> Mapping[str, FlextInfraTypesBase.NativeOperand]:
+        def nonlocals(self) -> Mapping[str, t.Infra.NativeOperand]:
             """Structural member projected from the owning model.
 
             Actual closure cell values in native free-variable order: live
@@ -330,7 +304,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def global_bindings(self) -> Mapping[str, FlextInfraTypesBase.NativeOperand]:
+        def global_bindings(self) -> Mapping[str, t.Infra.NativeOperand]:
             """Structural member projected from the owning model.
 
             Actual globals selected by native LOAD_GLOBAL instructions: live
@@ -434,10 +408,7 @@ class FlextInfraProtocolsWorkspace:
         @property
         def scope(
             self,
-        ) -> Literal[
-            FlextInfraConstantsCodegenProject.CodegenConformScope.ALL,
-            FlextInfraConstantsCodegenProject.CodegenConformScope.SELF,
-        ]:
+        ) -> Literal[c.Infra.CodegenConformScope.ALL, c.Infra.CodegenConformScope.SELF]:
             """Test all governed repositories or only this repository."""
             ...
 
@@ -558,7 +529,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def outcome(self) -> FlextInfraConstantsCheck.ToolOutcome | None:
+        def outcome(self) -> c.Infra.ToolOutcome | None:
             """Native outcome, independent of report transport."""
             ...
 
@@ -1105,7 +1076,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def make_profile(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def make_profile(self) -> c.Infra.MakeProfile:
             """Topology proven by this checkout's .gitmodules."""
             ...
 

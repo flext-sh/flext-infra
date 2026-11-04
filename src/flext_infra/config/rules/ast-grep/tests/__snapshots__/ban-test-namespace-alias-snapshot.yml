@@ -1,8 +1,7 @@
 id: ban-test-namespace-alias
 snapshots:
-  ? |
-    from tests import c as tc
-  : labels:
+  "from tests import c as tc\n":
+    labels:
     - source: from tests import c as tc
       style: primary
       start: 0
@@ -15,9 +14,8 @@ snapshots:
       style: secondary
       start: 18
       end: 25
-  ? |
-    from tests import tm as tmatchers
-  : labels:
+  "from tests import tm as tmatchers\n":
+    labels:
     - source: from tests import tm as tmatchers
       style: primary
       start: 0
@@ -30,9 +28,8 @@ snapshots:
       style: secondary
       start: 18
       end: 33
-  ? |
-    import tests as t
-  : labels:
+  "import tests as t\n":
+    labels:
     - source: import tests as t
       style: primary
       start: 0

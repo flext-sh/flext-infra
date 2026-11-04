@@ -17,9 +17,7 @@ from flext_cli import FlextCliProtocols
 from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsRefactor
-    from flext_infra._typings import FlextInfraTypesBase
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsRefactorAstGrep:
@@ -97,7 +95,7 @@ class FlextInfraProtocolsRefactorAstGrep:
             ...
 
         @property
-        def enforce(self) -> FlextInfraTypesBase.EnforcementIds:
+        def enforce(self) -> t.Infra.EnforcementIds:
             """Structural member projected from the owning model.
 
             Enforcement law ids the rule claims under its metadata; empty when the
@@ -130,7 +128,7 @@ class FlextInfraProtocolsRefactorAstGrep:
             ...
 
         @property
-        def relocation(self) -> FlextInfraConstantsRefactor.CodemodRelocation | None:
+        def relocation(self) -> c.Infra.CodemodRelocation | None:
             """Structural member projected from the owning model.
 
             Rope relocation that repairs the rule's findings over the captured
@@ -408,14 +406,14 @@ class FlextInfraProtocolsRefactorAstGrep:
         @property
         def lint_before(
             self,
-        ) -> FlextInfraTypesBase.LintSnapshot[FlextInfraProtocolsBase.LintGateResult]:
+        ) -> t.Infra.LintSnapshot[FlextInfraProtocolsBase.LintGateResult]:
             """Lint output before the proposed rewrite."""
             ...
 
         @property
         def lint_after(
             self,
-        ) -> FlextInfraTypesBase.LintSnapshot[FlextInfraProtocolsBase.LintGateResult]:
+        ) -> t.Infra.LintSnapshot[FlextInfraProtocolsBase.LintGateResult]:
             """Lint output after the proposed rewrite."""
             ...
 

@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Test utilities for flext-infra.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -16,7 +17,7 @@ from flext_tests import u as flext_tests_u
 
 from flext_infra import config, u as flext_infra_u
 from tests import c, m, p, r, t, tm
-from tests._utilities.semantic_cutover import TestsFlextInfraUtilitiesSemanticCutover
+from tests._utilities import TestsFlextInfraUtilitiesSemanticCutover
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
 from tests.utilities_deps import TestsFlextInfraUtilitiesDeps
 from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixture

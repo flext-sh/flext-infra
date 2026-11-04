@@ -45,7 +45,7 @@ class TestsFlextInfraAttributeReadProofs:
         destination.write_text("class Target:\n    pass\n", encoding=c.DEFAULT_ENCODING)
         consumer = package / "consumer.py"
         consumer.write_text(
-            "from flext_test_project.provider import h, m\n"
+            "from flext_tes_project import h, m\n"
             "class Legacy:\n"
             "    @h.handler(command=m.DcRecon.ResyncInput)\n"
             "    def execute(self, request):\n"

@@ -80,6 +80,10 @@ class FlextInfraConstantsWorkspace:
     )
     MARKDOWNLINT_CONFIG_SETTING: ClassVar[str] = "markdownlint.config"
     "Derived editor Markdown policy projected from the tooling SSOT's common rules."
+    MARKDOWNLINT_WORKSPACE_GLOBS_SETTING: ClassVar[str] = (
+        "markdownlint.lintWorkspaceGlobs"
+    )
+    "Derived editor Markdown scope projected from the codegen exclusion SSOT."
     CODEGEN_OWNER_VSCODE: ClassVar[str] = "vscode"
     # Canonical VS Code settings content lives in config/codegen.yaml (vscode:).
     # Recursive "**" venv search globs are forbidden: they make the Python

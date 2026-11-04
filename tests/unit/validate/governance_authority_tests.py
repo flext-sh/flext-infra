@@ -73,7 +73,13 @@ class TestsFlextInfraGovernanceAuthority:
         global_options = u.Tests.toml_mapping(native["global"])
         disabled = u.Tests.toml_strings(global_options["disable"])
         codegen = u.Infra.load_codegen_inputs(self.ROOT).unwrap().spec
-        tm.that(global_options["exclude"], eq=list(codegen.markdown_exclude_globs))
+        tm.that(
+            global_options["exclude"],
+            eq=sorted(dict.fromkeys(codegen.markdown_exclude_globs)),
+        )
+        tm.that(global_options.get("extend-enable"), eq=["MD060"])
+        md013 = u.Tests.toml_mapping(native["MD013"])
+        tm.that({"strict", "stern"} & set(md013), eq=set())
         elected = {**common, **overrides}
         for name, value in elected.items():
             if name == "default":

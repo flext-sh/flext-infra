@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Sequence
+from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -31,6 +32,18 @@ class FlextInfraUtilitiesBase:
     Generic ``validate`` and ``deep`` methods use PEP 695 type parameters
     so callers can validate ANY shape with a single SSOT helper.
     """
+
+    @staticmethod
+    def configuration_pairs(
+        entries: Sequence[tuple[str, t.JsonValue]],
+    ) -> t.JsonDict:
+        """Elect ordered pairs and isolate their mutable values from consumers.
+
+        Returns:
+            The last declared value per key, preserving nested array order.
+
+        """
+        return deepcopy(dict(entries))
 
     @staticmethod
     def env_lookup(name: str) -> str | None:

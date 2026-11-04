@@ -834,6 +834,13 @@ class FlextInfraModelsRefactor(
         kinds: Annotated[
             Sequence[str] | None, m.Field(description="Optional symbol-kind filters")
         ] = None
+        census_kinds: Annotated[
+            Sequence[str] | None,
+            m.Field(
+                alias="census-kinds",
+                description="Optional extermination-kind filters",
+            ),
+        ] = None
         rules: Annotated[
             Sequence[str] | None, m.Field(description="Optional violation-rule filters")
         ] = None

@@ -165,7 +165,7 @@ class FlextInfraRefactorRoutes:
         return r[t.Cli.ResultValue].ok(value=True)
 
     @staticmethod
-    def execute_mod(request: p.Infra.ModRequest) -> p.Result[t.Cli.ResultValue]:
+    def execute_mod(request: p.Infra.ModCommand) -> p.Result[t.Cli.ResultValue]:
         """Compose the mod use case and pass through its first failure.
 
         Returns:

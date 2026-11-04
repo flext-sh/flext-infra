@@ -13,13 +13,20 @@ from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from tests._models.base import TestsFlextInfraModelsBase
+    from tests._models.semantic_cutover import TestsFlextInfraModelsSemanticCutover
 
 
-__all__: tuple[str, ...] = ("TestsFlextInfraModelsBase",)
+__all__: tuple[str, ...] = (
+    "TestsFlextInfraModelsBase",
+    "TestsFlextInfraModelsSemanticCutover",
+)
 
 install_lazy_exports(
     __name__,
     globals(),
-    {"TestsFlextInfraModelsBase": ".base"},
+    {
+        "TestsFlextInfraModelsBase": ".base",
+        "TestsFlextInfraModelsSemanticCutover": ".semantic_cutover",
+    },
     public_exports=__all__,
 )

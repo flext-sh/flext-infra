@@ -340,6 +340,10 @@ class FlextInfraConstantsRefactor:
             "ban-loose-module-object",
             "ban-loose-test-function",
         ),
+        SemanticCutoverPhase.CONSTANT_CONSUMERS: (
+            "require-uppercase-constant-name",
+            "ban-mutable-constant-value",
+        ),
         SemanticCutoverPhase.COMPAT_ALIAS: ("ban-compat-alias",),
         SemanticCutoverPhase.PRIVATE_IMPORT: ("ban-private-import",),
         SemanticCutoverPhase.TEST_NAMESPACE_IMPORT: (

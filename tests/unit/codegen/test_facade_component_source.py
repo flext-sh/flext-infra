@@ -40,7 +40,7 @@ class TestsFlextInfraFacadeComponentSource:
         (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         (directory / c.Infra.INIT_PY).parent.mkdir(parents=True, exist_ok=True)
         (directory / c.Infra.INIT_PY).write_text(
-            "from flext_sample._constants.base import FlextSampleConstantsBase\n"
+            "from flext_sample_constants import FlextSampleConstantsBase\n"
             "__all__ = ['FlextSampleConstantsBase']\n",
             encoding=c.DEFAULT_ENCODING,
         )

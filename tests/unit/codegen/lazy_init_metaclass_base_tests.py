@@ -31,7 +31,7 @@ class TestsFlextInfraCodegenLazyInitMetaclassBase:
             encoding=c.DEFAULT_ENCODING,
         )
         package_root.joinpath("typings.py").write_text(
-            "from flext_test_project._typings.meta import (\n"
+            "from flext_test_project_typings import (\n"
             "    FlextTestProjectProtocolMeta,\n"
             ")\n\n"
             "class FlextTestProjectTypings(FlextTestProjectProtocolMeta):\n"

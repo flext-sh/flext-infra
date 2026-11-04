@@ -6,7 +6,15 @@ valid:
         pass
   - |
     value: str = "value"
+  - |
+    class Value:
+        def __eq__(self, other: object) -> bool:
+            return other is self
 invalid:
+  - |
+    class Value:
+        def compare(self, other: object) -> bool:
+            return other is self
   - |
     value: object
   - |

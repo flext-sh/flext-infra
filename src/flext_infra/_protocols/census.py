@@ -314,6 +314,174 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
+    class AliasCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> t.NonEmptyStr:
+            """Alias declaration name."""
+            ...
+
+        @property
+        def canonical(self) -> str:
+            """Canonical target name."""
+            ...
+
+        @property
+        def owner_module(self) -> str:
+            """Module owning the alias declaration."""
+            ...
+
+        @property
+        def kind(self) -> str:
+            """Alias kind (assignment/import-alias/all-entry)."""
+            ...
+
+        @property
+        def users(self) -> tuple[FlextInfraProtocolsCensus.ReferenceSite, ...]:
+            """Reference sites using alias."""
+            ...
+
+        @property
+        def fixable(self) -> bool:
+            """Whether the existing cutover can cure it."""
+            ...
+
+        @property
+        def reason(self) -> str:
+            """Why the row is review-only, when it is."""
+            ...
+
+        @property
+        def cure(self) -> str:
+            """Canonical cure owner or command."""
+            ...
+
+    @runtime_checkable
+    class DuplicateCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> t.NonEmptyStr:
+            """Duplicate declaration name."""
+            ...
+
+        @property
+        def kind(self) -> str:
+            """Duplicate object kind."""
+            ...
+
+        @property
+        def canonical_owner(self) -> str:
+            """Elected canonical owner module."""
+            ...
+
+        @property
+        def modules(self) -> tuple[str, ...]:
+            """Modules declaring the name."""
+            ...
+
+        @property
+        def payload_fingerprint(self) -> str:
+            """Diagnostic declaration fingerprint."""
+            ...
+
+        @property
+        def users(self) -> tuple[FlextInfraProtocolsCensus.ReferenceSite, ...]:
+            """Reference sites using copies."""
+            ...
+
+        @property
+        def fixable(self) -> bool:
+            """Whether the duplicate cure can apply it."""
+            ...
+
+        @property
+        def reason(self) -> str:
+            """Why the row is review-only, when it is."""
+            ...
+
+        @property
+        def cure(self) -> str:
+            """Canonical cure owner or command."""
+            ...
+
+    @runtime_checkable
+    class ShortestFormCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def target(self) -> t.NonEmptyStr:
+            """Declaration or use."""
+            ...
+
+        @property
+        def current_form(self) -> str:
+            """Current longer form."""
+            ...
+
+        @property
+        def canonical_form(self) -> str:
+            """Canonical shortest form."""
+            ...
+
+        @property
+        def kind(self) -> str:
+            """Shortest-form kind (wrapper/ceremony/all-entry)."""
+            ...
+
+        @property
+        def users(self) -> tuple[FlextInfraProtocolsCensus.ReferenceSite, ...]:
+            """Reference sites using form."""
+            ...
+
+        @property
+        def fixable(self) -> bool:
+            """Whether the existing owner can cure it."""
+            ...
+
+        @property
+        def reason(self) -> str:
+            """Why the row is review-only, when it is."""
+            ...
+
+        @property
+        def cure(self) -> str:
+            """Canonical cure owner or command."""
+            ...
+
+    @runtime_checkable
+    class CensusFixPlan(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def alias(self) -> tuple[FlextInfraProtocolsCensus.AliasCensus, ...]:
+            """Fixable alias rows."""
+            ...
+
+        @property
+        def duplicate(self) -> tuple[FlextInfraProtocolsCensus.DuplicateCensus, ...]:
+            """Fixable duplicate rows."""
+            ...
+
+        @property
+        def shortest_form(
+            self,
+        ) -> tuple[FlextInfraProtocolsCensus.ShortestFormCensus, ...]:
+            """Fixable shortest-form rows."""
+            ...
+
+        @property
+        def commands(self) -> tuple[str, ...]:
+            """Canonical cure commands per owner."""
+            ...
+
+        @property
+        def expected_rescan(self) -> t.NonNegativeInt:
+            """Rows expected to disappear after cure."""
+            ...
+
+    @runtime_checkable
     class DuplicateDefinition(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -642,6 +810,30 @@ class FlextInfraProtocolsCensus:
             self,
         ) -> tuple[FlextInfraProtocolsCensus.RemovalCandidate, ...]:
             """Explicit aggressive-removal candidates across workspace."""
+            ...
+
+        @property
+        def alias_census(self) -> tuple[FlextInfraProtocolsCensus.AliasCensus, ...]:
+            """Compatibility aliases with canonical target and users."""
+            ...
+
+        @property
+        def duplicate_census(
+            self,
+        ) -> tuple[FlextInfraProtocolsCensus.DuplicateCensus, ...]:
+            """Duplicate declarations with elected canonical owner."""
+            ...
+
+        @property
+        def shortest_form_census(
+            self,
+        ) -> tuple[FlextInfraProtocolsCensus.ShortestFormCensus, ...]:
+            """Declarations or uses longer than their canonical form."""
+            ...
+
+        @property
+        def census_fix_plan(self) -> FlextInfraProtocolsCensus.CensusFixPlan:
+            """Typed extermination plan over this report's rows."""
             ...
 
         scan_duration_seconds: float

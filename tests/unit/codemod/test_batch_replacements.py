@@ -171,7 +171,7 @@ class TestsFlextInfraBatchReplacements:
                 "text": statement.decode(),
                 "replacement": 'value = "after"',
                 "range": {"byteOffset": offsets},
-                "replacement_offsets": p.Infra.ModReplacementOffsets.model_validate(
+                "replacement_offsets": m.Infra.ModReplacementOffsets.model_validate(
                     offsets
                 ),
             }

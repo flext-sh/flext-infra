@@ -188,7 +188,7 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
             result.extend(lines[start:end])
             index = end
         if not inserted:
-            position = cls._import_position(result)
+            position = cls._namespace_import_position(result)
             result.insert(
                 position,
                 f"from {cls.TESTS_NAMESPACE} import {merged}\n",
@@ -394,7 +394,7 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
         return line
 
     @staticmethod
-    def _import_position(lines: Sequence[str]) -> int:
+    def _namespace_import_position(lines: Sequence[str]) -> int:
         """Return the first safe import position after docstring/future.
 
         Returns:
