@@ -183,7 +183,8 @@ use the **direct public `flext-infra` CLI**. Make integration comes **last**, af
 the native public path is proven. This overrides older Make-only instructions for
 this task, not the command policy for other projects or work. The
 [local FLEXT law](../../../.agents/skills/flext-law/SKILL.md#sources-generation-and-commands)
-records this bounded exception; [parent ADR-010](../../../docs/architecture/adr/010-unified-project-standardization-via-codegen.md#2-common-verb-surface-for-every-project)
+records this bounded exception; [parent
+ADR-010](../../../docs/architecture/adr/010-unified-project-standardization-via-codegen.md#2-common-verb-surface-for-every-project)
 retains the common lifecycle contract. Reuse existing public operations and their
 typed owners, not raw tools, private-module execution or a second dispatcher.
 
@@ -373,7 +374,8 @@ Acceptance executes real positional and keyword callers before and after native
 body replacement and parameter retirement, and replans the resulting source to
 prove convergence. A parameter already absent from the current application proves
 only convergence; it does not qualify the SDK's caller argument mapping.
-The [projector bootstrap dependency cut](../../../docs/architecture/adr/018-generator-declarations.md#projector-bootstrap-dependency-cut)
+The [projector bootstrap dependency
+cut](../../../docs/architecture/adr/018-generator-declarations.md#projector-bootstrap-dependency-cut)
 owns cold import repair. Elect the same projector and original planning models
 before the aggregate they repair, retaining public package imports. The former
 defining-module workaround is superseded; generated initializers remain owned by
@@ -465,7 +467,8 @@ The concrete Pydantic class remains the same object; unrelated objects and model
 instances fail admission. `t.Port` has equivalent instance validation here but
 omits the capability from JSON Schema, so it is not substituted without a schema
 requirement. Neither boundary serializes a model class as JSON.
-See the [Setuptools strict editable contract](https://setuptools.pypa.io/en/latest/userguide/development_mode.html#strict-editable-installs).
+See the [Setuptools strict editable
+contract](https://setuptools.pypa.io/en/latest/userguide/development_mode.html#strict-editable-installs).
 
 Native source declarations and locked consistency are the approved provisioning
 trust boundary. The stronger independently selected-supplier pre-install admission
@@ -1030,7 +1033,8 @@ and its operation declaration is retired only after the resulting ownership and
 public runtime are qualified.
 
 The Algar acceptance run exposed a same-module transfer that initially failed in
-Rope before publication: moving `FlextTestsUtilitiesHandlerHelpers.create_handler_config`
+Rope before publication: moving
+`FlextTestsUtilitiesHandlerHelpers.create_handler_config`
 to its enclosing `FlextTestsUtilitiesFlextHandler` reported a conflicting import of
 that destination class. The native planner synthesized an import from the source
 module back into itself. The corrected SDK plans that transfer without the
@@ -1125,7 +1129,8 @@ analysis engine and its file listing (see
 [Workspace snapshot and analysis engine](#workspace-snapshot-and-analysis-engine));
 it opens no project of its own while a snapshot is bound. Sessions are owned by
 their invocation and keep their logical roots and teardown isolated, even when they
-read one structural workspace. Borrowed projects remain owned by their caller. Content snapshots
+read one structural workspace. Borrowed projects remain owned by their caller. Content
+snapshots
 and their authenticated indexes retain their source epoch; a process-global
 registry is not a substitute for the existing invocation-scoped DI.
 
@@ -1271,7 +1276,8 @@ silently omitted model or an empty successful inventory.
 Facade projection composes constants, utilities and models from the exports and
 base order declared in their configured private family. Authored dependency ports
 retain their consumer-owned capability contracts and normal `p` facade composition.
-The accepted 2026-10-28 [model and service protocol projection](../../../docs/architecture/adr/018-generator-declarations.md#model-and-service-protocol-projection)
+The accepted 2026-10-28 [model and service protocol
+projection](../../../docs/architecture/adr/018-generator-declarations.md#model-and-service-protocol-projection)
 contract owns the automatic first-party projection, extending the model-to-`p`
 restoration tracked by `flext-vjj1s.8`. Its complete native inventory and source
 module ownership determine coverage and destinations; a consumed-model filter is
@@ -1416,7 +1422,9 @@ that public source provenance.
 Runtime-base regression cases share parameterized public discovery calls for
 known/unknown guard bindings and non-class rebinding; consolidation
 retains every successful identity and original failure boundary.
-Upstream import bindings follow [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) Decision 10: preserve a used bare letter
+Upstream import bindings follow
+[ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md)
+Decision 10: preserve a used bare letter
 or a source-proven existing alias according to the declaration's header references.
 A later publication of the package's own letter does not alone require aliasing the
 upstream import. Diagnose a static/runtime binding disagreement against the same
@@ -1888,8 +1896,10 @@ code, package resources, distribution metadata, editable pointer files, and proj
 metadata read during ownership election. Distribution names and namespace names are
 separate identities; ambiguous ownership is a failure. Lexical entrypoints retain
 consumed executable sources and provider metadata. Namespace-only class globals retain
-storage-type identity; instruction-selected constructor, call and member edges elect execution.
-Explicit inventories and resource trees retain membership checks; unrelated files are excluded.
+storage-type identity; instruction-selected constructor, call and member edges elect
+execution.
+Explicit inventories and resource trees retain membership checks; unrelated files are
+excluded.
 
 Rope source-query ownership comes from the original declared source folders and
 native dependency import roots, with the most specific elected owner taking
@@ -2104,7 +2114,8 @@ constants and buffers retain explicit nonportable markers and cannot compare
 equal, even to another rejected observation. Unknown constant types fail before
 authored iteration, hashing or buffer conversion. Physical source receipts and
 authenticated cold import remain necessary to establish the witness's birth.
-Import dependency discovery uses the shared import maps; class-lineage validation remains
+Import dependency discovery uses the shared import maps; class-lineage validation
+remains
 with the queries that request class information. Namespace packages contribute
 their physical portions to source authority without requiring an executable
 initializer.
@@ -2566,7 +2577,8 @@ ordinary project inputs plus the hook module, because the hook alone changes the
 built editable artifact.
 
 Authenticated source previews keep their staged source root separate from this runtime
-owner. Candidate validation uses the same typed `RUNTIME_ROOT` selection as fresh-import;
+owner. Candidate validation uses the same typed `RUNTIME_ROOT` selection as
+fresh-import;
 an explicitly declared root is not re-elected through Git attachment. Managed base
 interpreter symlinks inside a physical environment are valid, but the candidate process
 must retain that environment's `sys.prefix`. A symlinked environment or an interpreter
@@ -2768,7 +2780,8 @@ A project `bin/` never enters PATH (shell, `BASH_ENV`, or CI `GITHUB_PATH`): Mis
 the shared shims to the first `mise` on PATH. Caches and installations stay out of Git.
 
 Mise reaches GitHub during setup to install a declared tool missing from its cache,
-and during upgrade to resolve releases. Only `make upg` writes `mise.lock` and `uv.lock`;
+and during upgrade to resolve releases. Only `make upg` writes `mise.lock` and
+`uv.lock`;
 `make setup` never writes either. Setup provisions current committed locks without
 resolving them; audit owns missing, stale or incomplete lock verdicts, and CI runs
 audit after setup. Functional installation failures remain red with their original
@@ -3130,7 +3143,8 @@ checkpoint, not another architecture SSOT:
 4. Repair canonical sources, not projections; regenerate and prove repeated gen/fix/fmt
    idempotent. Generalize recurring causes at the existing rule/semantic owner.
 5. Use the existing custom `refactor ast` and `refactor violations-sweep` CLI owners,
-   verifying their current help. Record per-rule before/after and full-catalog collateral
+   verifying their current help. Record per-rule before/after and full-catalog
+collateral
    evidence for the root and every declared member (currently 32 projects), including
    zero, applicability, failed and unexecuted rows. Changed detectors require a new
    baseline; lower totals never excuse introduced findings.
@@ -3460,7 +3474,8 @@ The public `CALL` group includes its ancillary `C_RETURN` and `C_RAISE` callback
 gate those too, even when `get_events()` reports only the controlling `CALL` bit.
 CPython's native event storage omits those ancillary bits; iterating only the
 returned mask would leave C exits able to corrupt the owner stack. This follows
-the [public monitoring event groups](https://docs.python.org/3.13/library/sys.monitoring.html#ancillary-events)
+the [public monitoring event
+groups](https://docs.python.org/3.13/library/sys.monitoring.html#ancillary-events)
 and the inspected CPython 3.13.15 `Python/instrumentation.c`, `Modules/_lsprof.c`,
 `Lib/cProfile.py` and `Lib/pstats.py`; it is not a runtime version constraint.
 
@@ -3895,7 +3910,8 @@ and the shared merge-control classifier. It reads literal source-link targets wi
 following them. Every finding, including a native warning, blocks approval while its
 original severity remains in the receipt.
 
-Every workspace and standalone projection exposes `make pre-commit` for the CI validation
+Every workspace and standalone projection exposes `make pre-commit` for the CI
+validation
 workflow. CI invokes the separate approval verbs declared by `make.workflow`, in their
 declared order; it never substitutes the fast hook for approval, and no verb requires
 a clean or unchanged tree. The configured CI token selects the blocking CI gate
@@ -3925,7 +3941,8 @@ Missing required roots remain failed inventory entries. Explicit Git management,
 repository code-generation and read-only policies determine applicability; inapplicable
 entries retain their reason and receive no successful native outcome. Independent roots
 continue after a returned failure, and the original first failure remains the command
-result. The typed receipts in `.reports/setup-operations/` record actual roots, execution,
+result. The typed receipts in `.reports/setup-operations/` record actual roots,
+execution,
 native outcomes, returned paths and central issues; CI preserves those reports.
 
 The original tool bootstrap also publishes the elected operation report before
@@ -4010,7 +4027,8 @@ and ref without accessing a PR number.
 CI uploads the reports that the original operations produced on every job outcome,
 including successful checks, completed failures and interrupted runs. The upload also
 runs when no test workflow row is selected, preserving the check reports independently.
-Its allowlist includes structured check summaries, coverage and JUnit artifacts, original
+Its allowlist includes structured check summaries, coverage and JUnit artifacts,
+original
 suite/selection/inventory process outcomes, selection manifests, run context and
 accounting, cache integrity decisions and Markdown reconciliation. Raw process and test
 logs remain outside that artifact. Generation publication receipts include the latest
@@ -4129,7 +4147,8 @@ selected native signing or verification action, not this observation.
 The CLI emits the typed report as JSON, excluding native values. Neither `status` nor
 original check/test capture selects signing: capture binds the typed target policy and
 producer evidence. Direct `u.Infra.git_create_gate_attestation` and
-`u.Infra.git_verify_gate_attestation` select signing/publication or signature verification;
+`u.Infra.git_verify_gate_attestation` select signing/publication or signature
+verification;
 their required trust input and native key/signature failures remain fail-loud. A valid
 observation is never signed proof, and absent signing material does not gate unrelated
 offline producers.
@@ -4421,7 +4440,8 @@ their authenticated source bytes and original coordinate checks stay intact.
 one concrete rule identity. It resolves the ID before fact binding and loads only
 the owning AST, text, CSV, or semantic rule engine; unrelated rules, receipts,
 callbacks and campaigns do not enter its candidate or fixed-point verification. The
-same resolved identity governs `--check`, `--dry-run`, and fix mode. Empty, ambiguous, duplicate,
+same resolved identity governs `--check`, `--dry-run`, and fix mode. Empty, ambiguous,
+duplicate,
 or unknown IDs fail before source observation or publication. Plain `make mod`
 remains the complete-catalog convergence route and is not weakened by the
 single-rule command.
@@ -4682,7 +4702,8 @@ the performance result without reducing scope or raising deadlines.
 ## Workspace snapshot and analysis engine
 
 **Approved facade-planner cutover, 2026-10-29; implementation and runtime proof
-pending.** [ADR-018's nested projection contract](../../../docs/architecture/adr/018-generator-declarations.md#nested-facade-projection)
+pending.** [ADR-018's nested projection
+contract](../../../docs/architecture/adr/018-generator-declarations.md#nested-facade-projection)
 requires a total rewrite of `codegen_facades.py` into a few declarative
 composition lines, extending the existing workspace DSL with facade planning.
 Reuse its native session, source bindings, queries and the existing utility
@@ -5282,12 +5303,44 @@ scan-target discovery of the semantic source closure are being reduced under epi
 
 ### Workspace settings type correction (2026-11-02)
 
-`src/flext/settings.py` annotated `model_config` as the nonexistent `p.SettingsConfigDict`. The annotation now uses the existing `t.SettingsConfigDict` type while `m.SettingsConfigDict` continues to construct the configuration. Root Pyrefly decreased from 15 to 14 findings, all concerning the missing `p.Root.PipelineStageData`; focused Ruff passed. The global primary gate still exits before checks because `p.Infra.GitIdentityReport` is missing. Rope wrote the change but reported `ResourceNotFoundError` while scanning the pre-existing dangling `.hadolint.yaml` link; the link target `.qlty/configs/.hadolint.yaml` is absent. The reported Rope operation is therefore not treated as a successful complete transaction.
+`src/flext/settings.py` annotated `model_config` as the nonexistent
+`p.SettingsConfigDict`. The annotation now uses the existing `t.SettingsConfigDict` type
+while `m.SettingsConfigDict` continues to construct the configuration. Root Pyrefly
+decreased from 15 to 14 findings, all concerning the missing `p.Root.PipelineStageData`;
+focused Ruff passed. The global primary gate still exits before checks because
+`p.Infra.GitIdentityReport` is missing. Rope wrote the change but reported
+`ResourceNotFoundError` while scanning the pre-existing dangling `.hadolint.yaml` link;
+the link target `.qlty/configs/.hadolint.yaml` is absent. The reported Rope operation is
+therefore not treated as a successful complete transaction.
 
-The Rope resource failure was reproduced independently with a real temporary project containing a dangling symbolic link: `Project.root.get_children()` raised `ResourceNotFoundError` for the link. An isolated `ChangeContents` operation did not itself fail without the workspace's observer path, so this narrower reproduction does not establish that every write fails. The loaded Rope distribution reports version `1.15.0+dc.10` and VCS revision `d56a179adcb2a8d932d96e742cdc42abebaf3885`; its loaded file is in the workspace virtual environment.
+The Rope resource failure was reproduced independently with a real temporary project
+containing a dangling symbolic link: `Project.root.get_children()` raised
+`ResourceNotFoundError` for the link. An isolated `ChangeContents` operation did not
+itself fail without the workspace's observer path, so this narrower reproduction does
+not establish that every write fails. The loaded Rope distribution reports version
+`1.15.0+dc.10` and VCS revision `d56a179adcb2a8d932d96e742cdc42abebaf3885`; its loaded
+file is in the workspace virtual environment.
 
-After the carrier-analysis correction, `make check CHECK_PHASE=primary` reached all 32 projects and exited 2 with 7,986 findings. The complete native report is `.reports/gates/20261102T082916.268560Z-1692474/check/310876b0-67cb-4d33-ba82-9a2f461d9ee5/check-report.md` relative to the FLEXT root. This run occurred while shared source was changing and is not exact-revision acceptance. Direct root Ruff and Pyrefly diagnostics reported 2,296 and 14 findings respectively under their own scopes; they are not equivalent to the coordinated gate.
+After the carrier-analysis correction, `make check CHECK_PHASE=primary` reached all 32
+projects and exited 2 with 7,986 findings. The complete native report is
+`.reports/gates/20261102T082916.268560Z-1692474/check/310876b0-67cb-4d33-ba82-9a2f461d9ee5/check-report.md`
+relative to the FLEXT root. This run occurred while shared source was changing and is
+not exact-revision acceptance. Direct root Ruff and Pyrefly diagnostics reported 2,296
+and 14 findings respectively under their own scopes; they are not equivalent to the
+coordinated gate.
 
-The workspace duplication census used the installed `cpd 5.1.1` through `jscpd --config .jscpd.json --format python src flext-*/src` on 2026-11-02. It covered 32 source roots and 2,314 Python files, reporting 1,267 clones and 13,003 duplicated lines (2.78%). The configured minimum is eight lines and the report is `/tmp/flext-jscpd-20261102.log`. Exit 0 only means the scan completed; it does not mean duplication is resolved. The scan excludes tests and other paths, and its live shared sources are not an exact-revision release receipt.
+The workspace duplication census used the installed `cpd 5.1.1` through `jscpd --config
+.jscpd.json --format python src flext-*/src` on 2026-11-02. It covered 32 source roots
+and 2,314 Python files, reporting 1,267 clones and 13,003 duplicated lines (2.78%). The
+configured minimum is eight lines and the report is `/tmp/flext-jscpd-20261102.log`.
+Exit 0 only means the scan completed; it does not mean duplication is resolved. The scan
+excludes tests and other paths, and its live shared sources are not an exact-revision
+release receipt.
 
-`qlty 0.662.0 smells --no-snippets src flext-*/src` completed with exit 0, reported analysis of 32 paths and 2,690 files, and produced `/tmp/flext-qlty-smells-20261102.log`. The output contains 626 similarity entries and 452 lines mentioning complexity; these are report-line counts, not deduplicated defect counts. The output also references matches in example and test paths, so its comparison population is broader than the requested source roots. Findings require causal triage; exit 0 is not a clean-quality claim.
+`qlty 0.662.0 smells --no-snippets src flext-*/src` completed with exit 0, reported
+analysis of 32 paths and 2,690 files, and produced
+`/tmp/flext-qlty-smells-20261102.log`. The output contains 626 similarity entries and
+452 lines mentioning complexity; these are report-line counts, not deduplicated defect
+counts. The output also references matches in example and test paths, so its comparison
+population is broader than the requested source roots. Findings require causal triage;
+exit 0 is not a clean-quality claim.
