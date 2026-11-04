@@ -18,7 +18,7 @@
         working-directory: .
         run: |
           set -eu
-          git submodule update --init --remote --jobs 8
+          git submodule update --init --remote --jobs 8 flext-core
       - name: Pin {{ dist }} at the tested commit
         working-directory: .
         run: |
