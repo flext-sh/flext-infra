@@ -142,14 +142,14 @@ class FlextInfraUtilitiesDependencies(
     def _declared_runtime_requirements(
         scan: p.Infra.DeptryScan,
         document: t.JsonMapping,
-    ) -> p.Result[p.Infra.DepsToml.MemberRequirements]:
+    ) -> p.Result[m.Infra.DepsToml.MemberRequirements]:
         """Read the project table into its typed requirement declarations.
 
         Returns:
             The validated member requirements, or the declaration failure.
 
         """
-        result_type = r[p.Infra.DepsToml.MemberRequirements]
+        result_type = r[m.Infra.DepsToml.MemberRequirements]
         project = u.Cli.toml_mapping_child(document, c.Infra.PROJECT)
         if project is None:
             return result_type.fail(
@@ -199,7 +199,7 @@ class FlextInfraUtilitiesDependencies(
     @staticmethod
     def _runtime_selections(
         scan: p.Infra.DeptryScan,
-        declarations: p.Infra.DepsToml.MemberRequirements,
+        declarations: m.Infra.DepsToml.MemberRequirements,
         suppliers: tuple[tuple[p.Infra.RuntimeDependencyProvider, Requirement], ...],
         *,
         development_only: t.StrTuple,

@@ -732,7 +732,7 @@ class TestsFlextInfraLazyInitHelpers:
                 "assert ai_hub.c is ai_hub.AiHubConstants\n"
                 "assert flext_infra.c in ai_hub.c.__mro__\n"
                 "assert ai_hub.c is not flext_infra.c\n"
-                "assert ai_hub.m is ai_hub.m.AiHub"
+                "assert ai_hub.m is m.AiHub"
                 "assert 'tc' not in ai_hub.__all__\n"
                 "try:\n    from ai_hub import tc\n"
                 "except ImportError:\n    print('undeclared alias rejected')\n"

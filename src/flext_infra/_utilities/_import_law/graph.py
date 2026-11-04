@@ -82,6 +82,8 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
         ):
             return previous.dependencies
         graph, _names = cls.snapshot_import_graph(project, resources=resources)
+        if not namespace or namespace not in graph:
+            return frozenset()
         dependencies = u.Cli.dag_closure(graph, frozenset({namespace})).unwrap() - {
             namespace
         }

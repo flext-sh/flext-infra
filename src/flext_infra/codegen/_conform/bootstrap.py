@@ -256,12 +256,20 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
             case (
                 c.Infra.CodegenConformSurface.ENVRC
                 | c.Infra.CodegenConformSurface.MISE_CONFIG
+                | c.Infra.CodegenConformSurface.MARKDOWN
             ):
+                # One self-owned template file each; no facades or codemods.
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({
-                        c.Infra.ENVRC_FILENAME
-                        if surface is c.Infra.CodegenConformSurface.ENVRC
-                        else c.Infra.MISE_TOML_FILENAME
+                        {
+                            c.Infra.CodegenConformSurface.ENVRC: c.Infra.ENVRC_FILENAME,
+                            c.Infra.CodegenConformSurface.MISE_CONFIG: (
+                                c.Infra.MISE_TOML_FILENAME
+                            ),
+                            c.Infra.CodegenConformSurface.MARKDOWN: (
+                                c.Infra.MARKDOWN_CONFIG_FILENAME
+                            ),
+                        }[surface]
                     }),
                     delegates=False,
                     pyproject=False,

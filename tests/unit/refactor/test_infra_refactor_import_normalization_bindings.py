@@ -198,7 +198,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "\n"
             "\n"
             "def run() -> object:\n"
-            "    from demo_pkg._models.record import DemoRecord\n"
+            "    from demo_pkg_models import DemoRecord\n"
             "\n"
             "    return r.ok(DemoRecord)\n",
         )
@@ -574,8 +574,7 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
         )
         target = package / "consumer.py"
         target.write_text(
-            "from demo_pkg._utilities.helper import DemoHelper\n"
-            "value = DemoHelper.marker\n",
+            "from demo_pkg_utilities import DemoHelper\nvalue = DemoHelper.marker\n",
             encoding=c.DEFAULT_ENCODING,
         )
         with u.Infra.workspace_snapshot(project, (project,)) as snapshot:

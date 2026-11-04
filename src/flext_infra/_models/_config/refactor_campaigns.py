@@ -160,6 +160,9 @@ class FlextInfraModelsConfigRefactorCampaigns:
                 phases = {
                     "semantic:cutover": None,
                     "semantic:external-model-owner": "external-model-owner",
+                    "semantic:test-namespace-import": "test-namespace-import",
+                    "semantic:test-assert-to-matcher": "test-assert-to-matcher",
+                    "semantic:compat-alias": "compat-alias",
                 }
                 if (
                     self.id not in phases

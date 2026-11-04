@@ -203,7 +203,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             )
 
-        path_rules: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig = m.Field(
+        path_rules: PathRulesConfig = m.Field(
             alias="path-rules",
             description="Pyright path resolution and execution-env rules.",
         )
@@ -259,7 +259,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             )
 
-        path_rules: FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig.PathRulesConfig = m.Field(
+        path_rules: PathRulesConfig = m.Field(
             alias="path-rules", description="Pyrefly search-path rules."
         )
 

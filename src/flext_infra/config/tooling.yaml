@@ -235,9 +235,28 @@ Infra:
         - writer: beads
           begin: '<!-- BEGIN BEADS (?P<block>[A-Z]+(?: [A-Z]+)*)(?:[: ].*)? -->'
           end: '<!-- END BEADS (?P<block>[A-Z]+(?: [A-Z]+)*) -->'
+        # Rules not named in `rules` stay enabled. Turning this off would make
+        # `rules` a strict allowlist; the fleet keeps rumdl's complete default
+        # set and declares every intentional configuration below.
+        default-enabled: true
+        # MD060 (aligned tables, repaired by `rumdl fmt`) is opt-in in rumdl.
+        extend-enable: [ MD060 ]
+        # rumdl is the ONE Markdown engine: CLI (make fmt/fix/check) and editor
+        # (rvben.rumdl reads the generated .rumdl.toml for diagnostics and
+        # formatting). It implements every markdownlint rule (MD001-MD060)
+        # plus MD061+, so markdownlint is retired everywhere (codegen.yaml
+        # retires .markdownlintignore and silences the extension).
         rules:
-        - [ default, true ]
-        - [ MD001, false ]
+        # Wave 1 (active): every rule here is either repaired by `rumdl fmt`
+        # (`make fmt`) or was already enforced, so the policy lands together
+        # with its automatic repair and no consumer is left red. Measured on
+        # the fleet (2026-11-04): 18040 findings, 15573 repaired by rumdl fmt.
+        # Wave 2 (disabled below, per-repo text migration, bead flext-5yu64):
+        # MD036/MD041/MD042/MD051/MD057 have no automatic repair (2467 sites).
+        - [ MD001, true ]
+        - [ MD003, { style: atx } ]
+        - [ MD004, { style: dash } ]
+        - [ MD007, { indent: 2 } ]
           # MD013 prose and code lengths are THE markdown line contract for
           # both rumdl surfaces: `rumdl check` (markdown gate, `make fix`) and
           # `rumdl fmt` (markdown-format gate, `make fmt`) read this one rule
@@ -248,8 +267,10 @@ Infra:
           # joins a hand-wrapped paragraph into one line and cannot re-split
           # lines containing inline-code spans. With reflow off, nobody
           # rewrites an author's breaks, and MD013 stays the check-only line
-          # contract: a genuinely long line is a finding the author fixes by
-          # wrapping.
+          # contract. Neither `strict` nor `stern` is set: measured on the
+          # consumers (merges 801, devops-oud-iac +212 unfixable lines), both
+          # turn hand-wrapped legacy prose into findings no tool can repair.
+          # Tightening MD013 is a separate, per-repo text migration.
         - - MD013
           - line_length: *formatting_width
             heading_line_length: 200
@@ -258,24 +279,30 @@ Infra:
             # leniency as headings.
             code_block_line_length: 200
             tables: false
-        - [ MD022, false ]
-        - [ MD023, false ]
+            reflow: false
+        - [ MD022, true ]
+        - [ MD023, true ]
         - [ MD024, { siblings_only: true } ]
-        - [ MD025, false ]
-        - [ MD031, false ]
+        - [ MD025, { level: 1, front_matter_title: title } ]
+        # one_or_ordered accepts lazy `1. 1. 1.` and
+        # sequential numbering, consistent per list; `ordered` produced 3057
+        # findings with no repair value (inventory 2026-11-04, flext-2vrgl).
+        - [ MD029, { style: one_or_ordered } ]
+        - [ MD031, true ]
         - [ MD033, { allowed_elements: [ br, details, summary, kbd ] } ]
         - [ MD036, false ]
-        - [ MD040, false ]
+        - [ MD040, true ]
         - [ MD041, false ]
         - [ MD042, false ]
-        - [ MD046, false ]
-        - [ MD050, { style: consistent } ]
+        - [ MD046, { style: fenced } ]
+        - [ MD048, { style: backtick } ]
+        - [ MD049, { style: asterisk } ]
+        - [ MD050, { style: asterisk } ]
         - [ MD051, false ]
-        - [ MD060, false ]
-        native_rules:
-        - [ MD013, { reflow: false } ]
+        - [ MD055, { style: leading_and_trailing } ]
+        # MD057 (relative link targets) has no repair: wave 2 with MD051.
         - [ MD057, false ]
-        - [ MD076, false ]
+        - [ MD060, { style: aligned } ]
         native_settings:
         - [ per-file-flavor, { 'docs/**/*.md': mkdocs } ]
       ruff:
@@ -485,7 +512,7 @@ Infra:
         # A local suite that cannot finish within run-timeout-seconds is a
         # performance defect. Collection, lease waits and every suite child
         # share the entrypoint clock, with termination grace inside this wall.
-        run-timeout-seconds: 60
+        run-timeout-seconds: 240
         termination-grace-seconds: 2
         # One failure stops the invocation. The next run starts from the
         # corrected owner instead of accumulating a backlog of unrelated
@@ -507,6 +534,8 @@ Infra:
         # invocation; in-flight cases may report after the stop, which the
         # declaring consumer accepts by declaring.
         parallel-worker-overrides:
+          merges:
+            workers: 4
           cosmos-docgen:
             workers: 4
           # The measured ceiling for this suite; higher ceilings regressed the

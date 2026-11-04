@@ -540,8 +540,8 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Resolved environment markers uv resolves for"),
         ]
 
-    class MarkdownLintRenderSpec(m.ContractModel):
-        """Validated tooling-only context for Markdown lint projections."""
+    class MarkdownRenderSpec(m.ContractModel):
+        """Validated tooling-only context for the rumdl Markdown projection."""
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
@@ -552,10 +552,6 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         native_config: Annotated[
             str,
             m.Field(description="Native Markdown TOML derived from the shared policy."),
-        ]
-        exclude: Annotated[
-            t.StrTuple,
-            m.Field(description="Declared non-documentation path patterns."),
         ]
 
     class QltyRenderSpec(m.ContractModel):

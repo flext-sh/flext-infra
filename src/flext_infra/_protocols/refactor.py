@@ -28,15 +28,13 @@ from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransactio
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsRefactor
+    from flext_infra import c, t
     from flext_infra._protocols import (
         FlextInfraProtocolsCensus,
         FlextInfraProtocolsRefactorAstGrep,
         FlextInfraProtocolsScan,
         FlextInfraProtocolsTransformers,
     )
-    from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRope
 
 
 class FlextInfraProtocolsRefactor:
@@ -55,10 +53,7 @@ class FlextInfraProtocolsRefactor:
         def findings(
             self,
         ) -> Sequence[
-            tuple[
-                FlextInfraConstantsRefactor.CodemodRelocation,
-                FlextInfraProtocolsScan.ModScanFinding,
-            ]
+            tuple[c.Infra.CodemodRelocation, FlextInfraProtocolsScan.ModScanFinding]
         ]:
             """Native relocation selections."""
             ...
@@ -154,7 +149,7 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         @property
-        def resources(self) -> Sequence[FlextInfraTypesRope.RopeResource]:
+        def resources(self) -> Sequence[t.Infra.RopeResource]:
             """Resources included in the semantic rename scope."""
             ...
 
@@ -473,12 +468,7 @@ class FlextInfraProtocolsRefactor:
         def lint(
             self,
         ) -> (
-            Mapping[
-                str,
-                FlextInfraTypesBase.LintSnapshot[
-                    FlextInfraProtocolsBase.LintGateResult
-                ],
-            ]
+            Mapping[str, t.Infra.LintSnapshot[FlextInfraProtocolsBase.LintGateResult]]
             | None
         ):
             """Canonical Ruff snapshots by source path."""
@@ -654,7 +644,7 @@ class FlextInfraProtocolsRefactor:
         @property
         def introduced_lint(
             self,
-        ) -> Mapping[str, FlextInfraTypesBase.LintSnapshot[Sequence[str]]] | None:
+        ) -> Mapping[str, t.Infra.LintSnapshot[Sequence[str]]] | None:
             """Introduced Ruff occurrences, None if unobserved."""
             ...
 
@@ -838,6 +828,11 @@ class FlextInfraProtocolsRefactor:
             ...
 
         @property
+        def census_kinds(self) -> Sequence[str] | None:
+            """Optional extermination-kind filters."""
+            ...
+
+        @property
         def rules(self) -> Sequence[str] | None:
             """Optional violation-rule filters."""
             ...
@@ -993,7 +988,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
         @property
-        def laws(self) -> tuple[FlextInfraTypesBase.EnforcementId, ...] | None:
+        def laws(self) -> tuple[t.Infra.EnforcementId, ...] | None:
             """Theme law ids (ENFORCE-NNN); repeat --laws for each law."""
             ...
 
@@ -1134,7 +1129,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
         @property
-        def tree(self) -> FlextInfraTypesRope.RopePyModule:
+        def tree(self) -> t.Infra.RopePyModule:
             """Parsed PyObject module representation."""
             ...
 
@@ -1244,7 +1239,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
         @property
-        def source_project(self) -> FlextInfraTypesRope.RopeProject | None:
+        def source_project(self) -> t.Infra.RopeProject | None:
             """Native source view owning this pass."""
             ...
 

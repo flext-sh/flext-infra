@@ -392,7 +392,8 @@ class TestsFlextInfraModelFieldsCutover:
             )
         tm.ok("inputs: tuple[t.Port[p.Cli.AtomicFileReceipt], ...]" in updated)
         tm.ok(
-            "source: Annotated[tuple[t.Port[p.Cli.AtomicPhysicalTreeManifest], ...] | None, "
+            "source: Annotated[tuple[t.Port[p.Cli.AtomicPhysicalTreeManifest], ...] | "
+            "None, "
             "m.Field(default=None)]" in updated
         )
         tm.ok(

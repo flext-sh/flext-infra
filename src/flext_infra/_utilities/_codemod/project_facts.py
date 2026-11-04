@@ -93,6 +93,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(
             project.absolute()
         )
+        if not own:
+            return {}
         return {
             c.Infra.CODEMOD_LOCAL_ALIAS_UTILITY: cls._fact_exact_names(
                 tuple(aliases[own])
@@ -381,6 +383,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         root = project.resolve()
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
+            if not (root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+                return {}
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
@@ -1317,6 +1321,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
+            if not (root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+                return {}
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
         packages = FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages

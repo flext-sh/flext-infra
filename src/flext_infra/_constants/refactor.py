@@ -324,6 +324,8 @@ class FlextInfraConstantsRefactor:
         CONTRACT_NORMALIZATION = "contract-normalization"
         COMPAT_ALIAS = "compat-alias"
         PRIVATE_IMPORT = "private-import"
+        TEST_NAMESPACE_IMPORT = "test-namespace-import"
+        TEST_ASSERT_TO_MATCHER = "test-assert-to-matcher"
         FACADE_BASE = "facade-base"
         MODEL_FIELDS = "model-fields"
         DYNAMIC_ENVIRONMENT = "dynamic-environment"
@@ -334,9 +336,23 @@ class FlextInfraConstantsRefactor:
         SemanticCutoverPhase.DECLARATION_RELOCATION: (
             "ban-nested-payload-outside-models",
         ),
-        SemanticCutoverPhase.CLASS_NESTING: ("ban-loose-module-object",),
+        SemanticCutoverPhase.CLASS_NESTING: (
+            "ban-loose-module-object",
+            "ban-loose-test-function",
+        ),
+        SemanticCutoverPhase.CONSTANT_CONSUMERS: (
+            "require-uppercase-constant-name",
+            "ban-mutable-constant-value",
+        ),
         SemanticCutoverPhase.COMPAT_ALIAS: ("ban-compat-alias",),
         SemanticCutoverPhase.PRIVATE_IMPORT: ("ban-private-import",),
+        SemanticCutoverPhase.TEST_NAMESPACE_IMPORT: (
+            "ban-test-import-outside-test-namespace",
+            "ban-test-direct-tests-submodule",
+            "ban-test-relative-import",
+            "ban-test-namespace-alias",
+        ),
+        SemanticCutoverPhase.TEST_ASSERT_TO_MATCHER: ("ban-test-assert",),
         SemanticCutoverPhase.FACADE_BASE: (
             "facade-base-by-class-name",
             "require-facade-mro-completeness",
@@ -374,6 +390,11 @@ class FlextInfraConstantsRefactor:
     CODEMOD_PACKAGE_EXPORTS_UTILITY: ClassVar[str] = "exports"
     # Generated utility id of the project's facade-family private packages.
     CODEMOD_FACADE_FAMILY_PACKAGE_UTILITY: ClassVar[str] = "facade-family-package"
+    # The same packages spelled without their separator ('<root>_<family>'),
+    # a module that never exists.
+    CODEMOD_COLLAPSED_FACADE_FAMILY_PACKAGE_UTILITY: ClassVar[str] = (
+        "collapsed-facade-family-package"
+    )
     # Generated rule shape that rewires an inline type set to the constant
     # declaring it: 'type-set--<constant path>'.
     CODEMOD_TYPE_SET_SHAPE: ClassVar[str] = "type-set"
@@ -515,7 +536,11 @@ class FlextInfraConstantsRefactor:
     CODEMOD_LIBRARY_MEMBER_OWNER_UTILITY_PREFIX: ClassVar[str] = "library-member-owner-"
     CODEMOD_GENERIC_SPECIALIZATION_UTILITY: ClassVar[str] = "generic-specialization"
     CODEMOD_PROTOCOL_MODEL_PATH_UTILITY: ClassVar[str] = "protocol-model-path"
-    "Stable utility: a dotted path `p` publishes as a protocol and `m` as its model twin."
+    (
+        "Stable utility: a dotted path `p` publishes as a protocol and `m` as its "
+        "model "
+        "twin."
+    )
     CODEMOD_MODEL_SDK_TYPE_UTILITY: ClassVar[str] = "model-sdk-type-name"
     "Stable utility: a library type name `t` owns that `p` or `m` re-spells."
     CODEMOD_PAYLOAD_CLASS_SCOPE_PREFIX: ClassVar[str] = "payload-class-"

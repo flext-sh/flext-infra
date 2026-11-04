@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCli, codemod, m, p, t
+from flext_infra import FlextInfraCli, codemod, m, t
 from tests import c, p, tm, u
 
 
@@ -171,7 +171,7 @@ class TestsFlextInfraBatchReplacements:
                 "text": statement.decode(),
                 "replacement": 'value = "after"',
                 "range": {"byteOffset": offsets},
-                "replacement_offsets": p.Infra.ModReplacementOffsets.model_validate(
+                "replacement_offsets": m.Infra.ModReplacementOffsets.model_validate(
                     offsets
                 ),
             }

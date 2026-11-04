@@ -1,0 +1,32 @@
+id: ban-type-cast
+snapshots:
+  "from tests import t\nvalue = t.cast(str, other)\n":
+    labels:
+    - source: t.cast
+      style: primary
+      start: 28
+      end: 34
+  "from typing import cast\n":
+    labels:
+    - source: from typing import cast
+      style: primary
+      start: 0
+      end: 23
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: cast
+      style: secondary
+      start: 19
+      end: 23
+  "value = cast(str, other)\n":
+    labels:
+    - source: cast(str, other)
+      style: primary
+      start: 8
+      end: 24
+    - source: cast
+      style: secondary
+      start: 8
+      end: 12

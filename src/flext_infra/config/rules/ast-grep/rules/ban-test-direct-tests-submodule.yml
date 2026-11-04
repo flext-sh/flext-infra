@@ -1,0 +1,38 @@
+# Import law (test namespace): authored test modules and conftest read the
+# generated `tests` namespace root, never one of its submodules. A direct
+# `from tests.constants import ...`, `from tests._utilities import ...` or
+# `from tests.fixtures... import ...` binds the test to the namespace's
+# internal layout, the same coupling the public-API law removes from src.
+#
+# Fixture modules are wired with `pytest_plugins` strings; test-only
+# declarations live in `tests/_<base>/*.py` and are composed by the generated
+# facades, never imported by a test module.
+#
+# Detection only: the semantic import cutover rewires the name to the
+# generated root namespace.
+id: ban-test-direct-tests-submodule
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+ignores:
+  # The generated namespace composes its submodules; only authored tests are in scope.
+  - "**/tests/__init__.py"
+  - "**/tests/*/__init__.py"
+  - "**/tests/_*/**"
+  - "**/tests/fixtures/**"
+rule:
+  any:
+    - kind: import_from_statement
+      has:
+        field: module_name
+        regex: '^tests\.'
+    - kind: import_statement
+      regex: '^import\s+tests\.'
+message: >-
+  Test code imports a `tests` submodule directly. Import the public name from
+  the generated `tests` namespace root; wire fixture modules through
+  `pytest_plugins` strings.
+metadata:
+  enforce: [ENFORCE-117]

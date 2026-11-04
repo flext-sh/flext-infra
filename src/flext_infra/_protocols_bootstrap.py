@@ -25,8 +25,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, override
 
+from flext_cli import u
+
+from flext_infra import m
+from flext_infra._utilities._git import FlextInfraUtilitiesGitPhysicalScope
+
 if TYPE_CHECKING:
-    from flext_cli import p
+    from flext_infra import p
 
 
 _SOURCE_BOOTSTRAP_MARKER = "# AUTO-GENERATED FILE - Source bootstrap"
@@ -90,7 +95,12 @@ def _field_assignment_keywords(node: ast.expr) -> tuple[ast.keyword, ...]:
 
 
 def _field_without_alias_keywords(node: ast.Call) -> ast.expr | None:
-    """Keep non-field metadata when extracting field-name metadata from an alias."""
+    """Keep non-field metadata when extracting field-name metadata from an alias.
+
+    Returns:
+        The resulting ``ast.expr | None``.
+
+    """
     retained = [
         keyword for keyword in node.keywords if keyword.arg not in _FIELD_ALIAS_KEYWORDS
     ]
@@ -683,7 +693,12 @@ def _annotation_patches(
 
 
 def _cleanup_normalized_imports(source: str, filename: str) -> str:
-    """Remove imports rendered unnecessary by source-only normalization."""
+    """Remove imports rendered unnecessary by source-only normalization.
+
+    Returns:
+        The resulting ``str``.
+
+    """
     tree = ast.parse(source, filename=filename)
     offsets = _line_offsets(source)
     cleaned = _apply_patches(
@@ -701,7 +716,12 @@ def _cleanup_normalized_imports(source: str, filename: str) -> str:
 def normalize_protocol_source(
     source: str, *, package_name: str, filename: str = "<protocol>"
 ) -> str:
-    """Return source with Pydantic field syntax removed from ``Protocol`` bodies."""
+    """Return source with Pydantic field syntax removed from ``Protocol`` bodies.
+
+    Raises:
+        ValueError: If Protocol class has no source location.
+
+    """
     tree = ast.parse(source, filename=filename)
     offsets = _line_offsets(source)
     protocols = tuple(_protocol_classes(tree))
@@ -783,7 +803,15 @@ def _type_alias_binding(node: ast.stmt) -> tuple[str, ast.expr] | None:
 def _annotated_alias_metadata(
     value: ast.expr,
 ) -> tuple[ast.expr, tuple[ast.keyword, ...]] | None:
-    """Separate rejected field-name metadata from an ``Annotated`` type alias."""
+    """Separate rejected field-name metadata from an ``Annotated`` type alias.
+
+    Returns:
+        The resulting ``tuple[ast.expr, tuple[ast.keyword, ...]] | None``.
+
+    Raises:
+        TypeError: If m.Field alias metadata must be an AST call.
+
+    """
     if not (
         isinstance(value, ast.Subscript)
         and _is_annotated(value.value)
@@ -827,7 +855,12 @@ def _annotated_alias_metadata(
 
 
 def _pydantic_model_base(node: ast.expr, known: set[str]) -> bool:
-    """Recognize local Pydantic model bases without treating ``m`` as typing."""
+    """Recognize local Pydantic model bases without treating ``m`` as typing.
+
+    Returns:
+        The resulting ``bool``.
+
+    """
     if isinstance(node, ast.Name):
         return node.id in known
     if isinstance(node, ast.Subscript):
@@ -841,7 +874,12 @@ def _pydantic_model_base(node: ast.expr, known: set[str]) -> bool:
 
 
 def _is_protocol_class(node: ast.ClassDef, protocols: set[str]) -> bool:
-    """Keep structural protocols out of runtime Pydantic field normalization."""
+    """Keep structural protocols out of runtime Pydantic field normalization.
+
+    Returns:
+        The resulting ``bool``.
+
+    """
     return any(
         _is_protocol_base(base) or (isinstance(base, ast.Name) and base.id in protocols)
         for base in node.bases
@@ -865,7 +903,16 @@ def _field_alias_reference(annotation: ast.expr) -> tuple[str, list[ast.expr]] |
 def _field_annotation_with_alias_metadata(
     annotation: ast.expr, keywords: Sequence[ast.keyword]
 ) -> ast.expr:
-    """Attach extracted alias metadata to the Pydantic field declaration."""
+    """Attach extracted alias metadata to the Pydantic field declaration.
+
+    Returns:
+        The resulting ``ast.expr``.
+
+    Raises:
+        ValueError: If field alias metadata requires a direct type-alias field
+            annotation.
+
+    """
     reference = _field_alias_reference(annotation)
     if reference is None:
         msg = "field alias metadata requires a direct type-alias field annotation"
@@ -901,7 +948,12 @@ def _field_value_with_alias_metadata(
     arguments: Sequence[ast.expr],
     keywords: Sequence[ast.keyword],
 ) -> ast.expr:
-    """Merge field-name metadata into an existing field declaration or default."""
+    """Merge field-name metadata into an existing field declaration or default.
+
+    Returns:
+        The resulting ``ast.expr``.
+
+    """
     if isinstance(value, ast.Call) and _is_pydantic_field(value):
         existing = {
             keyword.arg for keyword in value.keywords if keyword.arg is not None
@@ -941,7 +993,12 @@ def _field_value_with_alias_metadata(
 
 
 def _field_without_redundant_default(value: ast.expr) -> ast.expr | None:
-    """Remove an alias default duplicated by a direct positional field default."""
+    """Remove an alias default duplicated by a direct positional field default.
+
+    Returns:
+        The resulting ``ast.expr | None``.
+
+    """
     if not (_is_pydantic_field(value) and value.args):
         return None
     keywords = [keyword for keyword in value.keywords if keyword.arg != "default"]
@@ -960,7 +1017,16 @@ def _field_without_redundant_default(value: ast.expr) -> ast.expr | None:
 def _direct_annotated_field_metadata(
     annotation: ast.expr,
 ) -> tuple[ast.expr, tuple[ast.expr, ...], tuple[ast.keyword, ...]] | None:
-    """Extract complete ``m.Field`` metadata from a direct model annotation."""
+    """Extract complete ``m.Field`` metadata from a direct model annotation.
+
+    Returns:
+        The resulting ``tuple[ast.expr, tuple[ast.expr, ...], tuple[ast.keyword, ...]] |
+            None``.
+
+    Raises:
+        TypeError: If m.Field alias metadata must be an AST call.
+
+    """
     if not (
         isinstance(annotation, ast.Subscript)
         and _is_annotated(annotation.value)
@@ -1004,7 +1070,12 @@ def _direct_annotated_field_metadata(
 def _direct_field_alias_patches(
     field: ast.AnnAssign, offsets: Sequence[int]
 ) -> list[_Patch]:
-    """Move direct ``Annotated`` field aliases into the field declaration."""
+    """Move direct ``Annotated`` field aliases into the field declaration.
+
+    Returns:
+        The resulting ``list[_Patch]``.
+
+    """
     normalized = _direct_annotated_field_metadata(field.annotation)
     if normalized is None:
         return []
@@ -1023,7 +1094,12 @@ def _direct_field_alias_patches(
 
 
 def _model_alias_patches(source: str, filename: str) -> list[_Patch]:
-    """Plan field-only repairs for alias metadata in one local model module."""
+    """Plan field-only repairs for alias metadata in one local model module.
+
+    Returns:
+        The resulting ``list[_Patch]``.
+
+    """
     tree = ast.parse(source, filename=filename)
     offsets = _line_offsets(source)
     used_aliases: dict[int, ast.expr] = {}
@@ -1111,14 +1187,24 @@ def _model_alias_patches(source: str, filename: str) -> list[_Patch]:
 
 
 def normalize_model_alias_source(source: str, *, filename: str = "<model>") -> str:
-    """Move Pydantic field-name metadata from local aliases to model fields."""
+    """Move Pydantic field-name metadata from local aliases to model fields.
+
+    Returns:
+        The resulting ``str``.
+
+    """
     normalized = _apply_patches(source, _model_alias_patches(source, filename))
     ast.parse(normalized, filename=filename)
     return normalized
 
 
 def normalize_model_alias_tree(repository_root: Path) -> tuple[Path, ...]:
-    """Normalize runtime Pydantic models before the first package import."""
+    """Normalize runtime Pydantic models before the first package import.
+
+    Returns:
+        The resulting ``tuple[Path, ...]``.
+
+    """
     root = repository_root.expanduser().resolve(strict=True)
     manifest = root / "pyproject.toml"
     package = _declared_protocol_package(root, manifest.read_text(encoding="utf-8"))
@@ -1233,7 +1319,12 @@ def _declares_mirrored_model_entity(
     name: str,
     declarations: dict[Path, frozenset[str]],
 ) -> bool:
-    """Authenticate a model-path contract through one captured declaration inventory."""
+    """Authenticate a model-path contract through one captured declaration inventory.
+
+    Returns:
+        The resulting ``bool``.
+
+    """
     model_path = (
         protocol_root.parent / "_models" / protocol_path.relative_to(protocol_root)
     )
@@ -1265,6 +1356,10 @@ def is_source_bootstrap_owned(
     The header and the emitted contract docstring are deliberate provenance:
     only source-bootstrap projections may yield a divergent duplicate to the
     model-path canonical contract.
+
+    Returns:
+        The resulting ``bool``.
+
     """
     return protocol_path.read_text(encoding="utf-8").startswith(
         _SOURCE_BOOTSTRAP_MARKER
@@ -1283,6 +1378,14 @@ def consolidate_protocol_owners(
     identical. Source-bootstrap-owned holders are projections, so their stale
     declarations yield to the canonical model-path contract; an authored
     divergence remains an explicit admission error.
+
+    Returns:
+        The resulting ``tuple[Path, ...]``.
+
+    Raises:
+        ValueError: If competing canonical protocol contracts; or if incompatible legacy
+            protocol contract.
+
     """
     root = repository_root.expanduser().resolve()
     package = _declared_protocol_package(
@@ -1382,9 +1485,6 @@ def merge_class_lineages[TIdentity: str | tuple[str, str]](
 
     Returns:
         The consistent linearized ancestry.
-
-    Raises:
-        ValueError: The declared bases impose incompatible precedence.
 
     """
     sequences = [list(lineage) for lineage in lineages]
@@ -1489,7 +1589,12 @@ def _declared_module_exports(tree: ast.Module) -> tuple[str, ...] | None:
 def _family_member_modules(
     directory: Path, *, sources: Mapping[Path, str]
 ) -> tuple[Path, ...]:
-    """List the direct modules of one protocol family package, initializer apart."""
+    """List the direct modules of one protocol family package, initializer apart.
+
+    Returns:
+        The resulting ``tuple[Path, ...]``.
+
+    """
     return tuple(
         sorted({
             path
@@ -1626,7 +1731,10 @@ def _holder_base_names(
             parts.append(expression.attr)
             expression = expression.value
         if not isinstance(expression, ast.Name):
-            message = f"protocol base is not a declared identity: {module}:{ast.unparse(base)}"
+            message = (
+                f"protocol base is not a declared identity: "
+                f"{module}:{ast.unparse(base)}"
+            )
             raise ValueError(message)
         if expression.id == "object" and expression.id not in bindings and not parts:
             names.append("builtins.object")
@@ -1634,14 +1742,20 @@ def _holder_base_names(
         origin = bindings.get(expression.id)
         identity = ".".join((origin, *reversed(parts))) if origin is not None else ""
         if isinstance(base, ast.Subscript) and identity not in standard:
-            message = f"protocol base specialization is unproved: {module}:{ast.unparse(base)}"
+            message = (
+                f"protocol base specialization is unproved: "
+                f"{module}:{ast.unparse(base)}"
+            )
             raise ValueError(message)
         if identity in identities:
             names.append(identities[identity])
         elif identity in standard:
             names.append(identity)
         else:
-            message = f"protocol base has no authenticated runtime declaration: {module}:{ast.unparse(base)}"
+            message = (
+                f"protocol base has no authenticated runtime declaration: "
+                f"{module}:{ast.unparse(base)}"
+            )
             raise ValueError(message)
     return tuple(names) or ("builtins.object",)
 
@@ -1740,7 +1854,12 @@ def _render_facade_import(module: str, holder: str) -> str:
 
 
 def _render_lazy_export_type_import(module: str, holder: str) -> str:
-    """Render one type-only protocol barrel binding within Ruff's line limit."""
+    """Render one type-only protocol barrel binding within Ruff's line limit.
+
+    Returns:
+        The resulting ``str``.
+
+    """
     statement = f"from flext_infra._protocols{module} import {holder}"
     return (
         statement
@@ -1750,7 +1869,12 @@ def _render_lazy_export_type_import(module: str, holder: str) -> str:
 
 
 def _render_lazy_export_mapping_entry(holder: str, module: str) -> str:
-    """Render one protocol barrel map entry within Ruff's line limit."""
+    """Render one protocol barrel map entry within Ruff's line limit.
+
+    Returns:
+        The resulting ``str``.
+
+    """
     indentation = "            "
     statement = f'{indentation}"{holder}": "{module}",'
     return (
@@ -1766,7 +1890,15 @@ def _pascal_case(value: str) -> str:
 
 
 def _partition_owner_name(holder: str, module_name: str) -> str:
-    """Derive the canonical domain holder from one partition member holder."""
+    """Derive the canonical domain holder from one partition member holder.
+
+    Returns:
+        The resulting ``str``.
+
+    Raises:
+        ValueError: If cannot derive protocol partition owner from.
+
+    """
     suffix = _pascal_case(module_name)
     if not suffix or not holder.endswith(suffix):
         msg = f"cannot derive protocol partition owner from {holder!r}: {module_name!r}"
@@ -1781,7 +1913,17 @@ def _render_partition_owner(
     *,
     sources: dict[Path, str],
 ) -> tuple[str, str]:
-    """Create or update the canonical holder for one private protocol partition."""
+    """Create or update the canonical holder for one private protocol partition.
+
+    Returns:
+        The resulting ``tuple[str, str]``.
+
+    Raises:
+        ValueError: If protocol partition has no domain name; or if canonical protocol
+            partition owner is missing; or if canonical protocol partition owner has
+            incompatible bases.
+
+    """
     domain = relative_directory.name.removeprefix("_")
     if not domain:
         msg = f"protocol partition has no domain name: {relative_directory}"
@@ -1829,7 +1971,10 @@ def _render_partition_owner(
     )
     if existing.bases:
         if not set(member_names).issubset(existing_bases):
-            msg = f"canonical protocol partition owner has incompatible bases: {owner_path}"
+            msg = (
+                f"canonical protocol partition owner has incompatible bases: "
+                f"{owner_path}"
+            )
             raise ValueError(msg)
         return owner, owner_module
     offsets = _line_offsets(source)
@@ -1850,7 +1995,12 @@ def _render_partition_owner(
 def _plan_partition_owners(
     package_root: Path, *, sources: dict[Path, str]
 ) -> tuple[tuple[str, str], ...]:
-    """Materialize canonical owners for every private protocol partition."""
+    """Materialize canonical owners for every private protocol partition.
+
+    Returns:
+        The resulting ``tuple[tuple[str, str], ...]``.
+
+    """
     holders = _protocol_holders(package_root, sources=sources)
     by_directory: dict[Path, list[tuple[str, str]]] = {}
     for holder, module in holders:
@@ -1887,7 +2037,16 @@ def _protocol_module_path(
 def _existing_protocol_exports(
     protocol_root: Path, *, sources: Mapping[Path, str]
 ) -> dict[str, str]:
-    """Read live mappings from the source-bootstrap-owned protocol barrel only."""
+    """Read live mappings from the source-bootstrap-owned protocol barrel only.
+
+    Returns:
+        The resulting ``dict[str, str]``.
+
+    Raises:
+        ValueError: If protocol barrel is not source-bootstrap-owned; or if protocol
+            export mapping is not a native dictionary declaration.
+
+    """
     initializer = protocol_root / "__init__.py"
     if initializer not in sources and not initializer.is_file():
         return {}
@@ -2046,7 +2205,12 @@ def plan_protocol_facades(
 
 
 def _family_export_key(name: str) -> tuple[int, str]:
-    """Order one public name like the lazy-init renderer: constants, classes, rest."""
+    """Order one public name like the lazy-init renderer: constants, classes, rest.
+
+    Returns:
+        The resulting ``tuple[int, str]``.
+
+    """
     return (0 if name.isupper() else 1 if name[:1].isupper() else 2, name)
 
 
@@ -2225,12 +2389,6 @@ def _publish_protocol_sources(
         ValueError: A physical source, membership or destination lacks its witness.
 
     """
-    from flext_cli import m, u
-
-    from flext_infra._utilities._git.physical_scope import (
-        FlextInfraUtilitiesGitPhysicalScope,
-    )
-
     root = root.resolve(strict=True)
     lock_path = FlextInfraUtilitiesGitPhysicalScope.lock_path(root)
     with u.Cli.file_changes_lock(lock_path):
@@ -2374,7 +2532,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     command = arguments[2:] if arguments[1] == "--" else arguments[1:]
     sys.path.insert(0, str(root / "src"))
-    from flext_infra.cli import FlextInfraCli
+    from flext_infra import FlextInfraCli
 
     return FlextInfraCli.infra_main(command)
 

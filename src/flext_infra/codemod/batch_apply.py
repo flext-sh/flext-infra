@@ -131,41 +131,40 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     def _preflight(
         self,
     ) -> p.Result[tuple[tuple[Path, ...], m.Infra.ModScanReport]]:
-        """Plan and scan one coherent snapshot, re-capturing after external drift.
+        """Plan and scan the current snapshot once; concurrent writers never block it.
 
-        A source another actor changes during the preflight is new input: the
-        snapshot is discarded and captured again from the current disk state.
+        Sessions share the checkout and write concurrently. The preflight is
+        read-only, so a source another actor changes meanwhile is reported and
+        left to the apply loop, which authenticates every input before each
+        effect and voids an iteration on drift (optimistic publication). The
+        preflight never discards and re-captures the whole snapshot, which a
+        busy shared checkout would starve.
 
         Returns:
-            The discovered rule files and the scan of one unchanged snapshot.
+            The discovered rule files and the scan of the captured snapshot.
 
         """
         outcome = r[tuple[tuple[Path, ...], m.Infra.ModScanReport]]
-        while True:
-            with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
-                planned = u.Infra.codemod_rule_plan(
-                    snapshot, rule_ids=self.selected_rule_ids
-                )
-                if planned.failure:
-                    return outcome.from_failure(planned)
-                rules = u.Infra.codemod_fixture_resources(planned.value)
-                self.progress.emit("mod: validate ast-grep rule fixtures")
-                FlextInfraModGateEngine.validate_rule_fixtures(
-                    self.repository_root,
-                    rules,
-                ).unwrap()
-                states = tuple(source.state for source in snapshot.sources.values())
-                drifted = self._drifted(states)
-                if not drifted:
-                    pending = FlextInfraModGateEngine.scan(
-                        self.repository_root,
-                        fix=False,
-                        selection=planned.value,
-                    ).unwrap()
-                    drifted = self._drifted(states)
-                    if not drifted:
-                        return outcome.ok((rules, pending))
-            self._emit_drift("preflight", drifted)
+        with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
+            planned = u.Infra.codemod_rule_plan(
+                snapshot, rule_ids=self.selected_rule_ids
+            )
+            if planned.failure:
+                return outcome.from_failure(planned)
+            rules = u.Infra.codemod_fixture_resources(planned.value)
+            self.progress.emit("mod: validate ast-grep rule fixtures")
+            FlextInfraModGateEngine.validate_rule_fixtures(
+                self.repository_root,
+                rules,
+            ).unwrap()
+            states = tuple(source.state for source in snapshot.sources.values())
+            pending = FlextInfraModGateEngine.scan(
+                self.repository_root,
+                fix=False,
+                selection=planned.value,
+            ).unwrap()
+        self._emit_drift("preflight", self._drifted(states))
+        return outcome.ok((rules, pending))
 
     def _execute_dry_run(
         self,
@@ -562,8 +561,8 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         """Name every externally changed path whose candidate was discarded."""
         for path in drifted:
             self.progress.emit(
-                f"mod: {scope} discarded after external change: {path}; "
-                "re-capturing the current source state"
+                f"mod: {scope} observed external change: {path}; "
+                "the apply loop re-authenticates it before any effect"
             )
 
     def _preview_ast_candidate(
@@ -711,11 +710,10 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         if seeded.failure:
             return self._attributed(seeded, voided)
         inputs = {state.path: state for state in seeded.value.candidate.inputs}
-        drifted = self._capture_ast_inputs(root, inputs)
-        if drifted:
-            return r[p.Infra.ModPhaseAdvance].ok(
-                voided.model_copy(update={"drifted": drifted})
-            )
+        # The candidate is linearized at the seed capture; a source another
+        # session changed since is guarded by the destination compare-and-swap
+        # at publication, never by voiding the whole iteration here.
+        self._capture_ast_inputs(root, inputs)
         planned = self._plan_iteration(
             root,
             current,
@@ -778,14 +776,24 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         *,
         publish: bool,
     ) -> p.Result[p.Infra.ModPhaseAdvance]:
-        """Publish one unchanged-input candidate, or void it on external drift.
+        """Publish one candidate, voiding it only when a destination drifted.
+
+        Concurrent sessions write the shared checkout. The candidate is linearized
+        at its capture: a change another actor makes to an input the candidate
+        does not write never voids it, because the publisher's compare-and-swap
+        guards exactly the destinations. Only a drifted destination is new
+        input for this iteration.
 
         Returns:
             The finished iteration, the voided iteration naming its drift or
             quarantine, or the first unattributed publication failure.
 
         """
-        candidate, captured = planned
+        candidate, observed = planned
+        destinations = frozenset(path.resolve() for path in candidate.candidate.updates)
+        captured = tuple(
+            state for state in observed if Path(state.path).resolve() in destinations
+        )
         drifted = self._drifted(captured)
         if drifted:
             return r[p.Infra.ModPhaseAdvance].ok(
@@ -1100,8 +1108,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         """Compose all native semantic effects on the prepared candidate.
 
         A selected theme composes only the semantic phases that repair one of
-        its rule families; census constants belong to no rule and stay with
-        the complete catalog. A theme claiming no phase returns its seed.
+        its rule families (the constants family selects the constant-consumer
+        phase); the census constants sweep stays with the complete catalog.
+        A theme claiming no phase returns its seed.
 
         Returns:
             The staged semantic candidate, or the seed for a phase-less theme.

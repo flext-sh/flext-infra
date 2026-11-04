@@ -159,7 +159,8 @@ class TestsModelProtocolNativeMro:
                 "class ModelsPayload:\n"
                 "    class Request(BaseModel):\n"
                 "        title: TypeMetadata[str, m.Field(description='title')]\n"
-                "        receipt: TypeMetadata[p.Cli.AtomicFileState | None, m.Field()]\n"
+                "        receipt: TypeMetadata[p.Cli.AtomicFileState | None, "
+                "m.Field()]\n"
                 "        workspace: FlextInfraModelsWorkspace.WorkspaceThing\n"
             ),
         }
@@ -252,7 +253,7 @@ class TestsModelProtocolNativeMro:
             ValueError,
             match=(
                 "generated Protocol source is invalid: "
-                "owner=ProtocolsPayload path=generated-payload.py"
+                r"owner=ProtocolsPayload path=generated-payload\.py"
             ),
         ):
             FlextInfraUtilitiesModelsProtocol._ModelProtocolProjection._source_validate_generated_module(
@@ -385,7 +386,8 @@ class TestsModelProtocolNativeMro:
             "    and is_protocol(member) and member.__name__ == 'Payload']\n"
             "tm.that(len(contracts), eq=1)\n"
             "model = m.Domain.Payload\n"
-            "hints = {name: get_type_hints(getattr(contracts[0], name).fget)['return']\n"
+            "hints = "
+            "{name: get_type_hints(getattr(contracts[0], name).fget)['return']\n"
             "    for name in model.model_fields}\n"
             "tm.that(set(hints), eq=set(model.model_fields))\n"
             "for name, field in model.model_fields.items():\n"
@@ -660,6 +662,45 @@ class TestsModelProtocolNativeMro:
         tm.ok("if TYPE_CHECKING:\n    from flext_test_project import p, t" in rendered)
         tm.fail("\nfrom flext_test_project import p\n" in rendered)
         tm.fail("\nfrom flext_test_project import t\n" in rendered)
+
+    @staticmethod
+    def test_type_checking_annotation_imports_reach_the_projection(
+        tmp_path: Path,
+    ) -> None:
+        """Names a model imports only under TYPE_CHECKING are imported by its mirror."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = {
+            package / "models.py": (
+                "class Models:\n    pass\nm = Models\n__all__ = ['Models', 'm']\n"
+            ),
+            package / "protocols.py": (
+                "class Protocols:\n    pass\n"
+                "p = Protocols\n__all__ = ['Protocols', 'p']\n"
+            ),
+            package / "_models" / "views.py": (
+                "from __future__ import annotations\n"
+                "from typing import TYPE_CHECKING\n"
+                "from pydantic import BaseModel\n"
+                "if TYPE_CHECKING:\n"
+                "    from collections.abc import KeysView\n"
+                "class FlextTestProjectModelsViews:\n"
+                "    class Bag(BaseModel):\n"
+                "        def keys(self) -> KeysView[str]:\n"
+                "            return {}.keys()\n"
+            ),
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+
+        with infra.rope_workspace(root) as workspace:
+            projected = tm.ok(u.Infra.protocol_model_sources(workspace))
+
+        rendered = next(
+            source for path, source in projected.items() if path.name == "views.py"
+        )
+        tm.ok("KeysView[str]" in rendered)
+        tm.ok("from collections.abc import KeysView" in rendered)
 
     @staticmethod
     def test_consumer_bootstrap_never_plans_the_infra_facade(tmp_path: Path) -> None:

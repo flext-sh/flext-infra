@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_cli import FlextCliProtocols
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsGit
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsGitLaneInputs:
@@ -39,7 +38,7 @@ class FlextInfraProtocolsGitLaneInputs:
         """Structural data contract projected from the owning model."""
 
         @property
-        def kind(self) -> FlextInfraConstantsGit.LaneViolationKind:
+        def kind(self) -> c.Infra.LaneViolationKind:
             """Violation class."""
             ...
 

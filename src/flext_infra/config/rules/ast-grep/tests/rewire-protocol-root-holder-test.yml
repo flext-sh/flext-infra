@@ -1,7 +1,0 @@
-id: rewire-protocol-root-holder
-valid:
-  - "class Spec(FlextProtocolsPydantic.BaseModel, Protocol): ..."
-  - "value: FlextProtocolsBase.Routable"
-invalid:
-  - "class Spec(FlextProtocolsBase.Model, Protocol): ..."
-  - "probe: FlextProtocolsBase.AttributeProbe"

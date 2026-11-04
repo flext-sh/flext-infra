@@ -1,0 +1,19 @@
+id: ban-test-namespace-alias
+valid:
+  - |
+    from tests import c
+  - |
+    from tests import c, tm
+  - |
+    from tests import FlextCore
+  - |
+    import tests
+  - |
+    import pytest
+invalid:
+  - |
+    from tests import c as tc
+  - |
+    from tests import tm as tmatchers
+  - |
+    import tests as t

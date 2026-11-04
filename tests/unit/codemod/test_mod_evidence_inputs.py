@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCli, infra, m, p, t
+from flext_infra import FlextInfraCli, infra, m, t
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, p, tm, u
 
@@ -303,7 +303,7 @@ class TestsFlextInfraModEvidenceInputs:
             tm.that(raw["text"], eq=finding.text)
             corrupted = finding.model_copy(
                 update={
-                    "native_record": p.Infra.ModNativeRecord(
+                    "native_record": m.Infra.ModNativeRecord(
                         offset=finding.native_record.offset,
                         length=finding.native_record.length,
                         sha256=u.Cli.sha256_bytes(b"foreign record"),

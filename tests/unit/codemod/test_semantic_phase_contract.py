@@ -349,7 +349,7 @@ class TestsFlextInfraSemanticPhaseContract:
             tm.that(tuple(edit.file_path for edit in planned), eq=(path,))
             updated = planned[0].updated_source
             if variant == "static-internal":
-                tm.that(updated, has="from flext_reviewed._utilities.derived import")
+                tm.that(updated, has="from flext_reviewed_utilities import")
                 tm.that(
                     updated, has="value = FlextReviewedDerived.scalar_mapping_adapter()"
                 )

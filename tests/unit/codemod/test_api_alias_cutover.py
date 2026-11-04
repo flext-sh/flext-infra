@@ -188,12 +188,19 @@ class TestsFlextInfraApiAliasCutover:
 
     @staticmethod
     @pytest.mark.parametrize(
+        ("owner_file", "owner_module"),
+        [
+            ("api.py", "flext_sample.api"),
+            ("models.py", "flext_sample.models"),
+        ],
+    )
+    @pytest.mark.parametrize(
         "consumer_source",
         [
-            "from flext_sample.api import sample\n\nfacade = sample\n",
+            "from {owner_module} import sample\n\nfacade = sample\n",
             (
                 "if condition:\n"
-                "    from flext_sample.api import sample\n"
+                "    from {owner_module} import sample\n"
                 "else:\n"
                 "    from flext_sample import sample\n"
                 "facade = sample\n"
@@ -203,10 +210,13 @@ class TestsFlextInfraApiAliasCutover:
     def test_rewires_consumer_before_removing_owner(
         tmp_path: Path,
         consumer_source: str,
+        owner_file: str,
+        owner_module: str,
     ) -> None:
         """Plan the complete owner/export/import/reference cutover together."""
-        owner = tmp_path / "flext-sample/src/flext_sample/api.py"
+        owner = tmp_path / "flext-sample/src/flext_sample" / owner_file
         consumer = tmp_path / "flext-sample/tests/test_api.py"
+        consumer_source = consumer_source.format(owner_module=owner_module)
         sources = {
             owner: (
                 "class FlextSample:\n"
@@ -244,7 +254,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.that(by_path[owner], lacks="sample = FlextSample")
         tm.that(by_path[owner], lacks='"sample"')
         tm.that(by_path[owner], has="facade = FlextSample")
-        tm.that(by_path[consumer], has="from flext_sample.api import FlextSample")
+        tm.that(by_path[consumer], has=f"from {owner_module} import FlextSample")
         tm.that(by_path[consumer], has="facade = FlextSample")
         tm.that(by_path[consumer], lacks="import sample")
 

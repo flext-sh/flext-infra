@@ -72,6 +72,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.managed_conflicts import (
         FlextInfraUtilitiesManagedConflicts,
     )
+    from flext_infra._utilities.markdown_tooling import (
+        FlextInfraUtilitiesMarkdownTooling,
+    )
     from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
     from flext_infra._utilities.mypy import FlextInfraUtilitiesMypy
     from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
@@ -197,6 +200,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesLintSourcePositions",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
+    "FlextInfraUtilitiesMarkdownTooling",
     "FlextInfraUtilitiesMiseBinary",
     "FlextInfraUtilitiesModelsProtocol",
     "FlextInfraUtilitiesModelsProtocolContracts",
@@ -283,6 +287,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesLintSourcePositions": ".lint_source_positions",
         "FlextInfraUtilitiesLogParser": ".log_parser",
         "FlextInfraUtilitiesManagedConflicts": ".managed_conflicts",
+        "FlextInfraUtilitiesMarkdownTooling": ".markdown_tooling",
         "FlextInfraUtilitiesMiseBinary": ".mise_binary",
         "FlextInfraUtilitiesModelsProtocol": ".protocol_models",
         "FlextInfraUtilitiesModelsProtocolContracts": ".protocol_contracts",

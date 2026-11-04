@@ -1,0 +1,16 @@
+# Strong typing: an ignore hint hides the violation instead of repairing the
+# declaration. The fix deletes the hint; the declaration must be repaired.
+id: ban-type-ignore-hint
+language: Python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  enforce: [ENFORCE-126]
+fix: ""
+rule:
+  kind: comment
+  regex: '^#\s*(?:type:\s*ignore|pyright:\s*ignore|mypy:\s*ignore|ruff:\s*ignore|noqa)\b'
+message: >-
+  Type-ignore hint. Repair the declaration or the consumer; suppressing the
+  diagnostic is prohibited. The fix deletes the hint.

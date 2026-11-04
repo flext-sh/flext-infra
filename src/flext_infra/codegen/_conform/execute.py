@@ -184,13 +184,46 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         ready = FlextInfraCodegenPreconditions.rendering_engine(root)
         if ready.failure:
             return r[p.Infra.CodegenResult].from_failure(ready)
-        # One generation per tree: planning and publication read and write
-        # under the same lock, so a concurrent writer waits instead of
-        # invalidating this plan's observed states.
-        with (
-            u.Infra.hold_mutation_scope(root, "codegen generate"),
-            ExitStack() as sources,
+        # Concurrent writers are the normal operating state: planning reads
+        # without a tree-wide lock, the atomic publisher verifies every
+        # destination's observed state, and a destination changed by another
+        # actor triggers a reconciling replan over the new state instead of
+        # waiting for, or failing because of, that actor.
+        attempts = config.Infra.mutation_lock.reconcile_attempts
+        result = self._execute_once(
+            request, root, after_publication, after_cohort_publication
+        )
+        while (
+            attempts > 0
+            and result.failure
+            and c.Infra.ATOMIC_SOURCE_CHANGED in (result.error or "")
         ):
+            attempts -= 1
+            u.Cli.info(
+                f"operation=generate root={root} reconcile=replan "
+                f"cause={(result.error or '').split(';', 1)[0]}"
+            )
+            result = self._execute_once(
+                request, root, after_publication, after_cohort_publication
+            )
+        return result
+
+    def _execute_once(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+        root: Path,
+        after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
+        after_cohort_publication: tuple[
+            Callable[[tuple[Path, ...]], p.Result[bool]], ...
+        ],
+    ) -> p.Result[p.Infra.CodegenResult]:
+        """Plan over the current tree and publish atomically once.
+
+        Returns:
+            The plan and written paths, or the first failure.
+
+        """
+        with ExitStack() as sources:
             previous = self.state.snapshot
             if request.what is c.Infra.CodegenConformSurface.FACADES:
                 self.state.snapshot = sources.enter_context(

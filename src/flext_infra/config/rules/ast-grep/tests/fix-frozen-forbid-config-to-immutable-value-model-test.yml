@@ -1,0 +1,26 @@
+id: fix-frozen-forbid-config-to-immutable-value-model
+valid:
+- |
+  from flext_core import m
+
+  class Value(m.BaseModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="ignore")
+
+      name: str = m.Field(description="name")
+- |
+  from flext_core import m
+
+  class Value(m.FrozenModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+      name: str = m.Field(description="name")
+invalid:
+- |
+  from flext_core import m
+
+  class Value(m.BaseModel):
+      """Value."""
+
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+      name: str = m.Field(description="name")

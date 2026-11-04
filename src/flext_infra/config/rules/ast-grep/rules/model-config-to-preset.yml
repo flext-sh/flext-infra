@@ -1,0 +1,139 @@
+# A model on the raw base whose whole `model_config` restates a flext-core
+# preset is that preset: `extra="forbid"` alone is m.EnforcedModel and
+# `frozen=True, extra="forbid"` is m.ImmutableValueModel. The class is rebased
+# on the preset and the redundant config line is deleted; the remaining body is
+# kept byte-for-byte. Equivalence: both presets add only defer_build,
+# validate_default and (Immutable) validate_assignment, which change neither
+# the JSON schema nor a valid default; the consumer proves it with its schema
+# snapshot. A config with any other keyword, or a body that is only the config,
+# needs a manual preset choice and is out of this rule.
+id: fix-forbid-config-to-enforced-model
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  kind: class_definition
+  all:
+    - has:
+        field: name
+        pattern: $NAME
+    - has:
+        field: superclasses
+        regex: "^\\(m\\.BaseModel\\)$"
+    - has:
+        field: body
+        pattern: $BODY
+        all:
+          - has:
+              kind: expression_statement
+              regex: "^model_config: ClassVar\\[t\\.ConfigDict\\] = m\\.ConfigDict\\(extra=\"forbid\"\\)$"
+          - has:
+              kind: expression_statement
+              not:
+                regex: "^model_config:"
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          matches: m-imported-from-flext
+transform:
+  PRESET_BODY:
+    replace:
+      source: $BODY
+      replace: "model_config: ClassVar\\[t\\.ConfigDict\\] = m\\.ConfigDict\\(extra=\"forbid\"\\)\\n\\s*"
+      by: ""
+fix: |-
+  class $NAME(m.EnforcedModel):
+      $PRESET_BODY
+message: >-
+  `$NAME` restates the m.EnforcedModel preset in its model_config: inherit
+  m.EnforcedModel and delete the config line.
+metadata:
+  enforce: [ENFORCE-108]
+---
+id: fix-frozen-forbid-config-to-immutable-value-model
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  kind: class_definition
+  all:
+    - has:
+        field: name
+        pattern: $NAME
+    - has:
+        field: superclasses
+        regex: "^\\(m\\.BaseModel\\)$"
+    - has:
+        field: body
+        pattern: $BODY
+        all:
+          - has:
+              kind: expression_statement
+              regex: "^model_config: ClassVar\\[t\\.ConfigDict\\] = m\\.ConfigDict\\(frozen=True, extra=\"forbid\"\\)$"
+          - has:
+              kind: expression_statement
+              not:
+                regex: "^model_config:"
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          matches: m-imported-from-flext
+transform:
+  PRESET_BODY:
+    replace:
+      source: $BODY
+      replace: "model_config: ClassVar\\[t\\.ConfigDict\\] = m\\.ConfigDict\\(frozen=True, extra=\"forbid\"\\)\\n\\s*"
+      by: ""
+fix: |-
+  class $NAME(m.ImmutableValueModel):
+      $PRESET_BODY
+message: >-
+  `$NAME` restates the m.ImmutableValueModel preset in its model_config:
+  inherit m.ImmutableValueModel and delete the config line.
+metadata:
+  enforce: [ENFORCE-108, ENFORCE-110]
+---
+# A model already on a preset that declares every keyword of its local
+# model_config restates the preset: the line is deleted (`ruff format`, which
+# `make mod` requires afterwards, closes the blank line). Frozen value presets
+# (ImmutableValueModel, FrozenModel, ContractModel, FrozenValueModel,
+# StrictBoundaryModel) declare `frozen=True` and inherit `extra="forbid"`;
+# every EnforcedModel descendant except the extra-ignoring ones
+# (FlexibleModel, FlexibleInternalModel, DynamicModel, FrozenDynamicModel,
+# ExternalContractModel) declares `extra="forbid"`.
+id: remove-model-config-restated-by-preset
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  kind: expression_statement
+  any:
+    - all:
+        - regex: "^model_config(?:: ClassVar\\[t\\.ConfigDict\\])? = m\\.ConfigDict\\((?:frozen=True, extra=\"forbid\"|extra=\"forbid\", frozen=True)\\)$"
+        - inside:
+            kind: class_definition
+            stopBy: end
+            has:
+              field: superclasses
+              regex: "^\\(m\\.(?:ImmutableValueModel|FrozenModel|ContractModel|FrozenValueModel|StrictBoundaryModel)\\)$"
+    - all:
+        - regex: "^model_config(?:: ClassVar\\[t\\.ConfigDict\\])? = m\\.ConfigDict\\(extra=\"forbid\"\\)$"
+        - inside:
+            kind: class_definition
+            stopBy: end
+            has:
+              field: superclasses
+              regex: "^\\(m\\.(?:EnforcedModel|ManagedModel|EnumManagedModel|NormalizedModel|StrictManagedModel|StrictModel|FrozenModel|ArbitraryTypesModel|ImmutableValueModel|TaggedModel|ContractModel|FrozenValueModel|StrictBoundaryModel)\\)$"
+fix: ""
+message: >-
+  The model_config restates its preset: every keyword is already declared by
+  the inherited m.* preset. Delete the line.
+metadata:
+  enforce: [ENFORCE-108]

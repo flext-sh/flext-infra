@@ -54,7 +54,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             tuple[
                 Annotated[
                     p.Infra.RepositoryRef,
-                    t.schema_for_model(FlextInfraModelsConfigContexts.RepositoryRef),
+                    t.schema_for_model(FlextInfraModelsConfigRepository.RepositoryRef),
                 ],
                 ...,
             ],
@@ -384,7 +384,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             Annotated[
                 p.Infra.WorkspaceIntegrationSpec,
                 t.schema_for_model(
-                    FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec
+                    FlextInfraModelsConfigRepository.WorkspaceIntegrationSpec
                 ),
             ]
             | None,
@@ -614,7 +614,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 Annotated[
                     p.Infra.ConsoleScriptSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigContexts.ConsoleScriptSpec
+                        FlextInfraModelsConfigRepository.ConsoleScriptSpec
                     ),
                 ],
                 ...,

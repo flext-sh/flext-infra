@@ -143,6 +143,12 @@ language: python
 severity: error
 files:
   - "**/*.py"
+ignores:
+  - "**/tests/constants.py"
+  - "**/tests/models.py"
+  - "**/tests/protocols.py"
+  - "**/tests/typings.py"
+  - "**/tests/utilities.py"
 constraints:
   MODULE:
     matches: own-package

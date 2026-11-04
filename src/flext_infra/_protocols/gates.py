@@ -17,13 +17,7 @@ from flext_cli import FlextCliProtocols
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import (
-        FlextInfraConstantsCheck,
-        FlextInfraConstantsConfig,
-        FlextInfraConstantsGit,
-        FlextInfraConstantsMake,
-    )
+    from flext_infra import c, t
     from flext_infra._protocols import FlextInfraProtocolsCheck, FlextInfraProtocolsDeps
 
 
@@ -494,7 +488,7 @@ class FlextInfraProtocolsGates:
             ...
 
         @property
-        def kind(self) -> FlextInfraConstantsGit.GateEvidenceReportKind:
+        def kind(self) -> c.Infra.GateEvidenceReportKind:
             """Canonical producer report contract."""
             ...
 
@@ -503,7 +497,7 @@ class FlextInfraProtocolsGates:
         """Structural data contract projected from the owning model."""
 
         @property
-        def execution_mode(self) -> FlextInfraConstantsMake.PytestExecutionMode:
+        def execution_mode(self) -> c.Infra.PytestExecutionMode:
             """Native test operation."""
             ...
 
@@ -537,7 +531,7 @@ class FlextInfraProtocolsGates:
         """Structural data contract projected from the owning model."""
 
         @property
-        def phase(self) -> FlextInfraConstantsCheck.CheckPhase:
+        def phase(self) -> c.Infra.CheckPhase:
             """Original checker evidence phase, never inferred from gates."""
             ...
 
@@ -581,7 +575,7 @@ class FlextInfraProtocolsGates:
             ...
 
         @property
-        def native_outcome(self) -> FlextInfraConstantsCheck.ToolOutcome:
+        def native_outcome(self) -> c.Infra.ToolOutcome:
             """Original producer's native report classification."""
             ...
 
@@ -591,7 +585,7 @@ class FlextInfraProtocolsGates:
             ...
 
         @property
-        def policy(self) -> FlextInfraConstantsConfig.GateAcceptancePolicy:
+        def policy(self) -> c.Infra.GateAcceptancePolicy:
             """Exact recorded policy used to derive admission."""
             ...
 
@@ -753,7 +747,7 @@ class FlextInfraProtocolsGates:
             ...
 
         @property
-        def policy(self) -> FlextInfraConstantsConfig.GateAcceptancePolicy:
+        def policy(self) -> c.Infra.GateAcceptancePolicy:
             """Policy."""
             ...
 
@@ -777,7 +771,7 @@ class FlextInfraProtocolsGates:
         """Structural data contract projected from the owning model."""
 
         @property
-        def phase(self) -> FlextInfraConstantsCheck.CheckPhase:
+        def phase(self) -> c.Infra.CheckPhase:
             """Primary source admission or complete check acceptance."""
             ...
 
@@ -853,7 +847,7 @@ class FlextInfraProtocolsGates:
         """Structural data contract projected from the owning model."""
 
         @property
-        def schema_version(self) -> FlextInfraConstantsGit.GateAttestationSchema:
+        def schema_version(self) -> c.Infra.GateAttestationSchema:
             """Predicate schema identity."""
             ...
 
@@ -922,7 +916,7 @@ class FlextInfraProtocolsGates:
             ...
 
         @property
-        def policy(self) -> FlextInfraConstantsConfig.GateAcceptancePolicy:
+        def policy(self) -> c.Infra.GateAcceptancePolicy:
             """Exact policy requested for this original evidence."""
             ...
 
@@ -961,7 +955,7 @@ class FlextInfraProtocolsGates:
             ...
 
         @property
-        def policy(self) -> FlextInfraConstantsConfig.GateAcceptancePolicy:
+        def policy(self) -> c.Infra.GateAcceptancePolicy:
             """Required policy for stage reuse."""
             ...
 

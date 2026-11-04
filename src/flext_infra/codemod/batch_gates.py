@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 import shutil
 import stat
 import sys
@@ -31,12 +32,15 @@ class FlextInfraModGateEngine:
         root: Path,
         rules: Sequence[Path],
     ) -> p.Result[bool]:
-        """Verify every fixture against its committed snapshots; never rewrite them.
+        """Verify the selected rules' fixtures against their snapshots; never rewrite.
 
         A drifted or missing snapshot fails ``ast-grep test``; a snapshot of a
         removed rule or deleted test case fails the owned-inventory check. The
         change they record is made explicit by ``make mod-snapshots`` and lands
         as a reviewed commit, so ``make mod`` cannot accept rewritten output.
+        Only the rules this run applies are proven here: a sibling rule's
+        fixture never blocks another selection, and the whole catalog stays
+        proven by ``make mod-snapshots`` and the codemod check gate.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -46,9 +50,15 @@ class FlextInfraModGateEngine:
             root,
             rules,
         ):
+            selected = frozenset(
+                rule_id
+                for rule in owner_rules
+                for rule_id in u.Infra.ast_grep_rule_contract(rule)[0]
+            )
             if owner_is_governed:
                 stale = FlextInfraCodemodSnapshotReconciler.stale_snapshots(
                     config_root,
+                    selected,
                 )
                 if stale:
                     return r[bool].fail(
@@ -70,7 +80,13 @@ class FlextInfraModGateEngine:
                     temp_root=temp_root,
                     owner_rules=owner_rules,
                 )
-                tested = cls._sg_test(temp_root, root)
+                pattern = "|".join(re.escape(rule_id) for rule_id in sorted(selected))
+                tested = cls._sg_test(
+                    temp_root,
+                    root,
+                    c.Infra.SG_FILTER_FLAG,
+                    f"^(?:{pattern})$",
+                )
                 if tested.failure:
                     remedy = (
                         c.Infra.CODEMOD_SNAPSHOT_REFRESH_HINT

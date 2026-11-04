@@ -16,14 +16,12 @@ from flext_cli import FlextCliProtocols
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsRefactor
+    from flext_infra import c, t
     from flext_infra._protocols import (
         FlextInfraProtocolsDepsToolConfigLinters,
         FlextInfraProtocolsDepsToolConfigTypeCheckers,
         FlextInfraProtocolsDuplication,
     )
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsDepsToolConfig:
@@ -34,12 +32,7 @@ class FlextInfraProtocolsDepsToolConfig:
         """Structural data contract projected from the owning model."""
 
         name: t.NonEmptyStr
-
-        @property
-        def kind(self) -> FlextInfraConstantsRefactor.ModStageKind:
-            """Native ast-grep apply or Ruff import repair."""
-            ...
-
+        kind: c.Infra.ModStageKind
         shapes: t.StrTuple
         select: t.StrTuple
 
@@ -202,21 +195,10 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
         findings_exit_codes: tuple[int, ...]
-
-        @property
-        def rules(self) -> FlextInfraTypesBase.SettingsPairs:
-            """Ordered rules supported by both Markdown tools."""
-            ...
-
-        @property
-        def native_rules(self) -> FlextInfraTypesBase.SettingsPairs:
-            """Native Markdown rule overrides for the execution tool."""
-            ...
-
-        @property
-        def native_settings(self) -> FlextInfraTypesBase.SettingsPairs:
-            """Native Markdown configuration tables."""
-            ...
+        default_enabled: bool
+        extend_enable: t.StrTuple
+        rules: t.Infra.SettingsPairs
+        native_settings: t.Infra.SettingsPairs
 
     @runtime_checkable
     class ToolConfigTools(FlextCliProtocols.BaseModel, Protocol):
@@ -280,18 +262,7 @@ class FlextInfraProtocolsDepsToolConfig:
     class FacadeMembersConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def owners(
-            self,
-        ) -> Mapping[FlextInfraConstantsRefactor.FacadeMemberKind, t.NonEmptyStr]:
-            """Structural member projected from the owning model.
-
-            Facade letter that owns each member kind. A member bound by another
-            facade letter is a duplicate retired there and consumed through its
-            owner.
-            """
-            ...
-
+        owners: Mapping[c.Infra.FacadeMemberKind, t.NonEmptyStr]
         model_declaration_modules: tuple[t.NonEmptyStr, ...]
         type_constructor_modules: tuple[t.NonEmptyStr, ...]
 
@@ -309,7 +280,7 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
         @property
-        def enforce(self) -> Mapping[t.NonEmptyStr, FlextInfraTypesBase.EnforcementIds]:
+        def enforce(self) -> Mapping[t.NonEmptyStr, t.Infra.EnforcementIds]:
             """Structural member projected from the owning model.
 
             qlty check name -> enforcement law ids the smells gate claims for that
@@ -335,7 +306,7 @@ class FlextInfraProtocolsDepsToolConfig:
         """Structural data contract projected from the owning model."""
 
         @property
-        def settings(self) -> Mapping[t.NonEmptyStr, FlextInfraTypesBase.SettingsPairs]:
+        def settings(self) -> Mapping[t.NonEmptyStr, t.Infra.SettingsPairs]:
             """Structural member projected from the owning model.
 
             Native tool-table paths and ordered option pairs. Later pairs replace

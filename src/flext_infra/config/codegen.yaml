@@ -35,6 +35,11 @@ Infra:
     # context-width declaration identifies the retired native-import competitor.
     - path: .markdownlint.json
       evidence: '"heading_line_length": 200'
+    # rumdl owns every markdownlint rule (MD001-MD060) plus MD061+, and the
+    # rvben.rumdl editor extension reads .rumdl.toml: markdownlint is retired
+    # from CLI and editor alike, so its ignore projection is too.
+    - path: .markdownlintignore
+      evidence: '# @flext-regenerate: make gen'
     - .github/scripts/install-git-hooks.sh
     - .github/scripts/flext-law-loop.sh
     # The unread per-id projection of generated ast-grep utilities and rules
@@ -1224,7 +1229,10 @@ Infra:
       - [ git.repositoryScanMaxDepth, 2 ]
       - [ githubPullRequests.autoRepositoryDetection, true ]
       - [ githubPullRequests.ignoreSubmodules, false ]
-      - [ markdownlint.lintWorkspaceGlobs, [ '!**/.git/**', '!**/.planning/**', '!**/.reports/**', '!**/.venv/**', '!**/*.code-search', '!**/bower_components/**', '!**/build/**', '!**/dist/**', '!**/node_modules/**', '!**/output/**', '!**/tmp/**', '!**/vendor/**', '**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}' ] ]
+      # markdownlint is retired (rvben.rumdl reads .rumdl.toml): if the
+      # extension is installed anyway, its native off switch silences it so
+      # the editor never shows a second, diverging Markdown policy.
+      - [ markdownlint.appliesTo, noFiles ]
       - [ yaml.disableSchemaDetection, [ '**/.github/workflows/*.yml', '**/.github/workflows/*.yaml', '**/.gitea/workflows/*.yml', '**/.gitea/workflows/*.yaml', '**/.forgejo/workflows/*.yml', '**/.forgejo/workflows/*.yaml' ] ]
       map_union_settings:
         '[python]':
@@ -1242,6 +1250,9 @@ Infra:
       - python.analysis.extraPaths
       - python.analysis.useLibraryCodeForTypes
       - ruff.nativeServer
+      # markdownlint is retired: rvben.rumdl reads .rumdl.toml in the editor.
+      - markdownlint.config
+      - markdownlint.lintWorkspaceGlobs
       stripped_map_keys:
         '[python]':
         - editor.codeActionsOnSave.source.organizeImports
@@ -1660,7 +1671,6 @@ Infra:
         - "!AGENTS.md"
         - "!codex.md"
         - "!.rumdl.toml"
-        - "!.markdownlintignore"
         - "!.shellcheckrc"
       - name: "Git configuration"
         profiles: [ workspace ]
@@ -2197,12 +2207,6 @@ Infra:
           ownership: null
         .mise.toml:
           source: base/.mise.toml.j2
-          profiles: [ workspace, standalone ]
-          ownership:
-            owner: codegen
-            policy: full
-        .markdownlintignore:
-          source: base/markdownlintignore.j2
           profiles: [ workspace, standalone ]
           ownership:
             owner: codegen

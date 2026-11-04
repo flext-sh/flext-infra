@@ -733,7 +733,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
     def test_selected_rule_preserves_unselected_owner_snapshots(
         self, tmp_path: Path
     ) -> None:
-        """Fixture validity belongs to the full catalog, not execution election."""
+        """A selected run never rewrites a sibling owner's committed snapshots."""
         rule = self._owner(tmp_path)
         other = rule.with_name("other.yml")
         tm.ok(
@@ -778,6 +778,44 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             empty=True,
         )
         tm.that(snapshot.read_bytes(), eq=before)
+
+    def test_sibling_fixture_drift_never_blocks_a_selected_run(
+        self, tmp_path: Path
+    ) -> None:
+        """Only the selected rules are proven; a drifted sibling fails its own run."""
+        rule = self._owner(tmp_path)
+        other = rule.with_name("other.yml")
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                other,
+                rule.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                    "id: demo",
+                    "id: other",
+                ),
+            ),
+        )
+        fixture = self._catalog(tmp_path) / "tests"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                fixture / "other-test.yml",
+                (fixture / "demo-test.yml")
+                .read_text(encoding=c.DEFAULT_ENCODING)
+                .replace("id: demo", "id: other"),
+            ),
+        )
+        tm.ok(
+            FlextInfraModGateEngine.refresh_rule_snapshots(
+                tmp_path,
+                (rule, other),
+                apply=True,
+            ),
+        )
+        self._snapshot(tmp_path, "other").unlink()
+
+        tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule,)))
+        tm.fail(
+            FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule, other)),
+        )
 
     def test_refresh_records_what_verification_then_accepts(
         self,

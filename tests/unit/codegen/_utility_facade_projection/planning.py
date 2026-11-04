@@ -368,7 +368,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         self._write(
             facade,
             "from flext_core import FlextUtilities\n"
-            "from flext_sample._utilities.existing import Existing\n\n"
+            "from flext_sample_utilities import Existing\n\n"
             "class FlextSampleUtilities(FlextUtilities):\n"
             "    class Sample(\n"
             "        Existing,\n"
@@ -898,7 +898,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             "class Owner:\n    pass\n__all__ = ['Owner']\n",
         )
         original = (
-            "from flext_sample._utilities.owner import Owner\n"
+            "from flext_sample_utilities import Owner\n"
             "class Facade:\n    class Domain(Owner):\n        pass\n"
             "u = Facade\n__all__ = ['Facade', 'u']\n"
         )
@@ -1027,7 +1027,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         )
         self._write(
             owners / c.Infra.INIT_PY,
-            f"from flext_sample._typings.sample import {owner_name}, t\n"
+            f"from flext_sample_typings import {owner_name}, t\n"
             f"__all__ = [{owner_name!r}, 't']\n",
         )
         facade = package / c.Infra.TYPINGS_PY

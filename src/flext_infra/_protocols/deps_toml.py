@@ -16,8 +16,7 @@ from flext_cli import FlextCliProtocols
 from flext_infra._protocols._config import FlextInfraProtocolsConfigWorkspace
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsBase
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsDepsToml:
@@ -83,7 +82,7 @@ class FlextInfraProtocolsDepsToml:
             ...
 
         @property
-        def strategy(self) -> FlextInfraConstantsBase.TomlMergeMode:
+        def strategy(self) -> c.Infra.TomlMergeMode:
             """Merge strategy."""
             ...
 

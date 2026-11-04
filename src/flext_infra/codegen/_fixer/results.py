@@ -87,7 +87,7 @@ class FlextInfraCodegenFixerResults:
 
     @staticmethod
     def _classify_remaining_violations(
-        ctx: p.Infra.FixContext,
+        ctx: m.Infra.FixContext,
         project_path: Path,
         initial_violations: Sequence[p.Infra.CensusViolation],
     ) -> None:

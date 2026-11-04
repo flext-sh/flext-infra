@@ -1,0 +1,32 @@
+id: remove-model-config-restated-by-preset
+valid:
+- |
+  class Value(m.ArbitraryTypesModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+- |
+  class Value(m.FlexibleModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+- |
+  class Value(m.ContractModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", strict=False)
+- |
+  class Value(m.BaseModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+invalid:
+- |
+  class Convert(m.ImmutableValueModel):
+      """Convert."""
+
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+      name: str = m.Field(description="name")
+- |
+  class Stage(m.ContractModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+
+      name: str = m.Field(description="name")
+- |
+  class Layout(m.ArbitraryTypesModel):
+      model_config = m.ConfigDict(extra="forbid")
+
+      name: str = m.Field(description="name")

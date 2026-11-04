@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, p
+from flext_infra import config
 from flext_infra.services.cli_mod_progress import FlextInfraCliModProgress
 from tests import c, m, p, tm, u
 

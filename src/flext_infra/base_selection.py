@@ -11,12 +11,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from flext_infra import m, s, t
+from flext_infra import m, p, s, t
 from flext_infra._base import FlextInfraBaseProjects
 
 
 class FlextInfraProjectSelectionServiceBase[
-    TDomainResult: t.JsonValue | t.BaseModelType | Path | datetime,
+    TDomainResult: t.JsonValue | p.BaseModel | Path | datetime,
 ](
     s[TDomainResult],
     FlextInfraBaseProjects,

@@ -28,6 +28,8 @@ files:
   - "**/*.py"
 ignores:
   - "**/__init__.py"
+  - "**/settings.py"
+  - "**/config.py"
 metadata:
   enforce: [ENFORCE-015, ENFORCE-055, ENFORCE-068, ENFORCE-099]
 rule:

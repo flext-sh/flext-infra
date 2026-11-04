@@ -17,8 +17,7 @@ from flext_cli import FlextCliProtocols
 from flext_infra._protocols import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsBase, FlextInfraConstantsMake
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsValidate:
@@ -81,12 +80,7 @@ class FlextInfraProtocolsValidate:
         rules_list: t.JsonList
         skill_dir: Path
         root: Path
-
-        @property
-        def mode(self) -> FlextInfraConstantsBase.OperationMode:
-            """Skill validation mode."""
-            ...
-
+        mode: c.Infra.OperationMode
         include_globs: Sequence[str]
         exclude_globs: Sequence[str]
 
@@ -97,12 +91,7 @@ class FlextInfraProtocolsValidate:
         rules: Mapping[str, t.JsonValue]
         root: Path
         skill_name: str
-
-        @property
-        def mode(self) -> FlextInfraConstantsBase.OperationMode:
-            """Skill validation mode."""
-            ...
-
+        mode: c.Infra.OperationMode
         counts: t.IntMapping
         violations: Sequence[str]
 
@@ -276,7 +265,7 @@ class FlextInfraProtocolsValidate:
             ...
 
         @property
-        def execution_mode(self) -> FlextInfraConstantsMake.PytestExecutionMode:
+        def execution_mode(self) -> c.Infra.PytestExecutionMode:
             """Canonical execution mode for this invocation."""
             ...
 
@@ -285,7 +274,7 @@ class FlextInfraProtocolsValidate:
         """Structural data contract projected from the owning model."""
 
         @property
-        def execution_mode(self) -> FlextInfraConstantsMake.PytestExecutionMode:
+        def execution_mode(self) -> c.Infra.PytestExecutionMode:
             """Canonical test operation for this report directory."""
             ...
 

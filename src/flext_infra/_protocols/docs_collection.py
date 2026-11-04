@@ -16,7 +16,6 @@ from flext_cli import FlextCliProtocols
 if TYPE_CHECKING:
     from flext_infra import t
     from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsDocsCollection:
@@ -27,7 +26,7 @@ class FlextInfraProtocolsDocsCollection:
         """Structural data contract projected from the owning model."""
 
         @property
-        def value(self) -> FlextInfraTypesBase.PlanSourceTimestamp:
+        def value(self) -> t.Infra.PlanSourceTimestamp:
             """Native YAML date, instant, or explicitly quoted timestamp."""
             ...
 

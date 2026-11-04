@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_tests import FlextTestsProtocols
+from flext_infra import FlextInfraProtocols
 
 if TYPE_CHECKING:
     from tests import t
@@ -22,7 +22,7 @@ class TestsFlextInfraProtocolsBase:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class AstGrepFixtureSnapshots(FlextTestsProtocols.BaseModel, Protocol):
+    class AstGrepFixtureSnapshots(FlextInfraProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -36,7 +36,7 @@ class TestsFlextInfraProtocolsBase:
             ...
 
     @runtime_checkable
-    class PytestDiagOptions(FlextTestsProtocols.BaseModel, Protocol):
+    class PytestDiagOptions(FlextInfraProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property

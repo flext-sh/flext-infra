@@ -1,0 +1,29 @@
+# Strong typing: `cast` asserts a type the declarations do not prove. Declare
+# the real type in `t`/`p`/`m` and let the checker prove it.
+id: ban-type-cast
+language: Python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  enforce: [ENFORCE-124]
+rule:
+  any:
+    - kind: import_from_statement
+      all:
+        - has:
+            field: module_name
+            regex: '^typing(?:_extensions)?$'
+        - has:
+            stopBy: end
+            kind: dotted_name
+            regex: '^cast$'
+    - kind: attribute
+      regex: '^(?:typing|t)\.cast$'
+    - kind: call
+      has:
+        field: function
+        regex: '^(?:typing\.)?cast$'
+message: >-
+  `cast` asserts a type the declarations do not prove. Declare the real type
+  in `t`/`p`/`m` and let the checker prove it; no cast is allowed.

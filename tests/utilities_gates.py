@@ -97,7 +97,7 @@ class TestsFlextInfraUtilitiesGates:
         """
         findings = tuple(issues or ())
         return m.Infra.GateExecution.model_validate({
-            "result": p.Infra.GateResult(
+            "result": m.Infra.GateResult(
                 gate=gate,
                 project=project,
                 passed=passed,

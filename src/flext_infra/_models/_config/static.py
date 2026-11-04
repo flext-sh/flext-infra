@@ -26,19 +26,11 @@ class FlextInfraModelsConfigStatic:
         ]
 
     class MutationLockSpec(FlextInfraModelsConfigContract.ConfigContract):
-        """Bounded, visible wait for a mutation scope held by another writer."""
+        """Concurrent-writer reconciliation for one mutation scope."""
 
-        wait_deadline_seconds: Annotated[
-            t.PositiveFloat,
-            m.Field(description="Longest wait before failing with the last holder"),
-        ]
-        poll_interval_seconds: Annotated[
-            t.PositiveFloat,
-            m.Field(description="Interval between read-only lock availability polls"),
-        ]
-        report_interval_seconds: Annotated[
-            t.PositiveFloat,
-            m.Field(description="Interval between progress lines naming the holder"),
+        reconcile_attempts: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Replans after another writer changed a destination"),
         ]
 
     class ConsolidationOutcome(FlextInfraModelsConfigContract.ConfigContract):

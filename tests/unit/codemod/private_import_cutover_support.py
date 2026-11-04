@@ -10,7 +10,7 @@ import dataclasses
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_infra import infra, m, p, u
+from flext_infra import infra, m, u
 from tests import c, p, tm
 
 

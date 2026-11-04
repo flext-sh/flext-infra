@@ -205,7 +205,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             package / "services" / "worker.py",
             "from __future__ import annotations\n"
             "\n"
-            "from demo_pkg._models.record import DemoRecord\n"
+            "from demo_pkg_models import DemoRecord\n"
             "\n"
             "\n"
             "def run() -> object:\n"
@@ -265,7 +265,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                     "-c",
                     (
                         "from demo_pkg._models import DemoRecord; "
-                        "from demo_pkg._models.record import DemoRecord as provider; "
+                        "from demo_pkg_models import DemoRecord as provider; "
                         "assert DemoRecord is provider"
                     ),
                 ),
@@ -689,7 +689,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "from demo_pkg import t",
             "from demo_pkg import settings",
             "from demo_pkg import settings as own",
-            "from demo_pkg._models.base import DemoModelsBase",
+            "from demo_pkg_models import DemoModelsBase",
             "from demo_pkg._settings import DemoSettings",
             "from ._settings import DemoSettings",
             "import demo_pkg as own",

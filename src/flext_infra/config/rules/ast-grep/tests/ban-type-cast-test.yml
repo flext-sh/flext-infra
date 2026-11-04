@@ -1,0 +1,14 @@
+id: ban-type-cast
+valid:
+  - |
+    from typing import Protocol
+  - |
+    value: str = "value"
+invalid:
+  - |
+    from typing import cast
+  - |
+    value = cast(str, other)
+  - |
+    from tests import t
+    value = t.cast(str, other)

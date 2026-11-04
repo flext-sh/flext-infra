@@ -67,6 +67,7 @@ class FlextInfraConstantsCodegen(
         frozenset[FlextInfraConstantsConfig.CodegenConformSurface]
     ] = SELF_SCOPE_SURFACES | frozenset((
         FlextInfraConstantsConfig.CodegenConformSurface.MAKEFILE,
+        FlextInfraConstantsConfig.CodegenConformSurface.MARKDOWN,
         FlextInfraConstantsConfig.CodegenConformSurface.PYPROJECT,
         FlextInfraConstantsConfig.CodegenConformSurface.EDITOR,
     ))
@@ -148,7 +149,7 @@ class FlextInfraConstantsCodegen(
     PROTOCOL_GENERATED_STEM: ClassVar[str] = "generated_models"
     """Module stem of a generated protocol mirror (``<stem>_<route token>``)."""
     VIOLATION_PATTERN: ClassVar[t.RegexPattern] = re.compile(
-        r"\[(?P<rule>[a-z0-9][a-z0-9-]*)\]\s+"
+        r"\[(?P<rule>[A-Za-z0-9][A-Za-z0-9_.:,\-]*)\]\s+"
         r"(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)",
     )
     "Regex to parse violation strings: [rule-id] path:line — message."

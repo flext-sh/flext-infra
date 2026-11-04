@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsConfig
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsConfigScaffold:
@@ -169,7 +168,7 @@ class FlextInfraProtocolsConfigScaffold:
             ...
 
         @property
-        def profiles(self) -> tuple[FlextInfraConstantsConfig.MakeProfile, ...]:
+        def profiles(self) -> tuple[c.Infra.MakeProfile, ...]:
             """Structural member projected from the owning model.
 
             Make profiles this section applies to; empty means every profile

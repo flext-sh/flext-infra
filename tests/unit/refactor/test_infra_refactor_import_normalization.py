@@ -44,7 +44,7 @@ class TestsFlextInfraRefactorImportNormalization(
         before = (
             "from typing import TYPE_CHECKING\n"
             "if TYPE_CHECKING:\n"
-            "    from demo_pkg._utilities.inspection import inspect_value\n"
+            "    from demo_pkg_utilities import inspect_value\n"
         )
         normalized = tm.ok(
             u.Infra.normalize_import_source(
@@ -280,7 +280,7 @@ class TestsFlextInfraRefactorImportNormalization(
             encoding="utf-8",
         )
         source = (
-            "from demo_pkg._models.record import DemoRecord\n\n"
+            "from demo_pkg_models import DemoRecord\n\n"
             "class Bootstrap(DemoRecord):\n    pass\n"
             if own_provider
             else "from flext_cli import m\n\n"

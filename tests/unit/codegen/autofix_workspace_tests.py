@@ -33,7 +33,9 @@ class TestsFlextInfraCodegenAutofixWorkspace:
 
     @staticmethod
     @pytest.mark.slow
-    def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
+    def test_project_without_pyproject_excluded_from_run(
+        tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """Test project without pyproject excluded from run."""
         external_project = tmp_path / "external-project"
         external_project.mkdir()
@@ -56,6 +58,13 @@ class TestsFlextInfraCodegenAutofixWorkspace:
             },
         )
         u.Tests.declare_workspace_projects(tmp_path, (managed_project.name,))
+        tm.ok(
+            u.Tests.create_python_environment(
+                managed_project,
+                dependency_projects=u.Tests.python_dependency_projects(managed_project),
+                session_runtime=session_runtime,
+            ),
+        )
         u.Tests.provision_checkout(managed_project)
         fixer = FlextInfraCodegenFixer(repository_root=tmp_path)
         results = fixer.fix_workspace()
@@ -80,7 +89,9 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         tm.that(result.files_modified, empty=True)
 
     @pytest.mark.slow
-    def test_files_modified_tracks_affected_files(self, tmp_path: Path) -> None:
+    def test_files_modified_tracks_affected_files(
+        self, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """Test files modified tracks affected files."""
         project = u.Tests.create_codegen_project(
             tmp_path=tmp_path,
@@ -94,6 +105,13 @@ class TestsFlextInfraCodegenAutofixWorkspace:
             },
         )
         u.Tests.declare_workspace_projects(tmp_path, (project.name,))
+        tm.ok(
+            u.Tests.create_python_environment(
+                project,
+                dependency_projects=u.Tests.python_dependency_projects(project),
+                session_runtime=session_runtime,
+            ),
+        )
         u.Tests.provision_checkout(project)
         # The workspace carries its governed Mise declaration, so the fixer's
         # ast-grep resolves the pinned tool from it on any runner.

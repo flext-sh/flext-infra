@@ -780,7 +780,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
     @staticmethod
     def _import_statements(
         module: p.Infra.RopeSourceModule,
-        project: p.Infra.RopeProject,
+        _project: p.Infra.RopeProject,
         imports: Mapping[str, str],
         finder: p.Infra.RopeWorder,
     ) -> Iterator[tuple[str, p.Infra.RopeSourceFragment]]:
@@ -790,7 +790,6 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             The original provider and exact indexed import declaration.
 
         Raises:
-            TypeError: An elected import lacks its native binding contract.
             ValueError: The provider or scoped declaration cannot be authenticated.
 
         """

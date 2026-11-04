@@ -385,6 +385,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
 
         """
         fixture = TestsFlextInfraUtilitiesProjectFixture
+        fixture.declare_governed_kind(repository)
         provider = fixture.provider()
         path = repository / c.Infra.GITMODULES
         path.write_text(

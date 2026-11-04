@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m, p, t, u
+from flext_infra import config, m, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenMiseToolchainProof,

@@ -775,21 +775,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         spec: p.BaseModel
         if destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME:
             spec = m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
-        elif destination in {
-            c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
-            c.Infra.MARKDOWN_CONFIG_FILENAME,
-        }:
+        elif destination == c.Infra.MARKDOWN_CONFIG_FILENAME:
             tooling = render_inputs.tooling_runtime
             if tooling is None or tooling.document is None:
                 return r[p.BaseModel].fail(
                     "Markdown rendering requires elected tooling inputs"
                 )
-            markdown = tooling.document.tools.markdown
-            spec = m.Infra.MarkdownLintRenderSpec(
+            spec = m.Infra.MarkdownRenderSpec(
                 native_config=u.Infra.markdown_native_configuration(
-                    markdown, codegen.markdown_exclude_globs
+                    tooling.document.tools.markdown, codegen.markdown_exclude_globs
                 ),
-                exclude=codegen.markdown_exclude_globs,
             )
         elif destination in {
             c.Infra.MISE_TOML_FILENAME,

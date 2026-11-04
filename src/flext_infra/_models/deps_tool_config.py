@@ -602,20 +602,73 @@ class FlextInfraModelsDepsToolConfig(
             alias="findings-exit-codes",
             description="Exit statuses with which rumdl reports its findings.",
         )
+        default_enabled: bool = m.Field(
+            alias="default-enabled",
+            description=(
+                "Whether rules not declared in rules stay enabled; false turns "
+                "the declared rules into a strict allowlist."
+            ),
+        )
+        extend_enable: Annotated[
+            t.StrTuple,
+            m.BeforeValidator(
+                lambda value: tuple(value) if isinstance(value, list) else value
+            ),
+            m.Field(
+                alias="extend-enable",
+                description="Opt-in rules activated on top of the default set.",
+            ),
+        ] = ()
         rules: Annotated[
             t.Infra.SettingsPairs,
-            m.Field(description="Ordered rules supported by both Markdown tools."),
-        ]
-        native_rules: Annotated[
-            t.Infra.SettingsPairs,
-            m.Field(
-                description="Native Markdown rule overrides for the execution tool."
-            ),
+            m.Field(description="Ordered rumdl rules and their options."),
         ]
         native_settings: Annotated[
             t.Infra.SettingsPairs,
             m.Field(description="Native Markdown configuration tables."),
         ]
+
+        @m.model_validator(mode="after")
+        def _validate_rule_ids(self) -> Self:
+            for table_name, names in (
+                ("rules", [name for name, _value in self.rules]),
+                ("extend-enable", list(self.extend_enable)),
+            ):
+                invalid = sorted({
+                    name
+                    for name in names
+                    if c.Infra.MARKDOWN_RULE_ID_PATTERN.fullmatch(name) is None
+                })
+                duplicated = sorted({name for name in names if names.count(name) > 1})
+                if invalid or duplicated:
+                    msg = (
+                        f"{table_name} must declare unique MD### rule ids "
+                        f"(use default-enabled for control); invalid={invalid}, "
+                        f"duplicated={duplicated}"
+                    )
+                    raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
+        def _validate_native_tables(self) -> Self:
+            tables = [table for table, _value in self.native_settings]
+            owned = sorted({
+                table
+                for table in tables
+                if table.split(".", 1)[0] in c.Infra.MARKDOWN_GENERATOR_OWNED_TABLES
+            })
+            duplicated = sorted({table for table in tables if tables.count(table) > 1})
+            disabled = {name for name, value in self.rules if value is False}
+            contradictory = sorted(set(self.extend_enable) & disabled)
+            if owned or duplicated or contradictory:
+                msg = (
+                    "native_settings must not redeclare renderer-owned or "
+                    f"duplicated tables, nor extend-enable disabled rules: "
+                    f"owned={owned}, duplicated={duplicated}, "
+                    f"contradictory={contradictory}"
+                )
+                raise ValueError(msg)
+            return self
 
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
@@ -628,25 +681,29 @@ class FlextInfraModelsDepsToolConfig(
         )
         ruff: Annotated[
             p.Infra.RuffConfig,
-            t.schema_for_model(FlextInfraModelsDepsToolConfig.RuffConfig),
+            t.schema_for_model(FlextInfraModelsDepsToolConfigLinters.RuffConfig),
         ] = m.Field(
             description="Ruff settings",
         )
         mypy: Annotated[
             p.Infra.MypyConfig,
-            t.schema_for_model(FlextInfraModelsDepsToolConfig.MypyConfig),
+            t.schema_for_model(FlextInfraModelsDepsToolConfigLinters.MypyConfig),
         ] = m.Field(
             description="Mypy settings",
         )
         pyright: Annotated[
             p.Infra.PyrightConfig,
-            t.schema_for_model(FlextInfraModelsDepsToolConfig.PyrightConfig),
+            t.schema_for_model(
+                FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig
+            ),
         ] = m.Field(
             description="Pyright settings",
         )
         pyrefly: Annotated[
             p.Infra.PyreflyConfig,
-            t.schema_for_model(FlextInfraModelsDepsToolConfig.PyreflyConfig),
+            t.schema_for_model(
+                FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig
+            ),
         ] = m.Field(
             description="Pyrefly settings",
         )

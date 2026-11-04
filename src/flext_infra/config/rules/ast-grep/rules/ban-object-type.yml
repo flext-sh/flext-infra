@@ -1,0 +1,38 @@
+# Strong typing: `object` erases the typed contract. Declare the concrete
+# protocol or model and use it; no `object` type is allowed.
+id: ban-object-type
+language: Python
+severity: error
+files:
+  - "**/*.py"
+# The `t` owner defines the canonical type forms (`TypeForm[object]`,
+# `type[object]`); every consumer reads them instead of spelling `object`.
+ignores:
+  - "**/_typings/**"
+  - "**/typings.py"
+metadata:
+  enforce: [ENFORCE-123]
+rule:
+  any:
+    - kind: type
+      regex: '(^|[|\[])\s*object\s*($|[\]|])'
+      # The data model fixes `other: object` for rich comparison and
+      # containment dunders; the same exemption `ban-broad-annotation` owns.
+      not:
+        inside:
+          kind: parameters
+          stopBy: end
+          inside:
+            kind: function_definition
+            has:
+              field: name
+              regex: "^__(?:eq|ne|hash|contains|lt|le|gt|ge)__$"
+    - kind: class_definition
+      has:
+        field: superclasses
+        has:
+          kind: identifier
+          regex: '^object$'
+message: >-
+  `object` erases the typed contract. Declare the concrete protocol or model
+  and use it; no `object` type is allowed.

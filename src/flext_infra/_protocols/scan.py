@@ -19,8 +19,7 @@ from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsM
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsRefactor
+    from flext_infra import c, t
     from flext_infra._protocols import (
         FlextInfraProtocolsCodemod,
         FlextInfraProtocolsRefactorAstGrep,
@@ -35,7 +34,7 @@ class FlextInfraProtocolsScan:
         """Structural data contract projected from the owning model."""
 
         @property
-        def command(self) -> FlextInfraConstantsRefactor.ModScanCommand:
+        def command(self) -> c.Infra.ModScanCommand:
             """Actual native scan operation."""
             ...
 
@@ -194,7 +193,7 @@ class FlextInfraProtocolsScan:
             ...
 
         @property
-        def classification(self) -> FlextInfraConstantsRefactor.ModScanFindingClass:
+        def classification(self) -> c.Infra.ModScanFindingClass:
             """Rule mutability and byte-change classification."""
             ...
 
@@ -218,8 +217,7 @@ class FlextInfraProtocolsScan:
         def origin(
             self,
         ) -> Literal[
-            FlextInfraConstantsRefactor.ModFindingOrigin.AST_GREP,
-            FlextInfraConstantsRefactor.ModFindingOrigin.OWNED_PATH,
+            c.Infra.ModFindingOrigin.AST_GREP, c.Infra.ModFindingOrigin.OWNED_PATH
         ]:
             """Syntax scan or owned inventory admission."""
             ...
@@ -533,7 +531,7 @@ class FlextInfraProtocolsScan:
             ...
 
         @property
-        def command(self) -> FlextInfraConstantsRefactor.ModScanCommand:
+        def command(self) -> c.Infra.ModScanCommand:
             """Public mod scan mode."""
             ...
 
@@ -550,7 +548,7 @@ class FlextInfraProtocolsScan:
         @property
         def totals_by_class(
             self,
-        ) -> Mapping[FlextInfraConstantsRefactor.ModScanFindingClass, t.NonNegativeInt]:
+        ) -> Mapping[c.Infra.ModScanFindingClass, t.NonNegativeInt]:
             """Complete finding totals by mutability class."""
             ...
 

@@ -17,8 +17,7 @@ from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsConfig
+    from flext_infra import c, t
     from flext_infra._protocols import (
         FlextInfraProtocolsDepsToolConfig,
         FlextInfraProtocolsMiseToolchain,
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
         FlextInfraProtocolsConfigRepository,
         FlextInfraProtocolsConfigScaffold,
     )
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsConfigContexts:
@@ -126,7 +124,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def make_profile(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def make_profile(self) -> c.Infra.MakeProfile:
             """Selected repository Make profile."""
             ...
 
@@ -309,7 +307,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def make_profile(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def make_profile(self) -> c.Infra.MakeProfile:
             """Generated Make execution profile."""
             ...
 
@@ -362,7 +360,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def make_profile(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def make_profile(self) -> c.Infra.MakeProfile:
             """Selected repository Make profile."""
             ...
 
@@ -598,7 +596,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def documentation_language(self) -> FlextInfraTypesBase.DocumentationLanguage:
+        def documentation_language(self) -> t.Infra.DocumentationLanguage:
             """Project-local generated documentation language."""
             ...
 
@@ -682,7 +680,7 @@ class FlextInfraProtocolsConfigContexts:
         """Structural data contract projected from the owning model."""
 
         @property
-        def name(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def name(self) -> c.Infra.MakeProfile:
             """Closed Make profile name."""
             ...
 

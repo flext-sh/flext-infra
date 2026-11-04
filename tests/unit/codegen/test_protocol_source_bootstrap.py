@@ -22,7 +22,7 @@ from flext_infra._protocols_bootstrap import (
     plan_protocol_facades,
     publish_protocol_facades,
 )
-from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
+from flext_infra._utilities import FlextInfraUtilitiesModelsProtocol
 from tests import p, tm
 
 
@@ -47,13 +47,15 @@ class TestsProtocolSourceBootstrap:
 
         normalized = normalize_model_alias_source(source)
 
-        assert "dependency_groups: Annotated[dict[str, str], 'native']" in normalized
+        tm.that(
+            normalized, has="dependency_groups: Annotated[dict[str, str], 'native']"
+        )
         assert (
             "m.Field({}, alias='dependency-groups', description='groups')" in normalized
         )
-        assert "tags: list[str] = m.Field(default_factory=list, " in normalized
-        assert "description='tags', validation_alias='tag-list')" in normalized
-        assert normalize_model_alias_source(normalized) == normalized
+        tm.that(normalized, has="tags: list[str] = m.Field(default_factory=list, ")
+        tm.that(normalized, has="description='tags', validation_alias='tag-list')")
+        tm.that(normalize_model_alias_source(normalized), eq=normalized)
 
     @staticmethod
     def test_moves_markdown_config_alias_metadata_to_its_field() -> None:
@@ -71,10 +73,10 @@ class TestsProtocolSourceBootstrap:
 
         normalized = normalize_model_alias_source(source)
 
-        assert "projected_blocks: tuple[str, ...] = m.Field(" in normalized
-        assert "alias='projected-blocks', description='blocks'" in normalized
-        assert "Annotated[" not in normalized
-        assert normalize_model_alias_source(normalized) == normalized
+        tm.that(normalized, has="projected_blocks: tuple[str, ...] = m.Field(")
+        tm.that(normalized, has="alias='projected-blocks', description='blocks'")
+        tm.that(normalized, lacks="Annotated[")
+        tm.that(normalize_model_alias_source(normalized), eq=normalized)
 
     @staticmethod
     def test_moves_field_only_exclude_metadata_to_its_assignment() -> None:
@@ -89,9 +91,9 @@ class TestsProtocolSourceBootstrap:
 
         normalized = normalize_model_alias_source(source)
 
-        assert "document: object | None = m.Field(" in normalized
-        assert "None, exclude=True, description='context'" in normalized
-        assert normalize_model_alias_source(normalized) == normalized
+        tm.that(normalized, has="document: object | None = m.Field(")
+        tm.that(normalized, has="None, exclude=True, description='context'")
+        tm.that(normalize_model_alias_source(normalized), eq=normalized)
 
     @staticmethod
     def test_moves_type_alias_field_names_to_pydantic_declarations() -> None:
@@ -118,7 +120,7 @@ class TestsProtocolSourceBootstrap:
             "dependency_groups: Annotated[DependencyGroups, "
             "m.Field(alias='dependency-groups')]"
         ) in normalized
-        assert normalize_model_alias_source(normalized) == normalized
+        tm.that(normalize_model_alias_source(normalized), eq=normalized)
 
     @staticmethod
     def test_ignores_protocols_nonmodels_and_nonalias_field_metadata() -> None:
@@ -141,11 +143,11 @@ class TestsProtocolSourceBootstrap:
 
         normalized = normalize_model_alias_source(source)
 
-        assert "class Ports(Protocol):\n    name: Named" in normalized
-        assert "class Plain:\n    name: Named" in normalized
-        assert "class NotAModel(m.String):\n    name: Named" in normalized
-        assert "documented: Documented" in normalized
-        assert "name: Annotated[Named, m.Field(alias='wire')]" in normalized
+        tm.that(normalized, has="class Ports(Protocol):\n    name: Named")
+        tm.that(normalized, has="class Plain:\n    name: Named")
+        tm.that(normalized, has="class NotAModel(m.String):\n    name: Named")
+        tm.that(normalized, has="documented: Documented")
+        tm.that(normalized, has="name: Annotated[Named, m.Field(alias='wire')]")
         assert (
             "type Documented = Annotated[str, m.Field(description='keep')]"
             in normalized
@@ -193,7 +195,7 @@ class TestsProtocolSourceBootstrap:
 
         changed = normalize_model_alias_tree(root)
 
-        assert changed == (model, runtime_model)
+        tm.that(changed, eq=(model, runtime_model))
         assert (
             "name: Annotated[WireName, m.Field(alias='wire-name')]"
             in model.read_text(encoding="utf-8")
@@ -202,13 +204,14 @@ class TestsProtocolSourceBootstrap:
             "projected_blocks: tuple[str, ...] = m.Field(alias='projected-blocks')"
             in (runtime_model.read_text(encoding="utf-8"))
         )
-        assert protocol.read_text(encoding="utf-8") == protocol_source
-        assert normalize_model_alias_tree(root) == ()
+        tm.that(protocol.read_text(encoding="utf-8"), eq=protocol_source)
+        tm.that(normalize_model_alias_tree(root), eq=())
 
     @staticmethod
     def test_normalizes_protocols_without_touching_models_and_repeats(
         tmp_path: Path,
     ) -> None:
+        """Test normalizes protocols without touching models and repeats."""
         root = tmp_path / "repository"
         root.mkdir()
         (root / "pyproject.toml").write_text(
@@ -248,17 +251,17 @@ class TestsProtocolSourceBootstrap:
         normalized = module.read_text(encoding="utf-8")
         second = subprocess.run(command, check=True, capture_output=True, text=True)
 
-        assert "normalized protocol modules: 1" in first.stdout
-        assert "normalized protocol modules: 0" in second.stdout
-        assert "title: Annotated[str, 'public-λ']" in normalized
-        assert "count: int = ..." in normalized
-        assert "enabled: bool" in normalized
-        assert normalized.count("@runtime_checkable") == 2
-        assert "from typing import runtime_checkable" in normalized
-        assert "title: Annotated[str, Field(description='keep')]" in normalized
-        assert "from flext_infra import m" not in normalized
-        assert "if TYPE_CHECKING:\n    from flext_infra import p" in normalized
-        assert "\nfrom flext_infra import p\n" not in normalized
+        tm.that(first.stdout, has="normalized protocol modules: 1")
+        tm.that(second.stdout, has="normalized protocol modules: 0")
+        tm.that(normalized, has="title: Annotated[str, 'public-λ']")
+        tm.that(normalized, has="count: int = ...")
+        tm.that(normalized, has="enabled: bool")
+        tm.that(normalized.count("@runtime_checkable"), eq=2)
+        tm.that(normalized, has="from typing import runtime_checkable")
+        tm.that(normalized, has="title: Annotated[str, Field(description='keep')]")
+        tm.that(normalized, lacks="from flext_infra import m")
+        tm.that(normalized, has="if TYPE_CHECKING:\n    from flext_infra import p")
+        tm.that(normalized, lacks="\nfrom flext_infra import p\n")
 
     @staticmethod
     def test_preserves_runtime_generic_protocol_base() -> None:
@@ -272,9 +275,9 @@ class TestsProtocolSourceBootstrap:
             "        def execute(self) -> p.Result[t.JsonDict]: ...\n"
         )
         normalized = normalize_protocol_source(source, package_name="flext_infra")
-        assert "from flext_cli import p, t" in normalized
-        assert "from flext_infra import p" not in normalized
-        assert "p.Service[t.JsonDict]" in normalized
+        tm.that(normalized, has="from flext_cli import p, t")
+        tm.that(normalized, lacks="from flext_infra import p")
+        tm.that(normalized, has="p.Service[t.JsonDict]")
         compile(normalized, "<native-protocol-base>", "exec")
 
     @staticmethod
@@ -415,17 +418,13 @@ class TestsProtocolSourceBootstrap:
             infra.CommandPayloadContext
             is not cli_module.FlextCliProtocols.CommandPayloadContext
         )
-        assert not hasattr(cli, "CommandPayloadContext")
+        tm.that(hasattr(cli, "CommandPayloadContext"), truth=False)
 
     @staticmethod
     def test_installs_target_member_on_cli_facade(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A CLI source projection publishes only through ``p.Cli``."""
-        from flext_infra._utilities.protocol_models import (
-            FlextInfraUtilitiesModelsProtocol,
-        )
-
         root = tmp_path / "repository"
         package = root / "src" / "flext_cli"
         package.mkdir(parents=True)
@@ -460,18 +459,14 @@ class TestsProtocolSourceBootstrap:
             root,
         )
 
-        assert cli.ConfigDocument is config_document
-        assert not hasattr(infra, "ConfigDocument")
+        tm.that(cli.ConfigDocument is config_document, truth=True)
+        tm.that(hasattr(infra, "ConfigDocument"), truth=False)
 
     @staticmethod
     def test_installs_core_root_member_without_artificial_namespace(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Core model contracts publish directly through its root ``p`` facade."""
-        from flext_infra._utilities.protocol_models import (
-            FlextInfraUtilitiesModelsProtocol,
-        )
-
         root = tmp_path / "repository"
         package = root / "src" / "flext_core"
         package.mkdir(parents=True)
@@ -505,8 +500,8 @@ class TestsProtocolSourceBootstrap:
             root,
         )
 
-        assert root_facade.ConfigDocument is config_document
-        assert not hasattr(root_facade, "Core")
+        tm.that(root_facade.ConfigDocument is config_document, truth=True)
+        tm.that(hasattr(root_facade, "Core"), truth=False)
 
     @staticmethod
     def test_normalized_protocol_source_has_no_pydantic_import() -> None:
@@ -523,11 +518,11 @@ class TestsProtocolSourceBootstrap:
         )
         rendered = normalize_protocol_source(source, package_name="flext_core")
 
-        assert "pydantic" not in rendered
-        assert "m.Field" not in rendered
-        assert "@runtime_checkable" in rendered
-        assert "if TYPE_CHECKING:\n    from flext_core import p" in rendered
-        assert rendered.count("TYPE_CHECKING") == 2
+        tm.that(rendered, lacks="pydantic")
+        tm.that(rendered, lacks="m.Field")
+        tm.that(rendered, has="@runtime_checkable")
+        tm.that(rendered, has="if TYPE_CHECKING:\n    from flext_core import p")
+        tm.that(rendered.count("TYPE_CHECKING"), eq=2)
 
     @staticmethod
     def test_canonicalizes_competing_lazy_protocol_facade_imports(
@@ -550,9 +545,9 @@ class TestsProtocolSourceBootstrap:
         assert normalized == normalize_protocol_source(
             normalized, package_name="example_package"
         )
-        assert normalized.count("from example_package import p") == 1
-        assert "from example_package.protocols import p" not in normalized
-        assert "if TYPE_CHECKING:\n    from example_package import p" in normalized
+        tm.that(normalized.count("from example_package import p"), eq=1)
+        tm.that(normalized, lacks="from example_package.protocols import p")
+        tm.that(normalized, has="if TYPE_CHECKING:\n    from example_package import p")
 
         package = tmp_path / "example_package"
         protocols = package / "_protocols"
@@ -590,9 +585,9 @@ class TestsProtocolSourceBootstrap:
         assert normalized == normalize_protocol_source(
             normalized, package_name="example_package"
         )
-        assert normalized.count("from example_package import p") == 1
-        assert "from example_package.protocols import p" not in normalized
-        assert "    from example_package import t" in normalized
+        tm.that(normalized.count("from example_package import p"), eq=1)
+        tm.that(normalized, lacks="from example_package.protocols import p")
+        tm.that(normalized, has="    from example_package import t")
         compile(normalized, "<multiple-type-checking-blocks>", "exec")
 
     @staticmethod
@@ -642,9 +637,9 @@ class TestsProtocolSourceBootstrap:
         rendered = barrel.read_text(encoding="utf-8")
         publish_protocol_facades(root)
 
-        assert barrel.read_text(encoding="utf-8") == rendered
-        assert '"ExistingBarrelExport": ".legacy"' in rendered
-        assert '"FlextInfraProtocolsGenerated": ".generated"' in rendered
+        tm.that(barrel.read_text(encoding="utf-8"), eq=rendered)
+        tm.that(rendered, has='"ExistingBarrelExport": ".legacy"')
+        tm.that(rendered, has='"FlextInfraProtocolsGenerated": ".generated"')
         environment = {**os.environ, "PYTHONPATH": str(root / "src")}
         subprocess.run(
             (
@@ -690,12 +685,12 @@ class TestsProtocolSourceBootstrap:
         barrel = (protocol_root / "__init__.py").read_text(encoding="utf-8")
         publish_protocol_facades(root)
 
-        assert owner.read_text(encoding="utf-8") == rendered
-        assert "class FlextInfraProtocolsCodegen(" in rendered
-        assert "FlextInfraProtocolsCodegenFix" in rendered
-        assert "FlextInfraProtocolsCodegenTransaction" in rendered
-        assert '"FlextInfraProtocolsCodegen": ".codegen"' in barrel
-        assert 'FlextInfraProtocolsCodegenFix": "._codegen.fix' not in barrel
+        tm.that(owner.read_text(encoding="utf-8"), eq=rendered)
+        tm.that(rendered, has="class FlextInfraProtocolsCodegen(")
+        tm.that(rendered, has="FlextInfraProtocolsCodegenFix")
+        tm.that(rendered, has="FlextInfraProtocolsCodegenTransaction")
+        tm.that(barrel, has='"FlextInfraProtocolsCodegen": ".codegen"')
+        tm.that(barrel, lacks='FlextInfraProtocolsCodegenFix": "._codegen.fix')
         assert (
             'FlextInfraProtocolsCodegenTransaction": "._codegen.transaction'
             not in barrel
@@ -703,7 +698,7 @@ class TestsProtocolSourceBootstrap:
         facade = (root / "src" / "flext_infra" / "protocols.py").read_text(
             encoding="utf-8"
         )
-        assert facade.count("FlextInfraProtocolsCodegen") == 2
+        tm.that(facade.count("FlextInfraProtocolsCodegen"), eq=2)
 
     @staticmethod
     def test_reduces_aggregate_facade_to_maximal_canonical_holders(
@@ -746,9 +741,9 @@ class TestsProtocolSourceBootstrap:
         publish_protocol_facades(root)
 
         facade = (package / "protocols.py").read_text(encoding="utf-8")
-        assert "class Infra(\n        FlextInfraProtocolsA," in facade
-        assert "FlextInfraProtocolsB," not in facade
-        assert "FlextInfraProtocolsC," not in facade
+        tm.that(facade, has="class Infra(\n        FlextInfraProtocolsA,")
+        tm.that(facade, lacks="FlextInfraProtocolsB,")
+        tm.that(facade, lacks="FlextInfraProtocolsC,")
         environment = {**os.environ, "PYTHONPATH": str(root / "src")}
         subprocess.run(
             (
@@ -803,8 +798,8 @@ class TestsProtocolSourceBootstrap:
         publish_protocol_facades(root)
 
         facade = (package / "protocols.py").read_text(encoding="utf-8")
-        assert "Unique = FlextInfraProtocolsAlpha.Unique" in facade
-        assert "Duplicate =" not in facade
+        tm.that(facade, has="Unique = FlextInfraProtocolsAlpha.Unique")
+        tm.that(facade, lacks="Duplicate =")
         environment = {**os.environ, "PYTHONPATH": str(root / "src")}
         subprocess.run(
             (
@@ -812,7 +807,8 @@ class TestsProtocolSourceBootstrap:
                 "-c",
                 (
                     "from flext_infra.protocols import p; "
-                    "from flext_infra._protocols.alpha import FlextInfraProtocolsAlpha; "
+                    "from flext_infra._protocols.alpha import "
+                    "FlextInfraProtocolsAlpha; "
                     "assert p.Infra.Unique is FlextInfraProtocolsAlpha.Unique; "
                     "assert not hasattr(p.Infra, 'm')"
                 ),
@@ -870,12 +866,15 @@ class TestsProtocolSourceBootstrap:
 
         facade = package / "protocols.py"
         source = facade.read_text(encoding="utf-8")
-        assert "Copyright (c) 2026 FLEXT Team. All rights reserved." in source
-        assert "SPDX-License-Identifier: MIT" in source
-        assert source.index("_protocols.alpha") < source.index("_protocols.zeta")
+        tm.that(source, has="Copyright (c) 2026 FLEXT Team. All rights reserved.")
+        tm.that(source, has="SPDX-License-Identifier: MIT")
+        tm.that(
+            source.index("_protocols.alpha") < source.index("_protocols.zeta"),
+            truth=True,
+        )
         barrel = protocol_root / "__init__.py"
         barrel_source = barrel.read_text(encoding="utf-8")
-        assert "if TYPE_CHECKING:" in barrel_source
+        tm.that(barrel_source, has="if TYPE_CHECKING:")
         for module, holder in (
             ("alpha", "FlextInfraProtocolsAlpha"),
             (
@@ -884,8 +883,8 @@ class TestsProtocolSourceBootstrap:
             ),
             ("zeta", "FlextInfraProtocolsZeta"),
         ):
-            assert f"from flext_infra._protocols.{module} import" in barrel_source
-            assert holder in barrel_source
+            tm.that(barrel_source, has=f"from flext_infra._protocols.{module} import")
+            tm.that(barrel_source, has=holder)
         subprocess.run(
             (
                 "ruff",
@@ -917,7 +916,8 @@ class TestsProtocolSourceBootstrap:
                 "-c",
                 (
                     "from flext_infra import _protocols\n"
-                    "assert not any(name in vars(_protocols) for name in _protocols.__all__)\n"
+                    "assert not any(name in vars(_protocols) for name in "
+                    "_protocols.__all__)\n"
                     "for name in _protocols.__all__:\n"
                     "    assert getattr(_protocols, name).__name__ == name\n"
                 ),
@@ -991,8 +991,8 @@ class TestsProtocolSourceBootstrap:
         workspace.write_text(projected, encoding="utf-8")
         publish_protocol_facades(root)
 
-        assert retired == (base,)
-        assert "class ProjectInfo" not in base.read_text(encoding="utf-8")
+        tm.that(retired, eq=(base,))
+        tm.that(base.read_text(encoding="utf-8"), lacks="class ProjectInfo")
         environment = {**os.environ, "PYTHONPATH": str(root / "src")}
         subprocess.run(
             (
@@ -1072,9 +1072,9 @@ class TestsProtocolSourceBootstrap:
         consolidate_protocol_owners(root, {workspace.relative_to(root): projected})
         planned = plan_protocol_facades(root)
 
-        assert "class ProjectInfo" not in base.read_text(encoding="utf-8")
+        tm.that(base.read_text(encoding="utf-8"), lacks="class ProjectInfo")
         facade = planned[package / "protocols.py"]
-        assert "FlextInfraProtocolsBase" in facade
+        tm.that(facade, has="FlextInfraProtocolsBase")
         (protocol_root / "__init__.py").write_text(
             planned[protocol_root / "__init__.py"], encoding="utf-8"
         )

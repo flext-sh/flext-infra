@@ -18,8 +18,7 @@ from flext_infra._protocols import FlextInfraProtocolsMixins
 from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsBase
+    from flext_infra import c, t
     from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 
 
@@ -188,7 +187,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
         @property
-        def action(self) -> FlextInfraConstantsBase.LazyInitAction:
+        def action(self) -> c.Infra.LazyInitAction:
             """Action selected for this package."""
             ...
 

@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m, p, t
+from flext_infra import config, m, t
 from tests import c, p, tm, u
 
 

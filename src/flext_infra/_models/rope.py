@@ -593,7 +593,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         project_layout: Annotated[
             Annotated[
                 p.Infra.RopeProjectLayout,
-                t.schema_for_model(FlextInfraModelsRope.RopeProjectLayout),
+                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeProjectLayout),
             ]
             | None,
             m.Field(
@@ -679,7 +679,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         workspace_index: Annotated[
             Annotated[
                 p.Infra.RopeWorkspaceIndex,
-                t.schema_for_model(FlextInfraModelsRope.RopeWorkspaceIndex),
+                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex),
             ],
             m.Field(description="Materialized workspace index for the open session"),
         ]

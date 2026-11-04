@@ -85,7 +85,7 @@ class FlextInfraEnsureRuffConfigPhase:
         *,
         path: Path,
         facts: p.Infra.RuffProjectFacts,
-    ) -> p.Infra.DepsToml.PhaseConfig:
+    ) -> m.Infra.DepsToml.PhaseConfig:
         """Build the canonical Ruff phase for one project path.
 
         Returns:

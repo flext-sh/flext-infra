@@ -346,7 +346,7 @@ class TestsProtocolHolderComposition:
             package,
             {
                 "models.py": (
-                    "from flext_derived_sample._models.payload import "
+                    "from flext_derived_sample_models import "
                     "FlextDerivedSampleModelsPayload\n"
                     "class FlextDerivedSampleModels("
                     "FlextDerivedSampleModelsPayload): pass\n"

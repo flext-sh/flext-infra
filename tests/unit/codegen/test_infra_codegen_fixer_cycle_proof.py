@@ -33,6 +33,7 @@ def _fix_workspace(
     tmp_path: Path,
     project: Path,
     package_name: str,
+    session_runtime: p.Tests.SessionRuntime,
 ) -> Sequence[p.Infra.AutoFixResult]:
     """Provision one codegen checkout and return the fixer's workspace results.
 
@@ -41,6 +42,13 @@ def _fix_workspace(
 
     """
     u.Tests.declare_workspace_projects(tmp_path, (project.name,))
+    tm.ok(
+        u.Tests.create_python_environment(
+            project,
+            dependency_projects=u.Tests.python_dependency_projects(project),
+            session_runtime=session_runtime,
+        ),
+    )
     u.Tests.provision_checkout(project)
     return FlextInfraCodegenFixer(repository_root=tmp_path).fix_workspace(
         projects=[
@@ -65,7 +73,9 @@ class TestsFlextInfraCodegenFixerCycleProof:
 
     @staticmethod
     @pytest.mark.slow
-    def test_auto_fix_flags_modules_in_a_runtime_cycle(tmp_path: Path) -> None:
+    def test_auto_fix_flags_modules_in_a_runtime_cycle(
+        tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """Two modules importing each other are both flagged as cycle members."""
         project = u.Tests.create_codegen_project(
             tmp_path=tmp_path,
@@ -80,6 +90,7 @@ class TestsFlextInfraCodegenFixerCycleProof:
             tmp_path=tmp_path,
             project=project,
             package_name="cycle_pkg",
+            session_runtime=session_runtime,
         )
         flagged = {
             violation.module
@@ -92,7 +103,9 @@ class TestsFlextInfraCodegenFixerCycleProof:
 
     @staticmethod
     @pytest.mark.slow
-    def test_auto_fix_passes_an_acyclic_tree(tmp_path: Path) -> None:
+    def test_auto_fix_passes_an_acyclic_tree(
+        tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """A tree without cycles records no IMPORT-CYCLE violation."""
         project = u.Tests.create_codegen_project(
             tmp_path=tmp_path,
@@ -107,6 +120,7 @@ class TestsFlextInfraCodegenFixerCycleProof:
             tmp_path=tmp_path,
             project=project,
             package_name="clean_pkg",
+            session_runtime=session_runtime,
         )
         tm.that([result for result in results if _reports_import_cycle(result)], eq=[])
 

@@ -92,6 +92,45 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
             )
         )
 
+    @classmethod
+    def untracked_markdown_files(
+        cls,
+        project_dir: Path,
+        scope_facts: p.Infra.GitScopeFacts | None,
+    ) -> Sequence[Path]:
+        """Collect worktree Markdown that Git neither tracks nor ignores.
+
+        Repair widens to these files so a new document is formatted before it
+        is ever committed; findings stay on ``collect_markdown_files``.
+
+        Returns:
+            The untracked governed Markdown, empty outside a Git worktree.
+
+        Raises:
+            RuntimeError: If Git cannot list the worktree's changed paths.
+
+        """
+        root = project_dir.resolve()
+        request = m.Infra.GitRepoRequest(repo_root=root)
+        if u.Infra.git_repository_root(request).failure:
+            return ()
+        changed = u.Infra.git_changed_paths(request)
+        if changed.failure:
+            msg = changed.error or f"{root}: git changed paths failed"
+            raise RuntimeError(msg)
+        tracked = set(cls.collect_markdown_files(project_dir, scope_facts))
+        return u.Infra.scope_excluded_paths(
+            root,
+            tuple(
+                path
+                for path in changed.value
+                if path.suffix == ".md"
+                and not path.is_symlink()
+                and path not in tracked
+            ),
+            u.Infra.load_codegen_inputs(root).unwrap().spec.markdown_exclude_globs,
+        )
+
     @staticmethod
     def projected_block_spans(
         path: Path,
@@ -431,6 +470,9 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
             RuntimeError: If the publisher rejects the repaired files.
 
         """
+        failed = self._repair_untracked(ctx, started, lock_owners)
+        if failed is not None:
+            return failed
         projected = self._projected_targets(project_dir, targets)
         if not projected:
             return super()._execute_fix_command(
@@ -472,6 +514,36 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
                 msg = published.error or f"{owner}: projected repair publication failed"
                 raise RuntimeError(msg)
         return self._merged_execution(project_dir, ctx, started, executions)
+
+    def _repair_untracked(
+        self,
+        ctx: p.Infra.GateContext,
+        started: float,
+        lock_owners: Sequence[Path],
+    ) -> p.Infra.GateExecution | None:
+        """Repair each owner's untracked Markdown without reporting it.
+
+        Residual findings stay with ``check`` over tracked files; only a native
+        tool error fails the repair.
+
+        Returns:
+            The failed native execution, or ``None`` when every pass completed.
+
+        """
+        for owner in lock_owners:
+            untracked = self.untracked_markdown_files(owner, ctx.scope_facts)
+            if not untracked:
+                continue
+            widened = super()._execute_fix_command(
+                owner,
+                ctx,
+                tuple(path.as_posix() for path in untracked),
+                started,
+                (owner,),
+            )
+            if widened.outcome is c.Infra.ToolOutcome.ERROR:
+                return widened
+        return None
 
     def _merged_execution(
         self,

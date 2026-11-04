@@ -113,6 +113,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             project_dir,
             name,
         )
+        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project_dir)
         return project_dir
 
     @staticmethod
@@ -483,6 +484,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         )
         for filename, content in files.items():
             (pkg / filename).write_text(content, encoding="utf-8")
+        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project)
         TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
         return project
 
