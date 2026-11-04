@@ -81,6 +81,11 @@ jobs:
           submodules: recursive
           persist-credentials: false
           fetch-depth: 0
+      - name: Align submodules to their integration tips
+        working-directory: .
+        run: |
+          set -eu
+          git submodule update --init --remote --merge --jobs 8
       - name: Pin flext-infra at the tested commit
         working-directory: .
         run: |
