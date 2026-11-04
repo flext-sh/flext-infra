@@ -1,0 +1,15 @@
+id: ban-type-ignore-hint
+valid:
+  - |
+    # typed declaration
+    value: str = "value"
+invalid:
+  - |
+    value: str = "value"  # type: ignore
+  - |
+    value: str = "value"  # noqa
+  - |
+    # ruff: ignore[complex-structure]
+    value: str = "value"
+  - |
+    value: str = "value"  # pyright: ignore

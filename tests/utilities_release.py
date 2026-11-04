@@ -9,9 +9,18 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraCli
+from flext_infra import FlextInfraCli, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, config, m, p, u
+from tests import (
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesToolingFixture,
+    TestsFlextInfraUtilitiesWorkspaceFixture,
+    c,
+    config,
+    m,
+    p,
+)
 
 
 class TestsFlextInfraUtilitiesRelease:
@@ -59,13 +68,13 @@ class TestsFlextInfraUtilitiesRelease:
         workspace.mkdir(parents=True, exist_ok=True)
         # The governed tree above the workspace carries the committed Mise
         # declaration and lock that activate its locked tools.
-        u.Tests.copy_tracked_mise_seeds(root)
-        u.Tests.write_project_beads_config(
+        TestsFlextInfraUtilitiesToolingFixture.copy_tracked_mise_seeds(root)
+        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             workspace,
             "workspace",
         )
-        source = u.Tests.flext_source
-        spec = u.Tests.project_spec("workspace")
+        source = TestsFlextInfraUtilitiesProjectFixture.flext_source
+        spec = TestsFlextInfraUtilitiesProjectFixture.project_spec("workspace")
         (workspace / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
@@ -158,12 +167,12 @@ class TestsFlextInfraUtilitiesRelease:
                 "MIT License\n\nCopyright (c) FLEXT Tests\n",
                 encoding="utf-8",
             )
-            u.Tests.write_member_package(
+            TestsFlextInfraUtilitiesWorkspaceFixture.write_member_package(
                 project,
                 name,
             )
         if project_names:
-            u.Tests.declare_workspace_projects(
+            TestsFlextInfraUtilitiesWorkspaceFixture.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -184,12 +193,12 @@ class TestsFlextInfraUtilitiesRelease:
             locked.model_dump(mode="json", exclude_none=True),
         ).unwrap()
         if initialize_root_git:
-            u.Tests.initialize_git_repo(workspace)
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(workspace)
         else:
             (workspace / c.GIT_DIR_NAME).mkdir(exist_ok=True)
         if initialize_project_git:
             for name in project_names:
-                u.Tests.initialize_git_repo(workspace / name)
+                TestsFlextInfraUtilitiesGit.initialize_git_repo(workspace / name)
         context = FlextInfraWorkspaceDetector.resolution_context(workspace).unwrap()
         context.lock_path.parent.mkdir(parents=True, exist_ok=True)
         u.Cli.toml_write_mapping(

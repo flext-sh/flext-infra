@@ -6,6 +6,11 @@ language: python
 severity: error
 files:
   - "**/*.py"
+# The single declared exception: tests that verify Python's import machinery
+# must manipulate the path they are testing. They live under tests/_meta and
+# each file states the mechanism it exercises; no other test may do this.
+ignores:
+  - "**/tests/_meta/**"
 rule:
   any:
     - kind: call

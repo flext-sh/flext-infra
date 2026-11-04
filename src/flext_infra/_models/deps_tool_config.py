@@ -628,25 +628,29 @@ class FlextInfraModelsDepsToolConfig(
         )
         ruff: Annotated[
             p.Infra.RuffConfig,
-            t.schema_for_model(FlextInfraModelsDepsToolConfig.RuffConfig),
+            t.schema_for_model(FlextInfraModelsDepsToolConfigLinters.RuffConfig),
         ] = m.Field(
             description="Ruff settings",
         )
         mypy: Annotated[
             p.Infra.MypyConfig,
-            t.schema_for_model(FlextInfraModelsDepsToolConfig.MypyConfig),
+            t.schema_for_model(FlextInfraModelsDepsToolConfigLinters.MypyConfig),
         ] = m.Field(
             description="Mypy settings",
         )
         pyright: Annotated[
             p.Infra.PyrightConfig,
-            t.schema_for_model(FlextInfraModelsDepsToolConfig.PyrightConfig),
+            t.schema_for_model(
+                FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig
+            ),
         ] = m.Field(
             description="Pyright settings",
         )
         pyrefly: Annotated[
             p.Infra.PyreflyConfig,
-            t.schema_for_model(FlextInfraModelsDepsToolConfig.PyreflyConfig),
+            t.schema_for_model(
+                FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig
+            ),
         ] = m.Field(
             description="Pyrefly settings",
         )

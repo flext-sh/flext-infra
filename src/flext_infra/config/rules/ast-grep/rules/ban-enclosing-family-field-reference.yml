@@ -27,6 +27,11 @@ rule:
           - not:
               inside:
                 kind: attribute
+          - not:
+              inside:
+                kind: lambda
+                stopBy:
+                  kind: type
           - has:
               field: object
               any:
@@ -65,8 +70,9 @@ message: >-
   so the model is incomplete at import.
 note: >-
   Where: this field of a class nested in `$OUTER`. Why: `$OUTER` is not bound
-  while its body executes, so the annotation cannot resolve when the model is
-  built and the model stays incomplete (no lazy rebuild is acceptable). How:
-  declare the referenced sibling in its own family module (one nested class
-  per module) and annotate through that family class, which is bound before
-  this module executes.
+  while its body executes, so an eager reference cannot resolve when the model
+  is built and leaves the model incomplete (no lazy rebuild is acceptable). How:
+  type the field by its protocol (`p.X`) and defer the schema owner through a
+  lambda (`Annotated[p.X, t.schema_for_model(lambda: $OUTER.X)]`), which
+  evaluates `$OUTER` only during schema generation after the holder class is
+  bound.

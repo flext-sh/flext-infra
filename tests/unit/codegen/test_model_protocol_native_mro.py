@@ -159,7 +159,8 @@ class TestsModelProtocolNativeMro:
                 "class ModelsPayload:\n"
                 "    class Request(BaseModel):\n"
                 "        title: TypeMetadata[str, m.Field(description='title')]\n"
-                "        receipt: TypeMetadata[p.Cli.AtomicFileState | None, m.Field()]\n"
+                "        receipt: TypeMetadata[p.Cli.AtomicFileState | None, "
+                "m.Field()]\n"
                 "        workspace: FlextInfraModelsWorkspace.WorkspaceThing\n"
             ),
         }
@@ -385,7 +386,8 @@ class TestsModelProtocolNativeMro:
             "    and is_protocol(member) and member.__name__ == 'Payload']\n"
             "tm.that(len(contracts), eq=1)\n"
             "model = m.Domain.Payload\n"
-            "hints = {name: get_type_hints(getattr(contracts[0], name).fget)['return']\n"
+            "hints = "
+            "{name: get_type_hints(getattr(contracts[0], name).fget)['return']\n"
             "    for name in model.model_fields}\n"
             "tm.that(set(hints), eq=set(model.model_fields))\n"
             "for name, field in model.model_fields.items():\n"

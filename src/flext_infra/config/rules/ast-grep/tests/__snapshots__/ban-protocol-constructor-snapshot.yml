@@ -2,7 +2,7 @@ id: ban-protocol-constructor
 snapshots:
   "from flext_infra import p\ndef make():\n    return p.ConfigDocument(data={})\n":
     fixed: |
-      from flext_infra import p
+      from flext_infra import m
       def make():
           return m.ConfigDocument(data={})
     labels:
@@ -25,9 +25,9 @@ snapshots:
       style: secondary
       start: 0
       end: 75
-  "from flext_infra import p\ndef make():\n    return p.Infra.FacadeFamily(letter=\"u\", module=\"utilities\", suffix=\"Infra\")\n":
+  "from flext_infra import p\ndef make():\n    return m.Infra.FacadeFamily(letter=\"u\", module=\"utilities\", suffix=\"Infra\")\n":
     fixed: |
-      from flext_infra import p
+      from flext_infra import m
       def make():
           return m.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
     labels:
@@ -35,7 +35,7 @@ snapshots:
       style: primary
       start: 49
       end: 69
-    - source: p.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
+    - source: m.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
       style: secondary
       start: 49
       end: 117
@@ -46,7 +46,7 @@ snapshots:
     - source: |
         from flext_infra import p
         def make():
-            return p.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
+            return m.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
       style: secondary
       start: 0
       end: 118
@@ -100,17 +100,17 @@ snapshots:
       style: secondary
       start: 0
       end: 78
-  "from flext_infra import p\ndef make():\n    return p.Infra.RopeImportedName(name=\"x\")\n":
+  "from flext_infra import p\ndef make():\n    return m.Infra.RopeImportedName(name=\"x\")\n":
     fixed: |
       from flext_infra import p
       def make():
-          return p.Infra.RopeImportedName(name="x")
+          return m.Infra.RopeImportedName(name="x")
     labels:
     - source: p.Infra.RopeImportedName
       style: primary
       start: 49
       end: 73
-    - source: p.Infra.RopeImportedName(name="x")
+    - source: m.Infra.RopeImportedName(name="x")
       style: secondary
       start: 49
       end: 83
@@ -121,7 +121,7 @@ snapshots:
     - source: |
         from flext_infra import p
         def make():
-            return p.Infra.RopeImportedName(name="x")
+            return m.Infra.RopeImportedName(name="x")
       style: secondary
       start: 0
       end: 84

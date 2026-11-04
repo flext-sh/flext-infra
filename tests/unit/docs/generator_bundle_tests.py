@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, p
+from flext_infra import m
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import p, tm, u
 

@@ -1,0 +1,22 @@
+# Strong typing: `object` erases the typed contract. Declare the concrete
+# protocol or model and use it; no `object` type is allowed.
+id: ban-object-type
+language: Python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  enforce: [ENFORCE-123]
+rule:
+  any:
+    - kind: type
+      regex: '(^|[|\[])\s*object\s*($|[\]|])'
+    - kind: class_definition
+      has:
+        field: superclasses
+        has:
+          kind: identifier
+          regex: '^object$'
+message: >-
+  `object` erases the typed contract. Declare the concrete protocol or model
+  and use it; no `object` type is allowed.

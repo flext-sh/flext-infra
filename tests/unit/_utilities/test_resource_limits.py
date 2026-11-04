@@ -403,7 +403,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             f"    p = subprocess.Popen([sys.executable, '-c', {descendant!r}], "
             "stdout=subprocess.PIPE, stderr=stderr, text=True)\n"
             f"    Path({str(pid_file)!r}).write_text(str(p.pid), encoding='utf-8')\n"
-            "    if p.stdout is None or p.stdout.readline() != 'ready\\n':\n"
+            "    if p.stdout is None or m.stdout.readline() != 'ready\\n':\n"
             "        stderr.flush()\n"
             "        sys.stderr.write(errors.read_text(encoding='utf-8'))\n"
             "        raise RuntimeError('descendant readiness failed')\n"

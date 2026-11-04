@@ -40,7 +40,7 @@ class TestsVerifyLanes:
         workspace = tm.ok(u.Infra.load_workspace_manifest(repo))[0]
         declared = workspace.model_copy(
             update={
-                "integration": p.Infra.WorkspaceIntegrationSpec(
+                "integration": m.Infra.WorkspaceIntegrationSpec(
                     provider=workspace.repository.provider,
                     branch=integration,
                 ),

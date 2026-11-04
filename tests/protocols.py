@@ -13,21 +13,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from flext_tests import FlextTestsProtocols
+from flext_tests import p as flext_tests_p
 
-from flext_infra import FlextInfraProtocols
+from flext_infra import p as flext_infra_p
 from tests._protocols import TestsFlextInfraProtocolsBase
 
 
-class TestsFlextInfraProtocols(
-    FlextTestsProtocols, FlextInfraProtocols, TestsFlextInfraProtocolsBase
-):
+class TestsFlextInfraProtocols(flext_infra_p):
     """Protocol definitions for FLEXT infra tests."""
 
-    class Tests(
-        FlextTestsProtocols.Tests,
-        TestsFlextInfraProtocolsBase,
-    ):
+    class Tests(flext_tests_p.Tests, TestsFlextInfraProtocolsBase):
         """Tests use inherited flext-tests and production protocols."""
 
         @runtime_checkable

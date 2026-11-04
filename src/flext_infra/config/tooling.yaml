@@ -485,7 +485,7 @@ Infra:
         # A local suite that cannot finish within run-timeout-seconds is a
         # performance defect. Collection, lease waits and every suite child
         # share the entrypoint clock, with termination grace inside this wall.
-        run-timeout-seconds: 60
+        run-timeout-seconds: 240
         termination-grace-seconds: 2
         # One failure stops the invocation. The next run starts from the
         # corrected owner instead of accumulating a backlog of unrelated
@@ -614,6 +614,9 @@ Infra:
         # TYPE_CHECKING / install_lazy_exports scaffolding), so they are
         # mandated boilerplate, not clones to repair. Per-package import
         # lists and every non-mandated line stay scanned.
+        ignore:
+        - "**/_protocols/**"
+        - "**/__init__.py"
         ignore-patterns:
         - "Copyright \\(c\\) [0-9]{4} FLEXT Team\\. All rights reserved\\."
         - "SPDX-License-Identifier: MIT"

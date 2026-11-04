@@ -11,7 +11,16 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import c, p, r, tm, u
+from tests import (
+    TestsFlextInfraUtilitiesCodegen,
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesWorkspaceFixture,
+    c,
+    p,
+    r,
+    tm,
+)
 
 
 class TestsFlextInfraUtilitiesDocsFixture:
@@ -32,7 +41,7 @@ class TestsFlextInfraUtilitiesDocsFixture:
         """
         workspace = root / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
-        u.Tests.write_project_beads_config(
+        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             workspace,
             "workspace",
         )
@@ -62,11 +71,13 @@ class TestsFlextInfraUtilitiesDocsFixture:
             f"\n[tool.uv.workspace]\nmembers = [{members}]\n" if project_names else ""
         )
         infrastructure = config.Infra.codegen.infra_repository.distribution
-        infrastructure_ref = u.Tests.repository_ref(infrastructure)
+        infrastructure_ref = TestsFlextInfraUtilitiesProjectFixture.repository_ref(
+            infrastructure
+        )
         development = (
             "\n[dependency-groups]\n"
             f'dev = ["{infrastructure} @ git+{infrastructure_ref.url}@'
-            f'{u.Tests.provider_branch()}"]\n'
+            f'{TestsFlextInfraUtilitiesProjectFixture.provider_branch()}"]\n'
         )
         _write(
             workspace / c.PYPROJECT_FILENAME,
@@ -94,13 +105,13 @@ class TestsFlextInfraUtilitiesDocsFixture:
             _write(project / "docs/architecture.md", "# Architecture\n")
             _write(project / "docs/dev.md", "# Development\n")
             _write(project / "docs/api.md", "# API\n")
-            u.Tests.write_project_beads_config(
+            TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
                 project,
                 name,
             )
 
         if project_names:
-            u.Tests.declare_workspace_projects(
+            TestsFlextInfraUtilitiesWorkspaceFixture.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -110,18 +121,18 @@ class TestsFlextInfraUtilitiesDocsFixture:
         # identity and is idempotent. A workspace that declares members in
         # .gitmodules must realize each member as a governed repository whose
         # origin matches the declared URL ("owner must resolve exactly once").
-        # Initialize children first so the parent's initial index records
+        # Initialize children first so the parent's index records
         # gitlinks rather than ordinary files inside the declared members.
         for name in project_names:
-            u.Tests.initialize_git_repo(
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(
                 workspace / name,
-                origin_url=u.Tests.repository_ref(
+                origin_url=TestsFlextInfraUtilitiesProjectFixture.repository_ref(
                     name,
                 ).url,
             )
-        u.Tests.initialize_git_repo(
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(
             workspace,
-            origin_url=u.Tests.repository_ref(
+            origin_url=TestsFlextInfraUtilitiesProjectFixture.repository_ref(
                 "workspace",
             ).url,
         )
@@ -143,7 +154,7 @@ class TestsFlextInfraUtilitiesDocsFixture:
         """
         workspace = root / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
-        u.Tests.write_project_beads_config(
+        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             workspace,
             "workspace",
         )
@@ -162,12 +173,12 @@ class TestsFlextInfraUtilitiesDocsFixture:
                 ),
                 encoding="utf-8",
             )
-            u.Tests.write_member_package(
+            TestsFlextInfraUtilitiesWorkspaceFixture.write_member_package(
                 project,
                 name,
             )
         if project_names:
-            u.Tests.declare_workspace_projects(
+            TestsFlextInfraUtilitiesWorkspaceFixture.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -236,7 +247,7 @@ class TestsFlextInfraUtilitiesDocsFixture:
 
         """
         plans = TestsFlextInfraUtilitiesDocsFixture.plan_docs_bundle(generator)
-        published = u.Tests.materialize_codegen_plans(
+        published = TestsFlextInfraUtilitiesCodegen.materialize_codegen_plans(
             r[tuple[p.Infra.CodegenFilePlan, ...]].ok(plans),
         )
         tm.ok(published)

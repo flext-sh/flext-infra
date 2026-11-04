@@ -14,7 +14,7 @@ from shlex import quote
 
 import pytest
 
-from flext_infra import config, m, p
+from flext_infra import config, m
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,

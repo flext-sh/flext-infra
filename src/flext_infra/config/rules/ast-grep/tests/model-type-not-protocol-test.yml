@@ -4,10 +4,6 @@ valid:
   from flext_core import p, t
   def dump(value: p.BaseModel) -> p.BaseModel:
       return value
-- |
-  from flext_core import t
-  def parse[M: t.BaseModelType](model_cls: t.ModelClass[M]) -> M:
-      return model_cls.model_validate({})
 invalid:
 - |
   from flext_core import p, t

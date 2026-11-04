@@ -1,0 +1,23 @@
+id: ban-test-relative-import
+snapshots:
+  ? |
+    from . import c
+  : labels:
+    - source: from . import c
+      style: primary
+      start: 0
+      end: 15
+  ? |
+    from ..fixtures import Sandbox
+  : labels:
+    - source: from ..fixtures import Sandbox
+      style: primary
+      start: 0
+      end: 30
+  ? |
+    from .constants import c
+  : labels:
+    - source: from .constants import c
+      style: primary
+      start: 0
+      end: 24

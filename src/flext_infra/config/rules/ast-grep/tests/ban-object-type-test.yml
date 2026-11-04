@@ -1,0 +1,14 @@
+id: ban-object-type
+valid:
+  - |
+    from typing import Protocol
+    class Base(Protocol):
+        pass
+  - |
+    value: str = "value"
+invalid:
+  - |
+    value: object
+  - |
+    class Base(object):
+        pass

@@ -168,7 +168,8 @@ class FlextInfraNamespaceRelocationCascade:
                 repository_root=published_root
             ).execute_payload(
                 m.Infra.RunCommand(
-                    repository_root=published_root, gates=tuple(gates or ())
+                    repository_root=published_root,
+                    gates=tuple(gates or ()),
                 )
             )
 

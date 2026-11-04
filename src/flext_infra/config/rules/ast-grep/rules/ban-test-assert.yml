@@ -1,0 +1,25 @@
+# Assertions are matcher calls. A bare `assert` bypasses `tm`: it loses the
+# matcher's typed parameters, its uniform diagnostics and its return value, and
+# it reintroduces the `assert isinstance` narrowing the test law bans. Every
+# existing assert is rewritten by the semantic test-assertion cutover:
+# equality to `eq`/`ne`, identity to `none`/`eq`, membership to `has`/`lacks`,
+# `isinstance` to `is_`/`not_`, and a bare predicate to `truth`.
+#
+# The cutover also adds the canonical `tm` alias to the generated test import,
+# so the repair is a normal `make mod` edit.
+id: ban-test-assert
+language: python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+ignores:
+  - "**/tests/_meta/**"
+metadata:
+  enforce: [ENFORCE-127]
+rule:
+  kind: assert_statement
+message: >-
+  Bare assert in test code. Express the check through `tm` (`that`, `ok`,
+  `fail`); the semantic cutover rewrites every existing assert to the matching
+  matcher call.

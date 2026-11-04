@@ -10,7 +10,7 @@ from pathlib import Path
 
 import flext_infra
 from flext_infra import codegen
-from tests import c, tm
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPublicApi:
@@ -20,7 +20,7 @@ class TestsFlextInfraPublicApi:
     def test_public_runtime_metadata_matches_public_constants() -> None:
         """Test public runtime metadata matches public constants."""
         metadata = tm.ok(
-            flext_infra.u.Infra.read_project_metadata_result(
+            u.Infra.read_project_metadata_result(
                 Path(__file__).resolve().parents[2],
             ),
         )
@@ -36,11 +36,11 @@ class TestsFlextInfraPublicApi:
     def test_conform_invocations_keep_independent_mutable_state(tmp_path: Path) -> None:
         """Each public invocation owns its mutable state without copying ports."""
         ports = flext_infra.infra.codegen_conform_collaborators()
-        first = flext_infra.m.Infra.CodegenConformState(
+        first = m.Infra.CodegenConformState(
             repository_root=tmp_path,
             ports=ports,
         )
-        second = flext_infra.m.Infra.CodegenConformState(
+        second = m.Infra.CodegenConformState(
             repository_root=tmp_path,
             ports=ports,
         )
@@ -60,16 +60,16 @@ class TestsFlextInfraPublicApi:
         before = tm.ok(api.execute())
         for root in (tmp_path / "first", tmp_path / "second"):
             generated = api.codegen_generate(
-                flext_infra.m.Infra.CodegenGenerateRequest(
+                m.Infra.CodegenGenerateRequest(
                     root=root,
-                    what=flext_infra.c.Infra.CodegenConformSurface.DEPENDENCIES,
+                    what=c.Infra.CodegenConformSurface.DEPENDENCIES,
                 ),
             )
             conformed = api.codegen_conform(
-                flext_infra.m.Infra.CodegenConformRequest(
+                m.Infra.CodegenConformRequest(
                     root=root,
-                    what=flext_infra.c.Infra.CodegenConformSurface.DEPENDENCIES,
-                    mode=flext_infra.c.Infra.CodegenConformMode.APPLY,
+                    what=c.Infra.CodegenConformSurface.DEPENDENCIES,
+                    mode=c.Infra.CodegenConformMode.APPLY,
                 ),
             )
             tm.fail(generated)
@@ -82,7 +82,7 @@ class TestsFlextInfraPublicApi:
     def test_model_mirror_has_no_public_handler_or_refactor_route() -> None:
         """The public API and CLI cannot recreate a model-shaped typing shadow."""
         routes = flext_infra.FlextInfraCli.route_table_for(
-            flext_infra.c.Infra.CLI_GROUP_REFACTOR,
+            c.Infra.CLI_GROUP_REFACTOR,
         )
         tm.that(any(route.name == "protocol-models" for route in routes), truth=False)
         tm.that(
@@ -101,9 +101,9 @@ class TestsFlextInfraPublicApi:
         initial_context = api.context
         engines = tuple(
             codegen.FlextInfraCodegenConform.Generate(
-                state=flext_infra.m.Infra.CodegenConformState(
+                state=m.Infra.CodegenConformState(
                     repository_root=root,
-                    request=flext_infra.m.Infra.CodegenConformRequest(root=root),
+                    request=m.Infra.CodegenConformRequest(root=root),
                     ports=ports,
                 ),
                 runtime_settings=runtime_settings,
@@ -134,27 +134,27 @@ class TestsFlextInfraPublicApi:
     ) -> None:
         """Production CLI routes retain DTO classes and execute their real handlers."""
         routes = flext_infra.FlextInfraCli.route_table_for(
-            flext_infra.c.Infra.CLI_GROUP_CODEGEN,
+            c.Infra.CLI_GROUP_CODEGEN,
         )
         generated = next(route for route in routes if route.name == "generate")
         conformed = next(route for route in routes if route.name == "conform")
-        tm.that(generated.model_cls, eq=flext_infra.m.Infra.CodegenGenerateRequest)
-        tm.that(conformed.model_cls, eq=flext_infra.m.Infra.CodegenConformRequest)
+        tm.that(generated.model_cls, eq=m.Infra.CodegenGenerateRequest)
+        tm.that(conformed.model_cls, eq=m.Infra.CodegenConformRequest)
         root = tmp_path / "absent"
         tm.fail(
             generated.handler(
-                flext_infra.m.Infra.CodegenGenerateRequest(
+                m.Infra.CodegenGenerateRequest(
                     root=root,
-                    what=flext_infra.c.Infra.CodegenConformSurface.DEPENDENCIES,
+                    what=c.Infra.CodegenConformSurface.DEPENDENCIES,
                 ),
             ),
         )
         tm.fail(
             conformed.handler(
-                flext_infra.m.Infra.CodegenConformRequest(
+                m.Infra.CodegenConformRequest(
                     root=root,
-                    what=flext_infra.c.Infra.CodegenConformSurface.DEPENDENCIES,
-                    mode=flext_infra.c.Infra.CodegenConformMode.APPLY,
+                    what=c.Infra.CodegenConformSurface.DEPENDENCIES,
+                    mode=c.Infra.CodegenConformMode.APPLY,
                 ),
             ),
         )

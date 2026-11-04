@@ -790,7 +790,6 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             The original provider and exact indexed import declaration.
 
         Raises:
-            TypeError: An elected import lacks its native binding contract.
             ValueError: The provider or scoped declaration cannot be authenticated.
 
         """

@@ -12,7 +12,6 @@ from keyword import iskeyword
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-import flext_core
 from flext_cli import m, t
 
 from flext_infra import c, p
@@ -550,12 +549,7 @@ class FlextInfraModelsConfigArtifact(
                 ),
             ),
         ] = m.Field(
-            default_factory=flext_core.u.empty(
-                Mapping[
-                    t.NonEmptyStr,
-                    Mapping[Literal["config", "settings"], t.NonEmptyStr],
-                ]
-            ),
+            default_factory=dict,
             validate_default=True,
         )
 
@@ -1355,7 +1349,9 @@ class FlextInfraModelsConfigArtifact(
             tuple[
                 Annotated[
                     p.Infra.CodegenFilePlan,
-                    t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenTransaction.CodegenFilePlan
+                    ),
                 ],
                 ...,
             ],
@@ -1445,7 +1441,9 @@ class FlextInfraModelsConfigArtifact(
             tuple[
                 Annotated[
                     p.Infra.CodegenFilePlan,
-                    t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenTransaction.CodegenFilePlan
+                    ),
                 ],
                 ...,
             ]

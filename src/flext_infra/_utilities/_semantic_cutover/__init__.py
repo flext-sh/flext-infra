@@ -120,8 +120,14 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.private_imports import (
         FlextInfraUtilitiesSemanticCutoverPrivateImports,
     )
+    from flext_infra._utilities._semantic_cutover.test_assertions import (
+        FlextInfraUtilitiesSemanticCutoverTestAssertions,
+    )
     from flext_infra._utilities._semantic_cutover.test_helpers import (
         FlextInfraUtilitiesSemanticTestHelpers,
+    )
+    from flext_infra._utilities._semantic_cutover.test_namespace_imports import (
+        FlextInfraUtilitiesSemanticCutoverTestNamespaceImports,
     )
 
 
@@ -153,6 +159,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverOwnMro",
     "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
+    "FlextInfraUtilitiesSemanticCutoverTestAssertions",
+    "FlextInfraUtilitiesSemanticCutoverTestNamespaceImports",
     "FlextInfraUtilitiesSemanticDeclarationRelocation",
     "FlextInfraUtilitiesSemanticDeclarationRetirement",
     "FlextInfraUtilitiesSemanticDelegations",
@@ -200,6 +208,10 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticCutoverOwnMro": ".own_mro",
         "FlextInfraUtilitiesSemanticCutoverPrivateImportCst": ".private_import_cst",
         "FlextInfraUtilitiesSemanticCutoverPrivateImports": ".private_imports",
+        "FlextInfraUtilitiesSemanticCutoverTestAssertions": (".test_assertions"),
+        "FlextInfraUtilitiesSemanticCutoverTestNamespaceImports": (
+            ".test_namespace_imports"
+        ),
         "FlextInfraUtilitiesSemanticDeclarationRelocation": ".declaration_relocation",
         "FlextInfraUtilitiesSemanticDeclarationRetirement": ".declaration_retirement",
         "FlextInfraUtilitiesSemanticDelegations": ".delegations",

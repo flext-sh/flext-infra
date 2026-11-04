@@ -1,0 +1,46 @@
+# Import law (test namespace): an authored test module consumes the public
+# API of `src`, `scripts`, `examples` and every other first-party namespace
+# through the generated `tests` namespace, plus stdlib and third-party
+# packages. A direct import of the project package, `flext_tests`, `scripts`,
+# `examples`, `tools`, `infra` or `config` recreates a second import surface
+# and bypasses the generated composition.
+#
+# The generated `tests` namespace exposes every declared namespace's public
+# `__all__` and the `tests/_<base>/*.py` test-only declarations. Test modules
+# therefore read `from tests import ...` only; the implementation layer in
+# `tests/_<base>/*.py` is the one place that imports first-party namespaces.
+#
+# Detection only: the semantic import cutover rewires the name to the
+# generated namespace; an unresolved name is repaired at its declaration.
+id: ban-test-import-outside-test-namespace
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+ignores:
+  # The generated namespace and the test-only implementation/facade modules are
+  # the declared import surface; only authored test modules are in scope.
+  - "**/tests/__init__.py"
+  - "**/tests/*/__init__.py"
+  - "**/tests/_*/**"
+  - "**/tests/fixtures/**"
+  - "**/tests/utilities.py"
+  - "**/tests/constants.py"
+  - "**/tests/models.py"
+  - "**/tests/protocols.py"
+  - "**/tests/typings.py"
+rule:
+  any:
+    - kind: import_from_statement
+      has:
+        field: module_name
+        regex: '^(?:flext_[a-z0-9_]+|ai_hub|algar_oud_mig|dc_recon|scripts|examples|tools|infra|config)(?:\.|$)'
+    - kind: import_statement
+      regex: '^import\s+(?:flext_[a-z0-9_]+|ai_hub|algar_oud_mig|dc_recon|scripts|examples|tools|infra|config)(?:\.|\s|,|$)'
+message: >-
+  Authored test imports a first-party namespace directly. Import the public
+  name from the generated `tests` namespace instead; `tests/_<base>/*.py`
+  is the only test-only implementation layer allowed to read first-party
+  namespaces.
+metadata:
+  enforce: [ENFORCE-116]

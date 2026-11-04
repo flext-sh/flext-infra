@@ -2043,7 +2043,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         directory = FlextInfraUtilitiesCodegenNamespace.facade_families()[
             family
         ].directory
-        return namespace_root / directory / f"{source_file.stem.strip('_')}.py"
+        stem = source_file.stem.strip("_")
+        if stem.startswith(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX):
+            stem = stem.removeprefix(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX)
+        return namespace_root / directory / f"{stem}.py"
 
     @staticmethod
     def _owned_path(root: Path, candidate: Path) -> Path:

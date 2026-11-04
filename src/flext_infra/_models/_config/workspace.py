@@ -338,7 +338,7 @@ class FlextInfraModelsConfigWorkspace:
             tuple[
                 str
                 | Annotated[
-                    p.Infra.DependencyGroupInclude,
+                    FlextInfraModelsConfigWorkspace.DependencyGroupInclude,
                     t.schema_for_model(
                         FlextInfraModelsConfigWorkspace.DependencyGroupInclude
                     ),
@@ -451,7 +451,7 @@ class FlextInfraModelsConfigWorkspace:
             tuple[
                 str
                 | Annotated[
-                    p.Infra.DependencyGroupInclude,
+                    FlextInfraModelsConfigWorkspace.DependencyGroupInclude,
                     t.schema_for_model(
                         FlextInfraModelsConfigWorkspace.DependencyGroupInclude
                     ),

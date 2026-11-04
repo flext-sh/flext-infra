@@ -253,7 +253,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
         other_member = self._member_ref("acme-charts", "apps/acme-charts")
         workspace = self._workspace(flext_member, other_member).model_copy(
             update={
-                "integration": p.Infra.WorkspaceIntegrationSpec(
+                "integration": m.Infra.WorkspaceIntegrationSpec(
                     provider=u.Tests.integration().provider,
                     branch=workspace_line,
                 ),

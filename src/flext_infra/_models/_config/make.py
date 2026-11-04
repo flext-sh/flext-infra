@@ -1042,14 +1042,14 @@ class FlextInfraModelsConfigMake(
         clean: Annotated[
             Annotated[
                 p.Infra.MakeCleanSpec,
-                t.schema_for_model(FlextInfraModelsConfigMake.MakeCleanSpec),
+                t.schema_for_model(FlextInfraModelsConfigMakeClean.MakeCleanSpec),
             ],
             m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
             Annotated[
                 p.Infra.MakeDocsSpec,
-                t.schema_for_model(FlextInfraModelsConfigMake.MakeDocsSpec),
+                t.schema_for_model(FlextInfraModelsConfigMakeDocs.MakeDocsSpec),
             ],
             m.Field(description="Public documentation lifecycle policy"),
         ]

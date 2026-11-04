@@ -12,10 +12,11 @@ import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_tests import FlextTestsUtilities
+from flext_tests import u as flext_tests_u
 
-from flext_infra import FlextInfraUtilities, config
+from flext_infra import config, u as flext_infra_u
 from tests import c, m, p, r, t, tm
+from tests._utilities.semantic_cutover import TestsFlextInfraUtilitiesSemanticCutover
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
 from tests.utilities_deps import TestsFlextInfraUtilitiesDeps
 from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixture
@@ -31,10 +32,11 @@ from tests.utilities_toml import TestsFlextInfraUtilitiesToml
 from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
 
 
-class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
+class TestsFlextInfraUtilities(flext_infra_u):
     """Typed test utilities for flext-infra."""
 
     class Tests(
+        flext_tests_u.Tests,
         TestsFlextInfraUtilitiesToml,
         TestsFlextInfraUtilitiesProjectFixture,
         TestsFlextInfraUtilitiesWorkspaceFixture,
@@ -48,7 +50,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
         TestsFlextInfraUtilitiesCodegen,
         TestsFlextInfraUtilitiesDeps,
         TestsFlextInfraUtilitiesWorkspaceEnv,
-        FlextTestsUtilities.Tests,
+        TestsFlextInfraUtilitiesSemanticCutover,
     ):
         """Canonical test helper namespace."""
 

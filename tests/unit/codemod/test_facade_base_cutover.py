@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra, m, p, u
+from flext_infra import infra, m, u
 from tests import c, p, tm
 
 if TYPE_CHECKING:

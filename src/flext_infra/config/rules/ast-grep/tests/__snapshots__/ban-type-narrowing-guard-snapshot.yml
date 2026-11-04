@@ -1,0 +1,39 @@
+id: ban-type-narrowing-guard
+snapshots:
+  ? |
+    assert isinstance(value, str)
+  : labels:
+    - source: assert isinstance(value, str)
+      style: primary
+      start: 0
+      end: 29
+    - source: isinstance
+      style: secondary
+      start: 7
+      end: 17
+    - source: isinstance(value, str)
+      style: secondary
+      start: 7
+      end: 29
+  ? |
+    from typing import TypeGuard
+  : labels:
+    - source: from typing import TypeGuard
+      style: primary
+      start: 0
+      end: 28
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: TypeGuard
+      style: secondary
+      start: 19
+      end: 28
+  ? |
+    value: TypeIs[str]
+  : labels:
+    - source: TypeIs[str]
+      style: primary
+      start: 7
+      end: 18

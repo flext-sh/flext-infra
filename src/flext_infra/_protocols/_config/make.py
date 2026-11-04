@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_infra._constants import FlextInfraConstantsConfig
-from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._protocols._config import (
     FlextInfraProtocolsConfigContract,
     FlextInfraProtocolsConfigExternalCache,

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, e, infra, m, p, r
+from flext_infra import config, e, infra, m, r
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraCodemodBatchApply
 from tests import c, p, t, tm, u
 

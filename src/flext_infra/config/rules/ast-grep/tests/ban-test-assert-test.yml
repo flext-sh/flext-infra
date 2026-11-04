@@ -1,0 +1,17 @@
+id: ban-test-assert
+valid:
+  - |
+    tm.that(value, eq=expected)
+  - |
+    tm.ok(value)
+  - |
+    tm.that(value, truth=True)
+invalid:
+  - |
+    assert value == expected
+  - |
+    assert value
+  - |
+    assert value is None
+  - |
+    assert isinstance(value, str)
