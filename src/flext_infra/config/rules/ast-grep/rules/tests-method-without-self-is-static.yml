@@ -1,7 +1,7 @@
 # A test-tree method that never reads its instance is a static method
 # (ruff PLR6301 no-self-use). The fix declares @staticmethod and drops `self`;
-# the packaged text rule tests-staticmethod-outermost-decorator then lifts the
-# decorator above any pytest marks. Methods that read `self` or call super(),
+# tests-staticmethod-decorator-order then lifts the decorator above any pytest
+# marks. Methods that read `self` or call super(),
 # dunders, properties, overloads, overrides and already static or class
 # methods stay as they are.
 id: tests-method-without-self-is-static

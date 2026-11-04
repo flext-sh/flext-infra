@@ -1,0 +1,34 @@
+id: model-field-protocol-schema
+valid:
+- |
+  from typing import Annotated, ClassVar
+  from flext_core import m, p, t
+  class A(m.ContractModel):
+      done: Annotated[p.Cli.Item, t.schema_for_model(m.Cli.Item)]
+      model_cls: type[m.Cli.Item]
+      cfg: ClassVar[m.ConfigDict] = m.ConfigDict()
+- |
+  from collections.abc import Callable
+  from flext_core import m
+  class B(m.ContractModel):
+      hook: Callable[[m.Cli.Item], None] | None = None
+- |
+  from flext_core import m
+  class Plain:
+      value: m.Cli.Item
+- |
+  from collections.abc import MutableMapping
+  from typing import Annotated
+  from flext_core import m
+  class Wrapped(m.ContractModel):
+      index: Annotated[m.InstanceOf[MutableMapping[str, int]], m.Field()]
+invalid:
+- |
+  from flext_core import m, p, t
+  class C(m.ContractModel):
+      color: m.Cli.Color | None = None
+- |
+  from collections.abc import Sequence
+  from flext_core import m, p, t
+  class D(m.ContractModel):
+      items: Sequence[m.Cli.Item] = m.Field(default_factory=tuple)

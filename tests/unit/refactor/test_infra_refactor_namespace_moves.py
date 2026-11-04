@@ -12,14 +12,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import FlextInfraCli
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemantic
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-from tests import p
 
 
 @pytest.mark.slow
@@ -28,30 +26,25 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
 
     @staticmethod
     @pytest.mark.parametrize("source_stem", ["parser", "_parser"])
-    @pytest.mark.parametrize("class_name", ["DocumentReader", "_DocumentReader"])
-    def test_class_relocation_keeps_modules_public_and_facade_directories_private(
-        tmp_path: Path, source_stem: str, class_name: str
+    @pytest.mark.parametrize("source_tier", ["src/example", "tests", "examples"])
+    def test_family_relocation_targets_the_declaring_domain_in_each_family(
+        tmp_path: Path, source_stem: str, source_tier: str
     ) -> None:
-        """Relocation destinations follow module and facade ownership conventions."""
-        package = tmp_path / "example"
-        source = package / f"{source_stem}.py"
-        tm.that(
-            u.Infra.class_target_file(
-                package_dir=package,
-                source_file=source,
-                class_name=class_name,
-                family="",
-            ),
-            eq=package / "parser_document_reader.py",
-        )
+        """Every family receives a declaration in the module of the same domain.
+
+        The premise replaces the former class-named destination: ADR-028
+        Decisions 3-4 give each family one nested class per module, so the
+        declaring module's domain, not the declared name, selects the module,
+        and the namespace root is the package or the tier hosting the families.
+        """
+        project = tmp_path / "project"
+        source = project / source_tier / f"{source_stem}.py"
+        namespace_root = project / source_tier
         for letter, family in u.Infra.facade_families().items():
-            target = u.Infra.class_target_file(
-                package_dir=package,
-                source_file=source,
-                class_name=class_name,
-                family=letter,
+            target = u.Infra.family_declaration_target_file(
+                project_root=project, source_file=source, family=letter
             )
-            tm.that(target, eq=package / family.directory / "document_reader.py")
+            tm.that(target, eq=namespace_root / family.directory / "parser.py")
             tm.that(target.parent.name.startswith("_"), eq=True)
 
     @staticmethod
@@ -98,7 +91,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     @staticmethod
     def _module_move_inputs(
         project: p.Infra.RopeProject,
-    ) -> tuple[Mapping[Path, str], tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> tuple[Mapping[Path, str], tuple[p.Cli.AtomicFileState, ...]]:
         """Capture the actual public planner inputs once through atomic reads.
 
         Returns:
@@ -216,11 +209,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         tm.that(original_references, eq=["True", "True", "7", "11"])
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                destination_file=target,
-                inputs=(sources, states),
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    inputs=(sources, states),
+                )
             )
         tm.fail(target.exists())
         if nested:
@@ -246,7 +241,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             )
         else:
             tm.ok(
-                FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+                FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
                     plans,
                     repository_root=root,
                     options=m.Infra.SemanticPublicationOptions(
@@ -349,23 +344,42 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         tm.fail(target.exists())
 
     @classmethod
-    @pytest.mark.parametrize("occupied_package", [False, True])
-    def test_exact_module_destination_rejects_occupied_native_owner(
-        cls, tmp_path: Path, *, occupied_package: bool
+    def test_exact_module_destination_rejects_occupied_package_owner(
+        cls, tmp_path: Path
     ) -> None:
-        """File and package collisions leave all captured owners untouched."""
+        """A package collision is refused and leaves captured owners untouched."""
         root, package, source, _ = cls._module_move_workspace(tmp_path)
         target = package / "elements.py"
-        if occupied_package:
-            occupied = target.with_suffix("")
-            occupied.mkdir()
-            occupied /= c.Infra.INIT_PY
-        else:
-            occupied = target
-        occupied.write_text("VALUE = 'occupied'\n", encoding=c.DEFAULT_ENCODING)
+        occupied = target.with_suffix("")
+        occupied.mkdir()
+        (occupied / c.Infra.INIT_PY).write_text(
+            "VALUE = 'occupied'\n", encoding=c.DEFAULT_ENCODING
+        )
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(FileExistsError):
+            tm.fail(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    inputs=(sources, states),
+                ),
+                has="module destination is occupied",
+            )
+        for state in states:
+            tm.that(state.path.read_bytes(), eq=state.content)
+
+    @classmethod
+    def test_exact_module_destination_rejects_occupied_file_owner(
+        cls, tmp_path: Path
+    ) -> None:
+        """A file collision raises and leaves captured owners untouched."""
+        root, package, source, _ = cls._module_move_workspace(tmp_path)
+        target = package / "elements.py"
+        target.write_text("VALUE = 'occupied'\n", encoding=c.DEFAULT_ENCODING)
+        with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
+            sources, states = cls._module_move_inputs(workspace.rope_project)
+            with pytest.raises(FileExistsError, match=r"elements\.py$"):
                 u.Infra.plan_module_move(
                     workspace.rope_project,
                     source,
@@ -387,13 +401,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         target = package / "_schema" / destination
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(ValueError, match="requires"):
+            tm.fail(
                 u.Infra.plan_module_move(
                     workspace.rope_project,
                     source,
                     destination_file=target,
                     inputs=(sources, states),
-                )
+                ),
+                has="requires",
+            )
         tm.fail(target.parent.exists())
         for state in states:
             tm.that(state.path.read_bytes(), eq=state.content)
@@ -407,13 +423,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         target = package / "_schema" / "elements.py"
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(ValueError, match="complete source inventory"):
+            tm.fail(
                 u.Infra.plan_module_move(
                     workspace.rope_project,
                     source,
                     destination_file=target,
                     inputs=({source: sources[source]}, states),
-                )
+                ),
+                has="complete source inventory",
+            )
         tm.fail(target.parent.exists())
         for state in states:
             tm.that(state.path.read_bytes(), eq=state.content)
@@ -427,11 +445,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         target = package / "elements.py"
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                destination_file=target,
-                inputs=(sources, states),
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    inputs=(sources, states),
+                )
             )
         occupied = target.with_suffix("")
         occupied.mkdir()
@@ -439,7 +459,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         content = "VALUE = 'newer package owner'\n"
         initializer.write_text(content, encoding=c.DEFAULT_ENCODING)
         tm.fail(
-            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+            FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
@@ -540,11 +560,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         root, package, source, target = cls._module_move_workspace(tmp_path)
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                target.parent,
-                inputs=(sources, states),
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    target.parent,
+                    inputs=(sources, states),
+                )
             )
         tm.fail(target.parent.exists())
         for state in states:
@@ -558,7 +580,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             eq=["RECEIVER"],
         )
         tm.ok(
-            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+            FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
@@ -591,11 +613,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         before = u.Tests.run_lazy_init_probe(probe, python_paths=(str(package.parent),))
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             inputs = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                destination_file=target,
-                inputs=inputs,
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    destination_file=target,
+                    inputs=inputs,
+                )
             )
         tm.ok(u.Infra.publish_codegen_plans(root, plans))
         tm.fail(source.exists())
@@ -606,38 +630,64 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
 
     @classmethod
+    @pytest.mark.parametrize(
+        "changed", ["source", "destination", "retirement", "witness"]
+    )
     def test_module_move_stale_source_rejects_before_any_effect(
         cls,
         tmp_path: Path,
+        changed: str,
     ) -> None:
-        """A newer source remains intact and the planned destination stays absent."""
+        """An invalidated native move preserves every observed authorial owner."""
         root, _package, source, target = cls._module_move_workspace(tmp_path)
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            plans = u.Infra.plan_module_move(
-                workspace.rope_project,
-                source,
-                target.parent,
-                inputs=(sources, states),
+            plans = tm.ok(
+                u.Infra.plan_module_move(
+                    workspace.rope_project,
+                    source,
+                    target.parent,
+                    inputs=(sources, states),
+                )
             )
-        newer = source.read_bytes() + b"\n# Newer authored work.\n"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                source,
-                newer.decode(c.DEFAULT_ENCODING),
-            ),
-        )
+        destination = next(plan for plan in plans if plan.path == target)
+        original = next(plan.before for plan in plans if plan.path == source)
+        tm.that(destination.move_source, eq=source)
+        tm.ok(original in destination.inputs)
+        expected_source = source.read_bytes()
+        expected_destination = None
+        if changed == "source":
+            expected_source += b"\n# Newer authored work.\n"
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    source, expected_source.decode(c.DEFAULT_ENCODING)
+                )
+            )
+        elif changed == "destination":
+            target.parent.mkdir(parents=True)
+            expected_destination = b"# Destination owned by a concurrent writer.\n"
+            target.write_bytes(expected_destination)
+        elif changed == "retirement":
+            plans = tuple(plan for plan in plans if plan.path != source)
+        else:
+            plans = tuple(
+                plan.model_copy(update={"inputs": ()}) if plan.path == target else plan
+                for plan in plans
+            )
         tm.fail(
-            FlextInfraTransformersSemanticPublication.publish_semantic_artifact_plans(
+            FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
                 plans,
                 repository_root=root,
                 options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
             ),
         )
-        tm.that(source.read_bytes(), eq=newer)
-        tm.fail(target.parent.exists())
+        tm.that(source.read_bytes(), eq=expected_source)
+        if expected_destination is None:
+            tm.fail(target.parent.exists())
+        else:
+            tm.that(target.read_bytes(), eq=expected_destination)
         for state in states:
-            if state.path != source:
+            if changed != "source" or state.path != source:
                 tm.that(state.path.read_bytes(), eq=state.content)
 
     @classmethod
@@ -796,6 +846,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             f"Published = {class_name}\n",
             encoding="utf-8",
         )
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
         tm.that(
             FlextInfraCli().main([
                 "refactor",

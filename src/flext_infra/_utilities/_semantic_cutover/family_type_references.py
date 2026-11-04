@@ -6,22 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import operator
 from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Iterator, Sequence
 
 from flext_infra import c, m, p
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+    FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
-)
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesSemanticFamilyTypeReferences:
@@ -104,6 +99,9 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         Returns:
             Sorted ``(begin, end, declaration line)`` annotation regions.
 
+        Raises:
+            ValueError: Native type regions overlap without containment.
+
         """
         regions = cls._semantic_annotation_regions(module)
         words = cls._require_worder(
@@ -112,7 +110,17 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         )
         for statement in FlextInfraUtilitiesRopeStructure.logical_statements(source):
             regions.update(cls._statement_regions(source, words, statement))
-        return tuple(sorted(regions, key=operator.itemgetter(0, 1)))
+        selected: list[tuple[int, int, int | None]] = []
+        for region in sorted(
+            regions, key=lambda item: (item[0], -item[1], item[2] is None)
+        ):
+            if selected and region[0] < selected[-1][1]:
+                if region[1] > selected[-1][1]:
+                    message = "native type regions overlap without containment"
+                    raise ValueError(message)
+                continue
+            selected.append(region)
+        return tuple(selected)
 
     @classmethod
     def _require_worder(cls, source: str, requirement: str) -> p.Infra.RopeWorder:
@@ -149,12 +157,17 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         finder = refactors.semantic_finder(module)
+        result_finder = refactors.semantic_finder(
+            module,
+            arguments={"result": "name=flext_core.result.FlextResult"},
+        )
         regions: set[tuple[int, int, int | None]] = set()
-        for pattern in (
-            "${declared}: ${annotation}",
-            "${declared}: ${annotation} = ${value}",
+        for matcher, pattern in (
+            (finder, "${declared}: ${annotation}"),
+            (finder, "${declared}: ${annotation} = ${value}"),
+            (result_finder, "${result}[${annotation}]"),
         ):
-            for match in finder.get_matches(pattern):
+            for match in matcher.get_matches(pattern):
                 begin, end = refactors.semantic_capture_region(
                     module, match, "annotation"
                 )
@@ -166,7 +179,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         cls,
         source: str,
         words: p.Infra.RopeWorder,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
     ) -> set[tuple[int, int, int | None]]:
         """Resolve the annotation regions owned by one logical statement.
 
@@ -187,7 +200,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
     def _type_alias_regions(
         cls,
         source: str,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
     ) -> set[tuple[int, int, int | None]]:
         """Return the annotation region of one native ``type`` alias statement."""
         start = statement.start_offset + statement.indent
@@ -202,7 +215,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         cls,
         source: str,
         words: p.Infra.RopeWorder,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
     ) -> set[tuple[int, int, int | None]]:
         """Return annotation regions of one native ``def``/``class`` declaration.
 
@@ -262,7 +275,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         source: str,
         begin: int,
         end: int,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         *,
         include_defaults: bool,
     ) -> set[tuple[int, int, int | None]]:
@@ -553,7 +566,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
             source,
             "quoted types require native Rope delimiters",
         )
-        typing = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+        typing = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module("typing")
         )
         bindings = module.get_source_binding_index() if module is not None else None
@@ -589,15 +602,15 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         resource: p.Infra.RopeResource,
         source: str,
         *,
-        flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> tuple[bool, tuple[m.Infra.SourceRewrite, ...]]:
+        flatten: p.Infra.FamilyWrapperFlatten,
+    ) -> tuple[bool, tuple[p.Infra.SourceRewrite, ...]]:
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             flatten.project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource, resource.path
             ),
         )
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
         for begin, end, literal, scope in cls.quoted_type_regions(
             source, flatten.project, module
         ):
@@ -619,7 +632,7 @@ class FlextInfraUtilitiesSemanticFamilyTypeReferences:
         _resource: p.Infra.RopeResource,
         scope: p.Infra.RopeScope,
         *,
-        flatten: m.Infra.FamilyWrapperFlatten,
+        flatten: p.Infra.FamilyWrapperFlatten,
     ) -> tuple[bool, str]:
         del _resource
         runtime = FlextInfraUtilitiesRopeRuntimeModules

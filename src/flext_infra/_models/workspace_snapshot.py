@@ -25,7 +25,7 @@ class FlextInfraModelsWorkspaceSnapshot:
 
         path: Annotated[Path, m.Field(description="Resolved file path")]
         state: Annotated[
-            m.Cli.AtomicFileState,
+            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
             m.Field(description="Authenticated state the run reads and publishes"),
         ]
         digest: Annotated[
@@ -49,10 +49,9 @@ class FlextInfraModelsWorkspaceSnapshot:
         """Bootstrap closure bound to native modules and their resolver roots."""
 
         namespace: Annotated[str, m.Field(description="Publishing namespace")]
-        modules: Annotated[
-            t.Port[tuple[t.Infra.RopeNativeParsedModule, ...]],
-            m.Field(exclude=True, description="Native modules of the source epoch"),
-        ]
+        modules: t.Port[tuple[t.Infra.RopeSourceModule, ...]] = m.Field(
+            exclude=True, description="Native modules of the source epoch"
+        )
         source_folders: Annotated[
             tuple[str, ...], m.Field(description="Native source folder election")
         ]
@@ -85,132 +84,95 @@ class FlextInfraModelsWorkspaceSnapshot:
             tuple[Path, ...],
             m.Field(description="Resolved member roots"),
         ]
-        engine: Annotated[
-            t.Port[t.Infra.RopeProject],
-            m.Field(
-                exclude=True,
-                description=(
-                    "The one source engine project; planned effects enter its overlay"
-                ),
+        engine: t.Port[t.Infra.RopeProject] = m.Field(
+            exclude=True,
+            description=(
+                "The one source engine project; planned effects enter its overlay"
             ),
-        ]
-        python_files: Annotated[
-            t.Port[dict[Path, tuple[Path, ...]]],
-            m.Field(exclude=True, description="Python sources of each member"),
-        ]
-        directory_facts: Annotated[
-            t.Port[dict[Path, tuple[Path | None, str]]],
-            m.Field(
-                exclude=True,
-                description="Physical directory owner and package name",
-            ),
-        ]
-        python_module_facts: Annotated[
-            t.Port[
-                dict[
-                    t.Infra.RopeNativeParsedModule,
-                    FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
-                ]
-            ],
-            m.Field(
-                exclude=True,
-                description="Shared static facts keyed by the original engine parse",
-            ),
-        ]
-        sources: Annotated[
-            t.Port[dict[Path, p.Infra.WorkspaceSnapshotSource]],
-            m.Field(exclude=True, description="Authenticated reads of this run"),
-        ]
-        packages: Annotated[
-            t.Port[dict[Path, str]],
-            m.Field(exclude=True, description="Dotted package of each directory"),
-        ]
-        import_edges: Annotated[
-            t.Port[dict[Path, tuple[frozenset[str], frozenset[str]]]],
+        )
+        python_files: t.Port[dict[Path, tuple[Path, ...]]] = m.Field(
+            exclude=True, description="Python sources of each member"
+        )
+        directory_facts: t.Port[dict[Path, tuple[Path | None, str]]] = m.Field(
+            exclude=True, description="Physical directory owner and package name"
+        )
+        python_module_facts: t.Port[
+            dict[
+                t.Infra.RopeNativeParsedModule,
+                Annotated[
+                    p.Infra.PythonModuleFacts,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenLazyInit.PythonModuleFacts
+                    ),
+                ],
+            ]
+        ] = m.Field(
+            exclude=True,
+            description="Shared static facts keyed by the original engine parse",
+        )
+        sources: t.Port[dict[Path, p.Infra.WorkspaceSnapshotSource]] = m.Field(
+            exclude=True, description="Authenticated reads of this run"
+        )
+        packages: t.Port[dict[Path, str]] = m.Field(
+            exclude=True, description="Dotted package of each directory"
+        )
+        import_edges: t.Port[dict[Path, tuple[frozenset[str], frozenset[str]]]] = (
             m.Field(
                 exclude=True,
                 description="Runtime and typing-only imported modules per source",
-            ),
-        ]
-        bootstrap_dependencies: Annotated[
-            t.Port[
-                dict[
-                    Path,
-                    p.Infra.WorkspaceBootstrapDependencies,
-                ]
-            ],
-            m.Field(
-                exclude=True, description="Bootstrap facts per native source epoch"
-            ),
-        ]
-        absolute_import_roots: Annotated[
-            t.Port[dict[Path, t.StrTuple]],
-            m.Field(
-                exclude=True,
-                description="Absolute imported package roots per captured member",
-            ),
-        ]
-        import_namespaces: Annotated[
-            t.Port[dict[tuple[Path, Path], tuple[Path, str] | None]],
+            )
+        )
+        bootstrap_dependencies: t.Port[
+            dict[Path, p.Infra.WorkspaceBootstrapDependencies]
+        ] = m.Field(exclude=True, description="Bootstrap facts per native source epoch")
+        absolute_import_roots: t.Port[dict[Path, t.StrTuple]] = m.Field(
+            exclude=True,
+            description="Absolute imported package roots per captured member",
+        )
+        import_namespaces: t.Port[dict[tuple[Path, Path], tuple[Path, str] | None]] = (
             m.Field(
                 exclude=True,
                 description="Import-law namespace election per consumer and source",
+            )
+        )
+        class_ancestors: t.Port[dict[str, t.StrTuple]] = m.Field(
+            exclude=True, description="C3 method order per qualified class identity"
+        )
+        exports: t.Port[dict[Path, Sequence[str]]] = m.Field(
+            exclude=True, description="Declared public names per module"
+        )
+        bindings: t.Port[dict[Path, dict[str, str]]] = m.Field(
+            exclude=True,
+            description="Module-level name to bound qualified source per module",
+        )
+        initializer_aliases: t.Port[dict[Path, dict[str, str]]] = m.Field(
+            exclude=True, description="Aliases each initializer publishes"
+        )
+        receiver_bindings: t.Port[dict[tuple[Path, str], Path | None]] = m.Field(
+            exclude=True, description="Module each source binds a facade letter from"
+        )
+        facade_paths: t.Port[dict[tuple[Path, str], Path]] = m.Field(
+            exclude=True, description="Facade module per package and letter"
+        )
+        pyproject_texts: t.Port[dict[tuple[Path, str], str]] = m.Field(
+            exclude=True, description="Recovered pyproject text per path and digest"
+        )
+        codemod_renderings: t.Port[
+            dict[
+                tuple[Path, str],
+                Annotated[
+                    p.Infra.CodemodNativeGenerated,
+                    t.schema_for_model(
+                        FlextInfraModelsRefactorGrep.CodemodNativeGenerated
+                    ),
+                ],
+            ]
+        ] = m.Field(
+            exclude=True,
+            description=(
+                "Native codemod rendering per member root and render-input digest"
             ),
-        ]
-        class_ancestors: Annotated[
-            t.Port[dict[str, t.StrTuple]],
-            m.Field(
-                exclude=True,
-                description="C3 method order per qualified class identity",
-            ),
-        ]
-        exports: Annotated[
-            t.Port[dict[Path, Sequence[str]]],
-            m.Field(exclude=True, description="Declared public names per module"),
-        ]
-        bindings: Annotated[
-            t.Port[dict[Path, dict[str, str]]],
-            m.Field(
-                exclude=True,
-                description="Module-level name to bound qualified source per module",
-            ),
-        ]
-        initializer_aliases: Annotated[
-            t.Port[dict[Path, dict[str, str]]],
-            m.Field(exclude=True, description="Aliases each initializer publishes"),
-        ]
-        receiver_bindings: Annotated[
-            t.Port[dict[tuple[Path, str], Path | None]],
-            m.Field(
-                exclude=True,
-                description="Module each source binds a facade letter from",
-            ),
-        ]
-        facade_paths: Annotated[
-            t.Port[dict[tuple[Path, str], Path]],
-            m.Field(exclude=True, description="Facade module per package and letter"),
-        ]
-        pyproject_texts: Annotated[
-            t.Port[dict[tuple[Path, str], str]],
-            m.Field(
-                exclude=True,
-                description="Recovered pyproject text per path and digest",
-            ),
-        ]
-        codemod_renderings: Annotated[
-            t.Port[
-                dict[
-                    tuple[Path, str],
-                    FlextInfraModelsRefactorGrep.CodemodNativeGenerated,
-                ]
-            ],
-            m.Field(
-                exclude=True,
-                description=(
-                    "Native codemod rendering per member root and render-input digest"
-                ),
-            ),
-        ]
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsWorkspaceSnapshot"]

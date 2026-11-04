@@ -1,0 +1,13 @@
+# The root model contract is the mirror of the root model ``m.BaseModel``:
+# one declaration, ``BaseModel``. Every protocol facade (the ``p`` letter or a
+# ``Flext*Protocols`` facade class composing it) spells it ``.BaseModel``.
+id: rewire-protocol-model-root
+language: Python
+severity: error
+rule:
+  pattern: $FACADE.Model
+constraints:
+  FACADE:
+    regex: ^(p|Flext\w*Protocols)$
+fix: $FACADE.BaseModel
+message: The root model contract is BaseModel, the mirror of m.BaseModel.

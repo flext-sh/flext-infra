@@ -15,7 +15,7 @@ from pathlib import Path
 from flext_cli import u
 from typing_extensions import TypeForm
 
-from flext_infra import m, p, r, t
+from flext_infra import p, r, t
 
 
 class FlextInfraUtilitiesNativeTooling:
@@ -23,7 +23,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def native_tool_search_path_admission(
-        document: m.Infra.ToolConfigDocument,
+        document: p.Infra.ToolConfigDocument,
         repository_root: Path,
     ) -> p.Result[bool]:
         """Check rooted native search paths once, without copying the typed document.
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesNativeTooling:
                 pyright.project_root,
                 *pyright.env_dirs,
                 *pyright.test_like_dirs,
-                *(override.root for override in pyright.diagnostic_path_overrides),
+                *(entry.root for entry in pyright.diagnostic_path_exceptions),
                 pyrefly.source_dir,
                 pyrefly.project_root,
                 *pyrefly.env_dirs,
@@ -92,6 +92,50 @@ class FlextInfraUtilitiesNativeTooling:
         return r[bool].ok(value=True)
 
     @staticmethod
+    def diagnostic_exception_levels(
+        document: p.Infra.ToolConfigDocument,
+        checker: str,
+        project_root: Path | None,
+    ) -> Sequence[tuple[str, Mapping[str, str]]]:
+        """Resolve each authorized exception root to one checker's native levels.
+
+        Roots are relative to the project that declares them. Without an
+        on-disk project (a pre-write scaffold) the declarations render as
+        written; with one, every declared root must exist.
+
+        Returns:
+            Declaration-ordered roots paired with the checker's rule levels;
+            entries that change no rule of the checker are omitted.
+
+        Raises:
+            ValueError: If two exceptions declare the same root.
+            FileNotFoundError: If a declared root is absent from the project.
+
+        """
+        entries = document.tools.pyright.path_rules.diagnostic_path_exceptions
+        roots = [entry.root for entry in entries]
+        duplicated = sorted({root for root in roots if roots.count(root) > 1})
+        if duplicated:
+            msg = f"diagnostic exception roots declared twice: {duplicated}"
+            raise ValueError(msg)
+        resolved: list[tuple[str, Mapping[str, str]]] = []
+        for entry in entries:
+            if project_root is not None and not (project_root / entry.root).exists():
+                msg = (
+                    f"diagnostic exception root {entry.root!r} does not exist "
+                    f"in {project_root}"
+                )
+                raise FileNotFoundError(msg)
+            levels = {
+                change.rule: change.new
+                for change in entry.changes
+                if change.checker == checker
+            }
+            if levels:
+                resolved.append((entry.root, levels))
+        return tuple(resolved)
+
+    @staticmethod
     def configuration_pairs(
         entries: Sequence[tuple[str, t.JsonValue]],
     ) -> t.JsonDict:
@@ -105,7 +149,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def native_tool_settings(
-        document: m.Infra.ToolConfigDocument, table: str
+        document: p.Infra.ToolConfigDocument, table: str
     ) -> t.JsonDict:
         """Read a declared native table without inventing an absent configuration.
 
@@ -119,7 +163,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def markdown_native_configuration(
-        markdown: m.Infra.MarkdownConfig,
+        markdown: p.Infra.MarkdownConfig,
         excludes: Sequence[str],
     ) -> str:
         """Render native Markdown tables from the common policy and overrides.
@@ -155,8 +199,23 @@ class FlextInfraUtilitiesNativeTooling:
         return u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(document))
 
     @staticmethod
+    def markdown_editor_configuration(markdown: p.Infra.MarkdownConfig) -> t.JsonDict:
+        """Elect the editor-compatible policy from the common Markdown rules.
+
+        Native rumdl rules and tables (``native_rules``/``native_settings``)
+        stay execution-tool-only: the editor projection reads the common
+        ``MD*`` rules exactly as declared, so one SSOT policy owns both tool
+        dialects without copying the native surface.
+
+        Returns:
+            The JSON mapping consumed by the settings projection.
+
+        """
+        return FlextInfraUtilitiesNativeTooling.configuration_pairs(markdown.rules)
+
+    @staticmethod
     def native_tool_configuration(
-        document: m.Infra.ToolConfigDocument, root: str
+        document: p.Infra.ToolConfigDocument, root: str
     ) -> t.JsonDict:
         """Compose a declared native root and its nested option tables.
 
@@ -184,7 +243,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def native_tool_setting[TValue](
-        document: m.Infra.ToolConfigDocument,
+        document: p.Infra.ToolConfigDocument,
         table: str,
         key: str,
         target: t.TypeForm[TValue],
@@ -201,7 +260,7 @@ class FlextInfraUtilitiesNativeTooling:
 
     @staticmethod
     def native_tool_strings(
-        document: m.Infra.ToolConfigDocument, table: str, key: str
+        document: p.Infra.ToolConfigDocument, table: str, key: str
     ) -> Sequence[str]:
         """Validate one native string-array option.
 

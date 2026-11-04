@@ -1,6 +1,9 @@
 id: require-model-extra-forbid
 valid:
   - |
+    class Order(p.BaseModel, Protocol):
+        total: int
+  - |
     class Order(m.FrozenModel):
         total: int
   - |

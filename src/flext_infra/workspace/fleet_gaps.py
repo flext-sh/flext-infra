@@ -14,15 +14,16 @@ from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
-class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
+class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
     """Report every declared repository's hygiene gaps from that repo's own facts.
 
     Each row observes only what the checkout itself publishes: its porcelain
-    status, its open pull requests (an unreachable provider degrades to an
-    empty list), its unmerged-vs-integration branch count, the violation
-    counts explicitly selected check invocations carry, and the presence of the fleet's
-    standards files. The command is read-only over every probed repository
-    and writes exactly one receipt under the invoking workspace root.
+    status, its open pull requests, its unmerged-vs-integration branch count,
+    the violation counts explicitly selected check invocations carry, and the
+    presence of the fleet's standards files. The first row is the workspace
+    root. The command is read-only over every probed repository and writes
+    exactly one receipt in the invoking checkout's Git directory. A failed
+    probe fails the command; it is never reported as an empty fact.
     """
 
     quality_receipts: str | None = m.Field(
@@ -34,24 +35,32 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     )
 
     @override
-    def execute(self) -> p.Result[m.Infra.FleetGapsReport]:
+    def execute(self) -> p.Result[p.Infra.FleetGapsReport]:
         """Probe every declared member and external consumer, then publish.
 
         Returns:
-            The resulting ``p.Result[m.Infra.FleetGapsReport]``.
+            The resulting ``p.Result[p.Infra.FleetGapsReport]``.
 
         """
         root = self.repository_root
         loaded = FlextInfraWorkspaceDetector.load_workspace_spec(root)
         if loaded.failure:
-            return r[m.Infra.FleetGapsReport].from_failure(loaded)
+            return r[p.Infra.FleetGapsReport].from_failure(loaded)
         workspace = loaded.value
         quality = self._quality_findings(root, workspace)
         if quality.failure:
-            return r[m.Infra.FleetGapsReport].from_failure(quality)
-        rows: list[m.Infra.FleetRepoGaps] = [
-            self._member_row(root, workspace, member, quality.value)
-            for member in workspace.subprojects
+            return r[p.Infra.FleetGapsReport].from_failure(quality)
+        declared = (
+            workspace.integration.branch if workspace.integration is not None else None
+        )
+        rows: list[p.Infra.FleetRepoGaps] = [
+            self._repo_row(
+                root, name=workspace.name, declared=declared, quality=quality.value
+            ),
+            *(
+                self._member_row(root, workspace, member, quality.value)
+                for member in workspace.subprojects
+            ),
         ]
         rows.extend(
             self._external_consumer_row(consumer, quality.value)
@@ -69,16 +78,16 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
             relative_path=c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH,
         )
         if published.failure:
-            return r[m.Infra.FleetGapsReport].from_failure(published)
-        return r[m.Infra.FleetGapsReport].ok(report)
+            return r[p.Infra.FleetGapsReport].from_failure(published)
+        return r[p.Infra.FleetGapsReport].ok(report)
 
     def _member_row(
         self,
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        member: m.Infra.RepositoryRef,
+        workspace: p.Infra.WorkspaceSpec,
+        member: p.Infra.RepositoryRef,
         quality: Mapping[tuple[Path, str], int],
-    ) -> m.Infra.FleetRepoGaps:
+    ) -> p.Infra.FleetRepoGaps:
         """Probe one declared member at its composed path.
 
         Returns:
@@ -97,9 +106,9 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
 
     def _external_consumer_row(
         self,
-        consumer: m.Infra.ExternalConsumerSpec,
+        consumer: p.Infra.ExternalConsumerSpec,
         quality: Mapping[tuple[Path, str], int],
-    ) -> m.Infra.FleetRepoGaps:
+    ) -> p.Infra.FleetRepoGaps:
         """Probe one declared external consumer at its absolute root.
 
         Returns:
@@ -120,7 +129,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
         name: str,
         declared: str | None,
         quality: Mapping[tuple[Path, str], int],
-    ) -> m.Infra.FleetRepoGaps:
+    ) -> p.Infra.FleetRepoGaps:
         """Assemble one row from the checkout's own Git, provider, and report facts.
 
         A missing checkout retains its presence fact. Unselected or unexecuted
@@ -160,23 +169,26 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
             The resulting ``Sequence[str]``.
 
         """
-        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=repo_root))
-        if status.failure:
-            return ()
+        status = u.Infra.git_status(
+            m.Infra.GitStatusRequest(repo_root=repo_root)
+        ).unwrap()
         return tuple(
             line[c.Infra.GIT_PORCELAIN_PATH_OFFSET :].split("-> ", 1)[-1].strip()
-            for line in status.value.porcelain.splitlines()
+            for line in status.porcelain.splitlines()
             if line.strip()
         )
 
     @staticmethod
     def _open_pull_requests(
         repo_root: Path,
-    ) -> tuple[m.Infra.FleetPullRequest, ...]:
-        """List the checkout's open pull requests; a provider failure is empty.
+    ) -> tuple[p.Infra.FleetPullRequest, ...]:
+        """List the checkout's open pull requests through the provider CLI.
 
         Returns:
-            The resulting ``tuple[m.Infra.FleetPullRequest, ...]``.
+            The open pull requests the provider reports.
+
+        Raises:
+            RuntimeError: The provider could not list them; its error is kept.
 
         """
         run = u.Cli.run_raw(
@@ -192,18 +204,19 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
             cwd=repo_root,
             timeout=c.Infra.TIMEOUT_SHORT,
         )
-        if run.failure or run.value.outcome.raw_return_code != 0:
-            return ()
-        parsed = u.Cli.json_parse(run.value.stdout)
-        if parsed.failure or not isinstance(parsed.value, list):
-            return ()
-        pull_requests: list[m.Infra.FleetPullRequest] = []
-        for item in parsed.value:
-            validated = u.validate_value(m.Infra.FleetPullRequest, item)
-            if validated.failure:
-                return ()
-            pull_requests.append(validated.value)
-        return tuple(pull_requests)
+        outcome = run.unwrap().outcome
+        if not u.Cli.process_succeeded(outcome):
+            msg = (
+                f"open pull requests unavailable for {repo_root}: "
+                f"exit {outcome.raw_return_code}: {run.value.stderr.strip()}"
+            )
+            raise RuntimeError(msg)
+        return tuple(
+            u.validate_value(m.Infra.FleetPullRequest, item).unwrap()
+            for item in u.Cli.json_as_sequence(
+                u.Cli.json_parse(run.value.stdout).unwrap()
+            )
+        )
 
     @classmethod
     def _unmerged_branches(
@@ -268,7 +281,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     def _quality_findings(
         self,
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
     ) -> p.Result[Mapping[tuple[Path, str], int]]:
         """Read only explicit native SARIF receipts, before unrelated probes.
 
@@ -306,14 +319,14 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     def _quality_receipt(
         path: Path,
         roots: frozenset[Path],
-    ) -> p.Result[m.Infra.CheckReportSummary]:
+    ) -> p.Result[p.Infra.CheckReportSummary]:
         """Load one selected native receipt and prove its invocation facts.
 
         Returns:
             The typed invocation summary, or the first violated receipt fact.
 
         """
-        result = r[m.Infra.CheckReportSummary]
+        result = r[p.Infra.CheckReportSummary]
         try:
             report = m.Infra.SarifReport.model_validate_json(path.read_bytes())
         except (OSError, ValueError) as exc:
@@ -349,7 +362,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     def _receipt_counts(
         cls,
         path: Path,
-        summary: m.Infra.CheckReportSummary,
+        summary: p.Infra.CheckReportSummary,
         roots: frozenset[Path],
         counts: MutableMapping[tuple[Path, str], int],
     ) -> p.Result[bool]:
@@ -395,7 +408,7 @@ class FlextInfraWorkspaceFleetGaps(s[m.Infra.FleetGapsReport]):
     def _execution_proven(
         gate: str,
         project: str,
-        execution: m.Infra.GateExecution,
+        execution: p.Infra.GateExecution,
         path: Path,
     ) -> bool:
         """Whether one gate execution is a completed native run of this receipt.

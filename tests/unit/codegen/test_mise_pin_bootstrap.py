@@ -19,8 +19,8 @@ from urllib.parse import urlsplit
 import pytest
 from packaging.version import Version
 
-from flext_infra import config, m
-from tests import c, tm, u
+from flext_infra import config, m, t
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraMisePinBootstrap:
@@ -30,9 +30,10 @@ class TestsFlextInfraMisePinBootstrap:
         """Declared bootstrap inputs passed through the real template consumer."""
 
         toolchain: Annotated[
-            m.Infra.ToolchainSpec, m.Field(description="Original declared toolchain")
+            Annotated[p.Infra.ToolchainSpec, t.schema_for_model(m.Infra.ToolchainSpec)],
+            m.Field(description="Original declared toolchain"),
         ]
-        make: Annotated[m.Infra.MakeSpec, m.Field(description="Original Make contract")]
+        make: Annotated[p.Infra.MakeSpec, m.Field(description="Original Make contract")]
         bootstrap_report_shell_literal: Annotated[
             str, m.Field(description="Elected operation report scalar transport")
         ]

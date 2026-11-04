@@ -130,6 +130,9 @@ class FlextInfraCodegenVersionFile(FlextInfraCodegenExecution[bool]):
             owner="codegen",
             policy="full",
         )
+        u.Infra.contained_write_targets(
+            planned.project, (planned.path,), authority=self.repository_root
+        )
         published = u.Cli.publish_file_changes(
             (planned,), lock_path=u.Infra.mutation_lock_path(planned.project).unwrap()
         )

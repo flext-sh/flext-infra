@@ -9,29 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-from collections.abc import Mapping
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 import hashlib
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 from shlex import quote
@@ -210,10 +191,7 @@ def _provision_consumer_template(
         ),
     )
     planned = conform.plan(conform_request)
-    plan = tm.ok(planned)
-    if plan.exception is not None:
-        raise plan.exception
-    tm.that(plan.issues, empty=True, msg=str(plan.issues))
+    tm.ok(planned)
     tm.ok(
         u.Tests.materialize_codegen_plans(planned.map(lambda result: result.files)),
     )
@@ -269,7 +247,7 @@ _FLEET_PROVISION = partial(
 @pytest.fixture(scope="session")
 def fleet_session_runtime(
     tmp_path_factory: pytest.TempPathFactory,
-    run_namespace: m.Tests.TestNamespace,
+    run_namespace: p.Tests.TestNamespace,
 ) -> Iterator[p.Tests.SessionRuntime]:
     """Own the distinct installed workspace seed through the shared runtime owner.
 
@@ -592,7 +570,9 @@ def _ensure_provisioned(
 
 
 @pytest.fixture(scope="session")
-def hermetic_git_environment(session_runtime: p.Tests.SessionRuntime) -> Mapping[str, str]:
+def hermetic_git_environment(
+    session_runtime: p.Tests.SessionRuntime,
+) -> Mapping[str, str]:
     """Serve the fixture provider's Git sources from this run's local mirrors.
 
     The mirrors are built once per locked-source set under the canonical

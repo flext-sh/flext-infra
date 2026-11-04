@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import p, tm, u
 
 _DOCS_CONSUMER_SOURCE = r"""sys.path.insert(0, sys.argv[1])
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import c, tm, u
+from tests import c, p, tm, u
 from tests.unit.docs.generator_bundle_tests import TestsFlextInfraDocsGeneratorBundle
 tmp_path = Path(sys.argv[2])
 case = TestsFlextInfraDocsGeneratorBundle()
@@ -92,7 +92,7 @@ tm.that(unmanaged.read_text(encoding="utf-8"), eq="keep\n")
         )
 
     @staticmethod
-    def test_docs_generated_parent_symlink_is_rejected_before_prune(
+    def test_generated_parent_symlink_is_rejected_before_prune(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
     ) -> None:

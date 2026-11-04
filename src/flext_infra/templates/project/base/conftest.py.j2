@@ -8,31 +8,15 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from pathlib import Path
+
+import pytest
 
 from flext_tests import install_local_packages
 
 
-class {{ class_stem }}PytestBootstrap:
-    """Bind this checkout's local tiers through the shared bootstrap owner."""
-
-    @staticmethod
-    def main() -> None:
-        """Install this checkout's local tier packages before collection."""
-        install_local_packages(Path(__file__).resolve().parent)
-
-
-{{ class_stem }}PytestBootstrap.main()
-
-__all__: list[str] = ["{{ class_stem }}PytestBootstrap"]
+@pytest.hookimpl(tryfirst=True)
+def pytest_configure(config: pytest.Config) -> None:
+    """Register the local packages before collection imports any test module."""
+    del config
+    install_local_packages(Path(__file__).resolve().parent)

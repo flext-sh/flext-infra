@@ -22,12 +22,10 @@ from libcst.metadata import (
     ScopeProvider,
 )
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Container
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesQualifiedNames:

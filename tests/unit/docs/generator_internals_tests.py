@@ -23,9 +23,9 @@ class TestsFlextInfraDocsGeneratorInternals:
     @staticmethod
     def test_anchorize_normalizes_headings() -> None:
         """Test anchorize normalizes headings."""
-        tm.that(u.Infra.docs_contract_anchorize("Hello World"), eq="hello-world")
-        tm.that(u.Infra.docs_contract_anchorize("Test-Case"), eq="test-case")
-        tm.that(u.Infra.docs_contract_anchorize(""), eq="")
+        tm.that(u.Infra.contract_anchorize("Hello World"), eq="hello-world")
+        tm.that(u.Infra.contract_anchorize("Test-Case"), eq="test-case")
+        tm.that(u.Infra.contract_anchorize(""), eq="")
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -35,10 +35,10 @@ class TestsFlextInfraDocsGeneratorInternals:
     def test_anchorize_matches_rendered_markdown(heading: str) -> None:
         """Generated links target the renderer's real Unicode-normalized heading ID."""
         rendered = Markdown(extensions=["toc"]).convert(f"## {heading}")
-        anchor = u.Infra.docs_contract_anchorize(heading)
+        anchor = u.Infra.contract_anchorize(heading)
         tm.that(rendered, has=f'id="{anchor}"')
         tm.that(
-            u.Infra.docs_contract_build_toc(f"# API\n\n## {heading}\n"),
+            u.Infra.contract_build_toc(f"# API\n\n## {heading}\n"),
             has=f"](#{anchor})",
         )
 
@@ -46,18 +46,18 @@ class TestsFlextInfraDocsGeneratorInternals:
     def test_anchorize_keeps_underscores_like_python_markdown() -> None:
         """Test anchorize keeps underscores like python markdown."""
         tm.that(
-            u.Infra.docs_contract_anchorize(r"marts/metrics/met_wms\_\_kpi_dashboard"),
+            u.Infra.contract_anchorize(r"marts/metrics/met_wms\_\_kpi_dashboard"),
             eq="martsmetricsmet_wms__kpi_dashboard",
         )
         tm.that(
-            u.Infra.docs_contract_anchorize("Config _private_ keys"),
+            u.Infra.contract_anchorize("Config _private_ keys"),
             eq="config-_private_-keys",
         )
 
     @staticmethod
     def test_build_toc_lists_h2_and_h3_sections() -> None:
         """Test build toc lists h2 and h3 sections."""
-        toc = u.Infra.docs_contract_build_toc(
+        toc = u.Infra.contract_build_toc(
             "# Main\n\n## Section 1\n\n### Subsection\n",
         )
 
@@ -81,7 +81,7 @@ class TestsFlextInfraDocsGeneratorInternals:
             "### Real Subsection\n"
         )
 
-        toc = u.Infra.docs_contract_build_toc(content)
+        toc = u.Infra.contract_build_toc(content)
 
         tm.that(toc, has="Real Section")
         tm.that(toc, has="Real Subsection")
@@ -100,7 +100,7 @@ class TestsFlextInfraDocsGeneratorInternals:
             "### Architecture\n"
             "\n## Copyright &copy; {#copyright}\n"
         )
-        toc = u.Infra.docs_contract_build_toc(content)
+        toc = u.Infra.contract_build_toc(content)
         rendered = Markdown(extensions=["attr_list", "toc"]).convert(content)
         for anchor in (
             "incident-vault",
@@ -115,15 +115,15 @@ class TestsFlextInfraDocsGeneratorInternals:
         tm.that(toc, has="[Architecture](#architecture)")
         tm.that(toc, lacks="decisions.md")
         tm.that(toc, has="[Copyright ©](#copyright)")
-        updated, _ = u.Infra.docs_contract_update_toc(content)
-        twice, changed = u.Infra.docs_contract_update_toc(updated)
+        updated, _ = u.Infra.contract_update_toc(content)
+        twice, changed = u.Infra.contract_update_toc(updated)
         tm.that(twice, eq=updated)
         tm.that(changed, eq=0)
 
     @staticmethod
     def test_update_toc_replaces_existing_block() -> None:
         """Test update toc replaces existing block."""
-        updated, changed = u.Infra.docs_contract_update_toc(
+        updated, changed = u.Infra.contract_update_toc(
             "# Main\n\n<!-- TOC START -->\n- stale\n<!-- TOC END -->\n\n## Section\n",
         )
 
@@ -151,7 +151,7 @@ class TestsFlextInfraDocsGeneratorInternals:
     @staticmethod
     def test_update_toc_preserves_single_blank_after_level_one_heading() -> None:
         """Test update toc preserves single blank after level one heading."""
-        updated, changed = u.Infra.docs_contract_update_toc("# Main\n\n## Section\n")
+        updated, changed = u.Infra.contract_update_toc("# Main\n\n## Section\n")
 
         tm.that(changed, eq=1)
         tm.that(updated, has="# Main\n\n<!-- TOC START -->")

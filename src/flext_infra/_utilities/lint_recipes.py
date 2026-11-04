@@ -56,8 +56,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def project_notice_identity(
         project_root: Path,
-        declared: m.Infra.ProjectSpec | None,
-        scaffold: m.Infra.ScaffoldProjectSpec,
+        declared: p.Infra.ProjectSpec | None,
+        scaffold: p.Infra.ScaffoldProjectSpec,
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[tuple[str, str, int]]:
@@ -154,6 +154,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         *,
         module: Path | None = None,
         source_project: p.Infra.RopeProject | None = None,
+        declaration_inputs: p.Infra.RepositoryDeclarationInputs | None = None,
     ) -> str:
         """Render the copyright notice of the project that owns ``pkg_dir``.
 
@@ -164,6 +165,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         shares, is the line between the copyright sentence and the SPDX line:
         the sentence and the license stay legal, and the notice is not one
         stamp.
+        ``declaration_inputs`` reuses an already validated declaration of that
+        owning root, including its original source observations.
 
         Returns:
             The copyright sentence, that module identity when ``module`` is
@@ -189,7 +192,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                 root,
                 filename=c.Infra.CODEGEN_CONFIG_FILENAME,
             )
-            if source_project is None:
+            if source_project is None and declaration_inputs is None:
                 notice = cls._declared_notice_identity(
                     root,
                     tuple(
@@ -200,11 +203,13 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
                     ),
                 )
             else:
-                artifacts = FlextInfraUtilitiesProjectManagedArtifacts
-                declaration = artifacts.load_repository_declaration_inputs(
-                    root,
-                    source_project=source_project,
-                ).unwrap()
+                declaration = declaration_inputs
+                if declaration is None:
+                    artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+                    declaration = artifacts.load_repository_declaration_inputs(
+                        root,
+                        source_project=source_project,
+                    ).unwrap()
                 notice = cls.project_notice_identity(
                     root,
                     declaration.spec.project,
@@ -1472,7 +1477,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def _line_wrap_cuts(
         text: str,
-        literal: m.Infra.LineWrapLiteral,
+        literal: p.Infra.LineWrapLiteral,
         column: int,
         limit: int,
     ) -> Sequence[int]:
@@ -1520,7 +1525,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def _line_wrap_pieces(
         text: str,
-        literal: m.Infra.LineWrapLiteral,
+        literal: p.Infra.LineWrapLiteral,
         cuts: Sequence[int],
     ) -> Sequence[str]:
         """Split one literal at the given offsets into closed literals.
@@ -1543,7 +1548,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         cls,
         tokens: Sequence[tokenize.TokenInfo],
         number: int,
-    ) -> Sequence[m.Infra.LineWrapLiteral]:
+    ) -> Sequence[p.Infra.LineWrapLiteral]:
         """Return each single-quoted single-line string literal of one line.
 
         Returns:
@@ -1551,7 +1556,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         depths = cls._line_wrap_bracket_depths(tokens, number)
-        literals: list[m.Infra.LineWrapLiteral] = []
+        literals: list[p.Infra.LineWrapLiteral] = []
         for start, end, head in cls._line_wrap_spans(tokens, number):
             body = head.lstrip("rRbBuUfFtT")
             quote = body[:1]

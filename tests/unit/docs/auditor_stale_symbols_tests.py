@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +53,7 @@ class TestsFlextInfraAuditorStaleSymbols:
             ),
         )
 
-    def _stale_symbol_scope(self, tmp_path: Path) -> m.Infra.DocScope:
+    def _stale_symbol_scope(self, tmp_path: Path) -> p.Infra.DocScope:
         workspace = tmp_path / "workspace"
         project = workspace / "flext-demo"
         package_root = project / "src" / "flext_demo"

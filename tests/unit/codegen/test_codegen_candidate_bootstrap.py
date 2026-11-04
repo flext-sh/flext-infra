@@ -16,13 +16,13 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 def _write_candidate_targets(
     root: Path,
-    targets: Sequence[m.Infra.CandidateBootstrapTargetSpec],
+    targets: Sequence[p.Infra.CandidateBootstrapTargetSpec],
 ) -> Path:
     """Declare recovery targets through the repository's current config owner.
 
@@ -133,38 +133,20 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             (package / c.Infra.INIT_PY).unlink()
 
     @staticmethod
-    def _assert_independent_pyproject_planned(
-        independent: Path,
-        plan: m.Infra.CodegenPlan,
-        report: m.Infra.CodegenPlanningReport,
-    ) -> None:
-        """Require the independent member's pyproject in both plan and report."""
-        projection = independent / c.PYPROJECT_FILENAME
-        tm.ok(projection in {file.path for file in plan.files})
-        tm.ok(
-            projection
-            in {file.path for item in report.outcomes for file in item.files},
-        )
-
-    @staticmethod
     @pytest.mark.slow
     @pytest.mark.parametrize("failure", ["root-source", "member-package"])
-    def test_repository_failure_preserves_independent_plans(
+    def test_repository_failure_stops_planning_with_its_cause(
         tmp_path: Path,
         failure: str,
     ) -> None:
-        """Public plans account for each repository without reading failed metadata."""
+        """The first repository planning failure propagates before any effect."""
         root = tmp_path / "workspace"
         member = u.Tests.WorktreeFixture.governed_workspace_with_member(
             root,
             workspace=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-workspace",
             member=f"{c.Infra.PKG_PREFIX_HYPHEN}plan-member",
         )
-        independent = (
-            TestsFlextInfraCodegenCandidateBootstrap._attach_independent_member(
-                root,
-            )
-        )
+        TestsFlextInfraCodegenCandidateBootstrap._attach_independent_member(root)
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         workspace = workspace.model_copy(
             update={
@@ -178,23 +160,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             scope=c.Infra.CodegenConformScope.ALL,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        tm.that(
-            tm.ok(
-                FlextInfraCodegenConform.Generate(
-                    repository_root=root,
-                    state=m.Infra.CodegenConformState(
-                        repository_root=root,
-                        initial_workspace=workspace,
-                    ),
-                ).plan(request),
-            ).issues,
-            empty=True,
-        )
-        failed = root if failure.startswith("root-") else member
-        TestsFlextInfraCodegenCandidateBootstrap._break_repository(failed, failure)
-        before = TestsFlextInfraConformSupport.project_tree(root)
-
-        plan = tm.ok(
+        tm.ok(
             FlextInfraCodegenConform.Generate(
                 repository_root=root,
                 state=m.Infra.CodegenConformState(
@@ -203,33 +169,25 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 ),
             ).plan(request),
         )
+        failed = root if failure.startswith("root-") else member
+        TestsFlextInfraCodegenCandidateBootstrap._break_repository(failed, failure)
+        before = TestsFlextInfraConformSupport.project_tree(root)
 
-        tm.ok(bool(plan.issues))
-        report = m.Infra.CodegenPlanningReport.model_validate_json(
-            (
-                tm.ok(u.Infra.refactor_report_evidence_root(root))
-                / c.Infra.CODEGEN_PLAN_REPORT_RELATIVE_PATH
-            ).read_bytes(),
-        )
-        failed_outcome = next(item for item in report.outcomes if item.root == failed)
-        tm.ok(bool(failed_outcome.error or failed_outcome.issues))
+        with u.Tests.raises(
+            ValueError,
+            match=(
+                "cannot resolve package name" if failure == "member-package" else ""
+            ),
+        ) as raised:
+            FlextInfraCodegenConform.Generate(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    initial_workspace=workspace,
+                ),
+            ).plan(request)
         if failure == "root-source":
-            tm.that(
-                tm.not_none(failed_outcome.error_type).rpartition(".")[2],
-                eq="TOMLDecodeError",
-            )
-        tm.that(failed_outcome.files, empty=True)
-        TestsFlextInfraCodegenCandidateBootstrap._assert_independent_pyproject_planned(
-            independent,
-            plan,
-            report,
-        )
-        if failure == "member-package":
-            tm.that(
-                next(item for item in report.outcomes if item.root == root).error,
-                has="no successful selected plan",
-            )
-            tm.that(str(tm.not_none(plan.exception)), has="cannot resolve package name")
+            tm.that(type(raised.value).__name__, eq="TOMLDecodeError")
         tm.that(
             TestsFlextInfraConformSupport.project_tree(root),
             eq=before,
@@ -268,7 +226,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             u.Cli.atomic_read_binary_file_state(pyproject, required=True),
         )
         command = m.Infra.CandidateBootstrapCommand(repository_root=root)
-        plan = tm.ok(
+        tm.ok(
             FlextInfraCodegenConform.Generate(repository_root=root).plan(
                 u.Tests.conform_request(
                     root,
@@ -278,7 +236,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 ),
             ),
         )
-        tm.that(plan.issues, empty=True)
 
         tm.ok(infra.bootstrap_candidate(command))
         projected = tm.ok(

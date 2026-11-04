@@ -16,12 +16,12 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m, t, u
+from flext_infra import config, m, p, t, u
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenMiseToolchainProof,
 )
-from tests import c, tm
+from tests import c, p, tm
 
 
 class TestsFlextInfraMiseToolchainProof:
@@ -71,7 +71,7 @@ class TestsFlextInfraMiseToolchainProof:
         ).repository_root
 
     @staticmethod
-    def _native_entry() -> m.Infra.MiseToolEntry:
+    def _native_entry() -> p.Infra.MiseToolEntry:
         """Read the declared UV probe from the production configuration.
 
         Returns:
@@ -143,7 +143,7 @@ class TestsFlextInfraMiseToolchainProof:
         )
 
     @classmethod
-    def _entry(cls) -> m.Infra.MiseToolEntry:
+    def _entry(cls) -> p.Infra.MiseToolEntry:
         """Bind the scenario identity to the real configured UV probe.
 
         Returns:

@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, t
+from flext_infra import c, e, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
@@ -26,7 +26,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 
@@ -76,16 +76,9 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
             folder.real_path for folder in project.get_python_path_folders()
         )
         previous = snapshot.bootstrap_dependencies.get(root)
-        same_inputs = (
-            previous is not None
-            and previous.namespace == namespace
-            and previous.source_folders == source_folders
-            and previous.python_path_folders == python_paths
-            and previous.source_digests == source_digests
-        )
-        if same_inputs and all(
-            old is current
-            for old, current in zip(previous.modules, modules, strict=True)
+        current = (namespace, source_folders, python_paths, source_digests)
+        if previous is not None and cls._bootstrap_inputs_unchanged(
+            previous, current, modules
         ):
             return previous.dependencies
         graph, _names = cls.snapshot_import_graph(project, resources=resources)
@@ -101,6 +94,30 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
             dependencies=dependencies,
         )
         return dependencies
+
+    @staticmethod
+    def _bootstrap_inputs_unchanged(
+        previous: p.Infra.WorkspaceBootstrapDependencies,
+        current: tuple[str, tuple[str, ...], tuple[str, ...], tuple[str, ...]],
+        modules: Sequence[t.Infra.RopeSourceModule],
+    ) -> bool:
+        """Whether a recorded bootstrap closure was computed from these inputs.
+
+        Returns:
+            True when namespace, folders, digests and the identity of every
+            resolved module equal the recorded ones.
+
+        """
+        namespace, source_folders, python_paths, source_digests = current
+        return (
+            previous.namespace == namespace
+            and previous.source_folders == source_folders
+            and previous.python_path_folders == python_paths
+            and previous.source_digests == source_digests
+            and all(
+                old is new for old, new in zip(previous.modules, modules, strict=True)
+            )
+        )
 
     @classmethod
     def snapshot_import_graph(
@@ -121,7 +138,8 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
                 str]]``.
 
         Raises:
-            ValueError: If rope could not name module.
+            e.OperationError: If rope could not name one module; its context
+                names that module.
 
         """
         raw: MutableMapping[str, set[str]] = {}
@@ -150,7 +168,9 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
             )
             if not name:
                 msg = f"rope could not name module {resource.path}"
-                raise ValueError(msg)
+                raise e.OperationError(
+                    msg, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                )
             modules[path] = name
             package = name if path.name == c.Infra.INIT_PY else name.rpartition(".")[0]
             raw[name] = set(

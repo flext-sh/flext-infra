@@ -13,40 +13,22 @@ from __future__ import annotations
 from flext_cli import FlextCliModels
 
 from flext_infra._models import (
-    FlextInfraModelsBase,
     FlextInfraModelsCensus,
     FlextInfraModelsCheck,
-    FlextInfraModelsCodegenRender,
-    FlextInfraModelsCodegenToolchain,
+    FlextInfraModelsCodegen,
     FlextInfraModelsCodemod,
     FlextInfraModelsCore,
     FlextInfraModelsDeps,
-    FlextInfraModelsDepsToml,
-    FlextInfraModelsDepsToolConfig,
-    FlextInfraModelsDepsToolConfigLinters,
-    FlextInfraModelsDepsToolConfigProject,
-    FlextInfraModelsDepsToolConfigProjectArtifacts,
-    FlextInfraModelsDepsToolConfigProjectGitignore,
-    FlextInfraModelsDepsToolConfigProjectMise,
-    FlextInfraModelsDepsToolConfigTypeCheckers,
     FlextInfraModelsDocs,
-    FlextInfraModelsDocsCollection,
-    FlextInfraModelsDocsGeneration,
-    FlextInfraModelsDuplication,
     FlextInfraModelsEnforcementCatalog,
     FlextInfraModelsGates,
     FlextInfraModelsGit,
-    FlextInfraModelsGitLaneInputs,
-    FlextInfraModelsGitLaneOwnership,
     FlextInfraModelsLayout,
-    FlextInfraModelsMiseToolchain,
     FlextInfraModelsMiseToolchainBase,
     FlextInfraModelsMiseToolchainRepair,
     FlextInfraModelsMixins,
-    FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsPromoted,
     FlextInfraModelsRefactor,
-    FlextInfraModelsRefactorGrep,
     FlextInfraModelsRelease,
     FlextInfraModelsRope,
     FlextInfraModelsRopeMove,
@@ -60,43 +42,29 @@ from flext_infra._models import (
     FlextInfraModelsWorktree,
 )
 from flext_infra._models._codegen import FlextInfraCodegen
-from flext_infra._models._config import FlextInfraModelsConfig
+from flext_infra._models._config.base import FlextInfraModelsConfig
 
 
 class FlextInfraModels(FlextCliModels):
     """Merged model namespace for flext-infra domain objects."""
 
     class Infra(
+        FlextInfraCodegen,
         FlextInfraModelsCensus,
         FlextInfraModelsCheck,
+        FlextInfraModelsCodegen,
         FlextInfraModelsCodemod,
         FlextInfraModelsDeps,
-        FlextInfraModelsDepsToolConfig,
-        FlextInfraModelsDepsToolConfigLinters,
-        FlextInfraModelsDepsToolConfigProject,
-        FlextInfraModelsDepsToolConfigProjectArtifacts,
-        FlextInfraModelsDepsToolConfigProjectGitignore,
-        FlextInfraModelsDepsToolConfigProjectMise,
-        FlextInfraModelsDepsToolConfigTypeCheckers,
-        FlextInfraModelsDepsToml,
         FlextInfraModelsDocs,
-        FlextInfraModelsDocsGeneration,
-        FlextInfraModelsDocsCollection,
         FlextInfraModelsEnforcementCatalog,
         FlextInfraModelsGates,
-        FlextInfraModelsDuplication,
         FlextInfraModelsGit,
-        FlextInfraModelsGitLaneOwnership,
-        FlextInfraModelsGitLaneInputs,
         FlextInfraModelsLayout,
         FlextInfraModelsMiseToolchainBase,
         FlextInfraModelsMiseToolchainRepair,
         FlextInfraModelsMixins,
         FlextInfraModelsPromoted,
-        FlextInfraModelsBase,
         FlextInfraModelsRefactor,
-        FlextInfraModelsRefactorGrep,
-        FlextInfraModelsNamespaceEnforcer,
         FlextInfraModelsRelease,
         FlextInfraModelsRope,
         FlextInfraModelsRopeMove,
@@ -110,13 +78,10 @@ class FlextInfraModels(FlextCliModels):
         FlextInfraModelsWorkspaceSnapshot,
         FlextInfraModelsWorktree,
         FlextInfraModelsConfig,
-        FlextInfraModelsMiseToolchain,
-        FlextInfraCodegen,
-        FlextInfraModelsCodegenToolchain,
-        FlextInfraModelsCodegenRender,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 
 
 m = FlextInfraModels
+
 __all__: list[str] = ["FlextInfraModels", "m"]

@@ -1,0 +1,48 @@
+id: ban-parallel-contract-decl
+snapshots:
+  "ModScanReport = ModOccurrenceReport[ModScanFinding]\n":
+    labels:
+    - source: ModScanReport = ModOccurrenceReport[ModScanFinding]
+      style: primary
+      start: 0
+      end: 51
+    - source: ModScanReport
+      style: secondary
+      start: 0
+      end: 13
+    - source: ModOccurrenceReport[ModScanFinding]
+      style: secondary
+      start: 16
+      end: 51
+    - source: |
+        ModScanReport = ModOccurrenceReport[ModScanFinding]
+      style: secondary
+      start: 0
+      end: 52
+    - source: ModScanReport = ModOccurrenceReport[ModScanFinding]
+      style: secondary
+      start: 0
+      end: 51
+  "SourceMap = t.MappingKV[str, Source]\n":
+    labels:
+    - source: SourceMap = t.MappingKV[str, Source]
+      style: primary
+      start: 0
+      end: 36
+    - source: SourceMap
+      style: secondary
+      start: 0
+      end: 9
+    - source: t.MappingKV[str, Source]
+      style: secondary
+      start: 12
+      end: 36
+    - source: |
+        SourceMap = t.MappingKV[str, Source]
+      style: secondary
+      start: 0
+      end: 37
+    - source: SourceMap = t.MappingKV[str, Source]
+      style: secondary
+      start: 0
+      end: 36

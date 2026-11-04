@@ -87,7 +87,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name="AiHubModels",
+            class_name="m.AiHub",
             alias="m",
             docstring="AI Hub models.",
         )
@@ -99,7 +99,7 @@ class TestsFlextInfraLazyInitHelpers:
             tm.that(generated, eq=original)
             return
         tm.that(generated, has="AUTO-GENERATED FILE")
-        tm.that(generated, has='"AiHubModels"')
+        tm.that(generated, has='"m.AiHub"')
         tm.that(generated, has='"m"')
         tm.that(generated, lacks="Existing initializer")
 
@@ -681,13 +681,12 @@ class TestsFlextInfraLazyInitHelpers:
             package_name="ai_hub",
         )
         package_root.joinpath(c.Infra.INIT_PY).write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\n"
-            '__all__: tuple[str, ...] = ("AiHubModels", "m")\n',
+            f'{c.Infra.AUTOGEN_HEADER}\n__all__: tuple[str, ...] = ("m.AiHub", "m")\n',
             encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
-            class_name="AiHubModels",
+            class_name="m.AiHub",
             alias="m",
         )
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
@@ -733,7 +732,7 @@ class TestsFlextInfraLazyInitHelpers:
                 "assert ai_hub.c is ai_hub.AiHubConstants\n"
                 "assert flext_infra.c in ai_hub.c.__mro__\n"
                 "assert ai_hub.c is not flext_infra.c\n"
-                "assert ai_hub.m is ai_hub.AiHubModels\n"
+                "assert ai_hub.m is ai_hub.m.AiHub"
                 "assert 'tc' not in ai_hub.__all__\n"
                 "try:\n    from ai_hub import tc\n"
                 "except ImportError:\n    print('undeclared alias rejected')\n"

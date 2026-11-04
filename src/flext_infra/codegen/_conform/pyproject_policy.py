@@ -10,7 +10,7 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config, p, r, t
 from flext_infra.__version__ import __version__
 from flext_infra.codegen._conform.file_plans import FlextInfraCodegenConformFilePlans
 
@@ -27,6 +27,24 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
 
         """
         return f"{c.Infra.RENDERED_BY_MARKER}{__version__}"
+
+    @classmethod
+    def published_pyproject_source(cls, formatted: str) -> str:
+        """Return the final pyproject bytes every writer of one run publishes.
+
+        The parse-merge-dump composition drops every template comment, so
+        this owner prefixes the one generated-file header (owner, adjustment
+        rule, regeneration verb) and the render provenance on the formatted
+        source. The control cohort and the repository plan both derive their
+        candidate through it, so the one composed publication of a run writes
+        a single final form. A re-run reads the live file as data, so the
+        header never accumulates.
+
+        Returns:
+            The header-carrying pyproject source.
+
+        """
+        return f"{c.Infra.BANNER}{cls.rendered_by_stamp()}\n{formatted.lstrip()}"
 
     @staticmethod
     def _scaffold_python_dirs(
@@ -59,7 +77,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
     def validate_custom_make(
         cls,
         content: str,
-        policy: m.Infra.CustomHandlerPolicy,
+        policy: p.Infra.CustomHandlerPolicy,
     ) -> p.Result[bool]:
         """Reject public targets, aliases, includes, and toolchain declarations.
 
@@ -94,7 +112,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
     @staticmethod
     def _judge_make_line(
         target_re: t.RegexPattern,
-        policy: m.Infra.CustomHandlerPolicy,
+        policy: p.Infra.CustomHandlerPolicy,
         line_number: int,
         raw_line: str,
     ) -> p.Result[bool] | None:
@@ -155,7 +173,7 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
     @staticmethod
     def _logical_make_lines(
         content: str,
-        policy: m.Infra.CustomHandlerPolicy,
+        policy: p.Infra.CustomHandlerPolicy,
     ) -> p.Result[tuple[tuple[int, str], ...]]:
         """Collapse backslash continuations into reportable logical lines.
 

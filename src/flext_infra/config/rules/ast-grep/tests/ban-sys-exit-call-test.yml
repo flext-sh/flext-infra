@@ -2,6 +2,21 @@ id: ban-sys-exit-call
 valid:
   - cli.exit(1)
   - exit_code = sys.exitcode
+  - |
+    from flext_cli import cli
+
+    sys.exit("configuration is invalid")
+  - |
+    import sys
+
+    sys.exit(1)
 invalid:
-  - sys.exit(1)
-  - sys.exit()
+  - |
+    from flext_cli import cli
+
+    sys.exit(1)
+  - |
+    from flext_cli import cli
+
+    def main() -> None:
+        sys.exit()

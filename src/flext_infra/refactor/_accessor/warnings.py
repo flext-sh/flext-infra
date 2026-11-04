@@ -7,22 +7,30 @@ SPDX-License-Identifier: MIT.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Annotated
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, t, u
 
 
 class FlextInfraRefactorAccessorWarnings:
     """Load the configuration-owned accessor migrations once per request."""
 
     @staticmethod
-    def migration_rules() -> Sequence[m.Infra.AccessorMigrationRule]:
+    def migration_rules() -> Sequence[p.Infra.AccessorMigrationRule]:
         """Load and strictly validate the declared accessor migrations.
 
         Returns:
             The rename and field-normalization rules of the Rope catalog.
 
         """
-        return u.type_adapter(Sequence[m.Infra.AccessorMigrationRule]).validate_python(
+        return u.type_adapter(
+            Sequence[
+                Annotated[
+                    p.Infra.AccessorMigrationRule,
+                    t.schema_for_model(m.Infra.AccessorMigrationRule),
+                ]
+            ]
+        ).validate_python(
             u.Yaml.safe_load(
                 (
                     type(config).ssot_config_dir().parent
@@ -33,7 +41,7 @@ class FlextInfraRefactorAccessorWarnings:
         )
 
     @classmethod
-    def automated_rules(cls) -> tuple[m.Infra.AccessorMigrationRule, ...]:
+    def automated_rules(cls) -> tuple[p.Infra.AccessorMigrationRule, ...]:
         """Return the declared accessor renames.
 
         Returns:

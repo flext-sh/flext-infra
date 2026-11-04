@@ -22,10 +22,15 @@ ignores:
   - "**/__init__.py"
   - "**/__main__.py"
   - "**/__version__.py"
-  - "**/conftest.py"
 metadata:
   enforce: [ENFORCE-005]
-  relocation: protocol
+  relocation: family-declaration
+transform:
+  FAMILY:
+    replace:
+      source: $NAME
+      replace: "^.*$"
+      by: p
 rule:
   all:
     - kind: class_definition

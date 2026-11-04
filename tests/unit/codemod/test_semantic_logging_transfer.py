@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra
+from flext_infra import infra, p
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, r, t, tm, u
@@ -53,7 +53,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
             )
         )
         legacy = package / "services" / "logging_integration.py"
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence] = (
+        report: p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence] = (
             m.Infra.ModOccurrenceReport(
                 files=frozenset({package / "logging_consumer.py"}), entries=()
             )
@@ -141,11 +141,12 @@ class TestsFlextInfraSemanticLoggingTransfer:
         u.Tests.commit_git_changes(root, "Declare logging transfer sources")
         # Match the adapter worker's SOURCE-PREP without deleting legacy sources.
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        rendered = u.Infra.render_utility_facade(package)
-        if rendered is None:
+        projection = u.Infra.render_utility_facade(package)
+        if projection is None:
             pytest.fail(
                 "the logging utility owner must have a native facade projection"
             )
+        rendered = tm.ok(projection)
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
         tm.ok(
             u.Tests.materialize_codegen_plans(
@@ -328,7 +329,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
     @staticmethod
     def _plan_logging_source_drift(
         root: Path,
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        report: p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence],
         legacy: Path,
         original: bytes,
     ) -> None:
@@ -355,7 +356,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
     def _publish_logging_transfer(
         root: Path,
         package: Path,
-        report: m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence],
+        report: p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence],
     ) -> None:
         """Share native source facts, then prove publication and consumer behavior."""
         legacy = package / "services" / "logging_integration.py"

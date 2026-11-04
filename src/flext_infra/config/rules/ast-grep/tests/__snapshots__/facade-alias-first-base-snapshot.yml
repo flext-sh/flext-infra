@@ -1,6 +1,6 @@
 id: facade-alias-first-base
 snapshots:
-  "class FlextMeltanoModels(FlextCliModels, m):\n    pass\n__all__ = [\"FlextMeltanoModels\"]\n":
+  "class FlextMeltanoModels(FlextCliModels, m):\n    pass\n_PUBLIC = [\"FlextMeltanoModels\"]\n__all__ = tuple(_PUBLIC)\n":
     labels:
     - source: |-
         class FlextMeltanoModels(FlextCliModels, m):
@@ -12,6 +12,58 @@ snapshots:
       style: secondary
       start: 6
       end: 24
+    - source: __all__
+      style: secondary
+      start: 87
+      end: 94
+    - source: _PUBLIC
+      style: secondary
+      start: 103
+      end: 110
+    - source: _PUBLIC
+      style: secondary
+      start: 103
+      end: 110
+    - source: tuple(_PUBLIC)
+      style: secondary
+      start: 97
+      end: 111
+    - source: __all__ = tuple(_PUBLIC)
+      style: secondary
+      start: 87
+      end: 111
+    - source: __all__ = tuple(_PUBLIC)
+      style: secondary
+      start: 87
+      end: 111
+    - source: _PUBLIC
+      style: secondary
+      start: 54
+      end: 61
+    - source: FlextMeltanoModels
+      style: secondary
+      start: 66
+      end: 84
+    - source: FlextMeltanoModels
+      style: secondary
+      start: 66
+      end: 84
+    - source: _PUBLIC = ["FlextMeltanoModels"]
+      style: secondary
+      start: 54
+      end: 86
+    - source: _PUBLIC = ["FlextMeltanoModels"]
+      style: secondary
+      start: 54
+      end: 86
+    - source: |
+        class FlextMeltanoModels(FlextCliModels, m):
+            pass
+        _PUBLIC = ["FlextMeltanoModels"]
+        __all__ = tuple(_PUBLIC)
+      style: secondary
+      start: 0
+      end: 112
     - source: m
       style: secondary
       start: 41

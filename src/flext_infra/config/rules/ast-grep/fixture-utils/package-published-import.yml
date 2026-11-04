@@ -1,0 +1,116 @@
+# Fixture value of the generated `package-published-import` utility: the
+# module path of a from-import that its parent package fully publishes. The
+# fixture packages are `flext_infra.workspace` (publishes two names; its
+# `detector` and `governance` modules are importable through it) and
+# `flext_ldif.services` (publishes `FlextLdifParser` from its `parser` module).
+# `flext_infra._protocols._codegen` has no initializer in the fixture and
+# therefore no branch. Each branch carries the same two all-or-nothing
+# conditions the generator renders: every imported name is published, and no
+# sibling import of the same package's modules imports an unpublished name.
+id: package-published-import
+language: Python
+rule:
+  kind: dotted_name
+  any:
+    - regex: "^flext_infra\\.workspace\\.(?:detector|governance)$"
+      inside:
+        kind: import_from_statement
+        field: module_name
+        all:
+          - not:
+              has:
+                any:
+                  - all:
+                      - kind: dotted_name
+                      - not:
+                          inside:
+                            kind: import_from_statement
+                            field: module_name
+                      - not:
+                          regex: "^(?:FlextInfraWorkspaceDetector|FlextInfraWorkspaceGovernance)$"
+                  - all:
+                      - kind: aliased_import
+                      - not:
+                          has:
+                            field: name
+                            regex: "^(?:FlextInfraWorkspaceDetector|FlextInfraWorkspaceGovernance)$"
+                  - kind: wildcard_import
+          - inside:
+              kind: module
+              stopBy: end
+              not:
+                has:
+                  stopBy: end
+                  kind: import_from_statement
+                  all:
+                    - has:
+                        field: module_name
+                        regex: "^flext_infra\\.workspace\\.(?:detector|governance)$"
+                    - has:
+                        any:
+                          - all:
+                              - kind: dotted_name
+                              - not:
+                                  inside:
+                                    kind: import_from_statement
+                                    field: module_name
+                              - not:
+                                  regex: "^(?:FlextInfraWorkspaceDetector|FlextInfraWorkspaceGovernance)$"
+                          - all:
+                              - kind: aliased_import
+                              - not:
+                                  has:
+                                    field: name
+                                    regex: "^(?:FlextInfraWorkspaceDetector|FlextInfraWorkspaceGovernance)$"
+                          - kind: wildcard_import
+    - regex: "^flext_ldif\\.services\\.parser$"
+      inside:
+        kind: import_from_statement
+        field: module_name
+        all:
+          - not:
+              has:
+                any:
+                  - all:
+                      - kind: dotted_name
+                      - not:
+                          inside:
+                            kind: import_from_statement
+                            field: module_name
+                      - not:
+                          regex: "^(?:FlextLdifParser)$"
+                  - all:
+                      - kind: aliased_import
+                      - not:
+                          has:
+                            field: name
+                            regex: "^(?:FlextLdifParser)$"
+                  - kind: wildcard_import
+          - inside:
+              kind: module
+              stopBy: end
+              not:
+                has:
+                  stopBy: end
+                  kind: import_from_statement
+                  all:
+                    - has:
+                        field: module_name
+                        regex: "^flext_ldif\\.services\\.parser$"
+                    - has:
+                        any:
+                          - all:
+                              - kind: dotted_name
+                              - not:
+                                  inside:
+                                    kind: import_from_statement
+                                    field: module_name
+                              - not:
+                                  regex: "^(?:FlextLdifParser)$"
+                          - all:
+                              - kind: aliased_import
+                              - not:
+                                  has:
+                                    field: name
+                                    regex: "^(?:FlextLdifParser)$"
+                          - kind: wildcard_import

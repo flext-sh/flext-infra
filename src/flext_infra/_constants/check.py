@@ -27,13 +27,15 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     AST_GREP_DOCS_URL: ClassVar[str] = "https://ast-grep.github.io/"
     LINT: ClassVar[str] = "lint"
     FORMAT: ClassVar[str] = "format"
+    # The one finding the formatter itself must satisfy: a surviving E501
+    # after the format pass means the destination's width is unsatisfiable.
+    FORMATTER_UNSATISFIED_CODE: ClassVar[str] = "E501"
     MARKDOWN: ClassVar[str] = "markdown"
     MARKDOWN_FORMAT: ClassVar[str] = "markdown-format"
     MARKDOWN_CODE: ClassVar[str] = "markdown-code"
     SMELLS: ClassVar[str] = "smells"
     FRESH_IMPORT: ClassVar[str] = "fresh-import"
     CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
-    LINT_CONFIG_FREEZE: ClassVar[str] = "lint-config-freeze"
     DEPS: ClassVar[str] = "deps"
     RUNTIME_INTEGRITY: ClassVar[str] = "runtime-integrity"
     ENFORCEMENT_CATALOG: ClassVar[str] = "enforcement-catalog"
@@ -132,13 +134,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
             CONFLICT_MARKERS: (
                 "Git Conflict Markers",
                 "internal://flext-infra/conflict-markers",
-                False,
-                False,
-                FlextInfraConstantsConfig.GateStage.COMMIT,
-            ),
-            LINT_CONFIG_FREEZE: (
-                "Flext Lint-Config Freeze",
-                "internal://flext-infra/lint-config-freeze",
                 False,
                 False,
                 FlextInfraConstantsConfig.GateStage.COMMIT,
@@ -264,6 +259,10 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
 
     CHECK_FAIL_FAST_DEFAULT: ClassVar[bool] = False
     """Run every independent quality gate unless fail-fast is requested."""
+    SCAN_RACE_ATTEMPTS: ClassVar[int] = 3
+    """Capture attempts before a concurrent-source-change race fails loud."""
+    SCAN_RACE_BACKOFF_SECONDS: ClassVar[float] = 1.0
+    """Pause between capture attempts losing the concurrent-write race."""
     UNION_GATE_MIN_PROJECTS: ClassVar[int] = 2
     """Project count from which a multi-root gate runs once over their union."""
     SERVICE_FAIL_FAST: ClassVar[bool] = True
@@ -426,6 +425,10 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     )
     MARKDOWN_FIXED_SUFFIX: ClassVar[str] = "[fixed]"
     "rumdl text-output suffix marking a finding its mutating pass repaired."
+    MARKDOWN_PROJECTED_BLOCK_MASK: ClassVar[str] = "<!-- -->"
+    "Lint-neutral line replacing each inner line of a foreign projected block."
+    MARKDOWN_STDIN_BATCH_SEPARATOR: ClassVar[str] = "\0"
+    "rumdl ``--stdin-batch`` delimiter after each path and after each content."
     MARKDOWN_FORMAT_DIFF_HEADERS: ClassVar[tuple[str, str]] = ("--- ", "+++ ")
     MARKDOWN_FORMAT_RE: ClassVar[t.RegexPattern] = re.compile(
         # Prettier applies terminal SGR styling to the warning label in CI.

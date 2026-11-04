@@ -19,7 +19,10 @@ from tests._models import TestsFlextInfraModelsBase
 class TestsFlextInfraModels(FlextTestsModels, FlextInfraModels):
     """Infra test models extending flext-tests and production models."""
 
-    class Tests(TestsFlextInfraModelsBase, FlextTestsModels.Tests):
+    class Tests(
+        FlextTestsModels.Tests,
+        TestsFlextInfraModelsBase,
+    ):
         """Tests use inherited flext-tests and production infra models."""
 
 

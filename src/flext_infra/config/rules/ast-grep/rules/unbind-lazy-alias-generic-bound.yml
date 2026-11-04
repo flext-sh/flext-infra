@@ -18,10 +18,6 @@ severity: error
 files:
   - "src/**/*.py"
   - "tests/**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/node_modules/**"
 rule:
   kind: constrained_type
   all:

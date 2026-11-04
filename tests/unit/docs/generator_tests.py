@@ -11,11 +11,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, t
+from flext_infra import config, p, t
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
+from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
 from tests import c, m, r, tm, u
 
 if TYPE_CHECKING:
@@ -523,7 +523,7 @@ class TestsFlextInfraDocsGenerator:
             encoding="utf-8",
         )
         result = u.Tests.run_gate_check(
-            FlextInfraMarkdownFormatGate,
+            FlextInfraGatesMarkdownFormat,
             workspace,
             project,
         )
@@ -534,7 +534,7 @@ class TestsFlextInfraDocsGenerator:
             reports_dir=tmp_path,
             apply_fixes=True,
         )
-        _ = FlextInfraMarkdownFormatGate(workspace).fix(project, context)
+        _ = FlextInfraGatesMarkdownFormat(workspace).fix(project, context)
         tm.that(before == readme.read_text(encoding="utf-8"), truth=True)
         tm.that(result.result.passed, truth=True, msg=str(result.issues))
 
@@ -628,7 +628,7 @@ class TestsFlextInfraDocsGenerator:
             eq=True,
         )
         published = u.Tests.materialize_codegen_plans(
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(initial),
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(initial),
         )
         tm.ok(published)
 
@@ -662,7 +662,7 @@ class TestsFlextInfraDocsGenerator:
             eq=True,
         )
         published = u.Tests.materialize_codegen_plans(
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(stale_plans),
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(stale_plans),
         )
         tm.ok(published)
         tm.fail(stale.exists())

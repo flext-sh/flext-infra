@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -140,7 +140,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         ])
 
     @staticmethod
-    def _receipt(root: Path) -> m.Infra.FleetGapsReport:
+    def _receipt(root: Path) -> p.Infra.FleetGapsReport:
         """Load the typed receipt the verb publishes.
 
         Returns:
@@ -166,7 +166,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         self._declare_absent_consumer(root, tmp_path / "consumer-missing")
         with self._gh_on_path(
             tmp_path,
-            'printf "%s\\n" "$*" >> "{log}"\n',
+            'printf "%s\\n" "$*" >> "{log}"\nprintf "[]"\n',
         ):
             tm.that(self._fleet_gaps(root), eq=0)
 
@@ -217,7 +217,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         receipt_path = root / c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH
         with self._gh_on_path(
             tmp_path,
-            'printf "%s\\n" "$*" >> "{log}"\nexit 0\n',
+            'printf "%s\\n" "$*" >> "{log}"\nprintf "[]"\n',
         ):
             tm.that(self._fleet_gaps(root), eq=0)
             first = receipt_path.read_bytes()
@@ -226,11 +226,11 @@ class TestsFlextInfraWorkspaceFleetGaps:
 
         tm.that(receipt_path.read_bytes(), eq=first)
 
-    def test_failing_gh_degrades_to_empty_pull_requests(
+    def test_failing_gh_fails_the_verb_without_a_receipt(
         self,
         tmp_path: Path,
     ) -> None:
-        """An unreachable provider leaves the row complete and the verb green."""
+        """An unreachable provider is a failure, never an empty PR list."""
         root = tmp_path / "workspace"
         member = u.Tests.WorktreeFixture.governed_workspace_with_member(
             root,
@@ -238,13 +238,35 @@ class TestsFlextInfraWorkspaceFleetGaps:
         )
         self._member_facts(member)
         with self._gh_on_path(tmp_path, "exit 1\n"):
+            tm.that(self._fleet_gaps(root), ne=0)
+
+        tm.fail((root / c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH).is_file())
+
+    def test_provider_pull_requests_are_reported_with_their_head(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The provider's ``headRefName`` lands in the row's ``head``."""
+        root = tmp_path / "workspace"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(
+            root,
+            member=self.MEMBER,
+        )
+        self._member_facts(member)
+        listing = (
+            '[{{"number":7,"headRefName":"lane-x","title":"T",'
+            '"url":"https://example.invalid/pull/7"}}]'
+        )
+        with self._gh_on_path(tmp_path, f"printf '%s' '{listing}'\n"):
             tm.that(self._fleet_gaps(root), eq=0)
 
         member_row = next(
             row for row in self._receipt(root).repos if row.name == self.MEMBER
         )
-        tm.that(member_row.open_pull_requests, eq=())
-        tm.that(member_row.dirty_paths, eq=("stray.txt",))
+        tm.that(
+            tuple((pr.number, pr.head) for pr in member_row.open_pull_requests),
+            eq=((7, "lane-x"),),
+        )
 
     @staticmethod
     def _quality_receipt(
@@ -300,7 +322,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         )
         other, _ = self._quality_receipt(member, tmp_path / "quality", (c.Infra.LINT,))
         tm.that(other, ne=selected)
-        with self._gh_on_path(tmp_path, "exit 0\n"):
+        with self._gh_on_path(tmp_path, 'printf "[]"\n'):
             tm.that(self._fleet_gaps(root, selected), eq=0)
         row = next(row for row in self._receipt(root).repos if row.name == self.MEMBER)
         tm.that(row.lint_findings, eq=project.gates[c.Infra.LINT].finding_count)
@@ -318,7 +340,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         selected, project = self._quality_receipt(
             member, tmp_path / "quality", (c.Infra.LINT,)
         )
-        with self._gh_on_path(tmp_path, "exit 0\n"):
+        with self._gh_on_path(tmp_path, 'printf "[]"\n'):
             tm.that(self._fleet_gaps(root, selected), eq=0)
             row = next(
                 row for row in self._receipt(root).repos if row.name == self.MEMBER
@@ -351,7 +373,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         unrelated, _ = self._quality_receipt(
             foreign, tmp_path / "foreign-quality", (c.Infra.LINT,)
         )
-        with self._gh_on_path(tmp_path, "exit 0\n"):
+        with self._gh_on_path(tmp_path, 'printf "[]"\n'):
             for invalid in (tmp_path / "missing.sarif", malformed, unrelated):
                 tm.that(self._fleet_gaps(root, invalid), ne=0)
                 tm.that(
@@ -394,7 +416,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         native = lint.raw_receipt
         native = tm.not_none(native)
         selected = native.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME
-        with self._gh_on_path(tmp_path, "exit 0\n"):
+        with self._gh_on_path(tmp_path, 'printf "[]"\n'):
             tm.that(self._fleet_gaps(root, selected), eq=0)
         row = next(row for row in self._receipt(root).repos if row.name == self.MEMBER)
         tm.that(row.lint_findings, eq=lint.finding_count)
@@ -431,7 +453,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
                 selected, invalid_report.model_dump_json(round_trip=True)
             )
         )
-        with self._gh_on_path(tmp_path, "exit 0\n"):
+        with self._gh_on_path(tmp_path, 'printf "[]"\n'):
             tm.that(self._fleet_gaps(root, selected), ne=0)
         tm.fail((root / c.Infra.FLEET_GAPS_REPORT_RELATIVE_PATH).exists())
 
@@ -457,7 +479,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
             )
         )
         (selected,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
-        with self._gh_on_path(tmp_path, "exit 0\n"):
+        with self._gh_on_path(tmp_path, 'printf "[]"\n'):
             tm.that(self._fleet_gaps(root, selected), eq=0)
         row = next(row for row in self._receipt(root).repos if row.name == self.MEMBER)
         tm.that(row.lint_findings, eq=None)

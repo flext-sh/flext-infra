@@ -844,3 +844,122 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         tm.that(
             FlextInfraCodegenConform.Generate.vscode_settings(composed), eq=expected
         )
+
+
+class TestsFlextInfraMarkdownEditorProjection:
+    """Prove the editor Markdown policy is one derived projection of the SSOT."""
+
+    @staticmethod
+    def _governed_root(tmp_path: Path, name: str) -> Path:
+        """Materialize one minimal governed root for editor rendering.
+
+        Returns:
+            The declared repository root.
+
+        """
+        root = tmp_path / name
+        directory = root / c.CONFIG_DIR_NAME
+        directory.mkdir(parents=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                directory / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {"repository": {"kind": "internal"}},
+                    },
+                },
+            ),
+        )
+        tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
+        return root
+
+    @staticmethod
+    def test_editor_configuration_reads_common_rules_only() -> None:
+        """The derivation copies the common MD* rules and no native surface."""
+        markdown = config.Infra.tooling.tools.markdown
+        derived = u.Infra.markdown_editor_configuration(markdown)
+        tm.that(derived, eq=dict(markdown.rules))
+        common = dict(markdown.rules)
+        native_only = {name for name, _value in markdown.native_rules} - common.keys()
+        tm.that(native_only & derived.keys(), eq=set())
+        tm.fail("reflow" in u.Cli.json_as_mapping(derived["MD013"]))
+
+    @staticmethod
+    def test_render_projects_derived_markdownlint_config(tmp_path: Path) -> None:
+        """Rendered settings carry the SSOT-derived markdownlint policy."""
+        root = TestsFlextInfraMarkdownEditorProjection._governed_root(
+            tmp_path,
+            "markdown-projection",
+        )
+        rendered = tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root))
+        document = u.Tests.json_payload(rendered)
+        expected = u.Infra.markdown_editor_configuration(
+            config.Infra.tooling.tools.markdown
+        )
+        tm.that(
+            document[c.Infra.MARKDOWNLINT_CONFIG_SETTING],
+            eq=expected,
+        )
+
+    @staticmethod
+    def test_render_replaces_stale_markdownlint_config(tmp_path: Path) -> None:
+        """A stale editor policy converges to the canonical derived value."""
+        root = TestsFlextInfraMarkdownEditorProjection._governed_root(
+            tmp_path,
+            "markdown-converge",
+        )
+        settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
+        settings_path.parent.mkdir(parents=True)
+        retired = {**dict(config.Infra.tooling.tools.markdown.rules), "MD9999": False}
+        _ = settings_path.write_text(
+            tm.ok(
+                u.Cli.json_dumps({c.Infra.MARKDOWNLINT_CONFIG_SETTING: retired}),
+            ),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        rendered = tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root))
+        document = u.Tests.json_payload(rendered)
+        tm.that(
+            document[c.Infra.MARKDOWNLINT_CONFIG_SETTING],
+            eq=dict(config.Infra.tooling.tools.markdown.rules),
+        )
+
+    @staticmethod
+    def test_derived_config_is_never_a_portable_delta(tmp_path: Path) -> None:
+        """An identical live policy produces no delta; a custom one is dropped."""
+        root = TestsFlextInfraMarkdownEditorProjection._governed_root(
+            tmp_path,
+            "markdown-delta",
+        )
+        spec = tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(root))
+        expected = u.Infra.markdown_editor_configuration(
+            config.Infra.tooling.tools.markdown
+        )
+        identical = tm.ok(
+            FlextInfraCodegenConform.Generate.vscode_declaration_delta(
+                root,
+                {c.Infra.MARKDOWNLINT_CONFIG_SETTING: expected},
+                spec=spec,
+            ),
+        )
+        tm.that(identical.values, eq={})
+        custom = tm.ok(
+            FlextInfraCodegenConform.Generate.vscode_declaration_delta(
+                root,
+                {c.Infra.MARKDOWNLINT_CONFIG_SETTING: {"default": False}},
+                spec=spec,
+            ),
+        )
+        tm.that(custom.values, eq={})
+        composed = tm.ok(
+            FlextInfraCodegenConform.Generate.compose_vscode_delta(spec, custom)
+        )
+        rendered = tm.ok(
+            FlextInfraCodegenConform.Generate.render_vscode_settings(
+                root, spec=composed
+            )
+        )
+        tm.that(
+            u.Tests.json_payload(rendered)[c.Infra.MARKDOWNLINT_CONFIG_SETTING],
+            eq=expected,
+        )

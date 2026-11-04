@@ -128,7 +128,7 @@ class FlextInfraGitLanes:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def fresh_integration(request: m.Infra.GitLaneVerificationRequest) -> p.Result[str]:
+    def fresh_integration(request: p.Infra.GitLaneVerificationRequest) -> p.Result[str]:
         """Prove the locally available integration object is the live remote tip.
 
         Returns:
@@ -175,8 +175,8 @@ class FlextInfraGitLanes:
     @classmethod
     def _evidence(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[m.Infra.GitLaneEvidence]:
+        request: p.Infra.GitLaneVerificationRequest,
+    ) -> p.Result[p.Infra.GitLaneEvidence]:
         """Parse coordinator evidence or query the selected public tracker/provider.
 
         Returns:
@@ -185,8 +185,8 @@ class FlextInfraGitLanes:
         """
         if request.evidence_file is not None:
             return cls._receipt_evidence(request)
-        pull_requests: tuple[m.Infra.GitLanePullRequest, ...] | None = None
-        beads: tuple[m.Infra.GitLaneBead, ...] | None = None
+        pull_requests: tuple[p.Infra.GitLanePullRequest, ...] | None = None
+        beads: tuple[p.Infra.GitLaneBead, ...] | None = None
         if request.read_pull_requests:
             wire = cls._read_ownership(
                 (
@@ -203,15 +203,15 @@ class FlextInfraGitLanes:
                 request.repo_root,
             )
             if wire.failure:
-                return r[m.Infra.GitLaneEvidence].from_failure(wire)
+                return r[p.Infra.GitLaneEvidence].from_failure(wire)
             pull_requests = u.type_adapter(
-                tuple[m.Infra.GitLanePullRequest, ...],
+                tuple[p.Infra.GitLanePullRequest, ...],
             ).validate_json(wire.value)
         if request.read_beads:
             wire = cls._selected_beads(request.repo_root)
             if wire.failure:
-                return r[m.Infra.GitLaneEvidence].from_failure(wire)
-            beads = u.type_adapter(tuple[m.Infra.GitLaneBead, ...]).validate_json(
+                return r[p.Infra.GitLaneEvidence].from_failure(wire)
+            beads = u.type_adapter(tuple[p.Infra.GitLaneBead, ...]).validate_json(
                 wire.value,
             )
         evidence = m.Infra.GitLaneEvidence(
@@ -223,8 +223,8 @@ class FlextInfraGitLanes:
         if pull_requests is not None and len(pull_requests) >= (
             config.Infra.codegen.branch_policy.lane_pr_limit
         ):
-            return r[m.Infra.GitLaneEvidence].fail("PR inventory limit reached")
-        return r[m.Infra.GitLaneEvidence].ok(evidence)
+            return r[p.Infra.GitLaneEvidence].fail("PR inventory limit reached")
+        return r[p.Infra.GitLaneEvidence].ok(evidence)
 
     @staticmethod
     def _read_ownership(command: Sequence[str], cwd: Path) -> p.Result[str]:
@@ -279,8 +279,8 @@ class FlextInfraGitLanes:
 
     @staticmethod
     def _receipt_evidence(
-        request: m.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[m.Infra.GitLaneEvidence]:
+        request: p.Infra.GitLaneVerificationRequest,
+    ) -> p.Result[p.Infra.GitLaneEvidence]:
         """Validate the identity and freshness of explicitly selected evidence.
 
         Returns:
@@ -288,24 +288,24 @@ class FlextInfraGitLanes:
 
         """
         if request.evidence_file is None:
-            return r[m.Infra.GitLaneEvidence].fail(
+            return r[p.Infra.GitLaneEvidence].fail(
                 "coordinator evidence file is required",
             )
         evidence = m.Infra.GitLaneEvidence.model_validate_json(
             request.evidence_file.read_text(encoding=c.DEFAULT_ENCODING),
         )
         if evidence.repo_root.resolve() != request.repo_root.resolve():
-            return r[m.Infra.GitLaneEvidence].fail("lane evidence repository mismatch")
+            return r[p.Infra.GitLaneEvidence].fail("lane evidence repository mismatch")
         policy = FlextInfraGitLanes._activity_policy(request)
         age = (datetime.now(UTC) - evidence.captured_at).total_seconds()
         if not 0 <= age <= policy.abandonment_threshold_minutes * 60:
-            return r[m.Infra.GitLaneEvidence].fail("stale/future ownership receipt")
-        return r[m.Infra.GitLaneEvidence].ok(evidence)
+            return r[p.Infra.GitLaneEvidence].fail("stale/future ownership receipt")
+        return r[p.Infra.GitLaneEvidence].ok(evidence)
 
     @staticmethod
     def _activity_policy(
-        request: m.Infra.GitLaneVerificationRequest,
-    ) -> m.Infra.GitLaneCoordinationPolicy:
+        request: p.Infra.GitLaneVerificationRequest,
+    ) -> p.Infra.GitLaneCoordinationPolicy:
         """Read the selected/configured global policy without a local threshold.
 
         Returns:
@@ -335,10 +335,10 @@ class FlextInfraGitLanes:
 
     @staticmethod
     def _ownership(
-        evidence: m.Infra.GitLaneEvidence,
+        evidence: p.Infra.GitLaneEvidence,
         branch: str,
         path: Path | None,
-    ) -> tuple[m.Infra.GitLaneBead, ...]:
+    ) -> tuple[p.Infra.GitLaneBead, ...]:
         """Correlate all matching tracker rows rather than guessing one owner.
 
         Returns:
@@ -390,8 +390,8 @@ class FlextInfraGitLanes:
     @classmethod
     def _unique_ref(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-        evidence: m.Infra.GitLaneEvidence,
+        request: p.Infra.GitLaneVerificationRequest,
+        evidence: p.Infra.GitLaneEvidence,
         reference: str,
         oid: str,
     ) -> str | None:
@@ -417,8 +417,8 @@ class FlextInfraGitLanes:
     @classmethod
     def _bead_ref(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-        evidence: m.Infra.GitLaneEvidence,
+        request: p.Infra.GitLaneVerificationRequest,
+        evidence: p.Infra.GitLaneEvidence,
         reference: str,
         oid: str,
     ) -> str | None:
@@ -472,10 +472,10 @@ class FlextInfraGitLanes:
     @classmethod
     def _pr_ref(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-        evidence: m.Infra.GitLaneEvidence,
+        request: p.Infra.GitLaneVerificationRequest,
+        evidence: p.Infra.GitLaneEvidence,
         reference: str,
-        pull_requests: tuple[m.Infra.GitLanePullRequest, ...],
+        pull_requests: tuple[p.Infra.GitLanePullRequest, ...],
     ) -> str | None:
         """Open PRs corroborate ownership; activity still comes from live facts.
 
@@ -512,8 +512,8 @@ class FlextInfraGitLanes:
 
     @staticmethod
     def _inactive_ref(
-        request: m.Infra.GitLaneVerificationRequest,
-        owners: tuple[m.Infra.GitLaneBead, ...],
+        request: p.Infra.GitLaneVerificationRequest,
+        owners: tuple[p.Infra.GitLaneBead, ...],
         reference: str,
         threshold: float,
     ) -> str:
@@ -571,8 +571,8 @@ class FlextInfraGitLanes:
     @classmethod
     def verify_lanes(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[m.Infra.GitLaneReport]:
+        request: p.Infra.GitLaneVerificationRequest,
+    ) -> p.Result[p.Infra.GitLaneReport]:
         """Return a complete inventory; fail loud without repairing any artifact.
 
         Returns:
@@ -587,7 +587,7 @@ class FlextInfraGitLanes:
         captured = u.Infra.load_codegen_inputs(request.repo_root)
         requests = [request]
         if captured.failure:
-            return r[m.Infra.GitLaneReport].from_failure(captured)
+            return r[p.Infra.GitLaneReport].from_failure(captured)
         repository = captured.value.spec.repository
         declared = (
             repository.integration.branch
@@ -599,7 +599,7 @@ class FlextInfraGitLanes:
             c.Infra.CodegenConformScope.ALL,
         )
         if targets.failure:
-            return r[m.Infra.GitLaneReport].from_failure(targets)
+            return r[p.Infra.GitLaneReport].from_failure(targets)
         requests.extend(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=target.root,
@@ -631,14 +631,14 @@ class FlextInfraGitLanes:
             ),
         )
         if report.findings:
-            return r[m.Infra.GitLaneReport].fail(report.model_dump_json(indent=2))
-        return r[m.Infra.GitLaneReport].ok(report)
+            return r[p.Infra.GitLaneReport].fail(report.model_dump_json(indent=2))
+        return r[p.Infra.GitLaneReport].ok(report)
 
     @classmethod
     def _inspect_repository(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-    ) -> m.Infra.GitLaneReport:
+        request: p.Infra.GitLaneVerificationRequest,
+    ) -> p.Infra.GitLaneReport:
         """Collect all successful observations as well as every read failure.
 
         Returns:
@@ -647,7 +647,7 @@ class FlextInfraGitLanes:
         """
         findings: list[str] = []
         inventory: list[str] = []
-        violations: list[m.Infra.GitLaneViolation] = []
+        violations: list[p.Infra.GitLaneViolation] = []
         refs = cls._collect_lane_facts(request, inventory, findings, violations)
         base = u.Infra.resolve_integration_branch(
             request.repo_root,
@@ -694,10 +694,10 @@ class FlextInfraGitLanes:
     @classmethod
     def _collect_lane_facts(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
         inventory: list[str],
         findings: list[str],
-        violations: list[m.Infra.GitLaneViolation],
+        violations: list[p.Infra.GitLaneViolation],
     ) -> list[tuple[str, str]]:
         """Read native refs and stashes, recording every stash as a violation.
 
@@ -721,10 +721,10 @@ class FlextInfraGitLanes:
     @classmethod
     def _collect_evidence(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
         inventory: list[str],
         findings: list[str],
-    ) -> p.Result[m.Infra.GitLaneEvidence]:
+    ) -> p.Result[p.Infra.GitLaneEvidence]:
         """Read ownership evidence and inventory which sources were observed.
 
         Returns:
@@ -734,7 +734,7 @@ class FlextInfraGitLanes:
         try:
             evidence = cls._evidence(request)
         except (OSError, ValueError) as exc:
-            evidence = r[m.Infra.GitLaneEvidence].fail(str(exc), exception=exc)
+            evidence = r[p.Infra.GitLaneEvidence].fail(str(exc), exception=exc)
         if evidence.failure:
             findings.append(f"ownership read error: {evidence.error}")
             return evidence
@@ -751,12 +751,12 @@ class FlextInfraGitLanes:
     @classmethod
     def _verify_worktrees(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-        evidence: p.Result[m.Infra.GitLaneEvidence],
+        request: p.Infra.GitLaneVerificationRequest,
+        evidence: p.Result[p.Infra.GitLaneEvidence],
         inventory: list[str],
         findings: list[str],
         integration: tuple[str, str] | None,
-    ) -> tuple[m.Infra.GitLaneViolation, ...]:
+    ) -> tuple[p.Infra.GitLaneViolation, ...]:
         """Report registry orphans and unowned temporary/detached worktrees.
 
         Returns:
@@ -769,7 +769,7 @@ class FlextInfraGitLanes:
         if worktrees.failure:
             findings.append(f"worktree read error: {worktrees.error}")
             return ()
-        violations: list[m.Infra.GitLaneViolation] = []
+        violations: list[p.Infra.GitLaneViolation] = []
         for entry in worktrees.value.entries:
             inventory.append(
                 f"worktree: {entry.path} head={entry.head} "
@@ -792,10 +792,10 @@ class FlextInfraGitLanes:
     @classmethod
     def _worktree_violations(
         cls,
-        evidence: p.Result[m.Infra.GitLaneEvidence],
-        entry: m.Infra.GitWorktreeEntry,
+        evidence: p.Result[p.Infra.GitLaneEvidence],
+        entry: p.Infra.GitWorktreeEntry,
         findings: list[str],
-    ) -> Iterator[m.Infra.GitLaneViolation]:
+    ) -> Iterator[p.Infra.GitLaneViolation]:
         """Classify one registered worktree as orphaned or unowned temporary.
 
         Yields:
@@ -826,11 +826,11 @@ class FlextInfraGitLanes:
     @classmethod
     def _merged_worktree_violations(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-        entry: m.Infra.GitWorktreeEntry,
+        request: p.Infra.GitLaneVerificationRequest,
+        entry: p.Infra.GitWorktreeEntry,
         integration: tuple[str, str],
         findings: list[str],
-    ) -> Iterator[m.Infra.GitLaneViolation]:
+    ) -> Iterator[p.Infra.GitLaneViolation]:
         """Classify one existing worktree as fully integrated and clean.
 
         Yields:
@@ -855,8 +855,8 @@ class FlextInfraGitLanes:
     @classmethod
     def _worktree_owned(
         cls,
-        evidence: p.Result[m.Infra.GitLaneEvidence],
-        entry: m.Infra.GitWorktreeEntry,
+        evidence: p.Result[p.Infra.GitLaneEvidence],
+        entry: p.Infra.GitWorktreeEntry,
     ) -> bool:
         """Return positive ownership proof only; absence remains inconclusive.
 
@@ -878,7 +878,7 @@ class FlextInfraGitLanes:
     @staticmethod
     def _violation(
         kind: c.Infra.LaneViolationKind, ref: str
-    ) -> m.Infra.GitLaneViolation:
+    ) -> p.Infra.GitLaneViolation:
         """Preserve incoming structured classes at the sole verdict owner.
 
         Returns:
@@ -893,8 +893,8 @@ class FlextInfraGitLanes:
 
     @staticmethod
     def _merged_worktree(
-        request: m.Infra.GitLaneVerificationRequest,
-        entry: m.Infra.GitWorktreeEntry,
+        request: p.Infra.GitLaneVerificationRequest,
+        entry: p.Infra.GitWorktreeEntry,
         integration: tuple[str, str],
     ) -> p.Result[bool]:
         """Classify clean linked content against the same live integration proof.
@@ -930,12 +930,12 @@ class FlextInfraGitLanes:
     @classmethod
     def _verify_refs(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
         refs: list[tuple[str, str]],
         integration: tuple[str, str],
-        evidence: p.Result[m.Infra.GitLaneEvidence],
+        evidence: p.Result[p.Infra.GitLaneEvidence],
         findings: list[str],
-    ) -> tuple[m.Infra.GitLaneViolation, ...]:
+    ) -> tuple[p.Infra.GitLaneViolation, ...]:
         """Check every non-protected ref against the fresh integration object.
 
         Returns:
@@ -943,7 +943,7 @@ class FlextInfraGitLanes:
 
         """
         base, fresh = integration
-        violations: list[m.Infra.GitLaneViolation] = []
+        violations: list[p.Infra.GitLaneViolation] = []
         remote = config.Infra.codegen.branch_policy.lane_remote
         for reference, oid in refs:
             if reference in {
@@ -988,7 +988,7 @@ class FlextInfraGitLanes:
 
     @staticmethod
     def _verify_current_lane(
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
         fresh: p.Result[str],
         inventory: list[str],
         findings: list[str],
@@ -1033,10 +1033,10 @@ class FlextInfraGitLanes:
     @classmethod
     def _unmerged_ref(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
         ref: tuple[str, str],
         fresh: str,
-        evidence: m.Infra.GitLaneEvidence,
+        evidence: p.Infra.GitLaneEvidence,
     ) -> str | None:
         """Separate unique patches from non-ancestor history without object writes.
 

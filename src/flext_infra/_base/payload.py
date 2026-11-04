@@ -6,13 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import p, t
+from flext_cli import t
+
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 
 class FlextInfraBasePayload:
     """Private FLEXT payload builder for shared command services."""
 
-    def command_payload(self: p.Infra.CommandPayloadContext) -> t.JsonMapping:
+    def command_payload(
+        self: FlextInfraProtocolsBase.CommandPayloadContext,
+    ) -> t.JsonMapping:
         """Return the normalized shared command payload once.
 
         Returns:

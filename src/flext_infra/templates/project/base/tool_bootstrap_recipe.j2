@@ -55,6 +55,77 @@
 	fi;
 {%- endmacro %}
 
+{#- Locked installation of the declared toolchain: mise's native locked mode
+    installs exactly what mise.lock pins, resolving no backend and fetching no
+    provenance artifact. It exports MISE_LOCKED for the rest of its shell, so a
+    caller that later writes a lock runs it in a subshell. -#}
+{% macro mise_locked_install(project_root, install_tools) -%}
+	export MISE_SHIMS_DIR="{{ project_root }}/.bin/shims"; \
+	{#- Setup installs the committed mise.lock as it is: mise's native locked
+	    mode resolves no backend and fetches no provenance artifact; `make upg`
+	    stays the only lock writer. #}
+	export MISE_LOCKED=1; \
+	bootstrap_stage=tool-install; \
+	"$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %};
+{%- endmacro %}
+
+{#- One provisioning owner for setup and upg: acquire the pinned Mise through
+    the official installer, then install the locked toolchain. -#}
+{% macro mise_toolchain_provision(project_root, toolchain, install_tools) -%}
+{{ mise_acquisition(project_root, toolchain) }} \
+	{{ mise_locked_install(project_root, install_tools) }}
+{%- endmacro %}
+
+{#- Syntax preflight of one committed TOML lock (a projection never
+    merge-resolved by hand). The reader is the acquired Mise's own TOML parser
+    (`mise fmt --stdin`), which depends on no lock, so even a corrupt mise.lock
+    is classified before anything installs from it. The reader first proves
+    itself on an empty document; then exit 1 on the lock classifies it as
+    invalid TOML: it is deleted so its native writer, which runs next in the
+    same upgrade, regenerates it in full. Any other failure stops the upgrade. -#}
+{% macro toml_projection_preflight(reader, lock_path) -%}
+if [ -f {{ lock_path }} ]; then \
+		"{{ reader }}" fmt --stdin < /dev/null >/dev/null; \
+		if "{{ reader }}" fmt --stdin < {{ lock_path }} >/dev/null; then :; else \
+			lint_status=$$?; \
+			if [ "$$lint_status" -ne 1 ]; then exit "$$lint_status"; fi; \
+			printf 'upg: %s is not valid TOML; deleting it so its native writer regenerates it\n' {{ lock_path }}; \
+			rm -f {{ lock_path }}; \
+		fi; \
+	fi;
+{%- endmacro %}
+
+{#- Native changed-tool Mise relock of one governed repository. `mise lock
+    --bump --dry-run --json` prints exactly `[]` when no locked version would
+    change (a documented native result compared for equality, never parsed).
+    Otherwise each declared tool previews alone and only the tools whose own
+    preview is not `[]` are locked, so provenance artifacts are fetched for
+    the changed tools only. A change no declared tool owns is the removal of
+    entries for tools the configuration no longer declares: the native whole
+    `mise lock` (no `--bump`, locked versions kept) prunes them, and a preview
+    still not `[]` afterwards stops the upgrade. -#}
+{% macro mise_lock_changed(mise, lock_root, install_tools) -%}
+if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]; then \
+		printf 'upg: %s: no locked version changes\n' {{ lock_root }}; \
+	else \
+		changed_tools=""; \
+		for tool in{% for tool in install_tools %} "{{ tool }}"{% endfor %}; do \
+			if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json "$$tool")" != "[]" ]; then changed_tools="$$changed_tools $$tool"; fi; \
+		done; \
+		if [ -z "$$changed_tools" ]; then \
+			printf 'upg: %s: pruning lock entries no declared tool owns\n' {{ lock_root }}; \
+			"{{ mise }}" -C {{ lock_root }} lock; \
+			if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" != "[]" ]; then \
+				printf 'ERROR[upg] %s: mise still previews a lock change that no declared tool owns\n' {{ lock_root }} >&2; \
+				exit 2; \
+			fi; \
+		else \
+			printf 'upg: %s: locking%s\n' {{ lock_root }} "$$changed_tools"; \
+			"{{ mise }}" -C {{ lock_root }} lock --bump $$changed_tools; \
+		fi; \
+	fi;
+{%- endmacro %}
+
 {% macro tool_bootstrap_recipe(target, project_root, toolchain, install_tools, lifecycle, make, report_literal, report_relative_path) -%}
 {% set mise_selector = toolchain.mise_selector -%}
 .PHONY: {{ target }}
@@ -93,14 +164,7 @@
 		esac; \
 	else bootstrap_git_status=$$?; fi; \
 	{{ mise_network_admission() }} \
-	{{ mise_acquisition(project_root, toolchain) }} \
-	export MISE_SHIMS_DIR="{{ project_root }}/.bin/shims"; \
-	{#- Setup installs the committed mise.lock as it is: mise's native locked
-	    mode resolves no backend and fetches no provenance artifact; `make upg`
-	    stays the only lock writer. #}
-	export MISE_LOCKED=1; \
-	bootstrap_stage=tool-install; \
-	"$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %}; \
+	{{ mise_toolchain_provision(project_root, toolchain, install_tools) }} \
 	mise_active="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \
 	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \

@@ -13,21 +13,22 @@ from git import BadName, GitCommandError
 from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitStatePublication,
-    FlextInfraUtilitiesGitWorktreePatch,
+    FlextInfraUtilitiesGitWorktreeRoots,
+    FlextInfraUtilitiesGitWorktreeStatus,
 )
 
 
 class FlextInfraUtilitiesGitSemanticRefs(
-    FlextInfraUtilitiesGitWorktreePatch,
     FlextInfraUtilitiesGitStatePublication,
+    FlextInfraUtilitiesGitWorktreeRoots,
 ):
     """Own semantic refs operations."""
 
     @classmethod
     def git_verify_lane(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[m.Infra.GitOidReport]:
+        request: p.Infra.GitLaneVerificationRequest,
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Verify stash absence and live-tip ancestry without changing Git state.
 
         Creation and retirement remain closed until the canonical ownership and
@@ -40,14 +41,14 @@ class FlextInfraUtilitiesGitSemanticRefs(
         """
         stash_absent = cls._git_lane_no_stash(request.repo_root)
         if stash_absent.failure:
-            return r[m.Infra.GitOidReport].from_failure(stash_absent)
+            return r[p.Infra.GitOidReport].from_failure(stash_absent)
         tip = cls._git_lane_tip(request)
         if tip.failure:
             return tip
         if request.operation == "create":
             return cls._git_lane_ownership(request, tip.value.oid)
         if request.operation == "retire":
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 "retirement refused: the native removal contract carries no verified "
                 "published preservation or active-session ownership proof; ancestry "
                 "alone does not authorize removal",
@@ -57,9 +58,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def _git_lane_ownership(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
         tip: str,
-    ) -> p.Result[m.Infra.GitOidReport]:
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Authenticate retained prior state and its integration before creation.
 
         Returns:
@@ -71,7 +72,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
             return retained
         receipt = request.ownership
         if receipt is None or receipt.checkpoint.snapshot.branch is None:
-            return r[m.Infra.GitOidReport].fail("owned branch receipt is required")
+            return r[p.Infra.GitOidReport].fail("owned branch receipt is required")
         return cls._git_lane_clean_owned_branch(
             request,
             receipt.checkpoint.snapshot.branch,
@@ -81,9 +82,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def _git_lane_retained_ownership(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
         tip: str,
-    ) -> p.Result[m.Infra.GitOidReport]:
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Verify prior retained state independently of the current working layers.
 
         Returns:
@@ -92,7 +93,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
         """
         receipt = request.ownership
         if receipt is None:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 "new lane refused: authoritative Beads ownership and previous owned "
                 "lane integration are not available in the native admission contract; "
                 "continue the existing candidate, not another lane",
@@ -103,7 +104,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
             or snapshot.paths != (Path(),)
             or snapshot.branch is None
         ):
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 "lane ownership receipt does not cover this entire repository "
                 "on an owned branch",
             )
@@ -112,7 +113,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
             receipt.publication,
         )
         if retained.failure:
-            return r[m.Infra.GitOidReport].from_failure(retained)
+            return r[p.Infra.GitOidReport].from_failure(retained)
         integrated = cls.git_is_ancestor(
             m.Infra.GitAncestryRequest(
                 repo_root=request.repo_root,
@@ -121,18 +122,18 @@ class FlextInfraUtilitiesGitSemanticRefs(
             )
         )
         if integrated.failure:
-            return r[m.Infra.GitOidReport].from_failure(integrated)
+            return r[p.Infra.GitOidReport].from_failure(integrated)
         if not integrated.value.value:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 "prior owned checkpoint has not landed on the latest integration tip",
             )
-        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
+        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
 
     @classmethod
     def _git_lane_checkpoint_receipt(
         cls,
-        request: m.Infra.GitLaneOwnershipRequest,
-    ) -> m.Infra.GitLaneOwnershipReceipt:
+        request: p.Infra.GitLaneOwnershipRequest,
+    ) -> p.Infra.GitLaneOwnershipReceipt:
         reference = request.checkpoint_ref
         repo = cls._repo(request.repo_root)
         repo.git.check_ref_format(reference)
@@ -165,8 +166,8 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def git_lane_ownership(
         cls,
-        request: m.Infra.GitLaneOwnershipRequest,
-    ) -> p.Result[m.Infra.GitLaneOwnershipReceipt]:
+        request: p.Infra.GitLaneOwnershipRequest,
+    ) -> p.Result[p.Infra.GitLaneOwnershipReceipt]:
         """Produce ownership evidence from native retained history, never caller JSON.
 
         This reads existing Git objects and the live remote only. It does not
@@ -176,7 +177,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
             Authenticated prior-state evidence, or the original proof failure.
 
         """
-        result = r[m.Infra.GitLaneOwnershipReceipt]
+        result = r[p.Infra.GitLaneOwnershipReceipt]
         reference = request.checkpoint_ref
         if not reference.startswith("refs/") or reference.startswith((
             c.Infra.GIT_REFS_HEADS,
@@ -211,27 +212,29 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def _git_lane_clean_owned_branch(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
         owned_branch: str,
         tip: str,
-    ) -> p.Result[m.Infra.GitOidReport]:
+    ) -> p.Result[p.Infra.GitOidReport]:
         branch = cls.git_current_branch(
             m.Infra.GitRepoRequest(repo_root=request.repo_root)
         )
         if branch.failure:
-            return r[m.Infra.GitOidReport].from_failure(branch)
+            return r[p.Infra.GitOidReport].from_failure(branch)
         if branch.value.text != owned_branch:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 "current branch is not the receipt's recorded owned branch",
             )
-        status = cls.git_status(m.Infra.GitStatusRequest(repo_root=request.repo_root))
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
+            m.Infra.GitStatusRequest(repo_root=request.repo_root)
+        )
         if status.failure:
-            return r[m.Infra.GitOidReport].from_failure(status)
+            return r[p.Infra.GitOidReport].from_failure(status)
         if status.value.dirty:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 "new lane refuses unpublished current WIP"
             )
-        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
+        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
 
     @classmethod
     def _git_lane_no_stash(cls, root: Path) -> p.Result[bool]:
@@ -259,8 +262,8 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def _git_lane_tip(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[m.Infra.GitOidReport]:
+        request: p.Infra.GitLaneVerificationRequest,
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Bind the declared integration branch to a live, unchanged remote OID.
 
         Returns:
@@ -269,7 +272,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
         """
         remote = cls._git_lane_declared_remote(request)
         if remote.failure:
-            return r[m.Infra.GitOidReport].from_failure(remote)
+            return r[p.Infra.GitOidReport].from_failure(remote)
         tip = cls._git_lane_cached_tip(remote.value, request.expected_tip)
         if tip.failure:
             return tip
@@ -278,9 +281,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
             return ancestry
         confirmed = cls.git_remote_branch_oid(remote.value)
         if confirmed.failure:
-            return r[m.Infra.GitOidReport].from_failure(confirmed)
+            return r[p.Infra.GitOidReport].from_failure(confirmed)
         if confirmed.value.text != tip.value.oid:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 "integration tip changed during preflight",
             )
         return ancestry
@@ -288,8 +291,8 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def _git_lane_declared_remote(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
-    ) -> p.Result[m.Infra.GitRemoteBranchRequest]:
+        request: p.Infra.GitLaneVerificationRequest,
+    ) -> p.Result[p.Infra.GitRemoteBranchRequest]:
         """Resolve the integration branch the lane's repository declares.
 
         A member composed by a superproject declares its line in that
@@ -303,9 +306,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
             Declared integration query or a missing-authority diagnostic.
 
         """
-        result = r[m.Infra.GitRemoteBranchRequest]
+        result = r[p.Infra.GitRemoteBranchRequest]
 
-        def declared(branch: str) -> m.Infra.GitRemoteBranchRequest:
+        def declared(branch: str) -> p.Infra.GitRemoteBranchRequest:
             return m.Infra.GitRemoteBranchRequest(
                 repo_root=request.repo_root,
                 remote=request.remote,
@@ -315,7 +318,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
         def member_line(
             superproject: Path,
             primary: Path,
-        ) -> p.Result[m.Infra.GitRemoteBranchRequest]:
+        ) -> p.Result[p.Infra.GitRemoteBranchRequest]:
             return cls.git_submodule_declaration(
                 m.Infra.GitSubmoduleContractRequest(
                     repo_root=superproject,
@@ -334,7 +337,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
 
         def integration_line(
             primary: Path,
-        ) -> p.Result[m.Infra.GitRemoteBranchRequest]:
+        ) -> p.Result[p.Infra.GitRemoteBranchRequest]:
             return cls._git_repository_root_path(primary).flat_map(
                 lambda superproject: (
                     cls.git_remote_default_branch(
@@ -355,9 +358,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def _git_lane_cached_tip(
         cls,
-        request: m.Infra.GitRemoteBranchRequest,
+        request: p.Infra.GitRemoteBranchRequest,
         expected_tip: str | None,
-    ) -> p.Result[m.Infra.GitOidReport]:
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Compare the advertised integration OID with its local cached commit.
 
         Returns:
@@ -366,14 +369,14 @@ class FlextInfraUtilitiesGitSemanticRefs(
         """
         tip = cls.git_remote_branch_oid(request)
         if tip.failure:
-            return r[m.Infra.GitOidReport].from_failure(tip)
+            return r[p.Infra.GitOidReport].from_failure(tip)
         if not tip.value.text:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 f"declared integration branch is absent on {request.remote}: "
                 f"{request.branch}",
             )
         if expected_tip is not None and expected_tip != tip.value.text:
-            return r[m.Infra.GitOidReport].fail("integration tip changed before effect")
+            return r[p.Infra.GitOidReport].fail("integration tip changed before effect")
         cached = cls.git_resolve_commit(
             m.Infra.GitCommitishRequest(
                 repo_root=request.repo_root,
@@ -381,9 +384,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
             ),
         )
         if cached.failure:
-            return r[m.Infra.GitOidReport].from_failure(cached)
+            return r[p.Infra.GitOidReport].from_failure(cached)
         if cached.value.oid != tip.value.text:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 "stale integration cache; refresh through the canonical fetch owner "
                 "before lane admission",
             )
@@ -392,9 +395,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def _git_lane_ancestry(
         cls,
-        request: m.Infra.GitLaneVerificationRequest,
+        request: p.Infra.GitLaneVerificationRequest,
         tip: str,
-    ) -> p.Result[m.Infra.GitOidReport]:
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Check the appropriate ancestry direction and retirement cleanliness.
 
         Returns:
@@ -404,7 +407,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
         if request.operation == "retire":
             clean = cls._git_lane_retirement_clean(request.repo_root)
             if clean.failure:
-                return r[m.Infra.GitOidReport].from_failure(clean)
+                return r[p.Infra.GitOidReport].from_failure(clean)
         ancestry = cls.git_is_ancestor(
             m.Infra.GitAncestryRequest(
                 repo_root=request.repo_root,
@@ -415,14 +418,14 @@ class FlextInfraUtilitiesGitSemanticRefs(
             ),
         )
         if ancestry.failure:
-            return r[m.Infra.GitOidReport].from_failure(ancestry)
+            return r[p.Infra.GitOidReport].from_failure(ancestry)
         if not ancestry.value.value:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 "retirement refuses an unintegrated candidate"
                 if request.operation == "retire"
                 else "lane has not absorbed the latest integration tip; merge forward",
             )
-        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
+        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=tip))
 
     @classmethod
     def _git_lane_retirement_clean(cls, root: Path) -> p.Result[bool]:
@@ -432,7 +435,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
             Cleanliness or the original inspection failure.
 
         """
-        status = cls.git_status(m.Infra.GitStatusRequest(repo_root=root))
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
+            m.Infra.GitStatusRequest(repo_root=root)
+        )
         if status.failure:
             return r[bool].from_failure(status)
         if status.value.dirty:
@@ -450,12 +455,12 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def git_list_worktrees(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitWorktreeListReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitWorktreeListReport]:
         """Read Git's canonical worktree registry, parsed once for every consumer.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitWorktreeListReport]``.
+            The resulting ``p.Result[p.Infra.GitWorktreeListReport]``.
 
         """
         repo_root = request.repo_root.expanduser().resolve()
@@ -464,13 +469,13 @@ class FlextInfraUtilitiesGitSemanticRefs(
             porcelain = repo.git.worktree(c.Action.LIST, "--porcelain")
             entries = cls._worktree_registry(repo, porcelain)
         except GitCommandError as exc:
-            return r[m.Infra.GitWorktreeListReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitWorktreeListReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitWorktreeListReport].fail(
+            return r[p.Infra.GitWorktreeListReport].fail(
                 f"failed to list Git worktrees: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitWorktreeListReport].ok(
+        return r[p.Infra.GitWorktreeListReport].ok(
             m.Infra.GitWorktreeListReport(
                 root=repo_root,
                 entries=entries,
@@ -481,12 +486,12 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def git_check_branch_format(
         cls,
-        request: m.Infra.GitBranchRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitBranchRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Validate a branch name with ``git check-ref-format --branch``.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
@@ -496,23 +501,23 @@ class FlextInfraUtilitiesGitSemanticRefs(
             # check-ref-format documents exit 1 for an invalid name; any other
             # status is a real failure.
             if exc.status == c.Infra.GIT_EXIT_NEGATIVE:
-                return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
-            return r[m.Infra.GitBoolReport].fail(
+                return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to validate branch name: {exc}",
                 exception=exc,
             )
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to validate branch name: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_ref_exists(
         cls,
-        request: m.Infra.GitRefRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitRefRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Return whether an exact Git ref exists (exit 0/1 only).
 
         Returns:
@@ -526,50 +531,50 @@ class FlextInfraUtilitiesGitSemanticRefs(
             # show-ref documents exit 1 for a missing ref; any other status is
             # a real failure.
             if exc.status == c.Infra.GIT_EXIT_NEGATIVE:
-                return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
-            return r[m.Infra.GitBoolReport].fail(
+                return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to inspect Git ref: {exc}",
                 exception=exc,
             )
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to inspect Git ref: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_superproject_working_tree(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitTextReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitTextReport]:
         """Capture ``rev-parse --show-superproject-working-tree`` stdout.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitTextReport]``.
+            The resulting ``p.Result[p.Infra.GitTextReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             text = repo.git.rev_parse("--show-superproject-working-tree")
         except GitCommandError as exc:
-            return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitTextReport].fail(
+            return r[p.Infra.GitTextReport].fail(
                 f"failed to resolve superproject working tree: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
+        return r[p.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @classmethod
     def git_show_toplevel(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitRootReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitRootReport]:
         """Report the resolved top-level directory of the request's worktree.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitRootReport]``.
+            The resulting ``p.Result[p.Infra.GitRootReport]``.
 
         """
         try:
@@ -578,70 +583,70 @@ class FlextInfraUtilitiesGitSemanticRefs(
                 Path(repo.working_tree_dir).resolve() if repo.working_tree_dir else None
             )
             if root is None:
-                return r[m.Infra.GitRootReport].fail(
+                return r[p.Infra.GitRootReport].fail(
                     "failed to resolve Git top level: working tree is None",
                 )
         except GitCommandError as exc:
-            return r[m.Infra.GitRootReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitRootReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitRootReport].fail(
+            return r[p.Infra.GitRootReport].fail(
                 f"failed to resolve Git top level: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitRootReport].ok(m.Infra.GitRootReport(repository_root=root))
+        return r[p.Infra.GitRootReport].ok(m.Infra.GitRootReport(repository_root=root))
 
     @classmethod
     def git_current_branch(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitTextReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitTextReport]:
         """Resolve the current non-detached branch name.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitTextReport]``.
+            The resulting ``p.Result[p.Infra.GitTextReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             branch = repo.active_branch.name
         except GitCommandError as exc:
-            return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (TypeError, OSError, ValueError) as exc:
             # active_branch raises TypeError on detached HEAD.
-            return r[m.Infra.GitTextReport].fail(
+            return r[p.Infra.GitTextReport].fail(
                 f"head branch is required from a detached HEAD: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=branch))
+        return r[p.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=branch))
 
     @classmethod
     def git_resolve_commit(
         cls,
-        request: m.Infra.GitCommitishRequest,
-    ) -> p.Result[m.Infra.GitOidReport]:
+        request: p.Infra.GitCommitishRequest,
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Resolve a commit-ish to its commit oid, failing on a non-commit name.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitOidReport]``.
+            The resulting ``p.Result[p.Infra.GitOidReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             oid = repo.commit(request.commitish).hexsha
         except (BadName, GitCommandError) as exc:
-            return r[m.Infra.GitOidReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitOidReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 f"cannot resolve commitish: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
+        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
 
     @classmethod
     def git_is_ancestor(
         cls,
-        request: m.Infra.GitAncestryRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitAncestryRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Return whether ``ancestor`` is an ancestor of ``descendant``.
 
         One owner proves ancestry for any pair. ``descendant`` defaults to
@@ -659,49 +664,49 @@ class FlextInfraUtilitiesGitSemanticRefs(
                 repo.commit(request.descendant),
             )
         except (BadName, GitCommandError) as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to inspect ancestry: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=result))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=result))
 
     @classmethod
     def git_rev_parse(
         cls,
-        request: m.Infra.GitCommitishRequest,
-    ) -> p.Result[m.Infra.GitOidReport]:
+        request: p.Infra.GitCommitishRequest,
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Resolve an arbitrary rev-parse argument to stripped text oid.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitOidReport]``.
+            The resulting ``p.Result[p.Infra.GitOidReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             oid = repo.git.rev_parse(request.commitish).strip()
         except GitCommandError as exc:
-            return r[m.Infra.GitOidReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitOidReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 f"rev-parse failed for {request.commitish}: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
+        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
 
     @classmethod
     def git_ref_heads(
         cls,
-        request: m.Infra.GitRefHeadsRequest,
-    ) -> p.Result[m.Infra.GitRefHeadsReport]:
+        request: p.Infra.GitRefHeadsRequest,
+    ) -> p.Result[p.Infra.GitRefHeadsReport]:
         """Map every ref below ``namespace`` to its tip oid.
 
         Names are relative to the namespace; the symbolic remote ``HEAD`` is
         an alias of another listed ref and is left out.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitRefHeadsReport]``.
+            The resulting ``p.Result[p.Infra.GitRefHeadsReport]``.
 
         """
         prefix = f"{request.namespace.rstrip('/')}/"
@@ -709,9 +714,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
             repo = cls._repo(request.repo_root)
             text = repo.git.for_each_ref("--format=%(refname)%00%(objectname)", prefix)
         except GitCommandError as exc:
-            return r[m.Infra.GitRefHeadsReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitRefHeadsReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitRefHeadsReport].fail(
+            return r[p.Infra.GitRefHeadsReport].fail(
                 f"failed to list refs below {request.namespace}: {exc}",
                 exception=exc,
             )
@@ -720,45 +725,45 @@ class FlextInfraUtilitiesGitSemanticRefs(
             for name, _, oid in (line.partition("\0") for line in text.splitlines())
             if name.removeprefix(prefix) != c.Infra.GIT_HEAD
         }
-        return r[m.Infra.GitRefHeadsReport].ok(m.Infra.GitRefHeadsReport(heads=heads))
+        return r[p.Infra.GitRefHeadsReport].ok(m.Infra.GitRefHeadsReport(heads=heads))
 
     @classmethod
     def git_stash_oids(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitOidListReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitOidListReport]:
         """List the stash commits, newest (``stash@{0}``) first.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitOidListReport]``.
+            The resulting ``p.Result[p.Infra.GitOidListReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             text = repo.git.stash(c.Action.LIST, "--format=%H")
         except GitCommandError as exc:
-            return r[m.Infra.GitOidListReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitOidListReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitOidListReport].fail(
+            return r[p.Infra.GitOidListReport].fail(
                 f"failed to list stash entries: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitOidListReport].ok(
+        return r[p.Infra.GitOidListReport].ok(
             m.Infra.GitOidListReport(oids=tuple(text.split())),
         )
 
     @classmethod
     def git_remote_branch_oid(
         cls,
-        request: m.Infra.GitRemoteBranchRequest,
-    ) -> p.Result[m.Infra.GitTextReport]:
+        request: p.Infra.GitRemoteBranchRequest,
+    ) -> p.Result[p.Infra.GitTextReport]:
         """Ask the remote itself for one branch tip; empty text means absent.
 
         Unlike a remote-tracking ref this is the live remote state, so it
         proves a publication rather than remembering one.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitTextReport]``.
+            The resulting ``p.Result[p.Infra.GitTextReport]``.
 
         """
         try:
@@ -769,22 +774,22 @@ class FlextInfraUtilitiesGitSemanticRefs(
                 f"refs/heads/{request.branch}",
             )
         except GitCommandError as exc:
-            return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitTextReport].fail(
+            return r[p.Infra.GitTextReport].fail(
                 f"failed to query {request.remote} for {request.branch}: {exc}",
                 exception=exc,
             )
         output = text if isinstance(text, str) else str(text)
-        return r[m.Infra.GitTextReport].ok(
+        return r[p.Infra.GitTextReport].ok(
             m.Infra.GitTextReport(text=output.partition("\t")[0].strip()),
         )
 
     @classmethod
     def git_remote_default_branch(
         cls,
-        request: m.Infra.GitRemoteRequest,
-    ) -> p.Result[m.Infra.GitTextReport]:
+        request: p.Infra.GitRemoteRequest,
+    ) -> p.Result[p.Infra.GitTextReport]:
         """Ask the remote itself which branch its ``HEAD`` declares.
 
         The forge default branch is the integration declaration of a
@@ -802,9 +807,9 @@ class FlextInfraUtilitiesGitSemanticRefs(
                 c.Infra.GIT_HEAD,
             )
         except GitCommandError as exc:
-            return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitTextReport].fail(
+            return r[p.Infra.GitTextReport].fail(
                 f"failed to query {request.remote} for its default branch: {exc}",
                 exception=exc,
             )
@@ -813,18 +818,18 @@ class FlextInfraUtilitiesGitSemanticRefs(
         for line in output.splitlines():
             target, _, name = line.partition("\t")
             if name == c.Infra.GIT_HEAD and target.startswith(symref_prefix):
-                return r[m.Infra.GitTextReport].ok(
+                return r[p.Infra.GitTextReport].ok(
                     m.Infra.GitTextReport(text=target.removeprefix(symref_prefix)),
                 )
-        return r[m.Infra.GitTextReport].fail(
+        return r[p.Infra.GitTextReport].fail(
             f"{request.remote} declares no default branch through its HEAD",
         )
 
     @classmethod
     def git_unique_patch_oids(
         cls,
-        request: m.Infra.GitMergeProbeRequest,
-    ) -> p.Result[m.Infra.GitOidListReport]:
+        request: p.Infra.GitMergeProbeRequest,
+    ) -> p.Result[p.Infra.GitOidListReport]:
         """List commits whose patch identity is not represented in the baseline.
 
         Returns:
@@ -837,13 +842,13 @@ class FlextInfraUtilitiesGitSemanticRefs(
                 request.commitish,
             )
         except GitCommandError as exc:
-            return r[m.Infra.GitOidListReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitOidListReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitOidListReport].fail(
+            return r[p.Infra.GitOidListReport].fail(
                 f"failed to inspect unique patches: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitOidListReport].ok(
+        return r[p.Infra.GitOidListReport].ok(
             m.Infra.GitOidListReport(
                 oids=tuple(
                     line.removeprefix("+ ")
@@ -856,8 +861,8 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def git_merge_is_noop(
         cls,
-        request: m.Infra.GitMergeProbeRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitMergeProbeRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Whether merging ``commitish`` into ``base`` leaves its tree unchanged.
 
         This proves a squash- or rebase-merged branch is already contained in
@@ -865,7 +870,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
         is not a no-op.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
@@ -878,29 +883,29 @@ class FlextInfraUtilitiesGitSemanticRefs(
             base_tree = repo.git.rev_parse(f"{request.base}^{{tree}}").strip()
         except GitCommandError as exc:
             if exc.status == c.Infra.GIT_EXIT_NEGATIVE:
-                return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+                return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError, IndexError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"merge probe failed for {request.commitish}: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(
+        return r[p.Infra.GitBoolReport].ok(
             m.Infra.GitBoolReport(value=merged.strip() == base_tree),
         )
 
     @classmethod
     def git_last_activity(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitTimestampReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitTimestampReport]:
         """Newest of the HEAD commit time and this worktree's last HEAD move.
 
         The HEAD reflog is per worktree, so checkouts, commits, resets and
         rebases in one linked worktree never age or refresh another.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitTimestampReport]``.
+            The resulting ``p.Result[p.Infra.GitTimestampReport]``.
 
         """
         return cls.git_ref_last_activity(
@@ -910,8 +915,8 @@ class FlextInfraUtilitiesGitSemanticRefs(
     @classmethod
     def git_ref_last_activity(
         cls,
-        request: m.Infra.GitCommitishRequest,
-    ) -> p.Result[m.Infra.GitTimestampReport]:
+        request: p.Infra.GitCommitishRequest,
+    ) -> p.Result[p.Infra.GitTimestampReport]:
         """Read the newest commit/ref movement for one explicit reference.
 
         Returns:
@@ -931,15 +936,15 @@ class FlextInfraUtilitiesGitSemanticRefs(
                 request.commitish,
             ).strip()
         except GitCommandError as exc:
-            return r[m.Infra.GitTimestampReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitTimestampReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitTimestampReport].fail(
+            return r[p.Infra.GitTimestampReport].fail(
                 f"failed to read last activity: {exc}",
                 exception=exc,
             )
         stamp = moved.partition("@{")[2].rstrip("}")
         latest = max(committed, int(stamp)) if stamp.isdigit() else committed
-        return r[m.Infra.GitTimestampReport].ok(
+        return r[p.Infra.GitTimestampReport].ok(
             m.Infra.GitTimestampReport(epoch_seconds=latest),
         )
 

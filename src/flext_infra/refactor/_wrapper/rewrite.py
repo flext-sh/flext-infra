@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
+from flext_infra import c, p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,7 +55,7 @@ class FlextInfraRefactorWrapperRewrite:
         self,
         file_path: Path,
         *,
-        accumulator: m.Infra.WrapperRewriteAccumulator,
+        accumulator: p.Infra.WrapperRewriteAccumulator,
         project_runtime_aliases: Mapping[str, frozenset[str]],
         wrapper_submodules: frozenset[str],
         metadata_runtime_aliases: frozenset[str],

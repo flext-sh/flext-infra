@@ -12,8 +12,9 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMiseToolchain
+from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInit
 from flext_infra._models._config import (
     FlextInfraModelsConfigContexts,
     FlextInfraModelsConfigContract,
@@ -23,13 +24,64 @@ from flext_infra._models._config import (
 )
 
 
-class FlextInfraModelsCodegenRender:
+class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     """Typed render contexts for generated codegen artifacts."""
 
-    class ModelProtocolRenderContext(m.ContractModel):
-        """Exact declaration text supplied to the protocol module template."""
+    class ModelProtocolConformanceRenderContext(m.ContractModel):
+        """Source-bound constructor types checked before protocol publication."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        header: str = m.Field(description="Generated source ownership marker")
+        copyright_notice: str = m.Field(description="The owning project's legal notice")
+        package_name: t.NonEmptyStr = m.Field(
+            description="Authenticated public package"
+        )
+        imports: tuple[str, ...] = m.Field(description="Native generic-bound imports")
+        facades: tuple[str, str] = m.Field(
+            description="Published model and protocol facade classes of the package"
+        )
+        checks: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...]], ...] = m.Field(
+            description="Native constructor, structural port, parameters and arguments"
+        )
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Project-local generated documentation language"
+        )
+
+        @m.computed_field
+        @property
+        def module_description(self) -> str:
+            """The instance-to-protocol evidence description."""
+            return c.Infra.DocumentationText.MODEL_PROTOCOL_CONFORMANCE.localized(
+                self.documentation_language
+            )
+
+    class ModelProtocolRenderContext(m.ContractModel):
+        """Exact declarations supplied to one mirrored protocol module."""
+
+        class ModelProtocolContract(m.ContractModel):
+            """One nested data contract within its declaring module."""
+
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+                str_strip_whitespace=False,
+            )
+
+            name: t.NonEmptyStr = m.Field(description="The nested structural contract")
+            depth: int = m.Field(
+                default=0,
+                ge=0,
+                description="The contract's nesting depth beneath its owner",
+            )
+            type_parameters: tuple[str, ...] = m.Field(
+                description="Complete parameter declarations with bounds and defaults"
+            )
+            bases: tuple[str, ...] = m.Field(
+                default=("Protocol",),
+                description="Authenticated structural capabilities of the contract",
+            )
+            declarations: tuple[str, ...] = m.Field(
+                description="Field declarations retaining their annotation metadata"
+            )
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             str_strip_whitespace=False,
         )
 
@@ -40,13 +92,47 @@ class FlextInfraModelsCodegenRender:
             description="Canonical import lines for referenced protocol owners"
         )
         owner: t.NonEmptyStr = m.Field(description="The declaring protocol namespace")
-        name: t.NonEmptyStr = m.Field(description="The nested structural contract")
-        type_parameters: tuple[str, ...] = m.Field(
-            description="Complete parameter declarations with bounds and defaults"
+        bases: tuple[str, ...] = m.Field(
+            default=(),
+            description="Native source-derived facade composition bases",
         )
-        declarations: tuple[str, ...] = m.Field(
-            description="Field declarations retaining their annotation metadata"
+        contracts: tuple[ModelProtocolContract, ...] = m.Field(
+            description="All data contracts declared by the corresponding model module"
         )
+        aliases: tuple[str, ...] = m.Field(
+            default=(),
+            description=(
+                "Structural mirrors of the model namespace's type aliases whose "
+                "value names projected models, as complete ``type`` statements"
+            ),
+        )
+        documentation_language: t.Infra.DocumentationLanguage = m.Field(
+            default="en", description="Project-local generated documentation language"
+        )
+
+        @m.computed_field
+        @property
+        def module_description(self) -> str:
+            """The projected module's structural responsibility."""
+            return c.Infra.DocumentationText.MODEL_PROTOCOL_MODULE.localized(
+                self.documentation_language
+            )
+
+        @m.computed_field
+        @property
+        def owner_description(self) -> str:
+            """The declaring holder's structural responsibility."""
+            return c.Infra.DocumentationText.MODEL_PROTOCOL_OWNER.localized(
+                self.documentation_language
+            )
+
+        @m.computed_field
+        @property
+        def contract_description(self) -> str:
+            """The generated value contract's responsibility."""
+            return c.Infra.DocumentationText.MODEL_PROTOCOL_CONTRACT.localized(
+                self.documentation_language
+            )
 
     class GithubWorkflowRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
@@ -56,7 +142,13 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Repository explicitly owns the release protocol"),
         ] = False
         extra_verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbSpec),
+                ],
+                ...,
+            ],
             m.Field(description="Elected repository-owned public commands"),
         ] = ()
         publish_index: Annotated[
@@ -106,19 +198,39 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Python major.minor line"),
         ]
         toolchain: Annotated[
-            FlextInfraModelsConfigContract.ToolchainSpec,
+            Annotated[
+                p.Infra.ToolchainSpec,
+                t.schema_for_model(FlextInfraModelsConfigContract.ToolchainSpec),
+            ],
             m.Field(description="Canonical toolchain consumed by CI bootstrap"),
         ]
         github_actions: Annotated[
-            Mapping[str, FlextInfraModelsConfigProvider.GithubActionPinSpec],
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.GithubActionPinSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigProvider.GithubActionPinSpec
+                    ),
+                ],
+            ],
             m.Field(description="Immutable GitHub Action catalog"),
         ]
         make: Annotated[
-            FlextInfraModelsConfigMake.MakeSpec,
+            Annotated[
+                p.Infra.MakeSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeSpec),
+            ],
             m.Field(description="Canonical workflow command contract"),
         ]
         workspace_repositories: Annotated[
-            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RepositoryRef,
+                    t.schema_for_model(FlextInfraModelsConfigContexts.RepositoryRef),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Governed subproject repositories consumed by workspace-scoped "
@@ -199,7 +311,13 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = ""
         private_submodules: Annotated[
-            FlextInfraModelsConfigProvider.CiPrivateSubmodulesSpec | None,
+            Annotated[
+                p.Infra.CiPrivateSubmodulesSpec,
+                t.schema_for_model(
+                    FlextInfraModelsConfigProvider.CiPrivateSubmodulesSpec
+                ),
+            ]
+            | None,
             m.Field(
                 default=None,
                 description=(
@@ -209,7 +327,13 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = None
         private_dependency_auth: Annotated[
-            FlextInfraModelsConfigProvider.CiPrivateDependencyAuthSpec | None,
+            Annotated[
+                p.Infra.CiPrivateDependencyAuthSpec,
+                t.schema_for_model(
+                    FlextInfraModelsConfigProvider.CiPrivateDependencyAuthSpec
+                ),
+            ]
+            | None,
             m.Field(
                 default=None,
                 description=(
@@ -240,7 +364,13 @@ class FlextInfraModelsCodegenRender:
             ),
         ] = False
         superproject: Annotated[
-            FlextInfraModelsConfigProvider.CiSuperprojectCheckoutSpec | None,
+            Annotated[
+                p.Infra.CiSuperprojectCheckoutSpec,
+                t.schema_for_model(
+                    FlextInfraModelsConfigProvider.CiSuperprojectCheckoutSpec
+                ),
+            ]
+            | None,
             m.Field(
                 default=None,
                 description=(
@@ -277,7 +407,10 @@ class FlextInfraModelsCodegenRender:
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         make: Annotated[
-            FlextInfraModelsConfigMake.MakeSpec,
+            Annotated[
+                p.Infra.MakeSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeSpec),
+            ],
             m.Field(description="Canonical workflow command contract"),
         ]
 
@@ -301,7 +434,10 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Python major.minor line"),
         ]
         make: Annotated[
-            FlextInfraModelsConfigMake.MakeSpec,
+            Annotated[
+                p.Infra.MakeSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeSpec),
+            ],
             m.Field(description="Canonical Make CI token contract for ENV CI=Y"),
         ]
 
@@ -313,7 +449,10 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Inherited selectors excluded by native activation"),
         ]
         toolchain: Annotated[
-            FlextInfraModelsConfigContract.ToolchainSpec,
+            Annotated[
+                p.Infra.ToolchainSpec,
+                t.schema_for_model(FlextInfraModelsConfigContract.ToolchainSpec),
+            ],
             m.Field(description="Governed native reader shared with Make"),
         ]
         repository_root_rel: Annotated[
@@ -328,12 +467,21 @@ class FlextInfraModelsCodegenRender:
             t.NonEmptyStr,
             m.Field(description="Runtime-root-local development environment"),
         ] = c.Infra.ENVIRONMENT_DIRECTORY
+        environment_metadata: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Native environment marker required before publication"
+            ),
+        ] = c.Infra.ENVIRONMENT_METADATA
 
     class SonarcloudRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed only by the generated ``.sonarcloud.properties``."""
 
         sonarcloud: Annotated[
-            FlextInfraModelsConfigRender.SonarcloudSpec,
+            Annotated[
+                p.Infra.SonarcloudSpec,
+                t.schema_for_model(FlextInfraModelsConfigRender.SonarcloudSpec),
+            ],
             m.Field(description="Fleet SonarCloud scope policy"),
         ]
         tests_dir: Annotated[
@@ -370,7 +518,14 @@ class FlextInfraModelsCodegenRender:
             m.Field(description="Declared constraints, projected as declared"),
         ]
         override_dependencies: Annotated[
-            tuple[str | FlextInfraModelsMiseToolchain.UvScopedOverride, ...],
+            tuple[
+                str
+                | Annotated[
+                    p.Infra.UvScopedOverride,
+                    t.schema_for_model(FlextInfraModelsMiseToolchain.UvScopedOverride),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "SSOT-declared PEP 508 overrides resolving a transitive "
@@ -388,7 +543,7 @@ class FlextInfraModelsCodegenRender:
     class MarkdownLintRenderSpec(m.ContractModel):
         """Validated tooling-only context for Markdown lint projections."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             strict=True,
@@ -406,31 +561,127 @@ class FlextInfraModelsCodegenRender:
     class QltyRenderSpec(m.ContractModel):
         """Validated context for the generated qlty repository configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             strict=True,
         )
 
     # Keep the module-skeleton template boundary model-backed and immutable.
-    class ModuleSkeletonRenderContext(m.ContractModel):
-        """Validated context for one generated module skeleton."""
+    class ModuleSkeletonRenderContext(m.ArbitraryTypesModel):
+        """Native module inventory filling the canonical template's owned slots."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
-            frozen=True,
             str_strip_whitespace=False,
         )
 
         class_name: t.NonEmptyStr = m.Field(description="Generated class name.")
-        base_class: t.NonEmptyStr = m.Field(description="Generated base class name.")
-        base_module: t.NonEmptyStr = m.Field(description="Module owning base_class.")
-        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
+        base_class: t.NonEmptyStr | None = m.Field(
+            description="Declared base class, absent for an uncomposed namespace."
+        )
+        base_module: t.NonEmptyStr | None = m.Field(
+            description="Module owning the declared base, paired with base_class."
+        )
+        docstring: str | None = m.Field(
+            default=None,
+            description=(
+                "Owned documentation for a new skeleton; existing source"
+                " retains its own text."
+            ),
+        )
+        module_prefix: str | None = m.Field(
+            default=None,
+            description=(
+                "Authored module prelude and native import output, when refactoring."
+            ),
+        )
+        module_suffix: str = m.Field(
+            default="",
+            description="Preserved source following the selected native class.",
+        )
+        class_bases: tuple[str, ...] = m.Field(
+            default=(), description="Ordered, identity-proven native base expressions."
+        )
+        class_keywords: tuple[str, ...] = m.Field(
+            default=(), description="Unchanged native class keyword expressions."
+        )
+        type_parameters_source: str = m.Field(
+            default="", description="Exact native generic parameter declaration."
+        )
+        header_source: str | None = m.Field(
+            default=None,
+            description=(
+                "Unchanged native class header when its structural"
+                " arguments are unchanged."
+            ),
+        )
+        header_comments: tuple[str, ...] = m.Field(
+            default=(),
+            description=(
+                "Native lexical comment fragments retained while"
+                " recomposing a changed header."
+            ),
+        )
+        class_indent: str = m.Field(
+            default="", description="Native indentation of the selected class."
+        )
+        indentation: str = m.Field(
+            default="    ",
+            min_length=1,
+            description=(
+                "Template indentation; native refactors supply their project policy."
+            ),
+        )
+        body_source: tuple[str | tuple[str, str], ...] | None = m.Field(
+            default=None,
+            description=(
+                "Ordered authored source and native class-publication"
+                " slots, retaining declaration order and trivia."
+            ),
+        )
+        publications: Mapping[str, str] = m.Field(
+            default_factory=dict[str, str],
+            description=(
+                "Native class-publication targets and their authenticated expressions."
+            ),
+        )
+        exports: tuple[str, ...] | None = m.Field(
+            default=None,
+            description=(
+                "Declared module exports; absent only for a new class skeleton."
+            ),
+        )
+        managed_header: str | None = m.Field(
+            default=None,
+            description="Canonical ownership marker selected by the projection owner.",
+        )
+
+        @m.model_validator(mode="after")
+        def validate_declared_base(self) -> Self:
+            """Keep the optional class and module as one declaration contract.
+
+            Returns:
+                This validated source context.
+
+            Raises:
+                ValueError: Only one half of an imported base was supplied.
+
+            """
+            if (self.base_class is None) != (self.base_module is None):
+                message = (
+                    "A module skeleton declares its base class and module together"
+                )
+                raise ValueError(message)
+            if self.module_prefix is None and not self.docstring:
+                message = "A new module skeleton requires its owned documentation"
+                raise ValueError(message)
+            return self
 
     class TestModuleSkeletonRenderContext(m.ContractModel):
         """Validated context for one generated test facade skeleton."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             str_strip_whitespace=False,
@@ -456,7 +707,7 @@ class FlextInfraModelsCodegenRender:
     class MkdocsRenderContext(m.ContractModel):
         """Validated common context for a generated MkDocs configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             strict=True,
@@ -524,35 +775,6 @@ class FlextInfraModelsCodegenRender:
         """Validated MkDocs context with a project edit scope."""
 
         scope_name: t.NonEmptyStr = m.Field(description="Workspace project scope.")
-
-    class LazyInitRootRender(m.ArbitraryTypesModel):
-        """Template context for one lazy public root ``__init__.py``."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-        runtime_import_lines: t.NonEmptyStr = m.Field(
-            description="Isort-ordered runtime imports of the lazy helpers.",
-        )
-        eager_binding_lines: str = m.Field(
-            default_factory=str,
-            description=(
-                "Runtime-only eager dunder bindings emitted after the lazy "
-                "installer, so the bound submodule may consume the package's "
-                "own facades while its static contract stays in TYPE_CHECKING."
-            ),
-        )
-        type_checking_lines: str = m.Field(
-            default_factory=str,
-            description="Static declarations for public lazy exports.",
-        )
-        exports_tuple: t.NonEmptyStr = m.Field(
-            description="Canonical rendered root ``__all__`` tuple.",
-        )
-        lazy_export_mapping: t.NonEmptyStr = m.Field(
-            description="Immutable elected export-to-target installer argument.",
-        )
 
 
 __all__: list[str] = ["FlextInfraModelsCodegenRender"]

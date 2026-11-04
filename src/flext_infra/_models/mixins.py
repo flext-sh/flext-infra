@@ -10,9 +10,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m
+from flext_cli import m, t
 
-from flext_infra import c, t
+from flext_infra import c
 
 
 class FlextInfraModelsMixins:
@@ -61,7 +61,7 @@ class FlextInfraModelsMixins:
         command.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         repository_root: Annotated[
             Path,

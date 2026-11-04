@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraCodegenArtifactSsot:
@@ -24,9 +24,9 @@ class TestsFlextInfraCodegenArtifactSsot:
         with pytest.raises(c.ValidationError):
             m.Infra.TestmonCachePolicySpec.model_validate({})
 
-    @staticmethod
     @pytest.fixture(scope="module")
-    def codegen() -> m.Infra.CodegenConfigSpec:
+    @staticmethod
+    def codegen() -> p.Infra.CodegenConfigSpec:
         """Return the production configuration consumed by every projection.
 
         Returns:
@@ -44,7 +44,7 @@ class TestsFlextInfraCodegenArtifactSsot:
         ],
     )
     def test_template_artifact_dependencies_form_a_closed_dag(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         dependencies: str,
         error: str,
     ) -> None:
@@ -61,7 +61,7 @@ class TestsFlextInfraCodegenArtifactSsot:
             m.Infra.TemplatesSpec.model_validate(payload)
 
     @staticmethod
-    def test_artifact_names_are_unique(codegen: m.Infra.CodegenConfigSpec) -> None:
+    def test_artifact_names_are_unique(codegen: p.Infra.CodegenConfigSpec) -> None:
         """Reject ambiguous projection keys at the typed owner."""
         names = tuple(artifact.name for artifact in codegen.artifacts)
         tm.ok(bool(names))
@@ -70,7 +70,7 @@ class TestsFlextInfraCodegenArtifactSsot:
 
     @staticmethod
     def test_template_entries_keep_every_declared_field(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Each derived entry carries its declaration verbatim plus its key."""
         catalog = codegen.templates.catalog
@@ -83,7 +83,7 @@ class TestsFlextInfraCodegenArtifactSsot:
 
     @staticmethod
     def test_vscode_maps_are_exact_projections(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Derive every expected mapping from the same typed artifact records."""
         expected_files = {
@@ -104,7 +104,7 @@ class TestsFlextInfraCodegenArtifactSsot:
 
     @staticmethod
     def test_source_scan_is_exact_projection(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Derive ignored source names from their owner flags."""
         expected = tuple(
@@ -116,8 +116,8 @@ class TestsFlextInfraCodegenArtifactSsot:
         tm.that(len(expected), eq=len(set(expected)))
 
     @staticmethod
-    def test_gitignore_artifacts_are_exact_projection(
-        codegen: m.Infra.CodegenConfigSpec,
+    def test_ignore_artifacts_are_exact_projection(
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Preserve configured order while rendering directory suffixes."""
         expected = tuple(
@@ -134,14 +134,14 @@ class TestsFlextInfraCodegenArtifactSsot:
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
     def test_generated_source_is_tracked_and_excluded_from_analysis(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         profile: c.Infra.MakeProfile,
     ) -> None:
         """One generated_source key keeps a tree tracked yet outside analysis.
 
-        Premise (flext-gknfx): a generated tree that ``.gitignore`` hides while
+        Premise (flext-gknfx): a generated tree that ``.ignore`` hides while
         Git tracks it loses every module a regeneration adds, and analyzers
-        that ignore ``.gitignore`` still check it. The key must therefore keep
+        that ignore ``.ignore`` still check it. The key must therefore keep
         the tree trackable while every scan and analyzer exclusion derives it.
         """
         name = "wire_contracts"
@@ -181,8 +181,8 @@ class TestsFlextInfraCodegenArtifactSsot:
             )
 
     @staticmethod
-    def test_gitignore_sections_account_for_every_artifact(
-        codegen: m.Infra.CodegenConfigSpec,
+    def test_ignore_sections_account_for_every_artifact(
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Require every derived pattern to be governed or appended."""
         emitted = {
@@ -207,8 +207,8 @@ class TestsFlextInfraCodegenArtifactSsot:
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
-    def test_gitignore_tracks_governed_provider_projections(
-        codegen: m.Infra.CodegenConfigSpec,
+    def test_ignore_tracks_governed_provider_projections(
+        codegen: p.Infra.CodegenConfigSpec,
         profile: c.Infra.MakeProfile,
     ) -> None:
         """Track portable governance and exclude machine-owned provider settings."""
@@ -253,7 +253,7 @@ class TestsFlextInfraCodegenArtifactSsot:
 
     @staticmethod
     def test_makefile_has_one_owner_for_every_declared_profile(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Cover repository profiles through one generic template entry."""
         entries = tuple(
@@ -270,7 +270,7 @@ class TestsFlextInfraCodegenArtifactSsot:
 
     @staticmethod
     def test_hook_workflow_contexts_partition_mutation_and_validation(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Both hooks run incremental tests; pre-push adds full local checks."""
         workflow = codegen.make.workflow
@@ -311,7 +311,7 @@ class TestsFlextInfraCodegenArtifactSsot:
     @staticmethod
     def test_rendered_vscode_document_consumes_projection_maps(
         tmp_path: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Validate the public renderer output instead of private implementation."""
         project = u.Tests.mk_project(

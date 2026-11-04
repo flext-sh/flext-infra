@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraCli, infra, m, t
+from flext_infra import FlextInfraCli, infra, m, p, t
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraModEvidenceInputs:
@@ -154,8 +154,8 @@ class TestsFlextInfraModEvidenceInputs:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """One invocation keeps provider bindings and local utilities separate."""
-        rules: list[m.Infra.CodemodRule] = []
-        rulesets: list[m.Infra.CodemodRuleset] = []
+        rules: list[p.Infra.CodemodRule] = []
+        rulesets: list[p.Infra.CodemodRuleset] = []
         for provider in ("left", "right"):
             catalog = tmp_path / "providers" / provider
             rule_directory = catalog / c.Infra.CODEMOD_RULE_DIRS_KEY
@@ -303,7 +303,7 @@ class TestsFlextInfraModEvidenceInputs:
             tm.that(raw["text"], eq=finding.text)
             corrupted = finding.model_copy(
                 update={
-                    "native_record": m.Infra.ModNativeRecord(
+                    "native_record": p.Infra.ModNativeRecord(
                         offset=finding.native_record.offset,
                         length=finding.native_record.length,
                         sha256=u.Cli.sha256_bytes(b"foreign record"),
@@ -490,7 +490,7 @@ class TestsFlextInfraModEvidenceInputs:
     def _scanned_shared_occurrences(
         mod_workspace: Path,
         occurrences: int,
-    ) -> tuple[m.Infra.ModScanReport, m.Infra.CodemodBindingSnapshot, Path]:
+    ) -> tuple[p.Infra.ModScanReport, m.Infra.CodemodBindingSnapshot, Path]:
         """Scan the shared-occurrence workspace with its authenticated input.
 
         Args:
@@ -524,8 +524,8 @@ class TestsFlextInfraModEvidenceInputs:
     @staticmethod
     def _verified_nested_evidence(
         mod_workspace: Path,
-        receipt: m.Infra.ModScanEvidenceReceipt,
-        restored: m.Infra.ModScanEvidence,
+        receipt: p.Infra.ModScanEvidenceReceipt,
+        restored: p.Infra.ModScanEvidence,
     ) -> None:
         """Publish the evidence again and prove nested identity sharing.
 
@@ -552,8 +552,8 @@ class TestsFlextInfraModEvidenceInputs:
 
     @staticmethod
     def _rejected_tampered_evidence(
-        restored: m.Infra.ModScanEvidence,
-        snapshot: m.Infra.CodemodBindingSnapshot,
+        restored: p.Infra.ModScanEvidence,
+        snapshot: p.Infra.CodemodBindingSnapshot,
     ) -> None:
         """Reject every tampered evidence projection at its validation boundary.
 

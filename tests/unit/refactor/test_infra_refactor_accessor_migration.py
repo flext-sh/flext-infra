@@ -13,20 +13,17 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, infra, m
-from flext_infra.codemod import (
-    FlextInfraCodemodLoopPhaseAccessorRename,
-    FlextInfraModGateEngine,
-)
-from flext_infra.refactor import FlextInfraRefactorAccessorOrigin
+from flext_infra.codemod import FlextInfraModGateEngine
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseAccessorRename
+from flext_infra.refactor import FlextInfraRefactorAccessor
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-from tests import p
 
 _RENAMES = {
     rule.source_name: rule.replacement_name
@@ -184,12 +181,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         *,
         captured: bool,
     ) -> None:
-        """Captured parameters retain their annotation's original import binding.
-
-        Raises:
-            TypeError: If Rope does not retain the module's native syntax tree.
-
-        """
+        """Captured parameters retain their annotation's original import binding."""
         workspace, project, package = u.Tests.namespace_workspace(tmp_path)
         source = "from flext_infra import m as declared_models\n\n"
         source += "def outer(value: declared_models.Infra.ScopeMixin):\n"
@@ -202,12 +194,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         u.Tests.provision_checkout(workspace)
         with u.Tests.authenticated_rope_workspace(project) as rope:
-            resolver = FlextInfraRefactorAccessorOrigin(rope.rope_project)
+            resolver = FlextInfraRefactorAccessor(rope.rope_project)
             module = resolver.module(path)
             tree = module.get_ast()
-            if not isinstance(tree, ast.AST):
-                msg = "Native receiver module has no source syntax tree"
-                raise TypeError(msg)
             receiver = next(
                 node.value
                 for node in ast.walk(tree)
@@ -277,13 +266,13 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             "import sys\n"
             "sys.path.insert(0, sys.argv[1])\n"
             f"from {package.name} import consumer\n"
-            "from flext_infra import m, u\n"
+            "from flext_infra import m, p, u\n"
         )
         for index, rule in enumerate(rules):
             declaring = tm.not_none(rule.declaring_class).rsplit(".", maxsplit=1)[1]
             field = tm.not_none(rule.field)
             source += (
-                f"def migrated_{index}(value: m.Infra.{declaring}):\n"
+                f"def migrated_{index}(value: p.Infra.{declaring}):\n"
                 f"    return value.{rule.source_name}\n\n"
                 f"class PropertyOverride_{index}(m.Infra.{declaring}):\n"
                 "    @property\n"
@@ -312,9 +301,9 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                 "'property_override_marker'\n"
             )
         source += (
-            "def optional(value: m.Infra.ProjectNamesOptionalMixin):\n"
+            "def optional(value: p.Infra.ProjectNamesOptionalMixin):\n"
             "    return value.project_names\n\n"
-            "def concrete(value: m.Infra.ProjectNamesListMixin):\n"
+            "def concrete(value: p.Infra.ProjectNamesListMixin):\n"
             "    return value.project_names\n\n"
             "def payload():\n"
             f"    return {tuple(rule.source_name for rule in rules)!r}\n"
@@ -427,7 +416,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             source = (
                 "from flext_infra import m\n\n"
                 f"class FieldOverride(m.Infra.{declaring}):\n"
-                f"    {field}: m.Infra.{declaring}.model_fields["
+                f"    {field}: p.Infra.{declaring}.model_fields["
                 f"{field!r}].annotation = None\n\n"
                 "def inherited(value: FieldOverride):\n"
                 f"    return value.{rule.source_name}\n"
@@ -678,7 +667,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         source = f"class Owned:\n    def {name}(self):\n        return True\n"
         origin_file.write_text(source, encoding="utf-8")
         with u.Infra.open_project(workspace) as project:
-            resolver = FlextInfraRefactorAccessorOrigin(project)
+            resolver = FlextInfraRefactorAccessor(project)
             snapshot = u.Infra.snapshot_project(project, {origin_file: source})
             try:
                 if snapshot_case == "original":

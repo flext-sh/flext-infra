@@ -1,27 +1,5 @@
 id: ban-runtime-alias-rebind
 snapshots:
-  "class FlextFooConstants:\n    pass\nc = FlextFooConstants\n__all__ = [\"FlextFooConstants\"]\n":
-    labels:
-    - source: c = FlextFooConstants
-      style: primary
-      start: 34
-      end: 55
-    - source: |
-        class FlextFooConstants:
-            pass
-        c = FlextFooConstants
-        __all__ = ["FlextFooConstants"]
-      style: secondary
-      start: 0
-      end: 88
-    - source: c
-      style: secondary
-      start: 34
-      end: 35
-    - source: c = FlextFooConstants
-      style: secondary
-      start: 34
-      end: 55
   "class FlextFooConstants:\n    pass\nc = FlextFooConstants\nc = FlextFooConstants\n__all__ = [\"FlextFooConstants\", \"c\"]\n":
     labels:
     - source: c = FlextFooConstants

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraWorkspaceMemberLedgerIdentity:
@@ -74,7 +74,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         tm.that(loaded[0].members[0].extra_verbs, eq=(member_verb,))
 
     @staticmethod
-    def _member_ledger_identity(member: Path) -> m.Infra.WorkspaceSpec:
+    def _member_ledger_identity(member: Path) -> p.Infra.WorkspaceSpec:
         """Rewrite the member's ledger input and self-load its typed identity.
 
         Returns:
@@ -136,7 +136,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
             dispatcher="scripts/dispatch.py",
             roots=("scripts",),
         )
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             member,
             {
                 "examples_module": "examples.member_runtime",
@@ -164,7 +164,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
     ) -> None:
         """Selected command metadata must pass the declaration's typed contract."""
         member, parent = self._attach_member_to_workspace(tmp_path)
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             member,
             {"extra_verbs": "not-a-command-sequence"},
         )

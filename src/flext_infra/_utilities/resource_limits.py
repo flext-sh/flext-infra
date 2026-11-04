@@ -71,7 +71,7 @@ class FlextInfraUtilitiesResourceLimits:
         return int(raw_value)
 
     @staticmethod
-    def mypy_resource_limit() -> m.Infra.MypyResourceLimit:
+    def mypy_resource_limit() -> p.Infra.MypyResourceLimit:
         """Validate the external Mypy memory and time settings exactly once.
 
         The wall-time budget is ``tools.mypy.timeout_seconds`` in the
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    def mypy_arguments(invocation: m.Infra.MypyInvocation) -> Sequence[str]:
+    def mypy_arguments(invocation: p.Infra.MypyInvocation) -> Sequence[str]:
         """Build checker options shared by the CLI and public profiling API.
 
         Returns:
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    def mypy_command(invocation: m.Infra.MypyInvocation) -> Sequence[str]:
+    def mypy_command(invocation: p.Infra.MypyInvocation) -> Sequence[str]:
         """Construct the owned checker entrypoint from typed data, never command text.
 
         Returns:
@@ -270,8 +270,8 @@ class FlextInfraUtilitiesResourceLimits:
 
     @staticmethod
     def mypy_limited_command(
-        invocation: m.Infra.MypyInvocation,
-        limit: m.Infra.MypyResourceLimit | None = None,
+        invocation: p.Infra.MypyInvocation,
+        limit: p.Infra.MypyResourceLimit | None = None,
         *,
         host_system: str | None = None,
     ) -> Sequence[str]:
@@ -317,7 +317,7 @@ class FlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    def mypy_runner_timeout(limit: m.Infra.MypyResourceLimit | None = None) -> int:
+    def mypy_runner_timeout(limit: p.Infra.MypyResourceLimit | None = None) -> int:
         """Return the outer runner timeout after the controlled child deadline.
 
         Returns:
@@ -333,7 +333,7 @@ class FlextInfraUtilitiesResourceLimits:
         return timeout_seconds
 
     @staticmethod
-    def mypy_runner_deadline(timeout: int) -> m.Cli.ProcessDeadline:
+    def mypy_runner_deadline(timeout: int) -> p.Cli.ProcessDeadline:
         """Compose the runner deadline after the complete inner supervisor window.
 
         Returns:
@@ -361,7 +361,7 @@ class FlextInfraUtilitiesResourceLimits:
     def mypy_resource_limit_for_project(
         cls,
         project_dir: Path,
-    ) -> m.Infra.MypyResourceLimit:
+    ) -> p.Infra.MypyResourceLimit:
         """Resolve a project budget without changing the fleet default.
 
         Returns:
@@ -423,7 +423,7 @@ class FlextInfraUtilitiesResourceLimits:
 
     @staticmethod
     def _bounded_mypy_diagnostic(
-        limit: m.Infra.MypyResourceLimit,
+        limit: p.Infra.MypyResourceLimit,
         *,
         detail: str,
         exit_code: int | str,
@@ -446,7 +446,7 @@ class FlextInfraUtilitiesResourceLimits:
     def mypy_launch_failure_diagnostic(
         cls,
         detail: str,
-        limit: m.Infra.MypyResourceLimit | None = None,
+        limit: p.Infra.MypyResourceLimit | None = None,
     ) -> str:
         """Report an outer-runner failure that precluded a process exit status.
 
@@ -466,7 +466,7 @@ class FlextInfraUtilitiesResourceLimits:
     def mypy_failure_diagnostic(
         cls,
         output: p.Cli.CommandOutput,
-        limit: m.Infra.MypyResourceLimit | None = None,
+        limit: p.Infra.MypyResourceLimit | None = None,
     ) -> str | None:
         """Report native timeout, signal and memory evidence for bounded Mypy.
 

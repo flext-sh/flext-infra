@@ -21,7 +21,7 @@ class FlextInfraDepsDetectorRuntimeSteps:
 
     def _validate_environment(
         self,
-        params: m.Infra.DetectCommand,
+        params: p.Infra.DetectCommand,
         root: Path,
         venv_bin: Path,
     ) -> p.Result[Sequence[Path]]:
@@ -55,7 +55,7 @@ class FlextInfraDepsDetectorRuntimeSteps:
         project_path: Path,
         *,
         venv_bin: Path,
-        params: m.Infra.DetectCommand,
+        params: p.Infra.DetectCommand,
         projects_report: MutableMapping[str, m.Infra.ProjectDependencyReport],
     ) -> p.Result[bool]:
         """Run deptry for one project.
@@ -104,8 +104,8 @@ class FlextInfraDepsDetectorRuntimeSteps:
         self,
         root: Path,
         venv_bin: Path,
-        params: m.Infra.DetectCommand,
-        report_model: p.Infra.WorkspaceReport,
+        params: p.Infra.DetectCommand,
+        report_model: p.Infra.WorkspaceDependencyReport,
     ) -> p.Result[bool]:
         """Execute the workspace ``pip check`` and stamp the report; ``r.ok(pip_ok)``.
 

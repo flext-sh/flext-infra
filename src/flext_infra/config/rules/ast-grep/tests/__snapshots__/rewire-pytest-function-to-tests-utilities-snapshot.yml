@@ -1,9 +1,58 @@
 id: rewire-pytest-function-to-tests-utilities
 snapshots:
-  "with pytest.raises(c.ValidationError):\n    build()\n":
+  "@pytest.fixture\ndef workspace() -> None: ...\n":
     fixed: |
-      with u.Tests.raises(c.ValidationError):
-          build()
+      @u.Tests.fixture
+      def workspace() -> None: ...
+    labels:
+    - source: pytest.fixture
+      style: primary
+      start: 1
+      end: 15
+    - source: pytest
+      style: secondary
+      start: 1
+      end: 7
+    - source: fixture
+      style: secondary
+      start: 8
+      end: 15
+  "pytest.skip(\"not executed\")\n":
+    fixed: |
+      u.Tests.skip("not executed")
+    labels:
+    - source: pytest.skip
+      style: primary
+      start: 0
+      end: 11
+    - source: pytest
+      style: secondary
+      start: 0
+      end: 6
+    - source: skip
+      style: secondary
+      start: 7
+      end: 11
+  "value = pytest.approx(1.0)\n":
+    fixed: |
+      value = u.Tests.approx(1.0)
+    labels:
+    - source: pytest.approx
+      style: primary
+      start: 8
+      end: 21
+    - source: pytest
+      style: secondary
+      start: 8
+      end: 14
+    - source: approx
+      style: secondary
+      start: 15
+      end: 21
+  "with pytest.raises(ValueError):\n    run()\n":
+    fixed: |
+      with u.Tests.raises(ValueError):
+          run()
     labels:
     - source: pytest.raises
       style: primary

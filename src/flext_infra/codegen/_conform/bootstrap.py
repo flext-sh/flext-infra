@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, assert_never
 
@@ -28,43 +28,9 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         ),
     ] = m.Field(default_factory=m.Infra.CodegenConformState, validate_default=True)
 
-    def retain_diagnostics(
-        self,
-        *exceptions: BaseException | None,
-        issues: Sequence[m.Infra.Issue] = (),
-    ) -> None:
-        """Collect issues and keep the first cause the invocation re-raises."""
-        self.state.planning_issues.extend(issues)
-        if self.state.planning_exception is None:
-            self.state.planning_exception = next(
-                (exception for exception in exceptions if exception is not None),
-                None,
-            )
-
-    def _record_file_failure(
-        self,
-        path: Path,
-        error: str,
-        *,
-        exception: BaseException | None = None,
-    ) -> None:
-        """Retain an actual target failure through the shared diagnostic model."""
-        self.retain_diagnostics(
-            exception,
-            issues=(
-                m.Infra.Issue(
-                    file=str(path),
-                    line=0,
-                    column=0,
-                    code=c.Infra.ToolOutcome.ERROR.value,
-                    message=error,
-                ),
-            ),
-        )
-
     @staticmethod
     def link_mode(
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
         toolchain: p.Infra.ToolchainSpec,
     ) -> str:
         """Resolve the repository override through one codegen authority.
@@ -78,14 +44,14 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     @staticmethod
     def _discover_script_verbs(
         repository_root: Path,
-    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+    ) -> tuple[p.Infra.MakeVerbSpec, ...]:
         """Discover script verbs from scripts/<verb>/all.sh in the repository root.
 
         The filesystem is the SSOT: a verb is emitted only when its all.sh
         entrypoint exists. No manual list is required.
 
         Returns:
-            The resulting ``tuple[m.Infra.MakeVerbSpec, ...],``.
+            The resulting ``tuple[p.Infra.MakeVerbSpec, ...],``.
 
         """
         scripts_dir = repository_root / c.Infra.DIR_SCRIPTS
@@ -103,8 +69,8 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
 
     def _declared_environment_imports(
         self,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
     ) -> tuple[tuple[str, Path], ...]:
         """Resolve diagnostic package identities from their declared projects.
 
@@ -160,10 +126,10 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
 
     @staticmethod
     def _merge_extra_verbs(
-        declared: tuple[m.Infra.MakeVerbSpec, ...],
-        discovered: tuple[m.Infra.MakeVerbSpec, ...],
+        declared: tuple[p.Infra.MakeVerbSpec, ...],
+        discovered: tuple[p.Infra.MakeVerbSpec, ...],
         canonical_names: frozenset[str],
-    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+    ) -> tuple[p.Infra.MakeVerbSpec, ...]:
         """Union declared and discovered script verbs deduplicated by name.
 
         Why: object-level dedup never converges because declared
@@ -176,7 +142,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         owner of that name in the generated Makefile.
 
         Returns:
-            The resulting ``tuple[m.Infra.MakeVerbSpec, ...],``.
+            The resulting ``tuple[p.Infra.MakeVerbSpec, ...],``.
 
         Raises:
             ValueError: If config extra_verbs declares canonical verb.
@@ -202,8 +168,8 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         cls,
         surface: c.Infra.CodegenConformSurface,
         *,
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> m.Infra.CodegenConformSurfaceContract:
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> p.Infra.CodegenConformSurfaceContract:
         """Resolve one admitted surface into its conformance contract.
 
         Args:
@@ -307,7 +273,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
 
     @staticmethod
     def _editor_destinations(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> frozenset[str]:
         """Select the existing owners of editor, analyzer and ignore projections.
 
@@ -327,7 +293,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
 
     @staticmethod
     def _pyproject_destinations(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> frozenset[str]:
         """Collect the managed pyproject destinations.
 

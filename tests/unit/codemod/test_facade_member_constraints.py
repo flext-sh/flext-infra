@@ -440,7 +440,11 @@ class TestsFlextInfraFacadeMemberConstraints:
     def _ownership_rules(cls) -> Mapping[str, t.JsonMapping]:
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
-            return u.Infra.codemod_facade_member_ownership_rules(snapshot, project)
+            return u.Infra.codemod_facade_member_ownership_rules(
+                snapshot,
+                project,
+                u.Infra.codemod_facade_census_facts(snapshot, project),
+            )
 
     @staticmethod
     def _alternatives(pattern: str) -> tuple[str, ...]:
@@ -472,10 +476,13 @@ class TestsFlextInfraFacadeMemberConstraints:
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
-                snapshot.engine, sources={}
+                snapshot.engine,
+                sources=u.Infra.project_captured_sources(snapshot.engine),
             )
             _lineage, relocations, _names = u.Infra.facade_member_census(
-                project, source_project=snapshot.engine
+                project,
+                source_project=snapshot.engine,
+                resolver_factory=resolver_factory,
             )
             tm.that(relocations, empty=False)
             for owner, references in relocations.items():
@@ -504,8 +511,14 @@ class TestsFlextInfraFacadeMemberConstraints:
         """
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine,
+                sources=u.Infra.project_captured_sources(snapshot.engine),
+            )
             _lineage, relocations, _names = u.Infra.facade_member_census(
-                project, source_project=snapshot.engine
+                project,
+                source_project=snapshot.engine,
+                resolver_factory=resolver_factory,
             )
         references = {
             reference for found in relocations.values() for reference in found
@@ -561,10 +574,21 @@ class TestsFlextInfraFacadeMemberConstraints:
         tm.that(cls._ownership_rules(), eq=first)
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            sources = u.Infra.project_captured_sources(snapshot.engine)
             census = u.Infra.facade_member_census(
-                project, source_project=snapshot.engine
+                project,
+                source_project=snapshot.engine,
+                resolver_factory=u.Infra.source_member_resolver_factory(
+                    snapshot.engine, sources=sources
+                ),
             )
             tm.that(
-                u.Infra.facade_member_census(project, source_project=snapshot.engine),
+                u.Infra.facade_member_census(
+                    project,
+                    source_project=snapshot.engine,
+                    resolver_factory=u.Infra.source_member_resolver_factory(
+                        snapshot.engine, sources=sources
+                    ),
+                ),
                 eq=census,
             )

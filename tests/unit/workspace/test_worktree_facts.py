@@ -10,14 +10,14 @@ import os
 import time
 from pathlib import Path
 
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
     """Prove FS-only discovery, classification, staleness, and planning."""
 
     @staticmethod
-    def _policy() -> m.Infra.WorktreeFactsPolicy:
+    def _policy() -> p.Infra.WorktreeFactsPolicy:
         """Return the typed layout policy the fixtures exercise.
 
         Returns:
@@ -30,7 +30,7 @@ class TestsFlextInfraWorktreeFacts(u.Tests.WorktreeFixture):
         )
 
     @classmethod
-    def _query(cls, *repo_roots: Path, window: int = 90) -> m.Infra.WorktreeFactsQuery:
+    def _query(cls, *repo_roots: Path, window: int = 90) -> p.Infra.WorktreeFactsQuery:
         """Build one facts query over the given repository roots.
 
         Returns:

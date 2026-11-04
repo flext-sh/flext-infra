@@ -1,27 +1,38 @@
-# PEP 747 `TypeForm` is re-bound by every FLEXT `t` facade as a runtime
-# callable (`t.TypeForm(X)`, ADR-028 amended 2026-10-29): consumers never
-# import `typing_extensions.TypeForm` themselves — one typed surface, no
-# third-party spelling at call sites. flext-core's own `_typings` modules are
-# the only legal importers (they own the re-binding). Calls through the
-# facade are the required form at every use site.
-id: typeform-call-via-facade
+# PEP 747 `TypeForm` is called and annotated through its canonical owner,
+# `from typing_extensions import TypeForm` (ADR-028; operator ruling
+# 2026-10-31, option B, superseding the 2026-10-29 `t.TypeForm` order). mypy
+# recognizes the PEP 747 conversion only when the callee's fullname is
+# `typing_extensions.TypeForm`; the facade attribute `t.TypeForm` is a class
+# attribute, so mypy reports `"<typing special form>" not callable` and the
+# result is `Any`. Every `t.TypeForm` reference (call, subscript, bare) is
+# rewritten to the bare name; `pydantic-typeform-import` binds it.
+#
+# The typings family is out of scope: it still holds the re-binding, which is
+# deleted at its owner in a separate step, never by this rule.
+id: ban-typeform-alias-call
 language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/_typings/**"
+metadata:
+  scope:
+    not-in: [ facade-family-t ]
 rule:
-  pattern: from typing_extensions import $$$NAMES
-constraints:
-  NAMES:
-    regex: ".*\\bTypeForm\\b.*"
+  kind: attribute
+  all:
+    - has:
+        field: object
+        regex: "^t$"
+    - has:
+        field: attribute
+        regex: "^TypeForm$"
+fix: TypeForm
 message: >-
-  Call `t.TypeForm(X)` through the facade instead of importing
-  `typing_extensions.TypeForm` (ADR-028 amended 2026-10-29): `t` re-binds the
-  special form as a callable; the import is owned by flext-core's typings only.
-fix: t.TypeForm
+  Use `TypeForm` from `typing_extensions`, not `t.TypeForm` (ADR-028, operator
+  ruling 2026-10-31): mypy honours the PEP 747 call only for the fullname
+  `typing_extensions.TypeForm`; the facade attribute is `"<typing special
+  form>" not callable` and yields `Any`.
 note: >-
-  Where: this import. Why: the facade owns the PEP 747 re-binding so consumers
-  keep one typed surface. How: drop the import and call `t.TypeForm(...)` via
-  the package's `t` letter.
+  Where: this `t.TypeForm` reference. Why: mypy reads the facade attribute as
+  a non-callable special form. How: the fix writes the bare name and
+  `pydantic-typeform-import` adds `from typing_extensions import TypeForm`.

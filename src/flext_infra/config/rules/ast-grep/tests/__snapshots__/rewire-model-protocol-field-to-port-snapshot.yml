@@ -61,45 +61,45 @@ snapshots:
       style: secondary
       start: 45
       end: 154
-  "class Runner(FlextModelsBase.ArbitraryTypesModel):\n    writer: p.Writer\n":
+  "class Runner(FlextModelsBase.ManagedModel):\n    writer: p.Writer\n":
     fixed: |
-      class Runner(FlextModelsBase.ArbitraryTypesModel):
+      class Runner(FlextModelsBase.ManagedModel):
           writer: t.Port[p.Writer]
     labels:
     - source: p.Writer
       style: primary
-      start: 63
-      end: 71
-    - source: FlextModelsBase.ArbitraryTypesModel
+      start: 56
+      end: 64
+    - source: FlextModelsBase.ManagedModel
       style: secondary
       start: 13
-      end: 48
-    - source: FlextModelsBase.ArbitraryTypesModel
+      end: 41
+    - source: FlextModelsBase.ManagedModel
       style: secondary
       start: 13
-      end: 48
+      end: 41
     - source: |-
-        class Runner(FlextModelsBase.ArbitraryTypesModel):
+        class Runner(FlextModelsBase.ManagedModel):
             writer: p.Writer
       style: secondary
       start: 0
-      end: 71
+      end: 64
     - source: "writer: p.Writer"
       style: secondary
-      start: 55
-      end: 71
+      start: 48
+      end: 64
     - source: "writer: p.Writer"
       style: secondary
-      start: 55
-      end: 71
+      start: 48
+      end: 64
     - source: "writer: p.Writer"
       style: secondary
-      start: 55
-      end: 71
+      start: 48
+      end: 64
     - source: p.Writer
       style: secondary
-      start: 63
-      end: 71
+      start: 56
+      end: 64
   "class Runner(m.Value):\n    sink: p.Sink[str] | None = None\n":
     fixed: |
       class Runner(m.Value):

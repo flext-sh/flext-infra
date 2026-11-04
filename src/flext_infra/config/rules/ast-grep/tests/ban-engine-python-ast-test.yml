@@ -3,18 +3,18 @@
 # the letters ast stay legal.
 id: ban-engine-python-ast
 valid:
-  - import astroid
-  - import aster
-  - from astroid import parse
-  - from flext_infra import c, t
+- import astroid
+- import aster
+- from astroid import parse
+- from flext_infra import c, p, t
 invalid:
-  - import ast
-  - import ast.walk
-  - import ast as pyast
-  - from ast import parse
-  - from ast.walk import NodeVisitor
-  - |
-    def resolve(annotation):
-        import ast
+- import ast
+- import ast.walk
+- import ast as pyast
+- from ast import parse
+- from ast.walk import NodeVisitor
+- |
+  def resolve(annotation):
+      import ast
 
-        return ast.parse(annotation, mode="eval")
+      return ast.parse(annotation, mode="eval")

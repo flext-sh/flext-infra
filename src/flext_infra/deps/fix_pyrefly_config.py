@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, p, r, s, t, u
 from flext_infra.deps import FlextInfraDepsPyrefly
 
 
@@ -39,7 +39,7 @@ class FlextInfraConfigFixer(
         return r[bool].fail("Use execute_command() directly")
 
     @classmethod
-    def execute_payload(cls, params: m.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
+    def execute_payload(cls, params: p.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
         """Execute pyrefly config repair from the canonical check command payload.
 
         Returns:

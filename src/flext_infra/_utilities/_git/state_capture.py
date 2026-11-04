@@ -11,10 +11,14 @@ from pathlib import Path
 from git import GitCommandError
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitStateTransition
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStatePublication,
+    FlextInfraUtilitiesGitStateTransition,
+)
 
 
 class FlextInfraUtilitiesGitStateCapture(
+    FlextInfraUtilitiesGitStatePublication,
     FlextInfraUtilitiesGitStateTransition,
 ):
     """Use the existing Git-root writer leases and physical file preconditions."""
@@ -22,7 +26,7 @@ class FlextInfraUtilitiesGitStateCapture(
     @classmethod
     def _state_apply(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
         destination_root: Path,
     ) -> None:
         snapshot = checkpoint.snapshot
@@ -53,7 +57,7 @@ class FlextInfraUtilitiesGitStateCapture(
     @classmethod
     def git_apply_worktree_checkpoint(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
         destination_root: Path,
     ) -> p.Result[bool]:
         """Apply only retained bytes, resuming proven partial prior effects.
@@ -71,10 +75,10 @@ class FlextInfraUtilitiesGitStateCapture(
     @classmethod
     def _state_cleanup(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
         destination_root: Path,
         saved_commit: str,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
     ) -> None:
         snapshot = checkpoint.snapshot
         if destination_root.resolve() == snapshot.repo_root:
@@ -110,11 +114,11 @@ class FlextInfraUtilitiesGitStateCapture(
     @classmethod
     def git_cleanup_worktree_state(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
         destination_root: Path,
         saved_commit: str,
         *,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
     ) -> p.Result[bool]:
         """Restore owned source entries only after live remote retention proof.
 

@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.validate import FlextInfraTestmonDbInspector
-from tests import tm
+from tests import p, tm
 
 
 class TestsFlextInfraTestmonDbInspector:
@@ -84,7 +84,7 @@ class TestsFlextInfraTestmonDbInspector:
         connection.execute("INSERT INTO meta VALUES ('schema', '1')")
         connection.commit()
         connection.close()
-        state: m.Infra.TestmonCacheState = tm.ok(
+        state: p.Infra.TestmonCacheState = tm.ok(
             FlextInfraTestmonDbInspector(
                 repository_root=repository_root,
                 db_path=db,
@@ -111,7 +111,7 @@ class TestsFlextInfraTestmonDbInspector:
         connection.commit()
         connection.close()
         digest = FlextInfraTestmonDbInspector.digest_file(db)
-        state: m.Infra.TestmonCacheState = tm.ok(
+        state: p.Infra.TestmonCacheState = tm.ok(
             FlextInfraTestmonDbInspector(
                 repository_root=repository_root,
                 db_path=db,

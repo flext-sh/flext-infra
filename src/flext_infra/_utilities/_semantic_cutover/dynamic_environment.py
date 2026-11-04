@@ -17,20 +17,14 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeModulePatch,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
-)
-from flext_infra._utilities._rope.rope_module_patch import (
-    FlextInfraUtilitiesRopeModulePatch,
-)
-from flext_infra._utilities._rope.rope_runtime_modules import (
-    FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_refactors import (
-    FlextInfraUtilitiesRopeRuntimeRefactors,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
@@ -65,7 +59,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
             self.bindings = bindings
             self.aliases: MutableMapping[tuple[str, int], str | None] = {}
             self.packages: set[str] = set()
-            self.edits: list[m.Infra.SourceRewrite] = []
+            self.edits: list[p.Infra.SourceRewrite] = []
             self.environ = runtime.qualified_name(project, "os.environ")
             self.environ_get = runtime.qualified_name(project, "os.environ.get")
             self.text = runtime.qualified_name(project, "builtins.str")
@@ -108,15 +102,8 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
             Returns:
                 The resulting ``ast.Module``.
 
-            Raises:
-                TypeError: If the native module exposes no module syntax tree.
-
             """
-            tree = self.module.get_ast()
-            if not isinstance(tree, ast.Module):
-                msg = "dynamic environment analysis has no native module syntax"
-                raise TypeError(msg)
-            return tree
+            return self.module.get_ast()
 
         def _resolved(self, node: ast.expr) -> p.Infra.RopePyName | None:
             span = self.node_span_offsets(self.source, node)
@@ -276,7 +263,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         *,
         source_project: p.Infra.RopeProject,
         owner_context: Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
             tree = ast.parse(source)
@@ -335,11 +322,12 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
                 source,
                 tuple(planner.edits),
             ).new_contents
-            updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
-                updated,
-                module=package,
-                name="settings",
-            )
+            with FlextInfraUtilitiesRopeModulePatch.candidate_module(
+                module, updated
+            ) as candidate:
+                updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
+                    candidate, module=package, name="settings"
+                )
             return updated, ("routed config-owned environment keys through settings",)
 
         return cls._semantic_edits(
@@ -353,7 +341,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
     def _settings_owner_contexts(
         cls,
         repository_root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         source_project: p.Infra.RopeProject,
         dependency_codegen: Mapping[Path, m.Infra.CodegenInputs] | None,
     ) -> Callable[[Path], tuple[str, str, m.Infra.CodegenConfigSpec]]:
@@ -385,7 +373,7 @@ class FlextInfraUtilitiesSemanticCutoverDynamicEnvironment(
         owner_root: Path,
         source_project: p.Infra.RopeProject,
         repository_root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         dependency_codegen: Mapping[Path, m.Infra.CodegenInputs] | None,
     ) -> tuple[str, str, m.Infra.CodegenConfigSpec]:
         """Read the namespace and validate the exact policy inputs of one owner.

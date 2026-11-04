@@ -11,12 +11,10 @@ from collections.abc import Mapping
 from git import GitCommandError
 
 from flext_infra import c, config, m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMaterialization
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeStatus
 
 
-class FlextInfraUtilitiesGitWorktreeCheckpoint(
-    FlextInfraUtilitiesGitWorktreeMaterialization,
-):
+class FlextInfraUtilitiesGitWorktreeCheckpoint(FlextInfraUtilitiesGitWorktreeStatus):
     """Own worktree checkpoint operations."""
 
     @staticmethod
@@ -35,19 +33,19 @@ class FlextInfraUtilitiesGitWorktreeCheckpoint(
     @classmethod
     def git_repository_delta(
         cls,
-        repository: m.Infra.RepositoryWorktree,
+        repository: p.Infra.RepositoryWorktree,
         *,
         source_gitlinks: Mapping[str, str] | None = None,
-    ) -> p.Result[m.Infra.RepositoryDelta]:
+    ) -> p.Result[p.Infra.RepositoryDelta]:
         """Stage and capture the operation-only patch after a checkpoint.
 
         Returns:
-            The resulting ``p.Result[m.Infra.RepositoryDelta]``.
+            The resulting ``p.Result[p.Infra.RepositoryDelta]``.
 
         """
         head_result = cls._git_head_oid(repository.worktree_root)
         if head_result.failure or head_result.value != repository.checkpoint_sha:
-            return r[m.Infra.RepositoryDelta].fail(
+            return r[p.Infra.RepositoryDelta].fail(
                 head_result.error
                 if head_result.failure
                 else "isolated command moved repository HEAD",
@@ -86,9 +84,9 @@ class FlextInfraUtilitiesGitWorktreeCheckpoint(
                 *exclusions,
             ).encode(c.DEFAULT_ENCODING)
         except GitCommandError as exc:
-            return r[m.Infra.RepositoryDelta].fail(str(exc), exception=exc)
+            return r[p.Infra.RepositoryDelta].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.RepositoryDelta].fail(
+            return r[p.Infra.RepositoryDelta].fail(
                 f"failed to capture operation patch: {exc}",
                 exception=exc,
             )
@@ -98,7 +96,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpoint(
         # newline the patch format requires before the delta is applied.
         if patch_bytes and not patch_bytes.endswith(b"\n"):
             patch_bytes += b"\n"
-        return r[m.Infra.RepositoryDelta].ok(
+        return r[p.Infra.RepositoryDelta].ok(
             m.Infra.RepositoryDelta(
                 relative_path=repository.relative_path,
                 source_root=repository.source_root,

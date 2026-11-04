@@ -4,7 +4,7 @@
 # A facade module that imports its parent's short letter, subclasses it, and
 # then rebinds the same letter to the subclass binds that letter twice:
 #
-#     from flext_cli import m
+#     from flext_cli import m, p
 #     class FlextMeltanoModels(m): ...
 #     m = FlextMeltanoModels
 #

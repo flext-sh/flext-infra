@@ -13,7 +13,7 @@ from typing import Literal
 
 import pytest
 
-from flext_infra.gates import FlextInfraMypyGate, FlextInfraPyreflyGate
+from flext_infra.gates import FlextInfraGatesMypy, FlextInfraGatesPyrefly
 from tests import c, m, p, tm, u
 
 
@@ -93,9 +93,13 @@ class TestsFlextInfraProtocolNamespaceProjection:
             f"    from {package.name}.protocols import p\n",
             cwd=root,
         )
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        )
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
-        tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p")), eq=rendered
+        )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         namespace = "p.Namespace" if nested else "p"
         native_consumer(
@@ -193,9 +197,14 @@ class TestsFlextInfraProtocolNamespaceProjection:
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        )
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
-        tm.that(u.Infra.render_utility_facade(package, family=family), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family=family)),
+            eq=rendered,
+        )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -232,7 +241,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
             repository_root=root, reports_dir=root / ".reports"
         )
         context.reports_dir.mkdir(parents=True, exist_ok=True)
-        for gate in (FlextInfraMypyGate(root), FlextInfraPyreflyGate(root)):
+        for gate in (FlextInfraGatesMypy(root), FlextInfraGatesPyrefly(root)):
             checked = gate.check(root, context)
             tm.that(checked.result.passed, eq=True, msg=checked.raw_output)
 
@@ -289,8 +298,14 @@ class TestsFlextInfraProtocolNamespaceProjection:
         service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
-        with pytest.raises(ValueError, match=r"ambiguous .* class attribute"):
-            u.Infra.render_utility_facade(package, family=family)
+        projected = tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        if annotated or conflict == "annotation":
+            # A declared annotation is never rewritten away.
+            tm.that(tm.ok(projected), has=f"{target}: type[{annotation}] = {value}")
+        else:
+            # An unannotated alias of a class both parents publish is ambiguous.
+            error = tm.fail(projected, has="Ambiguous source class binding")
+            tm.that(error, has=target)
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)), eq=before
         )
@@ -336,7 +351,9 @@ class TestsFlextInfraProtocolNamespaceProjection:
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        )
         tm.that(
             sum(
                 alias.name == "Contracts"
@@ -347,7 +364,9 @@ class TestsFlextInfraProtocolNamespaceProjection:
             eq=1,
         )
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
-        tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p")), eq=rendered
+        )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"

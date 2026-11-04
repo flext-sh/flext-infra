@@ -1,19 +1,19 @@
 id: rewire-test-assert-instance-message
 valid:
-  - assert isinstance(value, Entry), "An entry is required"
-  - |
-    from tests import tm
-    assert isinstance(value, (Entry, Schema)), "An entry is required"
+- assert isinstance(value, Entry), "An entry is required"
+- |
+  from tests import tm
+  assert isinstance(value, (Entry, Schema)), "An entry is required"
 invalid:
-  - |
-    from flext_tests import tm
-    value = 1
-    def check():
-        assert isinstance(value, int), explain()
-  - |
-    from tests import tm
-    assert isinstance(value, Entry), "An entry is required"
-  - |
-    from tests import tm
-    if not (isinstance(value, Entry)):
-        raise AssertionError(report)
+- |
+  from flext_tests import tm
+  value = 1
+  def check():
+      assert isinstance(value, int), explain()
+- |
+  from tests import tm
+  assert isinstance(value, Entry), "An entry is required"
+- |
+  from tests import tm
+  if not (isinstance(value, Entry)):
+      raise AssertionError(report)

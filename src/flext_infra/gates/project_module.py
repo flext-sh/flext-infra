@@ -10,16 +10,16 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import m, p, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra import p, u
+from flext_infra.gates import FlextInfraGates
 
 
-class FlextInfraProjectModuleGate(FlextInfraGate):
+class FlextInfraGatesProjectModule(FlextInfraGates):
     """Run repository-declared modules through the canonical native gate runner."""
 
     @override
     def _get_check_dirs(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> Sequence[str]:
         """A declared module checks its project without invented file arguments.
 
@@ -32,7 +32,7 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: Sequence[str]
+        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: Sequence[str]
     ) -> Sequence[str]:
         """Bind the declared command to the elected physical environment.
 
@@ -49,7 +49,7 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
     ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Retain the native result without interpreting or suppressing output.
 
@@ -70,10 +70,10 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
     def _parsed_gate_execution(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         result: p.Cli.CommandOutput,
         started: float,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Add the original process to the shared parsed execution.
 
         Returns:
@@ -85,7 +85,7 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
             ._parsed_gate_execution(project_dir, ctx, result, started)
             .model_copy(
                 update={
-                    "process": m.Cli.ProcessOutcome.model_validate(
+                    "process": p.Cli.ProcessOutcome.model_validate(
                         result.outcome, from_attributes=True
                     )
                 }
@@ -93,4 +93,4 @@ class FlextInfraProjectModuleGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraProjectModuleGate"]
+__all__: list[str] = ["FlextInfraGatesProjectModule"]

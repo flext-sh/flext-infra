@@ -9,12 +9,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import u
+from flext_infra import p, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from flext_infra import m
 
 
 class FlextInfraDocsAuditorChecks:
@@ -22,8 +20,8 @@ class FlextInfraDocsAuditorChecks:
 
     @staticmethod
     def forbidden_term_issues(
-        scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+        scope: p.Infra.DocScope,
+    ) -> Sequence[p.Infra.AuditIssue]:
         """Return forbidden-term issues configured for one scope.
 
         Returns:
@@ -37,7 +35,7 @@ class FlextInfraDocsAuditorChecks:
         )
 
     @staticmethod
-    def placeholder_issues(scope: m.Infra.DocScope) -> Sequence[m.Infra.AuditIssue]:
+    def placeholder_issues(scope: p.Infra.DocScope) -> Sequence[p.Infra.AuditIssue]:
         """Return placeholder-text issues for one scope.
 
         Returns:
@@ -51,8 +49,8 @@ class FlextInfraDocsAuditorChecks:
 
     @staticmethod
     def machine_path_issues(
-        scope: m.Infra.DocScope,
-    ) -> Sequence[m.Infra.AuditIssue]:
+        scope: p.Infra.DocScope,
+    ) -> Sequence[p.Infra.AuditIssue]:
         """Return machine-local paths outside exact historical evidence files.
 
         Returns:
@@ -68,9 +66,9 @@ class FlextInfraDocsAuditorChecks:
 
     def _collect_issues(
         self,
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         check: str,
-    ) -> tuple[Sequence[str], Sequence[m.Infra.AuditIssue]]:
+    ) -> tuple[Sequence[str], Sequence[p.Infra.AuditIssue]]:
         """Resolve selection from the handlers and collect issues in canonical order.
 
         Returns:
@@ -78,7 +76,7 @@ class FlextInfraDocsAuditorChecks:
 
         """
         handlers: tuple[
-            tuple[str, Callable[[m.Infra.DocScope], Sequence[m.Infra.AuditIssue]]],
+            tuple[str, Callable[[p.Infra.DocScope], Sequence[p.Infra.AuditIssue]]],
             ...,
         ] = (
             ("links", u.Infra.docs_broken_link_issues),
@@ -86,8 +84,8 @@ class FlextInfraDocsAuditorChecks:
             ("placeholders", self.placeholder_issues),
             ("machine-paths", self.machine_path_issues),
             ("stale-symbols", u.Infra.docs_stale_symbol_issues),
-            ("scope-boundary", u.Infra.docs_scope_boundary_issues),
-            ("generated-ownership", u.Infra.docs_generated_ownership_issues),
+            ("scope-boundary", u.Infra.scope_boundary_issues),
+            ("generated-ownership", u.Infra.generated_ownership_issues),
             ("command-contract", u.Infra.docs_command_contract_issues),
             ("docstrings", u.Infra.docs_public_docstring_issues),
             ("python-codeblocks", u.Infra.docs_python_codeblock_issues),

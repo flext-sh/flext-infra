@@ -1,21 +1,33 @@
 id: ban-test-deep-module-import
 valid:
-- from flext_core import FlextCore, core, config, settings, c, t, p, m, u
+- from flext_core import FlextCore, core, config, settings, c, p, t, p, m, p, u
 - from flext_ldif import ldif
 - from flext_tests import tm
 - from flext_core.lazy import install_lazy_exports
 - from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 - from flext_core.lazy import install_lazy_exports as install
-- from tests import tm
+- from tests import p, tm
 - from collections.abc import Callable
 - from pydantic import Field
+- from flext_infra.workspace import FlextInfraWorkspaceDetector
+- from flext_infra.workspace import FlextInfraWorkspaceDetector, FlextInfraWorkspaceGovernance
+- from flext_infra.workspace import FlextInfraWorkspaceDetector as Detector
+- from flext_ldif.services import FlextLdifParser as Parser
+- |
+  from flext_infra.workspace import (
+      FlextInfraWorkspaceDetector,
+      FlextInfraWorkspaceGovernance,
+  )
 invalid:
 - from flext_core.services import FlextServiceRegistry
 - from flext_core.lazy_internal import install_lazy_exports
 - from flext_core.lazy.helpers import install_lazy_exports
 - from flext_core._models.registry import FlextModelsRegistry
-- from flext_ldif.services import FlextLdifParser as Parser
 - from flext_tests.pytest_bootstrap import bootstrap
+- from flext_infra.gates.loc_cap import FlextInfraGatesLocCap
+- from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+- from flext_infra.workspace import FlextInfraWorkspaceDetector, FlextInfraRopeWorkspaceMissing
+- from flext_ldif.services import FlextLdifWriter as Writer
 - |
   from flext_infra.codegen import (
       FlextInfraCodegenConform,

@@ -57,7 +57,7 @@ class FlextInfraCodemodExtractDuplicate:
     @staticmethod
     def apply(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Extract one safe duplicate statement block per governed project file.
@@ -92,7 +92,7 @@ class FlextInfraCodemodExtractDuplicate:
     def plan_project(
         cls,
         project_root: Path,
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan the first safe extraction per file from one project's report.
 
         Returns:
@@ -103,22 +103,22 @@ class FlextInfraCodemodExtractDuplicate:
             project_root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_REPORT_FILENAME
         )
         if not report_path.is_file():
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(())
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
         loaded = u.Cli.json_parse(report_path.read_text(encoding=c.DEFAULT_ENCODING))
         if loaded.failure:
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].from_failure(
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].from_failure(
                 loaded,
             )
         grouped = cls._intra_file_ranges(
             u.Cli.json_as_mapping(loaded.value),
             project_root,
         )
-        edits: list[m.Infra.SemanticMigrationEdit] = []
+        edits: list[p.Infra.SemanticMigrationEdit] = []
         for path in sorted(grouped):
             edit = cls._plan_file(path, grouped[path])
             if edit is not None:
                 edits.append(edit)
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
 
     @classmethod
     def _intra_file_ranges(
@@ -180,7 +180,7 @@ class FlextInfraCodemodExtractDuplicate:
         cls,
         path: Path,
         spans: Sequence[tuple[int, int, int, int]],
-    ) -> m.Infra.SemanticMigrationEdit | None:
+    ) -> p.Infra.SemanticMigrationEdit | None:
         """Plan one extraction for a file, or ``None`` when it is not safe.
 
         Returns:

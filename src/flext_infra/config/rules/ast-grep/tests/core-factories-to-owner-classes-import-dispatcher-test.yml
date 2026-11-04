@@ -1,0 +1,40 @@
+id: core-factories-to-owner-classes-import-dispatcher
+# `valid` MUST NOT match: the binding is present at module level, the name is
+# only reached through a module object, or the module declares the class.
+valid:
+  - |
+    from __future__ import annotations
+
+    from flext_core import FlextDispatcher, c
+
+    dispatcher = FlextDispatcher()
+  - |
+    from __future__ import annotations
+
+    import flext_core
+
+    dispatcher = flext_core.FlextDispatcher()
+  - |
+    from __future__ import annotations
+
+
+    class FlextDispatcher:
+        @classmethod
+        def fresh(cls) -> FlextDispatcher:
+            return FlextDispatcher()
+# `invalid` MUST match: the name is used without a module-level binding,
+# including a binding that exists only for type checking.
+invalid:
+  - |
+    from __future__ import annotations
+
+    dispatcher = FlextDispatcher()
+  - |
+    from __future__ import annotations
+
+    from typing import TYPE_CHECKING
+
+    if TYPE_CHECKING:
+        from flext_core import FlextDispatcher
+
+    dispatcher = FlextDispatcher()

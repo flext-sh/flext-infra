@@ -9,6 +9,7 @@ from __future__ import annotations
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
     FlextInfraUtilitiesDocsAudit,
+    FlextInfraUtilitiesDocsBase,
     FlextInfraUtilitiesDocsBuild,
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsFix,
@@ -19,7 +20,6 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsScopeBuild,
     FlextInfraUtilitiesDocsValidate,
 )
-from flext_infra._utilities._docs.docs_base import FlextInfraUtilitiesDocsBase
 
 
 class FlextInfraUtilitiesDocs(

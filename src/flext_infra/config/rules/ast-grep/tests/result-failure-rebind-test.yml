@@ -11,7 +11,7 @@ valid:
 invalid:
   - |
     if loaded.failure:
-        return r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
+        return r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
   - |
     if result.failure:
         return r[str].fail(result.error or "read failed")

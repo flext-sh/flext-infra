@@ -19,7 +19,7 @@ from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.refactor import FlextInfraRefactorCensus
 
 
-class FlextInfraCodegenQualityGate(s[bool]):
+class FlextInfraGatesCodegenQuality(s[bool]):
     """Run final constants migration checks with before/after comparison."""
 
     source_preview: t.Port[p.Infra.SourcePreview] = m.Field(
@@ -260,7 +260,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def after_metrics(
         *,
-        census_report: m.Infra.WorkspaceReport,
+        census_report: p.Infra.WorkspaceReport,
         modified_files: Sequence[str],
     ) -> Mapping[str, t.JsonValue]:
         """Build post-run metrics summary used by quality checks.
@@ -343,7 +343,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 critical=True,
             ),
         )
-        checks: Sequence[m.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
+        checks: Sequence[p.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
         return [check.model_dump() for check in checks]
 
     @staticmethod
@@ -362,7 +362,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def project_findings(
-        census_report: m.Infra.WorkspaceReport,
+        census_report: p.Infra.WorkspaceReport,
     ) -> Sequence[Mapping[str, t.JsonValue]]:
         """Convert census reports into sorted per-project findings.
 
@@ -492,4 +492,4 @@ class FlextInfraCodegenQualityGate(s[bool]):
         return verdict == "PASS"
 
 
-__all__: list[str] = ["FlextInfraCodegenQualityGate"]
+__all__: list[str] = ["FlextInfraGatesCodegenQuality"]

@@ -1,0 +1,30 @@
+id: rewire-protocol-model-root
+snapshots:
+  'class Spec(FlextCliProtocols.Model, Protocol): ...':
+    fixed: 'class Spec(FlextCliProtocols.BaseModel, Protocol): ...'
+    labels:
+    - source: FlextCliProtocols.Model
+      style: primary
+      start: 11
+      end: 34
+  'class StagedFile(FlextProtocols.Model, Protocol): ...':
+    fixed: 'class StagedFile(FlextProtocols.BaseModel, Protocol): ...'
+    labels:
+    - source: FlextProtocols.Model
+      style: primary
+      start: 17
+      end: 37
+  'def dump(model: p.Model) -> None: ...':
+    fixed: 'def dump(model: p.BaseModel) -> None: ...'
+    labels:
+    - source: p.Model
+      style: primary
+      start: 16
+      end: 23
+  'items: Sequence[p.Model[t.JsonDict]]':
+    fixed: 'items: Sequence[p.BaseModel[t.JsonDict]]'
+    labels:
+    - source: p.Model
+      style: primary
+      start: 16
+      end: 23

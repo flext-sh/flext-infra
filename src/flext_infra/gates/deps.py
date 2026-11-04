@@ -14,11 +14,11 @@ from pathlib import Path
 from typing import ClassVar, override
 from uuid import uuid4
 
-from flext_infra import c, config, m, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra import c, config, m, p, t, u
+from flext_infra.gates import FlextInfraGates
 
 
-class FlextInfraDepsGate(FlextInfraGate):
+class FlextInfraGatesDeps(FlextInfraGates):
     """Fail every import the project's declared dependencies never declare.
 
     Why (aihub-l42it.11): undeclared runtime imports surface today only deep
@@ -32,7 +32,7 @@ class FlextInfraDepsGate(FlextInfraGate):
     can_fix: ClassVar[bool] = True
 
     @override
-    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
+    def selected_for(self, project_dir: Path, ctx: p.Infra.GateContext) -> bool:
         """Select projects that declare dependencies (a pyproject exists).
 
         Returns:
@@ -46,8 +46,8 @@ class FlextInfraDepsGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Run deptry over the checkout and fail on any declared-surface gap.
 
         Native execution and report failures remain ERROR receipts, not findings.
@@ -107,21 +107,25 @@ class FlextInfraDepsGate(FlextInfraGate):
         project_dir: Path,
         document: t.Cli.TomlDocument,
     ) -> Sequence[str]:
-        """Move internal requirement references onto the integration line.
+        """Move internal requirement references onto the FLEXT line.
 
-        Mutates only the given parsed document through the existing Git-ref
-        migration owner; the manifest keeps the URL and the lock alone pins
-        the exact commit.
+        The line is the FLEXT line the checkout consumes
+        (``u.Infra.flext_integration_line``), never the consumer's own
+        ``branch_policy.integration_branch``: a consumer integrating on its own
+        branch keeps its FLEXT dependencies on the FLEXT line. Mutates only the
+        given parsed document through the existing Git-ref migration owner; the
+        manifest keeps the URL and the lock alone pins the exact commit.
 
         Returns:
             The change notes of every reference moved onto the line.
 
         """
+        inputs = u.Infra.load_codegen_inputs(project_dir).unwrap()
         integration = (
             u.Infra
-            .load_codegen_inputs(project_dir)
+            .flext_integration_line(codegen=inputs.spec, repository_root=project_dir)
             .unwrap()
-            .spec.branch_policy.integration_branch
+            .branch
         )
         migrations = u.Infra.internal_reference_migrations(
             document, target_ref=integration
@@ -146,8 +150,8 @@ class FlextInfraDepsGate(FlextInfraGate):
     def fix(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Repair native-evidenced declarations under the shared mutation lease.
 
         Args:
@@ -231,7 +235,7 @@ class FlextInfraDepsGate(FlextInfraGate):
     def _prepare_report_dir(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Path:
         """Plan and create the private report directory for one deptry run.
 
@@ -260,11 +264,53 @@ class FlextInfraDepsGate(FlextInfraGate):
         ).unwrap()
         return report_dir
 
+    @staticmethod
+    def _capture_with_retry(
+        project_dir: Path,
+        report_dir: Path,
+    ) -> p.Infra.DeptryScan:
+        """Capture the deptry scan, retrying transient concurrent-write races.
+
+        Multi-agent worktrees mutate production sources while a scan runs; the
+        atomic verification rejects that lost race. Retrying the whole capture
+        on exactly this transient keeps the gate honest without masking real
+        failures, which still unwrap loud.
+
+        Returns:
+            The resulting ``m.Infra.DeptryScan``.
+
+        Raises:
+            RuntimeError: If every attempt loses the capture race, or on the
+                first non-transient capture failure.
+
+        """
+        attempts = c.Infra.SCAN_RACE_ATTEMPTS
+        backoff = c.Infra.SCAN_RACE_BACKOFF_SECONDS
+        last_error: str | None = None
+        for attempt in range(1, attempts + 1):
+            json_output_path = report_dir / "deptry.json"
+            json_output_path.unlink(missing_ok=True)
+            captured = u.Infra.capture_deptry_scan(
+                project_dir,
+                Path(sys.executable).parent,
+                config_path=project_dir / c.PYPROJECT_FILENAME,
+                json_output_path=json_output_path,
+            )
+            if captured.success:
+                return captured.value
+            detail = str(captured.error)
+            if "changed during scanning" not in detail:
+                captured.unwrap()  # non-transient: fail loud immediately
+            last_error = detail
+            time.sleep(backoff * attempt)
+        msg = f"deptry capture lost the concurrent-write race {attempts}x: {last_error}"
+        raise RuntimeError(msg)
+
     def _scan(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> tuple[m.Infra.GateExecution, m.Infra.DeptryScan | None]:
+        ctx: p.Infra.GateContext,
+    ) -> tuple[p.Infra.GateExecution, m.Infra.DeptryScan | None]:
         """Capture and grade one native report for checking or guarded repair.
 
         Args:
@@ -278,17 +324,12 @@ class FlextInfraDepsGate(FlextInfraGate):
         """
         started = time.monotonic()
         raw_output = ""
-        issues: tuple[m.Infra.Issue, ...] = ()
+        issues: tuple[p.Infra.Issue, ...] = ()
         outcome = c.Infra.ToolOutcome.ERROR
-        scan: m.Infra.DeptryScan | None = None
+        scan: p.Infra.DeptryScan | None = None
         try:
             report_dir = self._prepare_report_dir(project_dir, ctx)
-            scan = u.Infra.capture_deptry_scan(
-                project_dir,
-                Path(sys.executable).parent,
-                config_path=project_dir / c.PYPROJECT_FILENAME,
-                json_output_path=report_dir / "deptry.json",
-            ).unwrap()
+            scan = self._capture_with_retry(project_dir, report_dir)
             raw_output = (
                 f"cwd={project_dir} report={scan.report_state.path}\n"
                 f"return-code={scan.native.outcome.raw_return_code}\n"
@@ -339,4 +380,4 @@ class FlextInfraDepsGate(FlextInfraGate):
         ), scan
 
 
-__all__: list[str] = ["FlextInfraDepsGate"]
+__all__: list[str] = ["FlextInfraGatesDeps"]

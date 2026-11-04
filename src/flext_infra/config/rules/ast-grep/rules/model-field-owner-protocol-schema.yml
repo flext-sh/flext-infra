@@ -1,0 +1,62 @@
+# Project delta of the fleet rule model-field-protocol-schema (flext-infra,
+# ADR-018 operator amendment 2026-11-02, strict protocol typing). Inside the
+# flext_infra family the model reference is spelled owner-qualified
+# (`FlextInfraModelsCheck.Issue`), because the own letter `m` is banned
+# in its own family (ENFORCE-051), so the fleet rule's `m.X` pattern never
+# matches here. Same law: the field is typed by its `p.Infra.*` mirror and the
+# model keeps native validation through `t.schema_for_model(Owner.X)`.
+#
+# Scope: exactly `Owner.Name` where Owner is an flext_infra model owner class.
+# Out of scope: the scalar/alias holders (`FlextInfraModelsBase`, `*Scalars`),
+# whose members are type aliases and not models; deeper nested references
+# (`Owner.A.B`); ClassVar/Final/type/Callable/t.Port; pydantic wrappers
+# (InstanceOf/SkipValidation); calls; protocols.
+id: model-field-owner-protocol-schema
+language: python
+severity: error
+files:
+  - "src/flext_infra/_models/**/*.py"
+ignores:
+  - "**/_protocols/**"
+rule:
+  pattern: $REF
+  kind: attribute
+  regex: "^FlextInfra[A-Za-z0-9]*Models[A-Za-z0-9]*\\.[A-Z][A-Za-z0-9_]*$"
+  not:
+    any:
+      - regex: "^(FlextInfraModelsBase|FlextInfra[A-Za-z0-9]*Scalars)\\."
+      - inside:
+          kind: attribute
+      - inside:
+          kind: call
+          stopBy: end
+      - inside:
+          kind: generic_type
+          stopBy: end
+          regex: "^(ClassVar|Final|type|t\\.ModelClass|Callable|t\\.Port|m\\.InstanceOf|m\\.SkipValidation|InstanceOf|SkipValidation)\\["
+  inside:
+    kind: type
+    stopBy: end
+    inside:
+      kind: assignment
+      field: type
+      inside:
+        kind: expression_statement
+        inside:
+          kind: block
+          inside:
+            kind: class_definition
+            has:
+              field: superclasses
+              regex: "(Models|Model\\b|Settings\\b)"
+transform:
+  NAME:
+    replace:
+      source: $REF
+      replace: "^[^.]+\\."
+      by: ""
+fix: Annotated[p.Infra.$NAME, t.schema_for_model($REF)]
+message: >-
+  A model field is typed by its p.Infra.* protocol mirror; the owner-qualified
+  model keeps native validation through t.schema_for_model(Owner.X)
+  (ADR-018 strict protocol typing, project delta of model-field-protocol-schema).

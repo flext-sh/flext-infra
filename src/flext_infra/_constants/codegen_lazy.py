@@ -41,6 +41,8 @@ class FlextInfraConstantsCodegenLazy:
         "install_lazy_exports",
     )
     "Existing SDK helpers eagerly bound and published by the bootstrap root."
+    LAZY_EXPORT_MAPPING_ARGUMENT_INDEX: ClassVar[int] = 2
+    "Positional index of the export mapping in an ``install_lazy_exports`` call."
     TEST_ONLY_SOURCE_MODULE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$",
     )
@@ -71,6 +73,10 @@ class FlextInfraConstantsCodegenLazy:
     LAZY_BOOTSTRAP_ROOT_PACKAGE: ClassVar[str] = "flext_core"
     LAZY_BOOTSTRAP_MODULE: ClassVar[str] = "flext_core.lazy"
     "Defining module imported directly only by the bootstrap root initializer."
+    NATIVE_EXPORT_IDENTITY: ClassVar[str] = (
+        "flext_core.flextlazy_native_export::FlextTypingNativeExport"
+    )
+    "Native identity of the wrapper that republishes a native value unchanged."
 
     LINT_TOOLS: ClassVar[t.StrSequencePairTuple] = (
         # Ruff runs with NO --select override: the project's pyproject.toml

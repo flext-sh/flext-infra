@@ -9,36 +9,27 @@ from __future__ import annotations
 import ast
 from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r
+from flext_infra import c, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope._analysis.asthelpers import (
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeRefactors
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities._semantic_cutover.declaration_payload import (
+from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
-)
-from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
-)
-from flext_infra._utilities._semantic_cutover.own_mro import (
     FlextInfraUtilitiesSemanticCutoverOwnMro,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import p
-
 
 class FlextInfraUtilitiesSemanticComposition(
-    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
+    FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverOwnMro,
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -50,7 +41,7 @@ class FlextInfraUtilitiesSemanticComposition(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan authored MRO dispatch, utility alias retirement and every consumer.
 
         Returns:
@@ -64,9 +55,10 @@ class FlextInfraUtilitiesSemanticComposition(
             planned_sources=working,
             source_project=workspace.rope_project,
         ) as (project, _sources):
-            for path, source in authored.items():
+            working.update(cls._adopt_pure_facades(workspace, project, working))
+            for path in authored:
                 working[path] = cls.rewrite_own_method_mro_calls(
-                    source,
+                    working[path],
                     source_project=project,
                     file_path=path,
                 )[0]
@@ -119,7 +111,7 @@ class FlextInfraUtilitiesSemanticComposition(
                         *consumers.values(),
                     ),
                 )
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -129,6 +121,166 @@ class FlextInfraUtilitiesSemanticComposition(
                 )
                 for path, source in authored.items()
                 if working[path] != source
+            )
+        )
+
+    @classmethod
+    def _adopt_pure_facades(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        project: p.Infra.RopeProject,
+        sources: Mapping[Path, str],
+    ) -> Mapping[Path, str]:
+        """Adopt declared pure facades through the existing native projection owner.
+
+        Returns:
+            Source plans retaining the original native frames and identities.
+
+        Raises:
+            ValueError: The introducing class or facade publication is ambiguous.
+
+        """
+        layout = cls.layout(workspace.repository_root, rope_project=project)
+        if layout is None:
+            message = (
+                f"facade adoption has no declared layout: {workspace.repository_root}"
+            )
+            raise ValueError(message)
+        result: dict[Path, str] = {}
+        for family in cls.facade_families().values():
+            path = layout.package_dir / f"{family.module}.py"
+            source = sources.get(path)
+            if source is None or source.startswith(c.Infra.AUTOGEN_HEADER):
+                continue
+            module = cls._composition_module(project, path)
+            name = f"{layout.class_stem}{family.suffix}"
+            binding = module.get_scope().get_defined_names().get(name)
+            if binding is None:
+                continue
+            owner = binding.get_object()
+            if not cls.py_class(owner):
+                continue
+            if owner.get_module() is not module:
+                message = (
+                    f"facade adoption has a foreign introducing class: {path}:{name}"
+                )
+                raise ValueError(message)
+            exported = cls._declared_exports(path, rope_project=project)
+            published = module.get_scope().get_defined_names().get(family.letter)
+            if set(exported) != {name, family.letter} or published is None:
+                continue
+            if published.get_object() is not owner:
+                message = (
+                    f"facade adoption has a different publication identity: {path}"
+                )
+                raise ValueError(message)
+            if (
+                not cls._pure_facade_declaration(cls._composition_class_ast(owner))
+                or not cls._pure_facade_module(module.get_ast(), name, family.letter)
+                or cls._facade_declares_protocols(project, module)
+            ):
+                continue
+            result[path] = FlextInfraUtilitiesFacadeComponents.facade_component_source(
+                project,
+                path,
+                layout.package_dir / family.directory,
+                family=c.Infra.FacadeFamily(family.letter),
+                owner_name=name,
+            ).unwrap()
+        return result
+
+    @classmethod
+    def _facade_declares_protocols(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeParsedModule,
+    ) -> bool:
+        """Keep nominal protocol declarations outside managed facade adoption.
+
+        Returns:
+            Whether a native class directly declares a standard Protocol base.
+
+        """
+        protocols = tuple(
+            cls.qualified_name(project, "Protocol", module_name=provider).get_object()
+            for provider in ("typing", "typing_extensions")
+        )
+        return any(
+            base in protocols
+            for owner in cls._composition_classes(module.get_scope())
+            for base in cls.direct_bases(owner)
+        )
+
+    @classmethod
+    def _pure_facade_declaration(cls, declaration: ast.ClassDef) -> bool:
+        """Require a namespace tree with documentation and composition only.
+
+        Returns:
+            Whether each nested suite is a pure namespace composition.
+
+        """
+        return (
+            not declaration.decorator_list
+            and not declaration.keywords
+            and all(
+                isinstance(node, ast.Pass)
+                or (
+                    isinstance(node, ast.Expr)
+                    and isinstance(node.value, ast.Constant)
+                    and isinstance(node.value.value, str)
+                )
+                or (
+                    isinstance(node, ast.ClassDef)
+                    and cls._pure_facade_declaration(node)
+                )
+                for node in declaration.body
+            )
+        )
+
+    @classmethod
+    def _pure_facade_module(cls, tree: ast.Module, owner: str, alias: str) -> bool:
+        """Reject executable module bodies before managed facade adoption.
+
+        Returns:
+            Whether the module holds imports, its facade and literal publications.
+
+        """
+        return all(
+            isinstance(node, (ast.Import, ast.ImportFrom))
+            or (isinstance(node, ast.ClassDef) and node.name == owner)
+            or (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            )
+            or cls._facade_publication(node, owner, alias)
+            for node in tree.body
+        )
+
+    @staticmethod
+    def _facade_publication(node: ast.stmt, owner: str, alias: str) -> bool:
+        """Validate standard facade publications without evaluating source.
+
+        Returns:
+            Whether a statement binds its facade or literal public exports.
+
+        """
+        match node:
+            case (
+                ast.Assign(targets=[ast.Name(id=name)], value=value)
+                | ast.AnnAssign(target=ast.Name(id=name), value=value)
+            ):
+                pass
+            case _:
+                return False
+        if name == alias:
+            return isinstance(value, ast.Name) and value.id == owner
+        return (
+            name == "__all__"
+            and isinstance(value, (ast.Tuple, ast.List))
+            and all(
+                isinstance(item, ast.Constant) and item.value in {alias, owner}
+                for item in value.elts
             )
         )
 
@@ -257,14 +409,10 @@ class FlextInfraUtilitiesSemanticComposition(
 
         Raises:
             ValueError: A behavior alias escapes as a class identity.
-            TypeError: If the composition consumer has no native module syntax.
 
         """
         rewritten: dict[tuple[int, int], m.Infra.SourceRewrite] = {}
         tree = module.get_ast()
-        if not isinstance(tree, ast.AST):
-            message = "Composition consumer has no native module syntax"
-            raise TypeError(message)
         parents = cls.ast_parent_map(tree)
         for node in ast.walk(tree):
             if not isinstance(node, ast.Attribute):
@@ -319,7 +467,7 @@ class FlextInfraUtilitiesSemanticComposition(
     def _retired_statement_rewrites(
         source: str,
         retired: AbstractSet[tuple[int, int]],
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Plan whole-line removal of every retired alias declaration.
 
         Returns:
@@ -342,7 +490,7 @@ class FlextInfraUtilitiesSemanticComposition(
     def _class_base_rewrites(
         source: str,
         bases: Mapping[int, Sequence[str]],
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Plan appending composed bases to their authenticated declarations.
 
         Returns:
@@ -367,7 +515,7 @@ class FlextInfraUtilitiesSemanticComposition(
         project: p.Infra.RopeProject,
         path: Path,
         source: str,
-        edits: tuple[m.Infra.SourceRewrite, ...],
+        edits: tuple[p.Infra.SourceRewrite, ...],
     ) -> str:
         """Apply every authenticated composition edit in one change transaction.
 
@@ -388,7 +536,7 @@ class FlextInfraUtilitiesSemanticComposition(
         lines: Sequence[str],
         declaration: ast.ClassDef,
         additions: Sequence[str],
-    ) -> m.Infra.SourceRewrite:
+    ) -> p.Infra.SourceRewrite:
         """Plan appending composed bases to one class declaration header.
 
         Returns:

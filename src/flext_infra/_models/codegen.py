@@ -7,12 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_infra._models import (
+    FlextInfraModelsCodegenRender,
+    FlextInfraModelsCodegenToolchain,
+)
+from flext_infra._models._codegen import (
     FlextInfraModelsCodegenFix,
     FlextInfraModelsCodegenLazyInit,
     FlextInfraModelsCodegenPipeline,
-    FlextInfraModelsCodegenRender,
     FlextInfraModelsCodegenScaffold,
-    FlextInfraModelsCodegenToolchain,
     FlextInfraModelsCodegenTransaction,
 )
 

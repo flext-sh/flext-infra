@@ -11,7 +11,7 @@ from json import dumps
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.release import FlextInfraReleaseReleaseProject
+from flext_infra.release._release import FlextInfraReleaseReleaseProject
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -20,7 +20,7 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
 
     @staticmethod
     def render_build_constraints(
-        pins: Sequence[m.Infra.BuildConstraintSpec],
+        pins: Sequence[p.Infra.BuildConstraintSpec],
     ) -> str:
         """Render the ``uv build --require-hashes`` constraints from typed config.
 
@@ -47,7 +47,7 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
             "exactly these pins.\n" + "\n".join(records) + "\n"
         )
 
-    def phase_build(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
+    def phase_build(self, ctx: p.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Build registry-safe member artifacts and write the receipt.
 
         Returns:
@@ -128,36 +128,36 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
 
     def _build_targets(
         self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        policy: m.Infra.BuildPolicy,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+        policy: p.Infra.BuildPolicy,
         targets: Mapping[str, Path],
         versions: Mapping[str, str],
-    ) -> p.Result[tuple[m.Infra.BuildRecord, ...]]:
+    ) -> p.Result[tuple[p.Infra.BuildRecord, ...]]:
         """Build every selected target and collect its record.
 
         Returns:
             The resulting build records.
 
         """
-        records: MutableSequence[m.Infra.BuildRecord] = []
+        records: MutableSequence[p.Infra.BuildRecord] = []
         for name, path in targets.items():
             record = self._build_project(ctx, policy, (name, path), versions)
             if record.failure:
-                return r[tuple[m.Infra.BuildRecord, ...]].from_failure(record)
+                return r[tuple[p.Infra.BuildRecord, ...]].from_failure(record)
             records.append(record.value)
             self.logger.info(
                 "release_phase_build_project",
                 project=name,
                 exit_code=record.value.exit_code,
             )
-        return r[tuple[m.Infra.BuildRecord, ...]].ok(tuple(records))
+        return r[tuple[p.Infra.BuildRecord, ...]].ok(tuple(records))
 
     @staticmethod
     def _write_build_report(
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
         output_dir: Path,
-        policy: m.Infra.BuildPolicy,
-        records: Sequence[m.Infra.BuildRecord],
+        policy: p.Infra.BuildPolicy,
+        records: Sequence[p.Infra.BuildRecord],
     ) -> p.Result[bool]:
         """Write the build report and fail loud on any failed build.
 
@@ -226,14 +226,14 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
         cls,
         root: Path,
         policy_dir: Path,
-    ) -> p.Result[m.Infra.BuildPolicy]:
+    ) -> p.Result[p.Infra.BuildPolicy]:
         """Capture the immutable policy pair once, before the first project build.
 
         Build constraints render from the typed config SSOT; the Gitleaks
         policy is the repository's codegen projection.
 
         Returns:
-            The resulting ``p.Result[m.Infra.BuildPolicy]``.
+            The resulting ``p.Result[p.Infra.BuildPolicy]``.
 
         """
         constraints = policy_dir / "build-constraints.txt"
@@ -248,16 +248,16 @@ class FlextInfraReleaseReleaseBuild(FlextInfraReleaseReleaseProject):
             policy_dir.mkdir(parents=True, exist_ok=True)
             for destination, content in snapshots.items():
                 if destination.exists() and destination.read_bytes() != content:
-                    return r[m.Infra.BuildPolicy].fail(
+                    return r[p.Infra.BuildPolicy].fail(
                         f"immutable release policy collision: {destination}",
                     )
                 destination.write_bytes(content)
         except OSError as exc:
-            return r[m.Infra.BuildPolicy].fail_op(
+            return r[p.Infra.BuildPolicy].fail_op(
                 f"snapshot release policy into {policy_dir}",
                 exc,
             )
-        return r[m.Infra.BuildPolicy].ok(
+        return r[p.Infra.BuildPolicy].ok(
             m.Infra.BuildPolicy(
                 build_constraints_path=str(constraints.resolve()),
                 build_constraints_sha256=u.Cli.sha256_bytes(snapshots[constraints]),

@@ -22,7 +22,6 @@ from flext_infra._typings import (
     FlextInfraTypesCollections,
     FlextInfraTypesPytest,
     FlextInfraTypesRope,
-    FlextInfraTypesRopeNative,
 )
 
 
@@ -46,7 +45,6 @@ class FlextInfraTypes(FlextCliTypes):
         FlextInfraTypesCollections,
         FlextInfraTypesPytest,
         FlextInfraTypesRope,
-        FlextInfraTypesRopeNative,
     ):
         """Infrastructure-domain type aliases.
 

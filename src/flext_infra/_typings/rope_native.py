@@ -12,7 +12,6 @@ from rope.base.pycore import PyCore
 from rope.base.pyobjects import PyObject
 from rope.base.pyobjectsdef import PyModule, PyPackage
 from rope.base.resources import Resource
-from rope.refactor.restructure import _ChangeComputer
 from rope.refactor.similarfinder import ExpressionMatch, StatementMatch
 
 
@@ -27,7 +26,6 @@ class FlextInfraTypesRopeNative:
     type RopeNativeSemanticModule = BuiltinModule | RopeNativeParsedModule
     type RopeNativeResource = Resource
     type RopeNativeMatch = ExpressionMatch | StatementMatch
-    type RopeNativeChangeComputer = _ChangeComputer
 
 
 __all__: list[str] = ["FlextInfraTypesRopeNative"]

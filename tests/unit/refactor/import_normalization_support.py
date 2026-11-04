@@ -27,14 +27,16 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
         )
         (package_dir / "__init__.py").write_text(
             f"{c.Infra.AUTOGEN_HEADER}\n"
+            "from types import MappingProxyType\n"
+            "\n"
             "from flext_core.lazy import install_lazy_exports\n"
             "\n"
             "install_lazy_exports(\n"
             "    __name__,\n"
             "    globals(),\n"
-            "    {\n"
+            "    MappingProxyType({\n"
             f"{entries}"
-            "    },\n"
+            "    }),\n"
             ")\n",
             encoding="utf-8",
         )
@@ -83,13 +85,15 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
             The rewritten source.
 
         """
-        normalized = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=file_path,
-            source=source,
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=file_path,
+                source=source,
+            ),
         )
-        tm.ok(normalized is not None)
-        return normalized or ""
+        tm.that(normalized, ne=source)
+        return normalized
 
     @classmethod
     def _inherited_project(

@@ -12,6 +12,9 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
+from flext_infra._utilities._codemod.native_utilities import (
+    FlextInfraUtilitiesCodemodNative,
+)
 from tests import c, tm, u
 from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
 
@@ -53,6 +56,102 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
         for retired in config.Infra.codegen.retired_projections:
             if isinstance(retired, str) and retired.startswith("config/rules/ast-grep"):
                 tm.that((root / retired).exists(), eq=False)
+
+    @staticmethod
+    def test_selected_static_rule_skips_generated_scope_producers(
+        mod_workspace: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An authored selection does not build generated scope facts."""
+        root = mod_workspace.absolute()
+
+        def fail_scope_producers(*_args: object, **_kwargs: object) -> object:
+            msg = "static authored selection must not build generated scopes"
+            raise AssertionError(msg)
+
+        with monkeypatch.context() as selected:
+            selected.setattr(
+                FlextInfraUtilitiesCodemodNative,
+                "codemod_native_scopes",
+                classmethod(fail_scope_producers),
+            )
+            with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+                plan = tm.ok(
+                    u.Infra.codemod_rule_plan(
+                        snapshot,
+                        rule_ids=("pydantic-field-positional-default",),
+                    )
+                )
+
+        tm.that(
+            tuple(rule.id for rule in plan.rules),
+            eq=("pydantic-field-positional-default",),
+        )
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            unknown = u.Infra.codemod_rule_plan(
+                snapshot, rule_ids=("missing-static-rule",)
+            )
+        tm.ok(unknown.failure)
+        tm.that(unknown.error, has="unknown codemod rule IDs: missing-static-rule")
+
+    @staticmethod
+    def test_selected_generated_rule_retains_scopes_and_unselected_rendering_is_full(
+        mod_workspace: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Generated selections retain scope facts; no selection remains complete."""
+        root = mod_workspace.absolute()
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "config" / "codegen.yaml",
+                "Infra:\n  codegen:\n    repository:\n      kind: internal_flext\n",
+            )
+        )
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            generated_rule_id = (
+                f"{c.Infra.CODEMOD_AMBIENT_ENVIRON_SHAPE}"
+                f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{root.name}"
+            )
+            selected = u.Infra.codemod_native_generated(
+                snapshot,
+                root,
+                config.Infra.codegen.ast_grep,
+                rule_ids=(generated_rule_id,),
+            )
+
+        tm.that(tuple(selected.rules), eq=(generated_rule_id,))
+        tm.that(len(selected.scopes), gt=0)
+
+        scopes = {"all": ("sample.py",)}
+        with monkeypatch.context() as unselected:
+            unselected.setattr(
+                FlextInfraUtilitiesCodemodNative,
+                "codemod_native_scopes",
+                classmethod(lambda *_args: scopes),
+            )
+            unselected.setattr(
+                FlextInfraUtilitiesCodemodNative,
+                "native_utilities",
+                classmethod(lambda *_args: {}),
+            )
+            unselected.setattr(
+                FlextInfraUtilitiesCodemodNative,
+                "codemod_native_rules",
+                classmethod(lambda *_args, **_kwargs: {}),
+            )
+            with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+                default = u.Infra.codemod_native_generated(
+                    snapshot, root, config.Infra.codegen.ast_grep
+                )
+                explicit_none = u.Infra.codemod_native_generated(
+                    snapshot,
+                    root,
+                    config.Infra.codegen.ast_grep,
+                    rule_ids=None,
+                )
+
+        tm.that(default.scopes, eq=scopes)
+        tm.that(explicit_none, eq=default)
 
     @staticmethod
     def test_dependabot_applies_the_fleet_cooldown_everywhere(

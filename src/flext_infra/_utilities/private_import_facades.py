@@ -18,8 +18,10 @@ from importlib.util import resolve_name
 from pathlib import Path
 
 from flext_infra import c, p, t
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeRuntime,
+)
 
 
 class FlextInfraUtilitiesPrivateImportFacades:
@@ -204,9 +206,6 @@ class FlextInfraUtilitiesPrivateImportFacades:
             The resulting ``tuple[MutableMapping[str, set[str]], MutableMapping[str,
                 set[str]]]``.
 
-        Raises:
-            ValueError: A declared module has no native source resource.
-
         """
         bindings: MutableMapping[str, set[str]] = {}
         exports: MutableMapping[str, set[str]] = {}
@@ -215,15 +214,10 @@ class FlextInfraUtilitiesPrivateImportFacades:
             tree = FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(
                 source, filename=module
             )
-            native = project.get_module(module)
-            resource = native.get_resource()
-            if resource is None:
-                message = f"declared export module has no source: {module}"
-                raise ValueError(message)
-            if resource.is_folder():
-                resource = project.get_resource(f"{resource.path}/{c.Infra.INIT_PY}")
-            source_module = FlextInfraUtilitiesRopeRuntime.require_source_module(
-                project.get_pymodule(resource)
+            source_module = (
+                FlextInfraUtilitiesRopeRuntime.require_declared_source_module(
+                    project, module
+                )
             )
             public_names = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
                 source_module,

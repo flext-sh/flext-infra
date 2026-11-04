@@ -149,7 +149,7 @@ class FlextInfraUtilitiesDocsScopePolicy(FlextInfraUtilitiesDocsScopeState):
         docs_meta = FlextInfraUtilitiesDocsScopePolicy.project_docs_meta(
             project_root,
         )
-        is_enabled = FlextInfraUtilitiesDocsScopePolicy.docs_scope_enabled(
+        is_enabled = FlextInfraUtilitiesDocsScopePolicy.scope_enabled(
             docs_meta,
         )
         return (

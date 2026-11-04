@@ -55,5 +55,8 @@ class FlextInfraCprofileEntry:
         return 0
 
 
+__all__: list[str] = ["FlextInfraCprofileEntry"]
+
+
 if __name__ == "__main__":
     raise SystemExit(FlextInfraCprofileEntry.main())

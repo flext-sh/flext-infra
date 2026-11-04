@@ -98,7 +98,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         )
 
     @staticmethod
-    def _workspace(role: c.Infra.MakeProfile) -> m.Infra.WorkspaceSpec:
+    def _workspace(role: c.Infra.MakeProfile) -> p.Infra.WorkspaceSpec:
         return u.Tests.workspace_spec(
             u.Tests.repository_ref("workspace", role=role),
         )

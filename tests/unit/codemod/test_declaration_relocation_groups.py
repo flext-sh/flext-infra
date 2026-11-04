@@ -15,7 +15,7 @@ import pytest
 from flext_infra import infra, p
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codemod import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers import FlextInfraTransformersSemantic
 from tests import c, m, r, tm, u
 from tests.unit.codemod.declaration_relocation_support import (
     TestsFlextInfraDeclarationRelocationSupport,
@@ -175,7 +175,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             )
         target = next(path for path in sources if path.parent.name == "_models")
         package = target.parent.parent
-        plans: list[m.Infra.SemanticFilePlan] = []
+        plans: list[p.Infra.SemanticFilePlan] = []
         for edit in edits:
             before = tm.ok(
                 u.Cli.atomic_read_binary_file_state(edit.file_path, required=True)
@@ -222,7 +222,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
                 return r[bool].from_failure(result)
             return r[bool].ok(u.Cli.process_succeeded(result.value.outcome))
 
-        result = FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+        result = FlextInfraTransformersSemantic.publish_semantic_file_plans(
             plans,
             repository_root=root,
             options=m.Infra.SemanticPublicationOptions(

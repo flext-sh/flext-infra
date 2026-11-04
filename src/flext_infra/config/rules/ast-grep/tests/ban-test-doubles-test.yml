@@ -1,6 +1,6 @@
 id: ban-test-doubles
 valid:
-- from tests import tm
+- from tests import p, tm
 - service = RealService()
 # HTTP PATCH on a real client is a homonym, not a mock patch.
 - response = client.patch("/items/1", json=payload)

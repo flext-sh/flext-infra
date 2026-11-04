@@ -12,15 +12,19 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import ClassVar
 
+from rope.base import exceptions
+
 from flext_infra import c, m, p, t
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisImportState:
@@ -108,7 +112,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> m.Infra.ModuleSemanticState:
+    ) -> p.Infra.ModuleSemanticState:
         """Return local classes plus declared and semantic imports in one pass.
 
         Uses rope's ``PyModule.get_attributes()`` for class discovery and
@@ -143,7 +147,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         return state
 
     @staticmethod
-    def _empty_module_semantic_state() -> m.Infra.ModuleSemanticState:
+    def _empty_module_semantic_state() -> p.Infra.ModuleSemanticState:
         """Return an empty semantic state.
 
         Returns:
@@ -162,7 +166,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
         pymodule: t.Infra.RopePyModule,
-    ) -> m.Infra.ModuleSemanticState:
+    ) -> p.Infra.ModuleSemanticState:
         """Build semantic state from one resolved Rope module.
 
         Returns:
@@ -198,22 +202,18 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         *,
         pymodule: t.Infra.RopePyModule,
         resource: t.Infra.RopeFile,
-    ) -> Sequence[m.Infra.ClassInfo]:
+    ) -> Sequence[p.Infra.ClassInfo]:
         """Return local class infos for one resolved Rope module.
 
         Returns:
             Local class infos for one resolved Rope module.
 
         Raises:
-            TypeError: If Rope does not expose a module AST or a valid superclass.
             ValueError: If Rope's superclass lineage is incomplete or cyclic.
 
         """
-        class_infos: MutableSequence[m.Infra.ClassInfo] = []
+        class_infos: MutableSequence[p.Infra.ClassInfo] = []
         tree = pymodule.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "Rope class discovery requires a module AST"
-            raise TypeError(msg)
         declared_base_counts = {
             node.name: len(node.bases)
             for node in tree.body
@@ -549,7 +549,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             Only an existing class alias suitable for publication.
 
         """
-        return cls._facade_owner(rope_project, resource, infer_missing=False)
+        try:
+            return cls._facade_owner(rope_project, resource, infer_missing=False)
+        except exceptions.ModuleSyntaxError:
+            # Conteúdo candidate inválido no overlay (staging do
+            # quoted-move troca conteúdos no mesmo path): sem publicação
+            # provável por este arquivo neste ponto fixo — o rerun
+            # replaneja quando o staging assentar.
+            return None
 
     @classmethod
     def _facade_owner(
@@ -622,6 +629,11 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def _declared_class_aliases(target: p.Infra.RopeClassObject) -> frozenset[str]:
         """Return explicitly exported names bound to this exact class object.
 
+        Rope's module attribute table resolves a shadowed letter (``from
+        flext_api import c`` followed by ``c = Facade``) to the imported name,
+        so the alias election reads the module's own assignments instead and
+        verifies identity through the class binding.
+
         Returns:
             Explicitly exported names bound to this exact class object.
 
@@ -630,7 +642,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
 
         """
         module = target.get_module()
-        if module is None or (resource := module.get_resource()) is None:
+        if module is None or module.get_resource() is None:
             return frozenset()
         if not FlextInfraUtilitiesRopeRuntime.source_module(module):
             message = "Facade alias exports require their native source module"
@@ -638,16 +650,34 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
             module,
         )
-        return frozenset(
-            name
-            for name, binding in module.get_attributes().items()
-            if name in exports
-            and name != target.get_name()
-            and name.islower()
-            and not name.startswith("_")
-            and FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(binding, resource)
-            and binding.get_object() is target
-        )
+        attributes = module.get_attributes()
+        aliases: set[str] = set()
+        for statement in module.get_ast().body:
+            if not isinstance(statement, ast.Assign) or isinstance(
+                statement.value, ast.Tuple | ast.List
+            ):
+                continue
+            names = FlextInfraUtilitiesRopeAnalysisAstHelpers.statement_target_names(
+                statement,
+            )
+            value = statement.value
+            if not isinstance(value, ast.Name) or not isinstance(value.ctx, ast.Load):
+                continue
+            binding = attributes.get(value.id)
+            if (
+                binding is None
+                or binding.get_object() is not target
+                or any(
+                    alias not in exports
+                    or alias == target.get_name()
+                    or not alias.islower()
+                    or alias.startswith("_")
+                    for alias in names
+                )
+            ):
+                continue
+            aliases.update(names)
+        return frozenset(aliases)
 
     @staticmethod
     def inherited_facade_namespaces(
@@ -733,14 +763,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def resolve_class_info(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> Sequence[m.Infra.ClassInfo]:
+    ) -> Sequence[p.Infra.ClassInfo]:
         """Return ClassInfo (name, line, bases) for all classes in a module.
 
         Returns:
             ClassInfo (name, line, bases) for all classes in a module.
 
         """
-        class_infos: Sequence[m.Infra.ClassInfo] = (
+        class_infos: Sequence[p.Infra.ClassInfo] = (
             FlextInfraUtilitiesRopeAnalysisImportState.resolve_module_semantic_state(
                 rope_project,
                 resource,

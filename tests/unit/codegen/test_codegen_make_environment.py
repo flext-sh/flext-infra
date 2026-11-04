@@ -283,7 +283,15 @@ class TestsFlextInfraCodegenMakeEnvironment:
         *,
         command_line: bool,
     ) -> None:
-        """Even explicit variable overrides cannot select a different checkout."""
+        """Even explicit variable overrides cannot select a different checkout.
+
+        Premise: Make derives every checkout path itself; ``UV_PROJECT`` is no
+        longer a Make-owned path. Every generated uv call names its project
+        explicitly (``--project "$(RUNTIME_ROOT)"``), so Make defines no
+        ``UV_PROJECT`` and unexports any inherited one. A caller-supplied value,
+        from the environment or the command line, therefore never reaches a
+        recipe's child process.
+        """
         project_root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
@@ -298,14 +306,14 @@ class TestsFlextInfraCodegenMakeEnvironment:
             "RUNTIME_BIN",
             "RUNTIME_PYTHON",
             "FLEXT_INFRA_PYTHON",
-            "UV_PROJECT",
             "UV_PROJECT_ENVIRONMENT",
             "VIRTUAL_ENV",
         )
+        redirected = (*names, "UV_PROJECT")
         (project_root / "custom.mk").write_text(
             "post-help:\n\t@printf '%s\\n' "
             + " ".join(f"'{name}=$({name})'" for name in names)
-            + "\n",
+            + ' "UV_PROJECT_CHILD=$${UV_PROJECT-}"\n',
             encoding="utf-8",
         )
         process = tm.ok(
@@ -313,20 +321,20 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 [
                     "--no-print-directory",
                     "help",
-                    *(f"{name}={foreign}" for name in names if command_line),
+                    *(f"{name}={foreign}" for name in redirected if command_line),
                 ],
                 cwd=project_root,
-                env=None if command_line else dict.fromkeys(names, str(foreign)),
+                env=None if command_line else dict.fromkeys(redirected, str(foreign)),
             ),
         )
         tm.that(u.Cli.process_succeeded(process.outcome), eq=True, msg=process.stderr)
         tm.that(process.stdout, lacks=str(foreign))
+        tm.that(process.stdout, has="UV_PROJECT_CHILD=\n")
         for name in (
             "MAKEFILE_ROOT",
             "PROJECT_ROOT",
             "REPOSITORY_ROOT",
             "RUNTIME_ROOT",
-            "UV_PROJECT",
         ):
             tm.that(process.stdout, has=f"{name}={project_root}\n")
         for name in ("RUNTIME_VENV", "UV_PROJECT_ENVIRONMENT", "VIRTUAL_ENV"):
@@ -867,9 +875,17 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 ),
             )
         tm.fail("$(UV_RUN) actionlint" in makefile)
-        tm.ok('$(UV) sync --project "$(UV_PROJECT)"' in makefile)
+        # Setup installs the committed lock frozen and names the runtime root
+        # as its uv project; no generated uv call reads a UV_PROJECT variable,
+        # and the activation layer no longer exports one.
+        tm.that(
+            makefile,
+            has='$(UV) sync --frozen --project "$(RUNTIME_ROOT)"',
+            lacks="$(UV_PROJECT)",
+        )
         tm.ok('$(UV) build --project "$(PROJECT_ROOT)"' in makefile)
         envrc = (project_root / ".envrc").read_text(encoding="utf-8")
+        tm.that(envrc, lacks="export UV_PROJECT")
         for forced in ("PYTHONPYCACHEPREFIX", "export TMPDIR", "PROJECT_STATE_ROOT"):
             tm.that(envrc, lacks=forced)
 

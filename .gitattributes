@@ -18,7 +18,6 @@
 "/.github/workflows/ci-matrix.yml" -merge linguist-generated
 "/.github/workflows/ci.yml" -merge linguist-generated
 "/.github/workflows/docs.yml" -merge linguist-generated
-"/.markdownlint.json" -merge linguist-generated
 "/.markdownlintignore" -merge linguist-generated
 "/.mise.toml" -merge linguist-generated
 "/.pre-commit-config.yaml" -merge linguist-generated

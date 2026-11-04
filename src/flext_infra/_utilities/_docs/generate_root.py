@@ -28,9 +28,9 @@ class FlextInfraUtilitiesDocsGenerateRoot(
     @staticmethod
     def _aggregate_root_pages(
         repository_root: Path,
-        inputs: m.Infra.DocsRootInputs,
+        inputs: p.Infra.DocsRootInputs,
         src_paths: Sequence[str],
-        catalog_entries: Sequence[m.Infra.DocsCatalogEntry],
+        catalog_entries: Sequence[p.Infra.DocsCatalogEntry],
     ) -> list[tuple[Path, str]]:
         """Render the static aggregate mkdocs and catalog root pages.
 
@@ -66,12 +66,12 @@ class FlextInfraUtilitiesDocsGenerateRoot(
     def _root_rendered(
         cls,
         repository_root: Path,
-        scopes: Sequence[m.Infra.DocScope],
-        inputs: m.Infra.DocsRootInputs,
+        scopes: Sequence[p.Infra.DocScope],
+        inputs: p.Infra.DocsRootInputs,
     ) -> p.Result[
         tuple[
             list[tuple[Path, str]],
-            list[m.Infra.DocScope],
+            list[p.Infra.DocScope],
             MutableMapping[str, list[str]],
         ]
     ]:
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         """
         width = inputs.markdown_width
         project_scopes = [scope for scope in scopes if scope.path != repository_root]
-        catalog_entries: MutableSequence[m.Infra.DocsCatalogEntry] = []
+        catalog_entries: MutableSequence[p.Infra.DocsCatalogEntry] = []
         scope_modules: MutableMapping[str, list[str]] = {}
         src_paths: MutableSequence[str] = []
         root_api: list[tuple[Path, str]] = []
@@ -153,7 +153,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         return r[
             tuple[
                 list[tuple[Path, str]],
-                list[m.Infra.DocScope],
+                list[p.Infra.DocScope],
                 MutableMapping[str, list[str]],
             ]
         ].ok((rendered, project_scopes, dict(scope_modules)))
@@ -161,7 +161,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
     @staticmethod
     def _project_rendered(
         repository_root: Path,
-        project_scopes: Sequence[m.Infra.DocScope],
+        project_scopes: Sequence[p.Infra.DocScope],
         scope_modules: Mapping[str, list[str]],
         rendered: list[tuple[Path, str]],
         *,
@@ -173,7 +173,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
             The resulting ``list[tuple[Path, str]]``.
 
         """
-        projects_index_entries: MutableSequence[m.Infra.DocsProjectIndexEntry] = []
+        projects_index_entries: MutableSequence[p.Infra.DocsProjectIndexEntry] = []
         for scope in project_scopes:
             rendered.append((
                 repository_root / "docs/api-reference/generated" / f"{scope.name}.md",
@@ -275,7 +275,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
     def docs_root_artifacts(
         cls,
         repository_root: Path,
-        scopes: Sequence[m.Infra.DocScope],
+        scopes: Sequence[p.Infra.DocScope],
     ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Render aggregate root targets from the complete discovered project set.
 
@@ -334,11 +334,11 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         ))
 
     @staticmethod
-    def docs_scope_artifacts(
-        scope: m.Infra.DocScope,
+    def scope_artifacts(
+        scope: p.Infra.DocScope,
         *,
         repository_root: Path,
-        aggregate_scopes: Sequence[m.Infra.DocScope],
+        aggregate_scopes: Sequence[p.Infra.DocScope],
     ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
         """Return the rendered artifact inventory for one docs scope.
 

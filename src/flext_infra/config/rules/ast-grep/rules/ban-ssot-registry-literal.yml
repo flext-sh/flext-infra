@@ -1,0 +1,43 @@
+# FLEXT standard F11 (engineering-core:111-112, operator ruling 2026-10-30):
+# a hand-maintained registry, roster, allowlist, or mapping literal that
+# duplicates what an SSOT function derives is exterminated — the mapping is
+# derived at the owner, never transcribed. This gate catches the transcription
+# itself: a Mapping/dict literal assigned to a name that declares a registry
+# role (module level or class body).
+#
+# Data declared in the constants family or in layer-zero config/settings IS
+# the SSOT, not a transcription of it. Both are excluded by derivation, never
+# by a path or package list: the generated provider publishes
+# `facade-family-c` (the modules whose own `__all__` declares `c` and the
+# members of the private family package of such a facade module, in every
+# tier) and `layer-zero` (the modules the import law ranks layer zero);
+# `metadata.scope.not-in` drops both from the rule's files.
+id: ban-ssot-registry-literal
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/__init__.py"
+metadata:
+  enforce: [ENFORCE-097]
+  scope:
+    not-in: [ facade-family-c, layer-zero ]
+  description: >-
+    A registry/allowlist mapping outside the constants family and layer-zero
+    config is derived from its SSOT owner, never transcribed as a literal.
+rule:
+  all:
+    - kind: assignment
+    - has:
+        field: left
+        regex: "(?i)^([a-z_]*_(registry|roster|allowlist|whitelist|blacklist|denylist))$"
+    - has:
+        field: right
+        any:
+          - kind: dictionary
+          - kind: dictionary_comprehension
+message: >-
+  Hand-maintained registry literal outside the constants family and config:
+  the mapping must be derived from its SSOT owner function, not transcribed
+  (engineering-core F11).

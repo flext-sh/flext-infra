@@ -14,7 +14,7 @@ import pytest
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm, u
+from tests import c, e, p, t, tm, u
 
 
 # Exemplar: conform materializes a full managed tree on disk, so the render
@@ -198,7 +198,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         # resolves the tooling context correctly on the first pass, so these
         # managed files already converge after one apply — the fabricated
         # synthetic spec previously left them requiring a second pass.
-        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+        for required in ("Makefile", ".mise.toml", ".python-version", ".ignore"):
             tm.fail(u.Infra.codegen_file_requires_effect(plans[required]))
 
         tm.ok(infra.codegen_conform(request))
@@ -206,7 +206,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         for relative, content in preserved.items():
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         tm.ok((root / "README.md").is_file())
-        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+        for required in ("Makefile", ".mise.toml", ".python-version", ".ignore"):
             tm.ok((root / required).is_file())
         fixed_point = FlextInfraCodegenConform.Generate(repository_root=root).plan(
             request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
@@ -283,7 +283,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
     def plan_surface(
         root: Path,
         what: c.Infra.CodegenConformSurface,
-    ) -> p.Result[m.Infra.CodegenPlan]:
+    ) -> p.Result[p.Infra.CodegenPlan]:
         """Plan the ``what`` surface of ``root`` in check mode.
 
         Returns:
@@ -365,15 +365,10 @@ class TestsFlextInfraCodegenManifestlessExisting:
             unsupported,
         )
 
-        plan = tm.ok(
+        with u.Tests.raises(
+            e.OperationError, match=f"unsupported scaffold license: {unsupported}"
+        ):
             TestsFlextInfraCodegenManifestlessExisting.plan_surface(
                 root,
                 c.Infra.CodegenConformSurface.ALL,
-            ),
-        )
-
-        tm.that(plan.files, empty=True)
-        tm.that(
-            "\n".join(issue.message for issue in plan.issues),
-            has=f"unsupported scaffold license: {unsupported}",
-        )
+            )

@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from flext_infra import FlextInfraCli, config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 LOCAL_RULE_CATALOG = (
     f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
@@ -78,7 +78,7 @@ class TestsFlextInfraRefactorViolationsSweepSupport:
             Fixture members with native project metadata and executable audits.
 
         """
-        distribution, _dependencies = tm.ok(u.Infra.codemod_project_requirements(root))
+        distribution, _dependencies = tm.ok(u.Infra.project_requirements(root))
         document = (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
         members = tuple(root / name for name in names)
         for member in members:
@@ -125,7 +125,7 @@ class TestsFlextInfraRefactorViolationsSweepSupport:
         ])
 
     @staticmethod
-    def _receipt(root: Path) -> m.Infra.ViolationsSweepReport:
+    def _receipt(root: Path) -> p.Infra.ViolationsSweepReport:
         """Load the typed receipt the verb publishes.
 
         Returns:

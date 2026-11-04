@@ -25,7 +25,7 @@ class FlextInfraPytestProfile:
     def __init__(self, output: Path) -> None:
         """Keep the profile bound to only the context observed in this invocation."""
         self.output = output
-        self.context: m.Infra.PytestRunContext | None = None
+        self.context: p.Infra.PytestRunContext | None = None
 
     def _record_context(
         self, reports_root: Path, preexisting: frozenset[Path]
@@ -246,7 +246,7 @@ class FlextInfraPytestProfile:
 
     @staticmethod
     def _publish_child_receipts(
-        context: m.Infra.PytestRunContext, directory: Path
+        context: p.Infra.PytestRunContext, directory: Path
     ) -> p.Result[bool]:
         """Bind every child, selection, inventory and suite profile to the run.
 

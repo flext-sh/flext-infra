@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codegen import FlextInfraCodegenLayoutPlan
+from flext_infra.codegen._layout import FlextInfraCodegenLayoutPlan
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
@@ -118,9 +118,9 @@ class FlextInfraCodegenLayoutGitignore:
     @staticmethod
     def _managed_profile(
         project_dir: Path,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         *,
-        inputs: m.Infra.CodegenInputs,
+        inputs: p.Infra.CodegenInputs,
     ) -> p.Result[c.Infra.MakeProfile | None]:
         """Make profile when the project is governed by a workspace.
 

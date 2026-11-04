@@ -21,6 +21,7 @@ from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependency,
     FlextInfraUtilitiesDependencyRequirements,
+    FlextInfraUtilitiesManagedConflicts,
 )
 
 
@@ -32,9 +33,9 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def runtime_dependency_plan(
-        scan: m.Infra.DeptryScan,
-        inputs: m.Infra.RuntimeDependencyInputs,
-    ) -> p.Result[m.Infra.RuntimeDependencyPlan]:
+        scan: p.Infra.DeptryScan,
+        inputs: p.Infra.RuntimeDependencyInputs,
+    ) -> p.Result[p.Infra.RuntimeDependencyPlan]:
         """Calculate native-evidenced changes from explicit supplier provenance.
 
         Preserve target-owned requirement strings, including their sources, extras
@@ -44,7 +45,7 @@ class FlextInfraUtilitiesDependencies(
             The target requirement changes and unresolved native import identities.
 
         """
-        result_type = r[m.Infra.RuntimeDependencyPlan]
+        result_type = r[p.Infra.RuntimeDependencyPlan]
         payload = FlextInfraUtilitiesDependencies._locked_environment_and_document(
             scan,
             inputs,
@@ -93,16 +94,16 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def _locked_environment_and_document(
-        scan: m.Infra.DeptryScan,
-        inputs: m.Infra.RuntimeDependencyInputs,
-    ) -> p.Result[tuple[m.Infra.LockedEnvironment, t.JsonMapping]]:
+        scan: p.Infra.DeptryScan,
+        inputs: p.Infra.RuntimeDependencyInputs,
+    ) -> p.Result[tuple[p.Infra.LockedEnvironment, t.JsonMapping]]:
         """Authenticate provenance and decode the lock and declaration payloads.
 
         Returns:
             The validated locked environment and native pyproject mapping.
 
         """
-        result_type = r[tuple[m.Infra.LockedEnvironment, t.JsonMapping]]
+        result_type = r[tuple[p.Infra.LockedEnvironment, t.JsonMapping]]
         target = inputs.target_root
         if (
             not target.is_absolute()
@@ -139,16 +140,16 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def _declared_runtime_requirements(
-        scan: m.Infra.DeptryScan,
+        scan: p.Infra.DeptryScan,
         document: t.JsonMapping,
-    ) -> p.Result[m.Infra.DepsToml.MemberRequirements]:
+    ) -> p.Result[p.Infra.DepsToml.MemberRequirements]:
         """Read the project table into its typed requirement declarations.
 
         Returns:
             The validated member requirements, or the declaration failure.
 
         """
-        result_type = r[m.Infra.DepsToml.MemberRequirements]
+        result_type = r[p.Infra.DepsToml.MemberRequirements]
         project = u.Cli.toml_mapping_child(document, c.Infra.PROJECT)
         if project is None:
             return result_type.fail(
@@ -164,9 +165,9 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def _validated_import_suppliers(
-        inputs: m.Infra.RuntimeDependencyInputs,
-        locked: m.Infra.LockedEnvironment,
-    ) -> p.Result[tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...]]:
+        inputs: p.Infra.RuntimeDependencyInputs,
+        locked: p.Infra.LockedEnvironment,
+    ) -> p.Result[tuple[tuple[p.Infra.RuntimeDependencyProvider, Requirement], ...]]:
         """Parse provider requirements and authenticate them against the lock.
 
         Returns:
@@ -174,7 +175,7 @@ class FlextInfraUtilitiesDependencies(
 
         """
         result_type = r[
-            tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...]
+            tuple[tuple[p.Infra.RuntimeDependencyProvider, Requirement], ...]
         ]
         suppliers = tuple(
             (provider, Requirement(provider.requirement))
@@ -197,9 +198,9 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def _runtime_selections(
-        scan: m.Infra.DeptryScan,
-        declarations: m.Infra.DepsToml.MemberRequirements,
-        suppliers: tuple[tuple[m.Infra.RuntimeDependencyProvider, Requirement], ...],
+        scan: p.Infra.DeptryScan,
+        declarations: p.Infra.DepsToml.MemberRequirements,
+        suppliers: tuple[tuple[p.Infra.RuntimeDependencyProvider, Requirement], ...],
         *,
         development_only: t.StrTuple,
         used_without_import: t.StrTuple,
@@ -269,7 +270,7 @@ class FlextInfraUtilitiesDependencies(
     @classmethod
     def publish_runtime_dependency_plan(
         cls,
-        plan: m.Infra.RuntimeDependencyPlan,
+        plan: p.Infra.RuntimeDependencyPlan,
     ) -> p.Result[bool]:
         """Publish only the calculated runtime list against unchanged source states.
 
@@ -386,7 +387,7 @@ class FlextInfraUtilitiesDependencies(
 
     @staticmethod
     def project_development_requirements(
-        scaffold: m.Infra.ScaffoldProjectSpec,
+        scaffold: p.Infra.ScaffoldProjectSpec,
         *,
         distribution: str,
         kind: c.Infra.ProjectKind,
@@ -465,7 +466,7 @@ class FlextInfraUtilitiesDependencies(
         root: Path,
         repositories: Sequence[p.Infra.RepositoryRef],
         *,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+        planned_manifests: Sequence[p.Infra.CodegenFilePlan] = (),
     ) -> Sequence[str]:
         """Order declared packages by their actual runtime dependency graph.
 
@@ -487,7 +488,7 @@ class FlextInfraUtilitiesDependencies(
         root: Path,
         repositories: Sequence[p.Infra.RepositoryRef],
         *,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
+        planned_manifests: Sequence[p.Infra.CodegenFilePlan] = (),
     ) -> Sequence[Sequence[str]]:
         """Group declared packages into runtime-dependency-first waves.
 
@@ -519,11 +520,11 @@ class FlextInfraUtilitiesDependencies(
     def workspace_bootstrap_requirements(
         cls,
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         distribution: str,
         *,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
-    ) -> p.Result[m.Infra.BootstrapRequirementsRenderSpec]:
+        planned_manifests: Sequence[p.Infra.CodegenFilePlan] = (),
+    ) -> p.Result[p.Infra.BootstrapRequirementsRenderSpec]:
         """Project the candidate closure while retaining original observations.
 
         Returns:
@@ -539,7 +540,7 @@ class FlextInfraUtilitiesDependencies(
             planned_manifests=planned_manifests,
             inputs=workspace.inputs,
         )
-        by_name = {
+        by_name: Mapping[str, m.Infra.RepositoryRef] = {
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
@@ -572,8 +573,8 @@ class FlextInfraUtilitiesDependencies(
         root: Path,
         repositories: Sequence[p.Infra.RepositoryRef],
         *,
-        planned_manifests: Sequence[m.Infra.CodegenFilePlan] = (),
-        inputs: Sequence[m.Cli.AtomicFileState] = (),
+        planned_manifests: Sequence[p.Infra.CodegenFilePlan] = (),
+        inputs: Sequence[p.Cli.AtomicFileState] = (),
     ) -> Mapping[str, tuple[str, ...]]:
         """Read the declared local graph through the existing manifest owner.
 
@@ -617,8 +618,9 @@ class FlextInfraUtilitiesDependencies(
             for name, repository in by_name.items()
         }
 
-    @staticmethod
+    @classmethod
     def _workspace_manifest_payload(
+        cls,
         project: Path,
         manifests: Mapping[Path, m.Infra.CodegenFilePlan],
         *,
@@ -643,32 +645,69 @@ class FlextInfraUtilitiesDependencies(
         path = project / c.PYPROJECT_FILENAME
         plan = manifests.get(path)
         if plan is None:
-            if observations is not None:
-                observed = observations.get(path)
-                if observed is None or observed.content is None:
-                    msg = f"workspace manifest has no captured input: {path}"
-                    raise ValueError(msg)
-                payload = u.Cli.toml_mapping_from_text(
-                    observed.content.decode(c.DEFAULT_ENCODING)
+            content = cls._workspace_manifest_unplanned_content(
+                path, observations=observations
+            )
+        else:
+            if plan.project.resolve() != project or plan.desired_content is None:
+                msg = f"planned manifest has no owning payload: {path}"
+                raise ValueError(msg)
+            content = plan.desired_content
+        recovered = (
+            FlextInfraUtilitiesManagedConflicts.pyproject_managed_file().flat_map(
+                lambda spec: FlextInfraUtilitiesManagedConflicts.recover_managed_toml(
+                    content.decode(c.DEFAULT_ENCODING),
+                    conflict_sections=spec.conflict_sections,
                 )
-                if payload is None:
-                    msg = f"invalid captured manifest: {path}"
-                    raise ValueError(msg)
-                return payload
-            physical = u.Cli.toml_read_json(path)
-            if physical.failure:
-                raise ValueError(physical.error) from physical.exception
-            return physical.value
-        if plan.project.resolve() != project or plan.desired_content is None:
-            msg = f"planned manifest has no owning payload: {path}"
-            raise ValueError(msg)
-        payload = u.Cli.toml_mapping_from_text(
-            plan.desired_content.decode(c.DEFAULT_ENCODING),
+            )
         )
+        if recovered.failure:
+            if recovered.exception is not None:
+                raise recovered.exception
+            raise ValueError(recovered.error)
+        payload = u.Cli.toml_mapping_from_text(recovered.value)
         if payload is None:
-            msg = f"invalid planned manifest: {path}"
+            msg = f"invalid workspace manifest: {path}"
             raise ValueError(msg)
         return payload
+
+    @staticmethod
+    def _workspace_manifest_unplanned_content(
+        path: Path,
+        *,
+        observations: Mapping[Path, m.Cli.AtomicFileState] | None,
+    ) -> bytes:
+        """Read an unplanned manifest from its captured input or from disk.
+
+        Args:
+            path: The resolved manifest path.
+            observations: Authenticated source states already captured, keyed
+                by resolved path.
+
+        Returns:
+            The captured bytes when observations exist, else the physical bytes.
+
+        Raises:
+            ValueError: If the manifest has no captured input, cannot be read,
+                or is absent.
+
+        """
+        if observations is not None:
+            observed = observations.get(path)
+            if observed is None or observed.content is None:
+                msg = f"workspace manifest has no captured input: {path}"
+                raise ValueError(msg)
+            return observed.content
+        physical = u.Cli.atomic_read_binary_file_state(path, required=True)
+        if physical.failure:
+            if physical.exception is not None:
+                raise physical.exception
+            raise ValueError(physical.error)
+        content = physical.value.content
+        if content is None:
+            msg = f"workspace manifest is absent: {path}"
+            raise ValueError(msg)
+        return content
 
     @staticmethod
     def constraint_specifier(version: str) -> str:

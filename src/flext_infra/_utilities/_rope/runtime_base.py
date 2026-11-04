@@ -64,7 +64,9 @@ class FlextInfraUtilitiesRopeRuntimeBase:
 
     @classmethod
     def require_class_object(
-        cls, value: p.AttributeProbe, label: str
+        cls,
+        value: p.AttributeProbe,
+        label: str = "native Rope class",
     ) -> p.Infra.RopeClassObject:
         """Admit the actual SDK class and its consumed superclass capability.
 
@@ -85,8 +87,30 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         return value
 
     @classmethod
+    def maybe_class_object(
+        cls,
+        value: p.AttributeProbe,
+    ) -> p.Infra.RopeClassObject | None:
+        """Admit native classes, yielding ``None`` for unresolved ancestors.
+
+        Library and external bases may stay outside Rope's resolution; family
+        ancestry checks must skip them instead of failing the whole analysis.
+
+        Returns:
+            The original native class by reference, or ``None``.
+
+        """
+        if not isinstance(
+            value, cls.runtime_type(c.Infra.ROPE_PYOBJECTS_MODULE, "AbstractClass")
+        ) or not isinstance(value, p.Infra.RopeClassObject):
+            return None
+        return value
+
+    @classmethod
     def require_source_object(
-        cls, value: p.AttributeProbe, label: str
+        cls,
+        value: p.AttributeProbe,
+        label: str = "native source definition",
     ) -> p.Infra.RopeSourceObject:
         """Admit source and scope capabilities only on native Python definitions.
 
@@ -156,7 +180,7 @@ class FlextInfraUtilitiesRopeRuntimeBase:
         )
 
     @classmethod
-    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
+    def runtime_errors(cls) -> tuple[type[BaseException], ...]:
         """Return recoverable exceptions raised by Rope operations.
 
         Returns:
@@ -186,22 +210,6 @@ class FlextInfraUtilitiesRopeRuntimeBase:
             msg = "rope ImportOrganizer does not satisfy p.Infra.RopeImportOrganizer"
             raise TypeError(msg)
         return organizer
-
-    @classmethod
-    def rope_hierarchy_errors(cls) -> tuple[type[BaseException], ...]:
-        """Return Rope exceptions for hierarchies that fail to linearize.
-
-        A candidate overlay may hold base chains whose MRO is not computable
-        in that view (lazy cross-package letters); optimization owners treat
-        these as "proof unavailable" and retain the prior state.
-
-        Returns:
-            The hierarchy-failure exception types.
-
-        """
-        return (
-            cls.exception_type("rope.base.exceptions", "InconsistentHierarchyError"),
-        )
 
     @classmethod
     def rope_unresolved_error_types(cls) -> tuple[type[BaseException], ...]:

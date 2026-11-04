@@ -1,5 +1,4 @@
-# AUTO-GENERATED FILE — Regenerate with: make gen
-"""Typed runtime boundary facade for Rope, which lacks typing metadata.
+"""Canonical owner of the Rope utilities domain, composed from its parts.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,40 +15,34 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeInventory,
     FlextInfraUtilitiesRopeModulePatch,
-    FlextInfraUtilitiesRopeNestedClassMove,
-    FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSource,
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesInventory,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
     FlextInfraUtilitiesRopeSourceBindingCollector,
     FlextInfraUtilitiesRopeStructure,
-    FlextInfraUtilitiesTypesRopeRuntime,
 )
 
 
-class FlextInfraUtilitiesRopeRuntime(
+class FlextInfraUtilitiesRope(
+    FlextInfraUtilitiesRopeSourceBasesAliases,
+    FlextInfraUtilitiesRopeSourceBasesInventory,
+    FlextInfraUtilitiesRopeSourceBindingCollector,
+    FlextInfraUtilitiesRopeSourceBasesRuntime,
+    FlextInfraUtilitiesRopeClassMove,
+    FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeHelpers,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeInventory,
-    FlextInfraUtilitiesRopeNestedClassMove,
-    FlextInfraUtilitiesRopeSource,
-    FlextInfraUtilitiesRopeSourceBasesAliases,
-    FlextInfraUtilitiesRopeSourceBasesInventory,
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
-    FlextInfraUtilitiesRopeSourceBindingCollector,
-    FlextInfraUtilitiesRopeStructure,
-    FlextInfraUtilitiesRopeClassMove,
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeRuntimeModules,
-    FlextInfraUtilitiesRopeRuntimeRefactors,
-    FlextInfraUtilitiesTypesRopeRuntime,
-    FlextInfraUtilitiesRopeAstBindings,
     FlextInfraUtilitiesRopeModulePatch,
+    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeSource,
+    FlextInfraUtilitiesRopeAstBindings,
+    FlextInfraUtilitiesRopeStructure,
 ):
-    """Compose the Rope domain boundary helpers in consistent precedence."""
+    """Rope utilities domain owner composing every declared Rope part by MRO."""
 
 
-__all__: list[str] = ["FlextInfraUtilitiesRopeRuntime"]
+__all__: list[str] = ["FlextInfraUtilitiesRope"]

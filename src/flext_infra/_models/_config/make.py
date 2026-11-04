@@ -12,9 +12,9 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m, t
 
-from flext_infra import c
+from flext_infra import c, p
 from flext_infra._constants.config import FlextInfraConstantsConfig
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra._models._config import FlextInfraModelsConfigContract
 from flext_infra._models._config.external_cache import (
     FlextInfraExternalCacheDirectorySpec,
 )
@@ -191,6 +191,39 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ] = tuple(FlextInfraConstantsConfig.MakeProfile)
+        group: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Declared help section of a repository-owned verb; present "
+                    "exactly when the repository declares verb_groups"
+                ),
+            ),
+        ] = None
+        cli: Annotated[
+            tuple[
+                Annotated[str, m.Field(pattern=r"^[a-z][a-z0-9-]*$")],
+                ...,
+            ],
+            m.Field(
+                description=(
+                    "Console script followed by its route words; the generated "
+                    "handler forwards each argument as one --<kebab> option"
+                ),
+            ),
+        ] = ()
+
+    class MakeVerbGroupSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """One ordered `make help` section of repository-owned verbs."""
+
+        name: Annotated[
+            str,
+            m.Field(pattern=r"^[a-z][a-z0-9-]*$", description="Section key"),
+        ]
+        title: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Operator-facing section heading"),
+        ]
 
     class MakeOperationSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One typed public operation and its distinct checker evidence phase."""
@@ -649,6 +682,55 @@ class FlextInfraModelsConfigMake(
                     raise ValueError(msg)
                 return self
 
+        class ExecutorEnvironmentSpec(FlextInfraModelsConfigContract.ConfigContract):
+            """Isolated environment running ``make upg``'s residual flext-infra step.
+
+            Native uv syncs it from the project's frozen lock, selecting only the
+            dependency group that pins flext-infra and never installing the
+            project itself, so the step imports neither the project's source nor
+            the runtime environment. It is a uv-created virtual environment of
+            its own, never ``<RUNTIME_ROOT>/.venv`` and never a Mise base
+            interpreter.
+            """
+
+            directory: Annotated[
+                Path,
+                m.Field(description="Runtime-root-relative executor environment"),
+            ]
+            dependency_group: Annotated[
+                t.NonEmptyStr,
+                m.Field(
+                    description="Dependency group whose frozen closure pins flext-infra"
+                ),
+            ]
+
+            @m.model_validator(mode="after")
+            def _validate_directory(self) -> Self:
+                """Keep the executor inside its runtime root, apart from ``.venv``.
+
+                Returns:
+                    The resulting ``Self``.
+
+                Raises:
+                    ValueError: If the directory is absolute, escapes the root,
+                        or names the runtime environment.
+
+                """
+                parts = self.directory.parts
+                if (
+                    self.directory.is_absolute()
+                    or not parts
+                    or ".." in parts
+                    or parts[0] == c.Infra.ENVIRONMENT_DIRECTORY
+                ):
+                    msg = (
+                        "executor_environment.directory must be a relative path "
+                        "inside the runtime root, outside the runtime "
+                        f"environment: {self.directory}"
+                    )
+                    raise ValueError(msg)
+                return self
+
         class PytestScratchSpec(FlextInfraModelsConfigContract.ConfigContract):
             """Scratch root every pytest-running verb declares (storage law).
 
@@ -727,7 +809,10 @@ class FlextInfraModelsConfigMake(
             m.Field(ge=1, le=32, description="Concurrent governed submodule clones"),
         ]
         ruff: Annotated[
-            FlextInfraModelsConfigMake.MakeRuffSpec,
+            Annotated[
+                p.Infra.MakeRuffSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeRuffSpec),
+            ],
             m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
         ]
         fmt_gates: Annotated[
@@ -757,17 +842,34 @@ class FlextInfraModelsConfigMake(
             ),
         ] = False
         workflow: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeWorkflowStepSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeWorkflowStepSpec,
+                    t.schema_for_model(FlextInfraModelsConfigMake.MakeWorkflowStepSpec),
+                ],
+                ...,
+            ],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
         lifecycle_steps: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeLifecycleStepSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeLifecycleStepSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigMake.MakeLifecycleStepSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1, description="Ordered public runtime acceptance steps"
             ),
         ]
         ci: Annotated[
-            FlextInfraModelsConfigMake.MakeCiSpec,
+            Annotated[
+                p.Infra.MakeCiSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeCiSpec),
+            ],
             m.Field(description="Config-owned CI-only environment delta"),
         ]
         native_environment_unset: Annotated[
@@ -793,6 +895,15 @@ class FlextInfraModelsConfigMake(
                 gt=0, description="Native environment installation wall-time budget"
             ),
         ]
+        check_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description=(
+                    "Canonical Make check wall-time budget before forced child cleanup"
+                ),
+            ),
+        ]
         testmon_cache: Annotated[
             TestmonCacheSpec,
             m.Field(description="Adaptive testmon Actions cache policy"),
@@ -800,6 +911,15 @@ class FlextInfraModelsConfigMake(
         pytest_scratch: Annotated[
             PytestScratchSpec,
             m.Field(description="Scratch root declared by every pytest verb"),
+        ]
+        executor_environment: Annotated[
+            ExecutorEnvironmentSpec,
+            m.Field(
+                description=(
+                    "Isolated environment that runs the residual flext-infra "
+                    "upgrade step without importing the project"
+                )
+            ),
         ]
         gate_acceptance_policy: Annotated[
             FlextInfraConstantsConfig.GateAcceptancePolicy,
@@ -809,10 +929,6 @@ class FlextInfraModelsConfigMake(
             Path,
             m.Field(description="Repository-relative immutable execution receipts"),
         ] = Path(".reports/gates")
-        lint_freeze_catalog: Annotated[
-            Path,
-            m.Field(description="Repository-relative frozen lint-policy catalog"),
-        ]
         generation_profile_path: Annotated[
             Path,
             m.Field(description="Repository-relative canonical generation profile"),
@@ -838,7 +954,10 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         testmon_cache_policy: Annotated[
-            FlextInfraModelsConfigMake.TestmonCachePolicySpec,
+            Annotated[
+                p.Infra.TestmonCachePolicySpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.TestmonCachePolicySpec),
+            ],
             m.Field(
                 description=(
                     "Declarative save/budget/quota policy for the shared"
@@ -847,18 +966,60 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         mypy_cache: Annotated[
-            FlextInfraModelsConfigMake.MypyCacheSpec,
+            Annotated[
+                p.Infra.MypyCacheSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MypyCacheSpec),
+            ],
             m.Field(
                 description="Project-keyed shared Mypy analysis cache policy",
             ),
         ]
         ruff_cache: Annotated[
-            FlextInfraModelsConfigMake.RuffCacheSpec,
+            Annotated[
+                p.Infra.RuffCacheSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.RuffCacheSpec),
+            ],
             m.Field(description="External project-keyed native Ruff cache policy"),
         ]
         verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbSpec),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered canonical public verbs"),
+        ]
+        cli_output_argument: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[A-Z][A-Z0-9_]*$",
+                description=(
+                    "Make input every CLI-routed verb accepts to select the "
+                    "CLI output format"
+                ),
+            ),
+        ]
+        cli_output_environment: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[A-Z][A-Z0-9_]*$",
+                description=(
+                    "Environment variable the CLI settings owner reads as its "
+                    "output format"
+                ),
+            ),
+        ]
+        common_verb_group: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[a-z][a-z0-9-]*$",
+                description=(
+                    "Section key that holds the canonical and release verbs "
+                    "when a repository declares verb_groups"
+                ),
+            ),
         ]
         violations_sweep_repair_verbs: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -879,26 +1040,48 @@ class FlextInfraModelsConfigMake(
             m.Field(description="Named controls accepted by every generated Make verb"),
         ] = ()
         clean: Annotated[
-            FlextInfraModelsConfigMake.MakeCleanSpec,
+            Annotated[
+                p.Infra.MakeCleanSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeCleanSpec),
+            ],
             m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
-            FlextInfraModelsConfigMake.MakeDocsSpec,
+            Annotated[
+                p.Infra.MakeDocsSpec,
+                t.schema_for_model(FlextInfraModelsConfigMake.MakeDocsSpec),
+            ],
             m.Field(description="Public documentation lifecycle policy"),
         ]
         custom_handler_policy: Annotated[
-            FlextInfraModelsConfigMake.CustomHandlerPolicy,
+            Annotated[
+                p.Infra.CustomHandlerPolicy,
+                t.schema_for_model(FlextInfraModelsConfigMake.CustomHandlerPolicy),
+            ],
             m.Field(description="Private custom target policy"),
         ]
         custom_handler_profile_overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                FlextInfraModelsConfigMake.CustomHandlerPolicyOverride,
+                Annotated[
+                    p.Infra.CustomHandlerPolicyOverride,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigMake.CustomHandlerPolicyOverride
+                    ),
+                ],
             ],
             m.Field(description="Per-profile overrides of the custom handler policy"),
         ]
         project_check_gates: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeProjectCheckGateSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeProjectCheckGateSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigMake.MakeProjectCheckGateSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 default=(),
                 description=(
@@ -914,6 +1097,15 @@ class FlextInfraModelsConfigMake(
                 description=(
                     "Requested gates that must finish across every selected "
                     "repository before the remaining gates execute"
+                ),
+            ),
+        ]
+        check_prerequisite_pyrefly_workers: Annotated[
+            t.PositiveInt,
+            m.Field(
+                description=(
+                    "Bounded Pyrefly workers for primary admission while lint "
+                    "retains its own native concurrency"
                 ),
             ),
         ]
@@ -1214,7 +1406,6 @@ class FlextInfraModelsConfigMake(
                 raise ValueError(msg)
             for name, path in (
                 ("docs.reports_dir", self.docs.reports_dir),
-                ("lint_freeze_catalog", self.lint_freeze_catalog),
                 ("generation_profile_path", self.generation_profile_path),
                 ("modification_profile_path", self.modification_profile_path),
                 ("check_profile_path", self.check_profile_path),

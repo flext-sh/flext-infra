@@ -1,26 +1,6 @@
 id: facade-first-base-alias-or-peer
 snapshots:
-  "class FlextMeltanoModels(FlextCliModels):\n    pass\n__all__ = [\"FlextMeltanoModels\"]\n":
-    labels:
-    - source: |-
-        class FlextMeltanoModels(FlextCliModels):
-            pass
-      style: primary
-      start: 0
-      end: 50
-    - source: FlextMeltanoModels
-      style: secondary
-      start: 6
-      end: 24
-    - source: FlextCliModels
-      style: secondary
-      start: 25
-      end: 39
-    - source: FlextCliModels
-      style: secondary
-      start: 25
-      end: 39
-  "class FlextMeltanoModels(FlextResult):\n    pass\n__all__ = [\"FlextMeltanoModels\"]\n":
+  "class FlextMeltanoModels(FlextResult):\n    pass\n_PUBLIC = [\"FlextMeltanoModels\"]\n__all__ = tuple(_PUBLIC)\n":
     labels:
     - source: |-
         class FlextMeltanoModels(FlextResult):
@@ -32,6 +12,58 @@ snapshots:
       style: secondary
       start: 6
       end: 24
+    - source: __all__
+      style: secondary
+      start: 81
+      end: 88
+    - source: _PUBLIC
+      style: secondary
+      start: 97
+      end: 104
+    - source: _PUBLIC
+      style: secondary
+      start: 97
+      end: 104
+    - source: tuple(_PUBLIC)
+      style: secondary
+      start: 91
+      end: 105
+    - source: __all__ = tuple(_PUBLIC)
+      style: secondary
+      start: 81
+      end: 105
+    - source: __all__ = tuple(_PUBLIC)
+      style: secondary
+      start: 81
+      end: 105
+    - source: _PUBLIC
+      style: secondary
+      start: 48
+      end: 55
+    - source: FlextMeltanoModels
+      style: secondary
+      start: 60
+      end: 78
+    - source: FlextMeltanoModels
+      style: secondary
+      start: 60
+      end: 78
+    - source: _PUBLIC = ["FlextMeltanoModels"]
+      style: secondary
+      start: 48
+      end: 80
+    - source: _PUBLIC = ["FlextMeltanoModels"]
+      style: secondary
+      start: 48
+      end: 80
+    - source: |
+        class FlextMeltanoModels(FlextResult):
+            pass
+        _PUBLIC = ["FlextMeltanoModels"]
+        __all__ = tuple(_PUBLIC)
+      style: secondary
+      start: 0
+      end: 106
     - source: FlextResult
       style: secondary
       start: 25

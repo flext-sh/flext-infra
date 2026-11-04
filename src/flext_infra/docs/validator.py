@@ -9,13 +9,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.docs import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraDocValidator(FlextInfraDocServiceBase):
@@ -23,12 +21,12 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
 
     def validate_workspace(
         self,
-        request: m.Infra.DocsGenerateRequest,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+        request: p.Infra.DocsGenerateRequest,
+    ) -> p.Result[Sequence[p.Infra.DocsPhaseReport]]:
         """Validate documentation across the repository root and governed projects.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocsPhaseReport]]``.
 
         """
         return self.run_scoped_docs(
@@ -80,10 +78,10 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
 
     def _validate_scope(
         self,
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         apply_mode: bool,
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Validate one docs scope and persist the standard reports.
 
         Returns:
@@ -108,7 +106,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         if missing_paths:
             status = c.Infra.ResultStatus.FAIL
             messages.append(f"missing required docs files: {', '.join(missing_paths)}")
-        contract_messages = u.Infra.docs_contract_messages(scope)
+        contract_messages = u.Infra.contract_messages(scope)
         if contract_messages:
             status = c.Infra.ResultStatus.FAIL
             messages.extend(contract_messages)
@@ -130,7 +128,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         )
         u.Infra.docs_write_validate_reports(scope, report)
         self.logger.info(
-            "docs_validate_scope_completed",
+            "validate_scope_completed",
             project=scope.name,
             phase=c.Infra.VERB_VALIDATE,
             result=status,

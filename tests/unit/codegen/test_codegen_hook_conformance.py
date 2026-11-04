@@ -14,7 +14,7 @@ import pytest
 
 from flext_infra import config, infra, m
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 pytestmark = pytest.mark.slow
 

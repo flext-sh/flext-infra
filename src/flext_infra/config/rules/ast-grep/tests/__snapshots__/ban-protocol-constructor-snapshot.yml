@@ -1,0 +1,252 @@
+id: ban-protocol-constructor
+snapshots:
+  "from flext_infra import p\ndef make():\n    return p.ConfigDocument(data={})\n":
+    fixed: |
+      from flext_infra import p
+      def make():
+          return m.ConfigDocument(data={})
+    labels:
+    - source: p.ConfigDocument
+      style: primary
+      start: 49
+      end: 65
+    - source: p.ConfigDocument(data={})
+      style: secondary
+      start: 49
+      end: 74
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make():
+            return p.ConfigDocument(data={})
+      style: secondary
+      start: 0
+      end: 75
+  "from flext_infra import p\ndef make():\n    return p.Infra.FacadeFamily(letter=\"u\", module=\"utilities\", suffix=\"Infra\")\n":
+    fixed: |
+      from flext_infra import p
+      def make():
+          return m.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
+    labels:
+    - source: p.Infra.FacadeFamily
+      style: primary
+      start: 49
+      end: 69
+    - source: p.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
+      style: secondary
+      start: 49
+      end: 117
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make():
+            return p.Infra.FacadeFamily(letter="u", module="utilities", suffix="Infra")
+      style: secondary
+      start: 0
+      end: 118
+  "from flext_infra import p\ndef make():\n    return p.Infra.FacadeFamily.model_construct(letter=\"u\")\n":
+    fixed: |
+      from flext_infra import p
+      def make():
+          return m.Infra.FacadeFamily.model_construct(letter="u")
+    labels:
+    - source: p.Infra.FacadeFamily.model_construct
+      style: primary
+      start: 49
+      end: 85
+    - source: p.Infra.FacadeFamily.model_construct(letter="u")
+      style: secondary
+      start: 49
+      end: 97
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make():
+            return p.Infra.FacadeFamily.model_construct(letter="u")
+      style: secondary
+      start: 0
+      end: 98
+  "from flext_infra import p\ndef make():\n    return p.Infra.Outer.Inner(value=1)\n":
+    fixed: |
+      from flext_infra import p
+      def make():
+          return m.Infra.Outer.Inner(value=1)
+    labels:
+    - source: p.Infra.Outer.Inner
+      style: primary
+      start: 49
+      end: 68
+    - source: p.Infra.Outer.Inner(value=1)
+      style: secondary
+      start: 49
+      end: 77
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make():
+            return p.Infra.Outer.Inner(value=1)
+      style: secondary
+      start: 0
+      end: 78
+  "from flext_infra import p\ndef make():\n    return p.Infra.RopeImportedName(name=\"x\")\n":
+    fixed: |
+      from flext_infra import p
+      def make():
+          return p.Infra.RopeImportedName(name="x")
+    labels:
+    - source: p.Infra.RopeImportedName
+      style: primary
+      start: 49
+      end: 73
+    - source: p.Infra.RopeImportedName(name="x")
+      style: secondary
+      start: 49
+      end: 83
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make():
+            return p.Infra.RopeImportedName(name="x")
+      style: secondary
+      start: 0
+      end: 84
+  "from flext_infra import p\ndef make(payload: dict):\n    return p.Infra.FacadeFamily.model_validate(payload, from_attributes=True)\n":
+    fixed: |
+      from flext_infra import p
+      def make(payload: dict):
+          return m.Infra.FacadeFamily.model_validate(payload, from_attributes=True)
+    labels:
+    - source: p.Infra.FacadeFamily.model_validate
+      style: primary
+      start: 62
+      end: 97
+    - source: p.Infra.FacadeFamily.model_validate(payload, from_attributes=True)
+      style: secondary
+      start: 62
+      end: 128
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make(payload: dict):
+            return p.Infra.FacadeFamily.model_validate(payload, from_attributes=True)
+      style: secondary
+      start: 0
+      end: 129
+  "from flext_infra import p\ndef make(payload: dict):\n    return p.Infra.FacadeFamily.model_validate_strings(payload)\n":
+    fixed: |
+      from flext_infra import p
+      def make(payload: dict):
+          return m.Infra.FacadeFamily.model_validate_strings(payload)
+    labels:
+    - source: p.Infra.FacadeFamily.model_validate_strings
+      style: primary
+      start: 62
+      end: 105
+    - source: p.Infra.FacadeFamily.model_validate_strings(payload)
+      style: secondary
+      start: 62
+      end: 114
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make(payload: dict):
+            return p.Infra.FacadeFamily.model_validate_strings(payload)
+      style: secondary
+      start: 0
+      end: 115
+  "from flext_infra import p\ndef make(payload: dict):\n    return p.Infra.Outer.Inner.model_validate(payload)\n":
+    fixed: |
+      from flext_infra import p
+      def make(payload: dict):
+          return m.Infra.Outer.Inner.model_validate(payload)
+    labels:
+    - source: p.Infra.Outer.Inner.model_validate
+      style: primary
+      start: 62
+      end: 96
+    - source: p.Infra.Outer.Inner.model_validate(payload)
+      style: secondary
+      start: 62
+      end: 105
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make(payload: dict):
+            return p.Infra.Outer.Inner.model_validate(payload)
+      style: secondary
+      start: 0
+      end: 106
+  "from flext_infra import p\ndef make(payload: dict):\n    return p.Infra.RopeImportedName.model_validate(payload)\n":
+    fixed: |
+      from flext_infra import p
+      def make(payload: dict):
+          return p.Infra.RopeImportedName.model_validate(payload)
+    labels:
+    - source: p.Infra.RopeImportedName.model_validate
+      style: primary
+      start: 62
+      end: 101
+    - source: p.Infra.RopeImportedName.model_validate(payload)
+      style: secondary
+      start: 62
+      end: 110
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make(payload: dict):
+            return p.Infra.RopeImportedName.model_validate(payload)
+      style: secondary
+      start: 0
+      end: 111
+  "from flext_infra import p\ndef make(payload: str):\n    return p.Infra.FacadeFamily.model_validate_json(payload)\n":
+    fixed: |
+      from flext_infra import p
+      def make(payload: str):
+          return m.Infra.FacadeFamily.model_validate_json(payload)
+    labels:
+    - source: p.Infra.FacadeFamily.model_validate_json
+      style: primary
+      start: 61
+      end: 101
+    - source: p.Infra.FacadeFamily.model_validate_json(payload)
+      style: secondary
+      start: 61
+      end: 110
+    - source: from flext_infra import p
+      style: secondary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import p
+        def make(payload: str):
+            return p.Infra.FacadeFamily.model_validate_json(payload)
+      style: secondary
+      start: 0
+      end: 111

@@ -22,18 +22,12 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesPrivateImportFacades
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
-)
-from flext_infra._utilities._rope.source_bases_aliases import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeSourceBasesAliases,
-)
-from flext_infra._utilities._rope.source_bases_inventory_collector import (
     FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 
@@ -108,7 +102,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
             project, entry[0]
         )
         return FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-            FlextInfraUtilitiesTypesRopeRuntime.require_source_module(module)
+            FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(module)
         )
 
     @classmethod
@@ -256,17 +250,26 @@ class FlextInfraUtilitiesSemanticCutoverFacadeOwners:
         module: str,
         name: str,
         package: str,
+        *,
+        before: int | None = None,
     ) -> tuple[tuple[str, str] | None, bool]:
         """Follow module-scope execution order to the last binding of ``name``.
 
+        ``before`` stops at that source line: a class base is evaluated when
+        its class statement runs, so it sees the binding in force there, not a
+        later rebinding (``class FlextXTypes(t): ...`` then ``t = FlextXTypes``).
+
         Returns:
-            The resulting ``(target, declared)`` binding state after the body.
+            The resulting ``(target, declared)`` binding state after the body,
+            or just before line ``before``.
 
         """
         target: tuple[str, str] | None = None
         declared = False
         statements = cls._facade_module_statements(source, module)
         for index, node in enumerate(statements):
+            if before is not None and node.lineno >= before:
+                break
             if isinstance(node, ast.AnnAssign) and node.value is None:
                 # An annotation without a value does not rebind an existing name.
                 continue

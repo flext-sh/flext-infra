@@ -23,6 +23,24 @@ class TestsFlextInfraModelsRefactorInfraRefactorCliWorkflow:
     """Behavior contract for test_infra_refactor_cli_models_workflow."""
 
     @staticmethod
+    def test_mod_cli_rejects_unknown_rule_ids_before_application(
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """The public plural selector validates catalog IDs before applying."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        result = FlextInfraCli.infra_main([
+            "refactor",
+            "mod",
+            f"--repository-root={root}",
+            "--check",
+            "--rule-ids=missing-static-rule",
+        ])
+
+        tm.that(result, ne=0)
+        tm.that(capsys.readouterr().err, has="unknown codemod rule IDs")
+
+    @staticmethod
     def test_mod_cli_accepts_repeated_typed_consumer_roots_and_rejects_missing_scope(
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],

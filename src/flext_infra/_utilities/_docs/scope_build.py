@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r
+from flext_infra import c, m, p, r
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesWorkspaceManifest,
@@ -22,8 +22,6 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsScopeBuild(
@@ -60,7 +58,7 @@ class FlextInfraUtilitiesDocsScopeBuild(
         output_dir: Path | str,
         *,
         include_root: bool = True,
-    ) -> p.Result[Sequence[m.Infra.DocScope]]:
+    ) -> p.Result[Sequence[p.Infra.DocScope]]:
         """Build DocScope objects for repository root and selected projects.
 
         ``include_root`` governs only whether the workspace root itself is
@@ -68,7 +66,7 @@ class FlextInfraUtilitiesDocsScopeBuild(
         SOURCES for member projects regardless.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocScope]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocScope]]``.
 
         """
         try:
@@ -79,8 +77,8 @@ class FlextInfraUtilitiesDocsScopeBuild(
                 include_root=include_root,
             )
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[Sequence[m.Infra.DocScope]].fail_op("scope resolution", exc)
-        return r[Sequence[m.Infra.DocScope]].ok(scopes)
+            return r[Sequence[p.Infra.DocScope]].fail_op("scope resolution", exc)
+        return r[Sequence[p.Infra.DocScope]].ok(scopes)
 
     @staticmethod
     def _build_scopes_unchecked(
@@ -89,16 +87,16 @@ class FlextInfraUtilitiesDocsScopeBuild(
         output_dir: Path | str,
         *,
         include_root: bool,
-    ) -> Sequence[m.Infra.DocScope]:
+    ) -> Sequence[p.Infra.DocScope]:
         """Build docs scopes without exception wrapping.
 
         Returns:
-            The resulting ``Sequence[m.Infra.DocScope]``.
+            The resulting ``Sequence[p.Infra.DocScope]``.
 
         """
         resolved_root = repository_root.resolve()
         project_state = FlextInfraUtilitiesDocsScope.project_state(resolved_root)
-        is_enabled = FlextInfraUtilitiesDocsScope.docs_scope_enabled(
+        is_enabled = FlextInfraUtilitiesDocsScope.scope_enabled(
             project_state.docs_meta,
         )
         discovered = FlextInfraUtilitiesDocsScopeBuild._discover_projects(
@@ -153,10 +151,10 @@ class FlextInfraUtilitiesDocsScopeBuild(
         repository_root: Path,
         projects: Sequence[str] | None,
         output_dir: Path | str,
-        discovered: Sequence[m.Infra.ProjectInfo],
+        discovered: Sequence[p.Infra.ProjectInfo],
         *,
         include_root: bool,
-    ) -> Sequence[m.Infra.DocScope]:
+    ) -> Sequence[p.Infra.DocScope]:
         """Build docs scopes for a repository root plus child projects.
 
         The root scope is an OUTPUT participant only when ``include_root`` is
@@ -165,10 +163,10 @@ class FlextInfraUtilitiesDocsScopeBuild(
         repository root.
 
         Returns:
-            The resulting ``Sequence[m.Infra.DocScope]``.
+            The resulting ``Sequence[p.Infra.DocScope]``.
 
         """
-        scopes: list[m.Infra.DocScope] = (
+        scopes: list[p.Infra.DocScope] = (
             [
                 m.Infra.DocScope(
                     name=c.Infra.RK_ROOT,
@@ -206,11 +204,11 @@ class FlextInfraUtilitiesDocsScopeBuild(
         return tuple(scopes)
 
     @staticmethod
-    def _discover_projects(repository_root: Path) -> Sequence[m.Infra.ProjectInfo]:
+    def _discover_projects(repository_root: Path) -> Sequence[p.Infra.ProjectInfo]:
         """Discover workspace projects or raise a typed value error.
 
         Returns:
-            The resulting ``Sequence[m.Infra.ProjectInfo]``.
+            The resulting ``Sequence[p.Infra.ProjectInfo]``.
 
         Raises:
             ValueError: If ``discovered_result.failure``.

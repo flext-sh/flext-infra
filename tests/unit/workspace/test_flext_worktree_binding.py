@@ -101,3 +101,22 @@ class TestsFlextInfraWorktreeBinding:
             ),
             none=True,
         )
+
+    def test_package_observation_accepts_the_declared_candidate_environment(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """The optional candidate environment reaches the package observer."""
+        consumer = self._consumer(tmp_path)
+        environment = u.Infra.runtime_environment_dir(consumer)
+
+        observed = tm.ok(
+            workspace.FlextInfraBindingService.consumer_package_environment(
+                consumer_root=consumer,
+                python=self._python(consumer),
+                packages=(),
+                candidate_environment=environment,
+            ),
+        )
+
+        tm.that(observed.prefix.resolve(), eq=environment.resolve())

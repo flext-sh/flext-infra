@@ -25,7 +25,7 @@ class TestsFlextInfraModRuleExpectedReceipt:
     @staticmethod
     def _declare(workspace: Path, *, expected: str) -> None:
         """Point the workspace at one local rule carrying the receipt clause."""
-        u.Tests.declare_codemod_rules(
+        u.Tests.declare_rules(
             workspace,
             {
                 "receipt-probe": (
@@ -69,6 +69,7 @@ class TestsFlextInfraModRuleExpectedReceipt:
                 "mod",
                 "--repository-root",
                 str(mod_workspace),
+                "--check",
             ])
 
     def test_a_matching_receipt_does_not_block_the_scan(
@@ -84,6 +85,7 @@ class TestsFlextInfraModRuleExpectedReceipt:
             "mod",
             "--repository-root",
             str(mod_workspace),
+            "--check",
         ])
         capture = capsys.readouterr()
 

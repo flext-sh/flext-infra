@@ -9,7 +9,7 @@
 # as a `p.*` protocol / declaration-only `m.*` Pydantic model owned at the
 # canonical facet. The self-referential `type` statement is always removed.
 #
-# DETECTION-ONLY (severity: warning, no `fix:`): the correct replacement varies
+# DETECTION-ONLY (severity: error, no `fix:`): the correct replacement varies
 # per site (JSON leaf vs protocol vs model), so this rule surfaces candidates a
 # human/agent judges — it never rewrites (flext-codemod-astgrep SKILL, lesson
 # "detection-first for judgement rules").
@@ -27,7 +27,7 @@
 # container aliases (proven on the workspace dry-run).
 id: recursive-type-alias
 language: python
-severity: warning
+severity: error
 message: >-
   Self-recursive `type` alias with a container RHS — Mypy expands it without a fixpoint (35 GiB memory-explosion class). Replace with the finite `t.JsonValue` / `t.JsonMapping` alias or a `p.*` protocol / `m.*` model; remove the recursive `type` statement. No suppression.
 rule:

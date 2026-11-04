@@ -2,10 +2,10 @@
 
 <!-- TOC START -->
 
-- [Model-Field Access Migration (`model_fields`)](#model-field-access-migration-model_fields)
-- [Codemod Gate and Mechanical `refactor ast` Boundaries](#codemod-gate-and-mechanical-refactor-ast-boundaries)
+- [Model-Field Access Migration (model\_fields)](#model-field-access-migration-model_fields)
+- [Codemod Gate and Mechanical refactor ast Boundaries](#codemod-gate-and-mechanical-refactor-ast-boundaries)
 - [Declaration-Layer Import Law and Environment Reads](#declaration-layer-import-law-and-environment-reads)
-- [Compatibility-Alias Cutovers (`plan_semantic_cutover`)](#compatibility-alias-cutovers-plan_semantic_cutover)
+- [Compatibility-Alias Cutovers (plan\_semantic\_cutover)](#compatibility-alias-cutovers-plan_semantic_cutover)
 - [Upgrade Interruption, Rule Snapshots, and Proof Presets](#upgrade-interruption-rule-snapshots-and-proof-presets)
 
 <!-- TOC END -->

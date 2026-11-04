@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities._rope.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeImports
 
 
 class FlextInfraUtilitiesRopeInventorySites:
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesRopeInventorySites:
         return line if isinstance(line, int) and line >= 0 else 0
 
     @staticmethod
-    def _reference_site(location: t.Infra.RopeLocation) -> m.Infra.ReferenceSite | None:
+    def _reference_site(location: t.Infra.RopeLocation) -> p.Infra.ReferenceSite | None:
         """Build a reference site from a rope location.
 
         Returns:
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesRopeInventorySites:
 
     @staticmethod
     def _discard_definition_site(
-        sites: list[m.Infra.ReferenceSite],
+        sites: list[p.Infra.ReferenceSite],
         *,
         definition_path: Path,
         line: int,
@@ -158,7 +158,7 @@ class FlextInfraUtilitiesRopeInventorySites:
         return " ".join(snippet.replace(name, "<name>").split())
 
     @staticmethod
-    def _actual_tier(convention: m.Infra.RopeModuleConvention) -> str:
+    def _actual_tier(convention: p.Infra.RopeModuleConvention) -> str:
         """Classify the containing package before the module filename.
 
         ``relative_path`` is local to the indexed package and can contain only
@@ -209,7 +209,7 @@ class FlextInfraUtilitiesRopeInventorySites:
         return stem
 
     @staticmethod
-    def _expected_tier(convention: m.Infra.RopeModuleConvention, *, kind: str) -> str:
+    def _expected_tier(convention: p.Infra.RopeModuleConvention, *, kind: str) -> str:
         """Return the expected tier for a module convention.
 
         Returns:
@@ -224,7 +224,7 @@ class FlextInfraUtilitiesRopeInventorySites:
 
     @staticmethod
     def _is_facade_member(
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         *,
         name: str,
         scope_chain: Sequence[str],

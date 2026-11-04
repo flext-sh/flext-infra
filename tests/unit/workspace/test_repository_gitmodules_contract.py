@@ -265,7 +265,7 @@ class TestsFlextInfraRepositoryGitmodulesContract:
         )
         # The repository's own declaration names its integration line; the
         # workspace policy line is unpublished, so only the declaration counts.
-        u.Tests.WorktreeFixture.override_repository_declaration(
+        u.Tests.override_repository_declaration(
             root,
             {
                 "integration": {

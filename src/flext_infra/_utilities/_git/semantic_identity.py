@@ -20,20 +20,17 @@ from flext_infra import c, m, p, r
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRemote,
     FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitSemanticLane,
 )
 
 
-class FlextInfraUtilitiesGitSemanticIdentity(
-    FlextInfraUtilitiesGitSemanticLane,
-):
+class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
     """Own semantic identity operations."""
 
     @classmethod
     def git_identity(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitIdentityReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitIdentityReport]:
         """Return consolidated Git identity for one repository path.
 
         One call replaces 6+ separate queries. Implemented over GitPython
@@ -47,20 +44,20 @@ class FlextInfraUtilitiesGitSemanticIdentity(
             repo = cls._repo(request.repo_root)
             primary = cls._git_primary_worktree_root_path(request.repo_root)
             if primary.failure:
-                return r[m.Infra.GitIdentityReport].from_failure(primary)
+                return r[p.Infra.GitIdentityReport].from_failure(primary)
             report = cls._collect_identity_facts(
                 repo,
                 primary_root=primary.value,
                 requested_path=request.repo_root,
             )
         except GitCommandError as exc:
-            return r[m.Infra.GitIdentityReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitIdentityReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitIdentityReport].fail(
+            return r[p.Infra.GitIdentityReport].fail(
                 f"failed to resolve Git identity: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitIdentityReport].ok(report)
+        return r[p.Infra.GitIdentityReport].ok(report)
 
     @staticmethod
     def _git_head_is_unborn(repo: Repo) -> bool:
@@ -101,7 +98,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(
     def exact_worktree_root(
         cls,
         requested: Path,
-    ) -> p.Result[m.Infra.GitIdentityReport]:
+    ) -> p.Result[p.Infra.GitIdentityReport]:
         """Reject Git parent discovery and unregistered nesting under a root.
 
         Promoted from the Mise workspace planner (`flext-infra` `init` needed
@@ -113,12 +110,12 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         on its own but is never the exact worktree root callers intend.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitIdentityReport]``.
+            The resulting ``p.Result[p.Infra.GitIdentityReport]``.
 
         """
         control = cls.exact_worktree_git_dir(requested)
         if control.failure:
-            return r[m.Infra.GitIdentityReport].from_failure(control)
+            return r[p.Infra.GitIdentityReport].from_failure(control)
         return cls.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
 
     @classmethod
@@ -163,7 +160,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         if primary.failure:
             return r[Path].from_failure(primary)
         git_dir = Path(repo.git_dir).resolve()
-        superproject = cls._superproject_root(
+        superproject, _attached = cls._superproject_root(
             repo, primary_root=primary.value, working_tree=working_tree
         )
         if superproject is not None or git_dir != Path(repo.common_dir).resolve():
@@ -186,10 +183,10 @@ class FlextInfraUtilitiesGitSemanticIdentity(
     @classmethod
     def git_is_inside_work_tree(
         cls,
-        request: m.Infra.GitRepoRequest,
+        request: p.Infra.GitRepoRequest,
         *,
         search_parent_directories: bool = True,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Return whether ``repo_root`` sits inside a Git work tree.
 
         Three-way contract mirroring ``rev-parse --is-inside-work-tree``:
@@ -203,24 +200,24 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         """
         refreshed = FlextInfraUtilitiesGitRepo.refresh_binary()
         if refreshed.failure:
-            return r[m.Infra.GitBoolReport].from_failure(refreshed)
+            return r[p.Infra.GitBoolReport].from_failure(refreshed)
         resolved = request.repo_root.expanduser().resolve()
         try:
             # Why: same nested-path contract as git_open_repo.
             repo = Repo(resolved, search_parent_directories=search_parent_directories)
         except InvalidGitRepositoryError:
-            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+            return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except NoSuchPathError:
-            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+            return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (GitCommandNotFound, OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to probe Git work tree: {exc}",
                 exception=exc,
             )
         # GitPython pins a `git cat-file` child per open handle: the probe owns
         # its handle, so it is released before the report leaves the boundary.
         try:
-            return r[m.Infra.GitBoolReport].ok(
+            return r[p.Infra.GitBoolReport].ok(
                 m.Infra.GitBoolReport(
                     value=not repo.bare and repo.working_tree_dir is not None,
                 ),
@@ -255,25 +252,34 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         *,
         primary_root: Path,
         working_tree: Path,
-    ) -> Path | None:
+    ) -> tuple[Path | None, bool]:
         """Resolve the superproject working tree, probing the primary handle.
 
+        Git reports a superproject for the working tree it checks out as a
+        gitlink. A linked worktree of a submodule repository reports none: its
+        superproject comes from the primary checkout, and it is attached only
+        when Git says so for the working tree itself, never because its
+        directory happens to sit below the superproject.
+
         Returns:
-            The resulting ``Path | None``.
+            The superproject root, and whether Git attaches this working tree.
 
         """
         raw_super = repo.git.rev_parse("--show-superproject-working-tree").strip()
-        if not raw_super and primary_root != working_tree:
-            primary_repo = cls._repo(primary_root)
-            try:
-                raw_super = primary_repo.git.rev_parse(
-                    "--show-superproject-working-tree",
-                ).strip()
-            finally:
-                # The secondary handle is only opened for this one probe; every
-                # open GitPython handle pins a `git cat-file` child.
-                primary_repo.close()
-        return Path(raw_super).resolve() if raw_super else None
+        if raw_super:
+            return Path(raw_super).resolve(), True
+        if primary_root == working_tree:
+            return None, False
+        primary_repo = cls._repo(primary_root)
+        try:
+            raw_super = primary_repo.git.rev_parse(
+                "--show-superproject-working-tree",
+            ).strip()
+        finally:
+            # The secondary handle is only opened for this one probe; every
+            # open GitPython handle pins a `git cat-file` child.
+            primary_repo.close()
+        return (Path(raw_super).resolve() if raw_super else None), False
 
     @staticmethod
     def _has_gitlink_stages(repo: Repo) -> bool:
@@ -296,7 +302,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         *,
         primary_root: Path,
         requested_path: Path | None = None,
-    ) -> m.Infra.GitIdentityReport:
+    ) -> p.Infra.GitIdentityReport:
         """Collect GitPython-native identity facts into one report.
 
         Returns:
@@ -310,7 +316,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         porcelain = repo.git.status("--porcelain", "--untracked-files=all")
         branch = None if repo.head.is_detached else repo.active_branch.name
         origin_remote, upstream_remote = cls._redacted_remotes(repo)
-        superproject = cls._superproject_root(
+        superproject, is_attached_submodule = cls._superproject_root(
             repo,
             primary_root=primary_root,
             working_tree=working_tree,
@@ -328,9 +334,6 @@ class FlextInfraUtilitiesGitSemanticIdentity(
         # whose .git is a real directory, so is_submodule stayed False and
         # consumers demoted them to unmanaged.
         is_submodule = superproject is not None
-        is_attached_submodule = (
-            superproject is not None and working_tree.is_relative_to(superproject)
-        )
 
         return m.Infra.GitIdentityReport(
             repo_root=working_tree,

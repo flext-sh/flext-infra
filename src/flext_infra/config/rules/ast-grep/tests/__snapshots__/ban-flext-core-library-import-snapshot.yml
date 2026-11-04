@@ -12,12 +12,24 @@ snapshots:
       style: primary
       start: 5
       end: 24
+  from pydantic_settings import BaseSettings:
+    labels:
+    - source: pydantic_settings
+      style: primary
+      start: 5
+      end: 22
   from returns.result import Result:
     labels:
     - source: returns.result
       style: primary
       start: 5
       end: 19
+  import pydantic_settings:
+    labels:
+    - source: pydantic_settings
+      style: primary
+      start: 7
+      end: 24
   import yaml as y:
     labels:
     - source: yaml

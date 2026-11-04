@@ -22,7 +22,7 @@ from flext_infra.codemod import (
 )
 
 
-class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
+class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
     """Run canonical repairs and reject introduced finding occurrences.
 
     Rule focus is validated against the elected plan, never passed to the full
@@ -51,23 +51,23 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
     ] = None
 
     @override
-    def execute(self) -> p.Result[m.Infra.ViolationsSweepReport]:
+    def execute(self) -> p.Result[p.Infra.ViolationsSweepReport]:
         """Scan, repair through the canonical verbs, rescan, publish, verdict.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ViolationsSweepReport]``.
+            The resulting ``p.Result[p.Infra.ViolationsSweepReport]``.
 
         """
         root = self.repository_root
         selection = self._validated_selection()
         if selection.failure:
-            return r[m.Infra.ViolationsSweepReport].from_failure(selection)
+            return r[p.Infra.ViolationsSweepReport].from_failure(selection)
         rule_ids, verbs = selection.value
         destination = c.Infra.VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH
         invocation = destination.parent / destination.stem / uuid4().hex
         before_scan = self._scan_evidence(root, invocation / "before.json")
         if before_scan.failure and not self.audit_rules:
-            return r[m.Infra.ViolationsSweepReport].from_failure(before_scan)
+            return r[p.Infra.ViolationsSweepReport].from_failure(before_scan)
         initial = before_scan.value[2] if before_scan.success else None
         projects = (
             initial.repository_roots if initial is not None else (root.resolve(),)
@@ -75,7 +75,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         if initial is None:
             declared = u.Infra.git_submodule_declarations(root)
             if declared.failure:
-                return r[m.Infra.ViolationsSweepReport].from_failure(before_scan)
+                return r[p.Infra.ViolationsSweepReport].from_failure(before_scan)
             projects = (
                 root.resolve(),
                 *(
@@ -177,7 +177,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
             or after_scan.failure
             or published.failure
         ):
-            return r[m.Infra.ViolationsSweepReport].from_failure(
+            return r[p.Infra.ViolationsSweepReport].from_failure(
                 before_scan
                 if before_scan.failure
                 else repairs[3]
@@ -190,9 +190,9 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
     @staticmethod
     def _verdict(
-        report: m.Infra.ViolationsSweepReport,
-        comparisons: Sequence[m.Infra.ViolationsSweepStage],
-    ) -> p.Result[m.Infra.ViolationsSweepReport]:
+        report: p.Infra.ViolationsSweepReport,
+        comparisons: Sequence[p.Infra.ViolationsSweepStage],
+    ) -> p.Result[p.Infra.ViolationsSweepReport]:
         """Reject introduced occurrences and preserve incomplete observation failures.
 
         Returns:
@@ -200,18 +200,18 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
         """
         if any(delta.introduced for delta in report.rule_deltas):
-            return r[m.Infra.ViolationsSweepReport].fail(
+            return r[p.Infra.ViolationsSweepReport].fail(
                 "violations sweep introduced finding occurrences",
             )
         if any(stage.error for stage in comparisons):
-            return r[m.Infra.ViolationsSweepReport].fail(
+            return r[p.Infra.ViolationsSweepReport].fail(
                 next(stage.error for stage in comparisons if stage.error),
             )
         if report.increased_totals:
-            return r[m.Infra.ViolationsSweepReport].fail(
+            return r[p.Infra.ViolationsSweepReport].fail(
                 "violations sweep grew " + ", ".join(report.increased_totals),
             )
-        return r[m.Infra.ViolationsSweepReport].ok(report)
+        return r[p.Infra.ViolationsSweepReport].ok(report)
 
     def _validated_selection(
         self,
@@ -267,10 +267,10 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         root: Path,
         verbs: Sequence[str],
         projects: Sequence[Path],
-        initial: m.Infra.ViolationsSweepSources | None,
+        initial: p.Infra.ViolationsSweepSources | None,
     ) -> tuple[
         Sequence[str],
-        Sequence[m.Infra.ViolationsSweepStage],
+        Sequence[p.Infra.ViolationsSweepStage],
         str | None,
         p.Result[bool] | None,
     ]:
@@ -281,7 +281,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
         """
         completed: list[str] = []
-        stages: list[m.Infra.ViolationsSweepStage] = []
+        stages: list[p.Infra.ViolationsSweepStage] = []
         failed_verb: str | None = None
         repair_failure: p.Result[bool] | None = None
         inventory = initial.plan if initial is not None else None
@@ -349,8 +349,8 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         project: Path,
         verb: str,
         *,
-        previous: m.Infra.ViolationsSweepSources | None = None,
-    ) -> tuple[m.Infra.ViolationsSweepStage, p.Result[bool]]:
+        previous: p.Infra.ViolationsSweepSources | None = None,
+    ) -> tuple[p.Infra.ViolationsSweepStage, p.Result[bool]]:
         """Invoke one canonical operation and preserve audit checks even on failure.
 
         Returns:
@@ -494,8 +494,8 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
     @staticmethod
     def _verify_entry_digests(
-        report: m.Infra.ModScanEvidence,
-        snapshot: m.Infra.ViolationsSweepSources,
+        report: p.Infra.ModScanEvidence,
+        snapshot: p.Infra.ViolationsSweepSources,
     ) -> p.Result[bool]:
         """Require every native finding to carry its authenticated source digest.
 
@@ -526,8 +526,8 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         root: Path,
         *,
         observe: bool = False,
-        previous: m.Infra.ViolationsSweepSources | None = None,
-    ) -> p.Result[m.Infra.ViolationsSweepSources]:
+        previous: p.Infra.ViolationsSweepSources | None = None,
+    ) -> p.Result[p.Infra.ViolationsSweepSources]:
         """Read the existing scan inventory without executing another native scan.
 
         Returns:
@@ -536,22 +536,22 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
         """
         inventory = cls._source_inventory(root)
         if inventory.failure:
-            return r[m.Infra.ViolationsSweepSources].from_failure(inventory)
+            return r[p.Infra.ViolationsSweepSources].from_failure(inventory)
         plan, targets, projects, declared = inventory.value
         paths, inventory_errors = cls._scan_source_paths(root, targets, plan)
         captured = cls._read_sources(tuple(sorted(paths)))
         if captured.failure:
-            return r[m.Infra.ViolationsSweepSources].from_failure(captured)
+            return r[p.Infra.ViolationsSweepSources].from_failure(captured)
         if not observe:
             validated = cls._validate_scan_sources(root, targets, captured.value, plan)
             if validated.failure:
-                return r[m.Infra.ViolationsSweepSources].from_failure(validated)
+                return r[p.Infra.ViolationsSweepSources].from_failure(validated)
         observed = u.Infra.git_submodule_declarations(root)
         if observed.failure or declared != observed.value:
             return (
-                r[m.Infra.ViolationsSweepSources].from_failure(observed)
+                r[p.Infra.ViolationsSweepSources].from_failure(observed)
                 if observed.failure
-                else r[m.Infra.ViolationsSweepSources].fail(
+                else r[p.Infra.ViolationsSweepSources].fail(
                     "violations sweep project topology changed during observation",
                 )
             )
@@ -568,7 +568,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
                 if state.content is not None
             },
         )
-        return r[m.Infra.ViolationsSweepSources].ok(
+        return r[p.Infra.ViolationsSweepSources].ok(
             cls._observed_snapshot(root, snapshot, previous) if observe else snapshot,
         )
 
@@ -580,7 +580,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
             m.Infra.CodemodRulePlan,
             Sequence[str],
             tuple[Path, ...],
-            tuple[m.Infra.GitSubmoduleDeclaration, ...],
+            tuple[p.Infra.GitSubmoduleDeclaration, ...],
         ]
     ]:
         """Elect native scope and topology before capturing any file proof.
@@ -594,7 +594,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
                 m.Infra.CodemodRulePlan,
                 Sequence[str],
                 tuple[Path, ...],
-                tuple[m.Infra.GitSubmoduleDeclaration, ...],
+                tuple[p.Infra.GitSubmoduleDeclaration, ...],
             ]
         ]
         with u.Infra.codemod_workspace_snapshot(root) as snapshot:
@@ -628,31 +628,31 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
     @staticmethod
     def _read_sources(
         paths: Sequence[Path],
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[tuple[p.Cli.AtomicFileState, ...]]:
         """Capture required inputs through the canonical authenticated file owner.
 
         Returns:
             Actual binary states; absent or invalid inputs preserve their failure.
 
         """
-        states: list[m.Cli.AtomicFileState] = []
+        states: list[p.Cli.AtomicFileState] = []
         for path in paths:
             state = u.Cli.atomic_read_binary_file_state(path, required=True)
             if state.failure:
-                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
+                return r[tuple[p.Cli.AtomicFileState, ...]].from_failure(state)
             if state.value.content is None:
-                return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                return r[tuple[p.Cli.AtomicFileState, ...]].fail(
                     f"violations sweep required scan source absent: {path}",
                 )
             states.append(state.value)
-        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
+        return r[tuple[p.Cli.AtomicFileState, ...]].ok(tuple(states))
 
     @staticmethod
     def _observed_snapshot(
         root: Path,
-        snapshot: m.Infra.ViolationsSweepSources,
-        previous: m.Infra.ViolationsSweepSources | None,
-    ) -> m.Infra.ViolationsSweepSources:
+        snapshot: p.Infra.ViolationsSweepSources,
+        previous: p.Infra.ViolationsSweepSources | None,
+    ) -> p.Infra.ViolationsSweepSources:
         """Observe native AST, text and Ruff through their existing owners.
 
         Returns:
@@ -660,7 +660,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
 
         """
         ast_scan = (
-            r[m.Infra.ModScanEvidence].ok(previous.ast_report)
+            r[p.Infra.ModScanEvidence].ok(previous.ast_report)
             if previous is not None
             and previous.ast_report is not None
             and previous.sha256 == snapshot.sha256
@@ -721,9 +721,9 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
     def _run_rule_audit(
         self,
         project: Path,
-        inventory: m.Infra.CodemodRulePlan | None,
-        initial: m.Infra.ViolationsSweepSources | None,
-    ) -> tuple[m.Infra.ViolationsSweepStage, p.Result[bool]]:
+        inventory: p.Infra.CodemodRulePlan | None,
+        initial: p.Infra.ViolationsSweepSources | None,
+    ) -> tuple[p.Infra.ViolationsSweepStage, p.Result[bool]]:
         """Read the complete elected catalog for one repository, without Make effects.
 
         Returns:
@@ -768,7 +768,7 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
     def _scan_source_paths(
         root: Path,
         targets: Sequence[str],
-        plan: m.Infra.CodemodRulePlan,
+        plan: p.Infra.CodemodRulePlan,
     ) -> tuple[set[Path], Sequence[str]]:
         """Inventory sources and all declared executable catalog inputs.
 
@@ -822,8 +822,8 @@ class FlextInfraRefactorViolationsSweep(s[m.Infra.ViolationsSweepReport]):
     def _validate_scan_sources(
         root: Path,
         targets: Sequence[str],
-        states: Sequence[m.Cli.AtomicFileState],
-        plan: m.Infra.CodemodRulePlan,
+        states: Sequence[p.Cli.AtomicFileState],
+        plan: p.Infra.CodemodRulePlan,
     ) -> p.Result[bool]:
         """Authenticate unchanged scan inventory and source snapshots.
 

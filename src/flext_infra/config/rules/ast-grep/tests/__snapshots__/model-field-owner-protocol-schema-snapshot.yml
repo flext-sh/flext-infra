@@ -1,0 +1,80 @@
+id: model-field-owner-protocol-schema
+snapshots:
+  ? |
+    class FlextInfraModelsCheck:
+        class Plan(FlextInfraModelsBase.FrozenModel):
+            item: FlextInfraModelsCheck.Issue
+  : fixed: |
+      class FlextInfraModelsCheck:
+          class Plan(FlextInfraModelsBase.FrozenModel):
+              item: Annotated[p.Infra.Issue, t.schema_for_model(FlextInfraModelsCheck.Issue)]
+    labels:
+    - source: FlextInfraModelsCheck.Issue
+      style: primary
+      start: 93
+      end: 120
+    - source: (FlextInfraModelsBase.FrozenModel)
+      style: secondary
+      start: 43
+      end: 77
+    - source: |-
+        class Plan(FlextInfraModelsBase.FrozenModel):
+                item: FlextInfraModelsCheck.Issue
+      style: secondary
+      start: 33
+      end: 120
+    - source: 'item: FlextInfraModelsCheck.Issue'
+      style: secondary
+      start: 87
+      end: 120
+    - source: 'item: FlextInfraModelsCheck.Issue'
+      style: secondary
+      start: 87
+      end: 120
+    - source: 'item: FlextInfraModelsCheck.Issue'
+      style: secondary
+      start: 87
+      end: 120
+    - source: FlextInfraModelsCheck.Issue
+      style: secondary
+      start: 93
+      end: 120
+  ? |
+    class FlextInfraModelsCheck:
+        class Plan(FlextInfraModelsBase.FrozenModel):
+            items: tuple[FlextInfraModelsCensus.Object, ...]
+  : fixed: |
+      class FlextInfraModelsCheck:
+          class Plan(FlextInfraModelsBase.FrozenModel):
+              items: tuple[Annotated[p.Infra.Object, t.schema_for_model(FlextInfraModelsCensus.Object)], ...]
+    labels:
+    - source: FlextInfraModelsCensus.Object
+      style: primary
+      start: 100
+      end: 129
+    - source: (FlextInfraModelsBase.FrozenModel)
+      style: secondary
+      start: 43
+      end: 77
+    - source: |-
+        class Plan(FlextInfraModelsBase.FrozenModel):
+                items: tuple[FlextInfraModelsCensus.Object, ...]
+      style: secondary
+      start: 33
+      end: 135
+    - source: 'items: tuple[FlextInfraModelsCensus.Object, ...]'
+      style: secondary
+      start: 87
+      end: 135
+    - source: 'items: tuple[FlextInfraModelsCensus.Object, ...]'
+      style: secondary
+      start: 87
+      end: 135
+    - source: 'items: tuple[FlextInfraModelsCensus.Object, ...]'
+      style: secondary
+      start: 87
+      end: 135
+    - source: tuple[FlextInfraModelsCensus.Object, ...]
+      style: secondary
+      start: 94
+      end: 135

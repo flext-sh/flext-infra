@@ -1,0 +1,39 @@
+id: ban-sys-exit-call-without-cli-binding
+snapshots:
+  "from flext_cli import cli\n\nsys.exit(\"configuration is invalid\")\n":
+    labels:
+    - source: sys.exit("configuration is invalid")
+      style: primary
+      start: 27
+      end: 63
+    - source: "\"configuration is invalid\""
+      style: secondary
+      start: 36
+      end: 62
+    - source: "\"configuration is invalid\""
+      style: secondary
+      start: 36
+      end: 62
+  "import sys\n\nsys.exit(1)\n":
+    labels:
+    - source: sys.exit(1)
+      style: primary
+      start: 12
+      end: 23
+    - source: |
+        import sys
+        
+        sys.exit(1)
+      style: secondary
+      start: 0
+      end: 24
+  sys.exit():
+    labels:
+    - source: sys.exit()
+      style: primary
+      start: 0
+      end: 10
+    - source: sys.exit()
+      style: secondary
+      start: 0
+      end: 10

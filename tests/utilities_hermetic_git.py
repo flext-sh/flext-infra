@@ -23,11 +23,11 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from flext_infra import config, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, t, tm
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
+from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
+from tests.utilities_toml import TestsFlextInfraUtilitiesToml
 
 
-class TestsFlextInfraUtilitiesHermeticGitMixin:
+class TestsFlextInfraUtilitiesHermeticGit:
     """Build and route the fixture provider through local Git mirrors."""
 
     @staticmethod
@@ -134,12 +134,8 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
             },
         }
         sources: MutableMapping[str, tuple[str, str, str]] = {}
-        for package in TestsFlextInfraUtilitiesTomlMixin.toml_tables_at(
-            lock, "package"
-        ):
-            source = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
-                package.get("source")
-            )
+        for package in TestsFlextInfraUtilitiesToml.toml_tables_at(lock, "package"):
+            source = TestsFlextInfraUtilitiesToml.toml_mapping(package.get("source"))
             locator = source.get("git")
             if isinstance(locator, str):
                 parts = urlsplit(locator)
@@ -168,7 +164,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
                     ).branch,
                     head,
                 )
-        infra = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+        infra = TestsFlextInfraUtilitiesProjectFixture.repository_ref(
             config.Infra.codegen.infra_repository.distribution,
         ).url
         head = tm.ok(
@@ -179,7 +175,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         ).strip()
         sources[infra] = (
             infra,
-            TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch(),
+            TestsFlextInfraUtilitiesProjectFixture.provider_branch(),
             head,
         )
         return tuple(sources.values())
@@ -258,7 +254,7 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         workspace = tm.ok(
             FlextInfraWorkspaceDetector.load_workspace_spec(context.runtime_root),
         )
-        origins = TestsFlextInfraUtilitiesHermeticGitMixin._commit_origins(
+        origins = TestsFlextInfraUtilitiesHermeticGit._commit_origins(
             (
                 project_root,
                 context.runtime_root,
@@ -370,4 +366,4 @@ class TestsFlextInfraUtilitiesHermeticGitMixin:
         return routed
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesHermeticGitMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesHermeticGit"]

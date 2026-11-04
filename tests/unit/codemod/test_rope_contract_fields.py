@@ -700,7 +700,7 @@ class TestsFlextInfraRopeFieldContracts:
     ) -> None:
         """Real outer model presets and utilities retain their inherited contracts."""
         source = (
-            f"from {namespace} import m, t, u\n"
+            f"from {namespace} import m, p, t, u\n"
             "class Payload(m.BaseModel):\n"
             "    values: list[dict[str, int | None]] = m.Field(default_factory=list)\n"
             "first, second = Payload(), Payload()\n"

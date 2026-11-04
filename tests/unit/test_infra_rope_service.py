@@ -467,6 +467,19 @@ class TestsFlextInfraInfraRopeService:
                     )
                     tm.not_none(dependency.get_attribute("FlextModelsDemo"))
 
+        with flext_infra.infra.rope_workspace(repository_root, monorepo_root) as rope:
+            source_module = u.Infra.resolve_pymodule(
+                rope.rope_project,
+                tm.not_none(rope.resource(module_path)),
+            )
+            tm.that(
+                rope.rope_project.get_module(f"{package_root.name}.{module_path.stem}")
+                is source_module,
+                eq=True,
+            )
+            tm.that(rope.rope_project.source_owned(module_path), eq=True)
+            tm.that(rope.module(sibling_module_path), none=True)
+
     def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
         """Without a workspace context, sibling projects remain outside Rope."""
         projects_root = tmp_path / "projects"

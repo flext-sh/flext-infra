@@ -16,14 +16,87 @@ from flext_cli import u
 
 from flext_infra import c, m, p, r
 from flext_infra._utilities import (
-    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRefactor,
 )
 
 
-class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirectory):
+class FlextInfraUtilitiesIterationWorkspace:
     """Static helpers for discovering Python files across workspace projects."""
+
+    @staticmethod
+    def repository_operation_applicability(
+        target: p.Infra.WorkspaceOperationTarget,
+        *,
+        mutating: bool,
+    ) -> p.Result[p.Infra.WorkspaceOperationApplicability]:
+        """Read the target's own policy without reintroducing a workspace roster.
+
+        Returns:
+            The target's own applicability policy.
+
+        """
+        result_type = r[p.Infra.WorkspaceOperationApplicability]
+        if target.managed is False:
+            return result_type.ok(
+                m.Infra.WorkspaceOperationApplicability(
+                    applicable=False,
+                    reason="Git declaration disables workspace management",
+                ),
+            )
+        if not target.root.is_dir():
+            return result_type.fail(
+                f"required operation root is missing: {target.root}",
+            )
+        if not (target.root / c.PYPROJECT_FILENAME).is_file():
+            return result_type.ok(
+                m.Infra.WorkspaceOperationApplicability(
+                    applicable=False,
+                    reason="Repository declares no pyproject manifest",
+                ),
+            )
+        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
+            target.root,
+        )
+        if loaded.failure:
+            return result_type.from_failure(loaded)
+        repository = loaded.value.spec.repository
+        declared = FlextInfraUtilitiesIterationWorkspace._declared_applicability(
+            repository,
+            mutating=mutating,
+        )
+        if declared is not None:
+            return result_type.ok(declared)
+        return result_type.ok(m.Infra.WorkspaceOperationApplicability(applicable=True))
+
+    @staticmethod
+    def _declared_applicability(
+        repository: p.Infra.RepositoryDeltaSpec,
+        *,
+        mutating: bool,
+    ) -> p.Infra.WorkspaceOperationApplicability | None:
+        """Read the repository's own declaration for an inapplicable target.
+
+        Args:
+            repository: The loaded repository declaration of the target.
+            mutating: Whether the requested operation mutates sources.
+
+        Returns:
+            The declared inapplicability, or None when the target applies.
+
+        """
+        if repository.codegen == c.Infra.CodegenKind.NONE:
+            return m.Infra.WorkspaceOperationApplicability(
+                applicable=False,
+                reason="Repository declaration disables code generation",
+            )
+        if mutating and repository.read_only:
+            return m.Infra.WorkspaceOperationApplicability(
+                applicable=False,
+                reason="Repository declaration is read-only",
+            )
+        return None
 
     @staticmethod
     def bootstrap_operation_report_shell_literal() -> str:
@@ -93,7 +166,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         if discovered.failure:
             return r[Sequence[Path]].from_failure(discovered)
         roots = tuple(target.root for target in discovered.value)
-        receipts: list[m.Infra.WorkspaceOperationReceipt] = []
+        receipts: list[p.Infra.WorkspaceOperationReceipt] = []
         files: list[Path] = []
         first_failure: p.Result[Sequence[Path]] | None = None
         for target in discovered.value:
@@ -138,7 +211,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
 
     @staticmethod
     def _operation_target_outcome(
-        target: m.Infra.WorkspaceOperationTarget,
+        target: p.Infra.WorkspaceOperationTarget,
         operation: str,
         task: Callable[[Path], p.Result[Sequence[Path]]],
         *,
@@ -160,7 +233,7 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
         repository_root = target.root
         start = time.monotonic()
         applicability = (
-            FlextInfraUtilitiesProjectDiscovery.repository_operation_applicability(
+            FlextInfraUtilitiesIterationWorkspace.repository_operation_applicability(
                 target,
                 mutating=mutating,
             )

@@ -11,7 +11,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import infra, m, p, u
-from tests import c, tm
+from tests import c, p, tm
 
 
 @dataclasses.dataclass(frozen=True)
@@ -54,7 +54,7 @@ class TestsFlextInfraPrivateImportCutoverSupport:
     """Plan and render private-import cutovers only through ``u.Infra``."""
 
     @staticmethod
-    def _finding(file_path: Path, text: str) -> m.Infra.ModOccurrence:
+    def _finding(file_path: Path, text: str) -> p.Infra.ModOccurrence:
         """Build one authenticated-shape semantic finding.
 
         Returns:

@@ -42,13 +42,16 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
         )[0]
         tm.fail("pip install" in environment)
         tm.fail("sync --project" in environment)
-        lifecycle = rendered.split("_upg_lifecycle:", 1)[1].split(
-            "\n_upg_install_runtime:", 1
-        )[0]
+        # The member group is locked by the native resolver before the runtime
+        # is installed and before any flext_infra command imports the package.
+        lifecycle = rendered.split("\n_upg_lifecycle:", 1)[1].split("\n\n", 1)[0]
+        native_lock = lifecycle.index("$(UV) lock ")
         tm.that(
-            lifecycle.index("--what pyproject") < lifecycle.index("lock --project"),
-            eq=True,
+            lifecycle[native_lock:].split("\n", 1)[0],
+            has='--project "$(RUNTIME_ROOT)"',
         )
+        tm.that(native_lock < lifecycle.index("$(INSTALL_RUNTIME_RECIPE)"), eq=True)
+        tm.that(native_lock < lifecycle.index("$(PROJECT_FLEXT_INFRA)"), eq=True)
         tm.fail("PROJECT_INFRA_PYTHONPATH" in rendered)
 
     @staticmethod

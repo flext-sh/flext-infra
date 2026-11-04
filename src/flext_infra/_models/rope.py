@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
@@ -20,7 +20,7 @@ from flext_infra._models._codegen import (
 )
 
 
-class FlextInfraModelsRope:
+class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
     """Rope operation result models — accessed via m.Infra.Rope.*."""
 
     class RopeProjectElection(m.FrozenModel, str_strip_whitespace=False):
@@ -42,10 +42,12 @@ class FlextInfraModelsRope:
     class RopeRestructureRequest(FlextInfraModelsBase.FrozenArbitrary):
         """One complete native restructuring operation and its admitted inputs."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
 
         pattern: t.NonEmptyStr = m.Field(description="Native Rope match template")
-        goal: t.NonEmptyStr = m.Field(description="Native Rope replacement template")
+        goal: str = m.Field(
+            description="Native Rope replacement template; empty removes the match"
+        )
         arguments: Mapping[str, str | Sequence[str]] = m.Field(
             description="Native wildcard constraints and exact identity alternatives",
         )
@@ -181,6 +183,81 @@ class FlextInfraModelsRope:
             m.Field(description="Fully qualified base spelling when resolved"),
         ] = ""
 
+    class RopeAttributeReadProof(m.ContractModel):
+        """Native, snapshot-bound evidence for one effect-free attribute read."""
+
+        source_path: Annotated[Path, m.Field(description="Captured source file")]
+        source_sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description="Digest of the complete captured source file",
+            ),
+        ]
+        start_byte: Annotated[
+            int,
+            m.Field(ge=0, description="Inclusive source UTF-8 byte position"),
+        ]
+        end_byte: Annotated[
+            int,
+            m.Field(gt=0, description="Exclusive source UTF-8 byte position"),
+        ]
+        expression: Annotated[
+            str,
+            m.Field(min_length=1, description="Native AST dump for the read"),
+        ]
+        access: Annotated[
+            Literal["module", "class", "instance"],
+            m.Field(description="Native receiver access category"),
+        ]
+        base: Annotated[
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+            ],
+            m.Field(description="Native module or class identity of the receiver"),
+        ]
+        accessor: Annotated[
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+            ],
+            m.Field(description="Native __getattribute__ declaration identity"),
+        ]
+        member: Annotated[
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+            ],
+            m.Field(description="Native owner and identity of the requested member"),
+        ]
+        descriptor: Annotated[
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+            ]
+            | None,
+            m.Field(
+                description="Builtin descriptor identity, or none for a plain value"
+            ),
+        ] = None
+        project: t.Port[p.Infra.RopeProject] = m.Field(
+            description="Exact captured native project that resolved the identities",
+        )
+        native_base: t.Port[p.Infra.RopePyName] = m.Field(
+            description="Native Rope binding of the attribute receiver type",
+        )
+        native_accessor: t.Port[p.Infra.RopePyName] = m.Field(
+            description="Native Rope binding of the proven builtin getter",
+        )
+        native_member: t.Port[p.Infra.RopePyName] = m.Field(
+            description="Native Rope binding selected by the captured C3 resolver",
+        )
+        native_descriptor: t.Port[p.Infra.RopePyName] | None = m.Field(
+            default=None,
+            description="Native Rope binding of the builtin descriptor, if present",
+        )
+
     class SourceClassDefinition(m.ContractModel):
         """One source declaration, preserving ordered bases and member shadowing."""
 
@@ -189,11 +266,24 @@ class FlextInfraModelsRope:
             m.Field(description="Qualified identity of the declared class"),
         ]
         bases: Annotated[
-            tuple[FlextInfraModelsRope.SourceClassReference, ...],
+            tuple[
+                Annotated[
+                    p.Infra.SourceClassReference,
+                    t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered base references of the declaration"),
         ]
         members: Annotated[
-            Mapping[str, FlextInfraModelsRope.SourceClassReference | None],
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.SourceClassReference,
+                    t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                ]
+                | None,
+            ],
             m.Field(description="Member name to shadowing reference mapping"),
         ]
 
@@ -211,7 +301,7 @@ class FlextInfraModelsRope:
             m.Field(description="Qualified module name under inventory"),
         ]
         provider: Annotated[
-            m.InstanceOf[p.Infra.RopeSourceModule],
+            t.Port[p.Infra.RopeSourceModule],
             m.Field(description="Native provider elected for the captured source"),
         ]
         package: Annotated[
@@ -231,9 +321,24 @@ class FlextInfraModelsRope:
                 description="Whether conditional bindings may degrade to unknown",
             ),
         ] = False
+        source_owned: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether the scanned project's elected source roots own the "
+                    "module; only owned modules carry the explicit-binding law"
+                ),
+            ),
+        ]
         definitions: Annotated[
             m.InstanceOf[
-                MutableMapping[str, FlextInfraModelsRope.SourceClassDefinition]
+                MutableMapping[
+                    str,
+                    Annotated[
+                        p.Infra.SourceClassDefinition,
+                        t.schema_for_model(FlextInfraModelsRope.SourceClassDefinition),
+                    ],
+                ]
             ],
             m.Field(
                 description="Cross-module definition inventory the walk extends",
@@ -241,7 +346,14 @@ class FlextInfraModelsRope:
         ]
         lexical: Annotated[
             m.InstanceOf[
-                MutableMapping[str, FlextInfraModelsRope.SourceClassReference | None]
+                MutableMapping[
+                    str,
+                    Annotated[
+                        p.Infra.SourceClassReference,
+                        t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                    ]
+                    | None,
+                ]
             ],
             m.Field(
                 description="Module-scope bindings visible to every nested base",
@@ -410,7 +522,16 @@ class FlextInfraModelsRope:
             m.Field(description="Source captured at scan; restored on failed gates"),
         ]
         matches: Annotated[
-            Sequence[tuple[FlextInfraModelsRope.SymbolInfo, str, str]],
+            Sequence[
+                tuple[
+                    Annotated[
+                        p.Infra.SymbolInfo,
+                        t.schema_for_model(FlextInfraModelsRope.SymbolInfo),
+                    ],
+                    str,
+                    str,
+                ]
+            ],
             m.Field(description="Matched symbol, canonical reference, and raw value"),
         ]
 
@@ -418,7 +539,13 @@ class FlextInfraModelsRope:
         """Unified semantic snapshot for one Rope module analysis pass."""
 
         class_infos: Annotated[
-            tuple[FlextInfraModelsRope.ClassInfo, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ClassInfo,
+                    t.schema_for_model(FlextInfraModelsRope.ClassInfo),
+                ],
+                ...,
+            ],
             m.Field(description="Local classes discovered in the module"),
         ] = ()
         declared_imports: Annotated[
@@ -428,195 +555,6 @@ class FlextInfraModelsRope:
         semantic_imports: Annotated[
             Mapping[str, str],
             m.Field(description="Resolved import targets by name"),
-        ]
-
-    class RopeModuleIndexEntry(m.ContractModel):
-        """Generic Rope-backed index entry for one Python module resource."""
-
-        file_path: Annotated[Path, m.Field(description="Absolute filesystem path")]
-        resource_path: Annotated[
-            str,
-            m.Field(description="Rope resource path relative to the project root"),
-        ]
-        module_name: Annotated[
-            str,
-            m.Field(description="Fully-qualified Rope module name for this file"),
-        ]
-        package_name: Annotated[
-            str,
-            m.Field(
-                description="Importable package resolved for the containing directory",
-            ),
-        ]
-        package_dir: Annotated[
-            Path,
-            m.Field(description="Absolute package directory for this module"),
-        ]
-        project_root: Annotated[
-            Path | None,
-            m.Field(
-                description="Owning project root resolved from the Rope source folder",
-            ),
-        ] = None
-        is_package_init: Annotated[
-            bool,
-            m.Field(description="Whether this resource is the package __init__.py"),
-        ] = False
-
-    class RopePackageIndexEntry(m.ContractModel):
-        """Generic Rope-backed package aggregation entry."""
-
-        package_dir: Annotated[
-            Path,
-            m.Field(description="Absolute package directory represented by this entry"),
-        ]
-        init_path: Annotated[
-            Path,
-            m.Field(description="Expected __init__.py path for this package directory"),
-        ]
-        package_name: Annotated[
-            str,
-            m.Field(
-                description="Importable package name, or empty when non-importable",
-            ),
-        ]
-        project_root: Annotated[
-            Path | None,
-            m.Field(
-                description="Owning project root resolved for this package directory",
-            ),
-        ] = None
-        modules: Annotated[
-            tuple[FlextInfraModelsRope.RopeModuleIndexEntry, ...],
-            m.Field(
-                description=(
-                    "Direct Python module resources that belong to this package"
-                ),
-            ),
-        ] = ()
-        direct_child_dirs: Annotated[
-            tuple[Path, ...],
-            m.Field(
-                description="Direct child package directories discovered from Rope",
-            ),
-        ] = ()
-        descendant_child_dirs: Annotated[
-            tuple[Path, ...],
-            m.Field(
-                description="All descendant package directories discovered from Rope",
-            ),
-        ] = ()
-
-    class RopeWorkspaceIndex(m.ContractModel):
-        """Generic Rope-backed workspace index for package planning."""
-
-        repository_root: Annotated[
-            Path,
-            m.Field(
-                description="Absolute repository root used to open the Rope project",
-            ),
-        ]
-        package_dirs: Annotated[
-            tuple[Path, ...],
-            m.Field(
-                description="All package directories discovered from Rope resources",
-            ),
-        ] = ()
-        packages_by_dir: Annotated[
-            Mapping[str, FlextInfraModelsRope.RopePackageIndexEntry],
-            m.Field(description="Package entries keyed by absolute directory path"),
-        ]
-        modules_by_path: Annotated[
-            Mapping[str, FlextInfraModelsRope.RopeModuleIndexEntry],
-            m.Field(description="Module entries keyed by absolute file path"),
-        ]
-        package_dir_by_name: Annotated[
-            Mapping[str, Path],
-            m.Field(description="Importable package directory keyed by package name"),
-        ]
-        project_package_by_root: Annotated[
-            Mapping[str, str],
-            m.Field(
-                description="Canonical source package name keyed by project root path",
-            ),
-        ]
-
-    class LazyInitRun(m.ArbitraryTypesModel):
-        """One repository's lazy-init planning run over its source inventory."""
-
-        root: Annotated[Path, m.Field(description="Repository root being planned")]
-        scoped: Annotated[
-            bool,
-            m.Field(description="Whether conformance selected the repository roots"),
-        ]
-        index: Annotated[
-            FlextInfraModelsRope.RopeWorkspaceIndex,
-            m.Field(description="The repository's shared source inventory"),
-        ]
-        model: Annotated[
-            FlextInfraModelsCodegenLazyInit.PythonModelRun,
-            m.Field(description="The run's parse-once static Python model"),
-        ]
-        plans: Annotated[
-            t.Port[dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]],
-            m.Field(exclude=True, description="Decided plans, children first"),
-        ]
-        contexts: Annotated[
-            t.Port[dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPackageContext]],
-            m.Field(exclude=True, description="Package contexts by directory"),
-        ]
-        parents: Annotated[
-            t.Port[dict[Path, Sequence[str]]],
-            m.Field(exclude=True, description="Facade parents by package directory"),
-        ]
-        declared: Annotated[
-            t.Port[dict[str, frozenset[str]]],
-            m.Field(exclude=True, description="Declared facade letters by package"),
-        ]
-        packages: Annotated[
-            t.Port[dict[Path, str]],
-            m.Field(exclude=True, description="Declared public package by project"),
-        ]
-        collisions: Annotated[
-            t.Port[list[str]],
-            m.Field(exclude=True, description="Ambiguous export ownership findings"),
-        ]
-
-    class RopeProjectLayout(m.ContractModel):
-        """Canonical project layout derived once for Rope-backed codegen flows."""
-
-        project_root: Annotated[Path, m.Field(description="Resolved project root path")]
-        project_name: Annotated[str, m.Field(description="Canonical project name")]
-        package_name: Annotated[str, m.Field(description="Primary Python package name")]
-        package_alias: Annotated[
-            str,
-            m.Field(description="Canonical root alias derived from the package"),
-        ]
-        class_stem: Annotated[
-            str,
-            m.Field(description="Canonical facade class stem derived from the project"),
-        ]
-        src_dir: Annotated[
-            Path,
-            m.Field(description="Resolved source directory for the project"),
-        ]
-        package_dir: Annotated[
-            Path,
-            m.Field(description="Resolved package directory for the project"),
-        ]
-        init_path: Annotated[
-            Path,
-            m.Field(description="Resolved package __init__.py path"),
-        ]
-        runtime_aliases: Annotated[
-            tuple[str, ...],
-            m.Field(
-                description="Canonical runtime aliases published by the package root",
-            ),
-        ] = ()
-        repository_namespace_packages: Annotated[
-            tuple[str, ...],
-            m.Field(description="Independent packages from the captured declaration"),
         ]
 
     class RopeModuleConvention(m.ContractModel):
@@ -637,15 +575,27 @@ class FlextInfraModelsRope:
             m.Field(description="Resolved package directory containing the module"),
         ]
         package_context: Annotated[
-            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
+            Annotated[
+                p.Infra.LazyInitPackageContext,
+                t.schema_for_model(
+                    FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
+                ),
+            ],
             m.Field(description="Resolved lazy-init package context for the module"),
         ]
         module_policy: Annotated[
-            FlextInfraModelsCodegenFix.NamespaceModulePolicy,
+            Annotated[
+                p.Infra.NamespaceModulePolicy,
+                t.schema_for_model(FlextInfraModelsCodegenFix.NamespaceModulePolicy),
+            ],
             m.Field(description="Canonical module policy derived for the module"),
         ]
         project_layout: Annotated[
-            FlextInfraModelsRope.RopeProjectLayout | None,
+            Annotated[
+                p.Infra.RopeProjectLayout,
+                t.schema_for_model(FlextInfraModelsRope.RopeProjectLayout),
+            ]
+            | None,
             m.Field(
                 description="Resolved project layout, when the module belongs to one",
             ),
@@ -690,7 +640,10 @@ class FlextInfraModelsRope:
             m.Field(description="Resolved project name for census attribution"),
         ]
         convention: Annotated[
-            FlextInfraModelsRope.RopeModuleConvention,
+            Annotated[
+                p.Infra.RopeModuleConvention,
+                t.schema_for_model(FlextInfraModelsRope.RopeModuleConvention),
+            ],
             m.Field(description="Module convention metadata for tier/facade checks"),
         ]
         scope_chain: Annotated[
@@ -724,8 +677,50 @@ class FlextInfraModelsRope:
         # Policy stays in config.Infra;
         # this field-only model retains only materialized session state.
         workspace_index: Annotated[
-            FlextInfraModelsRope.RopeWorkspaceIndex,
+            Annotated[
+                p.Infra.RopeWorkspaceIndex,
+                t.schema_for_model(FlextInfraModelsRope.RopeWorkspaceIndex),
+            ],
             m.Field(description="Materialized workspace index for the open session"),
+        ]
+
+    class FacadeCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One rendering's facade census, the shared facts of the facade rules.
+
+        Computed once per generated rendering from its injected snapshot and
+        bound to that snapshot: the renderers reject a census of any other
+        snapshot or project.
+        """
+
+        snapshot: Annotated[
+            t.Port[p.Infra.WorkspaceSnapshot],
+            m.Field(exclude=True, description="The snapshot the census was read from"),
+        ]
+        project: Annotated[
+            Path, m.Field(description="Absolute project root of the census")
+        ]
+        lineage: Annotated[
+            t.StrTuple,
+            m.Field(description="Facade-publishing root packages of the lineage"),
+        ]
+        references: Annotated[
+            Mapping[str, frozenset[str]],
+            m.Field(description="Foreign letter.member references by owner letter"),
+        ]
+        exposed: Annotated[
+            Mapping[str, frozenset[str]],
+            m.Field(description="Own duplicate member names by declaring letter"),
+        ]
+        missing: Annotated[
+            Mapping[str, frozenset[str]],
+            m.Field(description="Misplaced member names by declaring letter"),
+        ]
+        claims: Annotated[
+            t.Port[t.Infra.FacadeComponentClaims],
+            m.Field(
+                exclude=True,
+                description="Component methods with their composing facade targets",
+            ),
         ]
 
 

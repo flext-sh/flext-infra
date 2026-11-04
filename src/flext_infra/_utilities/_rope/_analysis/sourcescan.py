@@ -18,10 +18,10 @@ from typing import ClassVar
 from rope.base import ast
 
 from flext_infra import c, p, t
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisSourceScan:
@@ -98,8 +98,15 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             Returns:
                 The parsed expression node.
 
+            Raises:
+                TypeError: If rope's untyped parser returns no expression tree.
+
             """
-            return ast.parse(source, mode="eval").body
+            tree = ast.parse(source, mode="eval")
+            if not isinstance(tree, ast.Expression):  # untyped rope boundary
+                msg = "rope parser returned no expression tree"
+                raise TypeError(msg)
+            return tree.body
 
         @staticmethod
         def unparse(node: t.Infra.RopeAstNode) -> str:
@@ -140,13 +147,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             Returns:
                 The module with every missing location filled.
 
-            Raises:
-                TypeError: The node is not a native AST declaration.
-
             """
-            if not isinstance(module, ast.AST):
-                msg = "location fixing requires a native AST node"
-                raise TypeError(msg)
             return ast.fix_missing_locations(module)
 
         @staticmethod

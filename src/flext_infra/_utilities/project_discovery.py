@@ -32,97 +32,29 @@ class FlextInfraUtilitiesProjectDiscovery(
 ):
     """Static helpers for discovering governed project roots in a workspace."""
 
-    @staticmethod
-    def repository_operation_applicability(
-        target: m.Infra.WorkspaceOperationTarget,
-        *,
-        mutating: bool,
-    ) -> p.Result[m.Infra.WorkspaceOperationApplicability]:
-        """Read the target's own policy without reintroducing a workspace roster.
-
-        Returns:
-            The target's own applicability policy.
-
-        """
-        result_type = r[m.Infra.WorkspaceOperationApplicability]
-        if target.managed is False:
-            return result_type.ok(
-                m.Infra.WorkspaceOperationApplicability(
-                    applicable=False,
-                    reason="Git declaration disables workspace management",
-                ),
-            )
-        if not target.root.is_dir():
-            return result_type.fail(
-                f"required operation root is missing: {target.root}",
-            )
-        if not (target.root / c.PYPROJECT_FILENAME).is_file():
-            return result_type.ok(
-                m.Infra.WorkspaceOperationApplicability(
-                    applicable=False,
-                    reason="Repository declares no pyproject manifest",
-                ),
-            )
-        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-            target.root,
-        )
-        if loaded.failure:
-            return result_type.from_failure(loaded)
-        repository = loaded.value.spec.repository
-        declared = FlextInfraUtilitiesProjectDiscovery._declared_applicability(
-            repository,
-            mutating=mutating,
-        )
-        if declared is not None:
-            return result_type.ok(declared)
-        return result_type.ok(m.Infra.WorkspaceOperationApplicability(applicable=True))
-
-    @staticmethod
-    def _declared_applicability(
-        repository: m.Infra.RepositoryDeltaSpec,
-        *,
-        mutating: bool,
-    ) -> m.Infra.WorkspaceOperationApplicability | None:
-        """Read the repository's own declaration for an inapplicable target.
-
-        Args:
-            repository: The loaded repository declaration of the target.
-            mutating: Whether the requested operation mutates sources.
-
-        Returns:
-            The declared inapplicability, or None when the target applies.
-
-        """
-        if repository.codegen == c.Infra.CodegenKind.NONE:
-            return m.Infra.WorkspaceOperationApplicability(
-                applicable=False,
-                reason="Repository declaration disables code generation",
-            )
-        if mutating and repository.read_only:
-            return m.Infra.WorkspaceOperationApplicability(
-                applicable=False,
-                reason="Repository declaration is read-only",
-            )
-        return None
-
     @classmethod
-    def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
+    def load_refactor_config(cls, repository_root: Path) -> p.Infra.RefactorConfigSpec:
         """Load declared refactor configuration, propagating invalid manifests.
 
         Returns:
             The resulting ``m.Infra.RefactorConfigSpec``.
 
         """
-        packaged = m.Infra.RefactorConfigSpec(
-            project_scan_dirs=config.Infra.source_scan.roots,
+        declared = (
+            FlextInfraUtilitiesProjectManagedArtifacts
+            .load_codegen_inputs(
+                repository_root,
+            )
+            .unwrap()
+            .spec.repository.refactor
         )
-        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-            repository_root,
-        ).unwrap()
-        repository = loaded.spec.repository
-        if repository.refactor is None:
-            return packaged
-        return repository.refactor
+        return (
+            declared
+            if declared is not None
+            else m.Infra.RefactorConfigSpec(
+                project_scan_dirs=config.Infra.source_scan.roots
+            )
+        )
 
     @classmethod
     def discover_project_roots(
@@ -250,13 +182,31 @@ class FlextInfraUtilitiesProjectDiscovery(
             ),
         )
 
+    @staticmethod
+    def _scenario_data_tree(relative: Path) -> bool:
+        """Whether a repository-relative path lies in a scenario project tree.
+
+        A scenario project tree is a directory beneath one of the declared
+        ``codegen.exclusions.scenario_data_roots``; a file placed directly in
+        the root is not inside a tree.
+
+        Returns:
+            True when the path is inside a directory below a scenario data root.
+
+        """
+        roots = config.Infra.codegen.exclusions.scenario_data_roots
+        return any(
+            relative.is_relative_to(root) and len(relative.relative_to(root).parts) > 1
+            for root in map(Path, roots)
+        )
+
     @classmethod
     def ast_grep_scan_targets(
         cls,
         repository_root: Path,
         *,
         source_files: Sequence[Path] | None = None,
-        refactor_config: m.Infra.RefactorConfigSpec | None = None,
+        refactor_config: p.Infra.RefactorConfigSpec | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> Sequence[str]:
         """Return one repository's Python sources and owned stub-policy paths.
@@ -266,6 +216,11 @@ class FlextInfraUtilitiesProjectDiscovery(
         and artifact outputs outside the rewrite inventory. The workspace
         coordinator visits declared members separately. Generated or retired
         owned typing paths remain detection inputs, never rewrite candidates.
+        A project tree beneath a declared scenario data root
+        (``codegen.exclusions.scenario_data_roots``) is scenario data, never
+        rule-catalog source: the catalog neither reports nor rewrites it
+        (operator ruling 2026-11-01). Modules directly in the root stay in the
+        inventory.
 
         Returns:
             Governed source and path-policy targets.
@@ -288,6 +243,7 @@ class FlextInfraUtilitiesProjectDiscovery(
                 owned_path_admission=True,
             )
             if not cls._is_nonparticipant(path, resolved_root, nonparticipants)
+            and not cls._scenario_data_tree(path.relative_to(resolved_root))
         }
         if source_files is not None:
             selected = {
@@ -544,6 +500,32 @@ class FlextInfraUtilitiesProjectDiscovery(
             and file_path.parent in {owner, owner / c.Infra.DEFAULT_SRC_DIR}
             else ""
         )
+
+    @staticmethod
+    def installed_module_name_for_file(file_path: Path) -> str:
+        """Return the absolute module name of a file outside the project root.
+
+        Installed distributions (site-packages) carry no Rope package identity:
+        ``provider.get_name()`` may come back empty, which collapses distinct
+        providers onto one identity. The name is derived from the filesystem —
+        the chain of directories that own an ``__init__.py`` above the file —
+        which is exactly the Python import identity of an installed module.
+
+        Returns:
+            The dotted module name, or "" when no package chain declares it.
+
+        """
+        parts: list[str] = []
+        current = file_path
+        if current.name not in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
+            parts.append(current.stem)
+            current = current.parent
+        while (current / c.Infra.INIT_PY).is_file() or (
+            current / c.Infra.INIT_PYI
+        ).is_file():
+            parts.append(current.name)
+            current = current.parent
+        return ".".join(reversed(parts))
 
     @classmethod
     def package_name_for_dir(
@@ -862,8 +844,8 @@ class FlextInfraUtilitiesProjectDiscovery(
 
     @staticmethod
     def mutable_flext_members(
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> Sequence[m.Infra.RepositoryRef]:
+        workspace: p.Infra.WorkspaceSpec,
+    ) -> Sequence[p.Infra.RepositoryRef]:
         """Return the declared members a workspace may settle or rewrite.
 
         A member qualifies by its declaration alone: an internal FLEXT kind,
@@ -1115,8 +1097,20 @@ class FlextInfraUtilitiesProjectDiscovery(
             The resulting ``Path``.
 
         """
-        return (
+        return cls.environment_python(
             cls.runtime_environment_dir(project_root, runtime_root=runtime_root)
+        )
+
+    @staticmethod
+    def environment_python(environment: Path) -> Path:
+        """Locate Python in one explicitly owned physical environment.
+
+        Returns:
+            Its native platform entrypoint, without changing environment ownership.
+
+        """
+        return (
+            environment
             / ("Scripts" if sys.platform == "win32" else "bin")
             / ("python.exe" if sys.platform == "win32" else c.Infra.PYTHON)
         )

@@ -17,7 +17,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import FlextInfraConfig, c, config, m, t
+from flext_infra import FlextInfraConfig, c, config, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesLintRecipes,
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @staticmethod
-    def lazy_init_project_root(run: m.Infra.PythonModelRun, pkg_dir: Path) -> Path:
+    def lazy_init_project_root(run: p.Infra.PythonModelRun, pkg_dir: Path) -> Path:
         """Return the nearest enclosing directory declaring a ``pyproject.toml``.
 
         Returns:
@@ -59,9 +59,9 @@ class FlextInfraUtilitiesLazyInitRender:
     @classmethod
     def lazy_init_render(
         cls,
-        plan: m.Infra.LazyInitPlan,
+        plan: p.Infra.LazyInitPlan,
         *,
-        model: m.Infra.PythonModelRun,
+        model: p.Infra.PythonModelRun,
         first_party: frozenset[str],
     ) -> str:
         """Render one written initializer.
@@ -111,9 +111,9 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @staticmethod
     def _lazy_init_docstring(
-        plan: m.Infra.LazyInitPlan,
+        plan: p.Infra.LazyInitPlan,
         project_root: Path,
-        model: m.Infra.PythonModelRun,
+        model: p.Infra.PythonModelRun,
     ) -> str:
         """Return the package docstring in the owning project's language.
 
@@ -143,7 +143,9 @@ class FlextInfraUtilitiesLazyInitRender:
             known = (
                 language,
                 FlextInfraUtilitiesLintRecipes.copyright_notice(
-                    project_root, source_project=view
+                    project_root,
+                    source_project=view,
+                    declaration_inputs=declaration,
                 ),
             )
             model.project_notices[project_root] = known
@@ -231,7 +233,7 @@ class FlextInfraUtilitiesLazyInitRender:
     @classmethod
     def _lazy_init_eager_bindings(
         cls,
-        plan: m.Infra.LazyInitPlan,
+        plan: p.Infra.LazyInitPlan,
         first_party: frozenset[str],
     ) -> str:
         """Render eager dunder bindings that run after the lazy installer.
@@ -366,10 +368,10 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @classmethod
     def _lazy_init_mapping(cls, entries: t.LazyAliasMap) -> str:
-        """Render the installer's immutable export mapping as Ruff formats it.
+        """Render the installer's literal export mapping as Ruff formats it.
 
         Returns:
-            The ``MappingProxyType`` argument line(s).
+            The mapping argument line(s).
 
         """
         ordered = sorted(entries, key=cls.lazy_init_export_key)
@@ -380,10 +382,10 @@ class FlextInfraUtilitiesLazyInitRender:
             for name in ordered
             for module, attr in (entries[name],)
         )
-        compact = f"    MappingProxyType({{{inner}}}),"
+        compact = f"    {{{inner}}},"
         if len(compact) <= cls.lazy_init_width():
             return compact
-        lines = ["    MappingProxyType({"]
+        lines = ["    {"]
         indent = "        "
         for name in ordered:
             module, attr = entries[name]
@@ -410,7 +412,7 @@ class FlextInfraUtilitiesLazyInitRender:
                     f"{indent}),",
                 )
             )
-        lines.append("    }),")
+        lines.append("    },")
         return "\n".join(lines)
 
     @staticmethod

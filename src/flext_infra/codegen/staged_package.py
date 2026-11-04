@@ -9,10 +9,13 @@ from __future__ import annotations
 import ast
 from collections import deque
 from collections.abc import Callable, Mapping, MutableMapping
+from functools import partial
 from os.path import commonpath
 from pathlib import Path
 from tempfile import TemporaryDirectory, gettempdir
 from types import MappingProxyType
+
+from flext_cli import settings
 
 from flext_infra import c, config, m, p, r, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -42,7 +45,7 @@ class FlextInfraStagedPackage:
         updates: Mapping[Path, str | None],
         validator: Callable[[Path, Mapping[Path, Path]], T],
         *,
-        options: m.Infra.CodegenSourcePreviewOptions | None = None,
+        options: p.Infra.StageSourceOptions | None = None,
     ) -> p.Result[T]:
         """Validate updates and retirements inside a candidate tree.
 
@@ -54,20 +57,12 @@ class FlextInfraStagedPackage:
             The validator outcome, or the first planning or staging failure.
 
         """
-        options = options or m.Infra.CodegenSourcePreviewOptions()
-        planned = self.plan_sources(
-            workspace,
-            updates,
-            options=m.Infra.StageSourceOptions(
-                workspaces=options.workspaces,
-                modes=options.modes,
-                inputs=options.inputs,
-                declared_files=options.declared_files,
-            ),
-        )
+        u.Cli.info("stage=source-preview-plan state=start")
+        planned = self.plan_sources(workspace, updates, options=options)
         if planned.failure:
             return r[T].from_failure(planned)
         plan = planned.value
+        u.Cli.info(f"stage=source-preview-plan state=end inputs={len(plan.inputs)}")
         lock = u.Infra.mutation_lock_path(plan.workspace)
         if lock.failure:
             return r[T].from_failure(lock)
@@ -78,9 +73,11 @@ class FlextInfraStagedPackage:
             prefix="flext-source-preview-", dir=lock.value.parent
         ) as directory:
             root = Path(directory)
+            u.Cli.info("stage=source-preview-materialize state=start")
             materialized = self.materialize_sources(plan, root)
             if materialized.failure:
                 return r[T].from_failure(materialized)
+            u.Cli.info("stage=source-preview-materialize state=end")
             return r[T].ok(
                 validator(
                     root,
@@ -93,7 +90,7 @@ class FlextInfraStagedPackage:
 
     @staticmethod
     def source_writes(
-        plan: m.Infra.StageSourcePlan,
+        plan: p.Infra.StageSourcePlan,
         view_root: Path,
     ) -> tuple[tuple[Path, bytes, int], ...]:
         """Materialize the same composition for preparation and admission.
@@ -128,7 +125,7 @@ class FlextInfraStagedPackage:
     @classmethod
     def prepare_sources(
         cls,
-        plan: m.Infra.StageSourcePlan,
+        plan: p.Infra.StageSourcePlan,
         preparer: Callable[[Path, Mapping[Path, Path]], p.Result[bool]],
     ) -> p.Result[Mapping[Path, str | None]]:
         """Prepare producer bytes in a temporary candidate tree.
@@ -191,7 +188,7 @@ class FlextInfraStagedPackage:
 
     @staticmethod
     def _prepared_candidate_updates(
-        plan: m.Infra.StageSourcePlan,
+        plan: p.Infra.StageSourcePlan,
         candidates: Mapping[Path, Path],
     ) -> p.Result[MutableMapping[Path, str | None]]:
         """Read the prepared candidate bytes back as updated live sources.
@@ -220,27 +217,65 @@ class FlextInfraStagedPackage:
     @classmethod
     def materialize_sources(
         cls,
-        plan: m.Infra.StageSourcePlan,
+        plan: p.Infra.StageSourcePlan,
         root: Path,
     ) -> p.Result[bool]:
         """Write the planned composition into an exclusively owned empty tree.
+
+        The tree is a throwaway candidate this invocation created empty and
+        owns exclusively, removed once its validator returns: every destination
+        is absent by construction, so a write carries no observed-state
+        precondition and skips the durability syncs
+        (``WriteDurability.SCRATCH``). Each write keeps its atomic replace.
 
         Returns:
             Success after the writes, or their first original failure.
 
         """
-        for path, content, mode in cls.source_writes(plan, root):
-            created = u.Cli.ensure_dir(path.parent)
+        writes = cls.source_writes(plan, root)
+        for parent in sorted({path.parent for path, _content, _mode in writes}):
+            created = u.Cli.ensure_dir(parent)
             if created.failure:
                 return r[bool].from_failure(created)
-            before = u.Cli.atomic_read_binary_file_state(path)
-            if before.failure:
-                return r[bool].from_failure(before)
-            written = u.Cli.atomic_write_binary_file_guarded(
-                before.value, content, permission_mode=mode
+        outcomes = u.Cli.run_in_signal_wave(
+            tuple(
+                partial(cls._materialize_one, path, content, mode)
+                for path, content, mode in writes
+            ),
+            max_workers=min(len(writes), settings.cli_pipeline_max_workers),
+        )
+        for outcome in outcomes:
+            if outcome.failure:
+                return r[bool].from_failure(outcome)
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _materialize_one(
+        path: Path,
+        content: bytes,
+        mode: int,
+        wave: p.Cli.SignalWave,
+    ) -> p.Result[bool]:
+        """Atomically write one independent candidate input.
+
+        Returns:
+            The write result or the original filesystem failure.
+
+        """
+        _ = wave
+        try:
+            u.Cli.write_atomic_state(
+                path,
+                content,
+                m.Cli.AtomicWriteOptions(
+                    permission_mode=mode,
+                    durability=c.Cli.WriteDurability.SCRATCH,
+                ),
             )
-            if written.failure:
-                return r[bool].from_failure(written)
+        except Exception as error:  # ruff: ignore[blind-except]
+            # Results are consumed in source order after the concurrent wave;
+            # retain the original filesystem exception on that ordered failure.
+            return r[bool].fail(str(error), exception=error)
         return r[bool].ok(value=True)
 
     @classmethod
@@ -249,8 +284,8 @@ class FlextInfraStagedPackage:
         workspace: Path,
         updates: Mapping[Path, str | None],
         *,
-        options: m.Infra.StageSourceOptions | None = None,
-    ) -> p.Result[m.Infra.StageSourcePlan]:
+        options: p.Infra.StageSourceOptions | None = None,
+    ) -> p.Result[p.Infra.StageSourcePlan]:
         """Elect the candidate closure of the desired sources.
 
         Args:
@@ -263,7 +298,7 @@ class FlextInfraStagedPackage:
 
         """
         options = options or m.Infra.StageSourceOptions()
-        result_type = r[m.Infra.StageSourcePlan]
+        result_type = r[p.Infra.StageSourcePlan]
         modes = cls._validated_effect_modes(
             options.declared_files, updates, options.modes
         )
@@ -287,6 +322,7 @@ class FlextInfraStagedPackage:
                     if file.project.is_relative_to(workspace)
                 )
             ),
+            source_project=u.Infra.snapshot_engine(options.snapshot, workspace),
         ) as (source_project, _):
             return cls._source_plan_project(
                 workspace,
@@ -301,10 +337,10 @@ class FlextInfraStagedPackage:
         cls,
         workspace: Path,
         updates: Mapping[Path, str | None],
-        options: m.Infra.StageSourceOptions,
+        options: p.Infra.StageSourceOptions,
         modes: Mapping[Path, int],
         source_project: p.Infra.RopeProject,
-    ) -> p.Result[m.Infra.StageSourcePlan]:
+    ) -> p.Result[p.Infra.StageSourcePlan]:
         """Build the candidate plan from one Rope view of the workspace.
 
         Returns:
@@ -317,17 +353,17 @@ class FlextInfraStagedPackage:
             ).map(lambda layouts: (normalized, layouts))
         )
         if discovered.failure:
-            return r[m.Infra.StageSourcePlan].from_failure(discovered)
+            return r[p.Infra.StageSourcePlan].from_failure(discovered)
         normalized, layouts = discovered.value
         closure = cls._source_closure(
             workspace,
             normalized,
-            options.inputs,
+            options,
             layouts,
-            (source_project, options.snapshot),
+            source_project,
         )
         if closure.failure:
-            return r[m.Infra.StageSourcePlan].from_failure(closure)
+            return r[p.Infra.StageSourcePlan].from_failure(closure)
         selected, states = closure.value
         introduced = frozenset(
             item.project_root
@@ -335,7 +371,7 @@ class FlextInfraStagedPackage:
             if item.project_root / c.PYPROJECT_FILENAME in normalized
             and states[item.project_root / c.PYPROJECT_FILENAME].content is None
         )
-        return r[m.Infra.StageSourcePlan].ok(
+        return r[p.Infra.StageSourcePlan].ok(
             m.Infra.StageSourcePlan(
                 workspace=workspace,
                 roots=tuple(
@@ -367,7 +403,7 @@ class FlextInfraStagedPackage:
 
     @staticmethod
     def _validated_effect_modes(
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         updates: Mapping[Path, str | None],
         modes: Mapping[Path, int] | None,
     ) -> p.Result[MutableMapping[Path, int]]:
@@ -406,9 +442,9 @@ class FlextInfraStagedPackage:
     def _composed_scope_plan(
         cls,
         updates: Mapping[Path, str | None],
-        options: m.Infra.StageSourceOptions,
+        options: p.Infra.StageSourceOptions,
         modes: Mapping[Path, int],
-    ) -> p.Result[m.Infra.StageSourcePlan]:
+    ) -> p.Result[p.Infra.StageSourcePlan]:
         """Compose one joint plan from explicit non-overlapping scope roots.
 
         Args:
@@ -420,7 +456,7 @@ class FlextInfraStagedPackage:
             The composed joint plan, or the first scope composition failure.
 
         """
-        result_type = r[m.Infra.StageSourcePlan]
+        result_type = r[p.Infra.StageSourcePlan]
         scopes = tuple(dict.fromkeys(path.resolve() for path in options.workspaces))
         if any(
             left != right and left.is_relative_to(right)
@@ -430,7 +466,7 @@ class FlextInfraStagedPackage:
             not any(path.is_relative_to(root) for root in scopes) for path in updates
         ):
             return result_type.fail("candidate scopes overlap or omit a rewrite target")
-        plans: list[m.Infra.StageSourcePlan] = []
+        plans: list[p.Infra.StageSourcePlan] = []
         for root in scopes:
             planned = cls.plan_sources(
                 root,
@@ -455,6 +491,11 @@ class FlextInfraStagedPackage:
                         for state in options.inputs
                         if state.path.is_relative_to(root)
                     ),
+                    import_edges={
+                        path: edges
+                        for path, edges in options.import_edges.items()
+                        if path.is_relative_to(root)
+                    },
                 ),
             )
             if planned.failure:
@@ -515,12 +556,12 @@ class FlextInfraStagedPackage:
         cls,
         workspace: Path,
         normalized: Mapping[Path, str | None],
-        inputs: tuple[m.Cli.AtomicFileState, ...],
+        options: p.Infra.StageSourceOptions,
         layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
-        view: tuple[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
+        source_project: p.Infra.RopeProject,
     ) -> p.Result[
         tuple[
-            list[m.Infra.RopeProjectLayout],
+            list[p.Infra.RopeProjectLayout],
             MutableMapping[Path, m.Cli.AtomicFileState],
         ]
     ]:
@@ -529,46 +570,43 @@ class FlextInfraStagedPackage:
         Args:
             workspace: Resolved root of the Git workspace containing the projects.
             normalized: Elected physical destinations of the desired sources.
-            inputs: Original observations, never replaced by a fresh read; the
-                layouts of their workspace Python sources join the closure.
+            options: Original observations and import facts, never replaced by
+                fresh captures to authorize this candidate.
             layouts: Retained provider layouts keyed by package name.
-            view: The Rope view of the workspace and the optional run snapshot.
+            source_project: The authenticated native source view.
 
         Returns:
             The elected layouts with the file states of their sources.
 
         """
-        source_project, snapshot = view
+        inputs, snapshot = options.inputs, options.snapshot
         result_type = r[
             tuple[
-                list[m.Infra.RopeProjectLayout],
+                list[p.Infra.RopeProjectLayout],
                 dict[Path, m.Cli.AtomicFileState],
             ]
         ]
-        selected: list[m.Infra.RopeProjectLayout] = []
-        states: MutableMapping[Path, m.Cli.AtomicFileState] = {
-            state.path: state for state in inputs
-        }
+        selected: list[p.Infra.RopeProjectLayout] = []
+        states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        for state in inputs:
+            states.setdefault(state.path, state)
 
         def read_layout(
-            provider: m.Infra.RopeProjectLayout,
+            provider: p.Infra.RopeProjectLayout,
             owned: Mapping[Path, str | None] | None,
         ) -> p.Result[tuple[str, ...]]:
             return cls._layout_states(
-                provider, states, (source_project, snapshot), updates=owned
+                provider,
+                states,
+                (source_project, snapshot),
+                updates=owned,
+                import_edges=options.import_edges,
             )
 
-        roots: list[tuple[m.Infra.RopeProjectLayout, bool]] = []
-        for path in normalized:
-            resolved = cls._source_layout(path, layouts)
-            if resolved.success:
-                roots.append((resolved.value, True))
-                continue
-            # A common Python source outside every package needs only its
-            # own original bytes: repair groups it by the workspace cwd.
-            if path.is_symlink():
-                return result_type.fail(f"candidate source is a symlink: {path}")
-            states.setdefault(path, source_project.source_state(path, required=False))
+        elected = cls._source_roots(normalized, layouts, source_project, states)
+        if elected.failure:
+            return result_type.from_failure(elected)
+        roots = elected.value
         roots.extend(cls._input_layouts(workspace, inputs, layouts))
         roots.extend(
             (layouts[name], False)
@@ -591,16 +629,45 @@ class FlextInfraStagedPackage:
         if paths.failure:
             return result_type.from_failure(paths)
         for path in paths.value:
-            states.setdefault(path, source_project.source_state(path, required=False))
+            if path not in states:
+                states[path] = source_project.source_state(path, required=False)
         return result_type.ok((selected, states))
+
+    @classmethod
+    def _source_roots(
+        cls,
+        normalized: Mapping[Path, str | None],
+        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        source_project: p.Infra.RopeProject,
+        states: MutableMapping[Path, m.Cli.AtomicFileState],
+    ) -> p.Result[list[tuple[p.Infra.RopeProjectLayout, bool]]]:
+        """Elect rewrite roots while preserving original common-source witnesses.
+
+        Returns:
+            Owned rewrite roots in source order, or the first symlink failure.
+
+        """
+        result_type = r[list[tuple[p.Infra.RopeProjectLayout, bool]]]
+        roots: list[tuple[p.Infra.RopeProjectLayout, bool]] = []
+        for path in normalized:
+            resolved = cls._source_layout(path, layouts)
+            if resolved.success:
+                roots.append((resolved.value, True))
+                continue
+            # Common Python sources outside packages retain their own bytes.
+            if path.is_symlink():
+                return result_type.fail(f"candidate source is a symlink: {path}")
+            if path not in states:
+                states[path] = source_project.source_state(path, required=False)
+        return result_type.ok(roots)
 
     @classmethod
     def _input_layouts(
         cls,
         workspace: Path,
-        inputs: tuple[m.Cli.AtomicFileState, ...],
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
-    ) -> tuple[tuple[m.Infra.RopeProjectLayout, bool], ...]:
+        inputs: tuple[p.Cli.AtomicFileState, ...],
+        layouts: Mapping[str, p.Infra.RopeProjectLayout],
+    ) -> tuple[tuple[p.Infra.RopeProjectLayout, bool], ...]:
         """Elect the read-only closure roots of the original Python observations.
 
         Installed packages (the site-packages segment of a standalone
@@ -610,7 +677,8 @@ class FlextInfraStagedPackage:
             One non-rewritten root per owned workspace Python observation.
 
         """
-        roots: list[tuple[m.Infra.RopeProjectLayout, bool]] = []
+        roots: list[tuple[p.Infra.RopeProjectLayout, bool]] = []
+        owners: dict[Path, p.Result[p.Infra.RopeProjectLayout]] = {}
         for state in inputs:
             if (
                 state.path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES
@@ -618,7 +686,10 @@ class FlextInfraStagedPackage:
                 or "site-packages" in state.path.parts
             ):
                 continue
-            resolved = cls._source_layout(state.path, layouts)
+            directory = state.path.parent
+            if directory not in owners:
+                owners[directory] = cls._source_layout(state.path, layouts)
+            resolved = owners[directory]
             if resolved.success:
                 roots.append((resolved.value, False))
         return tuple(roots)
@@ -629,8 +700,8 @@ class FlextInfraStagedPackage:
         normalized: Mapping[Path, str | None],
         states: Mapping[Path, m.Cli.AtomicFileState],
         modes: Mapping[Path, int],
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Build one file effect per normalized desired source.
 
         A declared effect already carries the desired bytes and mode, so it is
@@ -648,7 +719,7 @@ class FlextInfraStagedPackage:
 
         """
         declared = {plan.path: plan for plan in declared_files}
-        effects: list[m.Infra.CodegenFilePlan] = []
+        effects: list[p.Infra.CodegenFilePlan] = []
         for path, source in normalized.items():
             if path in declared:
                 effects.append(declared[path])
@@ -704,16 +775,16 @@ class FlextInfraStagedPackage:
     @staticmethod
     def _source_layout(
         path: Path,
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
-    ) -> p.Result[m.Infra.RopeProjectLayout]:
+        layouts: Mapping[str, p.Infra.RopeProjectLayout],
+    ) -> p.Result[p.Infra.RopeProjectLayout]:
         """Resolve a source owner without replacing another package's identity.
 
         Returns:
             The unique source layout or the first ownership failure.
 
         """
-        result_type = r[m.Infra.RopeProjectLayout]
-        owners: dict[Path, m.Infra.RopeProjectLayout] = {}
+        result_type = r[p.Infra.RopeProjectLayout]
+        owners: dict[Path, p.Infra.RopeProjectLayout] = {}
         for layout in layouts.values():
             owners.setdefault(layout.project_root, layout)
         # The nearest enclosing project root owns the source: walk its ancestors
@@ -788,7 +859,7 @@ class FlextInfraStagedPackage:
 
     @staticmethod
     def _source_paths(
-        layout: m.Infra.RopeProjectLayout,
+        layout: p.Infra.RopeProjectLayout,
         source_project: p.Infra.RopeProject,
         *,
         governed: bool = False,
@@ -937,11 +1008,12 @@ class FlextInfraStagedPackage:
     @classmethod
     def _layout_states(
         cls,
-        layout: m.Infra.RopeProjectLayout,
+        layout: p.Infra.RopeProjectLayout,
         states: MutableMapping[Path, m.Cli.AtomicFileState],
         view: tuple[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
         *,
         updates: Mapping[Path, str | None] | None = None,
+        import_edges: Mapping[Path, tuple[frozenset[str], frozenset[str]]],
     ) -> p.Result[tuple[str, ...]]:
         """Read one layout's sources and collect their package dependencies.
 
@@ -954,6 +1026,7 @@ class FlextInfraStagedPackage:
             view: The Rope view of the workspace and the optional run snapshot
                 whose reads and import edges serve the sources it already read.
             updates: Desired sources keyed by live path; None retires an artifact.
+            import_edges: Original runtime and typing import facts of observed sources.
 
         Returns:
             The imports of the layout's sources.
@@ -965,8 +1038,7 @@ class FlextInfraStagedPackage:
             return r[tuple[str, ...]].from_failure(paths)
         modules: list[str] = []
         source_paths = set(paths.value)
-        if updates is not None:
-            source_paths.update(updates)
+        source_paths.update(updates if updates is not None else ())
         for path in sorted(source_paths):
             if path.is_symlink():
                 return r[tuple[str, ...]].fail(f"candidate source is a symlink: {path}")
@@ -979,18 +1051,25 @@ class FlextInfraStagedPackage:
                 )
                 states[path] = state
             content = state.content
-            rewritten = updates is not None and path in updates
+            rewritten = False
             if updates is not None and path in updates:
+                rewritten = True
                 desired = updates[path]
                 content = (
                     None if desired is None else desired.encode(c.DEFAULT_ENCODING)
                 )
             if path.suffix not in {c.Infra.EXT_PYTHON, ".pyi"} or content is None:
                 continue
-            if snapshot is not None and not rewritten and cls._read_by(snapshot, path):
-                # The run already parsed this unchanged source once: its edges
-                # serve every layout that reads it, instead of a second parse.
-                runtime, typing = u.Infra.workspace_module_imports(snapshot, path)
+            observed_imports = None if rewritten else import_edges.get(path)
+            if (
+                observed_imports is None
+                and not rewritten
+                and snapshot is not None
+                and cls._read_by(snapshot, path)
+            ):
+                observed_imports = u.Infra.workspace_module_imports(snapshot, path)
+            if observed_imports is not None:
+                runtime, typing = observed_imports
                 modules.extend((*runtime, *typing) if updates else runtime)
                 continue
             modules.extend(
@@ -1005,7 +1084,7 @@ class FlextInfraStagedPackage:
         snapshot: p.Infra.WorkspaceSnapshot | None,
         *,
         updates: Mapping[Path, str | None] | None,
-    ) -> m.Cli.AtomicFileState:
+    ) -> p.Cli.AtomicFileState:
         """Read one candidate source once: the run's read, or the project's.
 
         Returns:
@@ -1036,15 +1115,15 @@ class FlextInfraStagedPackage:
     @classmethod
     def _closure(
         cls,
-        local: m.Infra.RopeProjectLayout,
+        local: p.Infra.RopeProjectLayout,
         layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
         read: Callable[
-            [m.Infra.RopeProjectLayout, Mapping[Path, str | None] | None],
+            [p.Infra.RopeProjectLayout, Mapping[Path, str | None] | None],
             p.Result[tuple[str, ...]],
         ],
         *,
         updates: Mapping[Path, str | None] | None = None,
-    ) -> p.Result[tuple[m.Infra.RopeProjectLayout, ...]]:
+    ) -> p.Result[tuple[p.Infra.RopeProjectLayout, ...]]:
         """Traverse one layout's import closure across the retained providers.
 
         Args:
@@ -1057,10 +1136,10 @@ class FlextInfraStagedPackage:
             The elected layouts of the traversed dependency closure.
 
         """
-        selected: list[m.Infra.RopeProjectLayout] = []
-        queue = [local.package_name]
+        selected: list[p.Infra.RopeProjectLayout] = []
+        queue = deque([local.package_name])
         while queue:
-            name = queue.pop(0)
+            name = queue.popleft()
             layout = layouts[name]
             selected.append(layout)
             owned: MutableMapping[Path, str | None] | None = None
@@ -1069,14 +1148,14 @@ class FlextInfraStagedPackage:
                 for path, content in updates.items():
                     owner = cls._source_layout(path, layouts)
                     if owner.failure:
-                        return r[tuple[m.Infra.RopeProjectLayout, ...]].from_failure(
+                        return r[tuple[p.Infra.RopeProjectLayout, ...]].from_failure(
                             owner
                         )
                     if owner.value.project_root == layout.project_root:
                         owned[path] = content
             imported = read(layout, owned)
             if imported.failure:
-                return r[tuple[m.Infra.RopeProjectLayout, ...]].from_failure(
+                return r[tuple[p.Infra.RopeProjectLayout, ...]].from_failure(
                     imported,
                 )
             for module in imported.value:
@@ -1087,7 +1166,7 @@ class FlextInfraStagedPackage:
                     and not any(item.package_name == dependency for item in selected)
                 ):
                     queue.append(dependency)
-        return r[tuple[m.Infra.RopeProjectLayout, ...]].ok(tuple(selected))
+        return r[tuple[p.Infra.RopeProjectLayout, ...]].ok(tuple(selected))
 
     @staticmethod
     def _workspace_metadata_paths(

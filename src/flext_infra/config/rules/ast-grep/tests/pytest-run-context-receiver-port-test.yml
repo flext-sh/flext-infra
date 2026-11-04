@@ -11,67 +11,67 @@ valid:
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
-        def execute(self, *, run_context_receiver: Callable[[m.Infra.PytestSelectionPlan], None] | None = None): ...
+        def execute(self, *, run_context_receiver: Callable[[p.Infra.PytestSelectionPlan], None] | None = None): ...
   # Neither other observer names nor other result types are interchangeable.
   - |
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
-        def execute(self, *, other_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None): ...
+        def execute(self, *, other_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None): ...
   - |
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
-        def execute(self, *, run_context_receiver: Callable[[m.Infra.PytestRunContext], bool] | None = None): ...
+        def execute(self, *, run_context_receiver: Callable[[p.Infra.PytestRunContext], bool] | None = None): ...
   # Required observers and non-None defaults are outside this migration.
   - |
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
-        def execute(self, *, run_context_receiver: Callable[[m.Infra.PytestRunContext], None]): ...
+        def execute(self, *, run_context_receiver: Callable[[p.Infra.PytestRunContext], None]): ...
   - |
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
-        def execute(self, *, run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = observer): ...
+        def execute(self, *, run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = observer): ...
   # Same annotation, but unrelated class/method/function: no global rewrite.
   - |
     if TYPE_CHECKING:
         from flext_infra import p
     class OtherExecution:
-        def execute(self, *, run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None): ...
+        def execute(self, *, run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None): ...
   - |
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
-        def other(self, *, run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None): ...
+        def other(self, *, run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None): ...
   - |
     if TYPE_CHECKING:
         from flext_infra import p
-    def execute(*, run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None): ...
+    def execute(*, run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None): ...
   # Only direct methods, not nested functions or nested classes, are consumers.
   - |
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
         def outer(self):
-            def execute(*, run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None): ...
+            def execute(*, run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None): ...
   - |
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
         class Nested:
-            def execute(self, *, run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None): ...
+            def execute(self, *, run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None): ...
   # No facade import: do not introduce an unbound name.
   - |
     class FlextInfraPytestRunnerExecution:
-        def execute(self, *, run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None): ...
+        def execute(self, *, run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None): ...
 invalid:
   - |
     from __future__ import annotations
     from collections.abc import Callable
     from typing import TYPE_CHECKING, override
-    from flext_infra import m
+    from flext_infra import m, p
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
@@ -79,14 +79,14 @@ invalid:
         def execute(
             self,
             *,
-            run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None,
+            run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
         ) -> p.Result[int]:
             return self._execute_testmon(complete=False, run_context_receiver=run_context_receiver)
   - |
     from __future__ import annotations
     from collections.abc import Callable
     from typing import TYPE_CHECKING
-    from flext_infra import m
+    from flext_infra import m, p
     if TYPE_CHECKING:
         from flext_infra import p
     class FlextInfraPytestRunnerExecution:
@@ -94,7 +94,7 @@ invalid:
             self,
             *,
             complete: bool,
-            run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None,
+            run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None,
         ) -> p.Result[int]:
             if run_context_receiver is not None:
                 run_context_receiver(context)

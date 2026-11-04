@@ -8,6 +8,14 @@ snapshots:
       style: primary
       start: 52
       end: 87
+    - source: continue
+      style: secondary
+      start: 79
+      end: 87
+    - source: continue
+      style: secondary
+      start: 79
+      end: 87
   "try:\n    run()\nexcept Exception:\n    \"\"\"Ignored.\"\"\"\n    pass\n":
     labels:
     - source: |-
@@ -17,6 +25,16 @@ snapshots:
       style: primary
       start: 15
       end: 60
+    - source: pass
+      style: secondary
+      start: 56
+      end: 60
+    - source: |-
+        """Ignored."""
+            pass
+      style: secondary
+      start: 37
+      end: 60
   "try:\n    run()\nexcept ValueError:\n    pass\n":
     labels:
     - source: |-
@@ -24,6 +42,14 @@ snapshots:
             pass
       style: primary
       start: 15
+      end: 42
+    - source: pass
+      style: secondary
+      start: 38
+      end: 42
+    - source: pass
+      style: secondary
+      start: 38
       end: 42
   "try:\n    run()\nexcept:\n    # nothing\n    pass\n":
     labels:
@@ -33,4 +59,12 @@ snapshots:
             pass
       style: primary
       start: 15
+      end: 45
+    - source: pass
+      style: secondary
+      start: 41
+      end: 45
+    - source: pass
+      style: secondary
+      start: 41
       end: 45

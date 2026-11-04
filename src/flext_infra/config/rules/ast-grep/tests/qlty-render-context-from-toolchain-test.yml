@@ -3,19 +3,19 @@ id: qlty-render-context-from-toolchain
 # fleet toolchain.
 valid:
   - |
-    def context(destination: str, codegen: Codegen) -> p.Result[p.Model]:
+    def context(destination: str, codegen: Codegen) -> p.Result[p.BaseModel]:
         if destination in {
             ".envrc",
             ".mise.toml",
             ".python-version",
             c.Infra.QLTY_CONFIG_PATH,
         }:
-            return r[p.Model].ok(codegen.toolchain)
-        return r[p.Model].ok(codegen)
+            return r[p.BaseModel].ok(codegen.toolchain)
+        return r[p.BaseModel].ok(codegen)
 # `invalid` MUST match: the destination set that omits the Qlty configuration.
 invalid:
   - |
-    def context(destination: str, codegen: Codegen) -> p.Result[p.Model]:
+    def context(destination: str, codegen: Codegen) -> p.Result[p.BaseModel]:
         if destination in {".envrc", ".mise.toml", ".python-version"}:
-            return r[p.Model].ok(codegen.toolchain)
-        return r[p.Model].ok(codegen)
+            return r[p.BaseModel].ok(codegen.toolchain)
+        return r[p.BaseModel].ok(codegen)

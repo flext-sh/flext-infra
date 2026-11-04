@@ -3,16 +3,88 @@
 
 from __future__ import annotations
 
+import stat
 from pathlib import Path
 
 import pytest
 
 from flext_infra.codegen import FlextInfraStagedPackage
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraSourceLayoutOwnership:
     """Metadata and helper locations do not invent project boundaries."""
+
+    @staticmethod
+    def test_materializes_independent_directories_with_declared_bytes_and_modes(
+        tmp_path: Path,
+    ) -> None:
+        """A bounded write wave preserves every staged file's exact identity."""
+        root = u.Tests.git_repository(tmp_path / "workspace")
+        u.Tests.declare_governed_kind(root)
+        package = u.Tests.src_package(
+            root,
+            "ownership_sample",
+            pyproject="[project]\nname='ownership-sample'\nversion='1.0.0'\n",
+        )
+        first = package / "one" / "first.py"
+        second = root / "automation" / "two" / "second.py"
+        for path, content, mode in (
+            (first, "FIRST = 1\n", 0o640),
+            (second, "SECOND = 1\n", 0o751),
+        ):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding=c.DEFAULT_ENCODING)
+            path.chmod(mode)
+
+        plan = tm.ok(
+            FlextInfraStagedPackage.plan_sources(
+                root,
+                {first: "FIRST = 2\n", second: "SECOND = 2\n"},
+            )
+        )
+        candidate = tmp_path / "candidate"
+
+        tm.ok(FlextInfraStagedPackage.materialize_sources(plan, candidate))
+
+        for path, content, mode in (
+            (first, b"FIRST = 2\n", 0o640),
+            (second, b"SECOND = 2\n", 0o751),
+        ):
+            staged = candidate / path.relative_to(root)
+            tm.that(staged.read_bytes(), eq=content)
+            tm.that(stat.S_IMODE(staged.stat().st_mode), eq=mode)
+        tm.that(first.read_bytes(), eq=b"FIRST = 1\n")
+        tm.that(second.read_bytes(), eq=b"SECOND = 1\n")
+
+    @staticmethod
+    def test_materialize_failure_leaves_live_source_untouched(tmp_path: Path) -> None:
+        """A scratch symlink collision fails without following into live sources."""
+        root = u.Tests.git_repository(tmp_path / "workspace")
+        u.Tests.declare_governed_kind(root)
+        u.Tests.src_package(
+            root,
+            "ownership_sample",
+            pyproject="[project]\nname='ownership-sample'\nversion='1.0.0'\n",
+        )
+        manifest = root / c.PYPROJECT_FILENAME
+        original = manifest.read_bytes()
+        plan = tm.ok(
+            FlextInfraStagedPackage.plan_sources(
+                root,
+                {manifest: original.decode(c.DEFAULT_ENCODING) + "\n# candidate\n"},
+            )
+        )
+        candidate = tmp_path / "candidate"
+        candidate.mkdir()
+        collision = candidate / c.PYPROJECT_FILENAME
+        collision.symlink_to(manifest)
+
+        rejected = FlextInfraStagedPackage.materialize_sources(plan, candidate)
+
+        tm.fail(rejected)
+        tm.that(manifest.read_bytes(), eq=original)
+        tm.that(collision.is_symlink(), eq=True)
 
     @staticmethod
     @pytest.mark.parametrize("directory", ["project", ".project"])
@@ -27,6 +99,7 @@ class TestsFlextInfraSourceLayoutOwnership:
     ) -> None:
         """Materialize a joint candidate without touching its original sources."""
         root = u.Tests.git_repository(tmp_path / directory)
+        u.Tests.declare_governed_kind(root)
         package = u.Tests.src_package(
             root,
             "ownership_sample",
@@ -68,12 +141,14 @@ class TestsFlextInfraSourceLayoutOwnership:
     ) -> None:
         """A containing workspace cannot replace the member's import identity."""
         root = u.Tests.git_repository(tmp_path / "workspace")
+        u.Tests.declare_governed_kind(root)
         u.Tests.src_package(
             root,
             "outer_sample",
             pyproject="[project]\nname='outer-sample'\nversion='1.0.0'\n",
         )
         member = root / "member"
+        u.Tests.declare_governed_kind(member)
         package = u.Tests.src_package(
             member,
             "inner_sample",
@@ -89,9 +164,20 @@ class TestsFlextInfraSourceLayoutOwnership:
         helper = member / "automation" / "scripts" / "check.py"
         helper.parent.mkdir(parents=True)
         helper.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
+        sibling = helper.with_name("other.py")
+        sibling.write_text("OTHER = 1\n", encoding=c.DEFAULT_ENCODING)
 
         plan = tm.ok(
-            FlextInfraStagedPackage.plan_sources(root, {helper: "VALUE = 2\n"})
+            FlextInfraStagedPackage.plan_sources(
+                root,
+                {helper: "VALUE = 2\n"},
+                options=m.Infra.StageSourceOptions(
+                    inputs=tuple(
+                        tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+                        for path in (helper, sibling)
+                    ),
+                ),
+            )
         )
         candidate = tmp_path / "candidate"
         tm.ok(FlextInfraStagedPackage.materialize_sources(plan, candidate))
@@ -105,3 +191,4 @@ class TestsFlextInfraSourceLayoutOwnership:
             eq="VALUE = 2\n",
         )
         tm.that(helper.read_text(encoding=c.DEFAULT_ENCODING), eq="VALUE = 1\n")
+        tm.that(sibling.read_text(encoding=c.DEFAULT_ENCODING), eq="OTHER = 1\n")

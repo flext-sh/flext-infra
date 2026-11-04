@@ -11,10 +11,10 @@ from pathlib import Path
 import pytest
 
 from flext_infra.docs import FlextInfraDocCollector
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
-def _projection_config(projection: Path) -> m.Infra.PlanCollectionConfig:
+def _projection_config(projection: Path) -> p.Infra.PlanCollectionConfig:
     """Build the projection-rooted home source configuration.
 
     Returns:
@@ -50,7 +50,7 @@ class TestsFlextInfraPlanCollection:
         path.chmod(0o644)
 
     @staticmethod
-    def _config() -> m.Infra.PlanCollectionConfig:
+    def _config() -> p.Infra.PlanCollectionConfig:
         return m.Infra.PlanCollectionConfig(
             enabled=True,
             canonical_dir=Path("docs/plans"),

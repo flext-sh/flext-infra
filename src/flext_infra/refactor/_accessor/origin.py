@@ -11,7 +11,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, p, u
+from flext_infra import c, config, m, p, r, u
 from flext_infra.refactor._accessor import FlextInfraRefactorAccessorWarnings
 
 if TYPE_CHECKING:
@@ -24,19 +24,11 @@ class FlextInfraRefactorAccessorOrigin:
     def __init__(
         self,
         rope_project: t.Infra.RopeProject,
-        *,
-        namespace: str | None = None,
-        module: str | None = None,
     ) -> None:
         """Initialize with the shared Rope project of the migration run.
 
         Args:
             rope_project: The shared Rope project of the migration run.
-            namespace: Optional namespace to resolve.
-            module: Optional module to resolve.
-
-        Raises:
-            ValueError: If the specified module is unknown.
 
         """
         self._rope_project = rope_project
@@ -45,10 +37,10 @@ class FlextInfraRefactorAccessorOrigin:
         self._bindings: dict[str, dict[str, list[p.Infra.RopePyName]]] = {}
         self._owners: dict[int, p.Infra.RopePyObject] = {}
         self._names: dict[int, str] = {}
-        self._introduced: dict[str, tuple[m.Infra.Object, ...]] = {}
+        self._introduced: dict[str, tuple[p.Infra.Object, ...]] = {}
         self._lineages: dict[int, tuple[p.Infra.RopePyObject, ...]] = {}
         self._namespace_owners: tuple[p.Infra.RopePyObject, ...] | None = None
-        self._target_module = module
+        self._target_module: str | None = None
         self._forbidden_prefixes = (
             config.Infra.tooling.accessor_policy.forbidden_prefixes
         )
@@ -56,20 +48,39 @@ class FlextInfraRefactorAccessorOrigin:
             rule.source_name
             for rule in FlextInfraRefactorAccessorWarnings.automated_rules()
         )
-        projects = u.Infra.resolve_projects(self._root, ()).unwrap()
-        if namespace is not None:
-            alias = namespace.split(".", 1)[0]
+
+    def select_origin(self, params: p.Infra.AccessorMigrationInput) -> p.Result[bool]:
+        """Bind optional selectors at the existing typed planning boundary.
+
+        Returns:
+            Selection acceptance or the original native ownership failure.
+
+        """
+        if (
+            params.module is not None
+            and self._rope_project.find_module(params.module) is None
+        ):
+            return r[bool].fail(f"unknown accessor module selector: {params.module}")
+        if params.namespace is not None:
+            projects = u.Infra.resolve_projects(self._root, ())
+            if projects.failure:
+                return r[bool].from_failure(projects)
+            alias = params.namespace.split(".", 1)[0]
             paths: list[Path] = []
-            for project in projects:
+            for project in projects.value:
                 layout = u.Infra.layout(project.path, project=project)
                 if layout is not None:
-                    path = u.Infra.facade_module_path(layout.package_dir, alias)
-                    if path is not None:
-                        paths.append(path)
-            self._namespace_owners = self.namespace_classes(paths, namespace)
-        if module is not None and self._rope_project.find_module(module) is None:
-            msg = f"unknown accessor module selector: {module}"
-            raise ValueError(msg)
+                    elected = u.Infra.facade_module_path(
+                        layout.package_dir, alias, project=self._rope_project
+                    )
+                    if elected is None:
+                        continue
+                    if elected.failure:
+                        return r[bool].from_failure(elected)
+                    paths.append(elected.value)
+            self._namespace_owners = self.namespace_classes(paths, params.namespace)
+        self._target_module = params.module
+        return r[bool].ok(value=True)
 
     def within_origin(self, definition_path: str, *, origin: str) -> bool:
         """Compare the canonical module identity, not a directory substring.
@@ -116,7 +127,6 @@ class FlextInfraRefactorAccessorOrigin:
 
         Raises:
             ValueError: If ancestry is cyclic, inconsistent or unresolved.
-            TypeError: If the defining module has no syntax tree.
 
         """
         owner = u.Infra.require_class_object(owner, "accessor lineage")
@@ -135,9 +145,6 @@ class FlextInfraRefactorAccessorOrigin:
                 msg = f"accessor class has no defining module: {owner.get_name()}"
                 raise ValueError(msg)
             tree = module.get_ast()
-            if not isinstance(tree, ast.AST):
-                msg = "Rope class source has no syntax tree"
-                raise TypeError(msg)
             declaration = next(
                 (
                     node
@@ -275,7 +282,7 @@ class FlextInfraRefactorAccessorOrigin:
         metadata = u.Infra.read_project_metadata_result(project_root).unwrap()
         module_name = u.Infra.module_name_for_file(py_file, project_root=project_root)
         bindings: dict[str, list[p.Infra.RopePyName]] = {}
-        introduced: list[m.Infra.Object] = []
+        introduced: list[p.Infra.Object] = []
         pending: list[tuple[p.Infra.RopeScope, tuple[str, ...]]] = [(scope, ())]
         while pending:
             current, chain = pending.pop()
@@ -313,8 +320,8 @@ class FlextInfraRefactorAccessorOrigin:
         py_file: Path,
         source: str,
         *,
-        rules: Sequence[m.Infra.AccessorMigrationRule],
-    ) -> tuple[m.Infra.AccessorMigrationChange, ...]:
+        rules: Sequence[p.Infra.AccessorMigrationRule],
+    ) -> tuple[p.Infra.AccessorMigrationChange, ...]:
         """Authenticate the snapshot and report selected introducing accessors.
 
         Returns:
@@ -331,7 +338,7 @@ class FlextInfraRefactorAccessorOrigin:
             msg = f"accessor discovery source differs from Rope snapshot: {py_file}"
             raise ValueError(msg)
         self._index(py_file)
-        warnings: list[m.Infra.AccessorMigrationChange] = []
+        warnings: list[p.Infra.AccessorMigrationChange] = []
         for declaration in self._introduced[str(py_file)]:
             if not self._declaration_selected(py_file, declaration):
                 continue
@@ -369,7 +376,7 @@ class FlextInfraRefactorAccessorOrigin:
             )
         return tuple(warnings)
 
-    def _declaration_selected(self, path: Path, item: m.Infra.Object) -> bool:
+    def _declaration_selected(self, path: Path, item: p.Infra.Object) -> bool:
         """Select declaring identities while retaining all their consumers.
 
         Returns:
@@ -687,17 +694,11 @@ class FlextInfraRefactorAccessorOrigin:
         Returns:
             Its qualified declaration path, or None for a non-class binding.
 
-        Raises:
-            TypeError: If the defining module has no native Python module AST.
-
         """
         module, line = binding.get_definition_location()
         if module is None or line is None:
             return None
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "Accessor definition module has no Python module AST"
-            raise TypeError(msg)
         classes: MutableSequence[ast.ClassDef] = [
             node
             for node in ast.walk(tree)
@@ -716,7 +717,7 @@ class FlextInfraRefactorAccessorOrigin:
         tree: ast.Module,
         node: ast.Attribute,
         *,
-        rule: m.Infra.AccessorMigrationRule,
+        rule: p.Infra.AccessorMigrationRule,
     ) -> None:
         """Reject aliases that would capture the introduced public facade.
 

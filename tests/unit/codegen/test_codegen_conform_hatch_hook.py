@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
@@ -21,7 +21,7 @@ class TestsFlextInfraCodegenConformHatchHook:
     """Prove the manifest-declared Hatch hook is the only hook projection."""
 
     @staticmethod
-    def _hook_workspace(hook_path: str | Path | None) -> m.Infra.WorkspaceSpec:
+    def _hook_workspace(hook_path: str | Path | None) -> p.Infra.WorkspaceSpec:
         """Build one standalone project whose manifest owns the Hatch hook.
 
         Returns:

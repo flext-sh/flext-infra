@@ -1,0 +1,82 @@
+id: tests-staticmethod-decorator-order
+valid:
+- |
+  class TestsPolicy:
+      @pytest.fixture
+      @staticmethod
+      def policy():
+          return "console"
+- |
+  class TestsPolicy:
+      @u.Tests.fixture(autouse=True)
+      @staticmethod
+      def policy():
+          return "console"
+- |
+  class TestsPolicy:
+      @staticmethod
+      @c.Tests.MARK.parametrize("policy", ["console"])
+      def test_policy(policy):
+          return policy
+- |
+  class TestsPolicy:
+      @staticmethod
+      @pytest.mark.parametrize("policy", ["console"])
+      def test_policy_conftest_form(policy):
+          return policy
+- |
+  class TestsPolicy:
+      @c.Tests.MARK.slow
+      def test_instance_method(self):
+          return self.value
+- |
+  class TestsPolicy:
+      @staticmethod
+      @owner.fixture
+      def policy():
+          return "console"
+- |
+  class TestsPolicy:
+      @owner.mark.slow
+      @staticmethod
+      def policy():
+          return "console"
+invalid:
+- |
+  class TestsPolicy:
+      @staticmethod
+      @pytest.fixture
+      def policy():
+          return "console"
+- |
+  class TestsPolicy:
+      @staticmethod
+      @u.Tests.fixture(autouse=True)
+      def policy() -> str:
+          return "console"
+- |
+  class TestsPolicy:
+      @c.Tests.MARK.parametrize("policy", ["console"])
+      @staticmethod
+      def test_policy(policy):
+          return policy
+- |
+  class TestsPolicy:
+      @pytest.mark.slow
+      @staticmethod
+      async def test_policy_conftest_form():
+          return None
+- |
+  class TestsPolicy:
+      @c.Tests.MARK.slow
+      @c.Tests.MARK.parametrize("policy", ["console"])
+      @staticmethod
+      def test_policy(policy):
+          return policy
+- |
+  class TestsPolicy:
+      @owner.decorate
+      @staticmethod
+      @pytest.fixture
+      def policy():
+          return "console"

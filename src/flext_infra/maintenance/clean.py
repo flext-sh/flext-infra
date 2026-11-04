@@ -16,10 +16,10 @@ from typing import TYPE_CHECKING, override
 from flext_infra import c, r, s, u
 
 if TYPE_CHECKING:
-    from flext_infra import m, p
+    from flext_infra import p
 
 
-class FlextInfraCleanService(s[int]):
+class FlextInfraMaintenanceClean(s[int]):
     """Remove declared disposables without crossing source or runtime ownership."""
 
     @override
@@ -62,10 +62,10 @@ class FlextInfraCleanService(s[int]):
     def _targets(
         cls,
         root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> tuple[
-        tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
-        tuple[m.Cli.AtomicFileState, ...],
+        tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
+        tuple[p.Cli.AtomicFileState, ...],
     ]:
         """Elect physical targets while retaining every foreign/runtime boundary.
 
@@ -79,8 +79,8 @@ class FlextInfraCleanService(s[int]):
         members = tuple(root / member.path for member in declarations)
         protected = cls._protected_names(codegen)
         excluded = (*codegen.analysis_excluded_dirs, *codegen.source_scan_ignored)
-        directories: list[m.Cli.AtomicPhysicalTreeManifest] = []
-        files: list[m.Cli.AtomicFileState] = []
+        directories: list[p.Cli.AtomicPhysicalTreeManifest] = []
+        files: list[p.Cli.AtomicFileState] = []
         pending = [root]
         while pending:
             parent = pending.pop()
@@ -123,7 +123,7 @@ class FlextInfraCleanService(s[int]):
     def _require_declarations(
         cls,
         root: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Require single-name resources and filename globs in the clean policy.
 
@@ -149,8 +149,8 @@ class FlextInfraCleanService(s[int]):
         path: Path,
         kind: str,
         members: tuple[Path, ...],
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> m.Cli.AtomicPhysicalTreeManifest:
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> p.Cli.AtomicPhysicalTreeManifest:
         """Authenticate one disposable directory and inventory its physical tree.
 
         Returns:
@@ -179,8 +179,8 @@ class FlextInfraCleanService(s[int]):
         root: Path,
         path: Path,
         kind: str,
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> m.Cli.AtomicFileState:
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> p.Cli.AtomicFileState:
         """Authenticate one disposable regular file and capture its state.
 
         Returns:
@@ -197,7 +197,7 @@ class FlextInfraCleanService(s[int]):
         return u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
 
     @staticmethod
-    def _protected_names(codegen: m.Infra.CodegenConfigSpec) -> frozenset[str]:
+    def _protected_names(codegen: p.Infra.CodegenConfigSpec) -> frozenset[str]:
         """Derive runtime identities that disposable declarations cannot retire.
 
         Returns:
@@ -221,7 +221,7 @@ class FlextInfraCleanService(s[int]):
         cls,
         root: Path,
         target: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Refuse source inputs, nested owners, locks and persistent test history.
 
@@ -248,7 +248,7 @@ class FlextInfraCleanService(s[int]):
         cls,
         root: Path,
         target: Path,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Keep every selected physical leaf inside its disposable owner.
 
@@ -273,4 +273,4 @@ class FlextInfraCleanService(s[int]):
             raise ValueError(msg)
 
 
-__all__: list[str] = ["FlextInfraCleanService"]
+__all__: list[str] = ["FlextInfraMaintenanceClean"]

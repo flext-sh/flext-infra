@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
-from flext_cli import u
+from flext_cli import settings, u
 
 from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesBase
@@ -27,7 +28,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def git_require_green_check_receipt(
         cls,
         repo_root: Path,
-        make: m.Infra.MakeSpec,
+        make: p.Infra.MakeSpec,
         *,
         plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
         phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
@@ -126,8 +127,8 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         cls,
         repo_root: Path,
         receipt: Path,
-        evidence: m.Infra.GateCommandEvidence,
-        capture: m.Infra.GateCaptureReport,
+        evidence: p.Infra.GateCommandEvidence,
+        capture: p.Infra.GateCaptureReport,
         *,
         plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
     ) -> p.Result[Path]:
@@ -164,17 +165,17 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         cls,
         repo_root: Path,
         receipt: Path,
-        evidence: m.Infra.GateCommandEvidence,
+        evidence: p.Infra.GateCommandEvidence,
         *,
         plan_global_targets: p.Infra.GlobalCheckTargetPlanner,
-    ) -> p.Result[tuple[m.Infra.CheckProjectTarget, ...]]:
+    ) -> p.Result[tuple[p.Infra.CheckProjectTarget, ...]]:
         """Require complete unfiltered coverage of the current native gate plan.
 
         Returns:
             Accepted coverage or the first original report or topology failure.
 
         """
-        result_type = r[tuple[m.Infra.CheckProjectTarget, ...]]
+        result_type = r[tuple[p.Infra.CheckProjectTarget, ...]]
         refuse = f"tests run only on a green check: {receipt.parent.name} "
         source = cls._report_contract_bytes(
             repo_root, evidence.reports, c.Infra.GateEvidenceReportKind.CHECK_SARIF
@@ -217,8 +218,8 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         cls,
         repo_root: Path,
         receipt: Path,
-        evidence: m.Infra.GateCommandEvidence,
-        targets: tuple[m.Infra.CheckProjectTarget, ...],
+        evidence: p.Infra.GateCommandEvidence,
+        targets: tuple[p.Infra.CheckProjectTarget, ...],
     ) -> p.Result[Path]:
         """Require original HEAD/status and freshness for every covered repository.
 
@@ -236,6 +237,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         """
         refuse = f"tests run only on a green check: {receipt.parent.name} "
         started = datetime.fromisoformat(evidence.started_at)
+        originals: list[p.Infra.GitIdentityReport] = []
         for target in targets:
             original = target.source_identity
             if original is None or original.repo_root != target.path:
@@ -243,47 +245,73 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
                     f"{refuse}has no original source identity for {target.path}; "
                     "rerun make check",
                 )
-            observed = FlextInfraUtilitiesGitSemanticIdentity.exact_worktree_root(
-                target.path
-            )
-            if observed.failure:
-                return r[Path].from_failure(observed)
-            current = observed.value
-            if (
-                (
-                    current.git_dir,
-                    current.common_dir,
-                    current.head_oid,
-                    current.porcelain,
-                )
-                != (
-                    original.git_dir,
-                    original.common_dir,
-                    original.head_oid,
-                    original.porcelain,
-                )
-                or original.head_oid is None
-                or (
-                    target.path == repo_root
-                    and (
-                        original.head_oid != evidence.commit_sha
-                        or original.head_oid != evidence.after_commit_sha
-                    )
+            if original.head_oid is None or (
+                target.path == repo_root
+                and (
+                    original.head_oid != evidence.commit_sha
+                    or original.head_oid != evidence.after_commit_sha
                 )
             ):
                 return r[Path].fail(
                     f"{refuse}source identity or HEAD changed in {target.path}; "
                     "rerun make check",
                 )
-            freshness = cls._green_target_paths_currentness(original, started, refuse)
-            if freshness.failure:
-                return r[Path].from_failure(freshness)
+            originals.append(original)
+        if originals:
+            outcomes = u.Cli.run_in_signal_wave(
+                tuple(
+                    partial(cls._green_source_currentness, original, started, refuse)
+                    for original in originals
+                ),
+                max_workers=min(len(originals), settings.cli_pipeline_max_workers),
+            )
+            for outcome in outcomes:
+                if outcome.failure:
+                    return r[Path].from_failure(outcome)
         return r[Path].ok(receipt)
+
+    @classmethod
+    def _green_source_currentness(
+        cls,
+        original: p.Infra.GitIdentityReport,
+        started: datetime,
+        refuse: str,
+        wave: p.Cli.SignalWave,
+    ) -> p.Result[Path]:
+        """Read one root's exact identity and all of its changed-file timestamps.
+
+        Returns:
+            The admitted root or its original currentness failure.
+
+        """
+        _ = wave
+        observed = FlextInfraUtilitiesGitSemanticIdentity.exact_worktree_root(
+            original.repo_root
+        )
+        if observed.failure:
+            return r[Path].from_failure(observed)
+        current = observed.value
+        if (
+            current.git_dir,
+            current.common_dir,
+            current.head_oid,
+            current.porcelain,
+        ) != (
+            original.git_dir,
+            original.common_dir,
+            original.head_oid,
+            original.porcelain,
+        ):
+            return r[Path].fail(
+                f"{refuse}source identity or HEAD changed in {original.repo_root}; "
+                "rerun make check",
+            )
+        return cls._green_target_paths_currentness(original, started, refuse)
 
     @classmethod
     def _green_target_paths_currentness(
         cls,
-        original: m.Infra.GitIdentityReport,
+        original: p.Infra.GitIdentityReport,
         started: datetime,
         refuse: str,
     ) -> p.Result[Path]:
@@ -326,10 +354,10 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _original_gate_evidence(
         cls,
         repo_root: Path,
-        request: m.Infra.GateAttestationCreateRequest
+        request: p.Infra.GateAttestationCreateRequest
         | m.Infra.GateAttestationVerifyRequest,
-    ) -> p.Result[tuple[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]:
-        result_type = r[tuple[m.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]
+    ) -> p.Result[tuple[p.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]:
+        result_type = r[tuple[p.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]
         path = (
             request.receipt
             if request.receipt.is_absolute()
@@ -364,7 +392,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _accepted_gate_evidence(
         cls,
         repo_root: Path,
-        evidence: m.Infra.GateExecutionFacts,
+        evidence: p.Infra.GateExecutionFacts,
         *,
         phase: c.Infra.CheckPhase = c.Infra.CheckPhase.COMPLETE,
     ) -> p.Result[bool]:
@@ -414,7 +442,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _original_report_outcome(
         cls,
         repo_root: Path,
-        evidence: m.Infra.GateExecutionFacts,
+        evidence: p.Infra.GateExecutionFacts,
     ) -> p.Result[c.Infra.ToolOutcome]:
         """Derive completeness from original typed producer reports.
 
@@ -432,7 +460,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _producer_report_outcome(
         cls,
         repo_root: Path,
-        evidence: m.Infra.GateExecutionFacts,
+        evidence: p.Infra.GateExecutionFacts,
     ) -> p.Result[c.Infra.ToolOutcome]:
         """Dispatch original evidence to its declared producer contract.
 
@@ -453,7 +481,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _original_check_outcome(
         cls,
         repo_root: Path,
-        evidence: m.Infra.GateExecutionFacts,
+        evidence: p.Infra.GateExecutionFacts,
     ) -> p.Result[c.Infra.ToolOutcome]:
         result_type = r[c.Infra.ToolOutcome]
         if (
@@ -484,7 +512,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _original_test_outcome(
         cls,
         repo_root: Path,
-        evidence: m.Infra.GateExecutionFacts,
+        evidence: p.Infra.GateExecutionFacts,
     ) -> p.Result[c.Infra.ToolOutcome]:
         result_type = r[c.Infra.ToolOutcome]
         selection = evidence.intent.test_selection
@@ -508,7 +536,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
 
     @staticmethod
     def _check_report_outcome(
-        report: m.Infra.SarifReport,
+        report: p.Infra.SarifReport,
     ) -> p.Result[c.Infra.ToolOutcome]:
         summary = report.properties
         if summary is None or not summary.targets or not summary.results:
@@ -547,8 +575,8 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _pytest_report_outcome(
         cls,
         repo_root: Path,
-        reports: Sequence[m.Infra.GateReportEvidence],
-        expected_process: m.Cli.ProcessOutcome,
+        reports: Sequence[p.Infra.GateReportEvidence],
+        expected_process: p.Cli.ProcessOutcome,
     ) -> p.Result[c.Infra.ToolOutcome]:
         result_type = r[c.Infra.ToolOutcome]
         process_source = cls._report_contract_bytes(
@@ -612,7 +640,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _report_contract_bytes(
         cls,
         repo_root: Path,
-        reports: Sequence[m.Infra.GateReportEvidence],
+        reports: Sequence[p.Infra.GateReportEvidence],
         kind: c.Infra.GateEvidenceReportKind,
     ) -> p.Result[bytes]:
         selected = tuple(report for report in reports if report.kind == kind)
@@ -623,7 +651,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     @staticmethod
     def _report_bytes(
         repo_root: Path,
-        report: m.Infra.GateReportEvidence,
+        report: p.Infra.GateReportEvidence,
     ) -> p.Result[bytes]:
         original = u.Cli.atomic_read_binary_file_state(
             repo_root / report.path, required=True
@@ -645,7 +673,7 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
     def _verified_report_evidence(
         cls,
         repo_root: Path,
-        reports: Sequence[m.Infra.GateReportEvidence],
+        reports: Sequence[p.Infra.GateReportEvidence],
     ) -> p.Result[bool]:
         for report in reports:
             original = cls._report_bytes(repo_root, report)

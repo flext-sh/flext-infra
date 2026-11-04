@@ -8,20 +8,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, u
+from flext_infra import m, p, r, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraDocCollector:
     """Publish only fully supported source associations."""
 
     @classmethod
-    def collect(cls, request: m.Infra.DocsCollectRequest) -> p.Result[bool]:
+    def collect(cls, request: p.Infra.DocsCollectRequest) -> p.Result[bool]:
         """Parse the configuration, collect sources, and publish their plans.
 
         Returns:
@@ -36,11 +34,15 @@ class FlextInfraDocCollector:
         if request.check:
             return r[bool].ok(
                 u.Infra.docs_verify_plan_collection(
-                    root, configuration.value, inputs=tuple(inputs.values()),
+                    root,
+                    configuration.value,
+                    inputs=tuple(inputs.values()),
                 ),
             )
         bundle = u.Infra.docs_collect_plan_files(
-            root, configuration.value, inputs=tuple(inputs.values()),
+            root,
+            configuration.value,
+            inputs=tuple(inputs.values()),
         )
         incomplete = tuple(
             item for item in bundle.coverage if item.adapter == "private-inventory"
@@ -64,17 +66,17 @@ class FlextInfraDocCollector:
 
     @staticmethod
     def _configuration(
-        request: m.Infra.DocsCollectRequest,
+        request: p.Infra.DocsCollectRequest,
         *,
         inputs: MutableMapping[Path, m.Cli.AtomicFileState],
-    ) -> p.Result[m.Infra.PlanCollectionConfig]:
+    ) -> p.Result[p.Infra.PlanCollectionConfig]:
         """Require a physical root and parse the collection configuration.
 
         Returns:
             The parsed collection configuration, or the first failure.
 
         """
-        result_type = r[m.Infra.PlanCollectionConfig]
+        result_type = r[p.Infra.PlanCollectionConfig]
         root = request.repository_root
         if not root.is_absolute() or ".." in root.parts or root.resolve() != root:
             return result_type.fail(
@@ -98,15 +100,17 @@ class FlextInfraDocCollector:
         parsed = u.Cli.yaml_parse(captured.value.content.decode("utf-8"))
         if parsed.failure:
             return result_type.from_failure(parsed)
-        return u.validate_value(
-            m.Infra.PlanCollectionConfig,
-            parsed.value,
-            strict=False,
+        return result_type.ok(
+            u.Cli.config_decode(
+                parsed.value,
+                m.Infra.PlanCollectionConfig,
+                source_path=configuration_path,
+            ),
         )
 
     @staticmethod
     def _prune_bundle_directories(
-        bundle: m.Infra.PlanCollectionBundle,
+        bundle: p.Infra.PlanCollectionBundle,
     ) -> p.Result[bool]:
         """Delete the bundle's empty prunable directories.
 

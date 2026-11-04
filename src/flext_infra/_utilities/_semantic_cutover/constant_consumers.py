@@ -21,22 +21,24 @@ from pathlib import Path
 
 from flext_cli import cli
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, e, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeStructure,
+)
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+from flext_infra._utilities._rope.runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticConstantSources,
     FlextInfraUtilitiesSemanticContracts,
@@ -88,7 +90,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     changes.setdefault(edit.file_path, []).extend(edit.changes)
                     if edit.retire_file:
                         retired.add(edit.file_path)
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -107,7 +109,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Retire flat facts only at equivalent explicit authored class owners.
 
         Returns:
@@ -129,7 +131,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     or (owner_module := facade.get_object().get_module()) is None
                 ):
                     return source, ()
-                edits: list[m.Infra.SourceRewrite] = []
+                edits: list[p.Infra.SourceRewrite] = []
                 for flat, destinations in cls._constant_destinations(
                     public, owner_module
                 ).items():
@@ -147,7 +149,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                             f"constant has ambiguous explicit owners: "
                             f"{path}:{flat}: {destinations}"
                         )
-                        raise ValueError(msg)
+                        raise e.ValidationError(
+                            msg, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                        )
                     if not cls._equivalent_constant_declarations(
                         project, sources, binding, public[destinations[0]]
                     ):
@@ -201,7 +205,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         signatures: list[tuple[str, p.Infra.RopePyName]] = []
         for binding in (original, target):
             if (
-                not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(binding)
+                not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
                 or len(binding.assignments) != 1
             ):
                 return False
@@ -266,7 +270,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Resolve imported constants in one closed Rope graph.
 
         Returns:
@@ -440,7 +444,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     for region in refactors.semantic_regions(
                         module, literal, arguments={}, start=start, end=end
                     ):
-                        cls._record_matched_region(matched, region, reference, scope)
+                        cls._record_matched_region(
+                            matched, region, reference, scope, path
+                        )
         return matched
 
     @staticmethod
@@ -454,14 +460,17 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         """Reject shadowing or a missing preceding unconditional facade import.
 
         Raises:
-            ValueError: The source does not admit the requested facade binding.
+            e.ValidationError: The source does not admit the requested facade
+                binding; its context names the module.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         existing = runtime.scope_at(module, offset).lookup("c")
         if existing is not None and not runtime.same_name(facade, existing):
             message = f"literal constant facade c is shadowed in {path}"
-            raise ValueError(message)
+            raise e.ValidationError(
+                message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+            )
         if isinstance(
             existing, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)
         ) and not runtime.imported_binding_precedes(project, module, "c", offset):
@@ -469,7 +478,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 f"literal constant facade c has no preceding "
                 f"unconditional import in {path}"
             )
-            raise ValueError(message)
+            raise e.ValidationError(
+                message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+            )
 
     @staticmethod
     def _record_matched_region(
@@ -477,17 +488,21 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         region: tuple[int, int],
         reference: str,
         scope: str,
+        path: Path,
     ) -> None:
         """Record one matched region, refusing ambiguous public owners.
 
         Raises:
-            ValueError: The same region has competing native owners.
+            e.ValidationError: The same region has competing native owners; its
+                context names the module.
 
         """
         previous = matched.get(region)
         if previous is not None and previous != reference:
             message = f"{scope}: {previous}, {reference}"
-            raise ValueError(message)
+            raise e.ValidationError(
+                message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+            )
         matched[region] = reference
 
     @classmethod
@@ -536,7 +551,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     if not constructors:
                         continue
                     region = max(constructors, key=operator.itemgetter(0))
-                    cls._record_matched_region(matched, region, reference, scope)
+                    cls._record_matched_region(matched, region, reference, scope, path)
         return matched
 
     @classmethod
@@ -590,7 +605,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                             module, literal, arguments={}, start=begin, end=finish
                         ):
                             cls._record_matched_region(
-                                matched, region, reference, scope
+                                matched, region, reference, scope, path
                             )
         return matched
 
@@ -622,7 +637,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         )
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(resource, path),
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(resource, path),
         )
         statements = cls._constant_imports(project, module)
         if not cls._has_constant_imports(rope_workspace, project, module, statements):
@@ -657,7 +672,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         resource: p.Infra.RopeResource,
         source: str,
         package: str,
-        plan: tuple[tuple[m.Infra.SourceRewrite, ...], Mapping[int, set[str]]],
+        plan: tuple[tuple[p.Infra.SourceRewrite, ...], Mapping[int, set[str]]],
     ) -> str:
         """Apply correlated reference/removal edits through native import owners.
 
@@ -684,7 +699,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         module: p.Infra.RopePyModule,
         public: Mapping[str, p.Infra.RopePyName],
         path: Path,
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Qualify missing flat members beneath their proven published namespace.
 
         A missing terminal has no identity to compare. Only its resolved namespace
@@ -694,7 +709,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             Native expression edits retaining aliases and unrelated lexical names.
 
         Raises:
-            ValueError: A referenced flat member has competing public destinations.
+            e.ValidationError: A referenced flat member has competing public
+                destinations or lost its publication; its context names the
+                module.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -709,7 +726,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 public, owner_module
             )
         )
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
         qualified_facade = f"{owner_module.get_name()}.c"
         for flat, references in destinations.items():
             if flat in public:
@@ -727,7 +744,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                     f"constant has ambiguous public owners in {path}: "
                     f"{tuple(references)}"
                 )
-                raise ValueError(message)
+                raise e.ValidationError(
+                    message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                )
             reference = references[0]
             if not runtime.same_name(
                 public[reference],
@@ -736,8 +755,12 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 .get_attributes()
                 .get(member),
             ):
-                message = f"constant destination lost its publication: {reference}"
-                raise ValueError(message)
+                message = (
+                    f"constant destination lost its publication in {path}: {reference}"
+                )
+                raise e.ValidationError(
+                    message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+                )
             for start, end in regions:
                 prefix = module.source_code[start:end].rpartition(".")[0]
                 edits.append(
@@ -764,7 +787,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             reference
             for reference, binding in public.items()
             if reference.count(".") == 1
-            and FlextInfraUtilitiesTypesRopeRuntime.abstract_class(binding.get_object())
+            and FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
             and binding.get_object().get_module() is owner_module
         }
         destinations: MutableMapping[str, list[str]] = {}
@@ -815,7 +838,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _constant_definition_source(
         workspace: p.Infra.RopeWorkspaceDsl,
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> bool:
         """Exclude constants and configured layer-zero owners from consumer edits.
 
@@ -920,7 +943,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         statements: Sequence[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]],
         paths: Mapping[str, p.Infra.RopePyName],
         path: Path,
-    ) -> tuple[tuple[m.Infra.SourceRewrite, ...], Mapping[int, set[str]]]:
+    ) -> tuple[tuple[p.Infra.SourceRewrite, ...], Mapping[int, set[str]]]:
         """Plan every native reference before removing its import binding.
 
         Returns:
@@ -928,7 +951,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         bindings = FlextInfraUtilitiesRopeRuntimeModules.scope_at(module, 0).get_names()
-        rewrites: list[m.Infra.SourceRewrite] = []
+        rewrites: list[p.Infra.SourceRewrite] = []
         removals: MutableMapping[int, set[str]] = {}
         for info, statement in statements:
             for imported, alias in info.names_and_aliases:
@@ -963,14 +986,16 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         imported: tuple[str, p.Infra.RopePyName],
         reference: str,
         facade: p.Infra.RopePyName,
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         """Rewrite native imported occurrences without crossing local rebindings.
 
         Returns:
             Proven occurrence edits, or no admissible binding retirement.
 
         Raises:
-            ValueError: The resource or canonical facade binding is unavailable.
+            ValueError: The consumer module has no source resource.
+            e.ValidationError: The canonical facade binding is shadowed; its
+                context names the module.
 
         """
         name, binding = imported
@@ -987,7 +1012,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         if any(item.is_defined() for item in occurrences):
             return ()
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        rewrites: list[m.Infra.SourceRewrite] = []
+        rewrites: list[p.Infra.SourceRewrite] = []
         for occurrence in occurrences:
             scope = runtime.scope_at(module, occurrence.offset)
             existing = scope.lookup("c")
@@ -995,7 +1020,10 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 facade, existing
             ):
                 message = f"constant facade c is shadowed in {resource.real_path}"
-                raise ValueError(message)
+                raise e.ValidationError(
+                    message,
+                    context={c.Infra.MOD_FAILURE_MODULE_KEY: resource.real_path},
+                )
             start, end = occurrence.get_word_range()
             rewrites.append(m.Infra.SourceRewrite(start=start, end=end, text=reference))
         return tuple(rewrites)
@@ -1021,7 +1049,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         if resource is None:
             message = "constant imports have no source resource"
             raise ValueError(message)
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
         emptied: set[int] = set()
         for _native_info, statement in cls._constant_imports(project, module):
             removed = removals.get(statement.line)
@@ -1063,9 +1091,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _empty_type_checking_suites(
         source: str,
-        edits: Sequence[m.Infra.SourceRewrite],
+        edits: Sequence[p.Infra.SourceRewrite],
         emptied: frozenset[int] | set[int],
-    ) -> list[m.Infra.SourceRewrite]:
+    ) -> list[p.Infra.SourceRewrite]:
         """Remove empty TYPE_CHECKING suites without stubs or comment loss.
 
         Returns:
@@ -1077,7 +1105,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         for index, guard in enumerate(statements):
             if guard.category != c.Infra.StatementCategory.IF_GUARD:
                 continue
-            body: list[m.Infra.LogicalStatement] = []
+            body: list[p.Infra.LogicalStatement] = []
             for statement in statements[index + 1 :]:
                 if statement.indent <= guard.indent:
                     break
@@ -1155,7 +1183,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
                 continue
             if (
                 binding.get_object()
-                in FlextInfraUtilitiesTypesRopeRuntime.require_class_object(
+                in FlextInfraUtilitiesRopeRuntimeTypes.require_class_object(
                     scope.pyobject, "constant facade composition"
                 ).get_superclasses()
             ):
@@ -1174,7 +1202,8 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
             The package owning the consumer's canonical constants facade.
 
         Raises:
-            ValueError: Several constants facades are bound as c.
+            e.ValidationError: Several constants facades are bound as c; its
+                context names the module.
 
         """
         public_packages = {
@@ -1186,7 +1215,9 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         }
         if len(public_packages) > 1:
             msg = f"multiple constants facades bound as c in {path}"
-            raise ValueError(msg)
+            raise e.ValidationError(
+                msg, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
+            )
         return next(iter(public_packages), declared_package)
 
 

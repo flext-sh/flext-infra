@@ -8,9 +8,7 @@
 #
 # The practice-level ban, not per-file marks: the `_rope` family is the
 # sanctioned rope adapter and owns its internal analysis bridging (its
-# migration is the adapter's own cutover), and the two BLOCKED sites below
-# are whitelisted by engine-map section 2 pending the operator-authorized
-# runtime probe (flext-u9h2i).
+# migration is the adapter's own cutover).
 id: ban-engine-python-ast
 language: Python
 severity: error
@@ -21,12 +19,6 @@ ignores:
   # The rope adapter family: its internal bridging is the capability the
   # engine routes through (engine-map section 0, law 6; D17).
   - "**/_utilities/_rope/**"
-  # BLOCKED-ON-ROPE-CAPABILITY flext-u9h2i, probe pending operator
-  # (engine-map section 2 BLOCKED list: both generators).
-  - "**/codemod_type_set_rules.py"
-  # BLOCKED-ON-ROPE-CAPABILITY flext-u9h2i, probe pending operator
-  # (engine-map section 2 BLOCKED list: :764 and :794).
-  - "**/codemod_native_package_utilities.py"
 rule:
   any:
     - all:

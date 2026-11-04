@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import FlextInfraCli, config, m
-from flext_infra.gates.pyright import FlextInfraPyrightGate
+from flext_infra.gates.pyright import FlextInfraGatesPyright
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -160,7 +160,7 @@ class TestsFlextInfraCheckReportContract:
         )
         before = u.Cli.sha256_bytes(source.read_bytes())
         reports = tmp_path / "reports"
-        native = FlextInfraPyrightGate(repository_root=project).check(
+        native = FlextInfraGatesPyright(repository_root=project).check(
             project,
             m.Infra.GateContext.model_validate({
                 "repository_root": project,

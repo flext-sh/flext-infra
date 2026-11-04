@@ -8,7 +8,8 @@ Infra:
     finalize_maintenance: true
   refactor_csv_campaigns:
     campaigns:
-      - csv: rules/mod/renames/infra-dedup.csv
+      - id: csv:infra-dedup
+        csv: rules/mod/renames/infra-dedup.csv
         bindings:
           t: [flext_infra.t, flext_core.t]
           c: [flext_infra.c, flext_core.c]
@@ -19,3 +20,24 @@ Infra:
           - "config/**/*.yml"
           - "src/**/*.j2"
         exclude_globs: []
+    owners:
+      - id: semantic:cutover
+        kind: semantic
+      - id: semantic:external-model-owner
+        kind: semantic
+        phase: external-model-owner
+      - id: callback:import-normalization
+        kind: callback
+        callback: import-normalization
+      - id: callback:facade-components
+        kind: callback
+        callback: facade-components
+      - id: callback:namespace-relocations
+        kind: callback
+        callback: namespace-relocations
+      - id: callback:duplicate-apply
+        kind: callback
+        callback: duplicate-apply
+      - id: callback:accessor-rename
+        kind: callback
+        callback: accessor-rename

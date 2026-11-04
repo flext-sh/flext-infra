@@ -19,13 +19,15 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDeferredSelfReferenceRewrite,
     FlextInfraUtilitiesDocs,
     FlextInfraUtilitiesEnforcementCatalog,
-    FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesLazyInitLetters,
     FlextInfraUtilitiesLazyInitPlan,
     FlextInfraUtilitiesLazyInitRender,
     FlextInfraUtilitiesLogParser,
     FlextInfraUtilitiesMiseBinary,
+    FlextInfraUtilitiesModelsProtocolContracts,
+    FlextInfraUtilitiesModelsProtocolRetirement,
+    FlextInfraUtilitiesMypy,
     FlextInfraUtilitiesNetwork,
     FlextInfraUtilitiesPrivateImportAncestry,
     FlextInfraUtilitiesPrivateImportFacades,
@@ -43,23 +45,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
     FlextInfraUtilitiesRelease,
     FlextInfraUtilitiesResourceLimits,
+    FlextInfraUtilitiesRope,
     FlextInfraUtilitiesSemanticCutover,
     FlextInfraUtilitiesTransformerHeader,
     FlextInfraWorktreeLifecycle,
     FlextInfraWorktreeProvisioning,
-)
-from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeHelpers,
-    FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeInventory,
-    FlextInfraUtilitiesRopeNestedClassMove,
-    FlextInfraUtilitiesRopeSource,
-    FlextInfraUtilitiesRopeSourceBasesAliases,
-    FlextInfraUtilitiesRopeSourceBasesInventory,
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
-    FlextInfraUtilitiesRopeSourceBindingCollector,
-    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
@@ -71,7 +61,7 @@ class FlextInfraUtilities(flext_cli_u):
 
     Usage::
 
-        from flext_infra import m, u
+        from flext_infra import m, p, u
 
         u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=Path(".")))
         u.Cli.toml_read_json(path)
@@ -80,19 +70,21 @@ class FlextInfraUtilities(flext_cli_u):
     """
 
     class Infra(
+        FlextInfraUtilitiesRopeAnalysisIntrospection,
         FlextInfraUtilitiesRefactorCensus,
         FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesCodemod,
         FlextInfraUtilitiesCompatibilityAliasValidation,
         FlextInfraUtilitiesDeferredSelfReferenceRewrite,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesEnforcementCatalog,
-        FlextInfraUtilitiesFacadeComponents,
         FlextInfraUtilitiesFacadeMembers,
         FlextInfraUtilitiesLazyInitLetters,
         FlextInfraUtilitiesLazyInitPlan,
         FlextInfraUtilitiesLazyInitRender,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesMiseBinary,
+        FlextInfraUtilitiesMypy,
         FlextInfraUtilitiesRefactorNamespaceFlext,
         FlextInfraUtilitiesRefactorNamespaceMoves,
         FlextInfraUtilitiesNetwork,
@@ -102,30 +94,20 @@ class FlextInfraUtilities(flext_cli_u):
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesPromoted,
         FlextInfraUtilitiesProtectedEdit,
+        FlextInfraUtilitiesModelsProtocolContracts,
+        FlextInfraUtilitiesModelsProtocolRetirement,
         FlextInfraUtilitiesPyrefly,
         FlextInfraUtilitiesPytestCollection,
+        FlextInfraUtilitiesPytest,
         FlextInfraUtilitiesPythonModel,
         FlextInfraUtilitiesQualifiedNames,
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesResourceLimits,
+        FlextInfraUtilitiesRope,
         FlextInfraUtilitiesSemanticCutover,
         FlextInfraUtilitiesTransformerHeader,
         FlextInfraWorktreeLifecycle,
         FlextInfraWorktreeProvisioning,
-        FlextInfraUtilitiesRopeSourceBasesAliases,
-        FlextInfraUtilitiesRopeSourceBasesInventory,
-        FlextInfraUtilitiesRopeSourceBindingCollector,
-        FlextInfraUtilitiesRopeSourceBasesRuntime,
-        FlextInfraUtilitiesCodemod,
-        FlextInfraUtilitiesPytest,
-        FlextInfraUtilitiesRopeAnalysisIntrospection,
-        FlextInfraUtilitiesRopeCore,
-        FlextInfraUtilitiesRopeHelpers,
-        FlextInfraUtilitiesRopeImports,
-        FlextInfraUtilitiesRopeInventory,
-        FlextInfraUtilitiesRopeNestedClassMove,
-        FlextInfraUtilitiesRopeSource,
-        FlextInfraUtilitiesRopeStructure,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

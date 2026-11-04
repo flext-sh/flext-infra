@@ -1,0 +1,88 @@
+id: test-utilities-tier-facade
+snapshots:
+  "from flext_core import (\n    r,\n    u,\n)\n\nvalue = r[int].ok(u.Tests.count(plan))\n":
+    fixed: |
+      from flext_core import (
+          r,
+      )
+      
+      value = r[int].ok(u.Tests.count(plan))
+    labels:
+    - source: |-
+        from flext_core import (
+            r,
+            u,
+        )
+      style: primary
+      start: 0
+      end: 40
+    - source: |
+        from flext_core import (
+            r,
+            u,
+        )
+        
+        value = r[int].ok(u.Tests.count(plan))
+      style: secondary
+      start: 0
+      end: 81
+    - source: flext_core
+      style: secondary
+      start: 5
+      end: 15
+    - source: u
+      style: secondary
+      start: 36
+      end: 37
+  "from flext_infra import c, u, m\nfrom tests import u\n\nvalue = u.Infra.resolve(c.Infra.NAME, m.Infra.Plan)\n":
+    fixed: |
+      from flext_infra import c, m
+      from tests import u
+      
+      value = u.Infra.resolve(c.Infra.NAME, m.Infra.Plan)
+    labels:
+    - source: from flext_infra import c, u, m
+      style: primary
+      start: 0
+      end: 31
+    - source: |
+        from flext_infra import c, u, m
+        from tests import u
+        
+        value = u.Infra.resolve(c.Infra.NAME, m.Infra.Plan)
+      style: secondary
+      start: 0
+      end: 105
+    - source: flext_infra
+      style: secondary
+      start: 5
+      end: 16
+    - source: u
+      style: secondary
+      start: 27
+      end: 28
+  "from flext_infra import u\n\nvalue = u.Tests.codegen_file_text(plan)\n":
+    fixed: |
+      
+      
+      value = u.Tests.codegen_file_text(plan)
+    labels:
+    - source: from flext_infra import u
+      style: primary
+      start: 0
+      end: 25
+    - source: |
+        from flext_infra import u
+        
+        value = u.Tests.codegen_file_text(plan)
+      style: secondary
+      start: 0
+      end: 67
+    - source: flext_infra
+      style: secondary
+      start: 5
+      end: 16
+    - source: u
+      style: secondary
+      start: 24
+      end: 25

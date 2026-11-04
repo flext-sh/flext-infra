@@ -48,7 +48,7 @@ class TestsFlextInfraWorktreeProvisioningGitlinks:
             "\t@chmod +x $(RUNTIME_VENV)/bin/python\n",
             encoding="utf-8",
         )
-        (lane / ".gitignore").write_text(
+        (lane / ".ignore").write_text(
             f"{c.Infra.ENVIRONMENT_DIRECTORY}/\n",
             encoding="utf-8",
         )

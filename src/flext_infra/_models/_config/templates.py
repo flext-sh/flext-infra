@@ -15,9 +15,11 @@ from typing import Annotated, Literal, Self
 import flext_core
 from flext_cli import m, u
 
-from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
-from flext_infra._models._config.scaffold import FlextInfraModelsConfigScaffold
+from flext_infra import c, p, t
+from flext_infra._models._config import (
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigScaffold,
+)
 
 
 class FlextInfraModelsConfigTemplates:
@@ -128,7 +130,7 @@ class FlextInfraModelsConfigTemplates:
             m.Field(description="Strictly parsed and ordered configuration document"),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 exclude=True,
                 description="Exact physical files consulted by this document",
@@ -262,7 +264,13 @@ class FlextInfraModelsConfigTemplates:
             m.Field(min_length=1, description="Profiles that consume the artifact"),
         ]
         ownership: Annotated[
-            FlextInfraModelsConfigTemplates.ManagedFileOwnership | None,
+            Annotated[
+                p.Infra.ManagedFileOwnership,
+                t.schema_for_model(
+                    FlextInfraModelsConfigTemplates.ManagedFileOwnership
+                ),
+            ]
+            | None,
             m.Field(
                 description=(
                     "Explicit generated-file ownership, or null for an authored "
@@ -427,16 +435,18 @@ class FlextInfraModelsConfigTemplates:
         )
 
         root: Annotated[Path, m.Field(description="Package-relative template root")]
-        catalog: Annotated[
-            Mapping[
-                t.NonEmptyStr,
-                FlextInfraModelsConfigTemplates.TemplateDeclarationSpec,
+        catalog: Mapping[
+            t.NonEmptyStr,
+            Annotated[
+                p.Infra.TemplateDeclarationSpec,
+                t.schema_for_model(
+                    FlextInfraModelsConfigTemplates.TemplateDeclarationSpec
+                ),
             ],
-            m.Field(
-                alias="entries",
-                description="Ordered template bodies keyed by destination",
-            ),
-        ]
+        ] = m.Field(
+            alias="entries",
+            description="Ordered template bodies keyed by destination",
+        )
 
         @cached_property
         def entries(
@@ -551,7 +561,15 @@ class FlextInfraModelsConfigTemplates:
         """Profile-filtered input consumed by the Git ignore template."""
 
         gitignore_sections: Annotated[
-            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ScaffoldGitignoreSectionSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
@@ -559,7 +577,15 @@ class FlextInfraModelsConfigTemplates:
         """Typed, profile-filtered input for the generated Git ignore file."""
 
         gitignore_sections: Annotated[
-            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ScaffoldGitignoreSectionSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 description="Canonical ignore sections applicable to one profile",

@@ -9,13 +9,9 @@ from __future__ import annotations
 import operator
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesProtectedEditLinting
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLinting):
@@ -43,7 +39,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         gates: Sequence[str] | None = None,
     ) -> tuple[
         MutableMapping[Path, str | None],
-        MutableMapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+        MutableMapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
     ]:
         """Preview write baselines.
 
@@ -54,7 +50,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         """
         before_sources: MutableMapping[Path, str | None] = {}
         before_lints: MutableMapping[
-            Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]
+            Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]
         ] = {}
         existing_paths: list[Path] = []
         for path in updates:
@@ -117,7 +113,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
     def _preview_write_reports(
         candidates: Mapping[Path, Path],
         before_sources: Mapping[Path, str | None],
-        before_lints: Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
+        before_lints: Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
         workspace: Path,
         gates: Sequence[str] | None = None,
     ) -> t.Infra.EditResult:
@@ -232,8 +228,8 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         source_preview: p.Infra.SourcePreview,
         gates: Sequence[str] | None = None,
     ) -> tuple[
-        t.Infra.LintSnapshot[m.Infra.LintGateResult],
-        t.Infra.LintSnapshot[m.Infra.LintGateResult],
+        t.Infra.LintSnapshot[p.Infra.LintGateResult],
+        t.Infra.LintSnapshot[p.Infra.LintGateResult],
     ]:
         """Compare live and staged lint snapshots without changing live source.
 
@@ -261,7 +257,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         def validate(
             _view_root: Path,
             candidates: Mapping[Path, Path],
-        ) -> t.Infra.LintSnapshot[m.Infra.LintGateResult]:
+        ) -> t.Infra.LintSnapshot[p.Infra.LintGateResult]:
             del _view_root
             return FlextInfraUtilitiesProtectedEditPreview.lint_snapshot(
                 candidates[path], workspace, gates=gates

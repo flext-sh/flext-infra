@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraAuditor:
     """Tests for the docs auditor and its static helpers."""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def auditor() -> FlextInfraDocAuditor:
         """Provide ``auditor``.
 
@@ -32,8 +32,8 @@ class TestsFlextInfraAuditor:
         """
         return FlextInfraDocAuditor()
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def normalize_link() -> Callable[[str], str]:
         """Provide ``normalize_link``.
 
@@ -48,8 +48,8 @@ class TestsFlextInfraAuditor:
 
         return _normalize
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def should_skip_target() -> Callable[[str, str], bool]:
         """Provide ``should_skip_target``.
 
@@ -64,8 +64,8 @@ class TestsFlextInfraAuditor:
 
         return _should_skip
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def is_external() -> Callable[[str], bool]:
         """Provide ``is_external``.
 

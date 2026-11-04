@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import pytest
 
-from flext_infra import config, gates, m, u
-from tests import c, tm
+from flext_infra import config, gates, m, p, u
+from tests import c, p, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,7 +35,7 @@ class TestsFlextInfraGateHookDefaults:
     _MARKER_VALUE = "from-override"
     _REPORT_NAME = "probe.json"
 
-    class _Probe(gates.FlextInfraGate):
+    class _Probe(gates.FlextInfraGates):
         """Run one environment probe without replacing the five hook defaults."""
 
         gate_id: ClassVar[str] = "probe"
@@ -45,7 +45,7 @@ class TestsFlextInfraGateHookDefaults:
         def _build_check_command(
             self,
             project_dir: Path,
-            ctx: m.Infra.GateContext,
+            ctx: p.Infra.GateContext,
             check_dirs: Sequence[str],
         ) -> Sequence[str]:
             """Print the environment keys the hook defaults control.
@@ -62,12 +62,12 @@ class TestsFlextInfraGateHookDefaults:
             self,
             result: p.Cli.CommandOutput,
             project_dir: Path,
-            ctx: m.Infra.GateContext,
-        ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+            ctx: p.Infra.GateContext,
+        ) -> tuple[bool, Sequence[p.Infra.Issue]]:
             """Accept the probe output. The environment is the assertion.
 
             Returns:
-                The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
+                The resulting ``tuple[bool, Sequence[p.Infra.Issue]]``.
 
             """
             _ = result, project_dir, ctx
@@ -79,7 +79,7 @@ class TestsFlextInfraGateHookDefaults:
         check_report_filename: ClassVar[str] = "probe.json"
         check_timeout: ClassVar[int] = 1
         check_remove_env_keys: ClassVar[Sequence[str]] = (
-            *gates.FlextInfraGate.check_remove_env_keys,
+            *gates.FlextInfraGates.check_remove_env_keys,
             "FLEXT_GATE_PROBE_KEPT",
         )
 
@@ -92,7 +92,7 @@ class TestsFlextInfraGateHookDefaults:
         def _build_fix_command(
             self,
             project_dir: Path,
-            ctx: m.Infra.GateContext,
+            ctx: p.Infra.GateContext,
             targets: Sequence[str],
         ) -> Sequence[str]:
             """Return a native repair probe.
@@ -111,7 +111,7 @@ class TestsFlextInfraGateHookDefaults:
         def _build_fix_command(
             self,
             project_dir: Path,
-            ctx: m.Infra.GateContext,
+            ctx: p.Infra.GateContext,
             targets: Sequence[str],
         ) -> Sequence[str]:
             """Return a failing native repair.
@@ -127,7 +127,7 @@ class TestsFlextInfraGateHookDefaults:
                 f"print({self.gate_id!r} + '-FAILED'); raise SystemExit(2)",
             )
 
-    class _MissingParser(gates.FlextInfraGate):
+    class _MissingParser(gates.FlextInfraGates):
         """Exercise the instance parsing hook without implementing it."""
 
         gate_id: ClassVar[str] = "missing-parser"
@@ -136,7 +136,7 @@ class TestsFlextInfraGateHookDefaults:
         def _build_check_command(
             self,
             project_dir: Path,
-            ctx: m.Infra.GateContext,
+            ctx: p.Infra.GateContext,
             check_dirs: Sequence[str],
         ) -> Sequence[str]:
             """Run a successful tool before encountering the unimplemented hook.
@@ -155,7 +155,7 @@ class TestsFlextInfraGateHookDefaults:
         def _check_env(
             self,
             project_dir: Path,
-            ctx: m.Infra.GateContext,
+            ctx: p.Infra.GateContext,
         ) -> Mapping[str, str] | None:
             """Overlay one marker on the inherited environment.
 
@@ -178,7 +178,7 @@ class TestsFlextInfraGateHookDefaults:
             self,
             result: p.Cli.CommandOutput,
             project_dir: Path,
-            ctx: m.Infra.GateContext,
+            ctx: p.Infra.GateContext,
             targets: Sequence[str],
         ) -> None:
             """Reject the probe's native stderr marker.
@@ -199,7 +199,7 @@ class TestsFlextInfraGateHookDefaults:
         def _build_check_command(
             self,
             project_dir: Path,
-            ctx: m.Infra.GateContext,
+            ctx: p.Infra.GateContext,
             check_dirs: Sequence[str],
         ) -> Sequence[str]:
             """Sleep inside the inherited deadline, then finish.
@@ -224,7 +224,7 @@ class TestsFlextInfraGateHookDefaults:
         def _build_check_command(
             self,
             project_dir: Path,
-            ctx: m.Infra.GateContext,
+            ctx: p.Infra.GateContext,
             check_dirs: Sequence[str],
         ) -> Sequence[str]:
             """Sleep far past the replaced one-second deadline.
@@ -282,7 +282,7 @@ class TestsFlextInfraGateHookDefaults:
         return project, reports
 
     @staticmethod
-    def _context(project: Path, reports: Path) -> m.Infra.GateContext:
+    def _context(project: Path, reports: Path) -> p.Infra.GateContext:
         """Build the check context whose reports directory the gate may replace.
 
         Returns:
@@ -293,9 +293,9 @@ class TestsFlextInfraGateHookDefaults:
 
     def _check_with_replaced_reports(
         self,
-        gate_class: type[gates.FlextInfraGate],
+        gate_class: type[gates.FlextInfraGates],
         tmp_path: Path,
-    ) -> tuple[m.Infra.GateExecution, Path, Path]:
+    ) -> tuple[p.Infra.GateExecution, Path, Path]:
         """Run one gate over a project holding a stale and a kept report.
 
         Returns:
@@ -459,15 +459,15 @@ class TestsFlextInfraGateHookDefaults:
     @staticmethod
     def test_production_gates_keep_their_declared_defaults() -> None:
         """Pyright and Pyrefly keep the deadlines and removals they declared."""
-        tm.that(gates.FlextInfraPyrightGate.check_timeout, eq=c.Infra.TIMEOUT_LONG)
+        tm.that(gates.FlextInfraGatesPyright.check_timeout, eq=c.Infra.TIMEOUT_LONG)
         tm.that(
-            tuple(gates.FlextInfraPyreflyGate.check_remove_env_keys),
+            tuple(gates.FlextInfraGatesPyrefly.check_remove_env_keys),
             eq=(
-                *tuple(gates.FlextInfraGate.check_remove_env_keys),
+                *tuple(gates.FlextInfraGates.check_remove_env_keys),
                 c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,
             ),
         )
         tm.that(
-            gates.FlextInfraPyreflyGate.check_report_filename,
+            gates.FlextInfraGatesPyrefly.check_report_filename,
             eq="pyrefly.json",
         )

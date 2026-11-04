@@ -9,14 +9,14 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeStructure:
     """Expose one Rope-owned fact pass to every structural detector."""
 
     @staticmethod
-    def logical_statements(source: str) -> Sequence[m.Infra.LogicalStatement]:
+    def logical_statements(source: str) -> Sequence[p.Infra.LogicalStatement]:
         """Return Rope logical regions with scope and TYPE_CHECKING context.
 
         Returns:
@@ -42,7 +42,7 @@ class FlextInfraUtilitiesRopeStructure:
         if not isinstance(finder, p.Infra.RopeLogicalLineFinder):
             msg = "Rope logical line finder does not satisfy its region contract"
             raise TypeError(msg)
-        statements: MutableSequence[m.Infra.LogicalStatement] = []
+        statements: MutableSequence[p.Infra.LogicalStatement] = []
         enclosers: MutableSequence[tuple[int, c.Infra.RopeScopeKind, str]] = []
         type_checking_guards: MutableSequence[int] = []
         for start, end in finder.generate_regions():
@@ -250,7 +250,7 @@ class FlextInfraUtilitiesRopeStructure:
         return None
 
     @staticmethod
-    def target_name(statement: m.Infra.LogicalStatement) -> str:
+    def target_name(statement: p.Infra.LogicalStatement) -> str:
         """Return a simple assignment/annotation target name, or empty.
 
         Returns:
@@ -263,7 +263,7 @@ class FlextInfraUtilitiesRopeStructure:
         return name if name.isidentifier() else ""
 
     @staticmethod
-    def class_base_names(statement: m.Infra.LogicalStatement) -> t.Infra.StrSet:
+    def class_base_names(statement: p.Infra.LogicalStatement) -> t.Infra.StrSet:
         """Return terminal base-class names from a class header.
 
         Returns:

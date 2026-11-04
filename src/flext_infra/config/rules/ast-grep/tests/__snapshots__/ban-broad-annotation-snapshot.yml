@@ -1,5 +1,15 @@
 id: ban-broad-annotation
 snapshots:
+  "def run() -> dict: ...":
+    labels:
+    - source: dict
+      style: primary
+      start: 13
+      end: 17
+    - source: dict
+      style: secondary
+      start: 13
+      end: 17
   "def run(values: Any) -> None: ...":
     labels:
     - source: Any
@@ -10,6 +20,16 @@ snapshots:
       style: secondary
       start: 16
       end: 19
+  "def run(values: Mapping[str, dict]) -> None: ...":
+    labels:
+    - source: dict
+      style: primary
+      start: 29
+      end: 33
+    - source: dict
+      style: secondary
+      start: 29
+      end: 33
   "def run(values: str) -> Optional[str]: ...":
     labels:
     - source: Optional
@@ -30,13 +50,23 @@ snapshots:
       style: secondary
       start: 7
       end: 13
-  "values: dict[str, str] = {}":
+  "values: dict = {}":
     labels:
     - source: dict
       style: primary
       start: 8
       end: 12
-    - source: dict[str, str]
+    - source: dict
       style: secondary
       start: 8
-      end: 22
+      end: 12
+  "values: dict[str, Any] = {}":
+    labels:
+    - source: Any
+      style: primary
+      start: 18
+      end: 21
+    - source: Any
+      style: secondary
+      start: 18
+      end: 21

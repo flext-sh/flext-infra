@@ -42,6 +42,22 @@ snapshots:
       style: secondary
       start: 0
       end: 23
+  "tm = FlextTestsMatchers\n__all__ = [\"FlextTestsMatchers\", \"tm\"]\n":
+    labels:
+    - source: tm = FlextTestsMatchers
+      style: primary
+      start: 0
+      end: 23
+    - source: |
+        tm = FlextTestsMatchers
+        __all__ = ["FlextTestsMatchers", "tm"]
+      style: secondary
+      start: 0
+      end: 63
+    - source: tm = FlextTestsMatchers
+      style: secondary
+      start: 0
+      end: 23
   "tm = FlextTestsMatchers\n__all__ = [\"FlextTestsMatchers\"]\n":
     labels:
     - source: tm = FlextTestsMatchers

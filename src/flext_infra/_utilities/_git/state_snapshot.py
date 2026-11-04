@@ -38,7 +38,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         return os.fsencode(path.readlink()) if path.is_symlink() else path.read_bytes()
 
     @classmethod
-    def _state_file(cls, root: Path, relative: Path) -> m.Infra.GitWorktreeFileState:
+    def _state_file(cls, root: Path, relative: Path) -> p.Infra.GitWorktreeFileState:
         (state,) = cls._state_files(root, (relative,))
         return state
 
@@ -47,7 +47,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         relatives: Sequence[Path],
-    ) -> tuple[m.Infra.GitWorktreeFileState, ...]:
+    ) -> tuple[p.Infra.GitWorktreeFileState, ...]:
         """Measure raw working bytes, hashing every regular file in one process.
 
         Regular files go through one unfiltered ``hash-object --stdin-paths``
@@ -90,7 +90,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
                 msg = "hash-object returned a different number of object ids"
                 raise ValueError(msg)
             oids.update(zip(regular, batch, strict=True))
-        states: list[m.Infra.GitWorktreeFileState] = []
+        states: list[p.Infra.GitWorktreeFileState] = []
         for relative, mode in modes:
             if stat.S_ISLNK(mode):
                 with FlextInfraUtilitiesGitWorktreeIO.git_stdin(
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         paths: Sequence[Path],
         *,
         index_file: Path | None = None,
-    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
+    ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
         """Read the exact stage-zero index entries for the requested paths.
 
         Returns:
@@ -139,7 +139,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
                     "or skip-worktree flags"
                 )
                 raise ValueError(msg)
-        entries: list[m.Infra.GitWorktreeIndexEntry] = []
+        entries: list[p.Infra.GitWorktreeIndexEntry] = []
         for row in repo.git.ls_files("--stage", "-z", "--", *pathspecs).split("\0"):
             if not row:
                 continue
@@ -165,13 +165,13 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         paths: Sequence[Path],
-    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
+    ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
         rows = (
             cls._repo(root).git.ls_tree("-r", "--full-tree", "-z", "HEAD")
             if paths
             else ""
         )
-        entries: list[m.Infra.GitWorktreeIndexEntry] = []
+        entries: list[p.Infra.GitWorktreeIndexEntry] = []
         for row in rows.split("\0"):
             if not row:
                 continue
@@ -188,8 +188,8 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         paths: Sequence[Path],
-        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
-    ) -> tuple[m.Infra.GitWorktreeFileState, ...]:
+        entries: Sequence[p.Infra.GitWorktreeIndexEntry],
+    ) -> tuple[p.Infra.GitWorktreeFileState, ...]:
         repo = cls._repo(root)
         pathspecs = cls._state_pathspecs(paths)
         raw_paths = repo.git.ls_files(
@@ -230,7 +230,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
                 if (root / parent).is_symlink() and parent not in candidates:
                     msg = f"snapshot scope traverses an unowned symlink: {path}"
                     raise ValueError(msg)
-        files: list[m.Infra.GitWorktreeFileState] = []
+        files: list[p.Infra.GitWorktreeFileState] = []
         measured: list[Path] = []
         for path in candidates:
             candidate = root / path
@@ -263,8 +263,8 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
     @classmethod
     def _state_snapshot(
         cls,
-        request: m.Infra.GitWorktreeStateRequest,
-    ) -> m.Infra.GitWorktreeStateSnapshot:
+        request: p.Infra.GitWorktreeStateRequest,
+    ) -> p.Infra.GitWorktreeStateSnapshot:
         root = request.repo_root.resolve()
         repo = cls._repo(root)
         if Path(repo.working_tree_dir or "").resolve() != root:
@@ -297,24 +297,24 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
     @classmethod
     def git_snapshot_worktree_state(
         cls,
-        request: m.Infra.GitWorktreeStateRequest,
-    ) -> p.Result[m.Infra.GitWorktreeStateSnapshot]:
+        request: p.Infra.GitWorktreeStateRequest,
+    ) -> p.Result[p.Infra.GitWorktreeStateSnapshot]:
         """Measure owned index entries and raw files, without writing Git objects.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitWorktreeStateSnapshot]``.
+            The resulting ``p.Result[p.Infra.GitWorktreeStateSnapshot]``.
 
         """
         try:
             snapshot = cls._state_snapshot(request)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitWorktreeStateSnapshot].fail(str(exc), exception=exc)
-        return r[m.Infra.GitWorktreeStateSnapshot].ok(snapshot)
+            return r[p.Infra.GitWorktreeStateSnapshot].fail(str(exc), exception=exc)
+        return r[p.Infra.GitWorktreeStateSnapshot].ok(snapshot)
 
     @classmethod
     def git_verify_worktree_state(
         cls,
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
         destination_root: Path,
     ) -> p.Result[bool]:
         """Return false for layer differences, fail on foreign identity or read errors.

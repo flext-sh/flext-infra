@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests import m, t, tm, u
+from tests import m, p, t, tm, u
 
 
 class TestsFlextInfraModels:
@@ -79,11 +79,11 @@ class TestsFlextInfraModels:
             tm.that(published_region, eq=region or {})
 
     @staticmethod
-    def _sample_issues() -> tuple[m.Infra.Issue, m.Infra.Issue, m.Infra.Issue]:
+    def _sample_issues() -> tuple[p.Infra.Issue, m.Infra.Issue, m.Infra.Issue]:
         """Build three distinct sample gate issues for summary assertions.
 
         Returns:
-            The resulting ``tuple[m.Infra.Issue, m.Infra.Issue, m.Infra.Issue]``.
+            The resulting ``tuple[p.Infra.Issue, m.Infra.Issue, m.Infra.Issue]``.
 
         """
         issue1 = m.Infra.Issue(

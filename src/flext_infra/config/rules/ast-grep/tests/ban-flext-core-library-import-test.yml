@@ -1,14 +1,20 @@
 id: ban-flext-core-library-import
 valid:
-  - from flext_core import m, u
-  - import returnsx
-  - from flext_core import returns
-  - import pydantic
+- from flext_core import m, p, u
+- import returnsx
+- from flext_core import returns
+- from flext_core import FlextSettings
+- import pydantic
+- |
+  if TYPE_CHECKING:
+      from pydantic_settings import BaseSettings
 invalid:
-  - import yaml as y
-  - from dependency_injector import containers
-  - from returns.result import Result
-  - |
-    def load():
-        import yaml
-        return yaml
+- import yaml as y
+- from dependency_injector import containers
+- from returns.result import Result
+- import pydantic_settings
+- from pydantic_settings import BaseSettings
+- |
+  def load():
+      import yaml
+      return yaml

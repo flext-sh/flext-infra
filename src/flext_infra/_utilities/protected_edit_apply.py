@@ -14,7 +14,10 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, r, settings, t
-from flext_infra._utilities import FlextInfraUtilitiesProtectedEditPreview
+from flext_infra._utilities import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesProtectedEditPreview,
+)
 
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):
@@ -23,7 +26,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     @staticmethod
     def _protected_write_test_failure(
         path: Path,
-        request: m.Infra.ProtectedSourceWritesRequest,
+        request: p.Infra.ProtectedSourceWritesRequest,
         new_errors: t.Infra.LintSnapshot[Sequence[str]],
     ) -> str | None:
         """Protected write test failure.
@@ -47,8 +50,8 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def _protected_write_reports(
         updates: Mapping[Path, str],
         before_sources: Mapping[Path, str | None],
-        before_lints: Mapping[Path, t.Infra.LintSnapshot[m.Infra.LintGateResult]],
-        request: m.Infra.ProtectedSourceWritesRequest,
+        before_lints: Mapping[Path, t.Infra.LintSnapshot[p.Infra.LintGateResult]],
+        request: p.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Protected write reports.
 
@@ -200,7 +203,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def protected_file_edit(
         py_file: Path,
         *,
-        request: m.Infra.ProtectedFileEditRequest,
+        request: p.Infra.ProtectedFileEditRequest,
     ) -> t.Infra.EditResult:
         """Apply one edit and report lint/test failures without undoing writes.
 
@@ -257,7 +260,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def protected_source_write(
         py_file: Path,
         *,
-        request: m.Infra.ProtectedSourceWriteRequest,
+        request: p.Infra.ProtectedSourceWriteRequest,
     ) -> t.Infra.EditResult:
         """Write source content and retain it with its validation result.
 
@@ -301,7 +304,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def protected_source_writes(
         updates: Mapping[Path, str],
         *,
-        request: m.Infra.ProtectedSourceWritesRequest,
+        request: p.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Write multiple files and retain each write with validation evidence.
 
@@ -314,6 +317,9 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
         normalized_updates = (
             FlextInfraUtilitiesProtectedEditApply._normalized_source_updates(updates)
+        )
+        FlextInfraUtilitiesProjectManagedArtifacts.contained_write_targets(
+            request.workspace, tuple(updates)
         )
         expected_sources = {
             path.resolve(): content

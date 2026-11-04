@@ -12,7 +12,7 @@ from typing import Annotated, Literal, Self
 
 from flext_core import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._models._config import (
     FlextInfraModelsConfigArtifact,
@@ -53,11 +53,21 @@ class FlextInfraModelsDocsGeneration:
         """Source-derived inputs of the llms.txt documentation index."""
 
         title: t.NonEmptyStr = m.Field(description="Owning workspace title")
-        projects: tuple[FlextInfraModelsDocsGeneration.DocsCatalogEntry, ...] = m.Field(
-            description="Generated first-party project references"
-        )
+        projects: tuple[
+            Annotated[
+                p.Infra.DocsCatalogEntry,
+                t.schema_for_model(FlextInfraModelsDocsGeneration.DocsCatalogEntry),
+            ],
+            ...,
+        ] = m.Field(description="Generated first-party project references")
         dependencies: tuple[
-            FlextInfraModelsDocsGeneration.DocsDependencyReference, ...
+            Annotated[
+                p.Infra.DocsDependencyReference,
+                t.schema_for_model(
+                    FlextInfraModelsDocsGeneration.DocsDependencyReference
+                ),
+            ],
+            ...,
         ] = m.Field(description="Official external documentation references")
 
     class DocsRootInputs(m.FrozenModel):
@@ -78,8 +88,16 @@ class FlextInfraModelsDocsGeneration:
     class DocScope(FlextInfraModelsBase.FrozenArbitrary):
         """Documentation scope targeting a project or workspace root."""
 
-        declared_files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = (
-            m.Field(default=(), exclude=True, description="Captured presentation candidates")
+        declared_files: tuple[
+            Annotated[
+                p.Infra.CodegenFilePlan,
+                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+            ],
+            ...,
+        ] = m.Field(
+            default=(),
+            exclude=True,
+            description="Captured presentation candidates",
         )
         name: Annotated[t.NonEmptyStr, m.Field(description="Scope name")]
         path: Annotated[Path, m.Field(description="Absolute lexical scope root")]
@@ -100,7 +118,13 @@ class FlextInfraModelsDocsGeneration:
         )
 
         governance_source: (
-            FlextInfraModelsConfigWorkspace.CodegenBootstrapSource | None
+            Annotated[
+                p.Infra.CodegenBootstrapSource,
+                t.schema_for_model(
+                    FlextInfraModelsConfigWorkspace.CodegenBootstrapSource
+                ),
+            ]
+            | None
         ) = m.Field(
             default=None, description="Captured source and ref owning governance links"
         )
@@ -224,11 +248,22 @@ class FlextInfraModelsDocsGeneration:
         """One scope paired with its complete rendered artifact inventory."""
 
         scope: Annotated[
-            FlextInfraModelsDocsGeneration.DocScope,
+            Annotated[
+                p.Infra.DocScope,
+                t.schema_for_model(FlextInfraModelsDocsGeneration.DocScope),
+            ],
             m.Field(description="Exact scope that owns every relative artifact"),
         ]
         artifacts: Annotated[
-            tuple[FlextInfraModelsDocsGeneration.DocsRenderedArtifact, ...],
+            tuple[
+                Annotated[
+                    p.Infra.DocsRenderedArtifact,
+                    t.schema_for_model(
+                        FlextInfraModelsDocsGeneration.DocsRenderedArtifact
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Complete ordered desired artifact inventory"),
         ]
 
@@ -236,12 +271,24 @@ class FlextInfraModelsDocsGeneration:
         """Single render consumed through publication."""
 
         scopes: Annotated[
-            tuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts, ...],
+            tuple[
+                Annotated[
+                    p.Infra.DocsScopeArtifacts,
+                    t.schema_for_model(
+                        FlextInfraModelsDocsGeneration.DocsScopeArtifacts
+                    ),
+                ],
+                ...,
+            ],
             m.Field(min_length=1, description="Ordered selected scope inventories"),
         ]
-        metadata_files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = (
-            m.Field(default=(), description="Owned metadata published with this render")
-        )
+        metadata_files: tuple[
+            Annotated[
+                p.Infra.CodegenFilePlan,
+                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+            ],
+            ...,
+        ] = m.Field(default=(), description="Owned metadata published with this render")
         # The workspace root stays explicit: it may be excluded from `scopes`
         # (DECLARED conform scope), so it cannot be inferred from `scopes[0]`.
         repository_root: Annotated[
@@ -272,10 +319,12 @@ class FlextInfraModelsDocsGeneration:
                 for artifact in item.artifacts
             )
             metadata_paths = tuple(plan.path for plan in self.metadata_files)
-            allowed_metadata = {
-                item.scope.path / c.PYPROJECT_FILENAME for item in self.scopes
-            }
-            if any(path not in allowed_metadata for path in metadata_paths):
+            scope_roots = {item.scope.path for item in self.scopes}
+            if any(
+                plan.project not in scope_roots
+                or not plan.path.is_relative_to(plan.project)
+                for plan in self.metadata_files
+            ):
                 msg = "docs metadata target is outside its selected scope"
                 raise ValueError(msg)
             destinations = (*destinations, *metadata_paths)

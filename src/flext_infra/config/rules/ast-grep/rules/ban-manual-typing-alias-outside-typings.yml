@@ -6,8 +6,11 @@
 # enclosing namespace's own member, not a loose module object.
 #
 # No token fix: relocating the declaration rewires every consumer. The rule
-# names the rope relocation that performs the move and captures the declared
-# name as $NAME, the input that relocation consumes.
+# names the rope relocation that performs the move, captures the declared
+# name as $NAME and the owning family letter as $FAMILY (ADR-028 Decisions
+# 3-4: type aliases live in `t`), the inputs that relocation consumes. A
+# module-private name is a finding too: the family namespace has no privacy,
+# so the relocation publishes it as a public family member.
 id: ban-manual-typing-alias-outside-typings
 language: python
 severity: error
@@ -20,16 +23,13 @@ ignores:
   - "**/_typings/**"
 metadata:
   enforce: [ENFORCE-009]
-  relocation: typing-alias
-# A module-private declaration stays where it is: the relocation owner
-# (namespace_moves) never promotes underscore-prefixed aliases to the shared
-# typings module, because publishing a name its own declaration marks private
-# fails every consumer with reportPrivateUsage. The rule matches that
-# capability: only public declarations are findings, so every finding is
-# repairable and the namespace verb cannot strand permanent residue.
-constraints:
-  NAME:
-    regex: "^[^_]"
+  relocation: family-declaration
+transform:
+  FAMILY:
+    replace:
+      source: $NAME
+      replace: "^.*$"
+      by: t
 rule:
   inside:
     kind: module

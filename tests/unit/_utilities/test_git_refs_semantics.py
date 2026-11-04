@@ -186,3 +186,22 @@ class TestsFlextInfraGitRefsSemantics:
         by_path = {entry.path: entry for entry in listed.entries}
         tm.that(by_path[repository.resolve()].branch, eq=c.Infra.GIT_MAIN)
         tm.that(by_path[lane.resolve()].branch, eq="list-lane")
+
+    @staticmethod
+    def test_ref_is_commit_reads_abbreviated_and_full_oids_as_commits(
+        tmp_path: Path,
+    ) -> None:
+        """A real commit oid, full or abbreviated, is a commit; a branch is a line."""
+        repository = u.Tests.git_repository(tmp_path)
+        oid = tm.ok(
+            u.Infra.git_resolve_commit(
+                m.Infra.GitCommitishRequest(
+                    repo_root=repository,
+                    commitish=c.Infra.GIT_HEAD,
+                ),
+            ),
+        ).oid
+
+        tm.that(u.Infra.ref_is_commit(oid), truth=True)
+        tm.that(u.Infra.ref_is_commit(oid[:10]), truth=True)
+        tm.that(u.Infra.ref_is_commit(c.Infra.GIT_MAIN), truth=False)

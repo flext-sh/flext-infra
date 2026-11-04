@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra import config, m
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, t, tm, u
+from tests import c, p, t, tm, u
 
 
 class TestsFlextInfraCiIntegrationBranchTriggers:
@@ -32,7 +32,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         make_profile: c.Infra.MakeProfile,
         repository_branch: str,
         ci_trigger_branches: tuple[t.NonEmptyStr, ...],
-    ) -> tuple[m.Infra.GithubWorkflowRenderSpec, str]:
+    ) -> tuple[p.Infra.GithubWorkflowRenderSpec, str]:
         """Render one CI workflow and return its typed spec and rendered text.
 
         Returns:

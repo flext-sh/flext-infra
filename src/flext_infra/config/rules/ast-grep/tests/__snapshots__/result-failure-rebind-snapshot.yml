@@ -1,20 +1,5 @@
 id: result-failure-rebind
 snapshots:
-  "if loaded.failure:\n    return r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)\n":
-    fixed: |
-      if loaded.failure:
-          return r[m.Sample.Config].from_failure(loaded)
-    labels:
-    - source: r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-      style: primary
-      start: 30
-      end: 90
-    - source: |-
-        if loaded.failure:
-            return r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-      style: secondary
-      start: 0
-      end: 90
   "if loaded.failure:\n    return r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)\n":
     fixed: |
       if loaded.failure:

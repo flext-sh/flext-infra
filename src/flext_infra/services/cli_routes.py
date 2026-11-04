@@ -6,12 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import c, services
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, p, services
 
 
 class FlextInfraCliRouteService:
@@ -41,7 +36,7 @@ class FlextInfraCliRouteService:
             c.Infra.CLI_GROUP_MAINTENANCE,
             c.Infra.CLI_GROUP_VALIDATE,
         }:
-            return services.FlextInfraValidationRoutes.validation_routes[group]
+            return services.FlextInfraValidationRoutes.routes_for(group)
         if group == c.Infra.CLI_GROUP_REFACTOR:
             return services.FlextInfraRefactorRoutes.refactor_routes
         if group in {c.Infra.CLI_GROUP_RELEASE, c.Infra.CLI_GROUP_WORKSPACE}:

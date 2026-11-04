@@ -193,3 +193,216 @@ class TestsFlextInfraModelFieldsCutover:
                 sources={path: source},
             )
         tm.fail(result)
+
+    @staticmethod
+    def test_runtime_protocol_fields_are_port_wrapped_and_validate(
+        tmp_path: Path,
+    ) -> None:
+        """Pydantic fields validate direct public protocols through ``t.Port``."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "models.py"
+        source = (
+            "from pathlib import Path\n"
+            "from typing import Protocol\n"
+            "from flext_infra import m, p\n"
+            "class Payload(m.BaseModel):\n"
+            "    state: p.Cli.AtomicFileState\n"
+            "    states: tuple[p.Cli.AtomicFileState, ...]\n"
+            "    optional: p.Cli.AtomicFileState | None = None\n"
+            "class Contract(Protocol):\n"
+            "    state: p.Cli.AtomicFileState\n"
+            "def consume(state: p.Cli.AtomicFileState) -> p.Cli.AtomicFileState:\n"
+            "    return state\n"
+            "class State:\n"
+            "    path = Path('.')\n"
+            "    content = None\n"
+            "    device = None\n"
+            "    inode = None\n"
+            "value = State()\n"
+            "payload = Payload(state=value, states=(value,), optional=value)\n"
+            "assert payload.state is value and payload.states == (value,)\n"
+        )
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
+                    rope_workspace=rope,
+                    sources={path: source},
+                ),
+            )
+            tm.that(len(edits), eq=1)
+            updated = edits[0].updated_source
+            repeated = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
+                    rope_workspace=rope,
+                    sources={path: updated},
+                ),
+            )
+        tm.that(repeated, empty=True)
+        tm.ok("from flext_core import t" in updated)
+        tm.ok("state: t.Port[p.Cli.AtomicFileState]" in updated)
+        tm.ok("states: tuple[t.Port[p.Cli.AtomicFileState], ...]" in updated)
+        tm.ok("optional: t.Port[p.Cli.AtomicFileState] | None" in updated)
+        tm.ok("class Contract(Protocol):\n    state: p.Cli.AtomicFileState" in updated)
+        tm.ok(
+            "def consume(state: p.Cli.AtomicFileState) -> p.Cli.AtomicFileState"
+            in updated
+        )
+        path.write_text(updated, encoding="utf-8")
+        outcome = tm.ok(u.Cli.run_raw((sys.executable, "-I", str(path))))
+        tm.that(outcome.exit_code, eq=0)
+        tm.that(outcome.stderr, eq="")
+
+    @staticmethod
+    def test_inherited_local_model_fields_are_port_wrapped(tmp_path: Path) -> None:
+        """The source classifier follows imported local bases through mixins."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        base = package / "base.py"
+        path = package / "models.py"
+        sources = {
+            base: ("from flext_infra import m\nclass Shared(m.BaseModel):\n    pass\n"),
+            path: (
+                "from flext_infra import p\n"
+                "from .base import Shared\n"
+                "class Mixin:\n"
+                "    pass\n"
+                "class Payload(Mixin, Shared):\n"
+                "    state: p.Cli.AtomicFileState\n"
+            ),
+        }
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
+                    rope_workspace=rope,
+                    sources=sources,
+                ),
+            )
+            updated = next(edit.updated_source for edit in edits if edit.path == path)
+            repeated = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
+                    rope_workspace=rope,
+                    sources={base: sources[base], path: updated},
+                ),
+            )
+        tm.ok("from flext_core import t" in updated)
+        tm.ok("state: t.Port[p.Cli.AtomicFileState]" in updated)
+        tm.that(repeated, empty=True)
+
+    @staticmethod
+    def test_annotated_value_model_protocol_fields_are_port_wrapped(
+        tmp_path: Path,
+    ) -> None:
+        """The native MRO classifier reaches ``m.Value`` through its preset base."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "models.py"
+        source = (
+            "from typing import Annotated, Protocol\n"
+            "from flext_infra import m, p\n"
+            "class Payload(m.Value):\n"
+            "    source: Annotated[\n"
+            "        tuple[p.Cli.AtomicPhysicalTreeManifest, ...],\n"
+            "        m.Field(min_length=1),\n"
+            "    ]\n"
+            "class Contract(Protocol):\n"
+            "    source: tuple[p.Cli.AtomicPhysicalTreeManifest, ...]\n"
+            "def consume(source: p.Cli.AtomicPhysicalTreeManifest) -> None:\n"
+            "    pass\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(path, source))
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
+                    rope_workspace=rope,
+                    sources={path: source},
+                ),
+            )
+            tm.that(len(edits), eq=1)
+            updated = edits[0].updated_source
+        tm.ok(u.Cli.atomic_write_text_file(path, updated))
+        with infra.rope_workspace(root) as rope:
+            repeated = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
+                    rope_workspace=rope,
+                    sources={path: updated},
+                ),
+            )
+        tm.ok("from flext_core import t" in updated)
+        tm.ok(
+            "source: Annotated[tuple[t.Port[p.Cli.AtomicPhysicalTreeManifest], ...], "
+            "m.Field(min_length=1)]" in updated
+        )
+        tm.ok(
+            "class Contract(Protocol):\n"
+            "    source: tuple[p.Cli.AtomicPhysicalTreeManifest, ...]" in updated
+        )
+        tm.ok(
+            "def consume(source: p.Cli.AtomicPhysicalTreeManifest) -> None" in updated
+        )
+        tm.that(repeated, empty=True)
+
+    @staticmethod
+    def test_runtime_model_outside_models_tree_is_port_wrapped(
+        tmp_path: Path,
+    ) -> None:
+        """The native model classifier is not limited to the ``_models`` tree."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "gates.py"
+        source = (
+            "from typing import Annotated, Protocol\n"
+            "from flext_infra import m, p\n"
+            "class DeptryScan(m.Value):\n"
+            "    inputs: tuple[p.Cli.AtomicFileReceipt, ...]\n"
+            "    source: Annotated[\n"
+            "        tuple[p.Cli.AtomicPhysicalTreeManifest, ...] | None,\n"
+            "        m.Field(default=None),\n"
+            "    ]\n"
+            "    @m.computed_field\n"
+            "    @property\n"
+            "    def sources(self) -> tuple[p.Cli.AtomicFileState, ...]:\n"
+            "        return ()\n"
+            "class ScanContract(Protocol):\n"
+            "    source: tuple[p.Cli.AtomicPhysicalTreeManifest, ...] | None\n"
+            "def consume(source: p.Cli.AtomicPhysicalTreeManifest) -> None:\n"
+            "    pass\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(path, source))
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
+                    rope_workspace=rope,
+                    sources={path: source},
+                ),
+            )
+            tm.that(len(edits), eq=1)
+            updated = edits[0].updated_source
+        tm.ok(u.Cli.atomic_write_text_file(path, updated))
+        with infra.rope_workspace(root) as rope:
+            repeated = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
+                    rope_workspace=rope,
+                    sources={path: updated},
+                ),
+            )
+        tm.ok("inputs: tuple[t.Port[p.Cli.AtomicFileReceipt], ...]" in updated)
+        tm.ok(
+            "source: Annotated[tuple[t.Port[p.Cli.AtomicPhysicalTreeManifest], ...] | None, "
+            "m.Field(default=None)]" in updated
+        )
+        tm.ok(
+            "def sources(self) -> tuple[t.Port[p.Cli.AtomicFileState], ...]:" in updated
+        )
+        tm.ok(
+            "class ScanContract(Protocol):\n"
+            "    source: tuple[p.Cli.AtomicPhysicalTreeManifest, ...] | None" in updated
+        )
+        tm.ok(
+            "def consume(source: p.Cli.AtomicPhysicalTreeManifest) -> None" in updated
+        )
+        tm.that(repeated, empty=True)

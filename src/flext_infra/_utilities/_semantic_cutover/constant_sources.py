@@ -9,18 +9,21 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
-from flext_infra import c, m, p
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra import c, e, p
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeStructure,
+)
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+from flext_infra._utilities._rope.runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
@@ -51,7 +54,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
         if module is None or line is None:
             return False
         module = module.get_module()
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             message = "Constant declarations require a native source module"
             raise TypeError(message)
         owner = runtime.scope_at(module, module.lines.get_line_start(line)).pyobject
@@ -87,7 +90,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
         for reference, candidate in public.items():
             binding = cls._constant_terminal(project, candidate, reference)
             if (
-                not FlextInfraUtilitiesTypesRopeRuntime.assigned_name(binding)
+                not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
                 or len(binding.assignments) != 1
             ):
                 continue
@@ -95,7 +98,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             if module is None or line is None:
                 continue
             module = module.get_module()
-            if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
                 message = "Constant bindings require a native source module"
                 raise TypeError(message)
             resource = module.get_resource()
@@ -111,7 +114,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
     def _binding_statement_matches(
         cls,
         module: p.Infra.RopeParsedModule,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         binding: p.Infra.RopePyName,
         line: int,
     ) -> bool:
@@ -253,19 +256,16 @@ class FlextInfraUtilitiesSemanticConstantSources:
             if declarations > 1:
                 message = f"ambiguous constant import chain: {qualified}"
                 raise ValueError(message)
-            if binding.imported_name == "c" and module.source_code.startswith(
-                c.Infra.AUTOGEN_HEADER
+            # A generated initializer is a projection: follow its own route.
+            declared = module.get_resource()
+            if (
+                binding.imported_name == "c"
+                and declared is not None
+                and declared.name == c.Infra.INIT_PY
+                and module.source_code.startswith(c.Infra.AUTOGEN_HEADER)
             ):
-                owner = module.get_resource()
-                if owner is None:
-                    message = f"generated constants package has no source: {qualified}"
-                    raise ValueError(message)
-                declaration = owner.parent.get_child(c.Infra.CONSTANTS_PY)
-                module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                    project,
-                    FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
-                        declaration, declaration.path
-                    ),
+                module = cls._generated_route_module(
+                    project, module, binding.imported_name, qualified
                 )
             terminal = module.get_attributes().get(binding.imported_name)
             if terminal is None:
@@ -273,6 +273,59 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 raise ValueError(message)
             binding = terminal
         return binding
+
+    @classmethod
+    def _generated_route_module(
+        cls,
+        project: p.Infra.RopeProject,
+        initializer: p.Infra.RopePyModule,
+        name: str,
+        qualified: str,
+    ) -> p.Infra.RopePyModule:
+        """Follow a generated initializer's own lazy route for one name.
+
+        A generated initializer is a projection, never an owner: the module
+        it routes ``name`` to (absolute, or relative to its package) is
+        resolved exactly as an import of that module would be, with no sibling
+        module assumed.
+
+        Returns:
+            The native source module the initializer routes ``name`` to.
+
+        Raises:
+            ValueError: The generated initializer has no source resource.
+            e.ValidationError: The route does not reach one module; its
+                context names the generated initializer.
+
+        """
+        owner = initializer.get_resource()
+        if owner is None:
+            message = f"generated initializer has no source: {qualified}"
+            raise ValueError(message)
+        targets, _references = (
+            FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
+                initializer.source_code
+            )
+        )
+        routes = tuple(target for target, names in targets if name in names)
+        resource: p.Infra.RopeResource | None = None
+        if len(routes) == 1:
+            target = routes[0].lstrip(".")
+            level = len(routes[0]) - len(target)
+            resource = (
+                project.find_module(target, owner.parent)
+                if level == 0
+                else project.find_relative_module(target, owner.parent, level)
+            )
+        if resource is None:
+            message = (
+                f"generated initializer routes {name} to no declaring module: "
+                f"{qualified} via {routes}"
+            )
+            raise e.ValidationError(
+                message, context={c.Infra.MOD_FAILURE_MODULE_KEY: owner.real_path}
+            )
+        return cls._constant_import_module(project, resource, qualified)
 
     @staticmethod
     def _constant_import_module(
@@ -300,7 +353,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             resource = resource.get_child(c.Infra.INIT_PY)
         return FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource, qualified
             ),
         )
@@ -345,7 +398,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             Public reference paths bound to their native declaration identities.
 
         """
-        module = FlextInfraUtilitiesTypesRopeRuntime.require_semantic_module(
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
             project.get_module(f"{package}.{Path(c.Infra.CONSTANTS_PY).stem}")
         )
         facade = module.get_attributes().get("c")
@@ -359,7 +412,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
             prefix, owner, ancestors = pending.pop()
             if owner in ancestors:
                 continue
-            if not FlextInfraUtilitiesTypesRopeRuntime.abstract_class(owner):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
                 continue
             for name, binding in owner.get_attributes().items():
                 if name.startswith("_"):
@@ -367,7 +420,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 reference = f"{prefix}.{name}"
                 found[reference] = binding
                 value = binding.get_object()
-                if FlextInfraUtilitiesTypesRopeRuntime.abstract_class(value):
+                if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
                     pending.append((reference, value, (*ancestors, owner)))
         return found
 
@@ -382,7 +435,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
 
         """
         return FlextInfraUtilitiesRopeRuntimeModules.same_name(candidate, binding) or (
-            FlextInfraUtilitiesTypesRopeRuntime.abstract_class(binding.get_object())
+            FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(binding.get_object())
             and binding.get_object()
             in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
                 candidate.get_object()

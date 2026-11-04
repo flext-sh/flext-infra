@@ -14,47 +14,45 @@ from flext_cli import u
 from git import Git, GitCommandError
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeFacts
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
-class FlextInfraUtilitiesGitWorktreeRoots(
-    FlextInfraUtilitiesGitWorktreeFacts,
-):
+class FlextInfraUtilitiesGitWorktreeRoots(FlextInfraUtilitiesGitRepo):
     """Own worktree roots and the superproject's ``.gitmodules`` declarations."""
 
     @classmethod
     def git_repository_root(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitRootReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitRootReport]:
         """Resolve the superproject root or the repository's own top level.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitRootReport]``.
+            The resulting ``p.Result[p.Infra.GitRootReport]``.
 
         """
         root = cls._git_repository_root_path(request.repo_root)
         if root.failure:
-            return r[m.Infra.GitRootReport].from_failure(root)
-        return r[m.Infra.GitRootReport].ok(
+            return r[p.Infra.GitRootReport].from_failure(root)
+        return r[p.Infra.GitRootReport].ok(
             m.Infra.GitRootReport(repository_root=root.value),
         )
 
     @classmethod
     def git_primary_worktree_root(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitPrimaryRootReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitPrimaryRootReport]:
         """Resolve the primary worktree from Git's canonical storage topology.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitPrimaryRootReport]``.
+            The resulting ``p.Result[p.Infra.GitPrimaryRootReport]``.
 
         """
         primary = cls._git_primary_worktree_root_path(request.repo_root)
         if primary.failure:
-            return r[m.Infra.GitPrimaryRootReport].from_failure(primary)
-        return r[m.Infra.GitPrimaryRootReport].ok(
+            return r[p.Infra.GitPrimaryRootReport].from_failure(primary)
+        return r[p.Infra.GitPrimaryRootReport].ok(
             m.Infra.GitPrimaryRootReport(primary_root=primary.value),
         )
 
@@ -89,7 +87,7 @@ class FlextInfraUtilitiesGitWorktreeRoots(
         repository_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[tuple[m.Infra.GitSubmoduleDeclaration, ...]]:
+    ) -> p.Result[tuple[p.Infra.GitSubmoduleDeclaration, ...]]:
         """Parse the repository's ``.gitmodules`` through ``git config -f``.
 
         Git itself reads the file, so its syntax is Git's. A missing file is
@@ -101,13 +99,13 @@ class FlextInfraUtilitiesGitWorktreeRoots(
             Every declared submodule in declaration order.
 
         """
-        result = r[tuple[m.Infra.GitSubmoduleDeclaration, ...]]
+        result = r[tuple[p.Infra.GitSubmoduleDeclaration, ...]]
         sections = cls._gitmodules_sections(
             repository_root, source_project=source_project
         )
         if sections.failure:
             return result.from_failure(sections)
-        declarations: list[m.Infra.GitSubmoduleDeclaration] = []
+        declarations: list[p.Infra.GitSubmoduleDeclaration] = []
         for section, values in sections.value.items():
             raw_path = values.get(c.Infra.GITMODULE_PATH_KEY, "")
             relative = Path(raw_path)
@@ -254,8 +252,8 @@ class FlextInfraUtilitiesGitWorktreeRoots(
     @classmethod
     def git_submodule_declaration(
         cls,
-        request: m.Infra.GitSubmoduleContractRequest,
-    ) -> p.Result[m.Infra.GitSubmoduleDeclaration]:
+        request: p.Infra.GitSubmoduleContractRequest,
+    ) -> p.Result[p.Infra.GitSubmoduleDeclaration]:
         """Return the one declaration of a path that carries URL and branch.
 
         After native path election, reuse the declaration owner's contract
@@ -265,7 +263,7 @@ class FlextInfraUtilitiesGitWorktreeRoots(
             The declaration; a missing path, URL or branch fails closed.
 
         """
-        result = r[m.Infra.GitSubmoduleDeclaration]
+        result = r[p.Infra.GitSubmoduleDeclaration]
         declared = cls.git_submodule_declarations(request.repo_root)
         if declared.failure:
             return result.from_failure(declared)
@@ -286,15 +284,15 @@ class FlextInfraUtilitiesGitWorktreeRoots(
 
     @staticmethod
     def git_require_submodule_contract(
-        declaration: m.Infra.GitSubmoduleDeclaration,
-    ) -> p.Result[m.Infra.GitSubmoduleDeclaration]:
+        declaration: p.Infra.GitSubmoduleDeclaration,
+    ) -> p.Result[p.Infra.GitSubmoduleDeclaration]:
         """Require URL and branch on an already elected native declaration.
 
         Returns:
             The same declaration, or its original missing URL or branch failure.
 
         """
-        result = r[m.Infra.GitSubmoduleDeclaration]
+        result = r[p.Infra.GitSubmoduleDeclaration]
         if not declaration.url:
             return result.fail(
                 f"Git submodule URL is missing: {declaration.path.as_posix()}",

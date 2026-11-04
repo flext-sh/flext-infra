@@ -24,6 +24,7 @@ from types import CodeType, ModuleType, SimpleNamespace
 from typing import ClassVar, TypeIs
 from warnings import WarningMessage
 
+import pytest
 from flext_cli import u
 from pytest_markdown_docs import plugin as markdown_plugin
 from pytest_markdown_docs.plugin import extract_fence_tests
@@ -36,17 +37,15 @@ class FlextInfraUtilitiesPytestCollection:
     """Collection, Markdown and worker accounting for the runner's pytest plugin."""
 
     markdown_state: ClassVar[
-        t.Infra.Pytest.StashKey[m.Infra.PytestMarkdownCollection]
-    ] = t.Infra.Pytest.StashKey()
-    collection_workers: ClassVar[t.Infra.Pytest.StashKey[set[str]]] = (
-        t.Infra.Pytest.StashKey()
-    )
+        t.Infra.Pytest.StashKey[p.Infra.PytestMarkdownCollection]
+    ] = pytest.StashKey()
+    collection_workers: ClassVar[t.Infra.Pytest.StashKey[set[str]]] = pytest.StashKey()
     collection_worker_ids: ClassVar[
         t.Infra.Pytest.StashKey[dict[str, tuple[str, ...]]]
-    ] = t.Infra.Pytest.StashKey()
+    ] = pytest.StashKey()
     collection_worker_manifests: ClassVar[
         t.Infra.Pytest.StashKey[dict[str, m.Infra.PytestCollectionManifest]]
-    ] = t.Infra.Pytest.StashKey()
+    ] = pytest.StashKey()
 
     @staticmethod
     def markdown_item(
@@ -66,7 +65,7 @@ class FlextInfraUtilitiesPytestCollection:
     def markdown_origin(
         definition: t.Infra.Pytest.FenceDefinition,
         root: Path,
-    ) -> m.Infra.PytestMarkdownOrigin:
+    ) -> p.Infra.PytestMarkdownOrigin:
         """Bind the SDK definition without compiling or interpreting its source.
 
         Returns:
@@ -406,7 +405,7 @@ class FlextInfraUtilitiesPytestCollection:
     def collection_node_down(
         cls,
         node: t.Infra.Pytest.WorkerController,
-        error: object | None,
+        error: t.Infra.Pytest.WorkerDownError,
     ) -> None:
         """Publish one manifest after every admitted worker supplies its facts.
 
@@ -527,7 +526,7 @@ class FlextInfraUtilitiesPytestCollection:
     def collection_manifest(
         cls,
         session: t.Infra.Pytest.Session,
-    ) -> m.Infra.PytestCollectionManifest:
+    ) -> p.Infra.PytestCollectionManifest:
         """Bind final items and independent Markdown observations.
 
         Returns:
@@ -544,7 +543,7 @@ class FlextInfraUtilitiesPytestCollection:
 
     @staticmethod
     def write_collection_manifest(
-        manifest: m.Infra.PytestCollectionManifest,
+        manifest: p.Infra.PytestCollectionManifest,
         target: Path,
     ) -> None:
         """Publish the observed manifest through its existing atomic writer."""

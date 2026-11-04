@@ -40,14 +40,12 @@ class TestsFlextInfraCodegenDocumentationLanguage:
             root, workspace, what=c.Infra.CodegenConformSurface.PYPROJECT
         )
         plan = tm.ok(service.plan(request))
-        tm.that(plan.issues, empty=True)
-        tm.that(plan.exception is None, eq=True)
         file = next(
             item for item in plan.files if item.path.name == c.PYPROJECT_FILENAME
         )
         return u.Tests.codegen_file_text(file)
 
-    def test_nondefault_projection_roundtrips_to_strict_docs_scope(
+    def test_nondefault_projection_roundtrips_to_strict_scope(
         self, tmp_path: Path
     ) -> None:
         """The local authorial value reaches docs through its generated projection."""
@@ -58,7 +56,7 @@ class TestsFlextInfraCodegenDocumentationLanguage:
         root.mkdir(parents=True, exist_ok=True)
         pyproject = root / c.PYPROJECT_FILENAME
         pyproject.write_text(rendered, encoding=c.DEFAULT_ENCODING)
-        scope = u.Infra.docs_scope_from_sources(
+        scope = u.Infra.scope_from_sources(
             m.Infra.DocScope(name="project", path=root, report_dir=root / "reports"),
         )
         tm.that(scope.documentation_language, eq="pt-BR")

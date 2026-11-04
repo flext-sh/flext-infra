@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, codegen, deps, infra, m, p, settings, u
+from flext_infra import c, codegen, deps, infra, m, p, u
 from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
@@ -14,22 +14,21 @@ class FlextInfraCodegenRoutes:
     """Own check, codegen, and dependency command routes."""
 
     @staticmethod
-    def execute_upgrade_lock(request: p.Infra.WorkspaceRequest) -> p.Result[bool]:
-        """Compose the lock upgrade with the shared native command runner.
+    def execute_repair_mise_platforms(
+        request: p.Infra.WorkspaceRequest,
+    ) -> p.Result[bool]:
+        """Compose the Mise platform repair with the shared native command runner.
 
         Returns:
-            The lock upgrade result, or its first native failure.
+            The Mise platform repair result, or its first native failure.
 
         """
-        return deps.FlextInfraLockIntegrityVerifier.upgrade_lock(
-            request,
-            u.Cli,
-            file_publisher=u.Infra,
-            packages=settings.Infra.upgrade_packages,
+        return deps.FlextInfraLockIntegrityVerifier.repair_mise_platforms(
+            request, u.Cli
         )
 
     @staticmethod
-    def check_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def check_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the check group's native model and handler bindings.
 
         Returns:
@@ -181,7 +180,7 @@ class FlextInfraCodegenRoutes:
         )
 
     @staticmethod
-    def deps_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def deps_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the dependency group's native model and handler bindings.
 
         Returns:
@@ -190,11 +189,11 @@ class FlextInfraCodegenRoutes:
         """
         return FlextInfraUtilitiesBase.result_routes((
             (
-                "upgrade-lock",
-                "Upgrade the elected native UV and Mise locks without installing",
+                "repair-mise-platforms",
+                "Lock the governed Mise tools missing a declared platform",
                 m.Infra.WorkspaceRequest,
-                FlextInfraCodegenRoutes.execute_upgrade_lock,
-                "native dependency resolution and lock verification completed",
+                FlextInfraCodegenRoutes.execute_repair_mise_platforms,
+                "native Mise platform repair completed",
             ),
             (
                 "detect",

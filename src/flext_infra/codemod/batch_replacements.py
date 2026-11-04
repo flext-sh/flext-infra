@@ -10,13 +10,9 @@ import ast
 import sys
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, m, p, r, t, u
+from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 
 
 class FlextInfraModReplacements:
@@ -24,7 +20,7 @@ class FlextInfraModReplacements:
 
     @staticmethod
     def generator_owned(
-        entries: Sequence[m.Infra.ModOccurrence],
+        entries: Sequence[p.Infra.ModOccurrence],
     ) -> t.StrTuple:
         """Name the findings whose file the canonical generator owns.
 
@@ -46,7 +42,7 @@ class FlextInfraModReplacements:
     @classmethod
     def require_authored(
         cls,
-        entries: Sequence[m.Infra.ModOccurrence],
+        entries: Sequence[p.Infra.ModOccurrence],
     ) -> p.Result[bool]:
         """Refuse to write generated files: their findings are generator repairs.
 
@@ -63,10 +59,10 @@ class FlextInfraModReplacements:
         return r[bool].ok(value=True)
 
     @classmethod
-    def publish[FindingT: m.Infra.ModOccurrence](
+    def publish[FindingT: p.Infra.ModOccurrence](
         cls,
         root: Path,
-        report: m.Infra.ModOccurrenceReport[FindingT],
+        report: p.Infra.ModOccurrenceReport[FindingT],
         *,
         exact_replacements: bool = False,
     ) -> p.Result[bool]:
@@ -87,11 +83,11 @@ class FlextInfraModReplacements:
         )
         if allowed.failure:
             return allowed
-        grouped: MutableMapping[Path, list[m.Infra.ModOccurrence]] = {}
+        grouped: MutableMapping[Path, list[p.Infra.ModOccurrence]] = {}
         for finding in report.entries:
             if finding.actionable:
                 grouped.setdefault(root / finding.file, []).append(finding)
-        plans: list[m.Infra.SemanticFilePlan] = []
+        plans: list[p.Infra.SemanticFilePlan] = []
         for path, findings in sorted(grouped.items()):
             plan = cls._path_plan(
                 root,
@@ -120,20 +116,20 @@ class FlextInfraModReplacements:
         cls,
         root: Path,
         path: Path,
-        findings: Sequence[m.Infra.ModOccurrence],
+        findings: Sequence[p.Infra.ModOccurrence],
         *,
         exact_replacements: bool = False,
         compose_only: bool = False,
-    ) -> p.Result[m.Infra.SemanticFilePlan]:
+    ) -> p.Result[p.Infra.SemanticFilePlan]:
         """Validate one path's actionable findings into one publication plan.
 
         Returns:
-            The resulting ``p.Result[m.Infra.SemanticFilePlan]``.
+            The resulting ``p.Result[p.Infra.SemanticFilePlan]``.
 
         """
         before = findings[0].source_state
         if before is None or before.content is None:
-            return r[m.Infra.SemanticFilePlan].fail(
+            return r[p.Infra.SemanticFilePlan].fail(
                 f"actionable finding lacks authenticated state: {path}",
             )
         replacements: list[tuple[int, int, bytes]] = []
@@ -148,7 +144,7 @@ class FlextInfraModReplacements:
                 or finding.replacement is None
                 or observed != before
             ):
-                return r[m.Infra.SemanticFilePlan].fail(
+                return r[p.Infra.SemanticFilePlan].fail(
                     f"inconsistent actionable finding source: {path}",
                     error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
                 )
@@ -159,11 +155,11 @@ class FlextInfraModReplacements:
                 path,
             )
             if coordinates.failure:
-                return r[m.Infra.SemanticFilePlan].from_failure(coordinates)
+                return r[p.Infra.SemanticFilePlan].from_failure(coordinates)
             replacements.append(coordinates.value)
         updated = cls._apply_replacements(before.content, replacements, path)
         if updated.failure:
-            return r[m.Infra.SemanticFilePlan].from_failure(updated)
+            return r[p.Infra.SemanticFilePlan].from_failure(updated)
         candidate = (
             r[bytes].ok(updated.value)
             if compose_only
@@ -176,7 +172,7 @@ class FlextInfraModReplacements:
             )
         )
 
-        def semantic_plan(content: bytes) -> m.Infra.SemanticFilePlan:
+        def semantic_plan(content: bytes) -> p.Infra.SemanticFilePlan:
             return m.Infra.SemanticFilePlan(
                 project=u.Infra.project_root(path) or root,
                 path=path,
@@ -189,57 +185,57 @@ class FlextInfraModReplacements:
         return candidate.map(semantic_plan)
 
     @classmethod
-    def compose[FindingT: m.Infra.ModOccurrence](
-        cls, root: Path, report: m.Infra.ModOccurrenceReport[FindingT]
-    ) -> p.Result[tuple[m.Infra.SemanticFilePlan, ...]]:
+    def compose[FindingT: p.Infra.ModOccurrence](
+        cls, root: Path, report: p.Infra.ModOccurrenceReport[FindingT]
+    ) -> p.Result[tuple[p.Infra.SemanticFilePlan, ...]]:
         """Compose authenticated candidate bytes without admission or live effects.
 
         Returns:
             Exact syntax plans; final normalization and gates belong to convergence.
 
         """
-        grouped: MutableMapping[Path, list[m.Infra.ModOccurrence]] = {}
+        grouped: MutableMapping[Path, list[p.Infra.ModOccurrence]] = {}
         for finding in report.entries:
             if finding.actionable and finding.source_owner != "generator":
                 grouped.setdefault(root / finding.file, []).append(finding)
-        plans: list[m.Infra.SemanticFilePlan] = []
+        plans: list[p.Infra.SemanticFilePlan] = []
         for path, findings in sorted(grouped.items()):
             planned = cls._path_plan(root, path, findings, compose_only=True)
             if planned.failure:
-                return r[tuple[m.Infra.SemanticFilePlan, ...]].from_failure(planned)
+                return r[tuple[p.Infra.SemanticFilePlan, ...]].from_failure(planned)
             plans.append(planned.value)
-        return r[tuple[m.Infra.SemanticFilePlan, ...]].ok(tuple(plans))
+        return r[tuple[p.Infra.SemanticFilePlan, ...]].ok(tuple(plans))
 
     @classmethod
     def admit(
-        cls, root: Path, plans: Sequence[m.Infra.SemanticFilePlan]
-    ) -> p.Result[tuple[m.Infra.SemanticFilePlan, ...]]:
+        cls, root: Path, plans: Sequence[p.Infra.SemanticFilePlan]
+    ) -> p.Result[tuple[p.Infra.SemanticFilePlan, ...]]:
         """Normalize and judge only complete syntax candidates against originals.
 
         Returns:
             Accepted plans or the first native admission failure.
 
         """
-        accepted: list[m.Infra.SemanticFilePlan] = []
+        accepted: list[p.Infra.SemanticFilePlan] = []
         for plan in plans:
             if plan.before.content is None or plan.desired_content is None:
-                return r[tuple[m.Infra.SemanticFilePlan, ...]].fail(
+                return r[tuple[p.Infra.SemanticFilePlan, ...]].fail(
                     f"syntax candidate lacks authenticated bytes: {plan.path}"
                 )
             normalized = cls._normalized_candidate(
                 root, plan.path, plan.before.content, plan.desired_content
             )
             if normalized.failure:
-                return r[tuple[m.Infra.SemanticFilePlan, ...]].from_failure(normalized)
+                return r[tuple[p.Infra.SemanticFilePlan, ...]].from_failure(normalized)
             accepted.append(
                 plan.model_copy(update={"desired_content": normalized.value})
             )
-        return r[tuple[m.Infra.SemanticFilePlan, ...]].ok(tuple(accepted))
+        return r[tuple[p.Infra.SemanticFilePlan, ...]].ok(tuple(accepted))
 
     @staticmethod
     def _finding_replacement(
         content: bytes,
-        finding: m.Infra.ModOccurrence,
+        finding: p.Infra.ModOccurrence,
         replacement: str,
         path: Path,
     ) -> p.Result[tuple[int, int, bytes]]:
@@ -317,6 +313,11 @@ class FlextInfraModReplacements:
             gates=(c.Infra.LINT,),
             source=before.decode(c.DEFAULT_ENCODING),
         )
+        # A rewrite that introduces a family letter binds it from the provider
+        # of the module's other letters before normalization judges it.
+        candidate = u.Infra.bind_sibling_letters(
+            candidate.decode(c.DEFAULT_ENCODING)
+        ).encode(c.DEFAULT_ENCODING)
         if exact_replacements:
             final: p.Result[str] = r[str].ok(candidate.decode(c.DEFAULT_ENCODING))
             ast.parse(final.value, filename=str(path))
@@ -329,17 +330,7 @@ class FlextInfraModReplacements:
             )
             if normalized.failure:
                 return r[bytes].from_failure(normalized)
-            stripped = u.Infra.strip_type_checking_scaffold(normalized.value)
-            final = (
-                normalized
-                if stripped == normalized.value
-                else u.Infra.normalize_source(
-                    root,
-                    path,
-                    stripped,
-                    before_source=before.decode(c.DEFAULT_ENCODING),
-                )
-            )
+            final = normalized
         if final.failure:
             return r[bytes].from_failure(final)
         introduced = u.Infra.lint_new_errors(

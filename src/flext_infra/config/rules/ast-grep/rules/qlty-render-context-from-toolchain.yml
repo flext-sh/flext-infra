@@ -7,7 +7,7 @@ severity: error
 rule:
   pattern: |
     if $DESTINATION in {".envrc", ".mise.toml", ".python-version"}:
-        return r[p.Model].ok($CODEGEN.toolchain)
+        return r[p.BaseModel].ok($CODEGEN.toolchain)
 fix: |
   if $DESTINATION in {
       ".envrc",
@@ -15,7 +15,7 @@ fix: |
       ".python-version",
       c.Infra.QLTY_CONFIG_PATH,
   }:
-      return r[p.Model].ok($CODEGEN.toolchain)
+      return r[p.BaseModel].ok($CODEGEN.toolchain)
 message: Render Qlty configuration from the typed fleet toolchain context.
 files:
   - "src/flext_infra/codegen/conform.py"

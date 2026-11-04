@@ -15,14 +15,14 @@ from collections.abc import Mapping, Sequence
 from fnmatch import fnmatchcase
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraCodegenLayoutPlan:
     """Build the per-project layout plan from the declarative layout SSOT."""
 
     @staticmethod
-    def _layout_spec(project_dir: Path) -> m.Infra.LayoutSpec:
+    def _layout_spec(project_dir: Path) -> p.Infra.LayoutSpec:
         """Layout SSOT: the selected project's layered codegen contract.
 
         Gates and the generator read the SAME ordered strict source (packaged
@@ -70,7 +70,7 @@ class FlextInfraCodegenLayoutPlan:
             raise ValueError(msg)
         return project_name
 
-    def plan_project(self, project_dir: Path) -> m.Infra.LayoutProjectReport:
+    def plan_project(self, project_dir: Path) -> p.Infra.LayoutProjectReport:
         """Classify every root entry of one project without writing anything.
 
         Returns:
@@ -82,7 +82,7 @@ class FlextInfraCodegenLayoutPlan:
         override = self._resolve_override(spec, project_name)
         allowed = self._allowed_root_names(spec, project_dir, project_name, override)
         override_roots = self._override_root_names(override)
-        findings: list[m.Infra.LayoutFinding] = []
+        findings: list[p.Infra.LayoutFinding] = []
         git_root_names = u.Infra.git_tracked_top_level_dir_names(project_dir)
         for entry in sorted(project_dir.iterdir()):
             name = entry.name
@@ -124,9 +124,9 @@ class FlextInfraCodegenLayoutPlan:
 
     @staticmethod
     def _resolve_override(
-        spec: m.Infra.LayoutSpec,
+        spec: p.Infra.LayoutSpec,
         project_name: str,
-    ) -> m.Infra.LayoutProjectOverrideSpec | None:
+    ) -> p.Infra.LayoutProjectOverrideSpec | None:
         """Resolve override by directory name or logical name without leading dot.
 
         Returns:
@@ -143,10 +143,10 @@ class FlextInfraCodegenLayoutPlan:
 
     @staticmethod
     def _allowed_root_names(
-        spec: m.Infra.LayoutSpec,
+        spec: p.Infra.LayoutSpec,
         project_dir: Path,
         project_name: str,
-        override: m.Infra.LayoutProjectOverrideSpec | None,
+        override: p.Infra.LayoutProjectOverrideSpec | None,
     ) -> frozenset[str]:
         """Canonical root names for one project, profile extras included.
 
@@ -177,8 +177,8 @@ class FlextInfraCodegenLayoutPlan:
 
     @staticmethod
     def _is_ignored_root(
-        spec: m.Infra.LayoutSpec,
-        override: m.Infra.LayoutProjectOverrideSpec | None,
+        spec: p.Infra.LayoutSpec,
+        override: p.Infra.LayoutProjectOverrideSpec | None,
         name: str,
     ) -> bool:
         """Whether a root entry is skipped by specials or project ignore globs.
@@ -195,7 +195,7 @@ class FlextInfraCodegenLayoutPlan:
 
     @staticmethod
     def _override_root_names(
-        override: m.Infra.LayoutProjectOverrideSpec | None,
+        override: p.Infra.LayoutProjectOverrideSpec | None,
     ) -> frozenset[str]:
         """Root names owned by per-project override rules (never generic rules).
 
@@ -216,11 +216,11 @@ class FlextInfraCodegenLayoutPlan:
 
     def _classify_root_entry(
         self,
-        spec: m.Infra.LayoutSpec,
-        override: m.Infra.LayoutProjectOverrideSpec | None,
+        spec: p.Infra.LayoutSpec,
+        override: p.Infra.LayoutProjectOverrideSpec | None,
         project_name: str,
         entry: Path,
-    ) -> m.Infra.LayoutFinding:
+    ) -> p.Infra.LayoutFinding:
         """Classify one non-canonical root entry into move/archive/review.
 
         Returns:
@@ -251,10 +251,10 @@ class FlextInfraCodegenLayoutPlan:
 
     def _classify_docs_entry(
         self,
-        spec: m.Infra.LayoutSpec,
+        spec: p.Infra.LayoutSpec,
         project_name: str,
         entry: Path,
-    ) -> m.Infra.LayoutFinding | None:
+    ) -> p.Infra.LayoutFinding | None:
         """Classify a docs move or an archived docs conflict, else None.
 
         Returns:
@@ -281,13 +281,13 @@ class FlextInfraCodegenLayoutPlan:
 
     def _override_move_findings(
         self,
-        override: m.Infra.LayoutProjectOverrideSpec,
+        override: p.Infra.LayoutProjectOverrideSpec,
         project_dir: Path,
-    ) -> Sequence[m.Infra.LayoutFinding]:
+    ) -> Sequence[p.Infra.LayoutFinding]:
         """Explicit per-project moves whose nested source still exists.
 
         Returns:
-            The resulting ``Sequence[m.Infra.LayoutFinding]``.
+            The resulting ``Sequence[p.Infra.LayoutFinding]``.
 
         """
         return tuple(
@@ -298,18 +298,18 @@ class FlextInfraCodegenLayoutPlan:
 
     def _override_empty_dir_findings(
         self,
-        spec: m.Infra.LayoutSpec,
-        override: m.Infra.LayoutProjectOverrideSpec,
+        spec: p.Infra.LayoutSpec,
+        override: p.Infra.LayoutProjectOverrideSpec,
         project_dir: Path,
         project_name: str,
-    ) -> Sequence[m.Infra.LayoutFinding]:
+    ) -> Sequence[p.Infra.LayoutFinding]:
         """Override directories archived once override moves have emptied them.
 
         Returns:
-            The resulting ``Sequence[m.Infra.LayoutFinding]``.
+            The resulting ``Sequence[p.Infra.LayoutFinding]``.
 
         """
-        findings: list[m.Infra.LayoutFinding] = []
+        findings: list[p.Infra.LayoutFinding] = []
         move_sources = {move.source for move in override.moves}
         for name in override.archive_empty_dirs:
             path = project_dir / name
@@ -332,14 +332,14 @@ class FlextInfraCodegenLayoutPlan:
 
     def _gitignore_findings(
         self,
-        spec: m.Infra.LayoutSpec,
-        override: m.Infra.LayoutProjectOverrideSpec | None,
+        spec: p.Infra.LayoutSpec,
+        override: p.Infra.LayoutProjectOverrideSpec | None,
         project_dir: Path,
-    ) -> Sequence[m.Infra.LayoutFinding]:
+    ) -> Sequence[p.Infra.LayoutFinding]:
         """Missing ``.gitignore`` patterns required by the layout SSOT.
 
         Returns:
-            The resulting ``Sequence[m.Infra.LayoutFinding]``.
+            The resulting ``Sequence[p.Infra.LayoutFinding]``.
 
         """
         required = [f"{spec.archive_root}/"]
@@ -352,7 +352,7 @@ class FlextInfraCodegenLayoutPlan:
             if read.success:
                 current = read.value
         covered = {line.strip() for line in current.splitlines()}
-        findings: list[m.Infra.LayoutFinding] = []
+        findings: list[p.Infra.LayoutFinding] = []
         for pattern in required:
             if pattern in covered or pattern.rstrip("/") in covered:
                 continue
@@ -366,7 +366,7 @@ class FlextInfraCodegenLayoutPlan:
         target: str = "",
         *,
         message: str | None = None,
-    ) -> m.Infra.LayoutFinding:
+    ) -> p.Infra.LayoutFinding:
         """Build one typed finding with a canonical message.
 
         Returns:

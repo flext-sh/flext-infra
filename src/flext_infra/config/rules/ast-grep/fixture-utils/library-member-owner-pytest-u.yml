@@ -1,6 +1,9 @@
 # Fixture value of the requested `library-member-owner-pytest-u`
-# utility: pytest members whose kind the `u` facade owns.
+# utility: pytest members whose kind the `u` facade owns AND that
+# `u.Infra.Pytest` publishes (`fail`, `xfail`, `set_trace`, ... are classified
+# `u` by kind but unpublished: `u.Tests` inherits the owner ahead of its result
+# matchers, and the matcher `fail` owns that name).
 id: library-member-owner-pytest-u
 language: Python
 rule:
-  regex: "^(?:approx|fixture|importorskip|param|raises|warns)$"
+  regex: "^(?:approx|exit|fixture|hookimpl|importorskip|main|param|raises|skip|warns)$"

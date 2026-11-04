@@ -25,7 +25,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         project_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> m.Infra.ProjectPyprojectState:
+    ) -> p.Infra.ProjectPyprojectState:
         """Return project state bound to the current file bytes.
 
         When the pyproject is absent or empty, the returned state carries
@@ -69,7 +69,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         root: Path,
         pyproject_path: Path,
         content: bytes | None,
-    ) -> m.Infra.ProjectPyprojectState:
+    ) -> p.Infra.ProjectPyprojectState:
         """Parse once per byte-identical canonical pyproject snapshot.
 
         Returns:
@@ -100,9 +100,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
                 msg = f"docs pyproject TOML is invalid: {pyproject_path}"
                 raise ValueError(msg)
             payload = parsed
-        docs_meta = FlextInfraUtilitiesDocsScopeState.docs_meta_from_payload(
-            payload,
-        )
+        docs_meta = FlextInfraUtilitiesPyprojectConform.docs_meta_from_payload(payload)
         dependency_names = tuple(
             FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
                 payload,
@@ -124,9 +122,8 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
             payload=payload,
             docs_meta=docs_meta,
             project_name=(
-                FlextInfraUtilitiesDocsScopeState.project_name_from_payload(
-                    root,
-                    payload,
+                FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
+                    root, payload
                 )
             ),
             package_name=(
@@ -143,9 +140,9 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
     def project_state(
         project_root: Path,
         *,
-        metadata_projection: m.Infra.CodegenFilePlan | None = None,
+        metadata_projection: p.Infra.CodegenFilePlan | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> m.Infra.ProjectPyprojectState:
+    ) -> p.Infra.ProjectPyprojectState:
         """Return the shared state of the live or projected pyproject bytes.
 
         Returns:
@@ -171,18 +168,6 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         )
 
     @staticmethod
-    def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:
-        """Return the declared project name from ``[project].name``.
-
-        Returns:
-            The declared project name from ``[project].name``.
-
-        """
-        return FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
-            entry, payload
-        )
-
-    @staticmethod
     def project_payload(
         project_root: Path,
     ) -> t.JsonMapping:
@@ -195,16 +180,6 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         return FlextInfraUtilitiesDocsScopeState.project_state(
             project_root,
         ).payload
-
-    @staticmethod
-    def docs_meta_from_payload(payload: t.JsonMapping) -> t.JsonMapping:
-        """Extract ``tool.flext.docs`` metadata from an already-parsed payload.
-
-        Returns:
-            The resulting ``t.JsonMapping``.
-
-        """
-        return FlextInfraUtilitiesPyprojectConform.docs_meta_from_payload(payload)
 
     @staticmethod
     def docs_documentation_language(
@@ -228,7 +203,7 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
         raise ValueError(msg)
 
     @staticmethod
-    def docs_scope_enabled(docs_meta: t.JsonMapping) -> bool:
+    def scope_enabled(docs_meta: t.JsonMapping) -> bool:
         """Return the ``enabled`` docs-scope flag for pre-loaded metadata.
 
         The flag defaults to ``True`` only when the key is absent. A present
@@ -247,44 +222,6 @@ class FlextInfraUtilitiesDocsScopeState(FlextInfraUtilitiesDocsScopePaths):
             msg = f"[tool.flext.docs].enabled must be a bool, got {enabled!r}"
             raise TypeError(msg)
         return enabled
-
-    @staticmethod
-    def package_name_from_payload(
-        project_root: Path,
-        payload: t.JsonMapping,
-        docs_meta: t.JsonMapping,
-    ) -> str:
-        """Return the primary package name using pre-loaded payload.
-
-        Resolution order (no silent fallbacks for flext projects):
-          1. Explicit ``[tool.flext.docs].package_name`` override.
-          2. ``[tool.hatch.build.targets.wheel.packages]`` first entry.
-          3. First ``src/<pkg>/__init__.py`` directory.
-          4. Empty string for non-flext projects (roots).
-
-        Raises ``ValueError`` only for flext- projects unable to resolve.
-
-        Returns:
-            The primary package name using pre-loaded payload.
-
-        """
-        return FlextInfraUtilitiesPyprojectConform.package_name_from_payload(
-            project_root,
-            payload,
-            docs_meta,
-        )
-
-    @staticmethod
-    def project_package_name(project_root: Path) -> str:
-        """Return the primary Python package name for a project.
-
-        Returns:
-            The primary Python package name for a project.
-
-        """
-        return FlextInfraUtilitiesDocsScopeState.project_state(
-            project_root,
-        ).package_name
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsScopeState"]

@@ -14,13 +14,13 @@ import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import config
-from flext_infra.deps import (
+from flext_infra.deps import FlextInfraPyprojectModernizer
+from flext_infra.deps.phases import (
     FlextInfraEnsureRuffConfigPhase,
-    FlextInfraPyprojectModernizer,
     FlextInfraToolTablesPhase,
 )
-from flext_infra.gates import FlextInfraMypyGate
-from tests import c, e, m, t, tm, u
+from flext_infra.gates import FlextInfraGatesMypy
+from tests import c, e, m, p, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerToolTables:
@@ -31,7 +31,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         tmp_path: Path,
         source: str = "",
         *,
-        tool_config: m.Infra.ToolConfigDocument | None = None,
+        tool_config: p.Infra.ToolConfigDocument | None = None,
     ) -> tuple[t.MutableJsonMapping, Sequence[str]]:
         """Apply the phase to one named project payload; return payload and changes.
 
@@ -228,7 +228,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             repository_root=project,
             reports_dir=project / ".reports",
         )
-        gate = FlextInfraMypyGate(project)
+        gate = FlextInfraGatesMypy(project)
         initial = gate.check(project, context)
         tm.fail(initial.result.passed)
         tm.that([issue.code for issue in initial.issues], has="call-arg")

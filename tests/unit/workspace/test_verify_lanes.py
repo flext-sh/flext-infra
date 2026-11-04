@@ -17,7 +17,7 @@ from flext_infra import (
     FlextInfraWorktreeService,
     config,
 )
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsVerifyLanes:
@@ -28,7 +28,7 @@ class TestsVerifyLanes:
         root: Path,
         integration: str,
         minutes: float,
-    ) -> m.Infra.GitLaneVerificationRequest:
+    ) -> p.Infra.GitLaneVerificationRequest:
         """Build an independent remote and a typed, fresh ownership receipt.
 
         Returns:
@@ -40,7 +40,7 @@ class TestsVerifyLanes:
         workspace = tm.ok(u.Infra.load_workspace_manifest(repo))[0]
         declared = workspace.model_copy(
             update={
-                "integration": m.Infra.WorkspaceIntegrationSpec(
+                "integration": p.Infra.WorkspaceIntegrationSpec(
                     provider=workspace.repository.provider,
                     branch=integration,
                 ),
@@ -102,7 +102,7 @@ class TestsVerifyLanes:
         )
 
     @staticmethod
-    def _argv(request: m.Infra.GitLaneVerificationRequest) -> list[str]:
+    def _argv(request: p.Infra.GitLaneVerificationRequest) -> list[str]:
         """Translate the typed public request to the real registered CLI.
 
         Returns:

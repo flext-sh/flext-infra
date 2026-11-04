@@ -13,11 +13,11 @@ from pathlib import Path
 
 from flext_infra import config, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm
+from tests import c, p, t, tm
 
 
-class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
-    """Workspace profile, gitignore, and process-environment helpers."""
+class TestsFlextInfraUtilitiesWorkspaceEnv:
+    """Workspace profile, ignore, and process-environment helpers."""
 
     @staticmethod
     def restore_env(name: str, original: str | None) -> None:
@@ -55,7 +55,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             Every SSOT ignore pattern whose section targets *profile*.
 
         """
-        gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
+        gitignore_sections: tuple[p.Infra.ScaffoldGitignoreSectionSpec, ...] = (
             config.Infra.codegen.gitignore_sections
         )
         return tuple(
@@ -73,8 +73,8 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             Every SSOT pattern whose section targets that profile.
 
         """
-        return TestsFlextInfraUtilitiesWorkspaceEnvMixin.ignore_patterns_for_profile(
-            TestsFlextInfraUtilitiesWorkspaceEnvMixin.repository_profile(root),
+        return TestsFlextInfraUtilitiesWorkspaceEnv.ignore_patterns_for_profile(
+            TestsFlextInfraUtilitiesWorkspaceEnv.repository_profile(root),
         )
 
     @staticmethod
@@ -92,7 +92,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
         with tempfile.TemporaryDirectory() as raw_root:
             probe_root = Path(raw_root)
             tm.ok(u.Cli.run_checked(["git", "init", "-q", str(probe_root)]))
-            (probe_root / ".gitignore").write_text(rendered, encoding="utf-8")
+            (probe_root / ".ignore").write_text(rendered, encoding="utf-8")
             target = probe_root / relative_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text("", encoding="utf-8")
@@ -109,4 +109,4 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
         return code == 1
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceEnvMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceEnv"]

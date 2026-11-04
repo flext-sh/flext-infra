@@ -10,9 +10,9 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-from flext_cli import m
+from flext_cli import m, p, t
 
-from flext_infra import c, t
+from flext_infra import c
 
 
 class FlextInfraModelsBase:
@@ -21,7 +21,7 @@ class FlextInfraModelsBase:
     class CommandContext(m.ArbitraryTypesModel):
         """Mutable command data shared by infra services and CLI schemas."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             validate_by_name=True,
             validate_by_alias=True,
         )
@@ -31,38 +31,32 @@ class FlextInfraModelsBase:
             validate_default=True,
             description="Repository root",
         )
-        apply_changes: Annotated[
-            bool,
-            m.Field(
-                alias="apply",
-                description="Apply changes",
-                json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
-                },
-            ),
-        ] = False
-        check_only: Annotated[
-            bool,
-            m.Field(alias="check", description="Check mode"),
-        ] = False
+        apply_changes: bool = m.Field(
+            default=False,
+            alias="apply",
+            description="Apply changes",
+            json_schema_extra={
+                "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
+            },
+        )
+        check_only: bool = m.Field(
+            default=False, alias="check", description="Check mode"
+        )
         dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
         output_format: Annotated[
             str,
             m.Field(description="Output format (json|text)"),
             m.BeforeValidator(lambda value: value.strip().lower()),
         ] = "text"
-        project_filter: Annotated[
-            str | None,
-            m.Field(description="Project filter (comma-separated)", exclude=True),
-        ] = None
-        report_path: Annotated[
-            Path | None,
-            m.Field(description="Report output path", exclude=True),
-        ] = None
-        output_dir: Annotated[
-            Path | None,
-            m.Field(description="Output directory", exclude=True),
-        ] = None
+        project_filter: str | None = m.Field(
+            None, description="Project filter (comma-separated)", exclude=True
+        )
+        report_path: Path | None = m.Field(
+            None, description="Report output path", exclude=True
+        )
+        output_dir: Path | None = m.Field(
+            None, description="Output directory", exclude=True
+        )
 
         @m.field_validator("repository_root", mode="before")
         @classmethod
@@ -153,7 +147,7 @@ class FlextInfraModelsBase:
     class FrozenArbitrary(m.ContractModel):
         """Strict immutable payloads preserving exact text and enum identities."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             str_strip_whitespace=False,
             use_enum_values=False,
         )
@@ -257,7 +251,8 @@ class FlextInfraModelsBase:
             m.Field(description="Diagnostic lines reported by the lint tool"),
         ] = m.Field(default_factory=tuple)
         output: Annotated[
-            m.Cli.CommandOutput | None,
+            Annotated[p.Cli.CommandOutput, t.schema_for_model(m.Cli.CommandOutput)]
+            | None,
             m.Field(
                 description="Original native streams, duration and process outcome"
             ),
@@ -265,20 +260,6 @@ class FlextInfraModelsBase:
         execution_error: Annotated[
             t.NonEmptyStr | None,
             m.Field(description="Execution or report failure, independent of findings"),
-        ] = None
-        error_code: Annotated[
-            str | None,
-            m.Field(
-                description="Original Result failure code when no process launched"
-            ),
-        ] = None
-        error_data: Annotated[
-            t.JsonMapping | None,
-            m.Field(description="Original Result failure metadata"),
-        ] = None
-        error_traceback: Annotated[
-            str | None,
-            m.Field(description="Original Result exception traceback when available"),
         ] = None
 
         @m.model_validator(mode="after")

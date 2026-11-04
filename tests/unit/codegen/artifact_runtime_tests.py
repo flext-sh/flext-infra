@@ -19,7 +19,7 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 _RUNTIME_PROBE = """
 import importlib
@@ -86,7 +86,7 @@ class TestsArtifactRuntime:
         subject: str,
         producer: Path,
         tmp_path: Path,
-        options: m.Cli.ProcessOptions,
+        options: p.Cli.ProcessOptions,
     ) -> tuple[Path, str, Sequence[str], Sequence[str]]:
         """Resolve the built repository and its governed runtime identity.
 
@@ -169,7 +169,7 @@ class TestsArtifactRuntime:
     def _built_wheel_artifact(
         uv: str,
         repository: Path,
-        options: m.Cli.ProcessOptions,
+        options: p.Cli.ProcessOptions,
         artifacts: Path,
         archive_kind: str,
     ) -> tuple[Path, bytes]:

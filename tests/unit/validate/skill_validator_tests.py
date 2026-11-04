@@ -11,12 +11,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-from tests import m
 
 
 class TestsFlextInfraSkillValidator:
@@ -78,7 +76,7 @@ class TestsFlextInfraSkillValidator:
         validator = FlextInfraSkillValidator(skill="test-skill")
         skills = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skills.mkdir(parents=True)
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             validator.build_report(tmp_path, "test-skill"),
         )
         tm.ok(not report.passed)
@@ -112,7 +110,7 @@ class TestsFlextInfraSkillValidator:
         skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules:\n  - not_a_dict\n  - another_string")
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             validator.build_report(tmp_path, "test-skill"),
         )
         tm.ok(report.passed)
@@ -126,7 +124,7 @@ class TestsFlextInfraSkillValidator:
         skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             validator.build_report(tmp_path, "test-skill"),
         )
         tm.ok(report.passed)

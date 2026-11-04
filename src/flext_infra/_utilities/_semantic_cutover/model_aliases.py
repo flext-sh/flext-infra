@@ -12,16 +12,12 @@ from pathlib import Path
 
 from flext_infra import c, m, p, r
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
-)
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -37,7 +33,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan native consumer/import changes; generated exports remain owner-written.
 
         Returns:
@@ -70,7 +66,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 cls._retire(project, path, name, working)
             finally:
                 project.close()
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -109,12 +105,6 @@ class FlextInfraUtilitiesSemanticModelAliases:
             return None
         return tuple(item for item in body if isinstance(item, ast.Assign))
 
-    @staticmethod
-    def _resource(project: p.Infra.RopeProject, path: Path) -> p.Infra.RopeResource:
-        return project.get_resource(
-            path.relative_to(Path(project.root.real_path)).as_posix(),
-        )
-
     @classmethod
     def _retire(
         cls,
@@ -125,7 +115,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
-        resource = cls._resource(project, path)
+        resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         node = next(
             item
@@ -150,7 +140,11 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 source = working[changed]
                 if source.startswith(c.Infra.AUTOGEN_HEADER):
                     continue
-                native = organizer.organize_imports(cls._resource(snapshot, changed))
+                native = organizer.organize_imports(
+                    FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                        snapshot, changed
+                    )
+                )
                 if native is not None:
                     for change in refactors.change_set_members(
                         native.changes,
@@ -171,7 +165,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         assignments: tuple[ast.Assign, ...],
     ) -> tuple[dict[str, p.Infra.RopePyName], dict[str, tuple[str, str]]] | None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        namespace = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+        namespace = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             wrapper.get_object(), str(path)
         )
         scope = namespace.get_scope()
@@ -195,7 +189,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             ):
                 msg = f"unresolved model alias target identity: {path}:{alias}"
                 raise ValueError(msg)
-            if not FlextInfraUtilitiesTypesRopeRuntime.py_class(value):
+            if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(value):
                 return None
             provider = value.get_module()
             provider_resource = provider.get_resource()
@@ -252,7 +246,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
         for alias in aliases:
             snapshot = runtime.snapshot_project(project, working)
             try:
-                current = cls._resource(snapshot, path)
+                current = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                    snapshot, path
+                )
                 owner = next(
                     item
                     for item in ast.parse(working[path]).body
@@ -270,7 +266,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
                     current,
                     offset,
                     resources=tuple(
-                        cls._resource(snapshot, item)
+                        FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                            snapshot, item
+                        )
                         for item, source in working.items()
                         if not source.startswith(c.Infra.AUTOGEN_HEADER)
                     ),
@@ -415,7 +413,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         targets: Mapping[str, tuple[str, str]],
         sources: MutableMapping[Path, str],
     ) -> frozenset[Path]:
-        name = FlextInfraUtilitiesTypesRopeRuntime.require_named_object(
+        name = FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
             wrapper.get_object(), "model alias namespace"
         ).get_name()
         observed = dict(sources)
@@ -432,7 +430,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 observed[path] = source
         consumers: set[Path] = set()
         for path, source in observed.items():
-            resource = cls._resource(project, path)
+            resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                project, path
+            )
             tree = ast.parse(source)
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
             imports, spellings = cls._alias_import_spellings(

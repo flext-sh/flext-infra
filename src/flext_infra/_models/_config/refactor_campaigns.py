@@ -9,12 +9,12 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from pathlib import Path, PureWindowsPath
 from types import MappingProxyType
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra import p, t
+from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
 class FlextInfraModelsConfigRefactorCampaigns:
@@ -23,6 +23,13 @@ class FlextInfraModelsConfigRefactorCampaigns:
     class RenameCampaignSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One declared CSV-driven rename campaign applied by the mod verb."""
 
+        id: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^csv:[a-z0-9]+(?:-[a-z0-9]+)*$",
+                description="Stable public selector for this CSV campaign",
+            ),
+        ]
         rename_definitions: Annotated[
             bool,
             m.Field(description="Atomically rename owned declarations and references"),
@@ -117,12 +124,90 @@ class FlextInfraModelsConfigRefactorCampaigns:
                     raise ValueError(msg)
             return self
 
+    class ModOwnerSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """One explicitly selected semantic or callback owner for ``mod``."""
+
+        id: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^(?:semantic|callback):[a-z0-9]+(?:-[a-z0-9]+)*$",
+                description="Stable public selector for a non-catalog mod owner",
+            ),
+        ]
+        kind: Literal["semantic", "callback"]
+        phase: str | None = None
+        callback: str | None = None
+
+        @m.model_validator(mode="after")
+        def validate_owner(self) -> Self:
+            """Keep owner selectors closed and unambiguous.
+
+            Returns:
+                The validated declaration.
+
+            Raises:
+                ValueError: If the selector does not match its declared owner.
+
+            """
+            callbacks = {
+                "import-normalization",
+                "facade-components",
+                "namespace-relocations",
+                "duplicate-apply",
+                "accessor-rename",
+            }
+            if self.kind == "semantic":
+                phases = {
+                    "semantic:cutover": None,
+                    "semantic:external-model-owner": "external-model-owner",
+                }
+                if (
+                    self.id not in phases
+                    or self.phase != phases[self.id]
+                    or self.callback is not None
+                ):
+                    msg = (
+                        "semantic owner must declare its supported phase without "
+                        "callback"
+                    )
+                    raise ValueError(msg)
+            elif (
+                self.callback not in callbacks
+                or self.id != f"callback:{self.callback}"
+                or self.phase is not None
+            ):
+                msg = "callback owner ID must name one declared callback"
+                raise ValueError(msg)
+            return self
+
     class RefactorCsvCampaignsSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Declared CSV-driven rename campaigns for the mod verb's rename phase."""
 
         campaigns: Annotated[
-            tuple[FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RenameCampaignSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(default=(), description="Ordered rename campaigns"),
+        ] = ()
+        owners: Annotated[
+            tuple[
+                Annotated[
+                    p.Infra.ModOwnerSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigRefactorCampaigns.ModOwnerSpec
+                    ),
+                ],
+                ...,
+            ],
+            m.Field(
+                default=(), description="Explicit semantic and callback mod owners"
+            ),
         ] = ()
         semantic_plan: Annotated[
             Path | None,
@@ -134,6 +219,25 @@ class FlextInfraModelsConfigRefactorCampaigns:
                 description="Workspace-relative SemanticRenameSelections JSON input"
             ),
         ] = None
+
+        @m.model_validator(mode="after")
+        def validate_campaign_ids(self) -> Self:
+            """Require every declared campaign selector to be unique.
+
+            Returns:
+                The validated campaign specification, unchanged.
+
+            Raises:
+                ValueError: If two campaigns claim the same public selector.
+
+            """
+            ids = tuple(campaign.id for campaign in self.campaigns) + tuple(
+                owner.id for owner in self.owners
+            )
+            if len(ids) != len(set(ids)):
+                msg = "duplicate refactor mod owner selector"
+                raise ValueError(msg)
+            return self
 
         @m.model_validator(mode="after")
         def validate_semantic_decisions(self) -> Self:

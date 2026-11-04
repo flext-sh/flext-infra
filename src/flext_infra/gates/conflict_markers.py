@@ -11,11 +11,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra import c, m, p, u
+from flext_infra.gates import FlextInfraGates
 
 
-class FlextInfraConflictMarkersGate(FlextInfraGate):
+class FlextInfraGatesConflictMarkers(FlextInfraGates):
     """Detect unresolved merge controls without following source symlinks."""
 
     gate_id: ClassVar[str] = c.Infra.CONFLICT_MARKERS
@@ -26,8 +26,8 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Check the owned Git inventory or a sealed candidate's physical tree.
 
         Returns:
@@ -41,7 +41,7 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
             tuple(
                 path for path in ctx.candidate_files if path.is_relative_to(project_dir)
             )
-            if ctx.runtime_root is not None
+            if ctx.candidate_files is not None
             else u.Infra.git_source_scope_paths(project_dir)
         )
         if paths is None or not paths:
@@ -57,8 +57,8 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
         self,
         files: Sequence[Path],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Check the supplied owned files through the same scanner.
 
         Returns:
@@ -75,8 +75,8 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
         self,
         paths: Sequence[Path],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Read literal file bytes and classify controls through the shared owner.
 
         Returns:
@@ -88,7 +88,7 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
 
         """
         started = time.monotonic()
-        issues: list[m.Infra.Issue] = []
+        issues: list[p.Infra.Issue] = []
         root = project_dir.resolve()
         for path in paths:
             source = path if path.is_absolute() else project_dir / path
@@ -132,4 +132,4 @@ class FlextInfraConflictMarkersGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraConflictMarkersGate"]
+__all__: list[str] = ["FlextInfraGatesConflictMarkers"]

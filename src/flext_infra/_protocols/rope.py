@@ -1,3 +1,33 @@
+# AUTO-GENERATED FILE - Source bootstrap legacy protocol holder.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flext_infra import c
+    from flext_infra._constants import FlextInfraConstantsRope
+    from flext_infra._protocols import (
+        FlextInfraProtocolsCensus,
+        FlextInfraProtocolsWorkspace,
+    )
+    from flext_infra._protocols._codegen import (
+        FlextInfraProtocolsCodegenFix,
+        FlextInfraProtocolsCodegenLazyInit,
+        FlextInfraProtocolsCodegenPipeline,
+        FlextInfraProtocolsCodegenTransaction,
+    )
+    from flext_infra._typings import FlextInfraTypesRope
+
+
+from collections.abc import Mapping, MutableSequence, Sequence
+from pathlib import Path
+from typing import Literal, Protocol, Self, runtime_checkable
+
+from flext_cli import FlextCliProtocols
+
+from flext_infra._protocols.base import FlextInfraProtocolsBase
+from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
+
 """Application-level protocols for Rope-backed infra utilities.
 
 Concrete Rope objects are typed in ``t.Infra.Rope*``. This module keeps only
@@ -7,22 +37,13 @@ Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations
-
-from collections.abc import Mapping, MutableSequence, Sequence
-from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
-
-from flext_infra import c
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from types import TracebackType
 
     from flext_core import t
 
-    from flext_infra import m
     from flext_infra._protocols import (
-        FlextInfraProtocolsBase,
         FlextInfraProtocolsRopeRuntime,
         FlextInfraProtocolsWorkspaceSnapshot,
     )
@@ -33,17 +54,25 @@ class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
 
     @runtime_checkable
-    class SourceRewrite(Protocol):
-        """Read-only source span and replacement consumed by native refactoring."""
+    class RopeWorkspaceSession(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
-        def start(self) -> int: ...
+        def repository_root(self) -> Path:
+            """Resolved repository root requested by the caller."""
+            ...
 
         @property
-        def end(self) -> int: ...
+        def rope_repository_root(self) -> Path:
+            """Canonical root used to open the shared Rope project."""
+            ...
 
         @property
-        def text(self) -> str: ...
+        def workspace_index(
+            self,
+        ) -> FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex:
+            """Materialized workspace index for the open session."""
+            ...
 
     @runtime_checkable
     class RopeContractCapturePolicy(Protocol):
@@ -54,6 +83,9 @@ class FlextInfraProtocolsRope(Protocol):
 
         @property
         def phase(self) -> c.Infra.SemanticCutoverPhase: ...
+
+        @property
+        def annotation_only(self) -> bool: ...
 
         @property
         def pattern(self) -> str: ...
@@ -92,61 +124,6 @@ class FlextInfraProtocolsRope(Protocol):
         def drops(self) -> Sequence[str]: ...
 
     @runtime_checkable
-    class RopeContractRule(RopeContractCapturePolicy, Protocol):
-        """Read-only policy consumed by the native contract planner."""
-
-        @property
-        def operation(self) -> c.Infra.RopeContractOperation: ...
-
-        @property
-        def source_revision(self) -> str | None: ...
-
-        @property
-        def call_target(self) -> str | None: ...
-
-        @property
-        def explicit_arguments(self) -> bool: ...
-
-        @property
-        def required_field(self) -> bool: ...
-
-        @property
-        def defaulted_field(self) -> bool: ...
-
-        @property
-        def private_attribute(self) -> bool: ...
-
-        @property
-        def value_default(self) -> str | None: ...
-
-        @property
-        def factory_default(self) -> str | None: ...
-
-        @property
-        def missing_keywords(self) -> Sequence[str]: ...
-
-        @property
-        def reorders_annotation(self) -> bool: ...
-
-        @property
-        def families(self) -> Sequence[str]: ...
-
-        @property
-        def scope_kinds(self) -> Sequence[c.Infra.RopeScopeKind]: ...
-
-        @property
-        def implementation_owner(self) -> tuple[str, str] | None: ...
-
-        @property
-        def receiver_methods(self) -> Sequence[str]: ...
-
-        @property
-        def ownership_transfer(self) -> tuple[str, str] | None: ...
-
-        @property
-        def owner_root(self) -> Path | None: ...
-
-    @runtime_checkable
     class SemanticSourceState(Protocol):
         """Read-only original native file receipt carried to publication."""
 
@@ -166,62 +143,48 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def arg(self) -> Sequence[str]: ...
 
-    @runtime_checkable
-    class SemanticMigrationEdit(Protocol):
-        """Immutable proposed source bytes passed between semantic phases."""
-
-        @property
-        def file_path(self) -> Path: ...
-
-        @property
-        def original_source(self) -> str | None: ...
-
-        @property
-        def updated_source(self) -> str: ...
-
-        @property
-        def changes(self) -> tuple[str, ...]: ...
-
-        @property
-        def retire_file(self) -> bool: ...
-
     # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): source discovery is a
     # Rope boundary and consumes the exact field-only runtime request model.
     @runtime_checkable
-    class ClassInfo(Protocol):
-        """Class declaration facts consumed by semantic queries."""
+    class ClassInfo(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
-        def name(self) -> str: ...
+        def name(self) -> str:
+            """Class name."""
+            ...
 
         @property
-        def line(self) -> int: ...
-
-        @property
-        def bases(self) -> Sequence[str]: ...
+        def bases(self) -> Sequence[str]:
+            """Base class names."""
+            ...
 
     @runtime_checkable
-    class ModuleSemanticState(Protocol):
-        """Read-only semantic facts produced by the canonical module analyzer."""
+    class ModuleSemanticState(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
-        def class_infos(
-            self,
-        ) -> tuple[FlextInfraProtocolsRope.ClassInfo, ...]: ...
+        def class_infos(self) -> tuple[FlextInfraProtocolsRope.ClassInfo, ...]:
+            """Local classes discovered in the module."""
+            ...
 
         @property
-        def declared_imports(self) -> Mapping[str, str]: ...
+        def declared_imports(self) -> Mapping[str, str]:
+            """Declared import targets by name."""
+            ...
 
         @property
-        def semantic_imports(self) -> Mapping[str, str]: ...
+        def semantic_imports(self) -> Mapping[str, str]:
+            """Resolved import targets by name."""
+            ...
 
     @runtime_checkable
-    class SourceScanRequest(Protocol):
-        """Fields required by production-source discovery."""
+    class SourceScanRequest(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def project_roots(self) -> tuple[Path, ...]:
-            """Non-empty ordered project roots selected at the boundary."""
+            """Non-empty ordered project roots to scan."""
             ...
 
     @runtime_checkable
@@ -268,16 +231,18 @@ class FlextInfraProtocolsRope(Protocol):
         def rope_project(self) -> FlextInfraProtocolsRopeRuntime.RopeProject: ...
 
         @property
-        def workspace_index(self) -> m.Infra.RopeWorkspaceIndex: ...
+        def workspace_index(
+            self,
+        ) -> FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex: ...
 
         def refresh(
             self,
             *,
             preserve_indexes: bool = False,
             validate_project: bool = True,
-        ) -> m.Infra.RopeWorkspaceSession: ...
+        ) -> FlextInfraProtocolsRope.RopeWorkspaceSession: ...
 
-        def reload(self) -> m.Infra.RopeWorkspaceSession: ...
+        def reload(self) -> FlextInfraProtocolsRope.RopeWorkspaceSession: ...
 
         def __enter__(self) -> Self: ...
 
@@ -294,6 +259,31 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeWorkspaceDsl(RopeSessionLifecycleDsl, Protocol):
         """Public DSL contract for one shared Rope workspace session."""
 
+        semantic_rename_planner: (
+            FlextInfraProtocolsBase.NativeSemanticRenamePlanner
+        ) | None
+
+        def facade_projection(
+            self,
+            *,
+            declared_files: tuple[
+                FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...
+            ],
+            selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
+        ) -> FlextInfraProtocolsCodegenPipeline.CodegenRepositoryPlanOutcome:
+            """Plan the generated family facades in this session."""
+            ...
+
+        def domain_owner_projection(
+            self,
+            *,
+            declared_files: tuple[
+                FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...
+            ],
+            initializer: FlextInfraProtocolsBase.SourceInitializerPlanner,
+            selection: tuple[Path, c.Infra.FacadeFamily | None] | None = None,
+        ) -> FlextInfraProtocolsCodegenPipeline.CodegenRepositoryPlanOutcome: ...
+
         @property
         def snapshot(self) -> FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot:
             """The generic source epoch already owned by this session."""
@@ -306,7 +296,8 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             rope_repository_root: Path | None = None,
             source_project: FlextInfraProtocolsRopeRuntime.RopeProject | None = None,
-            workspace_index: m.Infra.RopeWorkspaceIndex | None = None,
+            workspace_index: (FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex)
+            | None = None,
             snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot
             | None = None,
         ) -> Self: ...
@@ -314,7 +305,9 @@ class FlextInfraProtocolsRope(Protocol):
         def bind_candidate(
             self,
             *,
-            declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+            declared_files: tuple[
+                FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...
+            ],
             additional_source_folders: t.StrTuple | None = None,
         ) -> None:
             """Advance the same session's source candidate without physical writes."""
@@ -325,18 +318,20 @@ class FlextInfraProtocolsRope(Protocol):
             file_path: Path,
         ) -> FlextInfraProtocolsRopeRuntime.RopeFile | None: ...
 
-        def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None: ...
+        def module(
+            self, file_path: Path
+        ) -> FlextInfraProtocolsCodegenLazyInit.RopeModuleIndexEntry | None: ...
 
         def package(
             self,
             package_dir: Path,
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+        ) -> FlextInfraProtocolsCodegenLazyInit.RopePackageIndexEntry | None: ...
 
         def modules(
             self,
             *,
             project_names: Sequence[str] | None = None,
-        ) -> Sequence[m.Infra.RopeModuleIndexEntry]: ...
+        ) -> Sequence[FlextInfraProtocolsCodegenLazyInit.RopeModuleIndexEntry]: ...
 
         def source(self, file_path: Path) -> str: ...
 
@@ -352,16 +347,18 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             include_local_scopes: bool = True,
             include_references: bool = True,
-        ) -> Sequence[m.Infra.Object]: ...
+        ) -> Sequence[FlextInfraProtocolsCensus.Object]: ...
 
-        def projects(self) -> Sequence[FlextInfraProtocolsBase.ProjectInfo]: ...
+        def projects(self) -> Sequence[FlextInfraProtocolsWorkspace.ProjectInfo]: ...
 
-        def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None: ...
+        def layout(
+            self, project_root: Path
+        ) -> FlextInfraProtocolsCodegenLazyInit.RopeProjectLayout | None: ...
 
         def package_context(
             self,
             package_dir: Path,
-        ) -> m.Infra.LazyInitPackageContext: ...
+        ) -> FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext: ...
 
         def policy(
             self,
@@ -369,14 +366,14 @@ class FlextInfraProtocolsRope(Protocol):
             *,
             rel_path: Path | None = None,
             current_pkg: str = "",
-        ) -> m.Infra.NamespaceModulePolicy: ...
+        ) -> FlextInfraProtocolsCodegenFix.NamespaceModulePolicy: ...
 
         def convention(
             self,
             file_path: Path,
             *,
             rel_path: Path | None = None,
-        ) -> m.Infra.RopeModuleConvention: ...
+        ) -> FlextInfraProtocolsRope.RopeModuleConvention: ...
 
         def semantic(
             self, file_path: Path
@@ -386,7 +383,7 @@ class FlextInfraProtocolsRope(Protocol):
             self,
             file_path: Path,
             *,
-            export_options: m.Infra.ExportOptions | None = None,
+            export_options: FlextInfraProtocolsRope.ExportOptions | None = None,
         ) -> Sequence[str]: ...
 
     @runtime_checkable
@@ -426,6 +423,645 @@ class FlextInfraProtocolsRope(Protocol):
             rope_project: FlextInfraProtocolsRopeRuntime.RopeProject,
             file_path: Path,
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+
+    @runtime_checkable
+    class RopeRestructureRequest(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def pattern(self) -> t.NonEmptyStr:
+            """Native Rope match template."""
+            ...
+
+        @property
+        def goal(self) -> str:
+            """Native Rope replacement template; empty removes the match."""
+            ...
+
+        @property
+        def arguments(self) -> Mapping[str, str | Sequence[str]]:
+            """Native wildcard constraints and exact identity alternatives."""
+            ...
+
+        @property
+        def resources(
+            self,
+        ) -> Sequence[FlextInfraProtocolsWorkspaceSnapshot.RopeResource]:
+            """The complete resource inventory selected for this operation."""
+            ...
+
+        @property
+        def imports(self) -> Sequence[str] | Mapping[str, str]:
+            """Native imports, optionally keyed by reusable lexical bindings."""
+            ...
+
+        @property
+        def match_filter(self) -> FlextInfraTypesRope.RopeMatchFilter | None:
+            """Domain proof admitting each native source occurrence."""
+            ...
+
+    @runtime_checkable
+    class RopeSourceImport(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def import_info(self) -> FlextInfraProtocolsRopeRuntime.RopeFromImport:
+            """Native Rope from-import identity."""
+            ...
+
+        @property
+        def start_line(self) -> int:
+            """Original one-based declaration line."""
+            ...
+
+        @property
+        def start_offset(self) -> int:
+            """Original inclusive source character offset."""
+            ...
+
+        @property
+        def end_offset(self) -> int:
+            """Original exclusive source character offset."""
+            ...
+
+        @property
+        def source(self) -> str:
+            """Complete Rope logical import statement."""
+            ...
+
+        @property
+        def type_checking_guarded(self) -> bool:
+            """Import belongs to a TYPE_CHECKING suite."""
+            ...
+
+    @runtime_checkable
+    class SubscriptRebind(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def root_name(self) -> str:
+            """Root name of the subscript's value expression."""
+            ...
+
+        @property
+        def attribute(self) -> str | None:
+            """Structural member projected from the owning model.
+
+            Dotted attribute path between the root and the subscript when the
+            subscript applies to an attribute expression (for example ``modules`` in
+            ``sys.modules[...]``).
+            """
+            ...
+
+        @property
+        def is_module_table_mutation(self) -> bool:
+            """Whether the rebind mutates an interpreter module table."""
+            ...
+
+    @runtime_checkable
+    class ExportOptions(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def include_dunder(self) -> bool:
+            """Whether dunder exports should be returned."""
+            ...
+
+        @property
+        def allow_main(self) -> bool:
+            """Whether a module-level main() may be exported."""
+            ...
+
+        @property
+        def allow_assignments(self) -> bool:
+            """Whether assignment-backed names may be exported."""
+            ...
+
+        @property
+        def allow_functions(self) -> bool:
+            """Whether module functions may be exported."""
+            ...
+
+        @property
+        def require_explicit_all(self) -> bool:
+            """Whether __all__ must exist for exports to be returned."""
+            ...
+
+    @runtime_checkable
+    class SourceClassReference(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def target(self) -> str:
+            """Dotted target the binding names."""
+            ...
+
+        @property
+        def attributes(self) -> tuple[str, ...]:
+            """Attribute path read off the binding target."""
+            ...
+
+        @property
+        def qualified_base(self) -> str:
+            """Fully qualified base spelling when resolved."""
+            ...
+
+    @runtime_checkable
+    class RopeAttributeReadProof(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def source_path(self) -> Path:
+            """Captured source file."""
+            ...
+
+        @property
+        def source_sha256(self) -> str:
+            """Digest of the complete captured source file."""
+            ...
+
+        @property
+        def start_byte(self) -> int:
+            """Inclusive source UTF-8 byte position."""
+            ...
+
+        @property
+        def end_byte(self) -> int:
+            """Exclusive source UTF-8 byte position."""
+            ...
+
+        @property
+        def expression(self) -> str:
+            """Native AST dump for the read."""
+            ...
+
+        @property
+        def access(self) -> Literal["module", "class", "instance"]:
+            """Native receiver access category."""
+            ...
+
+        @property
+        def base(self) -> FlextInfraProtocolsRope.SourceClassReference:
+            """Native module or class identity of the receiver."""
+            ...
+
+        @property
+        def accessor(self) -> FlextInfraProtocolsRope.SourceClassReference:
+            """Native __getattribute__ declaration identity."""
+            ...
+
+        @property
+        def member(self) -> FlextInfraProtocolsRope.SourceClassReference:
+            """Native owner and identity of the requested member."""
+            ...
+
+        @property
+        def descriptor(self) -> FlextInfraProtocolsRope.SourceClassReference | None:
+            """Builtin descriptor identity, or none for a plain value."""
+            ...
+
+        @property
+        def project(self) -> FlextInfraProtocolsWorkspaceSnapshot.RopeProject:
+            """Exact captured native project that resolved the identities."""
+            ...
+
+        @property
+        def native_base(self) -> FlextInfraProtocolsRopeRuntime.RopePyName:
+            """Native Rope binding of the attribute receiver type."""
+            ...
+
+        @property
+        def native_accessor(self) -> FlextInfraProtocolsRopeRuntime.RopePyName:
+            """Native Rope binding of the proven builtin getter."""
+            ...
+
+        @property
+        def native_member(self) -> FlextInfraProtocolsRopeRuntime.RopePyName:
+            """Native Rope binding selected by the captured C3 resolver."""
+            ...
+
+        @property
+        def native_descriptor(self) -> FlextInfraProtocolsRopeRuntime.RopePyName | None:
+            """Native Rope binding of the builtin descriptor, if present."""
+            ...
+
+    @runtime_checkable
+    class SourceClassDefinition(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def identity(self) -> str:
+            """Qualified identity of the declared class."""
+            ...
+
+        @property
+        def bases(self) -> tuple[FlextInfraProtocolsRope.SourceClassReference, ...]:
+            """Ordered base references of the declaration."""
+            ...
+
+        @property
+        def members(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsRope.SourceClassReference | None]:
+            """Member name to shadowing reference mapping."""
+            ...
+
+    @runtime_checkable
+    class SourceBindingCollectorSpec(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def module(self) -> t.NonEmptyStr:
+            """Qualified module name under inventory."""
+            ...
+
+        @property
+        def provider(self) -> FlextInfraProtocolsRopeRuntime.RopeSourceModule:
+            """Native provider elected for the captured source."""
+            ...
+
+        @property
+        def package(self) -> str:
+            """Enclosing package name of the module."""
+            ...
+
+        @property
+        def required_line(self) -> int | None:
+            """Index only bindings visible at this line when set."""
+            ...
+
+        @property
+        def allow_conditional(self) -> bool:
+            """Whether conditional bindings may degrade to unknown."""
+            ...
+
+        @property
+        def source_owned(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Whether the scanned project's elected source roots own the module; only
+            owned modules carry the explicit-binding law.
+            """
+            ...
+
+        @property
+        def definitions(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsRope.SourceClassDefinition]:
+            """Cross-module definition inventory the walk extends."""
+            ...
+
+        @property
+        def lexical(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsRope.SourceClassReference | None]:
+            """Module-scope bindings visible to every nested base."""
+            ...
+
+    @runtime_checkable
+    class SourceBindingInventoryRequest(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> FlextInfraTypesRope.RopeProject:
+            """Open Rope project scoped to the analysis roots."""
+            ...
+
+        @property
+        def module(self) -> t.NonEmptyStr:
+            """Qualified module name under inventory."""
+            ...
+
+        @property
+        def path(self) -> Path:
+            """Captured module path."""
+            ...
+
+        @property
+        def source(self) -> str:
+            """Captured module source text."""
+            ...
+
+        @property
+        def required_line(self) -> int | None:
+            """Index only bindings visible at this line when set."""
+            ...
+
+        @property
+        def allow_conditional(self) -> bool:
+            """Whether conditional bindings may degrade to unknown."""
+            ...
+
+    @runtime_checkable
+    class ScopeDefinition(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> str:
+            """Definition name."""
+            ...
+
+        @property
+        def kind(self) -> FlextInfraConstantsRope.RopeScopeKind:
+            """Rope scope kind (Module/Function/Class/Unknown)."""
+            ...
+
+        @property
+        def is_module_level(self) -> bool:
+            """Whether the scope is a direct child of the module."""
+            ...
+
+    @runtime_checkable
+    class LogicalStatement(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def indent(self) -> int:
+            """Leading-whitespace column of the statement."""
+            ...
+
+        @property
+        def end_line(self) -> int:
+            """Final line in the Rope logical region."""
+            ...
+
+        @property
+        def start_offset(self) -> int:
+            """Source offset where the region starts."""
+            ...
+
+        @property
+        def end_offset(self) -> int:
+            """Source offset where the region ends."""
+            ...
+
+        @property
+        def category(self) -> FlextInfraConstantsRope.StatementCategory:
+            """Lexical category of the leading token."""
+            ...
+
+        @property
+        def enclosing_kind(self) -> FlextInfraConstantsRope.RopeScopeKind:
+            """Kind of the nearest enclosing def/class scope."""
+            ...
+
+        @property
+        def enclosing_name(self) -> str:
+            """Name of the nearest enclosing def/class, or empty."""
+            ...
+
+        @property
+        def type_checking_guarded(self) -> bool:
+            """Whether the statement is inside TYPE_CHECKING."""
+            ...
+
+        @property
+        def text(self) -> str:
+            """Rope-owned source slice for the statement."""
+            ...
+
+    @runtime_checkable
+    class FamilyWrapperFlatten(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> FlextInfraTypesRope.RopeProject:
+            """Rope snapshot project resolving every consumer."""
+            ...
+
+        @property
+        def owner_name(self) -> str:
+            """Family owner class receiving promoted members."""
+            ...
+
+        @property
+        def wrapper_name(self) -> str:
+            """Declared name of the flattened namespace wrapper."""
+            ...
+
+        @property
+        def wrapper(self) -> FlextInfraTypesRope.RopePyName:
+            """Rope identity of the flattened namespace wrapper."""
+            ...
+
+        @property
+        def names(self) -> Mapping[str, str]:
+            """Wrapper member names mapped to promoted names."""
+            ...
+
+    @runtime_checkable
+    class ConstantInfo(
+        FlextInfraProtocolsMixins.NonNegativeLineMixin,
+        FlextInfraProtocolsMixins.NestedClassPathMixin,
+        Protocol,
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> str:
+            """Constant name."""
+            ...
+
+        @property
+        def annotation(self) -> str:
+            """Type annotation text."""
+            ...
+
+        @property
+        def value(self) -> str:
+            """Value representation."""
+            ...
+
+    @runtime_checkable
+    class SymbolInfo(FlextInfraProtocolsMixins.NonNegativeLineMixin, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> str:
+            """Symbol name."""
+            ...
+
+        @property
+        def kind(self) -> str:
+            """Symbol kind: class, function, assignment."""
+            ...
+
+    @runtime_checkable
+    class ConsolidatorScannedFile(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def resource(self) -> FlextInfraTypesRope.RopeResource:
+            """Rope resource of the scanned module."""
+            ...
+
+        @property
+        def source(self) -> str:
+            """Source captured at scan; restored on failed gates."""
+            ...
+
+        @property
+        def matches(
+            self,
+        ) -> Sequence[tuple[FlextInfraProtocolsRope.SymbolInfo, str, str]]:
+            """Matched symbol, canonical reference, and raw value."""
+            ...
+
+    @runtime_checkable
+    class RopeModuleConvention(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def file_path(self) -> Path:
+            """Resolved Python module path."""
+            ...
+
+        @property
+        def relative_path(self) -> Path:
+            """Module path relative to its package directory."""
+            ...
+
+        @property
+        def module_name(self) -> str:
+            """Fully-qualified module name."""
+            ...
+
+        @property
+        def package_name(self) -> str:
+            """Importable package name for the module."""
+            ...
+
+        @property
+        def package_dir(self) -> Path:
+            """Resolved package directory containing the module."""
+            ...
+
+        @property
+        def package_context(
+            self,
+        ) -> FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext:
+            """Resolved lazy-init package context for the module."""
+            ...
+
+        @property
+        def module_policy(self) -> FlextInfraProtocolsCodegenFix.NamespaceModulePolicy:
+            """Canonical module policy derived for the module."""
+            ...
+
+        @property
+        def project_layout(
+            self,
+        ) -> FlextInfraProtocolsCodegenLazyInit.RopeProjectLayout | None:
+            """Resolved project layout, when the module belongs to one."""
+            ...
+
+    @runtime_checkable
+    class FacadeCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def snapshot(self) -> FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot:
+            """The snapshot the census was read from."""
+            ...
+
+        @property
+        def project(self) -> Path:
+            """Absolute project root of the census."""
+            ...
+
+        @property
+        def lineage(self) -> t.StrTuple:
+            """Facade-publishing root packages of the lineage."""
+            ...
+
+        @property
+        def references(self) -> Mapping[str, frozenset[str]]:
+            """Foreign letter.member references by owner letter."""
+            ...
+
+        @property
+        def exposed(self) -> Mapping[str, frozenset[str]]:
+            """Own duplicate member names by declaring letter."""
+            ...
+
+        @property
+        def missing(self) -> Mapping[str, frozenset[str]]:
+            """Misplaced member names by declaring letter."""
+            ...
+
+        @property
+        def claims(self) -> FlextInfraTypesRope.FacadeComponentClaims:
+            """Component methods with their composing facade targets."""
+            ...
+
+    @runtime_checkable
+    class RopeProjectElection(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def source_folders(self) -> t.StrTuple:
+            """Ordered project-relative importable source folders."""
+            ...
+
+        @property
+        def ignored_resources(self) -> t.StrTuple:
+            """Source-scan ignore patterns elected by the caller."""
+            ...
+
+        @property
+        def extension_modules(self) -> t.StrTuple:
+            """Native extension modules elected by the original project."""
+            ...
+
+        @property
+        def python_path_folders(self) -> t.StrTuple:
+            """Ordered physical native import roots sharing the read owner."""
+            ...
+
+    @runtime_checkable
+    class RopeInventoryRecordInput(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def rope_project(self) -> FlextInfraTypesRope.RopeProject:
+            """Rope project used for reference discovery."""
+            ...
+
+        @property
+        def resource(self) -> FlextInfraTypesRope.RopeResource:
+            """Rope resource containing the symbol definition."""
+            ...
+
+        source: str
+        parameter_lines: Mapping[tuple[int, str], int]
+        constant_bindings: frozenset[tuple[int, str]]
+        name: str
+
+        @property
+        def pyname(self) -> FlextInfraTypesRope.RopePyName:
+            """Rope pyname node for the symbol."""
+            ...
+
+        module_name: str
+        project_name: str
+
+        @property
+        def convention(self) -> FlextInfraProtocolsRope.RopeModuleConvention:
+            """Module convention metadata for tier/facade checks."""
+            ...
+
+        scope_chain: Sequence[str]
+        class_chain: Sequence[str]
+
+        @property
+        def child_scope(self) -> FlextInfraProtocolsRope.RopeScopeDsl | None:
+            """Optional child scope object from rope."""
+            ...
+
+        @property
+        def rope_workspace(self) -> FlextInfraProtocolsRope.RopeWorkspaceDsl:
+            """Shared rope workspace/session owning the resource."""
+            ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsRope"]

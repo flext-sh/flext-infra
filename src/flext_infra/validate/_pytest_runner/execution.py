@@ -35,18 +35,18 @@ class FlextInfraPytestRunnerExecution(
 ):
     """Execute pytest once and reject incomplete evidence."""
 
-    _cache_publication: m.Infra.TestmonCachePublication | None = None
+    _cache_publication: p.Infra.TestmonCachePublication | None = None
 
     def _inspect_cache(
         self,
         *,
         database: Path,
         digest: str | None,
-    ) -> p.Result[m.Infra.TestmonCacheState]:
+    ) -> p.Result[p.Infra.TestmonCacheState]:
         """Run the SQLite integrity owner for the testmon database.
 
         Returns:
-            The resulting ``p.Result[m.Infra.TestmonCacheState]``.
+            The resulting ``p.Result[p.Infra.TestmonCacheState]``.
 
         """
         return FlextInfraTestmonDbInspector(
@@ -136,7 +136,7 @@ class FlextInfraPytestRunnerExecution(
         database: Path | None = None,
         complete: bool = False,
         verify_inventory: bool = True,
-    ) -> m.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
+    ) -> p.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
         """Return the typed testmon selection and its manifest owner.
 
         Each collection is one deadline-bound child of the flext-cli process
@@ -189,7 +189,7 @@ class FlextInfraPytestRunnerExecution(
         execution_mode: c.Infra.PytestExecutionMode,
         complete: bool,
         database: Path | None = None,
-    ) -> m.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
+    ) -> p.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
         """Run one read-only collection and publish its manifest artifacts.
 
         Returns:
@@ -510,7 +510,7 @@ class FlextInfraPytestRunnerExecution(
     def _record_cache_state(
         report_dir: Path,
         name: str,
-        state: m.Infra.TestmonCacheState,
+        state: p.Infra.TestmonCacheState,
     ) -> None:
         """Persist one testmon integrity decision before it is acted upon."""
         u.Cli.atomic_write_text_file(
@@ -713,7 +713,7 @@ class FlextInfraPytestRunnerExecution(
         ).unwrap()
 
     @staticmethod
-    def _external_gate_markers(context: m.Infra.PytestRunContext) -> str:
+    def _external_gate_markers(context: p.Infra.PytestRunContext) -> str:
         """Return the not-executed external gate marker list of one run.
 
         Returns:
@@ -726,7 +726,7 @@ class FlextInfraPytestRunnerExecution(
             else ",".join(config.Infra.tooling.tools.pytest.external_gate_markers)
         )
 
-    def _ci_marker_list(self, context: m.Infra.PytestRunContext) -> str:
+    def _ci_marker_list(self, context: p.Infra.PytestRunContext) -> str:
         """Return the CI-excluded marker list of one run.
 
         Returns:
@@ -770,7 +770,7 @@ class FlextInfraPytestRunnerExecution(
     @classmethod
     def execute_project_context(
         cls,
-        context: m.Infra.WorkspaceProjectContext,
+        context: p.Infra.WorkspaceProjectContext,
         *,
         started_at_monotonic: float,
         execution_mode: c.Infra.PytestExecutionMode = (
@@ -1138,7 +1138,7 @@ class FlextInfraPytestRunnerExecution(
 
     def _record_selection_plan(
         self,
-        selection_plan: m.Infra.PytestSelectionPlan,
+        selection_plan: p.Infra.PytestSelectionPlan,
         report_dir: Path,
         *,
         cache_restored: bool,
@@ -1194,7 +1194,7 @@ class FlextInfraPytestRunnerExecution(
         self,
         report_dir: Path,
         outcome: p.Cli.ProcessOutcome,
-    ) -> m.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
+    ) -> p.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
         """Bind a FULL plan only to the suite's observed complete inventory.
 
         Interrupted processes retain their recorded native outcome before any
@@ -1255,8 +1255,8 @@ class FlextInfraPytestRunnerExecution(
     def _publish_cache_publication(
         self,
         report_dir: Path,
-        state: m.Infra.TestmonCacheState,
-        policy: m.Infra.TestmonCachePolicySpec,
+        state: p.Infra.TestmonCacheState,
+        policy: p.Infra.TestmonCachePolicySpec,
         database: Path,
     ) -> None:
         """Publish the checkpointed database as the run's cache publication.

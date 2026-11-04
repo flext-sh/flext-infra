@@ -119,8 +119,10 @@ class TestsFlextInfraCodegenScaffolderNaming:
             if with_all_modules:
                 target.mkdir()
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            _ = scaffolder.run(
-                projects=[u.Tests.create_project_info(project, name=project.name)]
+            tm.ok(
+                scaffolder.run(
+                    projects=[u.Tests.create_project_info(project, name=project.name)]
+                )
             )
             validate(target)
 
@@ -131,12 +133,14 @@ class TestsFlextInfraCodegenScaffolderNaming:
             project.mkdir()
             (project / "Makefile").touch()
             scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
-            [result] = scaffolder.run(
-                projects=[
-                    u.Tests.create_project_info(
-                        project, name=project.name, package_name=""
-                    )
-                ],
+            [result] = tm.ok(
+                scaffolder.run(
+                    projects=[
+                        u.Tests.create_project_info(
+                            project, name=project.name, package_name=""
+                        )
+                    ],
+                )
             )
             tm.that(result.files_created, empty=True)
             tm.that(result.files_skipped, empty=True)

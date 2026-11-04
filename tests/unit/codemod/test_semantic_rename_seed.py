@@ -184,6 +184,13 @@ class TestsFlextInfraSemanticRenameSeed:
         hydrated = m.Infra.SemanticRenamePlan.model_validate_json(
             tm.not_none(state.content)
         )
+        tm.ok(
+            all(
+                isinstance(witness, m.Cli.AtomicFileState)
+                for witness in hydrated.candidate.inputs
+            )
+        )
+        tm.that(hydrated.candidate.inputs, eq=artifact.candidate.inputs)
         with infra.rope_workspace(root) as workspace:
             tm.ok(
                 FlextInfraCodemodSemanticApply.authenticate_rename_candidate(

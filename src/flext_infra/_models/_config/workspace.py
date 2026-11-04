@@ -13,12 +13,14 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._constants.config import FlextInfraConstantsConfig
-from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
-from flext_infra._models._config.contexts import FlextInfraModelsConfigContexts
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
-from flext_infra._models._config.make import FlextInfraModelsConfigMake
+from flext_infra._models._config import (
+    FlextInfraModelsConfigBeads,
+    FlextInfraModelsConfigContexts,
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigMake,
+)
 
 
 class FlextInfraModelsConfigWorkspace:
@@ -27,7 +29,7 @@ class FlextInfraModelsConfigWorkspace:
     class GitSubmoduleDeclaration(m.ContractModel):
         """One Git configuration section parsed by its canonical owner."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
         )
@@ -112,7 +114,15 @@ class FlextInfraModelsConfigWorkspace:
         """Share candidate-source validation without changing declaration shape."""
 
         candidate_dependencies: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.DependencyCommitSourceSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Candidate-only exact dependency Git sources"),
         ] = ()
 
@@ -155,10 +165,16 @@ class FlextInfraModelsConfigWorkspace:
         Recovery targets authorize bounded publication into existing worktrees.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             use_enum_values=False, extra="forbid"
         )
 
+        docs_audit: Annotated[
+            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
+            m.Field(description="Universal documentation-audit declarations"),
+        ] = m.Field(
+            default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec
+        )
         project: Annotated[
             FlextInfraModelsConfigContexts.ProjectSpec | None,
             m.Field(description="Explicit metadata for a new project scaffold"),
@@ -167,12 +183,6 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
             m.Field(description="Explicit repository integration contract"),
         ] = None
-        docs_audit: Annotated[
-            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
-            m.Field(description="Own documentation audit declarations"),
-        ] = m.Field(
-            default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
-        )
         namespace_scan_dirs: Annotated[
             Sequence[str],
             m.Field(description="Own namespace analysis roots"),
@@ -215,9 +225,16 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Own canonical generation policy"),
         ] = FlextInfraConstantsConfig.CodegenKind.CONFORM
         kind: Annotated[
-            FlextInfraConstantsConfig.ProjectKind,
-            m.Field(description="Own governance profile and architecture boundary"),
-        ] = FlextInfraConstantsConfig.ProjectKind.INTERNAL_FLEXT
+            FlextInfraConstantsConfig.ProjectKind | None,
+            m.Field(
+                description=(
+                    "Own governance profile and architecture boundary. The "
+                    "package base bundle declares no project and so no kind; "
+                    "every project declares it in its own layer, and the "
+                    "project-boundary read fails closed when it is absent"
+                ),
+            ),
+        ] = None
         state: Annotated[
             FlextInfraConstantsConfig.RepositoryState,
             m.Field(description="Own lifecycle participation policy"),
@@ -253,13 +270,17 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Own script command routing contract"),
         ] = None
+        verb_groups: Annotated[
+            tuple[FlextInfraModelsConfigMake.MakeVerbGroupSpec, ...],
+            m.Field(description="Own ordered `make help` sections"),
+        ] = ()
 
     class CandidateBootstrapTargetSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One declared worktree and canonical conform surface."""
 
         # The planner's surface contract takes the enum member, so the
         # contract base's value coercion is switched off here.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         path: Annotated[Path, m.Field(description="Relative candidate worktree path")]
         what: Annotated[
@@ -285,12 +306,11 @@ class FlextInfraModelsConfigWorkspace:
     class DependencyGroupInclude(m.ContractModel):
         """One native PEP 735 inclusion at its original array position."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-        include_group: Annotated[
-            t.NonEmptyStr,
-            m.Field(alias="include-group", description="Referenced dependency group"),
-        ]
+        include_group: t.NonEmptyStr = m.Field(
+            alias="include-group", description="Referenced dependency group"
+        )
 
     class DependencyGroupEntries(m.RootModel[tuple[str | DependencyGroupInclude, ...]]):
         """Native ordered PEP 735 entries, without resolving local references."""
@@ -311,19 +331,23 @@ class FlextInfraModelsConfigWorkspace:
     class DependencyGroupDeclarations(m.ContractModel):
         """Shared native dependency-group grammar and local reference graph."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        dependency_groups: Annotated[
-            Mapping[
-                str,
-                tuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
+        dependency_groups: Mapping[
+            str,
+            tuple[
+                str
+                | Annotated[
+                    p.Infra.DependencyGroupInclude,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                    ),
                 ],
+                ...,
             ],
-            m.Field(
-                alias="dependency-groups", description="Ordered native group entries"
-            ),
-        ]
+        ] = m.Field(
+            alias="dependency-groups", description="Ordered native group entries"
+        )
 
         @m.field_validator("dependency_groups", mode="before")
         @classmethod
@@ -413,31 +437,27 @@ class FlextInfraModelsConfigWorkspace:
         and ignores its other tables.
         """
 
-        name: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                validation_alias=m.AliasPath("project", "name"),
-                description="PEP 621 distribution name",
-            ),
-        ]
-        dependencies: Annotated[
-            Sequence[str],
-            m.Field(
-                validation_alias=m.AliasPath("project", "dependencies"),
-                description="PEP 621 runtime requirements",
-            ),
-        ] = ()
-        dependency_groups: Annotated[
-            Mapping[
-                str,
-                tuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
+        name: t.NonEmptyStr = m.Field(
+            validation_alias=m.AliasPath("project", "name"),
+            description="PEP 621 distribution name",
+        )
+        dependencies: Sequence[str] = m.Field(
+            (),
+            validation_alias=m.AliasPath("project", "dependencies"),
+            description="PEP 621 runtime requirements",
+        )
+        dependency_groups: Mapping[
+            str,
+            tuple[
+                str
+                | Annotated[
+                    p.Infra.DependencyGroupInclude,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                    ),
                 ],
+                ...,
             ],
-            m.Field(
-                validation_alias=c.Infra.DEPENDENCY_GROUPS,
-                description="PEP 735 dependency groups (dev, codegen, ...)",
-            ),
         ] = m.Field(
             default_factory=lambda: MappingProxyType[
                 str,
@@ -445,12 +465,14 @@ class FlextInfraModelsConfigWorkspace:
                     str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
                 ],
             ]({}),
+            validation_alias=c.Infra.DEPENDENCY_GROUPS,
+            description="PEP 735 dependency groups (dev, codegen, ...)",
         )
 
     class DependencyEdgeSpec(m.ContractModel):
         """One directed requirement edge between two workspace members."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
         )
@@ -713,7 +735,15 @@ class FlextInfraModelsConfigWorkspace:
         """Exact public host inventory envelope parsed once at ingress."""
 
         entries: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry, ...],
+            tuple[
+                Annotated[
+                    p.Infra.HostWorkspaceInventoryEntry,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Canonical discovered checkout identities"),
         ]
 
@@ -757,7 +787,7 @@ class FlextInfraModelsConfigWorkspace:
         """Local identity plus topology read from this repository's Git inputs."""
 
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 exclude=True,
                 description="Original topology and declaration observations",

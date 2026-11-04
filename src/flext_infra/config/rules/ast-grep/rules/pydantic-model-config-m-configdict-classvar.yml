@@ -1,6 +1,5 @@
-# A pydantic model's `model_config` must be declared as a ClassVar; a bare
-# assignment makes pydantic treat the ConfigDict as a model field (flext
-# strict Pydantic law).
+# FLEXT declares model configuration explicitly as class metadata. The native
+# annotation belongs to `t`; the runtime constructor remains on `m`.
 #
 # Idempotent: the rewrite yields an annotated assignment, which the plain
 # assignment pattern never matches. The companion import rules bind `ClassVar`
@@ -21,7 +20,7 @@ rule:
 constraints:
   CONFIG:
     regex: "^(Settings)?ConfigDict$"
-fix: "model_config: ClassVar[m.$CONFIG] = m.$CONFIG($$$ARGS)"
+fix: "model_config: ClassVar[t.$CONFIG] = m.$CONFIG($$$ARGS)"
 message: >-
-  model_config must be a ClassVar; a bare assignment declares a pydantic
-  field instead of model metadata.
+  Declare model_config as ClassVar[t.ConfigDict] or
+  ClassVar[t.SettingsConfigDict], retaining the matching m constructor.

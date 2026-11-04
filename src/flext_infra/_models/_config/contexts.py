@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
 from flext_infra._models._config import (
     FlextInfraModelsConfigBeads,
@@ -30,7 +30,13 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         """Shared command identity required by every generated Make surface."""
 
         release_verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbSpec),
+                ],
+                ...,
+            ],
             m.Field(
                 description="Release phase commands elected by repository capability"
             ),
@@ -45,7 +51,13 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Repository-declared public examples module"),
         ] = None
         workspace_repositories: Annotated[
-            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RepositoryRef,
+                    t.schema_for_model(FlextInfraModelsConfigContexts.RepositoryRef),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered workspace subproject records"),
         ] = ()
         environment_imports: Annotated[
@@ -55,7 +67,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         pytest: Annotated[
-            FlextInfraModelsDepsToolConfig.PytestConfig,
+            Annotated[
+                p.Infra.PytestConfig,
+                t.schema_for_model(FlextInfraModelsDepsToolConfig.PytestConfig),
+            ],
             m.Field(description="Typed pytest execution policy"),
         ]
         environment_directory: Annotated[
@@ -79,7 +94,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(exclude=True, description="Original declarations consumed here"),
         ]
 
@@ -157,6 +172,24 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 ),
             ),
         ]
+        mise_lock_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Committed Mise lock of every governed repository"),
+        ] = c.Infra.MISE_LOCK_FILENAME
+        uv_lock_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Committed native uv lock of the runtime root"),
+        ] = c.Infra.UV_LOCK_FILENAME
+        executor_installs_project: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "The project belongs to the infrastructure distribution's "
+                    "runtime closure, so the upgrade executor installs the "
+                    "project's locked non-editable build instead of excluding it"
+                ),
+            ),
+        ]
         python_version: Annotated[
             t.NonEmptyStr,
             m.Field(description="Python minor line the environment syncs against"),
@@ -173,6 +206,30 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
+        verb_groups: Annotated[
+            tuple[FlextInfraModelsConfigMake.MakeVerbGroupSpec, ...],
+            m.Field(description="Ordered `make help` sections; empty is flat"),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _require_common_verb_group(self) -> Self:
+            """Declare the canonical verbs' section whenever sections exist.
+
+            Returns:
+                The validated render context.
+
+            Raises:
+                ValueError: When sections omit ``make.common_verb_group``.
+
+            """
+            names = {group.name for group in self.verb_groups}
+            if names and self.make.common_verb_group not in names:
+                msg = (
+                    "verb_groups must declare the canonical section "
+                    f"{self.make.common_verb_group!r}: {sorted(names)}"
+                )
+                raise ValueError(msg)
+            return self
 
         makefile_custom_include: Annotated[
             t.NonEmptyStr,
@@ -283,7 +340,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             description="Selected repository Make profile"
         )
         uv_link_mode: t.NonEmptyStr = m.Field(description="Declared UV link mode")
-        tooling_runtime: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext = m.Field(
+        tooling_runtime: Annotated[
+            p.Infra.ToolingRuntimeContext,
+            t.schema_for_model(FlextInfraModelsDepsToolConfig.ToolingRuntimeContext),
+        ] = m.Field(
             description="Resolved tooling document required by project metadata"
         )
 
@@ -298,7 +358,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Derived uv editable-build cache-key files"),
         ] = ()
         docs_audit: Annotated[
-            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
+            Annotated[
+                p.Infra.DocsAuditOverridesSpec,
+                t.schema_for_model(
+                    FlextInfraModelsConfigContract.DocsAuditOverridesSpec
+                ),
+            ],
             m.Field(
                 description="Repository-owned documentation audit declarations",
             ),
@@ -316,7 +381,13 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = ()
         workspace_integration: Annotated[
-            FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
+            Annotated[
+                p.Infra.WorkspaceIntegrationSpec,
+                t.schema_for_model(
+                    FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec
+                ),
+            ]
+            | None,
             m.Field(
                 description=(
                     "Declared integration provider and branch written into the "
@@ -389,11 +460,22 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             return self._config_base.module
 
         scaffold: Annotated[
-            FlextInfraModelsConfigScaffold.ScaffoldSpec,
+            Annotated[
+                p.Infra.ScaffoldSpec,
+                t.schema_for_model(FlextInfraModelsConfigScaffold.ScaffoldSpec),
+            ],
             m.Field(description="New-project scaffold policy"),
         ]
         gitignore_sections: Annotated[
-            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ScaffoldGitignoreSectionSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 description=(
@@ -410,7 +492,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Development policy composed for the target's kind"),
         ]
         tooling: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
+            Annotated[
+                p.Infra.ToolConfigDocument,
+                t.schema_for_model(FlextInfraModelsDepsToolConfig.ToolConfigDocument),
+            ],
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[
@@ -418,7 +503,11 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Configured read-only PATH additions for direnv"),
         ] = ()
         beads: Annotated[
-            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
+            Annotated[
+                p.Infra.BeadsProjectSpec,
+                t.schema_for_model(FlextInfraModelsConfigBeads.BeadsProjectSpec),
+            ]
+            | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         ownership_command_prefix: Annotated[
@@ -473,15 +562,6 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             t.NonEmptyStr,
             m.Field(description="Upstream FLEXT facade module"),
         ]
-        upstream_facades: Annotated[
-            Mapping[t.NonEmptyStr, t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Facade class the upstream declares for each letter in the "
-                    "__all__ that binds it; scaffolded facades extend that class"
-                ),
-            ),
-        ]
         inherited_facets: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -529,6 +609,23 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 ),
             ),
         ]
+        console_scripts: Annotated[
+            tuple[
+                Annotated[
+                    p.Infra.ConsoleScriptSpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigContexts.ConsoleScriptSpec
+                    ),
+                ],
+                ...,
+            ],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional console scripts; see the ProjectSpec namesake."
+                ),
+            ),
+        ] = ()
         runtime_dependency_overlay: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(

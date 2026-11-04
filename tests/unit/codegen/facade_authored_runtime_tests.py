@@ -61,6 +61,178 @@ class TestsFlextInfraGeneratedRuntime:
     """Execute generated candidates through their real public consumers."""
 
     @staticmethod
+    def test_utility_metaclass_remains_a_facade_base(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A metaclass hook is composition behavior, not nominal publication."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        directory = package / family.directory
+        directory.mkdir(parents=True, exist_ok=True)
+        sources = {
+            directory / "tree.py": (
+                "class Tree:\n"
+                "    @staticmethod\n"
+                "    def build(): return 'built'\n"
+                "__all__ = ['Tree']\n"
+            ),
+            directory / "meta.py": (
+                "class Meta(type):\n"
+                "    def __getattr__(cls, name):\n"
+                "        if name == 'Value': return cls.build()\n"
+                "        raise AttributeError(name)\n"
+                "__all__ = ['Meta']\n"
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                f"from {package.name}.{family.directory}.tree import Tree\n"
+                f"from {package.name}.{family.directory}.meta import Meta\n"
+                "class Utilities(Tree, Meta): pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+            package / c.Infra.INIT_PY: "from .utilities import u\n__all__ = ['u']\n",
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
+        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.UTILITIES_PY, rendered))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import u\n"
+            "assert u.Value == 'built'\n",
+            cwd=root,
+        )
+
+    @staticmethod
+    def test_facade_imports_do_not_require_part_reexports(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A barrel can retire re-exports without breaking the generated facade."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        directory = package / family.directory
+        directory.mkdir(parents=True, exist_ok=True)
+        sources = {
+            directory / c.Infra.INIT_PY: (
+                "from .first import FirstPart\n"
+                "from .second import SecondPart\n"
+                "__all__ = ['FirstPart', 'SecondPart']\n"
+            ),
+            directory / "first.py": (
+                "class FirstPart:\n"
+                "    @staticmethod\n"
+                "    def first(): return 'first'\n"
+                "__all__ = ['FirstPart']\n"
+            ),
+            directory / "second.py": (
+                "class SecondPart:\n"
+                "    @staticmethod\n"
+                "    def second(): return 'second'\n"
+                "__all__ = ['SecondPart']\n"
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                c.Infra.AUTOGEN_HEADER
+                + "\nfrom pathlib import Path\n"
+                + f"from {package.name}.{family.directory} import FirstPart, "
+                "SecondPart\n"
+                "class Utilities(FirstPart, SecondPart): pass\n"
+                "u = Utilities\n"
+                "def foreign(value): return Path(value)\n"
+                "__all__ = ['Utilities', 'u']\n"
+            ),
+            package / c.Infra.INIT_PY: ("from .utilities import u\n__all__ = ['u']\n"),
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
+        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.UTILITIES_PY, rendered))
+        tm.ok(
+            u.Cli.atomic_write_text_file(directory / c.Infra.INIT_PY, "__all__ = []\n")
+        )
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import u\n"
+            "assert u.first() == 'first'\n"
+            "assert u.second() == 'second'\n"
+            f"from {package.name}.utilities import foreign\n"
+            "assert foreign('native-path').name == 'native-path'\n",
+            cwd=root,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("imports", "guard", "type_only"),
+        [
+            ("from typing import TYPE_CHECKING\n", "TYPE_CHECKING", True),
+            ("import typing\n", "typing.TYPE_CHECKING", True),
+            ("TYPE_CHECKING = True\n", "TYPE_CHECKING", False),
+            (
+                "from typing import TYPE_CHECKING\nTYPE_CHECKING = True\n",
+                "TYPE_CHECKING",
+                False,
+            ),
+            ("", "True", False),
+        ],
+    )
+    def test_facade_collisions_distinguish_type_only_placeholders(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        imports: str,
+        guard: str,
+        *,
+        type_only: bool,
+    ) -> None:
+        """Real source guards exclude stubs, never runtime duplicate members."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        facade = package / c.Infra.UTILITIES_PY
+        sources = {
+            package / family.directory / "start.py": (
+                imports
+                + "class ProcessStart:\n"
+                + f"    if {guard}:\n"
+                + "        @staticmethod\n"
+                + "        def _signal_process_tree(): ...\n"
+                + "    @classmethod\n"
+                + "    def start(cls):\n"
+                + "        return cls._signal_process_tree()\n"
+                + "__all__ = ['ProcessStart']\n"
+            ),
+            package / family.directory / "group.py": (
+                "class ProcessGroup:\n"
+                "    @staticmethod\n"
+                "    def _signal_process_tree():\n"
+                "        return 'runtime-group'\n"
+                "__all__ = ['ProcessGroup']\n"
+            ),
+            facade: (
+                f"from {package.name}.{family.directory}.start import ProcessStart\n"
+                f"from {package.name}.{family.directory}.group import ProcessGroup\n"
+                "class Utilities(ProcessStart, ProcessGroup):\n"
+                "    pass\n"
+                "u = Utilities\n"
+                "__all__ = ['Utilities', 'u']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        result = tm.not_none(u.Infra.render_utility_facade(package))
+        if not type_only:
+            tm.fail(result, has="declares '_signal_process_tree' in unrelated parts")
+            return
+        rendered = tm.ok(result)
+        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import u\n"
+            "assert u.start() == 'runtime-group'\n",
+            cwd=root,
+        )
+
+    @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])
     @pytest.mark.parametrize(
         "segment", ["child", "descriptive_namespace_for_deep_native_owner_projection"]
@@ -163,7 +335,7 @@ class TestsFlextInfraGeneratedRuntime:
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
-                root / ".gitignore",
+                root / ".ignore",
                 f"/{generated.relative_to(root).as_posix()}/\n",
             )
         )
@@ -175,21 +347,6 @@ class TestsFlextInfraGeneratedRuntime:
         ) as binding:
             project, sources = binding
             tm.fail(any(path.is_relative_to(generated) for path in sources))
-            planned = {
-                file.path: file.desired_content.decode(c.DEFAULT_ENCODING)
-                for file in analysis
-                if file.path.suffix == c.Infra.EXT_PYTHON
-                and file.desired_content is not None
-            }
-            tm.that(
-                u.Infra.runtime_evaluated_base_classes(
-                    root,
-                    {**sources, **planned},
-                    u.Tests.runtime_evaluated_roots(),
-                    source_project=project,
-                ),
-                eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
-            )
             tm.that(
                 u.Infra.render_utility_facade(
                     package, family="p", project=project, sources=sources
@@ -226,16 +383,8 @@ class TestsFlextInfraGeneratedRuntime:
             )
         )
         with u.Infra.facade_source_project(root) as binding:
-            project, sources = binding
-            tm.that(
-                u.Infra.runtime_evaluated_base_classes(
-                    root,
-                    sources,
-                    u.Tests.runtime_evaluated_roots(),
-                    source_project=project,
-                ),
-                eq=tuple(sorted(u.Tests.runtime_evaluated_roots())),
-            )
+            _project, sources = binding
+            tm.that(any(path.name == "consumer.py" for path in sources), eq=True)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -283,10 +432,10 @@ class TestsFlextInfraGeneratedRuntime:
         for path, source in sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             tm.ok(u.Cli.atomic_write_text_file(path, source))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name} import u\n"
@@ -294,6 +443,62 @@ class TestsFlextInfraGeneratedRuntime:
             "class Receiver(u):\n"
             "    marker = 'receiver'\n"
             "assert Receiver.read('value') == 'VALUE:receiver'\n",
+            cwd=root,
+        )
+
+    @staticmethod
+    def test_nested_namespace_does_not_inherit_its_wrappers(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """Child composition never duplicates the wrapper's class-valued member."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        facade = package / c.Infra.CONSTANTS_PY
+        sources = {
+            package / family.directory / "first.py": (
+                "class First:\n"
+                "    class Domain:\n"
+                "        FIRST = 'first'\n"
+                "__all__ = ['First']\n"
+            ),
+            package / family.directory / "second.py": (
+                "class Second:\n"
+                "    class Domain:\n"
+                "        SECOND = 'second'\n"
+                "__all__ = ['Second']\n"
+            ),
+            facade: (
+                f"from {package.name}.{family.directory}.first import First\n"
+                f"from {package.name}.{family.directory}.second import Second\n"
+                "class Constants:\n"
+                "    class Domain(First.Domain, Second.Domain, First, Second):\n"
+                "        pass\n"
+                "c = Constants\n"
+                "__all__ = ['Constants', 'c']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="c"))
+        )
+        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
+        tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="c")),
+            eq=rendered,
+        )
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name} import c\n"
+            f"from {package.name}.{family.directory}.first import First\n"
+            f"from {package.name}.{family.directory}.second import Second\n"
+            "assert c.Domain.FIRST == First.Domain.FIRST\n"
+            "assert c.Domain.SECOND == Second.Domain.SECOND\n"
+            "assert First not in c.Domain.__mro__\n"
+            "assert Second not in c.Domain.__mro__\n",
             cwd=root,
         )
 
@@ -336,10 +541,10 @@ class TestsFlextInfraGeneratedRuntime:
             )
 
     @staticmethod
-    def test_failed_planning_retains_only_a_completed_source_cohort(
+    def test_failed_planning_raises_its_cause_unpublished(
         tmp_path: Path,
     ) -> None:
-        """A tooling failure retains the completed source cohort, unpublished.
+        """A tooling failure stops planning with its cause and publishes nothing.
 
         Premise: projected import cycles are a declarative catalog finding
         (``ban-cyclic-import``), not a planning failure, so the first planning
@@ -405,8 +610,11 @@ class TestsFlextInfraGeneratedRuntime:
                 root, inputs=inputs
             )
         )
-        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
-            outcome = codegen.FlextInfraCodegenConform.Generate.plan_repository_task(
+        with (
+            u.Infra.workspace_snapshot(root, (root,)) as snapshot,
+            u.Tests.raises(m.ValidationError, match="settings"),
+        ):
+            codegen.FlextInfraCodegenConform.Generate.plan_repository_task(
                 m.Infra.CodegenRepositoryPlanTask(
                     root=root,
                     workspace=spec,
@@ -421,31 +629,6 @@ class TestsFlextInfraGeneratedRuntime:
                     provider_plans=incoming,
                 ),
                 snapshot,
-            )
-        tm.that(outcome.failed, eq=True)
-        tm.that(outcome.error, has="settings")
-        tm.that(isinstance(outcome.exception, m.ValidationError), eq=True)
-        projected = {file.path: file for file in outcome.files}
-        tm.that(set(projected), has=facade)
-        tm.that(set(projected), has=barrel)
-        tm.that(set(projected), has=utility_facade)
-        tm.that(set(projected), has=package / c.Infra.INIT_PY)
-        tm.that(
-            projected[facade].before,
-            eq=next(state for state in originals if state.path == facade),
-        )
-        tm.fail(b"DepartedOwner" in tm.not_none(projected[facade].desired_content))
-        with u.Infra.facade_source_project(
-            root,
-            declared_files=outcome.files,
-        ) as binding:
-            tm.that(
-                tm.not_none(
-                    u.Infra.render_utility_facade(
-                        package, project=binding[0], sources=binding[1]
-                    )
-                ).encode(c.DEFAULT_ENCODING),
-                eq=projected[utility_facade].desired_content,
             )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
@@ -540,12 +723,14 @@ class TestsFlextInfraGeneratedRuntime:
                     project=provider_root,
                     path=model_facade,
                     before=by_path[model_facade],
-                    desired_content=tm.not_none(
-                        u.Infra.render_utility_facade(
-                            provider,
-                            family="m",
-                            project=binding[0],
-                            sources=binding[1],
+                    desired_content=tm.ok(
+                        tm.not_none(
+                            u.Infra.render_utility_facade(
+                                provider,
+                                family="m",
+                                project=binding[0],
+                                sources=binding[1],
+                            )
                         )
                     ).encode(c.DEFAULT_ENCODING),
                     desired_mode=tm.not_none(by_path[model_facade].mode),
@@ -554,9 +739,11 @@ class TestsFlextInfraGeneratedRuntime:
                 root,
                 declared_files=tuple(plans.values()),
             ) as binding:
-                consumer = tm.not_none(
-                    u.Infra.render_utility_facade(
-                        package, project=binding[0], sources=binding[1]
+                consumer = tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, project=binding[0], sources=binding[1]
+                        )
                     )
                 )
                 plans[consumer_facade] = m.Infra.CodegenFilePlan(
@@ -582,9 +769,11 @@ class TestsFlextInfraGeneratedRuntime:
                 root,
                 declared_files=tuple(plans.values()),
             ) as binding:
-                tm.that(
-                    u.Infra.render_utility_facade(
-                        package, project=binding[0], sources=binding[1]
+                tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, project=binding[0], sources=binding[1]
+                        )
                     ),
                     eq=consumer,
                 )
@@ -657,7 +846,7 @@ class TestsFlextInfraGeneratedRuntime:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 barrel.parent / "base.py",
-                u.Tests.runtime_root_import() + f"class {public_name}(RuntimeRoot):\n"
+                f"class {public_name}:\n"
                 '    """Explicitly published empty protocol owner."""\n'
                 f"__all__ = [{public_name!r}]\n",
             ),
@@ -679,29 +868,13 @@ class TestsFlextInfraGeneratedRuntime:
         )
         with ExitStack() as stack:
             stack.enter_context(tm.scope(python_paths=(str(provider.parent),)))
-            if not declared:
-                stack.enter_context(
-                    pytest.raises(
-                        u.Infra.rope_unresolved_error_types(),
-                        match="Attribute ProviderBase not found",
-                    )
-                )
-            project, sources = stack.enter_context(
+            _project, sources = stack.enter_context(
                 u.Infra.facade_source_project(
                     root,
                     declared_files=provider_analysis,
                 )
             )
-            roots = u.Infra.runtime_evaluated_base_classes(
-                root,
-                sources,
-                u.Tests.runtime_evaluated_roots(),
-                source_project=project,
-            )
-            tm.that(
-                roots,
-                has=f"{provider.name}.{family.directory}.ProviderBase",
-            )
+            tm.that(any(path.name == "consumer.py" for path in sources), eq=True)
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(barrel, required=True)),
             eq=original_barrel,

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraDocumentationLanguage:
@@ -20,7 +20,7 @@ class TestsFlextInfraDocumentationLanguage:
     @staticmethod
     def _scope(
         root: Path, language: t.Infra.DocumentationLanguage = "en"
-    ) -> m.Infra.DocScope:
+    ) -> p.Infra.DocScope:
         """Build one scope with captured governance identity.
 
         Returns:
@@ -40,7 +40,7 @@ class TestsFlextInfraDocumentationLanguage:
         )
 
     @staticmethod
-    def _pages(scope: m.Infra.DocScope) -> tuple[str, ...]:
+    def _pages(scope: p.Infra.DocScope) -> tuple[str, ...]:
         """Exercise project presentation renderers with unchanged source prose.
 
         Returns:
@@ -56,7 +56,7 @@ class TestsFlextInfraDocumentationLanguage:
             u.Infra.docs_project_readme(scope, contract, width=88),
             u.Infra.docs_project_index(scope, contract, width=88),
             u.Infra.docs_guides_index(scope, guide_paths=(), width=88),
-            u.Infra.docs_api_readme(scope, contract, ["sample.api"], width=88),
+            u.Infra.api_readme(scope, contract, ["sample.api"], width=88),
             u.Infra.docs_overview_page(scope, contract, ["sample.api"], width=88),
             u.Infra.docs_modules_index(scope, ["sample.api"], width=88),
         )
@@ -167,7 +167,7 @@ class TestsFlextInfraDocumentationLanguage:
             "```markdown\n# Fake title\n```\n\n"
             "Operação e recuperação\n======================\n\n## Details\n"
         )
-        title = tm.not_none(u.Infra.docs_contract_title(content))
+        title = tm.not_none(u.Infra.contract_title(content))
         tm.that(title, eq="Operação e recuperação")
         path = tmp_path / "disaster-recovery.md"
         scope = TestsFlextInfraDocumentationLanguage._scope(tmp_path, "pt-BR")
@@ -183,7 +183,7 @@ class TestsFlextInfraDocumentationLanguage:
         tmp_path: Path,
     ) -> None:
         """Refresh each scope from its own authenticated metadata, not a singleton."""
-        scopes: list[m.Infra.DocScope] = []
+        scopes: list[p.Infra.DocScope] = []
         for name, declaration in (
             ("pt", 'documentation_language = "pt-BR"\n'),
             ("en", ""),
@@ -198,7 +198,7 @@ class TestsFlextInfraDocumentationLanguage:
             )
             declared = TestsFlextInfraDocumentationLanguage._scope(root)
             scopes.append(
-                u.Infra.docs_scope_from_sources(
+                u.Infra.scope_from_sources(
                     declared, governance_source=declared.governance_source
                 )
             )

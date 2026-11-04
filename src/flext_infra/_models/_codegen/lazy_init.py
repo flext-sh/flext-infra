@@ -8,12 +8,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
-from flext_cli import m
+from flext_cli import m, t
 
-from flext_infra import c, p, t
+from flext_infra import c, p
 from flext_infra._models import FlextInfraModelsMixins
+from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
+from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
 
 
 class FlextInfraModelsCodegenLazyInit:
@@ -27,7 +29,7 @@ class FlextInfraModelsCodegenLazyInit:
             description="Native syntax contains only documentation and future imports"
         )
         members: Annotated[
-            Mapping[str, t.Infra.PythonMemberKind],
+            Mapping[str, FlextInfraTypesBase.PythonMemberKind],
             m.Field(description="Every bound top-level name, in declaration order"),
         ]
         imports: Annotated[
@@ -63,38 +65,36 @@ class FlextInfraModelsCodegenLazyInit:
         name: Annotated[str, m.Field(description="Dotted module name")]
         is_init: Annotated[bool, m.Field(description="Whether it is a package init")]
         members: Annotated[
-            t.Port[dict[str, t.Infra.PythonMemberKind]],
-            m.Field(exclude=True, description="Bound names so far, in order"),
+            t.Port[dict[str, FlextInfraTypesBase.PythonMemberKind]],
+            m.Field(description="Bound names so far, in order"),
         ]
         imports: Annotated[
             t.Port[dict[str, str]],
-            m.Field(exclude=True, description="Import targets so far"),
+            m.Field(description="Import targets so far"),
         ]
         classes: Annotated[
             t.Port[dict[str, Sequence[str]]],
-            m.Field(exclude=True, description="Class bases so far"),
+            m.Field(description="Class bases so far"),
         ]
         class_exports: Annotated[
             t.Port[dict[str, Sequence[str] | None]],
-            m.Field(exclude=True, description="Class-level exports so far"),
+            m.Field(description="Class-level exports so far"),
         ]
         values: Annotated[
             t.Port[dict[str, str]],
-            m.Field(exclude=True, description="Assigned value text so far"),
+            m.Field(description="Assigned value text so far"),
         ]
         exports: Annotated[
             t.Port[list[str | None]] | None,
-            m.Field(exclude=True, description="``__all__`` entries so far"),
+            m.Field(description="``__all__`` entries so far"),
         ] = None
 
     class PythonModelRun(m.ArbitraryTypesModel):
         """One run of the shared static Python model: source view and parse caches."""
 
         source_project: Annotated[
-            t.Port[p.Infra.RopeProject],
-            m.Field(
-                exclude=True, description="Source view every module is read through"
-            ),
+            t.Port[FlextInfraProtocolsWorkspaceSnapshot.RopeProject],
+            m.Field(description="Source view every module is read through"),
         ]
         module_files: Annotated[
             Mapping[str, Path],
@@ -103,19 +103,22 @@ class FlextInfraModelsCodegenLazyInit:
         modules: Annotated[
             t.Port[
                 MutableMapping[
-                    t.Infra.RopeNativeParsedModule,
-                    FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
+                    FlextInfraTypesRopeNative.RopeNativeParsedModule,
+                    Annotated[
+                        p.Infra.PythonModuleFacts,
+                        t.schema_for_model(
+                            FlextInfraModelsCodegenLazyInit.PythonModuleFacts
+                        ),
+                    ],
                 ]
             ],
             m.Field(
-                exclude=True,
                 description="Facts of each parsed module, keyed by the run's parse",
             ),
         ]
         project_notices: Annotated[
-            t.Port[dict[Path, tuple[t.Infra.DocumentationLanguage, str]]],
+            t.Port[dict[Path, tuple[FlextInfraTypesBase.DocumentationLanguage, str]]],
             m.Field(
-                exclude=True,
                 description=(
                     "Documentation language and copyright notice per owning "
                     "project root, read once per run"
@@ -148,7 +151,10 @@ class FlextInfraModelsCodegenLazyInit:
     class LazyInitPlan(m.ContractModel):
         """Immutable resolved decision and its original source consumption."""
 
-        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext = m.Field(
+        context: Annotated[
+            p.Infra.LazyInitPackageContext,
+            t.schema_for_model(FlextInfraModelsCodegenLazyInit.LazyInitPackageContext),
+        ] = m.Field(
             description="Discovered package context.",
         )
         action: Annotated[
@@ -187,6 +193,283 @@ class FlextInfraModelsCodegenLazyInit:
                 "Importable direct child packages recorded as metadata; "
                 "their symbols are not reexported by an ancestor."
             ),
+        )
+
+    class RopeModuleIndexEntry(m.ContractModel):
+        """Generic Rope-backed index entry for one Python module resource."""
+
+        file_path: Annotated[Path, m.Field(description="Absolute filesystem path")]
+        resource_path: Annotated[
+            str,
+            m.Field(description="Rope resource path relative to the project root"),
+        ]
+        module_name: Annotated[
+            str,
+            m.Field(description="Fully-qualified Rope module name for this file"),
+        ]
+        package_name: Annotated[
+            str,
+            m.Field(
+                description="Importable package resolved for the containing directory",
+            ),
+        ]
+        package_dir: Annotated[
+            Path,
+            m.Field(description="Absolute package directory for this module"),
+        ]
+        project_root: Annotated[
+            Path | None,
+            m.Field(
+                description="Owning project root resolved from the Rope source folder",
+            ),
+        ] = None
+        is_package_init: Annotated[
+            bool,
+            m.Field(description="Whether this resource is the package __init__.py"),
+        ] = False
+
+    class RopePackageIndexEntry(m.ContractModel):
+        """Generic Rope-backed package aggregation entry."""
+
+        package_dir: Annotated[
+            Path,
+            m.Field(description="Absolute package directory represented by this entry"),
+        ]
+        init_path: Annotated[
+            Path,
+            m.Field(description="Expected __init__.py path for this package directory"),
+        ]
+        package_name: Annotated[
+            str,
+            m.Field(
+                description="Importable package name, or empty when non-importable",
+            ),
+        ]
+        project_root: Annotated[
+            Path | None,
+            m.Field(
+                description="Owning project root resolved for this package directory",
+            ),
+        ] = None
+        modules: Annotated[
+            tuple[
+                Annotated[
+                    p.Infra.RopeModuleIndexEntry,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry
+                    ),
+                ],
+                ...,
+            ],
+            m.Field(
+                description=(
+                    "Direct Python module resources that belong to this package"
+                ),
+            ),
+        ] = ()
+        direct_child_dirs: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description="Direct child package directories discovered from Rope",
+            ),
+        ] = ()
+        descendant_child_dirs: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description="All descendant package directories discovered from Rope",
+            ),
+        ] = ()
+
+    class RopeWorkspaceIndex(m.ContractModel):
+        """Generic Rope-backed workspace index for package planning."""
+
+        repository_root: Annotated[
+            Path,
+            m.Field(
+                description="Absolute repository root used to open the Rope project",
+            ),
+        ]
+        package_dirs: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description="All package directories discovered from Rope resources",
+            ),
+        ] = ()
+        packages_by_dir: Annotated[
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.RopePackageIndexEntry,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenLazyInit.RopePackageIndexEntry
+                    ),
+                ],
+            ],
+            m.Field(description="Package entries keyed by absolute directory path"),
+        ]
+        modules_by_path: Annotated[
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.RopeModuleIndexEntry,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry
+                    ),
+                ],
+            ],
+            m.Field(description="Module entries keyed by absolute file path"),
+        ]
+        package_dir_by_name: Annotated[
+            Mapping[str, Path],
+            m.Field(description="Importable package directory keyed by package name"),
+        ]
+        project_package_by_root: Annotated[
+            Mapping[str, str],
+            m.Field(
+                description="Canonical source package name keyed by project root path",
+            ),
+        ]
+
+    class LazyInitRun(m.ArbitraryTypesModel):
+        """One repository's lazy-init planning run over its source inventory."""
+
+        root: Annotated[Path, m.Field(description="Repository root being planned")]
+        scoped: Annotated[
+            bool,
+            m.Field(description="Whether conformance selected the repository roots"),
+        ]
+        index: Annotated[
+            Annotated[
+                p.Infra.RopeWorkspaceIndex,
+                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex),
+            ],
+            m.Field(description="The repository's shared source inventory"),
+        ]
+        model: Annotated[
+            Annotated[
+                p.Infra.PythonModelRun,
+                t.schema_for_model(FlextInfraModelsCodegenLazyInit.PythonModelRun),
+            ],
+            m.Field(description="The run's parse-once static Python model"),
+        ]
+        plans: Annotated[
+            t.Port[
+                dict[
+                    Path,
+                    Annotated[
+                        p.Infra.LazyInitPlan,
+                        t.schema_for_model(
+                            FlextInfraModelsCodegenLazyInit.LazyInitPlan
+                        ),
+                    ],
+                ]
+            ],
+            m.Field(description="Decided plans, children first"),
+        ]
+        contexts: Annotated[
+            t.Port[
+                dict[
+                    Path,
+                    Annotated[
+                        p.Infra.LazyInitPackageContext,
+                        t.schema_for_model(
+                            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
+                        ),
+                    ],
+                ]
+            ],
+            m.Field(description="Package contexts by directory"),
+        ]
+        parents: Annotated[
+            t.Port[dict[Path, Sequence[str]]],
+            m.Field(description="Facade parents by package directory"),
+        ]
+        declared: Annotated[
+            t.Port[dict[str, frozenset[str]]],
+            m.Field(description="Declared facade letters by package"),
+        ]
+        declarations: Annotated[
+            t.Port[dict[tuple[str, str], tuple[str, bool]]],
+            m.Field(
+                description=(
+                    "Declaring module and letter status per published "
+                    "(package, name) whose route crosses only decided plans"
+                ),
+            ),
+        ]
+        packages: Annotated[
+            t.Port[dict[Path, str]],
+            m.Field(description="Declared public package by project"),
+        ]
+        collisions: Annotated[
+            t.Port[list[str]],
+            m.Field(description="Ambiguous export ownership findings"),
+        ]
+
+    class RopeProjectLayout(m.ContractModel):
+        """Canonical project layout derived once for Rope-backed codegen flows."""
+
+        project_root: Annotated[Path, m.Field(description="Resolved project root path")]
+        project_name: Annotated[str, m.Field(description="Canonical project name")]
+        package_name: Annotated[str, m.Field(description="Primary Python package name")]
+        package_alias: Annotated[
+            str,
+            m.Field(description="Canonical root alias derived from the package"),
+        ]
+        class_stem: Annotated[
+            str,
+            m.Field(description="Canonical facade class stem derived from the project"),
+        ]
+        src_dir: Annotated[
+            Path,
+            m.Field(description="Resolved source directory for the project"),
+        ]
+        package_dir: Annotated[
+            Path,
+            m.Field(description="Resolved package directory for the project"),
+        ]
+        init_path: Annotated[
+            Path,
+            m.Field(description="Resolved package __init__.py path"),
+        ]
+        runtime_aliases: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description="Canonical runtime aliases published by the package root",
+            ),
+        ] = ()
+        repository_namespace_packages: Annotated[
+            tuple[str, ...],
+            m.Field(description="Independent packages from the captured declaration"),
+        ]
+
+    class LazyInitRootRender(m.ArbitraryTypesModel):
+        """Template context for one lazy public root ``__init__.py``."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
+        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
+        runtime_import_lines: t.NonEmptyStr = m.Field(
+            description="Isort-ordered runtime imports of the lazy helpers.",
+        )
+        eager_binding_lines: str = m.Field(
+            default_factory=str,
+            description=(
+                "Runtime-only eager dunder bindings emitted after the lazy "
+                "installer, so the bound submodule may consume the package's "
+                "own facades while its static contract stays in TYPE_CHECKING."
+            ),
+        )
+        type_checking_lines: str = m.Field(
+            default_factory=str,
+            description="Static declarations for public lazy exports.",
+        )
+        exports_tuple: t.NonEmptyStr = m.Field(
+            description="Canonical rendered root ``__all__`` tuple.",
+        )
+        lazy_export_mapping: t.NonEmptyStr = m.Field(
+            description="Literal elected export-to-target installer argument.",
         )
 
     class QualityGateCheck(m.ArbitraryTypesModel):

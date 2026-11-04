@@ -8,16 +8,18 @@ from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
+from typing import NoReturn
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p
+from flext_infra import c, config, e, m, p
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesGenerationInventory,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
@@ -30,11 +32,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceManifest,
 )
 from flext_infra._utilities._git import FlextInfraUtilitiesGitignore
-from flext_infra._utilities._rope._analysis.rope_analysis_workspace import (
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeModulePatch
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
-)
-from flext_infra._utilities._rope.rope_module_patch import (
-    FlextInfraUtilitiesRopeModulePatch,
 )
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
@@ -46,7 +46,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
-    FlextInfraUtilitiesGitignore,
+    FlextInfraUtilitiesGenerationInventory,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesIteration,
@@ -54,6 +54,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesManagedConflicts,
     FlextInfraUtilitiesRefactor,
     FlextInfraUtilitiesRepository,
+    FlextInfraUtilitiesGitignore,
     FlextInfraUtilitiesRopeAnalysisWorkspace,
     FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesVersioning,
@@ -63,7 +64,25 @@ class FlextInfraUtilitiesCodegen(
     """Compose the source helpers consumed by the generation operation."""
 
     @staticmethod
-    def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:
+    def codegen_raise_failure(scope: Path, failure: p.FailureLike) -> NoReturn:
+        """Stop codegen planning at its first failure instead of retaining it.
+
+        A failure carrying its original exception re-raises it unchanged.
+
+        Raises:
+            e.OperationError: A typed refusal naming the failed scope when the
+                failure carries no original exception.
+
+        """
+        if failure.exception is not None:
+            raise failure.exception
+        message = f"{failure.error}: {scope}"
+        raise e.OperationError(
+            message, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(scope)}
+        )
+
+    @staticmethod
+    def envrc_render_spec() -> p.Infra.EnvrcRenderSpec:
         """Return the sole typed context every generated ``.envrc`` renders from.
 
         Returns:
@@ -79,44 +98,9 @@ class FlextInfraUtilitiesCodegen(
         )
 
     @staticmethod
-    def generate_module_skeleton(
-        *,
-        class_name: str,
-        base_class: str,
-        base_module: str,
-        docstring: str,
-    ) -> str:
-        """Render one module skeleton through the cli template engine (ADR-005).
-
-        The body lives in ``templates/module_skeleton.py.j2``; this method only
-        builds the context (explicit base module) and renders fail-closed via
-        ``u.Cli.template_render``. A render failure is a real incident and
-        surfaces via ``unwrap`` (no silent fallback).
-
-        Returns:
-            The resulting ``str``.
-
-        """
-        template_path = (
-            Path(__file__).resolve().parent.parent
-            / "templates"
-            / c.Infra.TEMPLATE_MODULE_SKELETON
-        )
-        # Preserve the exact validated model identity across the template boundary.
-        context = m.Infra.ModuleSkeletonRenderContext(
-            class_name=class_name,
-            base_class=base_class,
-            base_module=base_module,
-            docstring=docstring,
-        )
-        rendered: p.Result[str] = u.Cli.template_render(template_path, context)
-        content: str = rendered.unwrap()
-        return content
-
-    @staticmethod
     def generate_test_module_skeleton(
         *,
-        context: m.Infra.TestModuleSkeletonRenderContext,
+        context: p.Infra.TestModuleSkeletonRenderContext,
     ) -> str:
         """Render one canonical test facade skeleton from its validated context.
 

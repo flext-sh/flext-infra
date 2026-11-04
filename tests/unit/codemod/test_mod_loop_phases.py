@@ -14,14 +14,16 @@ from flext_infra import config, infra, m, p
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
+    FlextInfraModGateEngine,
+)
+from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseAccessorRename,
     FlextInfraCodemodLoopPhaseNamespaceRelocation,
-    FlextInfraModGateEngine,
 )
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 _FIRST_RENAME = FlextInfraAccessorMigrationOrchestrator.automated_rules()[0]
 _SOURCE_NAME = _FIRST_RENAME.source_name
@@ -39,7 +41,7 @@ class _RecordingProgress:
         """Record one progress line."""
         self.messages.append(message)
 
-    def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
+    def emit_rename(self, report: p.Infra.ApplyRenamesReport) -> None:
         """Record one rename campaign summary."""
         self.messages.append(f"rename occurrences={report.occurrences}")
 
@@ -119,7 +121,7 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
     """
     if not callback:
 
-        def automated(report: m.Infra.AccessorMigrationReport) -> bool:
+        def automated(report: p.Infra.AccessorMigrationReport) -> bool:
             return bool(report.automated_change_count)
 
         return infra.accessor_migrate(
@@ -194,7 +196,7 @@ class TestsFlextInfraCodemodLoopPhases:
 
         tm.fail(changed.failure)
         tm.ok(changed.value)
-        protocols_file = service_file.parent / "protocols.py"
+        protocols_file = service_file.parent / "_protocols" / "service.py"
         tm.ok(protocols_file.exists())
         tm.that(
             protocols_file.read_text(encoding="utf-8"),
@@ -354,7 +356,7 @@ class TestsFlextInfraCodemodLoopPhases:
 
         tm.fail(result.failure)
         tm.that(
-            (service_file.parent / "protocols.py").exists(),
+            (service_file.parent / "_protocols" / "service.py").exists(),
             eq=True,
         )
         legacy_source = legacy_file.read_text(encoding="utf-8")

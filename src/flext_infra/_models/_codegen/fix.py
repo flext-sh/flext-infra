@@ -11,7 +11,7 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, u
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._codegen import FlextInfraModelsCodegenScaffold
 
@@ -23,7 +23,12 @@ class FlextInfraModelsCodegenFix:
         """Result of auto-fixing namespace violations for a project."""
 
         violations_fixed: Annotated[
-            MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation],
+            MutableSequence[
+                Annotated[
+                    p.Infra.CensusViolation,
+                    t.schema_for_model(FlextInfraModelsCodegenScaffold.CensusViolation),
+                ]
+            ],
             m.Field(description="Fixed violations"),
         ] = m.Field(
             default_factory=u.empty(
@@ -33,7 +38,12 @@ class FlextInfraModelsCodegenFix:
             )
         )
         violations_skipped: Annotated[
-            MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation],
+            MutableSequence[
+                Annotated[
+                    p.Infra.CensusViolation,
+                    t.schema_for_model(FlextInfraModelsCodegenScaffold.CensusViolation),
+                ]
+            ],
             m.Field(
                 description="Skipped violations (not auto-fixable)",
             ),
@@ -81,7 +91,14 @@ class FlextInfraModelsCodegenFix:
             m.Field(description="Total files reverted"),
         ] = 0
         files: Annotated[
-            Sequence[FlextInfraModelsCodegenFix.ConsolidatorFileResult],
+            Sequence[
+                Annotated[
+                    p.Infra.ConsolidatorFileResult,
+                    t.schema_for_model(
+                        FlextInfraModelsCodegenFix.ConsolidatorFileResult
+                    ),
+                ]
+            ],
             m.Field(description="Per-file processing results"),
         ] = m.Field(default_factory=tuple)
 
@@ -209,35 +226,26 @@ class FlextInfraModelsCodegenFix:
         state.
         """
 
-        violations_fixed: Annotated[
-            MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation],
-            m.Field(
-                default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
-                description="List of violations that were fixed",
-            ),
+        violations_fixed: MutableSequence[
+            Annotated[
+                p.Infra.CensusViolation,
+                t.schema_for_model(FlextInfraModelsCodegenScaffold.CensusViolation),
+            ]
         ] = m.Field(
             default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
             description="List of violations that were fixed",
         )
-        violations_skipped: Annotated[
-            MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation],
-            m.Field(
-                default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
-                description="List of violations that were skipped",
-            ),
+        violations_skipped: MutableSequence[
+            Annotated[
+                p.Infra.CensusViolation,
+                t.schema_for_model(FlextInfraModelsCodegenScaffold.CensusViolation),
+            ]
         ] = m.Field(
             default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
             description="List of violations that were skipped",
         )
-        files_modified: Annotated[
-            MutableSet[str],
-            m.Field(
-                default_factory=set[str],
-                description="Set of unique modified file paths",
-            ),
-        ] = m.Field(
-            default_factory=set[str],
-            description="Set of unique modified file paths",
+        files_modified: MutableSet[str] = m.Field(
+            default_factory=set[str], description="Set of unique modified file paths"
         )
 
         @property
@@ -272,7 +280,7 @@ class FlextInfraModelsCodegenFix:
     class ViolationKey(m.ContractModel):
         """Content-stable violation identifier — resilient to line shifts."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         module: Annotated[str, m.Field(description="Module containing the violation")]
         rule: Annotated[str, m.Field(description="Rule that was violated")]

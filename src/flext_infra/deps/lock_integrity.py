@@ -11,11 +11,8 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, r, s, t, u
-from flext_infra.workspace import (
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceLockCompleteness,
-)
+from flext_infra import c, config, p, r, s, t, u
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraLockIntegrityVerifier(s[bool]):
@@ -33,25 +30,24 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
     )
 
     @classmethod
-    def upgrade_lock(
+    def repair_mise_platforms(
         cls,
         request: p.Infra.WorkspaceRequest,
         runner: p.Cli.CommandRunner,
-        *,
-        file_publisher: p.Infra.CodegenFilePublisher,
-        packages: Sequence[str] = (),
     ) -> p.Result[bool]:
-        """Upgrade the elected native UV and Mise locks, the only lock writer.
+        """Lock, per governed repository, the locked tools missing a platform.
 
-        Native uv elects the runtime root: a workspace resolves every declared
-        member together in its single root lock, and a standalone checkout
-        resolves its own lock. An explicit Python package selection uses native
-        ``--upgrade-package`` and leaves Mise resolutions untouched. The default
-        upgrades both complete declarations. The composition root supplies the
-        validated selection and runner.
+        Generated ``make upg`` owns every native stage before this one: it
+        relocks the tools whose ``mise lock --bump --dry-run`` preview is not
+        ``[]`` and writes the UV lock, all before any FLEXT Python. Mise
+        reports no preview for a locked version that lacks a table for a
+        platform ``toolchain.mise_lockfile_platforms`` declares, so this
+        repair alone reads each governed ``mise.lock`` (the runtime root and
+        every declared member) and locks exactly those tools. It runs from the
+        isolated upgrade executor and never imports the project.
 
         Returns:
-            Native upgrade and freshness verification, or the first failure.
+            Success when no declared platform is missing, or the first failure.
 
         """
         resolved = FlextInfraWorkspaceDetector.resolution_context(
@@ -60,166 +56,51 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
         if resolved.failure:
             return r.from_failure(resolved)
         root = resolved.value.runtime_root
-        if packages:
-            projected = cls._project_selected_overrides(root, packages, file_publisher)
-            if projected.failure:
-                return r.from_failure(projected)
-        arguments = (
-            (
-                "lock",
-                *(
-                    part
-                    for package in packages
-                    for part in ("--upgrade-package", package)
-                ),
-            )
-            if packages
-            else ("lock", "--upgrade")
-        )
-        locked = cls._native_uv(runner, root, arguments).flat_map(
-            lambda _: FlextInfraWorkspaceLockCompleteness.verify_lock(root)
-        )
-        return (
-            locked.map(lambda _verified: True)
-            if packages
-            else locked.flat_map(lambda _: cls._upgrade_mise_lock(runner, root))
-        )
-
-    @classmethod
-    def _project_selected_overrides(
-        cls,
-        root: Path,
-        packages: Sequence[str],
-        publisher: p.Infra.CodegenFilePublisher,
-    ) -> p.Result[tuple[Path, ...]]:
-        """Publish only selected resolver declarations with original file witnesses.
-
-        Returns:
-            Published input paths, or the original configuration/read failure.
-
-        """
-        return r.traverse(
-            u.Infra.governed_project_roots(root),
-            lambda owned: cls._selected_override_plan(owned, packages),
-        ).flat_map(
-            lambda groups: publisher.publish_codegen_plans(
-                root, tuple(plan for group in groups for plan in group)
-            )
-        )
-
-    @staticmethod
-    def _selected_override_plan(
-        root: Path, packages: Sequence[str]
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-        """Render selected resolution metadata while retaining the captured source.
-
-        Returns:
-            The owned file plan, or the original configuration/read failure.
-
-        """
-        inputs = u.Infra.load_codegen_inputs(root)
-        if inputs.failure:
-            return r.from_failure(inputs)
-        captured = u.Cli.atomic_read_binary_file_state(
-            root / c.PYPROJECT_FILENAME, required=True
-        )
-        if captured.failure:
-            return r.from_failure(captured)
-        before = captured.value
-        if before.content is None:
-            return r.fail(f"required project document has no content: {before.path}")
-        parsed = u.Cli.toml_read_document(
-            before.path, source=before.content.decode(c.DEFAULT_ENCODING)
-        )
-        if parsed.failure:
-            return r.from_failure(parsed)
-        document = parsed.value
-        changed = u.Infra.sync_selected_uv_overrides(
-            document,
-            inputs.value.spec.toolchain.uv_override_dependencies,
-            packages,
-        )
-        return r.ok(
-            (
-                m.Infra.CodegenFilePlan(
-                    project=root,
-                    path=before.path,
-                    before=before,
-                    desired_content=u.Cli.toml_dumps(document).encode(
-                        c.DEFAULT_ENCODING
-                    ),
-                    desired_mode=before.mode,
-                    owner=c.Infra.CLI_GROUP_DEPS,
-                ),
-            )
-            if changed
-            else (),
-        )
-
-    @classmethod
-    def _upgrade_mise_lock(
-        cls,
-        runner: p.Cli.CommandRunner,
-        runtime_root: Path,
-    ) -> p.Result[bool]:
-        """Lock, in one pass, only the Mise tools whose resolution changed.
-
-        Every governed repository (the runtime root and each declared member)
-        renders its own ``.mise.toml`` and commits its own ``mise.lock`` for
-        standalone consumption, and Mise resolves a member's tools from the
-        member's lock. The single upgrade pass therefore relocks each of them.
-        Plain ``mise lock`` refreshes the metadata of every locked version and
-        downloads each provenance artifact again. The native ``--dry-run
-        --json`` preview costs only version resolution and names exactly the
-        tools whose locked version would change; tools missing a declared
-        platform join them. Mise then locks and verifies those tools alone.
-
-        Returns:
-            Success when every lock is current, or the first native failure.
-
-        """
-        return u.Infra.managed_mise_self(runtime_root).flat_map(
-            lambda mise: cls._lock_mise_roots(
+        return u.Infra.managed_mise_self(root).flat_map(
+            lambda mise: cls._repair_mise_roots(
                 runner,
                 mise,
-                u.Infra.governed_project_roots(runtime_root),
+                u.Infra.governed_project_roots(root),
             ),
         )
 
     @classmethod
-    def _lock_mise_roots(
+    def _repair_mise_roots(
         cls,
         runner: p.Cli.CommandRunner,
         mise: Path,
         roots: Sequence[Path],
     ) -> p.Result[bool]:
-        """Relock each governed repository in order, stopping at the first failure.
+        """Repair each governed repository in order, stopping at the first failure.
 
         Returns:
-            Success when every lock is current, or the first native failure.
+            Success when every lock covers its platforms, or the first failure.
 
         """
         for root in roots:
-            locked = cls._relock_mise_root(runner, root, mise)
-            if locked.failure:
-                return locked
+            repaired = cls._repair_mise_root(runner, root, mise)
+            if repaired.failure:
+                return repaired
         return r[bool].ok(value=True)
 
     @classmethod
-    def _relock_mise_root(
+    def _repair_mise_root(
         cls,
         runner: p.Cli.CommandRunner,
         root: Path,
         mise: Path,
     ) -> p.Result[bool]:
-        """Select and lock the changed tools of one governed repository.
+        """Lock the platform-incomplete tools of one governed repository.
 
         Returns:
-            Success when its lock is current, or the native lock's failure.
+            Success when its lock covers every platform, or the native failure.
 
         """
-        return cls._mise_lock_selection(runner, root, mise).flat_map(
-            lambda tools: cls._lock_mise_tools(runner, root, mise, tools),
+        return (
+            u.Cli
+            .toml_read_json(root / c.Infra.MISE_LOCK_FILENAME)
+            .flat_map(cls._incomplete_mise_tools)
+            .flat_map(lambda tools: cls._lock_mise_tools(runner, root, mise, tools))
         )
 
     @staticmethod
@@ -231,50 +112,6 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
 
         """
         return (str(mise), "-C", str(runtime_root), "lock", "--bump")
-
-    @classmethod
-    def _mise_lock_selection(
-        cls,
-        runner: p.Cli.CommandRunner,
-        runtime_root: Path,
-        mise: Path,
-    ) -> p.Result[Sequence[str]]:
-        """Tools whose locked version changes, then tools missing a platform.
-
-        Returns:
-            The ordered unique tool names Mise must lock, possibly none.
-
-        """
-        return runner.capture(
-            (*cls._mise_lock_command(runtime_root, mise), "--dry-run", "--json"),
-            cwd=runtime_root,
-            timeout=c.Infra.TIMEOUT_LONG,
-        ).flat_map(
-            lambda preview: u.Cli.toml_read_json(
-                runtime_root / c.Infra.MISE_LOCK_FILENAME,
-            ).flat_map(lambda lock: cls._selected_mise_tools(preview, lock)),
-        )
-
-    @classmethod
-    def _selected_mise_tools(
-        cls,
-        preview: str,
-        lock: t.JsonMapping,
-    ) -> p.Result[Sequence[str]]:
-        """Merge the previewed version changes with the platform gaps.
-
-        Returns:
-            The ordered unique tool names, version changes first.
-
-        """
-        changes = u.type_adapter(tuple[m.Infra.MiseLockChange, ...]).validate_json(
-            preview,
-        )
-        return cls._incomplete_mise_tools(lock).map(
-            lambda incomplete: tuple(
-                dict.fromkeys((*(change.name for change in changes), *incomplete)),
-            ),
-        )
 
     @classmethod
     def _lock_mise_tools(
@@ -292,8 +129,8 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
         """
         if not tools:
             u.Cli.info(
-                f"{runtime_root / c.Infra.MISE_LOCK_FILENAME}: no version change "
-                "and no missing platform; nothing to lock",
+                f"{runtime_root / c.Infra.MISE_LOCK_FILENAME}: no missing "
+                "platform; nothing to lock",
             )
             return r[bool].ok(value=True)
         return runner.run_live(
@@ -331,40 +168,6 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
                     for key in platforms
                 )
             )
-        )
-
-    @staticmethod
-    def _native_uv(
-        runner: p.Cli.CommandRunner,
-        runtime_root: Path,
-        arguments: Sequence[str],
-    ) -> p.Result[bool]:
-        """Run one native uv project command with the runtime interpreter.
-
-        Returns:
-            Success of the native command, or its original failure.
-
-        """
-        return u.Infra.managed_mise_binary(c.Infra.UV, runtime_root).flat_map(
-            lambda binary: runner.run_live(
-                (
-                    str(binary),
-                    *arguments,
-                    "--project",
-                    str(runtime_root),
-                    "--python",
-                    str(
-                        u.Infra.runtime_python(runtime_root, runtime_root=runtime_root)
-                    ),
-                    "--no-python-downloads",
-                ),
-                cwd=runtime_root,
-                timeout=c.Infra.TIMEOUT_LONG,
-                options=m.Cli.ProcessOptions(
-                    env={"MISE_AUTO_INSTALL": c.ParserBooleanToken.ZERO},
-                    remove_env_keys=config.Infra.codegen.make.native_environment_unset,
-                ),
-            ).map(lambda _output: True),
         )
 
     @classmethod

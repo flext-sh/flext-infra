@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra import infra
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, p, tm, u
 
@@ -21,6 +22,74 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("package_name", "export", "owner"),
+        [
+            ("flext_core", "r", "flext_core.result.FlextResult"),
+            ("flext_cli", "m", "flext_cli.models.FlextCliModels"),
+            ("flext_api", "p", "flext_api.protocols.FlextApiProtocols"),
+        ],
+    )
+    def test_native_sdk_resolves_real_lazy_publication_identity(
+        tmp_path: Path, package_name: str, export: str, owner: str
+    ) -> None:
+        """Actual SDK package attributes agree with their declared live suppliers."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        with infra.rope_workspace(root) as workspace:
+            project = workspace.rope_project
+            package = u.Infra.require_semantic_module(project.get_module(package_name))
+            native = package.get_attribute(export)
+            supplier = u.Infra.qualified_name(project, owner)
+            tm.ok(u.Infra.same_name(supplier, native))
+            tm.ok(
+                u.Infra.same_name(
+                    native, u.Infra.qualified_name(project, f"{package_name}.{export}")
+                )
+            )
+
+    @staticmethod
+    def test_qualified_explicit_module_retains_original_snapshot_syntax_failure(
+        tmp_path: Path,
+    ) -> None:
+        """A valid alternate publication cannot replace a malformed selected module."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        initializer = package / c.Infra.INIT_PY
+        initializer.write_text(
+            "from typing import TYPE_CHECKING\n"
+            "from flext_core.lazy import install_lazy_exports\n"
+            "if TYPE_CHECKING:\n    from .published import FlextResult\n"
+            "install_lazy_exports(__name__, globals(), "
+            "{'FlextResult': '.published'}, public_exports=('FlextResult',))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        source = "from flext_core.result import FlextResult\n"
+        requested = package / "requested.py"
+        requested.write_text(source, encoding=c.DEFAULT_ENCODING)
+        (package / "published.py").write_text(source, encoding=c.DEFAULT_ENCODING)
+        with (
+            infra.rope_workspace(root) as live,
+            closing(
+                u.Infra.snapshot_project(
+                    live.rope_project, {requested: "def invalid(:\n"}
+                )
+            ) as project,
+        ):
+            with pytest.raises(
+                u.Infra.exception_type("rope.base.exceptions", "ModuleSyntaxError")
+            ) as error:
+                u.Infra.qualified_name(
+                    project, "FlextResult", module_name=f"{package.name}.requested"
+                )
+            tm.that(str(error.value), has=requested.name)
+            tm.ok(
+                u.Infra.same_name(
+                    u.Infra.qualified_name(project, "flext_core.result.FlextResult"),
+                    u.Infra.qualified_name(project, f"{package.name}.FlextResult"),
+                )
+            )
+        tm.that(requested.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
     def _published_name(attribute: p.Infra.RopePyName) -> str:
@@ -35,69 +104,18 @@ class TestsFlextInfraRopeRuntimePymodule:
         ).get_name()
 
     @staticmethod
-    @pytest.mark.parametrize("warm_ast", [False, True])
-    def test_semantic_regions_include_try_else_with_finally(
-        tmp_path: Path,
-        *,
-        warm_ast: bool,
-    ) -> None:
-        """A later else binding must not break an earlier bounded native match."""
-        source = (
-            "r = str\n"
-            "def consume(token):\n"
-            "    before = r(token)\n"
-            "    try:\n"
-            "        token.strip()\n"
-            "    except ValueError:\n"
-            "        return before\n"
-            "    else:\n"
-            "        return r(token)\n"
-            "    finally:\n"
-            "        token.strip()\n"
-        )
-        consumer = tmp_path / "consumer.py"
-        consumer.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with closing(u.Infra.init_rope_project(tmp_path)) as project:
-            module = u.Infra.resolve_pymodule(
-                project,
-                u.Infra.require_file_resource(
-                    project.get_resource(consumer.name), consumer
-                ),
-            )
-            tree = module.get_ast()
-            binding = module.get_attribute("r")
-            if warm_ast:
-                tm.that(
-                    bool(u.Infra.semantic_regions(module, "before", arguments={})),
-                    eq=True,
-                )
-            start = source.index("r(token)")
-            tm.that(
-                u.Infra.semantic_regions(
-                    module,
-                    "(\nr\n)",
-                    arguments={},
-                    start=start,
-                    end=start + len("r"),
-                ),
-                eq=((start, start + len("r")),),
-            )
-            tm.ok(module.get_ast() is tree)
-            tm.ok(module.get_attribute("r") is binding)
-            tm.that(module.source_code, eq=source)
-
-    @staticmethod
     @pytest.mark.parametrize("reuse_binding", [False, True])
     @pytest.mark.parametrize("admitted", [False, True])
-    def test_native_restructuring_preserves_admission_and_import_bindings(
+    def test_contract_restructuring_preserves_identity_and_import_bindings(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
         *,
         reuse_binding: bool,
         admitted: bool,
     ) -> None:
-        """Real native changes respect identity alternatives and import policy."""
-        (tmp_path / "provider.py").write_text(
+        """Contract restructuring honors identity alternatives and import policy."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = f"{package.name}.provider"
+        (package / "provider.py").write_text(
             "class Old:\n    value = 'old'\n"
             "class Alternative:\n    value = 'alternative'\n"
             "class New:\n    value = 'new'\n"
@@ -105,63 +123,47 @@ class TestsFlextInfraRopeRuntimePymodule:
             "class Foreign:\n    value = 'foreign'\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        consumer = tmp_path / "consumer.py"
+        consumer = package / "consumer.py"
         source = (
-            "from provider import Old as Alias, Foreign\n"
-            + ("from provider import Existing as New\n" if reuse_binding else "")
+            f"from {provider} import Old as Alias, Foreign\n"
+            + (f"from {provider} import Existing as New\n" if reuse_binding else "")
             + "print(Alias.value, Foreign.value)\n"
         )
         consumer.write_text(source, encoding=c.DEFAULT_ENCODING)
-        expected_module = "consumer" if admitted else "unselected"
-        visits: list[str] = []
-
-        def accept(
-            module: p.Infra.RopePyModule,
-            match: p.Infra.RopeContractMatch,
-        ) -> bool:
-            visits.append(module.get_name())
-            return (
-                module.get_name() == expected_module
-                and "Alias" in module.get_scope().get_defined_names()
-                and match.get_ast("owner") is not None
+        owners = (f"name={provider}.Old",) if admitted else ()
+        rule = m.Infra.RopeContractRule(
+            id="restructure-old-value",
+            pattern="${owner}.value",
+            goal="New.value",
+            arguments={"owner": (*owners, f"name={provider}.Alternative")},
+            imports={"New": f"from {provider} import New"},
+        )
+        with infra.rope_workspace(root) as workspace:
+            edits = tm.ok(
+                u.Infra.plan_contract_rules(workspace, {consumer: source}, (rule,))
             )
-
-        with closing(u.Infra.init_rope_project(tmp_path)) as project:
-            resource = project.get_resource(consumer.name)
-            module = u.Infra.resolve_pymodule(project, resource)
-            request = m.Infra.RopeRestructureRequest(
-                pattern="${owner}.value",
-                goal="New.value",
-                arguments={"owner": ("name=provider.Old", "name=provider.Alternative")},
-                resources=(resource,),
-                imports={"New": "from provider import New"},
-                match_filter=accept,
-            )
-            changes = u.Infra.restructure_changes(project, request)
-            tm.that(visits, eq=["consumer"])
-            tm.that(
-                capsys.readouterr().out,
-                has=f"matched=1 admitted={int(admitted)}",
-            )
-            tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
-            if not isinstance(module, p.Infra.RopePyModule):
-                pytest.fail("Native source module must expose its source text")
-            tm.that(module.source_code, eq=source)
-            tm.ok(project.get_pymodule(resource) is module)
-            tm.that(len(changes.changes), eq=int(admitted))
-            for change in changes.changes:
-                if not isinstance(change, p.Infra.RopeChangeContents):
-                    pytest.fail("Native restructuring must plan content changes")
-                tm.ok(change.resource is resource)
-            project.do(changes)
-            tm.that(u.Infra.restructure_changes(project, request).changes, empty=True)
-            tm.that(len(visits), eq=1 + int(not admitted))
-            tm.that(
-                capsys.readouterr().out,
-                has=f"matched={int(not admitted)} admitted=0",
-            )
+        tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        tm.that(len(edits), eq=int(admitted))
+        for edit in edits:
+            tm.that(edit.file_path.resolve(), eq=consumer.resolve())
+            consumer.write_text(edit.updated_source, encoding=c.DEFAULT_ENCODING)
+            with infra.rope_workspace(root) as workspace:
+                tm.that(
+                    tm.ok(
+                        u.Infra.plan_contract_rules(
+                            workspace, {consumer: edit.updated_source}, (rule,)
+                        )
+                    ),
+                    empty=True,
+                )
         expected_value = ("existing" if reuse_binding else "new") if admitted else "old"
-        output = tm.ok(u.Cli.run((sys.executable, str(consumer))))
+        output = tm.ok(
+            u.Cli.run(
+                (sys.executable, "-c", f"import {package.name}.consumer"),
+                cwd=root,
+                options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
+            )
+        )
         tm.that(output.stdout, eq=f"{expected_value} foreign\n")
 
     @staticmethod

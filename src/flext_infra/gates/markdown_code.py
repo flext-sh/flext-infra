@@ -18,20 +18,17 @@ import tempfile
 import time
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.gates import (
-    FlextInfraGate,
+    FlextInfraGates,
     FlextInfraMarkdownCodeSources,
     FlextInfraMarkdownGateBase,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import p
 
-
-class FlextInfraMarkdownCodeGate(FlextInfraGate):
+class FlextInfraGatesMarkdownCode(FlextInfraGates):
     """Embedded documentation-code gate."""
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN_CODE
@@ -74,7 +71,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         origin: Mapping[str, tuple[str, int]],
         location: tuple[str, int],
         message: str,
-    ) -> m.Infra.Issue | None:
+    ) -> p.Infra.Issue | None:
         """Map one extracted-source finding back to its documentation location.
 
         Returns:
@@ -99,7 +96,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         origin: Mapping[str, tuple[str, int]],
         *,
         default_message: str,
-    ) -> Sequence[m.Infra.Issue]:
+    ) -> Sequence[p.Infra.Issue]:
         """Translate one ruff result into origin-mapped findings coded with this gate.
 
         Every ruff line that names an extracted source (verdict, parse error or
@@ -108,10 +105,10 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         as a clean pass: the tool-level error becomes the finding.
 
         Returns:
-            The resulting ``Sequence[m.Infra.Issue]``.
+            The resulting ``Sequence[p.Infra.Issue]``.
 
         """
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: MutableSequence[p.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_CODE_SOURCE_RE.search(line)
             issue = (
@@ -160,7 +157,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         }
 
     @override
-    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
+    def selected_for(self, project_dir: Path, ctx: p.Infra.GateContext) -> bool:
         """A project with either input kind of embedded code selects the gate.
 
         Applicability is the cheap derivation of the declared input kinds:
@@ -182,10 +179,10 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
     def _run_extracted(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         *,
         fix: bool,
-    ) -> tuple[bool, bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, bool, Sequence[p.Infra.Issue]]:
         """Run the single format operation over extracted sources.
 
         Returns ``(ran, passed, issues)``: ``ran`` is False when the project
@@ -195,10 +192,10 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         never enter the extracted tree and cannot turn into gate findings.
 
         Returns:
-            The resulting ``tuple[bool, bool, Sequence[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, bool, Sequence[p.Infra.Issue]]``.
 
         """
-        findings: MutableSequence[m.Infra.Issue] = []
+        findings: MutableSequence[p.Infra.Issue] = []
         embedded = self._embedded_sources(project_dir, ctx.scope_facts)
         if not embedded:
             return False, False, ()
@@ -357,9 +354,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
     def _clean_without_embedded_code(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         started: float,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Report examined inputs that carry no embedded code as clean.
 
         Returns:
@@ -382,8 +379,8 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Validate embedded sources read-only when documentation code exists.
 
         Returns:
@@ -406,7 +403,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         )
 
     @override
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: p.Infra.GateContext) -> p.Infra.GateExecution:
         """Run the single mutating pass: format blocks and splice clean docs back.
 
         Returns:
@@ -443,4 +440,4 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraMarkdownCodeGate"]
+__all__: list[str] = ["FlextInfraGatesMarkdownCode"]

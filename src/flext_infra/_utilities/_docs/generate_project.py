@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
@@ -26,7 +26,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
 
     @staticmethod
     def _module_names(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
     ) -> list[str]:
         """Return the public top-level modules of the scope's package.
 
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
 
     @staticmethod
     def docs_project_api_artifacts(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         width: int,
     ) -> list[tuple[Path, str]]:
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
 
     @staticmethod
     def docs_project_artifacts(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         repository_root: Path,
     ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:
@@ -143,7 +143,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
             path: title
             for path, content in guide_contents.items()
             if scope.documentation_language == "pt-BR"
-            and (title := FlextInfraUtilitiesDocsContract.docs_contract_title(content))
+            and (title := FlextInfraUtilitiesDocsContract.contract_title(content))
         }
         analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path,
@@ -178,7 +178,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
             ),
             (
                 scope.path / "docs/api-reference/README.md",
-                FlextInfraUtilitiesDocsRender.docs_api_readme(
+                FlextInfraUtilitiesDocsRender.api_readme(
                     scope, contract, module_names, width=width
                 ),
             ),

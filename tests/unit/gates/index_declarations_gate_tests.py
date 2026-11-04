@@ -1,4 +1,4 @@
-"""Tests for FlextInfraIndexDeclarationsGate.
+"""Tests for FlextInfraGatesIndexDeclarations.
 
 The gate proves every indexed gitlink is declared by the repository itself.
 The fixture builds real repositories inside ``tmp_path``: the defect is a
@@ -14,9 +14,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m, u
-from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
-from tests import tm
+from flext_infra import m, p, u
+from flext_infra.gates.index_declarations import FlextInfraGatesIndexDeclarations
+from tests import p, tm
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraIndexDeclarationsGate:
     """Every indexed gitlink must be declared in `.gitmodules`."""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def gate_result(
         tmp_path: Path,
     ) -> Callable[..., m.Infra.GateResult]:
@@ -45,14 +45,14 @@ class TestsFlextInfraIndexDeclarationsGate:
             *,
             orphan_gitlink: bool = False,
             declare_gitlink: bool = False,
-        ) -> m.Infra.GateResult:
+        ) -> p.Infra.GateResult:
             u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=tmp_path))
-            (tmp_path / ".gitignore").write_text("ignored/\n", encoding="utf-8")
+            (tmp_path / ".ignore").write_text("ignored/\n", encoding="utf-8")
             (tmp_path / "kept.txt").write_text("kept\n", encoding="utf-8")
             u.Infra.git_add_paths(
                 m.Infra.GitPathsRequest(
                     repo_root=tmp_path,
-                    paths=[".gitignore", "kept.txt"],
+                    paths=[".ignore", "kept.txt"],
                 ),
             )
             if orphan_gitlink:
@@ -90,7 +90,7 @@ class TestsFlextInfraIndexDeclarationsGate:
                 repository_root=tmp_path,
                 reports_dir=tmp_path / ".reports",
             )
-            gate = FlextInfraIndexDeclarationsGate(repository_root=tmp_path)
+            gate = FlextInfraGatesIndexDeclarations(repository_root=tmp_path)
             return gate.check(tmp_path, context).result
 
         return run

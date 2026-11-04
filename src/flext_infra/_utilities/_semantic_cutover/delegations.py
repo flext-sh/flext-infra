@@ -13,15 +13,15 @@ from pathlib import Path
 from textwrap import indent
 
 from flext_infra import c, m, p
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+from flext_infra._utilities._rope.runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
@@ -57,7 +57,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             )
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                 project,
-                FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+                FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                     resource, path
                 ),
             )
@@ -98,9 +98,6 @@ class FlextInfraUtilitiesSemanticDelegations(
         sources: Mapping[Path, str],
     ) -> tuple[list[p.Infra.SourceRewrite], list[p.Infra.RopeImportInfo]]:
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "delegation module has no native AST"
-            raise TypeError(msg)
         rewrites: list[p.Infra.SourceRewrite] = []
         required: list[p.Infra.RopeImportInfo] = []
         for owner in ast.walk(tree):
@@ -375,7 +372,7 @@ class FlextInfraUtilitiesSemanticDelegations(
         node = value.get_ast()
         location = FlextInfraUtilitiesRopeRuntimeModules.definition_location(binding)
         module = location[0]
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(
             module
         ) or not isinstance(node, c.Infra.AST_DEFINITION_TYPES):
             return None
@@ -434,7 +431,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             )
         ):
             return None, ()
-        target_scope = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+        target_scope = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             binding.get_object(), "delegation wrapper"
         ).get_scope()
         descriptor, selected = cls._factory(
@@ -684,7 +681,7 @@ class FlextInfraUtilitiesSemanticDelegations(
     ) -> None:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = binding.get_object().get_module()
-        if not FlextInfraUtilitiesTypesRopeRuntime.source_module(module):
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             msg = "descriptor has no native lexical scope"
             raise ValueError(msg)
         for expression, identity in zip(
@@ -824,9 +821,6 @@ class FlextInfraUtilitiesSemanticDelegations(
             )
             raise TypeError(msg)
         tree = origin.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = "prototype has no native lexical inventory"
-            raise TypeError(msg)
         if any(
             sum(
                 isinstance(part, c.Infra.AST_FUNCTION_TYPES)
@@ -982,7 +976,7 @@ class FlextInfraUtilitiesSemanticDelegations(
             for parameter in signature.type_params
             if isinstance(parameter, c.Infra.AST_TYPE_PARAM_TYPES)
         }
-        native_scope = FlextInfraUtilitiesTypesRopeRuntime.require_source_object(
+        native_scope = FlextInfraUtilitiesRopeRuntimeTypes.require_source_object(
             binding.get_object(), "prototype annotation scope"
         ).get_scope()
         required: list[p.Infra.RopeImportInfo] = []
@@ -1031,7 +1025,7 @@ class FlextInfraUtilitiesSemanticDelegations(
     @staticmethod
     def _require_deferred(module: p.Infra.RopePyModule) -> None:
         tree = module.get_ast()
-        if not isinstance(tree, ast.Module) or not any(
+        if not any(
             isinstance(node, ast.ImportFrom)
             and node.module == "__future__"
             and any(alias.name == "annotations" for alias in node.names)

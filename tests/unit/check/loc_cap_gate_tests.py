@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import config, m
-from flext_infra.gates.loc_cap import FlextInfraLocCapGate
+from flext_infra.gates.loc_cap import FlextInfraGatesLocCap
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraLocCapGate:
-    """Tests for ``FlextInfraLocCapGate``."""
+    """Tests for ``FlextInfraGatesLocCap``."""
 
     @staticmethod
     def gate_project(tmp_path: Path, *, code_lines: int) -> Path:
@@ -47,8 +47,8 @@ class TestsFlextInfraLocCapGate:
     @staticmethod
     def test_gate_identity() -> None:
         """Test gate identity."""
-        tm.that(FlextInfraLocCapGate.gate_id, eq="loc-cap")
-        tm.fail(FlextInfraLocCapGate.can_fix)
+        tm.that(FlextInfraGatesLocCap.gate_id, eq="loc-cap")
+        tm.fail(FlextInfraGatesLocCap.can_fix)
 
     @pytest.mark.parametrize(
         ("code_lines", "passed"),
@@ -64,7 +64,7 @@ class TestsFlextInfraLocCapGate:
         """Test cap is enforced on real scc counts."""
         project = self.gate_project(tmp_path, code_lines=code_lines)
 
-        result = u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
+        result = u.Tests.run_gate_check(FlextInfraGatesLocCap, tmp_path, project)
 
         tm.that(result.result.passed, eq=passed)
         flagged = [issue.file for issue in result.issues if issue.code == "LOC_CAP"]
@@ -90,7 +90,7 @@ class TestsFlextInfraLocCapGate:
             encoding="utf-8",
         )
 
-        result = u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
+        result = u.Tests.run_gate_check(FlextInfraGatesLocCap, tmp_path, project)
 
         tm.ok(result.result.passed)
         tm.that(result.issues, eq=())
@@ -105,7 +105,7 @@ class TestsFlextInfraLocCapGate:
             tm.scope(env={"PATH": str(empty_path)}),
             pytest.raises(RuntimeError, match=c.Infra.SCC_BINARY),
         ):
-            u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
+            u.Tests.run_gate_check(FlextInfraGatesLocCap, tmp_path, project)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -158,7 +158,7 @@ class TestsFlextInfraLocCapGate:
             f"{c.Infra.AUTOGEN_HEADER}\n{source}",
             encoding=c.DEFAULT_ENCODING,
         )
-        gate = FlextInfraLocCapGate(tmp_path)
+        gate = FlextInfraGatesLocCap(tmp_path)
 
         result = gate.check_files((module,), project, u.Tests.gate_context(tmp_path))
 
@@ -183,7 +183,7 @@ class TestsFlextInfraLocCapGate:
         )
         module = project / "src" / "demo_project" / "sample.py"
         module.write_bytes(b"# \xff\n" + module.read_bytes())
-        gate = FlextInfraLocCapGate(tmp_path)
+        gate = FlextInfraGatesLocCap(tmp_path)
 
         with pytest.raises(UnicodeDecodeError):
             gate.check_files((module,), project, u.Tests.gate_context(tmp_path))

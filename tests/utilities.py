@@ -16,40 +16,38 @@ from flext_tests import FlextTestsUtilities
 
 from flext_infra import FlextInfraUtilities, config
 from tests import c, m, p, r, t, tm
-from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
-from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
-from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
-from tests.utilities_fixture_workspace import (
-    TestsFlextInfraUtilitiesWorkspaceFixtureMixin,
-)
-from tests.utilities_gates import TestsFlextInfraUtilitiesGatesMixin
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
-from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGitMixin
-from tests.utilities_promoted import TestsFlextInfraUtilitiesPromotedMixin
-from tests.utilities_release import TestsFlextInfraUtilitiesReleaseMixin
-from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
-from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
+from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
+from tests.utilities_deps import TestsFlextInfraUtilitiesDeps
+from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixture
+from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
+from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
+from tests.utilities_fixture_workspace import TestsFlextInfraUtilitiesWorkspaceFixture
+from tests.utilities_gates import TestsFlextInfraUtilitiesGates
+from tests.utilities_git import TestsFlextInfraUtilitiesGit
+from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGit
+from tests.utilities_promoted import TestsFlextInfraUtilitiesPromoted
+from tests.utilities_release import TestsFlextInfraUtilitiesRelease
+from tests.utilities_toml import TestsFlextInfraUtilitiesToml
+from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
     class Tests(
-        TestsFlextInfraUtilitiesTomlMixin,
-        TestsFlextInfraUtilitiesProjectFixtureMixin,
-        TestsFlextInfraUtilitiesWorkspaceFixtureMixin,
-        TestsFlextInfraUtilitiesToolingFixtureMixin,
-        TestsFlextInfraUtilitiesDocsFixtureMixin,
-        TestsFlextInfraUtilitiesPromotedMixin,
-        TestsFlextInfraUtilitiesReleaseMixin,
-        TestsFlextInfraUtilitiesGitMixin,
-        TestsFlextInfraUtilitiesHermeticGitMixin,
-        TestsFlextInfraUtilitiesGatesMixin,
-        TestsFlextInfraUtilitiesCodegenMixin,
-        TestsFlextInfraUtilitiesDepsMixin,
-        TestsFlextInfraUtilitiesWorkspaceEnvMixin,
+        TestsFlextInfraUtilitiesToml,
+        TestsFlextInfraUtilitiesProjectFixture,
+        TestsFlextInfraUtilitiesWorkspaceFixture,
+        TestsFlextInfraUtilitiesToolingFixture,
+        TestsFlextInfraUtilitiesDocsFixture,
+        TestsFlextInfraUtilitiesPromoted,
+        TestsFlextInfraUtilitiesRelease,
+        TestsFlextInfraUtilitiesGit,
+        TestsFlextInfraUtilitiesHermeticGit,
+        TestsFlextInfraUtilitiesGates,
+        TestsFlextInfraUtilitiesCodegen,
+        TestsFlextInfraUtilitiesDeps,
+        TestsFlextInfraUtilitiesWorkspaceEnv,
         FlextTestsUtilities.Tests,
     ):
         """Canonical test helper namespace."""
@@ -66,7 +64,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 custom_steps: str = ""
                 custom_post_steps: str = ""
                 has_devcontainer: bool = False
-                workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = ()
+                workspace_repositories: tuple[p.Infra.RepositoryRef, ...] = ()
                 cooldown_excluded_dependencies: tuple[t.NonEmptyStr, ...] = ()
 
             @staticmethod
@@ -85,13 +83,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 )
 
             @staticmethod
-            def synthetic_private_submodules() -> m.Infra.CiPrivateSubmodulesSpec:
+            def synthetic_private_submodules() -> p.Infra.CiPrivateSubmodulesSpec:
                 """One schema-valid deploy-key contract carrying zero org data.
 
                 The private-submodule init mechanism is proven against this
                 synthetic contract instead of any real workspace entry: real
                 deploy-key contracts are operator-private config living in the
-                gitignored local override layer, never in this public repository.
+                ignored local override layer, never in this public repository.
 
                 Returns:
                     The resulting ``m.Infra.CiPrivateSubmodulesSpec``.
@@ -118,7 +116,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 repository_branch: t.NonEmptyStr,
                 ci_trigger_branches: tuple[t.NonEmptyStr, ...],
                 overrides: WorkflowRenderOverrides | None = None,
-            ) -> m.Infra.GithubWorkflowRenderSpec:
+            ) -> p.Infra.GithubWorkflowRenderSpec:
                 """Build the common strictly typed workflow rendering contract.
 
                 Returns:
@@ -208,7 +206,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 The resulting ``t.JsonMapping``.
 
             """
-            return TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
+            return TestsFlextInfraUtilitiesToml.toml_mapping(
                 tm.ok(u.Cli.json_loads(content)),
             )
 
@@ -240,8 +238,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             project_name: str = "fixture-project"
             package: bool = True
             examples_module: str | None = None
-            extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = ()
-            script_dispatch: m.Infra.ScriptDispatchSpec | None = None
+            extra_verbs: tuple[p.Infra.MakeVerbSpec, ...] = ()
+            script_dispatch: p.Infra.ScriptDispatchSpec | None = None
+            verb_groups: tuple[p.Infra.MakeVerbGroupSpec, ...] = ()
             version: str | None = None
 
         @staticmethod
@@ -273,6 +272,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                     "examples_module": shape.examples_module,
                     "extra_verbs": shape.extra_verbs,
                     "script_dispatch": shape.script_dispatch,
+                    "verb_groups": shape.verb_groups,
                 },
             )
             project_root = tmp_path / profile.value / shape.project_name
@@ -280,6 +280,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
                 project_root,
                 repository.distribution,
             )
+            u.Tests.declare_governed_kind(project_root)
             if shape.version is not None:
                 tm.ok(u.Infra.replace_project_version(project_root, shape.version))
             # The generated Makefile consumes the tracked Mise launcher for every
@@ -374,7 +375,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             tm.that(paths <= {file.path for file in artifacts}, truth=True)
             tm.ok(
                 u.Tests.materialize_codegen_plans(
-                    r[tuple[m.Infra.CodegenFilePlan, ...]].ok(artifacts),
+                    r[tuple[p.Infra.CodegenFilePlan, ...]].ok(artifacts),
                 ),
             )
             if bootstrap:
@@ -484,7 +485,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
             }
 
         @staticmethod
-        def command_receipt(path: Path) -> m.Cli.CommandOutput:
+        def command_receipt(path: Path) -> p.Cli.CommandOutput:
             """Read one recorded provisioning command outcome.
 
             Returns:
@@ -520,7 +521,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, FlextInfraUtilities):
 
         @staticmethod
         def materialize_docs_bundle(
-            bundle: m.Infra.DocsGenerationBundle,
+            bundle: p.Infra.DocsGenerationBundle,
         ) -> p.Result[bool]:
             """Publish one immutable docs bundle through the shared file-change owner.
 

@@ -12,7 +12,11 @@ from pathlib import Path
 from typing import ClassVar, overload
 
 from flext_infra import t
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeRuntimeBase,
+    FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
 
 
 class FlextInfraUtilitiesRopeCorePyModule:
@@ -73,7 +77,7 @@ class FlextInfraUtilitiesRopeCorePyModule:
         matching_offsets = tuple(
             offset
             for offset in offsets
-            if FlextInfraUtilitiesRopeRuntime.name_definition_resource_path(
+            if FlextInfraUtilitiesRopeRuntimeModules.name_definition_resource_path(
                 pymodule,
                 offset,
                 expected_binding=pyname,
@@ -97,7 +101,7 @@ class FlextInfraUtilitiesRopeCorePyModule:
             The resulting ``bool``.
 
         """
-        if FlextInfraUtilitiesRopeRuntime.file_resource(resource):
+        if FlextInfraUtilitiesRopeRuntimeTypes.file_resource(resource):
             return True
         path = Path(resource.real_path)
         return (path / "__init__.py").is_file() or path.with_suffix(".py").is_file()
@@ -134,14 +138,14 @@ class FlextInfraUtilitiesRopeCorePyModule:
                 non-source module.
 
         """
-        pymodule = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
+        pymodule = FlextInfraUtilitiesRopeRuntimeTypes.require_parsed_module(
             rope_project.get_pymodule(resource)
-            if FlextInfraUtilitiesRopeRuntime.file_resource(resource)
+            if FlextInfraUtilitiesRopeRuntimeTypes.file_resource(resource)
             else rope_project.get_relative_module(resource.name, resource.parent, 1),
         )
-        if FlextInfraUtilitiesRopeRuntime.file_resource(
+        if FlextInfraUtilitiesRopeRuntimeTypes.file_resource(
             resource
-        ) and not FlextInfraUtilitiesRopeRuntime.source_module(pymodule):
+        ) and not FlextInfraUtilitiesRopeRuntimeTypes.source_module(pymodule):
             msg = "rope file resource returned a non-source module"
             raise TypeError(msg)
         return pymodule
@@ -161,16 +165,18 @@ class FlextInfraUtilitiesRopeCorePyModule:
 
         """
         runtime_errors: tuple[type[BaseException], ...] = (
-            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+            *FlextInfraUtilitiesRopeRuntimeBase.runtime_errors(),
             TypeError,
         )
         try:
-            module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
-                rope_project,
-                FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+            module_imports = (
+                FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
                     rope_project,
-                    resource,
-                ),
+                    FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
+                        rope_project,
+                        resource,
+                    ),
+                )
             )
         except runtime_errors as exc:
             msg = (

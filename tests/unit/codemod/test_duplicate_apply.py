@@ -14,12 +14,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra
-from flext_infra.codemod import (
-    FlextInfraCodemodDuplicateApply,
-    FlextInfraCodemodLoopPhaseDuplicateApply,
-    FlextInfraModGateEngine,
-)
-from tests import c, m, t, tm, u
+from flext_infra.codemod import FlextInfraCodemodDuplicateApply, FlextInfraModGateEngine
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseDuplicateApply
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -117,11 +114,11 @@ class TestsFlextInfraCodemodDuplicateApply:
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         paths: Sequence[Path],
         name: str,
-    ) -> tuple[m.Infra.Object, ...]:
+    ) -> tuple[p.Infra.Object, ...]:
         """Collect one name's rope inventory objects across module paths.
 
         Returns:
-            The resulting ``tuple[m.Infra.Object, ...],``.
+            The resulting ``tuple[p.Infra.Object, ...],``.
 
         """
         found = tuple(
@@ -139,10 +136,10 @@ class TestsFlextInfraCodemodDuplicateApply:
 
     @staticmethod
     def _group(
-        objects: Sequence[m.Infra.Object],
+        objects: Sequence[p.Infra.Object],
         *,
         value_identical: bool,
-    ) -> m.Infra.DuplicateGroup:
+    ) -> p.Infra.DuplicateGroup:
         """Build one census duplicate group over collected objects.
 
         Returns:

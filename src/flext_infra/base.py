@@ -9,15 +9,19 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Self, override
 
+from flext_cli import m, p, r
 from flext_core import FlextService
 
-from flext_infra import FlextInfraBasePayload, c, m, p, r, settings
+from flext_infra import c, p, settings
+from flext_infra._base import FlextInfraBasePayload
+from flext_infra._models import FlextInfraModelsBase
+from flext_infra._protocols import FlextInfraProtocolsBase
 from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
 class FlextInfraServiceBase[TDomainResult](
     FlextService[TDomainResult],
-    m.Infra.CommandContext,
+    FlextInfraModelsBase.CommandContext,
     FlextInfraBasePayload,
 ):
     """Domain command context shared by all flext-infra CLI services.
@@ -49,7 +53,7 @@ class FlextInfraServiceBase[TDomainResult](
         """Apply the comma-separated ``project_filter`` when one is configured.
 
         Returns:
-            The resulting ``Sequence[p.Infra.ProjectInfo]``.
+            The original project facts admitted by the declared filter.
 
         """
         if self.project_filter is None:
@@ -60,7 +64,7 @@ class FlextInfraServiceBase[TDomainResult](
         return [project for project in projects if project.name in selected]
 
     @staticmethod
-    def _report_execution[ReportT: p.Infra.ValidationReportOutcome](
+    def _report_execution[ReportT: FlextInfraProtocolsBase.ValidationReportOutcome](
         report_result: p.Result[ReportT],
     ) -> p.Result[bool]:
         """Map one validation report onto the boolean outcome a validator returns.

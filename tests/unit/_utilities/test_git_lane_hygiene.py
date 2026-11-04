@@ -12,14 +12,14 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraCli, FlextInfraGitService, config, m, workspace
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraGitLaneHygiene:
     """Preserve incoming census intents under the canonical fresh-base contract."""
 
     @staticmethod
-    def _declared_base(tmp_path: Path) -> m.Infra.GitLaneVerificationRequest:
+    def _declared_base(tmp_path: Path) -> p.Infra.GitLaneVerificationRequest:
         """Create a real remote whose integration is available and demonstrably live.
 
         Returns:
@@ -147,7 +147,7 @@ class TestsFlextInfraGitLaneHygiene:
         publish: bool = True,
         integrate: bool = True,
         large: bool = False,
-    ) -> m.Infra.GitLaneOwnershipRequest:
+    ) -> p.Infra.GitLaneOwnershipRequest:
         """Retain actual native layers through the existing checkpoint owners.
 
         Returns:

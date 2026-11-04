@@ -1,11 +1,9 @@
 id: cli-result-finalize
 language: python
-severity: warning
+severity: error
 message: >-
   Finalize the Result once at the public main boundary so the canonical
   flext-cli handler emits the failure and derives the process exit code.
-ignores:
-  - "**/legado/**"
 rule:
   all:
     - pattern: return 0 if $RESULT.success else 1

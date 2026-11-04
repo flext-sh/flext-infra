@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 @pytest.mark.slow
@@ -23,8 +23,8 @@ class TestsFlextInfraScriptDispatchMakefile:
     def _render_root_makefile(
         tmp_path: Path,
         *,
-        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
-        script_dispatch: m.Infra.ScriptDispatchSpec | None,
+        extra_verbs: tuple[p.Infra.MakeVerbSpec, ...],
+        script_dispatch: p.Infra.ScriptDispatchSpec | None,
     ) -> str:
         # The engine is consumer-agnostic, so this fixture models a
         # neutral downstream root and takes its provider from the engine's own
@@ -475,7 +475,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     def test_lint_and_type_paths_scan_every_configured_analyzer_dir(
         self,
         tmp_path: Path,
-        script_dispatch: m.Infra.ScriptDispatchSpec | None,
+        script_dispatch: p.Infra.ScriptDispatchSpec | None,
     ) -> None:
         """Every repo scans the configured analyzer dirs present in its checkout.
 

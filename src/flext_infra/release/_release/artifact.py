@@ -13,8 +13,8 @@ from collections.abc import Mapping, Sequence
 from email.parser import Parser
 from pathlib import Path, PurePosixPath
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.release import FlextInfraReleaseReleaseBoundary
+from flext_infra import c, p, r, t, u
+from flext_infra.release._release import FlextInfraReleaseReleaseBoundary
 
 
 class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
@@ -180,7 +180,7 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
     def _validate_artifact(
         cls,
         path: Path,
-        expectation: m.Infra.ArtifactExpectation,
+        expectation: p.Infra.ArtifactExpectation,
     ) -> p.Result[tuple[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]]:
         """Validate one artifact's boundary, identity and pins; return kind and digest.
 
@@ -231,7 +231,7 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
         project: str,
         members: Sequence[tuple[str, bool, bool]],
         payload: Mapping[str, bytes],
-        expectation: m.Infra.ArtifactExpectation,
+        expectation: p.Infra.ArtifactExpectation,
     ) -> tuple[str, str]:
         """Return the artifact's boundary error and its core metadata text.
 

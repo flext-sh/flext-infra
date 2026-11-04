@@ -1,8 +1,8 @@
 # A third-party library with an owning FLEXT facade is imported at runtime
 # only by its owner; every other package routes through the owner's facade.
-# One document per owning distribution, split per library where the
-# enforcement catalog names a library rule; `metadata.owner` names the owning distribution,
-# whose own rule plan drops the rule. Imports under `if TYPE_CHECKING:` never
+# One document per owning distribution and file scope: `metadata.owner` names
+# the owning distribution, whose own rule plan drops the rule, and the owned
+# libraries are alternatives of that document's regex. Imports under `if TYPE_CHECKING:` never
 # run and are outside the boundary. Configuration (`_config.py`) and settings
 # modules are layer-0 of the c/t/p/m/u chain and import their foundation
 # libraries directly.
@@ -50,7 +50,7 @@ severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ ENFORCE-070 ]
+  enforce: [ ENFORCE-042, ENFORCE-070 ]
   owner: flext-core
   scope:
     not-in: [ layer-zero ]
@@ -58,27 +58,9 @@ rule:
   all:
   - pattern: $MODULE
   - matches: library-import-name
-  - regex: "^(?:dependency_injector|returns|yaml)(?:\\.|$)"
+  - regex: "^(?:dependency_injector|pydantic_settings|returns|yaml)(?:\\.|$)"
 message: >-
-  dependency_injector, returns and yaml are owned by flext-core: route through its c/t/p/m/u facades and close a missing member at flext-core.
----
-id: ban-flext-core-settings-library-import
-language: python
-severity: error
-files:
-- "**/*.py"
-metadata:
-  enforce: [ ENFORCE-042 ]
-  owner: flext-core
-  scope:
-    not-in: [ layer-zero ]
-rule:
-  all:
-  - pattern: $MODULE
-  - matches: library-import-name
-  - regex: "^(?:pydantic_settings)(?:\\.|$)"
-message: >-
-  pydantic_settings is owned by flext-core: only settings modules declare `class X(FlextSettings, BaseSettings)`; every other module uses the settings facade.
+  `$MODULE` is owned by flext-core: route through its c/t/p/m/u facades (settings through the settings facade; only layer-zero settings modules declare `class X(FlextSettings, BaseSettings)`) and close a missing member at flext-core.
 ---
 id: ban-flext-cli-library-import
 language: python
@@ -140,35 +122,21 @@ rule:
 message: >-
   singer_sdk is owned by flext-meltano: build taps and targets on its bases.
 ---
-id: ban-direct-oracledb-import
-language: python
-severity: error
-files:
-- "**/*.py"
-metadata:
-  enforce: [ ENFORCE-095 ]
-  owner: flext-db-oracle
-rule:
-  all:
-  - matches: library-import-name
-  - regex: "^(?:oracledb)(?:\\.|$)"
-message: >-
-  oracledb is owned by flext-db-oracle: use its database facade.
----
 id: ban-flext-db-oracle-library-import
 language: python
 severity: error
 files:
 - "**/*.py"
 metadata:
-  enforce: [ ENFORCE-070 ]
+  enforce: [ ENFORCE-070, ENFORCE-095 ]
   owner: flext-db-oracle
 rule:
   all:
+  - pattern: $MODULE
   - matches: library-import-name
-  - regex: "^(?:sqlalchemy)(?:\\.|$)"
+  - regex: "^(?:oracledb|sqlalchemy)(?:\\.|$)"
 message: >-
-  sqlalchemy is owned by flext-db-oracle: use its database facade.
+  `$MODULE` is owned by flext-db-oracle: use its database facade.
 ---
 id: ban-flext-grpc-library-import
 language: python

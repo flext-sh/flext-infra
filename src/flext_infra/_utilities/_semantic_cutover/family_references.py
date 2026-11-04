@@ -9,10 +9,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeStructure,
 )
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
@@ -29,8 +29,8 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
         resource: p.Infra.RopeResource,
         source: str,
         *,
-        flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> tuple[bool, tuple[m.Infra.SourceRewrite, ...]]:
+        flatten: p.Infra.FamilyWrapperFlatten,
+    ) -> tuple[bool, tuple[p.Infra.SourceRewrite, ...]]:
 
         if cls._wrapper_blocked_usages(resource, source, flatten=flatten):
             return (True, ())
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
         resource: p.Infra.RopeResource,
         source: str,
         *,
-        flatten: m.Infra.FamilyWrapperFlatten,
+        flatten: p.Infra.FamilyWrapperFlatten,
     ) -> bool:
         """Report a consumer usage only a real wrapper entity satisfies.
 
@@ -111,7 +111,7 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
 
     @staticmethod
     def _occurrence_in_function(
-        statements: Sequence[m.Infra.LogicalStatement],
+        statements: Sequence[p.Infra.LogicalStatement],
         occurrence: t.Infra.RopeOccurrence,
     ) -> bool:
         """Whether one occurrence sits inside a function scope.
@@ -129,12 +129,12 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
     @classmethod
     def _occurrence_edit(
         cls,
-        flatten: m.Infra.FamilyWrapperFlatten,
-        statements: Sequence[m.Infra.LogicalStatement],
+        flatten: p.Infra.FamilyWrapperFlatten,
+        statements: Sequence[p.Infra.LogicalStatement],
         source: str,
         occurrence: t.Infra.RopeOccurrence,
         name_replacement: tuple[str, str],
-    ) -> m.Infra.SourceRewrite | None:
+    ) -> p.Infra.SourceRewrite | None:
         """Build one member occurrence rewrite, or ``None`` when unrelated.
 
         Returns:
@@ -172,17 +172,17 @@ class FlextInfraUtilitiesSemanticFamilyReferences(
         resource: p.Infra.RopeResource,
         source: str,
         *,
-        flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> list[m.Infra.SourceRewrite]:
+        flatten: p.Infra.FamilyWrapperFlatten,
+    ) -> list[p.Infra.SourceRewrite]:
         """Rewrite every member occurrence to its prefixed flattened identity.
 
         Returns:
-            The resulting ``list[m.Infra.SourceRewrite]``.
+            The resulting ``list[p.Infra.SourceRewrite]``.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeRefactors
         statements = FlextInfraUtilitiesRopeStructure.logical_statements(source)
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
         for name, replacement in flatten.names.items():
             member = flatten.wrapper.get_object().get_attribute(name)
             members = runtime.create_occurrence_finder(

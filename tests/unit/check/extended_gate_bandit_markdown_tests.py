@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, ClassVar
 import pytest
 
 from flext_infra import config
-from flext_infra.gates import FlextInfraBanditGate, FlextInfraMarkdownGate
+from flext_infra.gates import FlextInfraGatesBandit, FlextInfraGatesMarkdown
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         result = u.Tests.check_gate_asserting(
-            FlextInfraBanditGate,
+            FlextInfraGatesBandit,
             tmp_path,
             project_dir,
             passed=False,
@@ -71,7 +71,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             module.write_text("def check(value):\n    assert value\n", encoding="utf-8")
 
         result = u.Tests.check_gate_asserting(
-            FlextInfraBanditGate,
+            FlextInfraGatesBandit,
             tmp_path,
             project_dir,
             passed=False,
@@ -99,7 +99,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             encoding="utf-8",
         )
 
-        gate = FlextInfraBanditGate(tmp_path)
+        gate = FlextInfraGatesBandit(tmp_path)
         tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
         context = u.Tests.create_gate_context(tmp_path)
         result = (
@@ -119,7 +119,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         source.parent.mkdir(parents=True)
         source.write_text("def invalid(:\n", encoding="utf-8")
 
-        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project)
+        result = u.Tests.run_gate_check(FlextInfraGatesBandit, tmp_path, project)
 
         tm.fail(result.result.passed)
         tm.that(result.outcome, eq=c.Infra.ToolOutcome.ERROR)
@@ -187,11 +187,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         project_dir = u.Tests.mk_project(tmp_path, "p1")
 
         tm.fail(
-            FlextInfraBanditGate(tmp_path).selected_for(
+            FlextInfraGatesBandit(tmp_path).selected_for(
                 project_dir, u.Tests.gate_context(project_dir)
             )
         )
-        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+        result = u.Tests.run_gate_check(FlextInfraGatesBandit, tmp_path, project_dir)
 
         tm.fail(result.result.passed)
         tm.that(" | ".join(result.result.errors), has="no check targets were collected")
@@ -209,7 +209,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         empty_path.mkdir()
 
         with tm.scope(env={"PATH": str(empty_path)}):
-            result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+            result = u.Tests.run_gate_check(
+                FlextInfraGatesBandit, tmp_path, project_dir
+            )
 
         tm.ok(result.result.passed)
         tm.that(result.issues, eq=())
@@ -259,7 +261,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         if markdown_text:
             (project_dir / "README.md").write_text(markdown_text, encoding="utf-8")
         result = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate,
+            FlextInfraGatesMarkdown,
             tmp_path,
             project_dir,
             passed=not findings_block,
@@ -279,7 +281,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
     ) -> None:
         """A project without governed Markdown never selects the gate."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-empty")
-        gate = FlextInfraMarkdownGate(tmp_path)
+        gate = FlextInfraGatesMarkdown(tmp_path)
 
         tm.fail(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
         tm.that(
@@ -294,12 +296,12 @@ class TestsFlextInfraBanditAndMarkdownGates:
         packaged = u.Tests.mk_project(tmp_path, "bandit-packaged", with_src=True)
 
         tm.fail(
-            FlextInfraBanditGate(tmp_path).selected_for(
+            FlextInfraGatesBandit(tmp_path).selected_for(
                 bare, u.Tests.gate_context(bare)
             )
         )
         tm.ok(
-            FlextInfraBanditGate(tmp_path).selected_for(
+            FlextInfraGatesBandit(tmp_path).selected_for(
                 packaged, u.Tests.gate_context(packaged)
             )
         )
@@ -317,7 +319,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
 
         inherited = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate,
+            FlextInfraGatesMarkdown,
             tmp_path,
             project_dir,
             passed=False,
@@ -328,7 +330,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             encoding="utf-8",
         )
         _ = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate,
+            FlextInfraGatesMarkdown,
             tmp_path,
             project_dir,
             passed=True,
@@ -365,7 +367,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         excluded.write_text(self.HEADING_SKIP, encoding="utf-8")
 
         _ = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate,
+            FlextInfraGatesMarkdown,
             tmp_path,
             project_dir,
             passed=True,
@@ -383,7 +385,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         project_owned.write_text(self.HEADING_SKIP, encoding="utf-8")
 
         result = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate,
+            FlextInfraGatesMarkdown,
             tmp_path,
             project_dir,
             passed=False,
@@ -406,7 +408,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         # Source discovery needs Git; the Markdown linter remains unavailable on PATH.
         (empty_path / "git").symlink_to(tm.not_none(shutil.which("git")))
         with tm.scope(env={"PATH": str(empty_path)}):
-            result = FlextInfraMarkdownGate(tmp_path).check(
+            result = FlextInfraGatesMarkdown(tmp_path).check(
                 project_dir,
                 u.Tests.gate_context(tmp_path),
             )
@@ -431,7 +433,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
         (target_dir / "overview.md").write_text("# Overview\n", encoding="utf-8")
 
-        result = FlextInfraMarkdownGate(tmp_path).check(
+        result = FlextInfraGatesMarkdown(tmp_path).check(
             project_dir,
             u.Tests.gate_context(tmp_path),
         )
@@ -459,7 +461,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             encoding="utf-8",
         )
 
-        result = FlextInfraMarkdownGate(tmp_path).check(
+        result = FlextInfraGatesMarkdown(tmp_path).check(
             project_dir,
             u.Tests.gate_context(tmp_path),
         )
@@ -482,7 +484,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
             encoding="utf-8",
         )
         target.write_text("# Target\n", encoding="utf-8")
-        gate = FlextInfraMarkdownGate(tmp_path)
+        gate = FlextInfraGatesMarkdown(tmp_path)
 
         first = gate.check(project_dir, u.Tests.gate_context(tmp_path))
         target.unlink()
@@ -514,12 +516,12 @@ class TestsFlextInfraBanditAndMarkdownGates:
             apply_fixes=True,
         )
 
-        result = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
+        result = FlextInfraGatesMarkdown(tmp_path).fix(project_dir, context)
 
         tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq="# Title\n")
         _ = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownGate,
+            FlextInfraGatesMarkdown,
             tmp_path,
             project_dir,
             passed=True,

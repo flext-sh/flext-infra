@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 
 from flext_infra import config, m
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraCodegenDocsWorkflowProfile:
@@ -26,7 +26,7 @@ class TestsFlextInfraCodegenDocsWorkflowProfile:
     _CI_DESTINATION = ".github/workflows/ci.yml"
 
     @staticmethod
-    def _artifact(destination: str) -> m.Infra.TemplateEntrySpec:
+    def _artifact(destination: str) -> p.Infra.TemplateEntrySpec:
         """Return the declared render artifact for one destination.
 
         Returns:

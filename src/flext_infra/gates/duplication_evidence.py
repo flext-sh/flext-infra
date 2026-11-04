@@ -17,7 +17,7 @@ from bisect import bisect_left, bisect_right
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 
 
 class FlextInfraDuplicationEvidence:
@@ -44,7 +44,7 @@ class FlextInfraDuplicationEvidence:
         ] = {}
 
     @staticmethod
-    def parse(raw: str) -> m.Infra.JscpdReport:
+    def parse(raw: str) -> p.Infra.JscpdReport:
         """Validate an initial report without discarding a console trailer.
 
         The caller retains raw bytes, including any trailer, in its receipt.
@@ -79,13 +79,13 @@ class FlextInfraDuplicationEvidence:
 
     def assess(
         self,
-        report: m.Infra.JscpdReport,
+        report: p.Infra.JscpdReport,
         root: Path,
-        config: m.Infra.ProjectDuplicationOverrides,
+        config: p.Infra.ProjectDuplicationOverrides,
         *,
         raw_receipt: str,
         execution: str,
-    ) -> m.Infra.DuplicationAssessment:
+    ) -> p.Infra.DuplicationAssessment:
         """Keep every candidate; unsupported roles and failures remain blocking.
 
         Returns:
@@ -104,7 +104,7 @@ class FlextInfraDuplicationEvidence:
             if path.is_dir()
         )
         allowed: Sequence[Path] = (root.resolve(), *comparison)
-        candidates: list[m.Infra.DuplicationCandidateEvidence] = []
+        candidates: list[p.Infra.DuplicationCandidateEvidence] = []
         pairs: MutableMapping[tuple[str, str], int] = {}
         counts: MutableMapping[str, int] = {
             "raw": len(report.duplicates),
@@ -128,7 +128,7 @@ class FlextInfraDuplicationEvidence:
             counts["raw_hard"] += int(
                 owned and canonical == index and keys[0] != keys[1]
             )
-            measures: tuple[m.Infra.DuplicationSpanMeasure, ...] = ()
+            measures: tuple[p.Infra.DuplicationSpanMeasure, ...] = ()
             try:
                 measures = self._candidate_measures(candidate, allowed)
                 classification = self._classify(
@@ -189,8 +189,8 @@ class FlextInfraDuplicationEvidence:
 
     def _revalidate_sources(
         self,
-        candidates: list[m.Infra.DuplicationCandidateEvidence],
-    ) -> list[m.Infra.DuplicationCandidateEvidence]:
+        candidates: list[p.Infra.DuplicationCandidateEvidence],
+    ) -> list[p.Infra.DuplicationCandidateEvidence]:
         """Keep per-candidate race failures in the lossless receipt.
 
         Returns:
@@ -206,7 +206,7 @@ class FlextInfraDuplicationEvidence:
             else:
                 if current != data:
                     errors[name] = f"source changed during assessment: {name}"
-        verified: list[m.Infra.DuplicationCandidateEvidence] = []
+        verified: list[p.Infra.DuplicationCandidateEvidence] = []
         for item in candidates:
             failures = [
                 errors[side.name]
@@ -226,9 +226,9 @@ class FlextInfraDuplicationEvidence:
 
     def _candidate_measures(
         self,
-        candidate: m.Infra.JscpdDuplicate,
+        candidate: p.Infra.JscpdDuplicate,
         allowed: Sequence[Path],
-    ) -> tuple[m.Infra.DuplicationSpanMeasure, ...]:
+    ) -> tuple[p.Infra.DuplicationSpanMeasure, ...]:
         """Bind both reported spans to a scanned scope root.
 
         A scanned scope root is the invoking project or one of its declared
@@ -263,10 +263,16 @@ class FlextInfraDuplicationEvidence:
     @staticmethod
     def _classify(
         format_name: str,
-        measures: tuple[m.Infra.DuplicationSpanMeasure, ...],
-        config: m.Infra.ProjectDuplicationOverrides,
-    ) -> m.Infra.DuplicationClassification:
+        measures: tuple[p.Infra.DuplicationSpanMeasure, ...],
+        config: p.Infra.ProjectDuplicationOverrides,
+    ) -> p.Infra.DuplicationClassification:
         """Explain structural measurements without granting an exemption.
+
+        A span whose retained behavior cannot reach the declared floors is
+        sub-floor regardless of import overlap: the uncertainty names the
+        activation effects of retained bodies, and sub-floor remnants carry
+        none. Only spans with sufficient retained behavior need the
+        semantic review that import uncertainty demands.
 
         Returns:
             Disposition and evidence reason.
@@ -277,7 +283,7 @@ class FlextInfraDuplicationEvidence:
                 disposition="authority_data_candidate",
                 reason="Data may own policy; no format exemption",
             )
-        if format_name != "python" or any(side.uncertainty for side in measures):
+        if format_name != "python":
             return m.Infra.DuplicationClassification(
                 disposition="unresolved",
                 reason="; ".join(side.uncertainty for side in measures),
@@ -298,6 +304,11 @@ class FlextInfraDuplicationEvidence:
                 disposition="below_existing_behavior_floor",
                 reason="Below selected body floor; raw-hard preserved",
             )
+        if any(side.uncertainty for side in measures):
+            return m.Infra.DuplicationClassification(
+                disposition="unresolved",
+                reason="; ".join(side.uncertainty for side in measures),
+            )
         return m.Infra.DuplicationClassification(
             disposition="behavioral_candidate",
             reason="Bodies reach both floors; semantics need review",
@@ -305,9 +316,9 @@ class FlextInfraDuplicationEvidence:
 
     def _measure(
         self,
-        side: m.Infra.JscpdFile,
+        side: p.Infra.JscpdFile,
         format_name: str,
-    ) -> m.Infra.DuplicationSpanMeasure:
+    ) -> p.Infra.DuplicationSpanMeasure:
         """Parse whole files and intersect tokens with the reported source span.
 
         Returns:
@@ -349,7 +360,7 @@ class FlextInfraDuplicationEvidence:
 
     def _read_source(
         self,
-        side: m.Infra.JscpdFile,
+        side: p.Infra.JscpdFile,
     ) -> tuple[bytes, str]:
         """Read complete physical source with validated character coordinates.
 
@@ -385,7 +396,7 @@ class FlextInfraDuplicationEvidence:
 
     def _python_tokens(
         self,
-        side: m.Infra.JscpdFile,
+        side: p.Infra.JscpdFile,
     ) -> tuple[list[tokenize.TokenInfo], set[str], str]:
         """Intersect one captured Python analysis with this reported source span.
 

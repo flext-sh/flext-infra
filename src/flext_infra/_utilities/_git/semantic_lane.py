@@ -12,7 +12,12 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticWorktree
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticPaths,
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitSemanticRefs,
+    FlextInfraUtilitiesGitWorktreeStatus,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -20,13 +25,11 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraUtilitiesGitSemanticLane(
-    FlextInfraUtilitiesGitSemanticWorktree,
-):
+class FlextInfraUtilitiesGitSemanticLane:
     """Own the lane every repository publication shares (release, propagation)."""
 
     @classmethod
-    def _verified_lane_base(cls, request: m.Infra.GitLaneRequest) -> p.Result[Path]:
+    def _verified_lane_base(cls, request: p.Infra.GitLaneRequest) -> p.Result[Path]:
         """Require a clean checkout on the lane base and return the repo root.
 
         Returns:
@@ -34,7 +37,9 @@ class FlextInfraUtilitiesGitSemanticLane(
 
         """
         root = request.repo_root
-        status = cls.git_status(m.Infra.GitStatusRequest(repo_root=root))
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
+            m.Infra.GitStatusRequest(repo_root=root)
+        )
         if status.failure:
             return r[Path].from_failure(status)
         if status.value.dirty:
@@ -42,7 +47,9 @@ class FlextInfraUtilitiesGitSemanticLane(
                 f"lane {request.branch} requires a clean checkout: {root}\n"
                 f"{status.value.porcelain}",
             )
-        current = cls.git_current_branch(m.Infra.GitRepoRequest(repo_root=root))
+        current = FlextInfraUtilitiesGitSemanticRefs.git_current_branch(
+            m.Infra.GitRepoRequest(repo_root=root)
+        )
         if current.failure:
             return r[Path].from_failure(current)
         if current.value.text != request.base:
@@ -55,7 +62,7 @@ class FlextInfraUtilitiesGitSemanticLane(
     @classmethod
     def _git_produce_lane(
         cls,
-        request: m.Infra.GitLaneRequest,
+        request: p.Infra.GitLaneRequest,
         produce: Callable[[], p.Result[bool]],
     ) -> p.Result[bool]:
         """Enter the lane, produce, and commit; restore base when a step fails.
@@ -78,7 +85,7 @@ class FlextInfraUtilitiesGitSemanticLane(
     @classmethod
     def git_publish_lane(
         cls,
-        request: m.Infra.GitLaneRequest,
+        request: p.Infra.GitLaneRequest,
         produce: Callable[[], p.Result[bool]],
     ) -> p.Result[bool]:
         """Carry what ``produce`` writes from ``base`` to a pull request on ``branch``.
@@ -97,7 +104,7 @@ class FlextInfraUtilitiesGitSemanticLane(
 
         """
         root = request.repo_root
-        admitted = cls.git_verify_lane(
+        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=root,
                 operation="verify",
@@ -110,7 +117,7 @@ class FlextInfraUtilitiesGitSemanticLane(
         base = cls._verified_lane_base(request)
         if base.failure:
             return r[bool].from_failure(base)
-        owned = cls.git_verify_lane(
+        owned = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=root,
                 operation="create",
@@ -137,7 +144,7 @@ class FlextInfraUtilitiesGitSemanticLane(
         )
 
     @classmethod
-    def _git_discard_empty_lane(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
+    def _git_discard_empty_lane(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
         """Return to ``base`` and remove the lane branch that carries nothing.
 
         Returns:
@@ -155,7 +162,7 @@ class FlextInfraUtilitiesGitSemanticLane(
         return r[bool].ok(value=False)
 
     @classmethod
-    def _git_enter_lane(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
+    def _git_enter_lane(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
         """Continue the lane where it exists (local then remote), else start at HEAD.
 
         Returns:
@@ -191,12 +198,12 @@ class FlextInfraUtilitiesGitSemanticLane(
             )
         if switched.failure:
             return switched
-        return cls.git_merge_no_edit(
+        return FlextInfraUtilitiesGitSemanticPublish.git_merge_no_edit(
             m.Infra.GitCommitishRequest(repo_root=root, commitish=request.base),
         ).map(lambda _report: True)
 
     @classmethod
-    def _git_commit_produced(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
+    def _git_commit_produced(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
         """Commit exactly the paths the status lists; nothing produced commits nothing.
 
         Returns:
@@ -204,7 +211,9 @@ class FlextInfraUtilitiesGitSemanticLane(
 
         """
         root = request.repo_root
-        status = cls.git_status(m.Infra.GitStatusRequest(repo_root=root))
+        status = FlextInfraUtilitiesGitWorktreeStatus.git_status(
+            m.Infra.GitStatusRequest(repo_root=root)
+        )
         if status.failure:
             return r[bool].from_failure(status)
         # The status code and the path are whitespace-separated; the first
@@ -216,17 +225,17 @@ class FlextInfraUtilitiesGitSemanticLane(
         )
         if not produced:
             return r[bool].ok(value=True)
-        staged = cls.git_add_paths(
+        staged = FlextInfraUtilitiesGitSemanticPaths.git_add_paths(
             m.Infra.GitPathsRequest(repo_root=root, paths=produced),
         )
         if staged.failure:
             return r[bool].from_failure(staged)
-        return cls.git_commit(
+        return FlextInfraUtilitiesGitSemanticPaths.git_commit(
             m.Infra.GitCommitRequest(repo_root=root, message=request.subject),
         ).map(lambda _report: True)
 
     @classmethod
-    def _git_open_pull_request(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
+    def _git_open_pull_request(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
         """Push the lane, then open its pull request or refresh the open one.
 
         Returns:
@@ -234,7 +243,7 @@ class FlextInfraUtilitiesGitSemanticLane(
 
         """
         root, branch = request.repo_root, request.branch
-        pushed = cls.git_push_upstream(
+        pushed = FlextInfraUtilitiesGitSemanticPublish.git_push_upstream(
             m.Infra.GitPushRequest(repo_root=root, branch=branch),
         )
         if pushed.failure:

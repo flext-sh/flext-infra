@@ -20,6 +20,52 @@ class TestsFlextInfraModTextGateEngine:
     """Exercise the declarative sed-by-list engine through its public scan."""
 
     @staticmethod
+    def test_selected_rule_ignores_unrelated_invalid_catalogue_entry(
+        mod_workspace: Path,
+    ) -> None:
+        """One selected text rule owns its check and fix transaction alone."""
+        target = mod_workspace / "selected.py"
+        tm.ok(u.Cli.atomic_write_text_file(target, 'value = "before"\n'))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / "config" / "codegen.yaml",
+                "Infra:\n  codegen:\n    repository:\n      kind: internal_flext\n",
+            ),
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+                "rules:\n"
+                "  - id: selected-text\n"
+                "    include: ['selected.py']\n"
+                "    find: 'before'\n"
+                "    replace: 'after'\n"
+                "  - id: unrelated-invalid\n"
+                "    include: ['missing.toml']\n"
+                "    find: 'before'\n"
+                "    replace: 'after'\n",
+            ),
+        )
+        pending = tm.ok(
+            FlextInfraModTextGateEngine.scan(
+                mod_workspace, fix=False, rule_ids=("selected-text",)
+            )
+        )
+        tm.that(pending.findings, eq=1)
+        tm.ok(
+            FlextInfraModTextGateEngine.scan(
+                mod_workspace, fix=True, rule_ids=("selected-text",)
+            )
+        )
+        tm.that(target.read_text(encoding="utf-8"), eq='value = "after"\n')
+        verified = tm.ok(
+            FlextInfraModTextGateEngine.scan(
+                mod_workspace, fix=False, rule_ids=("selected-text",)
+            )
+        )
+        tm.that(verified.findings, eq=0)
+
+    @staticmethod
     def test_unsupported_declared_input_is_red_and_preserves_original_sources(
         mod_workspace: Path,
     ) -> None:

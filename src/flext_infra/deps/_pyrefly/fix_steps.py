@@ -15,7 +15,7 @@ from flext_infra.deps import FlextInfraExtraPathsManager
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 class FlextInfraDepsPyreflyFixSteps:
@@ -132,7 +132,7 @@ class FlextInfraDepsPyreflyFixSteps:
             if conf_map.get(c.Infra.IGNORE) is True:
                 removed_ignore = True
                 matches = conf_map.get("matches", c.Infra.DEFAULT_UNKNOWN)
-                fixes.append(f"removed ignore=true sub-settings for '{matches}'")
+                fixes.append(f"removed ignore=true sub-config for '{matches}'")
                 continue
             new_configs.append(conf_out)
         if len(new_configs) != len(configs):
@@ -145,8 +145,8 @@ class FlextInfraDepsPyreflyFixSteps:
     def _sync_project_excludes(
         pyrefly: MutableMapping[str, t.JsonValue],
         *,
-        codegen: m.Infra.CodegenConfigSpec,
-        tool_config: m.Infra.ToolConfigDocument,
+        codegen: p.Infra.CodegenConfigSpec,
+        tool_config: p.Infra.ToolConfigDocument,
     ) -> p.Result[Sequence[str]]:
         """Synchronize tool.pyrefly.project-excludes from YAML rules.
 

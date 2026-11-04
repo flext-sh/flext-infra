@@ -15,7 +15,7 @@ from flext_infra.docs import FlextInfraDocServiceBase
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 class FlextInfraDocBuilder(FlextInfraDocServiceBase):
@@ -27,11 +27,11 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
         *,
         projects: Sequence[str] | None = None,
         output_dir: Path | str | None = None,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[p.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocsPhaseReport]]``.
 
         """
         return self.run_scoped_docs(
@@ -59,17 +59,17 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
             failure_predicate=lambda report: report.result == c.Infra.ResultStatus.FAIL,
         )
 
-    def _build_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
+    def _build_scope(self, scope: p.Infra.DocScope) -> p.Infra.DocsPhaseReport:
         """Build one scope via the docs build utilities and persist its reports.
 
         Returns:
             The resulting ``m.Infra.DocsPhaseReport``.
 
         """
-        report: m.Infra.DocsPhaseReport = u.Infra.docs_run_mkdocs(scope)
+        report: p.Infra.DocsPhaseReport = u.Infra.docs_run_mkdocs(scope)
         u.Infra.docs_write_build_reports(scope, report)
         self.logger.info(
-            "docs_build_scope_completed",
+            "build_scope_completed",
             project=scope.name,
             phase=c.Infra.DIR_BUILD,
             result=report.result,

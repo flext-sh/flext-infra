@@ -69,6 +69,8 @@ class FlextInfraRopeNativeProject(Project):
     ) -> t.Infra.RopeNativeParsedModule:
         """Resolve a native resource while preserving the SDK return classes.
 
+        Candidate syntax failures propagate unchanged from the native lookup.
+
         Returns:
             The original native module or package.
 
@@ -93,6 +95,8 @@ class FlextInfraRopeNativeProject(Project):
     ) -> t.Infra.RopeNativeSemanticModule:
         """Resolve the native semantic module elected by the SDK.
 
+        Candidate syntax failures propagate unchanged from the native lookup.
+
         Returns:
             The original native builtin, package, or source module.
 
@@ -116,7 +120,7 @@ class FlextInfraRopeNativeProject(Project):
     def get_relative_module(
         self,
         name: str,
-        folder: Folder | p.Infra.RopeRoot,
+        folder: Folder | p.Infra.RopeRoot | None,
         level: int,
     ) -> t.Infra.RopeNativeParsedModule:
         """Resolve a relative import from its native declaring resource.
@@ -126,7 +130,8 @@ class FlextInfraRopeNativeProject(Project):
 
         """
         native = cast("p.Infra.RopeProject", super())
-        return native.get_relative_module(name, self._native_folder(folder), level)
+        origin = self._native_folder(folder) or self._native_folder(self.root)
+        return native.get_relative_module(name, origin, level)
 
     @override
     def find_module(
@@ -179,7 +184,7 @@ class FlextInfraRopeNativeProject(Project):
     def find_relative_module(
         self,
         modname: str,
-        folder: Folder | p.Infra.RopeRoot,
+        folder: Folder | p.Infra.RopeRoot | None,
         level: int,
     ) -> File | Folder | None:
         """Delegate relative resource election to its native SDK owner.
@@ -192,11 +197,8 @@ class FlextInfraRopeNativeProject(Project):
 
         """
         native = cast("p.Infra.RopeProject", super())
-        found = native.find_relative_module(
-            modname,
-            self._native_folder(folder),
-            level,
-        )
+        origin = self._native_folder(folder) or self._native_folder(self.root)
+        found = native.find_relative_module(modname, origin, level)
         if found is not None and not isinstance(found, File | Folder):
             message = "Rope relative finder did not elect a native resource"
             raise TypeError(message)

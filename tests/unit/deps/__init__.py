@@ -7,15 +7,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
 
-__all__: tuple[str, ...] = ()
+if TYPE_CHECKING:
+    from tests.unit.deps.test_diagnostic_path_exceptions import (
+        TestsFlextInfraDepsDiagnosticPathExceptions,
+    )
+
+
+__all__: tuple[str, ...] = ("TestsFlextInfraDepsDiagnosticPathExceptions",)
 
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({}),
+    {"TestsFlextInfraDepsDiagnosticPathExceptions": ".test_diagnostic_path_exceptions"},
     public_exports=__all__,
 )

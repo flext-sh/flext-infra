@@ -1,0 +1,37 @@
+# A `default_factory` is called at runtime, so a subscripted builtin generic
+# (`list[p.X]`, `dict[str, t.Y]`, `set[...]`) evaluates its type arguments when
+# the class body runs. A protocol or alias path in those arguments then fails at
+# import time, or binds a runtime dependency that only the annotation needs.
+# The runtime object is identical to the bare builtin, and the element types
+# belong to the field annotation. The fix keeps only the builtin.
+id: rewire-subscripted-default-factory
+language: python
+severity: error
+files:
+  - "**/*.py"
+rule:
+  kind: keyword_argument
+  all:
+    - has:
+        field: name
+        regex: "^default_factory$"
+    - has:
+        field: value
+        kind: subscript
+        pattern: $GENERIC
+        has:
+          field: value
+          kind: identifier
+          pattern: $KIND
+          regex: "^(?:list|dict|set|frozenset|tuple)$"
+transform:
+  BUILTIN:
+    substring:
+      source: $KIND
+fix: default_factory=$BUILTIN
+message: >-
+  A subscripted builtin `$GENERIC` as default_factory evaluates its type
+  arguments at runtime. Pass the bare builtin; the element types stay in the
+  field annotation.
+metadata:
+  enforce: [ENFORCE-115]

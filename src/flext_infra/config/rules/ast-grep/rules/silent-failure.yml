@@ -3,7 +3,6 @@
 # is one shape of the same law.
 #
 # Relaxations that are part of the law, not exceptions to it:
-# - test modules may suppress lifecycle errors of process teardown;
 # - a narrow except branch returning True is a fail-closed predicate answer;
 # - a `has_*` / `is_*` / `should_*` predicate maps its expected exception to a
 #   boolean by meaning;
@@ -19,8 +18,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/tests/**"
 rule:
   any:
     - pattern: contextlib.suppress($$$ARGS)

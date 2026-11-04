@@ -123,8 +123,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             ids=tuple(repository.distribution for repository in repositories),
         )
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def ci_mode() -> bool:
         """Read the hosted-runner contract used by the public consumer.
 
@@ -150,8 +150,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         """
         return u.Infra.runtime_environment_dir(root, runtime_root=root)
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def site_packages(
         tmp_path: Path,
     ) -> Path:
@@ -476,7 +476,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         *,
         direct_root: Path | None = None,
         source_root: Path | None = None,
-        receipt: m.Infra.DirectUrlReceipt | None = None,
+        receipt: p.Infra.DirectUrlReceipt | None = None,
     ) -> p.Result[int]:
         """Read real distribution metadata without changing the active environment.
 

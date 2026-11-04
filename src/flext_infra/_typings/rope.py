@@ -42,6 +42,11 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
         | None,
     ]
 
+    type FacadeComponentClaims = Mapping[
+        tuple[FlextInfraProtocolsRopeRuntime.RopeClassObject, str],
+        Sequence[tuple[str, str, FlextInfraProtocolsRopeRuntime.RopeClassObject]],
+    ]
+
     class Cst:
         """libcst node classes for annotation positions; runtime classes live on c."""
 
@@ -144,7 +149,6 @@ class FlextInfraTypesRope(FlextInfraTypesRopeNative):
     type RopeImportStatement = FlextInfraProtocolsRopeRuntime.RopeImportStatement
     type RopeModuleImports = FlextInfraProtocolsRopeRuntime.RopeModuleImports
     type RopeChangeSet = FlextInfraProtocolsRopeRuntime.RopeChangeSet
-    type RopeChangeComputer = FlextInfraProtocolsRopeRuntime.RopeChangeComputer
     type RopeMoveGlobal = FlextInfraProtocolsRopeRuntime.RopeMoveGlobal
     type RopeOccurrence = FlextInfraProtocolsRopeRuntime.RopeOccurrence
     type RopeOccurrenceFinder = FlextInfraProtocolsRopeRuntime.RopeOccurrenceFinder

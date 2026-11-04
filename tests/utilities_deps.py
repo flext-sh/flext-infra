@@ -11,11 +11,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from uuid import uuid4
 
-from flext_infra import config, u
-from tests import m, p, t
+from tests import config, m, p, t, u
 
 
-class TestsFlextInfraUtilitiesDepsMixin:
+class TestsFlextInfraUtilitiesDeps:
     """Shared dependency-test execution and service fixture owners."""
 
     @staticmethod
@@ -73,7 +72,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
             options=m.Cli.ProcessOptions(env=environment),
         )
         if result.success:
-            TestsFlextInfraUtilitiesDepsMixin.record_dependency_command_output(
+            TestsFlextInfraUtilitiesDeps.record_dependency_command_output(
                 result.value,
             )
         return result
@@ -82,18 +81,18 @@ class TestsFlextInfraUtilitiesDepsMixin:
     def detect_command(
         repository_root: Path,
         **overrides: t.JsonValue,
-    ) -> m.Infra.DetectCommand:
+    ) -> p.Infra.DetectCommand:
         """Create a validated dependency-detection command.
 
         Returns:
             The resulting ``m.Infra.DetectCommand``.
 
         """
-        validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
+        validated: p.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
             "repository_root": str(repository_root),
             **overrides,
         })
         return validated
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesDepsMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesDeps"]

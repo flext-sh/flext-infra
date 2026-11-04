@@ -6,9 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import sys
 import sysconfig
 from collections.abc import Mapping, Sequence
+from contextlib import ExitStack
 from importlib.machinery import (
     BuiltinImporter,
     ExtensionFileLoader,
@@ -18,8 +20,12 @@ from importlib.machinery import (
 from pathlib import Path
 from sys import modules
 from types import ModuleType
+from typing import TYPE_CHECKING
 
-from flext_infra import p, r, t, u
+from flext_core import p, r
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraWorkspaceEnvironmentProvenanceModuleSource:
@@ -230,9 +236,21 @@ class FlextInfraWorkspaceEnvironmentProvenanceModuleSource:
                 f"{module_name}={tuple(locations)}",
             )
         root = Path(locations[0]).absolute()
-        physical = u.Cli.atomic_plan_directory_chain(root)
-        if physical.failure:
-            return r[Path].from_failure(physical)
+        if ".." in root.parts:
+            return r[Path].fail(f"producer namespace path is not normalized: {root}")
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        try:
+            with ExitStack() as opened:
+                descriptor = os.open(root.anchor, flags)
+                opened.callback(os.close, descriptor)
+                for component in root.parts[1:]:
+                    descriptor = os.open(component, flags, dir_fd=descriptor)
+                    opened.callback(os.close, descriptor)
+        except OSError as exc:
+            return r[Path].fail(
+                f"producer namespace lacks a physical directory chain: {module_name}",
+                exception=exc,
+            )
         return r[Path].ok(root)
 
     @staticmethod

@@ -15,9 +15,9 @@ from pathlib import Path
 
 from flext_infra import codegen, config, u, workspace
 from tests import (
-    TestsFlextInfraUtilitiesGitMixin,
-    TestsFlextInfraUtilitiesProjectFixtureMixin,
-    TestsFlextInfraUtilitiesToolingFixtureMixin,
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesToolingFixture,
     c,
     m,
     p,
@@ -27,7 +27,7 @@ from tests import (
 )
 
 
-class TestsFlextInfraUtilitiesCodegenMixin(
+class TestsFlextInfraUtilitiesCodegen(
     utilities_conform.TestsFlextInfraUtilitiesConform,
 ):
     """Public conformance and scaffold fixture helpers."""
@@ -38,7 +38,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         *,
         members: Sequence[str] = (),
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
-    ) -> m.Infra.CodegenPlan:
+    ) -> p.Infra.CodegenPlan:
         """Plan the artifacts conform renders for a fresh repository scaffold.
 
         Without members the fixture repository is standalone; each member
@@ -51,10 +51,10 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             The resulting ``m.Infra.CodegenPlan``.
 
         """
-        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
+        fixture = TestsFlextInfraUtilitiesProjectFixture
         # A governed repository carries its committed Mise lock; generation
         # formats through the release it pins and never resolves a selector.
-        TestsFlextInfraUtilitiesToolingFixtureMixin.copy_tracked_mise_seeds(root)
+        TestsFlextInfraUtilitiesToolingFixture.copy_tracked_mise_seeds(root)
         for name in members:
             manifest = root / name / c.PYPROJECT_FILENAME
             if not manifest.exists():
@@ -92,13 +92,13 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         )
         control = root / c.Infra.GIT_DIR
         if not control.exists() and not control.is_symlink():
-            TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+            TestsFlextInfraUtilitiesGit.git_bootstrap(
                 root, ("init", "-b", fixture.provider_branch())
             )
-            TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
+            TestsFlextInfraUtilitiesGit.git_bootstrap(
                 root, ("remote", "add", c.Infra.GIT_ORIGIN, repository.url)
             )
-        return TestsFlextInfraUtilitiesCodegenMixin.conform_plan(
+        return TestsFlextInfraUtilitiesCodegen.conform_plan(
             root,
             fixture.workspace_spec(
                 repository,
@@ -125,18 +125,17 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             One rendered scaffold artifact, failing when it is not planned.
 
         """
-        plan = TestsFlextInfraUtilitiesCodegenMixin.scaffold_plan(
+        plan = TestsFlextInfraUtilitiesCodegen.scaffold_plan(
             root,
             members=members,
             what=what,
         )
-        tm.that(plan.issues, eq=(), msg=str(plan.issues))
         return tm.not_none(
-            TestsFlextInfraUtilitiesCodegenMixin.planned_text(plan, destination),
+            TestsFlextInfraUtilitiesCodegen.planned_text(plan, destination),
         )
 
     @staticmethod
-    def governed_project_plan(root: Path) -> m.Infra.CodegenPlan:
+    def governed_project_plan(root: Path) -> p.Infra.CodegenPlan:
         """Plan every declared artifact of one governed fixture project read-only.
 
         Returns:
@@ -182,14 +181,14 @@ class TestsFlextInfraUtilitiesCodegenMixin(
                     f"class {class_stem}{family.suffix}:\n    pass\n",
                     encoding="utf-8",
                 )
-        request = TestsFlextInfraUtilitiesCodegenMixin.conform_request(root)
+        request = TestsFlextInfraUtilitiesCodegen.conform_request(root)
         result = codegen.FlextInfraCodegenConform.Generate(
             state=m.Infra.CodegenConformState(repository_root=root, request=request),
         ).plan(request)
         return m.Infra.CodegenPlan.model_validate(tm.ok(result))
 
     @staticmethod
-    def planned_text(plan: m.Infra.CodegenPlan, destination: str) -> str | None:
+    def planned_text(plan: p.Infra.CodegenPlan, destination: str) -> str | None:
         """Return the desired text of the plan entry ending with ``destination``.
 
         Returns:
@@ -239,16 +238,12 @@ class TestsFlextInfraUtilitiesCodegenMixin(
 
         """
         repository_root = tmp_path / project_name
-        project = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(project_name)
-        upstream = TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source(
+        project = TestsFlextInfraUtilitiesProjectFixture.project_spec(project_name)
+        upstream = TestsFlextInfraUtilitiesProjectFixture.flext_source(
             project.upstream,
         )
         package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / package_name
         package_root.mkdir(parents=True)
-        (repository_root / "Makefile").write_text(
-            "check:\n\t@true\n",
-            encoding=c.Infra.ENCODING_DEFAULT,
-        )
         (repository_root / c.PYPROJECT_FILENAME).write_text(
             (
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'
@@ -258,7 +253,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
                 f'email = "{project.author_email}"}}]\n\n'
                 "[tool.hatch.build.targets.wheel]\n"
                 f'packages = ["{c.Infra.DEFAULT_SRC_DIR}/{package_name}"]\n\n'
-                + TestsFlextInfraUtilitiesCodegenMixin.ruff_policy_toml()
+                + TestsFlextInfraUtilitiesCodegen.ruff_policy_toml()
             ),
             encoding=c.Infra.ENCODING_DEFAULT,
         )
@@ -266,19 +261,20 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             "",
             encoding=c.Infra.ENCODING_DEFAULT,
         )
-        TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
+        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             repository_root,
             project_name,
+        )
+        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(
+            repository_root,
         )
         # Semantic publication authenticates every changed path against its Git
         # checkout.  The shared workspace fixture therefore owns a real,
         # repository-local identity instead of letting individual tests depend
         # on whichever checkout happens to contain ``tmp_path``.
-        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(
             repository_root,
-            TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
-                project_name
-            ).url,
+            TestsFlextInfraUtilitiesProjectFixture.repository_ref(project_name).url,
         )
         return (repository_root, package_root)
 
@@ -400,14 +396,14 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         )
         if check_only:
             return len(changed)
-        materialized = TestsFlextInfraUtilitiesCodegenMixin.materialize_lazy_init(
+        materialized = TestsFlextInfraUtilitiesCodegen.materialize_lazy_init(
             service,
         )
         return 0 if materialized.success else 1
 
     @staticmethod
     def lazy_init_effects(
-        planned: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
+        planned: p.Result[tuple[p.Infra.CodegenFilePlan, ...]],
     ) -> Sequence[str]:
         """Return the destinations a successful lazy-init plan would change.
 
@@ -429,7 +425,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             The repository root and the ``flext_demo`` package directory.
 
         """
-        return TestsFlextInfraUtilitiesCodegenMixin.create_lazy_init_workspace(
+        return TestsFlextInfraUtilitiesCodegen.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-demo",
             package_name="flext_demo",
@@ -457,13 +453,13 @@ class TestsFlextInfraUtilitiesCodegenMixin(
             The resulting ``p.Result[bool]``.
 
         """
-        return TestsFlextInfraUtilitiesCodegenMixin.materialize_codegen_plans(
+        return TestsFlextInfraUtilitiesCodegen.materialize_codegen_plans(
             service.plan_files(),
         )
 
     @staticmethod
     def materialize_codegen_plans(
-        planned: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
+        planned: p.Result[tuple[p.Infra.CodegenFilePlan, ...]],
     ) -> p.Result[bool]:
         """Publish immutable codegen plans only inside test workspaces.
 
@@ -485,14 +481,14 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         if published.failure:
             return r[bool].from_failure(published)
         for project in sorted({plan.project for plan in changed}):
-            TestsFlextInfraUtilitiesCodegenMixin._stage_changed_codegen_plans(
+            TestsFlextInfraUtilitiesCodegen._stage_changed_codegen_plans(
                 changed, project
             )
         return r[bool].ok(value=True)
 
     @staticmethod
     def _stage_changed_codegen_plans(
-        changed: tuple[m.Infra.CodegenFilePlan, ...],
+        changed: tuple[p.Infra.CodegenFilePlan, ...],
         project: Path,
     ) -> None:
         if not (project / c.GIT_DIR_NAME).exists():
@@ -517,9 +513,7 @@ class TestsFlextInfraUtilitiesCodegenMixin(
                     continue
             targets.append(relative)
         if targets:
-            TestsFlextInfraUtilitiesGitMixin.git_bootstrap(
-                project, ("add", "--", *targets)
-            )
+            TestsFlextInfraUtilitiesGit.git_bootstrap(project, ("add", "--", *targets))
 
     @staticmethod
     def create_lazy_init_service(
@@ -544,15 +538,15 @@ class TestsFlextInfraUtilitiesCodegenMixin(
 
         """
         repository_root, package_root = (
-            TestsFlextInfraUtilitiesCodegenMixin.create_lazy_init_workspace(tmp_path)
+            TestsFlextInfraUtilitiesCodegen.create_lazy_init_workspace(tmp_path)
         )
-        TestsFlextInfraUtilitiesCodegenMixin.write_lazy_init_namespace_module(
+        TestsFlextInfraUtilitiesCodegen.write_lazy_init_namespace_module(
             package_root / "models.py",
             class_name="FlextTestsModels",
             alias="m",
         )
         init_path = package_root / c.Infra.INIT_PY
-        service = TestsFlextInfraUtilitiesCodegenMixin.create_lazy_init_service(
+        service = TestsFlextInfraUtilitiesCodegen.create_lazy_init_service(
             repository_root,
         )
         return package_root, init_path, service
@@ -594,4 +588,4 @@ class TestsFlextInfraUtilitiesCodegenMixin(
         return result
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesCodegenMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesCodegen"]

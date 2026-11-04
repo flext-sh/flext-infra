@@ -1,0 +1,27 @@
+# A protocol never stands where the Pydantic class API is used. A TypeVar bound,
+# a `type[...]` argument and a `t.ModelClass[...]` argument name a model CLASS
+# whose classmethods (`model_validate`, `model_fields`, `model_json_schema`)
+# the code calls; `p.BaseModel` is a structural instance contract without
+# them. The canonical owner is the native model type alias `t.BaseModelType`
+# (flext-core `_typings/pydantic.py`). Instance annotations keep `p.BaseModel`.
+# Idempotent: the rewritten form does not match.
+id: model-type-not-protocol
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/config/rules/ast-grep/tests/**"
+rule:
+  pattern: p.BaseModel
+  inside:
+    any:
+      - kind: type_parameter
+      - pattern: type[$$$]
+      - pattern: t.ModelClass[$$$]
+    stopBy:
+      kind: function_definition
+fix: t.BaseModelType
+message: >-
+  A model class position (TypeVar bound, type[...], t.ModelClass[...]) uses the
+  native model type t.BaseModelType, never the p.BaseModel instance protocol.

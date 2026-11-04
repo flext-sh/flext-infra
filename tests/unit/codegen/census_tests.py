@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.codegen import FlextInfraCodegenCensus
+from flext_infra.codegen import FlextInfraCodegenCensus, p
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import c, m, r, tm, u
 
@@ -103,7 +103,7 @@ class TestsFlextInfraCodegenCensus:
     def test_malformed_report_line_raises(self, tmp_path: Path, violation: str) -> None:
         """Test malformed report line raises."""
         project = self._project(tmp_path)
-        report = r[m.Infra.ValidationReport].ok(
+        report = r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(passed=False, violations=[violation]),
         )
 
@@ -113,7 +113,7 @@ class TestsFlextInfraCodegenCensus:
     def test_report_failure_propagates(self, tmp_path: Path) -> None:
         """Test report failure propagates."""
         project = self._project(tmp_path)
-        report = r[m.Infra.ValidationReport].fail("scan failed")
+        report = r[p.Infra.ValidationReport].fail("scan failed")
 
         tm.fail(u.Infra.parse_namespace_validation(report, project), has="scan failed")
 

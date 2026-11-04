@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraWorkspaceEnvironmentContracts:
@@ -91,7 +91,7 @@ class FlextInfraWorkspaceEnvironmentContracts:
         *,
         root: Path,
         resolve_home: bool = True,
-    ) -> tuple[m.Infra.EnvironmentContractViolation, ...]:
+    ) -> tuple[p.Infra.EnvironmentContractViolation, ...]:
         """Return one typed violation per direnv contract issue in ``content``.
 
         Contracts enforced:
@@ -108,7 +108,7 @@ class FlextInfraWorkspaceEnvironmentContracts:
             One typed violation per direnv contract issue in ``content``.
 
         """
-        violations: list[m.Infra.EnvironmentContractViolation] = []
+        violations: list[p.Infra.EnvironmentContractViolation] = []
         for match in cls._UNGUARDED_DIRENV_DIR.finditer(content):
             match_line = content.count("\n", 0, match.start()) + 1
             violations.append(
@@ -183,7 +183,7 @@ class FlextInfraWorkspaceEnvironmentContracts:
     def envrc_local_contract_violations(
         cls,
         content: str,
-    ) -> tuple[m.Infra.EnvironmentContractViolation, ...]:
+    ) -> tuple[p.Infra.EnvironmentContractViolation, ...]:
         """Return one typed violation per activation residue in ``.envrc.local``.
 
         Local overrides never activate Beads: managed section markers,
@@ -194,7 +194,7 @@ class FlextInfraWorkspaceEnvironmentContracts:
             One typed violation per activation residue in ``.envrc.local``.
 
         """
-        violations: list[m.Infra.EnvironmentContractViolation] = []
+        violations: list[p.Infra.EnvironmentContractViolation] = []
         for line_number, line in enumerate(content.splitlines(), start=1):
             stripped = line.strip()
             if not stripped:

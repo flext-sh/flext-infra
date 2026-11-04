@@ -12,15 +12,15 @@ import pytest
 
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.smells import FlextInfraSmellsGate
-from tests import c, m, t, tm, u
+from flext_infra.gates.smells import FlextInfraGatesSmells
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def smells_project(
         tmp_path: Path,
     ) -> Path:
@@ -39,7 +39,7 @@ class TestsFlextInfraSmellsGate:
         )
 
     @staticmethod
-    def _detector_config(root: Path) -> m.ConfigDocument:
+    def _detector_config(root: Path) -> p.ConfigDocument:
         """Read the same merged native configuration that the scanner loads.
 
         Returns:
@@ -52,7 +52,7 @@ class TestsFlextInfraSmellsGate:
         return tm.ok(u.Cli.config_load(path, expand_env=False))
 
     @staticmethod
-    def _comparison_rule(config: m.ConfigDocument, rule: str) -> t.JsonMapping:
+    def _comparison_rule(config: p.ConfigDocument, rule: str) -> t.JsonMapping:
         """Follow Qlty's language override, enablement, then global precedence.
 
         Returns:
@@ -73,7 +73,7 @@ class TestsFlextInfraSmellsGate:
         return u.Cli.json_deep_mapping(config.data, "smells", rule)
 
     @classmethod
-    def _comparison_config(cls, root: Path, variation: str) -> m.ConfigDocument:
+    def _comparison_config(cls, root: Path, variation: str) -> p.ConfigDocument:
         """Vary only temporary input, deriving every threshold from native config.
 
         Returns:
@@ -126,7 +126,7 @@ class TestsFlextInfraSmellsGate:
         return cls._detector_config(root)
 
     @classmethod
-    def _write_comparisons(cls, config: m.ConfigDocument, package: Path) -> bool:
+    def _write_comparisons(cls, config: p.ConfigDocument, package: Path) -> bool:
         """Two real functions exceed configured line and AST-node limits.
 
         Returns:
@@ -213,7 +213,7 @@ class TestsFlextInfraSmellsGate:
                 cls._assert_native_span(observed, emitted)
 
     @staticmethod
-    def _ctx(root: Path) -> m.Infra.GateContext:
+    def _ctx(root: Path) -> p.Infra.GateContext:
         return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
 
     @staticmethod
@@ -224,7 +224,7 @@ class TestsFlextInfraSmellsGate:
     def test_registry_exposes_the_canonical_gate() -> None:
         """Test registry exposes the canonical gate."""
         gate = FlextInfraGateRegistry.default().get("smells")
-        tm.ok(gate is FlextInfraSmellsGate)
+        tm.ok(gate is FlextInfraGatesSmells)
 
     def test_missing_project_configuration_is_a_blocking_failure(
         self,
@@ -232,7 +232,7 @@ class TestsFlextInfraSmellsGate:
         smells_project: Path,
     ) -> None:
         """Test missing project configuration is a blocking failure."""
-        execution = FlextInfraSmellsGate(tmp_path).check(
+        execution = FlextInfraGatesSmells(tmp_path).check(
             smells_project,
             self._ctx(tmp_path),
         )
@@ -268,7 +268,7 @@ class TestsFlextInfraSmellsGate:
         """Test zero findings scan is a pass."""
         self._configure(tmp_path)
 
-        execution = FlextInfraSmellsGate(tmp_path).check(
+        execution = FlextInfraGatesSmells(tmp_path).check(
             smells_project,
             self._ctx(tmp_path),
         )
@@ -291,7 +291,7 @@ class TestsFlextInfraSmellsGate:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        execution = FlextInfraSmellsGate(tmp_path).check(
+        execution = FlextInfraGatesSmells(tmp_path).check(
             smells_project,
             self._ctx(tmp_path),
         )
@@ -311,7 +311,7 @@ class TestsFlextInfraSmellsGate:
         self._configure(tmp_path)
         (smells_project / c.PYPROJECT_FILENAME).unlink()
 
-        execution = FlextInfraSmellsGate(tmp_path).check(
+        execution = FlextInfraGatesSmells(tmp_path).check(
             smells_project,
             self._ctx(tmp_path),
         )

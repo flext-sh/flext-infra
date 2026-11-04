@@ -78,6 +78,8 @@ class FlextInfraConstantsWorkspace:
     VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY: ClassVar[str] = (
         "python-envs.workspaceSearchPaths"
     )
+    MARKDOWNLINT_CONFIG_SETTING: ClassVar[str] = "markdownlint.config"
+    "Derived editor Markdown policy projected from the tooling SSOT's common rules."
     CODEGEN_OWNER_VSCODE: ClassVar[str] = "vscode"
     # Canonical VS Code settings content lives in config/codegen.yaml (vscode:).
     # Recursive "**" venv search globs are forbidden: they make the Python
@@ -144,17 +146,16 @@ class FlextInfraConstantsWorkspace:
     "Tool-relative pyproject table holding the Hatch build hooks and targets."
     UV_CACHE_KEYS_TABLE: ClassVar[str] = "uv.cache-keys"
     "Tool-relative pyproject table holding uv's editable-build cache keys."
-    BINDING_PACKAGE_SCRIPT: ClassVar[
-        str
-    ] = """import importlib.util, json, sys, sysconfig
+    BINDING_PACKAGE_SCRIPT: ClassVar[str] = """import importlib, json, sys, sysconfig
+from importlib.metadata import packages_distributions
 from pathlib import Path
 packages = {}
 for name in sys.argv[1:]:
-    spec = importlib.util.find_spec(name)
+    module = importlib.import_module(name)
     packages[name] = (
-        list(spec.submodule_search_locations)
-        if spec is not None and spec.submodule_search_locations is not None
-        else []
+        [str(Path(module.__file__).resolve(strict=True).parent)]
+        if module.__file__ is not None
+        else [str(Path(path).resolve(strict=True)) for path in module.__path__]
     )
 print(json.dumps({
     "prefix": sys.prefix,
@@ -164,6 +165,7 @@ print(json.dumps({
     )),
     "import_paths": sys.path,
     "package_directories": packages,
+    "package_distributions": packages_distributions(),
 }))
 """
 
@@ -212,11 +214,20 @@ print(json.dumps({
         WORKSPACE_OPERATION_REPORT_DIRECTORY / "tool-bootstrap.json"
     )
     FLEXT_EDITABLE_SELECTION_RELATIVE_PATH: ClassVar[Path] = (
-        WORKSPACE_OPERATION_REPORT_DIRECTORY / "flext-editable-selection.json"
+        Path(ENVIRONMENT_DIRECTORY) / "flext-editable-selection.json"
     )
-    "Runtime-owned receipt of `make setup FLEXT=<path>`; plain setup removes it."
+    "Environment-owned receipt published atomically with its installed code."
     FLEXT_EDITABLE_ROUTE_NAME: ClassVar[str] = "flext-editable"
     "Workspace CLI verb setup runs to elect, install and record FLEXT editables."
+    FLEXT_EDITABLE_SNAPSHOT_BACKENDS: ClassVar[frozenset[str]] = frozenset({
+        "setuptools.build_meta",
+    })
+    "Declared PEP 660 backends whose selected strict mode snapshots file membership."
+    FLEXT_EDITABLE_BUILD_SETTING: ClassVar[str] = "editable_mode=strict"
+    (
+        "PEP 517 setting for editable bindings: a path-based install that static"
+        " resolvers (Rope, pyrefly, pyright) see, never an import-hook finder."
+    )
     CODEGEN_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-plan.json"
     )

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m
+from flext_infra import c, m, p
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 
 
@@ -14,13 +14,13 @@ class FlextInfraUtilitiesDocsGenerateSources:
     """Derive one docs scope's identity from its live or projected metadata."""
 
     @staticmethod
-    def docs_scope_from_sources(
-        scope: m.Infra.DocScope,
+    def scope_from_sources(
+        scope: p.Infra.DocScope,
         *,
-        metadata_projection: m.Infra.CodegenFilePlan | None = None,
-        governance_source: m.Infra.CodegenBootstrapSource | None = None,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-    ) -> m.Infra.DocScope:
+        metadata_projection: p.Infra.CodegenFilePlan | None = None,
+        governance_source: p.Infra.CodegenBootstrapSource | None = None,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+    ) -> p.Infra.DocScope:
         """Derive scope metadata, package identity and governance owner.
 
         Returns:
@@ -38,7 +38,7 @@ class FlextInfraUtilitiesDocsGenerateSources:
             state = FlextInfraUtilitiesDocsScope.project_state(
                 scope.path, metadata_projection=metadata_projection
             )
-            if not FlextInfraUtilitiesDocsScope.docs_scope_enabled(state.docs_meta):
+            if not FlextInfraUtilitiesDocsScope.scope_enabled(state.docs_meta):
                 msg = f"docs scope is disabled in its metadata: {scope.path}"
                 raise ValueError(msg)
             name = state.project_name

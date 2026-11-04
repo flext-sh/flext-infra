@@ -11,12 +11,13 @@ from pathlib import Path
 from git import GitCommandError, Repo
 
 from flext_infra import c, m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticRefs
-
-
-class FlextInfraUtilitiesGitWorktreeRemoval(
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitSemanticRefs,
-):
+)
+
+
+class FlextInfraUtilitiesGitWorktreeRemoval(FlextInfraUtilitiesGitRepo):
     """Own worktree removal operations."""
 
     @staticmethod
@@ -114,7 +115,7 @@ class FlextInfraUtilitiesGitWorktreeRemoval(
         preflight = cls._preflight_clean_worktree(source_root, worktree_root)
         if preflight.failure:
             return r[bool].from_failure(preflight)
-        admitted = cls.git_verify_lane(
+        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=worktree_root,
                 operation="retire",

@@ -1,0 +1,22 @@
+# The root model protocols (Base, AttributeProbe, ModuleOwned, ModelCopy and
+# the model contract itself) are declared once, in the lowest protocol module
+# that mirrors the lowest model module (``_protocols/pydantic.py`` mirrors
+# ``_models/pydantic.py``). The model contract carries the mirror name of the
+# root model it describes, ``BaseModel``. Holder-spelled references to the
+# retired ``FlextProtocolsBase`` roots follow the single declaration.
+id: rewire-protocol-root-holder
+language: Python
+severity: error
+rule:
+  pattern: FlextProtocolsBase.$NAME
+constraints:
+  NAME:
+    regex: ^(Base|AttributeProbe|ModuleOwned|ModelCopy|Model)$
+transform:
+  MEMBER:
+    replace:
+      source: $NAME
+      replace: ^Model$
+      by: BaseModel
+fix: FlextProtocolsPydantic.$MEMBER
+message: Root model protocols are declared once in FlextProtocolsPydantic.

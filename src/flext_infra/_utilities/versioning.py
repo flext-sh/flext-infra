@@ -241,14 +241,14 @@ class FlextInfraUtilitiesVersioning:
     @staticmethod
     def project_version_plan(
         project_path: Path, version: str
-    ) -> p.Result[m.Infra.CodegenFilePlan]:
+    ) -> p.Result[p.Infra.CodegenFilePlan]:
         """Plan the canonical version-field edit against its actual physical input.
 
         Returns:
             The original file witness and exact rendered bytes, without effects.
 
         """
-        result = r[m.Infra.CodegenFilePlan]
+        result = r[p.Infra.CodegenFilePlan]
         root = project_path.resolve()
         captured = u.Cli.atomic_read_binary_file_state(
             root / c.PYPROJECT_FILENAME, required=True

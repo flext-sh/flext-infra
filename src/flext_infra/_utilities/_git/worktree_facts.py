@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeMeasure
 
 
@@ -64,8 +64,8 @@ class FlextInfraUtilitiesGitWorktreeFacts(
     @classmethod
     def collect_worktree_facts(
         cls,
-        query: m.Infra.WorktreeFactsQuery,
-    ) -> tuple[tuple[m.Infra.WorktreeFact, ...], tuple[m.Infra.PruneAction, ...]]:
+        query: p.Infra.WorktreeFactsQuery,
+    ) -> tuple[tuple[p.Infra.WorktreeFact, ...], tuple[p.Infra.PruneAction, ...]]:
         """Measure every registered worktree and plan stale-deps pruning.
 
         Correlation is optional and degrades to empty. A stale worktree is
@@ -74,12 +74,12 @@ class FlextInfraUtilitiesGitWorktreeFacts(
         Nothing is executed here.
 
         Returns:
-            The resulting ``tuple[tuple[m.Infra.WorktreeFact, ...],
-                tuple[m.Infra.PruneAction, ...]]``.
+            The resulting ``tuple[tuple[p.Infra.WorktreeFact, ...],
+                tuple[p.Infra.PruneAction, ...]]``.
 
         """
-        facts: list[m.Infra.WorktreeFact] = []
-        actions: list[m.Infra.PruneAction] = []
+        facts: list[p.Infra.WorktreeFact] = []
+        actions: list[p.Infra.PruneAction] = []
         seen: set[Path] = set()
         for repo_root in sorted(query.repo_roots, key=lambda path: path.as_posix()):
             for worktree_root, branch in cls.git_registered_worktrees_fs(repo_root):
@@ -102,11 +102,11 @@ class FlextInfraUtilitiesGitWorktreeFacts(
     @classmethod
     def worktrees_report(
         cls,
-        query: m.Infra.WorktreeFactsQuery,
+        query: p.Infra.WorktreeFactsQuery,
         *,
         mode: str = "manual",
         apply: bool = False,
-    ) -> m.Infra.WorktreesReport:
+    ) -> p.Infra.WorktreesReport:
         """Assemble the facts report and its plan-only stale-deps actions.
 
         Returns:
@@ -128,10 +128,10 @@ class FlextInfraUtilitiesGitWorktreeFacts(
     @classmethod
     def _worktree_fact(
         cls,
-        candidate: m.Infra.WorktreeCandidate,
-        query: m.Infra.WorktreeFactsQuery,
-        actions: list[m.Infra.PruneAction],
-    ) -> m.Infra.WorktreeFact:
+        candidate: p.Infra.WorktreeCandidate,
+        query: p.Infra.WorktreeFactsQuery,
+        actions: list[p.Infra.PruneAction],
+    ) -> p.Infra.WorktreeFact:
         """Build one fact and append its planned stale-deps actions.
 
         Returns:
@@ -207,7 +207,7 @@ class FlextInfraUtilitiesGitWorktreeFacts(
     @staticmethod
     def _worktree_kind(
         worktree_root: Path,
-        policy: m.Infra.WorktreeFactsPolicy,
+        policy: p.Infra.WorktreeFactsPolicy,
     ) -> Literal["sibling", "tool_internal"]:
         """Classify a worktree as tool-internal or sibling from policy patterns.
 
@@ -252,10 +252,10 @@ class FlextInfraUtilitiesGitWorktreeFacts(
     @classmethod
     def _worktree_correlate(
         cls,
-        fact: m.Infra.WorktreeFact,
-        candidate: m.Infra.WorktreeCandidate,
-        query: m.Infra.WorktreeFactsQuery,
-    ) -> m.Infra.WorktreeFact:
+        fact: p.Infra.WorktreeFact,
+        candidate: p.Infra.WorktreeCandidate,
+        query: p.Infra.WorktreeFactsQuery,
+    ) -> p.Infra.WorktreeFact:
         """Attach optional bead/PR/actor evidence to one fact.
 
         Returns:

@@ -11,8 +11,8 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra import c, p, t
+from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
 class FlextInfraModelsConfigProvider:
@@ -48,6 +48,15 @@ class FlextInfraModelsConfigProvider:
         provider: Annotated[
             t.NonEmptyStr,
             m.Field(description="Provider key owning URL and branch"),
+        ]
+        kind: Annotated[
+            c.Infra.ProjectKind,
+            m.Field(
+                description=(
+                    "Governance kind declared for this repository; never "
+                    "assumed by a consumer of the identity"
+                ),
+            ),
         ]
 
         @m.computed_field
@@ -237,7 +246,15 @@ class FlextInfraModelsConfigProvider:
             ),
         ]
         deploy_keys: Annotated[
-            tuple[FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CiPrivateSubmoduleDeployKeySpec,
+                    t.schema_for_model(
+                        FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
 

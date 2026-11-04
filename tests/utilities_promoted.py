@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests import m
+from tests import m, p
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsFlextInfraUtilitiesPromotedMixin:
+class TestsFlextInfraUtilitiesPromoted:
     """Promoted-command builders shared by the promoted test modules.
 
     The builder is declared here, not beside one test, because two promoted
@@ -29,10 +29,10 @@ class TestsFlextInfraUtilitiesPromotedMixin:
         *,
         path: Path,
         mutates: bool = True,
-        params: tuple[m.Infra.PromotedParam, ...] = (),
+        params: tuple[p.Infra.PromotedParam, ...] = (),
         verb: str = "probe",
         what: str = "all",
-    ) -> m.Infra.PromotedCommand:
+    ) -> p.Infra.PromotedCommand:
         """Build one real promoted command model for contract tests.
 
         Returns:
@@ -54,4 +54,4 @@ class TestsFlextInfraUtilitiesPromotedMixin:
         )
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesPromotedMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesPromoted"]

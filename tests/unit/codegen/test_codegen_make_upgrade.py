@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
-from tests import c, m, r, tm, u
+from flext_infra import config, p
+from tests import c, r, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
@@ -40,7 +40,18 @@ class TestsFlextInfraCodegenMakeUpgrade:
     def test_setup_installs_dependencies_before_importing_infra(
         generated_make_template: tuple[c.Infra.MakeProfile, Path],
     ) -> None:
-        """Native config admission precedes sync; Python validation follows it."""
+        """Native lock and frozen sync run before any FLEXT Python import.
+
+        Premise (ruling "repair never deadlocks", solution form b0e8ab65b7,
+        restored after regression 0e913316a4 put ``deps upgrade-lock`` in place
+        of native ``uv lock --upgrade``): a broken environment or lock is
+        repaired by native uv alone, so no ``flext_infra`` import may precede
+        it. Setup first recreates an environment whose creator uv/Python
+        diverges from the declared toolchain, then installs the committed lock
+        frozen, and only then runs the Python half. ``upg`` writes the lock
+        natively, installs it through that same setup recipe, and only then
+        runs the Python verification.
+        """
         _profile, project_root = generated_make_template
         makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding="utf-8",
@@ -49,11 +60,20 @@ class TestsFlextInfraCodegenMakeUpgrade:
             "\n\n",
             1,
         )[0]
-        admitted = recipe.index("config ls --json")
-        installed = recipe.index("$(UV) sync")
-        validated = recipe.index("codegen mise-artifacts")
-        tm.ok(admitted < installed < validated)
+        recreated = recipe.index("$(RECREATE_DIVERGENT_RUNTIME)")
+        installed = recipe.index("$(UV) sync --frozen")
+        validated = recipe.index("$(FLEXT_EDITABLE_RECIPE)")
+        tm.ok(recreated < installed < validated)
         tm.that(recipe[:installed], lacks="$(PROJECT_FLEXT_INFRA)")
+        lifecycle = makefile.split("\n_upg_lifecycle:\n", 1)[1].split(
+            "\n\n",
+            1,
+        )[0]
+        locked = lifecycle.index("$(UV) lock --upgrade")
+        synced = lifecycle.index("$(INSTALL_RUNTIME_RECIPE)")
+        verified = lifecycle.index("$(PROJECT_FLEXT_INFRA) deps upgrade-lock")
+        tm.ok(locked < synced < verified)
+        tm.that(lifecycle[:synced], lacks="$(PROJECT_FLEXT_INFRA)")
 
     @staticmethod
     def test_environment_prerequisites_resolve_without_running_recipes(
@@ -554,7 +574,7 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
         tm.ok(
             u.Tests.materialize_codegen_plans(
-                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plan.files),
+                r[tuple[p.Infra.CodegenFilePlan, ...]].ok(plan.files),
             ),
         )
         u.Tests.commit_git_changes(source, "render independent upgrade consumer")

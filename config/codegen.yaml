@@ -1,6 +1,7 @@
 Infra:
   codegen:
     repository:
+      kind: internal_flext
       project:
         package_name: flext_infra
         class_stem: FlextInfra
@@ -15,8 +16,7 @@ Infra:
         author_name: FLEXT Team
         author_email: team@flext.sh
         upstream: flext_cli
-        runtime_dependency_overlay:
-        - pip
+        runtime_dependency_overlay: []
         namespace_scan_dirs: []
         homepage: https://github.com/flext-sh/flext-infra
         documentation: https://github.com/flext-sh/flext-infra/blob/main/README.md

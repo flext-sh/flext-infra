@@ -24,29 +24,29 @@ class FlextInfraDocsGeneratorBundle:
 
     type _DocsPresentationInputs = tuple[
         m.Infra.CodegenBootstrapSource | None,
-        tuple[m.Infra.CodegenFilePlan, ...],
-        tuple[m.Infra.CodegenFilePlan, ...],
+        tuple[p.Infra.CodegenFilePlan, ...],
+        tuple[p.Infra.CodegenFilePlan, ...],
     ]
     type _DocsRenderedInventory = tuple[
-        list[_DocsScopeArtifacts], tuple[m.Infra.CodegenFilePlan, ...]
+        list[_DocsScopeArtifacts], tuple[p.Infra.CodegenFilePlan, ...]
     ]
 
     @staticmethod
     def _presentation_metadata(
-        scopes: Sequence[m.Infra.DocScope],
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        scopes: Sequence[p.Infra.DocScope],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Prepare only authorial YAML and the owned pyproject locale leaf.
 
         Returns:
             Exact metadata plans, without Python or tooling source planning.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         ownership = u.Infra.pyproject_managed_file()
         if ownership.failure:
             return result_type.from_failure(ownership)
-        plans: list[m.Infra.CodegenFilePlan] = []
+        plans: list[p.Infra.CodegenFilePlan] = []
         declared = {plan.path: plan for plan in declared_files}
         for root in dict.fromkeys(scope.path for scope in scopes):
             declaration = u.Infra.load_repository_declaration_inputs(root)
@@ -54,7 +54,7 @@ class FlextInfraDocsGeneratorBundle:
                 return result_type.from_failure(declaration)
             previous = declared.get(root / c.PYPROJECT_FILENAME)
             source = (
-                r[m.Cli.AtomicFileState].ok(previous.before)
+                r[p.Cli.AtomicFileState].ok(previous.before)
                 if previous is not None
                 else u.Cli.atomic_read_binary_file_state(
                     root / c.PYPROJECT_FILENAME,
@@ -114,9 +114,9 @@ class FlextInfraDocsGeneratorBundle:
 
     @staticmethod
     def _is_collocated_workspace_project(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
-        root_scope: m.Infra.DocScope | None,
+        root_scope: p.Infra.DocScope | None,
     ) -> bool:
         """Return whether a project scope shares the aggregate root path.
 
@@ -136,7 +136,7 @@ class FlextInfraDocsGeneratorBundle:
 
     @staticmethod
     def _validate_scope_targets(
-        scopes: Sequence[m.Infra.DocScope],
+        scopes: Sequence[p.Infra.DocScope],
         output_dir: Path,
     ) -> p.Result[bool]:
         """Require builders to preserve each lexical scope and report target.
@@ -157,9 +157,9 @@ class FlextInfraDocsGeneratorBundle:
     @classmethod
     def _prepare_request(
         cls,
-        request: m.Infra.DocsGenerateRequest,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-    ) -> p.Result[m.Infra.DocsGenerationBundle]:
+        request: p.Infra.DocsGenerateRequest,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+    ) -> p.Result[p.Infra.DocsGenerationBundle]:
         """Render one inventory from the live workspace sources.
 
         Returns:
@@ -168,13 +168,13 @@ class FlextInfraDocsGeneratorBundle:
         """
         roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
-            return r[m.Infra.DocsGenerationBundle].from_failure(roots)
+            return r[p.Infra.DocsGenerationBundle].from_failure(roots)
         repository_root = roots.value[0]
         rendered = cls._rendered_scope_inventory(
             repository_root, request, declared_files
         )
         if rendered.failure:
-            return r[m.Infra.DocsGenerationBundle].from_failure(rendered)
+            return r[p.Infra.DocsGenerationBundle].from_failure(rendered)
         return cls._validated_bundle(
             repository_root,
             rendered.value[0],
@@ -185,8 +185,8 @@ class FlextInfraDocsGeneratorBundle:
     def _rendered_scope_inventory(
         cls,
         repository_root: Path,
-        request: m.Infra.DocsGenerateRequest,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        request: p.Infra.DocsGenerateRequest,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Result[FlextInfraDocsGeneratorBundle._DocsRenderedInventory]:
         """Resolve the docs scopes, their governance source and artifacts.
 
@@ -238,12 +238,12 @@ class FlextInfraDocsGeneratorBundle:
     def _validated_scopes(
         cls,
         repository_root: Path,
-        request: m.Infra.DocsGenerateRequest,
+        request: p.Infra.DocsGenerateRequest,
         output_dir: Path,
     ) -> p.Result[
         tuple[
-            tuple[m.Infra.DocScope, ...],
-            tuple[m.Infra.DocScope, ...],
+            tuple[p.Infra.DocScope, ...],
+            tuple[p.Infra.DocScope, ...],
         ]
     ]:
         """Build and target-validate the selected and aggregate doc scopes.
@@ -254,8 +254,8 @@ class FlextInfraDocsGeneratorBundle:
         """
         result_type = r[
             tuple[
-                tuple[m.Infra.DocScope, ...],
-                tuple[m.Infra.DocScope, ...],
+                tuple[p.Infra.DocScope, ...],
+                tuple[p.Infra.DocScope, ...],
             ]
         ]
         selected = u.Infra.build_scopes(
@@ -291,8 +291,8 @@ class FlextInfraDocsGeneratorBundle:
         cls,
         repository_root: Path,
         scopes: tuple[
-            tuple[m.Infra.DocScope, ...],
-            tuple[m.Infra.DocScope, ...],
+            tuple[p.Infra.DocScope, ...],
+            tuple[p.Infra.DocScope, ...],
         ],
         presentation: FlextInfraDocsGeneratorBundle._DocsPresentationInputs = (
             None,
@@ -314,7 +314,7 @@ class FlextInfraDocsGeneratorBundle:
             if plan.path.name == c.PYPROJECT_FILENAME
         }
         selected = tuple(
-            u.Infra.docs_scope_from_sources(
+            u.Infra.scope_from_sources(
                 scope,
                 metadata_projection=projections.get(scope.path),
                 governance_source=governance_source,
@@ -324,14 +324,14 @@ class FlextInfraDocsGeneratorBundle:
         )
         if any(scope.name == c.Infra.RK_ROOT for scope in selected):
             aggregate = tuple(
-                u.Infra.docs_scope_from_sources(
+                u.Infra.scope_from_sources(
                     scope,
                     governance_source=governance_source,
                     declared_files=declared_files,
                 )
                 for scope in aggregate
             )
-        root_scope: m.Infra.DocScope | None = (
+        root_scope: p.Infra.DocScope | None = (
             selected[0] if selected and selected[0].name == c.Infra.RK_ROOT else None
         )
         rendered: list[_DocsScopeArtifacts] = []
@@ -341,7 +341,7 @@ class FlextInfraDocsGeneratorBundle:
                 rendered.append((scope, ()))
                 continue
             try:
-                artifacts = u.Infra.docs_scope_artifacts(
+                artifacts = u.Infra.scope_artifacts(
                     scope,
                     repository_root=repository_root,
                     aggregate_scopes=aggregate,
@@ -366,7 +366,7 @@ class FlextInfraDocsGeneratorBundle:
     def _normalized_scope_artifacts(
         cls,
         rendered: list[_DocsScopeArtifacts],
-    ) -> p.Result[list[m.Infra.DocsScopeArtifacts]]:
+    ) -> p.Result[list[p.Infra.DocsScopeArtifacts]]:
         """Normalize rendered artifacts and bind each to its owning scope.
 
         Returns:
@@ -377,15 +377,15 @@ class FlextInfraDocsGeneratorBundle:
             tuple(artifact for _scope, artifacts in rendered for artifact in artifacts),
         )
         if normalized.failure:
-            return r[list[m.Infra.DocsScopeArtifacts]].from_failure(normalized)
-        normalized_scopes: list[m.Infra.DocsScopeArtifacts] = []
+            return r[list[p.Infra.DocsScopeArtifacts]].from_failure(normalized)
+        normalized_scopes: list[p.Infra.DocsScopeArtifacts] = []
         offset = 0
         for scope, scope_artifacts in rendered:
             size = len(scope_artifacts)
-            normalized_artifacts: list[m.Infra.DocsRenderedArtifact] = []
+            normalized_artifacts: list[p.Infra.DocsRenderedArtifact] = []
             for project, target, content in normalized.value[offset : offset + size]:
                 if project != scope.path:
-                    return r[list[m.Infra.DocsScopeArtifacts]].fail(
+                    return r[list[p.Infra.DocsScopeArtifacts]].fail(
                         f"docs artifact owner differs from scope: {target}",
                     )
                 normalized_content = content
@@ -394,7 +394,7 @@ class FlextInfraDocsGeneratorBundle:
                         normalized_content,
                         "{}",
                     )[0]
-                    normalized_content = u.Infra.docs_contract_update_toc(
+                    normalized_content = u.Infra.contract_update_toc(
                         normalized_content,
                     )[0]
                 normalized_artifacts.append(
@@ -419,7 +419,7 @@ class FlextInfraDocsGeneratorBundle:
                 ),
             )
             offset += size
-        return r[list[m.Infra.DocsScopeArtifacts]].ok(normalized_scopes)
+        return r[list[p.Infra.DocsScopeArtifacts]].ok(normalized_scopes)
 
     @classmethod
     def _validated_bundle(
@@ -427,8 +427,8 @@ class FlextInfraDocsGeneratorBundle:
         repository_root: Path,
         rendered: list[_DocsScopeArtifacts],
         *,
-        metadata_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-    ) -> p.Result[m.Infra.DocsGenerationBundle]:
+        metadata_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+    ) -> p.Result[p.Infra.DocsGenerationBundle]:
         """Validate the rendered docs generation bundle.
 
         Args:
@@ -437,13 +437,13 @@ class FlextInfraDocsGeneratorBundle:
             metadata_files: Owned presentation metadata in this same publication.
 
         Returns:
-            The resulting ``p.Result[m.Infra.DocsGenerationBundle]``.
+            The resulting ``p.Result[p.Infra.DocsGenerationBundle]``.
 
         """
         normalized = cls._normalized_scope_artifacts(rendered)
         if normalized.failure:
-            return r[m.Infra.DocsGenerationBundle].from_failure(normalized)
-        validated_bundle = r[m.Infra.DocsGenerationBundle].create_from_callable(
+            return r[p.Infra.DocsGenerationBundle].from_failure(normalized)
+        validated_bundle = r[p.Infra.DocsGenerationBundle].create_from_callable(
             partial(
                 m.Infra.DocsGenerationBundle,
                 scopes=tuple(normalized.value),
@@ -452,24 +452,24 @@ class FlextInfraDocsGeneratorBundle:
             )
         )
         if validated_bundle.failure:
-            return r[m.Infra.DocsGenerationBundle].fail_op(
+            return r[p.Infra.DocsGenerationBundle].fail_op(
                 "docs generation bundle validation",
                 validated_bundle.error,
             )
-        return r[m.Infra.DocsGenerationBundle].ok(validated_bundle.value)
+        return r[p.Infra.DocsGenerationBundle].ok(validated_bundle.value)
 
     @classmethod
     def _governance_source(
         cls,
         repository_root: Path,
-    ) -> p.Result[m.Infra.CodegenBootstrapSource]:
+    ) -> p.Result[p.Infra.CodegenBootstrapSource]:
         """Resolve the referenced governance owner before rendering its links.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenBootstrapSource]``.
+            The resulting ``p.Result[p.Infra.CodegenBootstrapSource]``.
 
         """
-        result_type = r[m.Infra.CodegenBootstrapSource]
+        result_type = r[p.Infra.CodegenBootstrapSource]
         inputs = u.Infra.load_codegen_inputs(repository_root)
         if inputs.failure:
             return result_type.from_failure(inputs)
@@ -484,7 +484,7 @@ class FlextInfraDocsGeneratorBundle:
     def _governance_source_ref(
         cls,
         repository_root: Path,
-        inputs: m.Infra.CodegenInputs,
+        inputs: p.Infra.CodegenInputs,
     ) -> p.Result[str]:
         """Resolve the governance owner's published Git reference.
 
@@ -533,7 +533,7 @@ class FlextInfraDocsGeneratorBundle:
     def _family_governance_ref(
         cls,
         repository_root: Path,
-        inputs: m.Infra.CodegenInputs,
+        inputs: p.Infra.CodegenInputs,
     ) -> p.Result[str]:
         """Resolve the declared dependency family line.
 

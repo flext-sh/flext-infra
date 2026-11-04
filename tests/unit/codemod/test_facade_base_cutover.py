@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import infra, m, p, u
-from tests import c, tm
+from tests import c, p, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -115,7 +115,7 @@ class TestsFlextInfraFacadeBaseCutover:
         """Resolve an imported module alias through its actual source identity."""
         child, sources = self._workspace(
             tmp_path,
-            """from parent_pkg import m
+            """from parent_pkg import m, p
 
 class ChildModels(m):
     pass
@@ -568,7 +568,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
         }
 
     @staticmethod
-    def _finding(file_path: Path) -> m.Infra.ModOccurrence:
+    def _finding(file_path: Path) -> p.Infra.ModOccurrence:
         """Build one detector finding for the facade module.
 
         Returns:

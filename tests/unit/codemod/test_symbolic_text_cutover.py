@@ -9,7 +9,6 @@ from __future__ import annotations
 import ast
 import json
 import sys
-import typing
 from pathlib import Path
 
 import pytest
@@ -17,10 +16,7 @@ import pytest
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import c, tm, u
-
-if typing.TYPE_CHECKING:
-    from tests import p
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraSymbolicTextCutover:
@@ -35,10 +31,7 @@ class TestsFlextInfraSymbolicTextCutover:
             "from unavailable_second import second\n",
             encoding="utf-8",
         )
-        with (
-            u.Infra.open_project(tmp_path) as project,
-            u.Infra.semantic_matching_context(),
-        ):
+        with u.Infra.open_project(tmp_path) as project:
             module = u.Infra.resolve_pymodule(
                 project, project.get_resource(consumer.name)
             )
@@ -77,10 +70,7 @@ class TestsFlextInfraSymbolicTextCutover:
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout.strip(), eq=runtime_output)
-        with (
-            u.Infra.open_project(root) as project,
-            u.Infra.semantic_matching_context(),
-        ):
+        with u.Infra.open_project(root) as project:
             module = u.Infra.resolve_pymodule(
                 project, project.get_resource(consumer.name)
             )

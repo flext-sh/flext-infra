@@ -1,0 +1,45 @@
+id: model-type-not-protocol
+snapshots:
+  "from flext_core import p, t\ndef parse[M: p.BaseModel](model_cls: t.ModelClass[M]) -> M:\n    return model_cls.model_validate({})\n":
+    fixed: |
+      from flext_core import p, t
+      def parse[M: t.BaseModelType](model_cls: t.ModelClass[M]) -> M:
+          return model_cls.model_validate({})
+    labels:
+    - source: p.BaseModel
+      style: primary
+      start: 41
+      end: 52
+    - source: "[M: p.BaseModel]"
+      style: secondary
+      start: 37
+      end: 53
+  "from flext_core import p, t\ndef schema(model: type[p.BaseModel]) -> None:\n    model.model_json_schema()\n":
+    fixed: |
+      from flext_core import p, t
+      def schema(model: type[t.BaseModelType]) -> None:
+          model.model_json_schema()
+    labels:
+    - source: p.BaseModel
+      style: primary
+      start: 51
+      end: 62
+    - source: "[p.BaseModel]"
+      style: secondary
+      start: 50
+      end: 63
+  "from flext_core import p, t\nfrom typing import ClassVar\nclass E:\n    params_cls: ClassVar[t.ModelClass[p.BaseModel] | None] = None\n":
+    fixed: |
+      from flext_core import p, t
+      from typing import ClassVar
+      class E:
+          params_cls: ClassVar[t.ModelClass[t.BaseModelType] | None] = None
+    labels:
+    - source: p.BaseModel
+      style: primary
+      start: 103
+      end: 114
+    - source: t.ModelClass[p.BaseModel]
+      style: secondary
+      start: 90
+      end: 115

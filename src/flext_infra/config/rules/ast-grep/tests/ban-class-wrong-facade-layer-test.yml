@@ -16,7 +16,7 @@ valid:
             pass
   - |
     class FlextFooPlanner(
-        m.ArbitraryTypesModel,
+        m.ManagedModel,
         FlextFooAliases,
         FlextFooCache,
     ):

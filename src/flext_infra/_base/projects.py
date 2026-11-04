@@ -42,13 +42,13 @@ class FlextInfraBaseProjects:
         repository_root: Path,
         *,
         output_dir: Path | str | None,
-        handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
+        handler: Callable[[p.Infra.DocScope], m.Infra.DocsPhaseReport],
         projects: Sequence[str] | None = None,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[p.Infra.DocsPhaseReport]]:
         """Run one docs phase across the resolved governed scopes.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocsPhaseReport]]``.
 
         """
         return u.Infra.run_scoped(

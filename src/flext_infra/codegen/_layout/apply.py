@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, p, r, t
-from flext_infra.codegen import (
+from flext_infra import p, r, t
+from flext_infra.codegen._layout import (
     FlextInfraCodegenLayoutFiles,
     FlextInfraCodegenLayoutGitignore,
 )
@@ -27,24 +27,24 @@ class FlextInfraCodegenLayoutApply(
     def apply_project(
         self,
         project_dir: Path,
-        report: m.Infra.LayoutProjectReport,
-    ) -> p.Result[m.Infra.LayoutProjectReport]:
+        report: p.Infra.LayoutProjectReport,
+    ) -> p.Result[p.Infra.LayoutProjectReport]:
         """Execute every planned finding and return the updated report.
 
         Returns:
-            The resulting ``p.Result[m.Infra.LayoutProjectReport]``.
+            The resulting ``p.Result[p.Infra.LayoutProjectReport]``.
 
         """
-        findings: list[m.Infra.LayoutFinding] = []
+        findings: list[p.Infra.LayoutFinding] = []
         gitignore_status: t.Infra.LayoutStatus = "noop"
-        actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
+        actionable: tuple[p.Infra.LayoutFinding, ...] = report.actionable
         gitignore_patterns = tuple(
             finding.target for finding in actionable if finding.rule == "gitignore"
         )
         if gitignore_patterns:
             applied = self._apply_gitignore(project_dir, gitignore_patterns)
             if applied.failure:
-                return r[m.Infra.LayoutProjectReport].from_failure(applied)
+                return r[p.Infra.LayoutProjectReport].from_failure(applied)
             gitignore_status = applied.value
         for finding in report.findings:
             if finding.rule == "review":
@@ -55,26 +55,26 @@ class FlextInfraCodegenLayoutApply(
                 continue
             executed = self._execute_path_finding(project_dir, finding)
             if executed.failure:
-                return r[m.Infra.LayoutProjectReport].from_failure(executed)
+                return r[p.Infra.LayoutProjectReport].from_failure(executed)
             findings.append(executed.value)
-        return r[m.Infra.LayoutProjectReport].ok(
+        return r[p.Infra.LayoutProjectReport].ok(
             report.model_copy(update={"findings": tuple(findings)}),
         )
 
     def _execute_path_finding(
         self,
         project_dir: Path,
-        finding: m.Infra.LayoutFinding,
-    ) -> p.Result[m.Infra.LayoutFinding]:
+        finding: p.Infra.LayoutFinding,
+    ) -> p.Result[p.Infra.LayoutFinding]:
         """Execute one move/archive finding; missing sources are no-ops.
 
         Returns:
-            The resulting ``p.Result[m.Infra.LayoutFinding]``.
+            The resulting ``p.Result[p.Infra.LayoutFinding]``.
 
         """
         source = project_dir / finding.path
         if not source.exists():
-            return r[m.Infra.LayoutFinding].ok(
+            return r[p.Infra.LayoutFinding].ok(
                 finding.model_copy(update={"status": "noop"}),
             )
         if finding.rule == "move":
@@ -84,22 +84,22 @@ class FlextInfraCodegenLayoutApply(
     def _apply_move(
         self,
         project_dir: Path,
-        finding: m.Infra.LayoutFinding,
+        finding: p.Infra.LayoutFinding,
         source: Path,
-    ) -> p.Result[m.Infra.LayoutFinding]:
+    ) -> p.Result[p.Infra.LayoutFinding]:
         """Move one file/dir to its canonical target, merging dir collisions.
 
         Returns:
-            The resulting ``p.Result[m.Infra.LayoutFinding]``.
+            The resulting ``p.Result[p.Infra.LayoutFinding]``.
 
         """
         target = project_dir / finding.target
         if source.is_dir() and target.exists():
             merge = self._merge_directory(project_dir, source, target, finding.path)
             if merge.failure:
-                return r[m.Infra.LayoutFinding].from_failure(merge)
+                return r[p.Infra.LayoutFinding].from_failure(merge)
             if source.exists():
-                return r[m.Infra.LayoutFinding].ok(
+                return r[p.Infra.LayoutFinding].ok(
                     finding.model_copy(
                         update={
                             "status": "skipped",
@@ -107,34 +107,34 @@ class FlextInfraCodegenLayoutApply(
                         },
                     ),
                 )
-            return r[m.Infra.LayoutFinding].ok(
+            return r[p.Infra.LayoutFinding].ok(
                 finding.model_copy(update={"status": "applied"}),
             )
         moved = self._move_entry(project_dir, source, target, finding.path)
         if moved.failure:
-            return r[m.Infra.LayoutFinding].from_failure(moved)
+            return r[p.Infra.LayoutFinding].from_failure(moved)
         status, message = moved.value
-        return r[m.Infra.LayoutFinding].ok(
+        return r[p.Infra.LayoutFinding].ok(
             finding.model_copy(update={"status": status, "message": message}),
         )
 
     def _apply_archive(
         self,
         project_dir: Path,
-        finding: m.Infra.LayoutFinding,
+        finding: p.Infra.LayoutFinding,
         source: Path,
-    ) -> p.Result[m.Infra.LayoutFinding]:
+    ) -> p.Result[p.Infra.LayoutFinding]:
         """Archive one entry into the archive root, preserving content.
 
         Returns:
-            The resulting ``p.Result[m.Infra.LayoutFinding]``.
+            The resulting ``p.Result[p.Infra.LayoutFinding]``.
 
         """
         archived = self._archive_path(project_dir, source, finding.path, finding)
         if archived.failure:
-            return r[m.Infra.LayoutFinding].from_failure(archived)
+            return r[p.Infra.LayoutFinding].from_failure(archived)
         status, message = archived.value
-        return r[m.Infra.LayoutFinding].ok(
+        return r[p.Infra.LayoutFinding].ok(
             finding.model_copy(update={"status": status, "message": message}),
         )
 

@@ -8,33 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 import shutil
 import sys
 from collections.abc import Iterator
@@ -265,7 +238,7 @@ def profiling_enabled() -> Iterator[None]:
 
 
 @pytest.fixture
-def tool_config_document() -> m.Infra.ToolConfigDocument:
+def tool_config_document() -> p.Infra.ToolConfigDocument:
     """Provide ``tool_config_document``.
 
     Returns:

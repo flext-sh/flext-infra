@@ -1,0 +1,43 @@
+id: pydantic-annotated-field-assignment-metadata
+snapshots:
+  "class Settings(m.FrozenModel):\n    paths: Annotated[\n        dict[str, list[Path | None]],\n        m.Field(alias=\"output-paths\", exclude=True, frozen=True, default_factory=dict),\n    ]\n":
+    fixed: |
+      class Settings(m.FrozenModel):
+          paths: dict[str, list[Path | None]] = m.Field(alias="output-paths", exclude=True, frozen=True, default_factory=dict)
+    labels:
+    - source: |-
+        paths: Annotated[
+                dict[str, list[Path | None]],
+                m.Field(alias="output-paths", exclude=True, frozen=True, default_factory=dict),
+            ]
+      style: primary
+      start: 35
+      end: 184
+  "class Settings(m.FrozenModel):\n    report: Annotated[\n        tuple[str, ...] | None,\n        m.Field(\n            validation_alias=\"report-file\",\n            serialization_alias=\"report\",\n            default=None,\n        ),\n    ]\n":
+    fixed: |
+      class Settings(m.FrozenModel):
+          report: tuple[str, ...] | None = m.Field(validation_alias="report-file",
+          serialization_alias="report",
+          default=None,)
+    labels:
+    - source: |-
+        report: Annotated[
+                tuple[str, ...] | None,
+                m.Field(
+                    validation_alias="report-file",
+                    serialization_alias="report",
+                    default=None,
+                ),
+            ]
+      style: primary
+      start: 35
+      end: 231
+  "class Settings(m.FrozenModel):\n    title: Annotated[str, m.Field(alias=\"display-title\")]\n":
+    fixed: |
+      class Settings(m.FrozenModel):
+          title: str = m.Field(alias="display-title")
+    labels:
+    - source: "title: Annotated[str, m.Field(alias=\"display-title\")]"
+      style: primary
+      start: 35
+      end: 88

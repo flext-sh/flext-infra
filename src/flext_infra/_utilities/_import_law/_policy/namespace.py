@@ -286,7 +286,12 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             module.split(".")[len(namespace.split(".")) if namespace else 1 :]
         ):
             stem = part.lstrip("_")
-            if any(stem == family.module for family in families.values()):
+            # A facade family is a direct child of its namespace; a deeper
+            # directory that mirrors a family name (``tests/unit/_models``)
+            # is ordinary code consuming the families.
+            if index == 0 and any(
+                stem == family.module for family in families.values()
+            ):
                 return "family"
             if index == 0 and any(
                 stem == role or stem.startswith(f"{role}_")
@@ -513,63 +518,91 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                     pending.extend(import_graph.get(current, ()))
         return frozenset(dependencies)
 
+    @staticmethod
+    def _declared_binding_source(
+        project: p.Infra.RopeProject,
+        provider: p.Infra.RopeSemanticModule,
+        root: Path,
+        sources: Mapping[Path, str],
+    ) -> tuple[str, Path, str] | None:
+        """Capture the native provider's addressed module and authenticated source.
+
+        Returns:
+            The addressed module, path and source, or no source-bearing resource.
+
+        Raises:
+            TypeError: If a provider package lacks its native folder contract.
+
+        """
+        resource = provider.get_resource()
+        if resource is None:
+            return None
+        if resource.is_folder():
+            # The folder's owner addresses installed initializers outside the root.
+            if not isinstance(resource, p.Infra.RopeRoot):
+                msg = f"lazy route package has no folder contract: {resource.path}"
+                raise TypeError(msg)
+            resource = resource.get_child(c.Infra.INIT_PY)
+        path = Path(resource.real_path).resolve()
+        module_name = (
+            FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                path, project_root=root, source_project=project
+            )
+            if path.is_relative_to(root)
+            else (
+                FlextInfraUtilitiesProjectDiscovery.installed_module_name_for_file(path)
+                or provider.get_name()
+            )
+        )
+        source = (
+            sources[path]
+            if path.is_relative_to(root) and path in sources
+            else FlextInfraUtilitiesRopeRuntime.require_file_resource(
+                resource, path
+            ).read()
+        )
+        return module_name, path, source
+
     @classmethod
     def resolve_declared_binding(
         cls,
         project: p.Infra.RopeProject,
-        module_name: str,
-        alias_name: str,
+        binding_identity: tuple[str, str],
         root: Path,
         sources: Mapping[Path, str],
+        *,
+        public_only: bool = False,
     ) -> p.Infra.RopePyName | None:
         """Follow the existing native lazy routes without losing tuple aliases.
 
+        Public routing requires an initializer's explicit export declaration;
+        ordinary source lookup can still address a direct module binding.
+        Native provider capture propagates a TypeError for a missing folder contract.
+
         Returns:
-            The declared native binding, or None when the final provider lacks it.
+            The declared native binding, or no eligible publication or binding.
 
         Raises:
             ValueError: If a lazy route cycles or does not name one binding.
-            TypeError: If a provider package lacks its native folder contract.
 
         """
+        module_name, alias_name = binding_identity
         provider = FlextInfraUtilitiesRopeRuntime.require_semantic_module(
             project.get_module(module_name)
         )
         visited: set[tuple[str, str]] = set()
-        while True:
-            resource = provider.get_resource()
-            if resource is None:
-                break
-            if resource.is_folder():
-                # The folder's own owner addresses its initializer: an installed
-                # provider lives outside the project root.
-                if not isinstance(resource, p.Infra.RopeRoot):
-                    msg = f"lazy route package has no folder contract: {resource.path}"
-                    raise TypeError(msg)
-                resource = resource.get_child(c.Infra.INIT_PY)
-            path = Path(resource.real_path).resolve()
-            module_name = (
-                FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
-                    path, project_root=root, source_project=project
-                )
-                if path.is_relative_to(root)
-                else provider.get_name()
-            )
+        while captured := cls._declared_binding_source(
+            project, provider, root, sources
+        ):
+            module_name, path, source = captured
             identity = module_name, alias_name
             if identity in visited:
                 msg = f"cyclic lazy export {identity}"
                 raise ValueError(msg)
             visited.add(identity)
-            source = (
-                sources[path]
-                if path.is_relative_to(root) and path in sources
-                else (
-                    FlextInfraUtilitiesRopeRuntime.require_file_resource(
-                        resource, path
-                    ).read()
-                )
-            )
             if not module_name:
+                if public_only:
+                    return None
                 # Installed provider Rope cannot name (empty dotted name):
                 # identity tracking is impossible, so resolve the alias
                 # natively at this boundary instead of following further.
@@ -577,9 +610,20 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
                     ast.parse(source), alias_name
                 )
                 return provider.get_attributes().get(alias_name)
-            route = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
+            routes = FlextInfraUtilitiesRopeSourceBasesAliases.lazy_export_bindings(
                 module_name, path, source, project=project, pymodule=provider
-            ).get(alias_name)
+            )
+            if public_only and path.name == c.Infra.INIT_PY:
+                initializer = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                    provider.get_module()
+                )
+                if alias_name not in (
+                    FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                        initializer
+                    )
+                ):
+                    return None
+            route = routes.get(alias_name)
             if route is None:
                 alias_name, _declaration = cls._declared_binding(
                     ast.parse(source), alias_name

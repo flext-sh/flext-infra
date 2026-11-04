@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config
+from flext_infra import config, t
 from flext_infra.check import FlextInfraGateRegistry
-from flext_infra.gates import FlextInfraDuplicationGate
-from tests import c, m, tm, u
+from flext_infra.gates import FlextInfraGatesDuplication
+from tests import c, m, p, tm, u
 
 
 @pytest.mark.usefixtures("_ci_context")
@@ -25,8 +25,8 @@ class TestsFlextInfraDuplicationGate:
     host a unit test never reaches, so it is typed NOT EXECUTED there.
     """
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def _ci_context() -> Generator[None]:
         ci = config.Infra.codegen.make.ci
         with u.Tests.env_vars_context({ci.variable: ci.value}):
@@ -46,21 +46,21 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 """
 
     @staticmethod
-    def _ctx(root: Path) -> m.Infra.GateContext:
+    def _ctx(root: Path) -> p.Infra.GateContext:
         return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
 
     @staticmethod
     def test_registry_exposes_the_canonical_gate() -> None:
         """Test registry exposes the canonical gate."""
         gate = FlextInfraGateRegistry.default().create("duplication", Path.cwd())
-        tm.ok(isinstance(gate, FlextInfraDuplicationGate))
+        tm.ok(isinstance(gate, FlextInfraGatesDuplication))
 
     def test_empty_workspace_scope_is_a_blocking_failure(self, tmp_path: Path) -> None:
         """Test empty workspace scope is a blocking failure."""
         project = tmp_path / "missing-project"
         project.mkdir()
 
-        execution = FlextInfraDuplicationGate(tmp_path).check(
+        execution = FlextInfraGatesDuplication(tmp_path).check(
             project,
             self._ctx(tmp_path),
         )
@@ -127,7 +127,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
                 "  path: .\n"
                 "  role: standalone\n"
                 "  state: active\n"
-                "  kind: internal_flext\n"
+                f"  kind: {c.Infra.ProjectKind.INTERNAL_FLEXT.value}\n"
                 "  checkout: root\n"
                 "  codegen: none\n"
                 "  package: true\n"
@@ -142,6 +142,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
                 "      duplication_trees: [charts]\n",
                 encoding="utf-8",
             )
+            u.Tests.declare_governed_kind(root)
         return root
 
     def test_declared_trees_enter_the_scan_and_fail_on_clones(
@@ -151,7 +152,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """A declared project tree joins the scan and its clones are findings."""
         root = self._governed_with_declared_trees(tmp_path, declare_trees=True)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.that(
@@ -163,7 +164,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """Without a declaration the canonical Python discovery owns the scope."""
         root = self._governed_with_declared_trees(tmp_path, declare_trees=False)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.ok(execution.result.passed)
         tm.that(execution.issues, eq=())
@@ -222,7 +223,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         root = self._sibling_prefix_workspace(tmp_path)
         own = root / "fixture-dup"
 
-        execution = FlextInfraDuplicationGate(root).check(own, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(own, self._ctx(root))
 
         tm.ok(execution.result.passed)
         tm.that(execution.issues, eq=())
@@ -292,7 +293,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             encoding="utf-8",
         )
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.that(execution.issues, empty=False)
@@ -313,7 +314,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """A cross-file clone blocks; CI runs similarity, semantic NOT EXECUTED."""
         root = self._governed_with_python_clone(tmp_path, same_file=False)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.ok(len(execution.issues) >= 1)
@@ -343,7 +344,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """
         root = self._governed_with_python_clone(tmp_path, same_file=True)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         tm.that(
@@ -410,7 +411,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """Two declared members sharing a block are one cross-project finding."""
         root = self._governed_with_fleet_members(tmp_path, enable_fleet=True)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.fail(execution.result.passed)
         text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
@@ -421,7 +422,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """An explicit fleet=false keeps member projects out of scope."""
         root = self._governed_with_fleet_members(tmp_path, enable_fleet=False)
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.that(
             execution.result.passed,
@@ -434,7 +435,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         root = self._governed_with_fleet_members(tmp_path, enable_fleet=None)
         fleet = m.Infra.ProjectDuplicationOverrides().fleet
 
-        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
         tm.that(execution.result.passed, eq=not fleet)
         text = " ".join(f"{issue.file} {issue.message}" for issue in execution.issues)
@@ -490,7 +491,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             tmp_path, declare_root=True, existing=True
         )
 
-        execution = FlextInfraDuplicationGate(project).check(
+        execution = FlextInfraGatesDuplication(project).check(
             project, self._ctx(project)
         )
 
@@ -516,7 +517,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             tmp_path, declare_root=True, existing=False
         )
 
-        execution = FlextInfraDuplicationGate(project).check(
+        execution = FlextInfraGatesDuplication(project).check(
             project, self._ctx(project)
         )
 
@@ -535,7 +536,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             tmp_path, declare_root=False, existing=True
         )
 
-        execution = FlextInfraDuplicationGate(project).check(
+        execution = FlextInfraGatesDuplication(project).check(
             project, self._ctx(project)
         )
 
@@ -558,7 +559,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             encoding="utf-8",
         )
 
-        execution = FlextInfraDuplicationGate(project).check(
+        execution = FlextInfraGatesDuplication(project).check(
             project, self._ctx(project)
         )
 
@@ -570,3 +571,182 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         )
         for duplicate in report.duplicates:
             tm.fail(duplicate.first_file == duplicate.second_file)
+
+    @staticmethod
+    def _write_overlay(root: Path, jscpd_body: str) -> None:
+        """Declare one project tooling overlay with the given jscpd level."""
+        config_dir = root / "config"
+        config_dir.mkdir(exist_ok=True)
+        (config_dir / "tooling.yaml").write_text(
+            f"Infra:\n  tooling:\n    tools:\n      jscpd:\n{jscpd_body}",
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _rendered_jscpd_config(root: Path) -> t.JsonMapping:
+        """Read the generated jscpd invocation config of the latest scan.
+
+        Returns:
+            The parsed jscpd configuration mapping.
+
+        """
+        return u.Cli.json_as_mapping(
+            u.Cli.json_parse(
+                (
+                    root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_CONFIG_FILENAME
+                ).read_text(encoding="utf-8"),
+            ).unwrap(),
+        )
+
+    @staticmethod
+    def _assessment_counts(root: Path) -> t.JsonMapping:
+        """Read the published duplication assessment counts of the latest check.
+
+        Returns:
+            The assessment's counts mapping.
+
+        """
+        assessment = root / "reports" / "duplication.raw.assessment.json"
+        mapping = u.Cli.json_as_mapping(
+            u.Cli.json_parse(assessment.read_text(encoding="utf-8")).unwrap()
+        )
+        return u.Cli.json_as_mapping(mapping.get("counts", {}))
+
+    def test_project_overlay_glob_skips_the_declared_surface(
+        self, tmp_path: Path
+    ) -> None:
+        """An authorized glob joins the render and the surface leaves the scan."""
+        root = self._governed_with_python_clone(tmp_path, same_file=False)
+        self._write_overlay(root, '        ignore:\n          - "**/first.py"\n')
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.ok(
+            execution.result.passed,
+            msg="; ".join(issue.formatted for issue in execution.issues),
+        )
+        tm.that(
+            execution.raw_output,
+            has="jscpd project overlay merged: 1 globs",
+        )
+        tm.that(self._rendered_jscpd_config(root).get("ignore"), has="**/first.py")
+
+    def test_preamble_only_clone_is_retained_evidence_not_a_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """A clone of the module preamble stays evidence and never blocks.
+
+        Two modules whose shared span is the import-law preamble (docstring
+        tail, imports, TYPE_CHECKING block) carry no duplicated behavior:
+        the assessment classifies the span below the selected body floor,
+        the clone stays in the assessment receipt, and the gate passes.
+        """
+        root = tmp_path / "preamble-clone"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-preamble-clone",
+            beads=u.Tests.BeadsIdentity(
+                workspace="preamble-clone-workspace",
+                database="preamble_clone_database",
+                issue_prefix="preamble-clone",
+            ),
+        )
+        package = root / "src" / "fixture_preamble_clone"
+        package.mkdir(parents=True, exist_ok=True)
+        preamble = (
+            '"""Module contract line.\n'
+            "\n"
+            "Copyright (c) 2026 Fixture Team. All rights reserved.\n"
+            "SPDX-License-Identifier: MIT\n"
+            '"""\n'
+            "\n"
+            "from __future__ import annotations\n"
+            "\n"
+            "from typing import TYPE_CHECKING\n"
+            "\n"
+            "from sqlalchemy import text\n"
+            "\n"
+            "from dc_recon import c, e, h, m, p, r, t, u\n"
+            "\n"
+            "if TYPE_CHECKING:\n"
+            "    from sqlalchemy.engine import Connection as SaConnection\n"
+        )
+        (package / "first.py").write_text(preamble, encoding="utf-8")
+        (package / "second.py").write_text(preamble, encoding="utf-8")
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.ok(
+            execution.result.passed,
+            msg="; ".join(issue.formatted for issue in execution.issues),
+        )
+        tm.that(
+            self._assessment_counts(root).get("below_existing_behavior_floor"),
+            eq=1,
+        )
+
+    def test_bodies_above_floor_with_import_overlap_still_block(
+        self, tmp_path: Path
+    ) -> None:
+        """Import overlap never exempts a clone whose bodies reach the floors.
+
+        The two modules share real cloned bodies AND a preamble; the
+        retained bodies reach both floors, so the activation-effect
+        uncertainty keeps the clone unresolved and the gate fails.
+        """
+        root = tmp_path / "bodies-import-clone"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-bodies-import-clone",
+            beads=u.Tests.BeadsIdentity(
+                workspace="bodies-import-workspace",
+                database="bodies_import_database",
+                issue_prefix="bodies-import",
+            ),
+        )
+        package = root / "src" / "fixture_bodies_import_clone"
+        package.mkdir(parents=True, exist_ok=True)
+        module = (
+            '"""Module contract line."""\n'
+            "\n"
+            "from __future__ import annotations\n"
+            "\n"
+            "from dc_recon import c, e, h, m, p, r, t, u\n"
+            "\n" + self._PYTHON_BEHAVIOR_BLOCK
+        )
+        (package / "first.py").write_text(module, encoding="utf-8")
+        (package / "second.py").write_text(module, encoding="utf-8")
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.fail(execution.result.passed)
+        tm.that(self._assessment_counts(root).get("unresolved"), eq=1)
+
+    def test_absent_project_overlay_keeps_the_canonical_render(
+        self, tmp_path: Path
+    ) -> None:
+        """Without an overlay the render and receipt stay exactly canonical."""
+        root = self._governed_with_python_clone(tmp_path, same_file=False)
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.fail(execution.result.passed)
+        tm.fail("project overlay merged" in execution.raw_output)
+        tm.fail("**/first.py" in str(self._rendered_jscpd_config(root).get("ignore")))
+
+    def test_malformed_project_overlay_fails_closed(self, tmp_path: Path) -> None:
+        """An overlay key the schema forbids blocks the gate with its cause."""
+        root = self._governed_with_python_clone(tmp_path, same_file=False)
+        self._write_overlay(root, "        similarity: 0.5\n")
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.fail(execution.result.passed)
+        tm.that(
+            execution.raw_output,
+            has="project tooling.yaml jscpd overlay validation",
+        )
+        tm.that(
+            " ".join(issue.message for issue in execution.issues),
+            has="did not produce its required JSON report",
+        )

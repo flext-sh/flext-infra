@@ -11,9 +11,10 @@ import sys
 import textwrap
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
-from flext_infra import c, m
+from flext_infra import c, p, r
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesImportLawPlacement(
@@ -30,9 +31,10 @@ class FlextInfraUtilitiesImportLawPlacement(
     a missing dependency fails loud at import time.
     """
 
-    _IMPORT_SECTION_STDLIB = 0
-    _IMPORT_SECTION_THIRD_PARTY = 1
-    _IMPORT_SECTION_OWN = 2
+    _IMPORT_SECTION_FUTURE = 0
+    _IMPORT_SECTION_STDLIB = 1
+    _IMPORT_SECTION_THIRD_PARTY = 2
+    _IMPORT_SECTION_OWN = 3
     _MIN_REORDERABLE_IMPORTS = 2
 
     # -- import guards ---------------------------------------------------------------
@@ -97,18 +99,22 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_layer_order_edits(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         lines: Sequence[str],
     ) -> Sequence[tuple[int, int, Sequence[str]]]:
-        """Reorder module-level imports into the canonical layer groups.
+        """Reorder module-level imports into the formatter's isort layout.
 
         The region between the first and the last module-level import
         statement is rewritten only when it holds nothing but import
-        statements. The stable sort mirrors the formatter sections
-        (standard library, third party, own namespace) and orders the
-        own-namespace imports by the tooling import-layer order, then by
-        module path, so make mod and the formatter sections converge on
-        one layout.
+        statements. The stable sort is the formatter's own import order,
+        whose ``I001`` repair is the last stage of every mod and generation
+        normalization: sections ``__future__``, standard library, third
+        party, first party (the module's namespace and the project's ``src``
+        packages), and inside each section every ``import x`` before every
+        ``from x import y``, each by module path without case. A module the
+        formatter already sorted is therefore never rewritten: an order the
+        formatter would undo is churn that published untouched authored
+        modules, never a law.
 
         Returns:
             The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
@@ -130,15 +136,22 @@ class FlextInfraUtilitiesImportLawPlacement(
         )
         if any(not isinstance(node, c.Infra.AST_IMPORT_TYPES) for node in region):
             return ()
+        first_party = frozenset({
+            state.scope.namespace.partition(".")[0],
+            *FlextInfraUtilitiesRopeSource.discover_first_party_namespaces(
+                state.scope.project_root, source_project=state.source_project
+            ),
+        })
         ordered = sorted(
-            statements, key=lambda node: cls._import_law_import_sort_key(state, node)
+            statements,
+            key=lambda node: cls._import_law_import_sort_key(node, first_party),
         )
         if [id(node) for node in ordered] == [id(node) for node in statements]:
             return ()
         replacement: list[str] = []
         previous_section: int | None = None
         for node in ordered:
-            section = cls._import_law_import_section(state, node)
+            section = cls._import_law_import_section(node, first_party)
             if previous_section is not None and section != previous_section:
                 replacement.append("")
             replacement.extend(lines[node.lineno - 1 : cls._import_law_end_line(node)])
@@ -148,58 +161,39 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_import_sort_key(
         cls,
-        state: m.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
+        first_party: frozenset[str],
     ) -> tuple[int, int, str, int]:
-        """Return the stable sort key of one module-level import statement.
-
-        A root import from the own namespace ranks by the earliest layer
-        letter it imports (``from ns import t, m`` ranks at ``t``); a
-        submodule import ranks by the module path; anything else ranks at
-        the ``other`` slot.
+        """Return the formatter's sort key of one module-level import statement.
 
         Returns:
-            The ``(section, layer rank, module path, source line)`` tuple.
+            The ``(section, statement form, module path, source line)`` tuple:
+            ``import`` ranks before ``from`` and the path compares without case.
 
         """
-        section = cls._import_law_import_section(state, node)
-        root = state.scope.namespace
-        if isinstance(node, ast.ImportFrom) and (node.module or root) == root:
-            layer = min(
-                (
-                    cls.module_import_layer(f"{root}.{alias.name}", namespace=root)
-                    for alias in node.names
-                ),
-                default=cls.module_import_layer(
-                    f"{root}.{c.Infra.IMPORT_LAW_OTHER_LAYER}",
-                    namespace=root,
-                ),
-            )
-            module = root
-        else:
-            module = (
-                node.module or ""
-                if isinstance(node, ast.ImportFrom)
-                else node.names[0].name
-            )
-            layer = (
-                cls.module_import_layer(module, namespace=root)
-                if section == cls._IMPORT_SECTION_OWN
-                else 0
-            )
-        return (section, layer, module, node.lineno)
+        module = (
+            node.module or ""
+            if isinstance(node, ast.ImportFrom)
+            else node.names[0].name
+        )
+        return (
+            cls._import_law_import_section(node, first_party),
+            int(isinstance(node, ast.ImportFrom)),
+            module.lower(),
+            node.lineno,
+        )
 
     @classmethod
     def _import_law_import_section(
         cls,
-        state: m.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
+        first_party: frozenset[str],
     ) -> int:
         """Return the formatter section rank of one import statement.
 
         Returns:
-            ``0`` for the standard library, ``1`` for third parties and
-            ``2`` for the module's own namespace.
+            ``0`` for ``__future__``, ``1`` for the standard library, ``2``
+            for third parties and ``3`` for first-party packages.
 
         """
         root = (
@@ -209,15 +203,14 @@ class FlextInfraUtilitiesImportLawPlacement(
             if isinstance(node, ast.Import) and node.names
             else ""
         )
-        if (
-            not root
-            or root == state.scope.namespace
-            or root.startswith(f"{state.scope.namespace}.")
-        ):
+        package = root.partition(".")[0]
+        if not root or package in first_party:
             return cls._IMPORT_SECTION_OWN
+        if root == c.Infra.FUTURE_MODULE:
+            return cls._IMPORT_SECTION_FUTURE
         return (
             cls._IMPORT_SECTION_STDLIB
-            if root.partition(".")[0] in sys.stdlib_module_names
+            if package in sys.stdlib_module_names
             else cls._IMPORT_SECTION_THIRD_PARTY
         )
 
@@ -226,21 +219,23 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_placement_edits(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         lines: Sequence[str],
-    ) -> Sequence[tuple[int, int, Sequence[str]]]:
+    ) -> p.Result[Sequence[tuple[int, int, Sequence[str]]]]:
         """Hoist inline imports and move typing-only reverse imports.
 
         Returns:
-            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
-
-        Raises:
-            ValueError: If distinct inline providers would share one global binding.
+            The planned edits, the empty no-op sequence, or the first typed
+            classification failure of the hoisting pass.
 
         """
         promoted = cls._import_law_typing_runtime_edits(state, lines)
-        if promoted:
+        if promoted.failure:
             return promoted
+        if promoted.value:
+            return r[tuple[tuple[int, int, Sequence[str]], ...]].ok(
+                value=promoted.value,
+            )
         placed: MutableMapping[c.Infra.ImportPlacement, list[str]] = {
             placement: [] for placement in c.Infra.ImportPlacement
         }
@@ -281,18 +276,17 @@ class FlextInfraUtilitiesImportLawPlacement(
                         and not shared_package
                         and not cls._import_law_binds_same(existing, node, alias)
                     ):
-                        msg = (
+                        return r[tuple[tuple[int, int, Sequence[str]], ...]].fail(
                             f"{state.scope.file_path}: conflicting inline import "
                             f"providers for {bound}: {ast.unparse(existing)} "
                             f"(line {existing.lineno}) and {ast.unparse(node)} "
-                            f"(line {node.lineno}); semantic receiver repair required"
+                            f"(line {node.lineno}); semantic receiver repair required",
                         )
-                        raise ValueError(msg)
             edit = cls._import_law_statement_edit(state, node, lines, placed)
             if edit is not None:
                 edits.append(edit)
         if not edits:
-            return ()
+            return r[tuple[tuple[int, int, Sequence[str]], ...]].ok(value=())
         edits.extend(
             cls._import_law_insertion_edits(
                 state,
@@ -300,18 +294,18 @@ class FlextInfraUtilitiesImportLawPlacement(
                 tuple(dict.fromkeys(placed[c.Infra.ImportPlacement.TYPING])),
             ),
         )
-        return edits
+        return r[tuple[tuple[int, int, Sequence[str]], ...]].ok(value=tuple(edits))
 
     @classmethod
     def _import_law_typing_runtime_edits(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         lines: Sequence[str],
-    ) -> Sequence[tuple[int, int, Sequence[str]]]:
+    ) -> p.Result[Sequence[tuple[int, int, Sequence[str]]]]:
         """Promote allowed runtime reads using the existing definition-time analysis.
 
         Returns:
-            The resulting ``Sequence[tuple[int, int, Sequence[str]]]``.
+            The planned edits, or the typed guard or reverse-import failure.
 
         """
         edits: list[tuple[int, int, Sequence[str]]] = []
@@ -322,11 +316,12 @@ class FlextInfraUtilitiesImportLawPlacement(
                 and cls._import_law_is_type_checking_test(guard.test)
             ):
                 continue
-            guard_edits, removed, guard_promoted = cls._import_law_promote_guard_body(
-                state,
-                lines,
-                guard,
-            )
+            guard_plan = cls._import_law_promote_guard_body(state, lines, guard)
+            if guard_plan.failure:
+                return r[tuple[tuple[int, int, Sequence[str]], ...]].from_failure(
+                    guard_plan
+                )
+            guard_edits, removed, guard_promoted = guard_plan.value
             promoted.extend(guard_promoted)
             if guard_edits:
                 edits.extend(
@@ -336,27 +331,26 @@ class FlextInfraUtilitiesImportLawPlacement(
                 )
         if promoted:
             edits.extend(cls._import_law_insertion_edits(state, tuple(promoted), ()))
-        return edits
+        return r[tuple[tuple[int, int, Sequence[str]], ...]].ok(value=tuple(edits))
 
     @classmethod
     def _import_law_promote_guard_body(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         lines: Sequence[str],
         guard: ast.If,
-    ) -> tuple[
-        list[tuple[int, int, Sequence[str]]],
-        set[int],
-        list[str],
+    ) -> p.Result[
+        tuple[
+            list[tuple[int, int, Sequence[str]]],
+            set[int],
+            list[str],
+        ]
     ]:
         """Select runtime-read aliases of one TYPE_CHECKING guard for promotion.
 
         Returns:
             The per-statement edits, the removed statement ids, and the
-            promoted renderings.
-
-        Raises:
-            ValueError: If the guard is ambiguous or forces a reverse import.
+            promoted renderings, or the typed guard or reverse-import failure.
 
         """
         guard_edits: list[tuple[int, int, Sequence[str]]] = []
@@ -366,16 +360,21 @@ class FlextInfraUtilitiesImportLawPlacement(
             if not isinstance(node, c.Infra.AST_IMPORT_TYPES):
                 continue
             selected = cls._import_law_runtime_selected_aliases(state, node)
-            if not selected:
+            if selected.failure:
+                return r[
+                    tuple[list[tuple[int, int, Sequence[str]]], set[int], list[str]]
+                ].from_failure(selected)
+            if not selected.value:
                 continue
             if guard.orelse:
-                msg = (
+                return r[
+                    tuple[list[tuple[int, int, Sequence[str]]], set[int], list[str]]
+                ].fail(
                     f"{state.scope.file_path}: runtime import promotion "
-                    "requires an unambiguous TYPE_CHECKING guard"
+                    "requires an unambiguous TYPE_CHECKING guard",
                 )
-                raise ValueError(msg)
-            kept = [alias for alias in node.names if alias not in selected]
-            promoted.append(cls._import_law_render(node, selected))
+            kept = [alias for alias in node.names if alias not in selected.value]
+            promoted.append(cls._import_law_render(node, selected.value))
             if not kept:
                 removed.add(id(node))
             indent = cls._import_law_line_indent(lines[node.lineno - 1])
@@ -384,21 +383,21 @@ class FlextInfraUtilitiesImportLawPlacement(
                 cls._import_law_end_line(node),
                 (f"{indent}{cls._import_law_render(node, kept)}",) if kept else (),
             ))
-        return guard_edits, removed, promoted
+        return r[tuple[list[tuple[int, int, Sequence[str]]], set[int], list[str]]].ok(
+            value=(guard_edits, removed, promoted)
+        )
 
     @classmethod
     def _import_law_runtime_selected_aliases(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
-    ) -> list[ast.alias]:
+    ) -> p.Result[list[ast.alias]]:
         """Select the aliases a runtime read requires, rejecting reverse edges.
 
         Returns:
-            The aliases whose binding is read at runtime.
-
-        Raises:
-            ValueError: If a runtime binding requires a forbidden reverse import.
+            The aliases whose binding is read at runtime, or the typed failure
+            of a forbidden reverse namespace import.
 
         """
         selected: list[ast.alias] = []
@@ -411,18 +410,17 @@ class FlextInfraUtilitiesImportLawPlacement(
                 positions = ", ".join(
                     f"{read.lineno}:{read.col_offset + 1}" for read in reads
                 )
-                msg = (
+                return r[list[ast.alias]].fail(
                     f"{state.scope.file_path}: runtime binding {bound} "
-                    f"requires a forbidden reverse namespace import at {positions}"
+                    f"requires a forbidden reverse namespace import at {positions}",
                 )
-                raise ValueError(msg)
             selected.append(alias)
-        return selected
+        return r[list[ast.alias]].ok(value=selected)
 
     @classmethod
     def _import_law_statement_edit(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
         lines: Sequence[str],
         placed: MutableMapping[c.Infra.ImportPlacement, list[str]],
@@ -457,7 +455,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_alias_placement(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
         alias: ast.alias,
         *,
@@ -491,7 +489,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_is_reverse(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
         alias: ast.alias,
     ) -> bool:
@@ -615,7 +613,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_insertion_edits(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         runtime_lines: Sequence[str],
         typing_lines: Sequence[str],
     ) -> Sequence[tuple[int, int, Sequence[str]]]:

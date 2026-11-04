@@ -12,7 +12,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from flext_infra import c, config, m, p, r, u
-from flext_infra.release import FlextInfraReleaseReleaseBuild
+from flext_infra.release._release import FlextInfraReleaseReleaseBuild
 
 
 class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
@@ -22,7 +22,7 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
     never precedes its dependency.
     """
 
-    def phase_publish(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
+    def phase_publish(self, ctx: p.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Publish receipt artifacts as a GitHub release and, if asked, the index.
 
         Returns:
@@ -54,12 +54,12 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
 
     def _verified_receipt(
         self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> p.Result[m.Infra.BuildReport]:
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+    ) -> p.Result[p.Infra.BuildReport]:
         """Load the receipt and prove every artifact still matches its digest.
 
         Returns:
-            The resulting ``p.Result[m.Infra.BuildReport]``.
+            The resulting ``p.Result[p.Infra.BuildReport]``.
 
         """
         path = (
@@ -68,14 +68,14 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
         )
         content = u.Cli.files_read_text(path)
         if content.failure:
-            return r[m.Infra.BuildReport].from_failure(content)
-        report: p.Result[m.Infra.BuildReport] = u.validate_value(
+            return r[p.Infra.BuildReport].from_failure(content)
+        report: p.Result[p.Infra.BuildReport] = u.validate_value(
             m.Infra.BuildReport,
             content.value,
             from_json=True,
         )
         if report.failure:
-            return r[m.Infra.BuildReport].fail_op(
+            return r[p.Infra.BuildReport].fail_op(
                 "validate release receipt",
                 report.error,
             )
@@ -84,7 +84,7 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
             or report.value.failures
             or report.value.version != ctx.version
         ):
-            return r[m.Infra.BuildReport].fail(
+            return r[p.Infra.BuildReport].fail(
                 f"release receipt is not publishable for {ctx.version}: {path}",
             )
         for artifact in (
@@ -93,20 +93,20 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
             try:
                 digest = u.Cli.sha256_file(Path(artifact.path))
             except OSError as exc:
-                return r[m.Infra.BuildReport].fail_op(
+                return r[p.Infra.BuildReport].fail_op(
                     f"read artifact {artifact.path}",
                     exc,
                 )
             if digest != artifact.sha256:
-                return r[m.Infra.BuildReport].fail(
+                return r[p.Infra.BuildReport].fail(
                     f"artifact digest differs from receipt: {artifact.path}",
                 )
         return self._verified_sources(ctx, report.value).map(lambda _: report.value)
 
     @staticmethod
     def _verified_sources(
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        report: m.Infra.BuildReport,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+        report: p.Infra.BuildReport,
     ) -> p.Result[bool]:
         """Bind source receipts to the tagged candidate, never mutable HEAD.
 
@@ -152,8 +152,8 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
     @classmethod
     def _github_release(
         cls,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        report: m.Infra.BuildReport,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+        report: p.Infra.BuildReport,
     ) -> p.Result[bool]:
         """Verify all existing assets before uploading only missing artifacts.
 
@@ -202,15 +202,15 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
 
     @staticmethod
     def _github_inventory(
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> p.Result[m.Infra.GithubReleaseInventory]:
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+    ) -> p.Result[p.Infra.GithubReleaseInventory]:
         """Read releases only after proving the remote candidate tag.
 
         Returns:
             The complete typed release inventory, or the first read failure.
 
         """
-        result_type = r[m.Infra.GithubReleaseInventory]
+        result_type = r[p.Infra.GithubReleaseInventory]
         root = ctx.repository_root
         tagged = u.Cli.capture(
             [c.Infra.GIT, "rev-parse", "--verify", f"refs/tags/{ctx.tag}^{{commit}}"],
@@ -257,9 +257,9 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
     @classmethod
     def _github_missing_assets(
         cls,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
         release_id: int,
-        artifacts: Sequence[m.Infra.BuildArtifact],
+        artifacts: Sequence[p.Infra.BuildArtifact],
     ) -> p.Result[Sequence[str]]:
         """Preflight the full upload set before the first remote mutation.
 
@@ -282,7 +282,7 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
         )
         if inventory.failure:
             return result_type.from_failure(inventory)
-        parsed: p.Result[m.Infra.GithubReleaseAssets] = u.validate_value(
+        parsed: p.Result[p.Infra.GithubReleaseAssets] = u.validate_value(
             m.Infra.GithubReleaseAssets,
             inventory.value,
             from_json=True,
@@ -306,9 +306,9 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
     @classmethod
     def _verified_remote_asset(
         cls,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        asset: m.Infra.GithubReleaseAsset,
-        artifact: m.Infra.BuildArtifact,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+        asset: p.Infra.GithubReleaseAsset,
+        artifact: p.Infra.BuildArtifact,
     ) -> p.Result[bool]:
         """Compare native digest or downloaded bytes to the attested digest.
 
@@ -332,7 +332,7 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
 
     @staticmethod
     def _downloaded_asset_digest(
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
         name: str,
     ) -> p.Result[str]:
         """Hash downloaded bytes when GitHub provides no native digest.
@@ -369,8 +369,8 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
 
     def _index_upload(
         self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        report: m.Infra.BuildReport,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+        report: p.Infra.BuildReport,
     ) -> p.Result[bool]:
         """Upload verified artifacts wave by wave through trusted publishing.
 

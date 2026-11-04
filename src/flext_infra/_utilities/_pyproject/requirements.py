@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, config, m, r, t
@@ -265,9 +266,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        declared_sources: Mapping[str, str],
-        candidate_sources: Mapping[str, str],
-        native_sources: Sequence[str] = (),
+        provenance: p.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Render internal requirements from their declared Git provenance.
 
@@ -275,11 +274,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
             The resulting ``p.Result[bool]``.
 
         """
-        provenance = m.Infra.RequirementsProvenance(
-            declared_sources=declared_sources,
-            candidate_sources=candidate_sources,
-            native_sources=native_sources,
-        )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
             project,
@@ -307,7 +301,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        provenance: m.Infra.RequirementsProvenance,
+        provenance: p.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Normalize PEP 508 strings in place around native inclusion entries.
 
@@ -347,7 +341,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         *,
-        provenance: m.Infra.RequirementsProvenance,
+        provenance: p.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries.
 
@@ -404,7 +398,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         requirement: str,
         *,
-        provenance: m.Infra.RequirementsProvenance,
+        provenance: p.Infra.RequirementsProvenance,
         generated: bool = False,
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
@@ -412,11 +406,14 @@ class FlextInfraUtilitiesPyprojectRequirements:
         Native sources and inline requirements retain their authored refs,
         extras and markers. Only explicit candidate declarations replace a
         source; generated bare floors use their declared provider provenance.
+        A distribution elected by the declared UV override keeps its extras
+        and marker and carries the override's direct reference.
 
         Returns:
             The resulting ``p.Result[str]``.
 
         """
+        requirement = cls._with_override_reference(requirement, provenance)
         dependency_name = cls._internal_dependency_name(
             requirement,
             declared_sources=provenance.declared_sources,
@@ -468,7 +465,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         dependency_name: str,
         *,
         parsed: tuple[str, str],
-        provenance: m.Infra.RequirementsProvenance,
+        provenance: p.Infra.RequirementsProvenance,
     ) -> p.Result[tuple[str, str]]:
         """Apply the declared-member and candidate-commit provenance overrides.
 
@@ -600,7 +597,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         if selected.failure:
             return r[tuple[str, str]].from_failure(selected)
         candidate_url, candidate_commit = selected.value
-        if not FlextInfraUtilitiesGitRequirementSource.ref_is_commit(candidate_commit):
+        if c.Infra.GIT_COMMIT_OID_RE.fullmatch(candidate_commit) is None:
             return r[tuple[str, str]].fail(
                 f"candidate dependency must pin a full Git commit: {dependency_name}",
             )
@@ -665,7 +662,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         groups: t.Cli.TomlTable,
         dev_name: str,
         *,
-        provenance: m.Infra.RequirementsProvenance,
+        provenance: p.Infra.RequirementsProvenance,
     ) -> p.Result[list[str | m.Infra.DependencyGroupInclude]]:
         """Normalize the live development group's entries in declared order.
 
@@ -693,7 +690,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         *,
         project_name: str,
         required_dev_dependencies: Sequence[str],
-        provenance: m.Infra.RequirementsProvenance,
+        provenance: p.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Sync development groups while applying explicit retirement policy.
 
@@ -771,6 +768,32 @@ class FlextInfraUtilitiesPyprojectRequirements:
         else:
             u.Cli.toml_remove_key_if_present(groups, codegen_name)
         return r[bool].ok(value=True)
+
+    @classmethod
+    def _with_override_reference(
+        cls, requirement: str, provenance: p.Infra.RequirementsProvenance
+    ) -> str:
+        """Carry the direct reference the declared UV override elects.
+
+        The override in codegen.yaml is the one source of that distribution.
+        ``[tool.uv] override-dependencies`` binds only this project's own
+        resolution, never its published metadata, so every requirement line of
+        the name carries the override's reference itself: an installer of this
+        distribution resolves the same fork, and a pin change moves every line
+        with the override. Extras and marker stay; a direct reference carries
+        no version specifier.
+
+        Returns:
+            The requirement bound to the override's reference, or it unchanged.
+
+        """
+        parsed = Requirement(requirement)
+        reference = provenance.override_references.get(canonicalize_name(parsed.name))
+        if reference is None:
+            return requirement
+        parsed.url = reference
+        parsed.specifier = SpecifierSet()
+        return str(parsed)
 
     @staticmethod
     def _declares_direct_source(requirement: str) -> bool:

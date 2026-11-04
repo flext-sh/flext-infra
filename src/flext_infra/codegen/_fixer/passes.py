@@ -9,8 +9,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from flext_infra import m, u
-from flext_infra.codegen import FlextInfraCodegenFixerResults, FlextInfraCodegenLazyInit
+from flext_infra import m, p, u
+from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra.codegen._fixer import FlextInfraCodegenFixerResults
 
 
 class FlextInfraCodegenFixerPasses(FlextInfraCodegenFixerResults):
@@ -18,7 +19,7 @@ class FlextInfraCodegenFixerPasses(FlextInfraCodegenFixerResults):
 
     @staticmethod
     def _run_namespace_enforcement(
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
         project_path: Path,
         enforce: Callable[[str], m.Infra.WorkspaceEnforcementReport],
     ) -> None:
@@ -48,7 +49,7 @@ class FlextInfraCodegenFixerPasses(FlextInfraCodegenFixerResults):
         )
 
     @staticmethod
-    def _run_import_cycle_proof(ctx: m.Infra.FixContext, project_path: Path) -> None:
+    def _run_import_cycle_proof(ctx: p.Infra.FixContext, project_path: Path) -> None:
         """Prove the post-fix tree is free of runtime import cycles.
 
         The existing cyclic-import detector (the codemod project facts engine:
@@ -80,7 +81,7 @@ class FlextInfraCodegenFixerPasses(FlextInfraCodegenFixerResults):
         )
 
     @staticmethod
-    def _run_lazy_init_preflight(ctx: m.Infra.FixContext, project_path: Path) -> None:
+    def _run_lazy_init_preflight(ctx: p.Infra.FixContext, project_path: Path) -> None:
         """Preflight lazy-init plans and leave publication to conform."""
         plans = (
             FlextInfraCodegenLazyInit(repository_root=project_path)

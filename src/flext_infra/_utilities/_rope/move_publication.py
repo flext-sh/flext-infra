@@ -1,4 +1,4 @@
-"""Static publication references participating in a native module move.
+"""Native publication-token changes participating in a module move.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,230 +8,198 @@ from __future__ import annotations
 
 import importlib.util
 from collections.abc import Mapping, Set as AbstractSet
-from types import MappingProxyType
-from typing import Final, override
 
-import libcst as cst
-from libcst.helpers import get_full_name_for_node
+from flext_cli import u
+
+from flext_infra import c, m, p, r
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeRuntimeRefactors,
+    FlextInfraUtilitiesRopeRuntimeTypes,
+)
 
 
 class FlextInfraUtilitiesRopeMovePublication:
-    """Keep lazy publication module references inside the source-move transaction."""
+    """Keep lazy publication providers inside the native source transaction."""
 
     @classmethod
     def rewrite_module_move_publications(
         cls,
-        source: str,
+        module: p.Infra.RopeSourceModule,
         *,
         package: str,
         moves: Mapping[str, str],
         exports: Mapping[str, AbstractSet[str]] | None = None,
-    ) -> str:
-        """Carry exact native module relocations into existing lazy publication data.
+    ) -> p.Result[str]:
+        """Retarget proven installer literals without rebuilding their module.
 
-        Native Rope owns executable symbol references. This CST pass changes only
-        exact import providers and literal installer module targets, preserving
-        import aliases, export attributes and all unrelated string payloads.
-
-        When ``exports`` names the relocated module's published keys, a lazy
-        entry whose key the destination does not publish keeps its original
-        provider: the relocation must never route a publication at a module
-        that does not export it, because the family facade's canonical copy
-        carries only its own family's names.
+        Rope move owns executable imports. Native binding metadata selects only
+        the canonical installer and optional native MappingProxyType wrapper.
+        Literal changes
+        preserve keys, attributes, comments and all unrelated source bytes.
 
         Returns:
-            Source with unchanged publication keys and relocated module targets.
+            Candidate source or the original typed publication refusal.
 
         """
+        edits: dict[tuple[int, int], m.Infra.SourceRewrite] = {}
+        index = module.get_source_binding_index()
+        imported = cls._import_provider_edits(
+            index, package=package, moves=moves, edits=edits
+        )
+        if imported.failure:
+            return r[str].from_failure(imported)
+        for mapping in index.string_mapping_arguments(
+            "install_lazy_exports", c.Infra.LAZY_EXPORT_MAPPING_ARGUMENT_INDEX
+        ):
+            if not cls._canonical_installer(mapping):
+                continue
+            literals = cls._mapping_edits(
+                mapping, package=package, moves=moves, exports=exports, edits=edits
+            )
+            if literals.failure:
+                return r[str].from_failure(literals)
+        if not edits:
+            return r[str].ok(module.source_code)
+        resource = module.get_resource()
+        if resource is None:
+            return r[str].fail("Lazy publication move requires a source resource")
+        changed = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource, module.source_code, tuple(edits.values())
+        )
+        return r[str].ok(changed.new_contents)
+
+    @staticmethod
+    def _import_provider_edits(
+        index: p.Infra.RopeSourceBindingIndex,
+        *,
+        package: str,
+        moves: Mapping[str, str],
+        edits: dict[tuple[int, int], m.Infra.SourceRewrite],
+    ) -> p.Result[bool]:
+        """Record executable import providers relocated by the module move.
+
+        Returns:
+            Successful admission or the package-escape refusal.
+
+        """
+        for declaration in index.import_layouts():
+            if declaration.module_region is None:
+                continue
+            provider = "." * declaration.level + (declaration.module_name or "")
+            if declaration.level > len(package.split(".")):
+                return r[bool].fail("Module import provider escapes its package")
+            absolute = (
+                importlib.util.resolve_name(provider, package)
+                if declaration.level
+                else provider
+            )
+            relocated = moves.get(absolute)
+            if relocated is not None:
+                start, end = declaration.module_region
+                edits[start, end] = m.Infra.SourceRewrite(
+                    start=start, end=end, text=relocated
+                )
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def _canonical_installer(mapping: p.Infra.RopeSourceStringMapping) -> bool:
+        """Return whether the mapping feeds the canonical lazy-export installer.
+
+        Returns:
+            True only for the bootstrap module's absolute installer binding.
+
+        """
+        installer = mapping.callee_binding
         return (
-            cst.parse_module(source).visit(cls._Relocate(package, moves, exports)).code
+            FlextInfraUtilitiesRopeRuntimeTypes.imported_name(installer)
+            and installer.imported_name == "install_lazy_exports"
+            and installer.imported_module.module_name == c.Infra.LAZY_BOOTSTRAP_MODULE
+            and installer.imported_module.level == 0
         )
 
-    class _Publication:
-        """Decode the installer's literal provider contract for both CST passes."""
+    @staticmethod
+    def _mapping_entries(
+        mapping: p.Infra.RopeSourceStringMapping,
+    ) -> p.Result[tuple[tuple[str, tuple[str, ...], tuple[tuple[int, int], ...]], ...]]:
+        """Read literals, optionally enclosed by the native MappingProxyType.
 
-        @staticmethod
-        def _mapping(value: cst.BaseExpression) -> cst.Dict | None:
-            match value:
-                case cst.Call(
-                    func=cst.Name(value="MappingProxyType"),
-                    args=[cst.Arg(value=cst.Dict() as mapping)],
-                ):
-                    return mapping
-                case _:
-                    return None
+        Returns:
+            The literal mapping entries, or the typed admission refusal.
 
-        @staticmethod
-        def _target(entry: cst.BaseDictElement) -> tuple[cst.SimpleString, str]:
-            """Read the installer's provider or explicit provider/attribute pair.
-
-            Returns:
-                The original provider token and exact published attribute.
-
-            Raises:
-                TypeError: A key, provider or attribute has the wrong type.
-                ValueError: A tuple is not the installer's supported pair shape.
-
-            """
-            if not isinstance(entry, cst.DictElement) or not isinstance(
-                entry.key, cst.SimpleString
-            ):
-                message = "Lazy publication move requires literal export keys"
-                raise TypeError(message)
-            match entry.value:
-                case cst.Tuple(
-                    elements=[cst.Element(value=module), cst.Element(value=attr)]
-                ):
-                    pass
-                case cst.Tuple():
-                    message = "Lazy publication move requires a provider/attribute pair"
-                    raise ValueError(message)
-                case module:
-                    attr = entry.key
-            if not isinstance(module, cst.SimpleString) or not isinstance(
-                attr, cst.SimpleString
-            ):
-                message = "Lazy publication move requires literal targets"
-                raise TypeError(message)
-            if not isinstance(module.evaluated_value, str) or not isinstance(
-                attr.evaluated_value, str
-            ):
-                message = "Lazy publication move requires text targets"
-                raise TypeError(message)
-            return module, attr.evaluated_value
-
-        @staticmethod
-        def _absolute(module: cst.SimpleString, package: str) -> str:
-            """Resolve a text token without shortening its qualified root.
-
-            Returns:
-                The exact absolute provider name.
-
-            Raises:
-                TypeError: The literal is bytes rather than an installer target.
-
-            """
-            spelling = module.evaluated_value
-            if not isinstance(spelling, str):
-                message = "Lazy publication move requires text targets"
-                raise TypeError(message)
-            return (
-                importlib.util.resolve_name(spelling, package)
-                if spelling.startswith(".")
-                else spelling
+        """
+        result_type = r[
+            tuple[tuple[str, tuple[str, ...], tuple[tuple[int, int], ...]], ...]
+        ]
+        entries = mapping.entries
+        if entries is None:
+            return result_type.fail("Lazy publication move requires a literal mapping")
+        wrappers = mapping.wrapper_bindings
+        if not wrappers:
+            return result_type.ok(entries)
+        if len(wrappers) != 1:
+            return result_type.fail("Lazy publication move requires one native wrapper")
+        wrapper = wrappers[0]
+        if not (
+            FlextInfraUtilitiesRopeRuntimeTypes.imported_name(wrapper)
+            and wrapper.imported_name == "MappingProxyType"
+            and wrapper.imported_module.module_name == "types"
+            and wrapper.imported_module.level == 0
+        ):
+            return result_type.fail(
+                "Lazy publication move requires the native MappingProxyType"
             )
+        return result_type.ok(entries)
 
-    class _Relocate(_Publication, cst.CSTTransformer):
-        def __init__(
-            self,
-            package: str,
-            moves: Mapping[str, str],
-            exports: Mapping[str, AbstractSet[str]] | None,
-        ) -> None:
-            self.package: Final = package
-            self.moves: Final = MappingProxyType(dict(moves))
-            self.exports: Final = (
-                MappingProxyType({}) if exports is None else MappingProxyType(exports)
-            )
+    @classmethod
+    def _mapping_edits(
+        cls,
+        mapping: p.Infra.RopeSourceStringMapping,
+        *,
+        package: str,
+        moves: Mapping[str, str],
+        exports: Mapping[str, AbstractSet[str]] | None,
+        edits: dict[tuple[int, int], m.Infra.SourceRewrite],
+    ) -> p.Result[bool]:
+        """Record relocated provider literals of one admitted installer mapping.
 
-        @override
-        def leave_ImportFrom(
-            self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
-        ) -> cst.ImportFrom:
-            """Keep aliases while relocating an exact imported module provider.
+        Returns:
+            Successful admission or the original typed publication refusal.
 
-            Returns:
-                The original import or its relocated provider.
-
-            Raises:
-                ValueError: The provider is not a named module expression.
-
-            """
-            if original_node.module is None:
-                return updated_node
-            module = get_full_name_for_node(original_node.module)
-            if module is None:
-                message = "Module move requires a named import provider"
-                raise ValueError(message)
+        """
+        entries = cls._mapping_entries(mapping)
+        if entries.failure:
+            return r[bool].from_failure(entries)
+        for key, values, regions in entries.value:
+            if len(values) not in {1, 2}:
+                return r[bool].fail(
+                    "Lazy publication move requires a provider/attribute pair"
+                )
+            provider = values[0]
+            if provider.startswith(".") and len(provider) - len(
+                provider.lstrip(".")
+            ) > len(package.split(".")):
+                return r[bool].fail("Lazy publication provider escapes its package")
             absolute = (
-                importlib.util.resolve_name(
-                    "." * len(original_node.relative) + module, self.package
-                )
-                if original_node.relative
-                else module
+                importlib.util.resolve_name(provider, package)
+                if provider.startswith(".")
+                else provider
             )
-            relocated = self.moves.get(absolute)
-            return (
-                updated_node
-                if relocated is None
-                else updated_node.with_changes(
-                    module=cst.parse_expression(relocated), relative=()
-                )
-            )
-
-        @override
-        def leave_Call(
-            self, original_node: cst.Call, updated_node: cst.Call
-        ) -> cst.Call:
-            if not isinstance(original_node.func, cst.Name) or (
-                original_node.func.value != "install_lazy_exports"
-            ):
-                return updated_node
-            return updated_node.with_changes(
-                args=tuple(self._argument(argument) for argument in updated_node.args)
-            )
-
-        def _argument(self, argument: cst.Arg) -> cst.Arg:
-            value = argument.value
-            mapping = self._mapping(value)
-            if mapping is None or not isinstance(value, cst.Call):
-                return argument
-            return argument.with_changes(
-                value=value.with_changes(
-                    args=(
-                        value.args[0].with_changes(
-                            value=mapping.with_changes(
-                                elements=tuple(
-                                    self._entry(entry) for entry in mapping.elements
-                                )
-                            )
-                        ),
-                    )
-                )
-            )
-
-        def _entry(self, entry: cst.BaseDictElement) -> cst.BaseDictElement:
-            module, _attribute = self._target(entry)
-            absolute = self._absolute(module, self.package)
-            relocated = self.moves.get(absolute)
-            if relocated is None or not isinstance(entry, cst.DictElement):
-                return entry
-            key = entry.key
-            if not isinstance(key, cst.SimpleString):
-                return entry
-            if self.exports and (
-                key.evaluated_value not in self.exports.get(relocated, ())
-            ):
-                # The destination module does not publish this key: keep the
-                # original provider, which still physically exports it inside
-                # this transaction; routing it at the canonical copy would
-                # resolve a publication to a module that lacks the name.
-                return entry
+            relocated = moves.get(absolute)
+            if relocated is None or (exports and key not in exports.get(relocated, ())):
+                continue
             replacement = (
-                "." + relocated[len(self.package) + 1 :]
-                if relocated.startswith(f"{self.package}.")
+                "." + relocated[len(package) + 1 :]
+                if relocated.startswith(f"{package}.")
                 else relocated
             )
-            rewritten = module.with_changes(value=repr(replacement))
-            target = entry.value
-            if isinstance(target, cst.Tuple):
-                first, *remaining = target.elements
-                target = target.with_changes(
-                    elements=(first.with_changes(value=rewritten), *remaining)
-                )
-            else:
-                target = rewritten
-            return entry.with_changes(value=target)
+            literal = u.Cli.json_dumps(replacement)
+            if literal.failure:
+                return r[bool].from_failure(literal)
+            start, end = regions[0]
+            edits[start, end] = m.Infra.SourceRewrite(
+                start=start, end=end, text=literal.value
+            )
+        return r[bool].ok(value=True)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeMovePublication"]

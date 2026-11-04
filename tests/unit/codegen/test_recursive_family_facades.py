@@ -11,8 +11,9 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
-from tests import c, m, p, tm, u
+from tests import c, m, p, r, tm, u
 
 
 class TestsFlextInfraRecursiveFamilyFacades:
@@ -103,26 +104,41 @@ class TestsFlextInfraRecursiveFamilyFacades:
         return f"{header}\nclass {owner}:\n{members[family]}\n__all__ = [{owner!r}]\n"
 
     @staticmethod
+    def _project(
+        workspace: p.Infra.RopeWorkspaceDsl,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
+        selection: tuple[Path, c.Infra.FacadeFamily] | None,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
+        """Close facade cohorts through the session's public projection DSL.
+
+        Returns:
+            The declared candidate advanced by every projected effect; the
+            first projection failure propagates with its native cause.
+
+        """
+        outcome = workspace.facade_projection(
+            declared_files=declared_files,
+            selection=selection,
+        )
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(
+            u.Infra.codegen_compose_file_plans(
+                (*declared_files, *outcome.files), ordered=True
+            )
+        )
+
+    @classmethod
     def _plans(
+        cls,
         root: Path,
         selection: tuple[Path, c.Infra.FacadeFamily] | None = None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
-            initial = FlextInfraCodegenLazyInit.plan_candidate(
-                root, declared_files=(), snapshot=snapshot, selection=selection
-            )
-            if initial.failure:
-                return initial
-            return u.Infra.plan_component_facades(
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
+        with infra.rope_workspace(root) as workspace:
+            return FlextInfraCodegenLazyInit.plan_candidate(
                 root,
-                declared_files=initial.value,
-                snapshot=snapshot,
-                planners=(
-                    FlextInfraCodegenLazyInit.plan_candidate,
-                    u.Infra.facade_source_project,
-                ),
+                declared_files=(),
+                snapshot=workspace.snapshot,
                 selection=selection,
-            )
+            ).flat_map(lambda initial: cls._project(workspace, initial, selection))
 
     @classmethod
     def test_uncomposed_type_publications_do_not_elect_a_holder(
@@ -144,7 +160,16 @@ class TestsFlextInfraRecursiveFamilyFacades:
             f"__all__ = [{name!r}]\n",
         )
         with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
-            tm.that(u.Infra.family_subfacade_owners(snapshot.engine, directory), eq=[])
+            tm.that(
+                u.Infra.facade_domain_owner_observation(
+                    snapshot.engine,
+                    directory,
+                    u.Infra.facade_component_declarations(
+                        snapshot.engine, directory.parent
+                    ),
+                ),
+                eq=[],
+            )
         tm.fail(sentinel.exists())
 
     @classmethod
@@ -237,9 +262,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
                 member.target, ast.Name
             ):
                 names.add(member.target.id)
-            elif isinstance(member, ast.TypeAlias) and isinstance(
-                member.name, ast.Name
-            ):
+            elif isinstance(member, ast.TypeAlias):
                 names.add(member.name.id)
         return names
 
@@ -251,13 +274,14 @@ class TestsFlextInfraRecursiveFamilyFacades:
         root, package, sentinel = cls._workspace(tmp_path)
         name, _supplier = cls._write_selected_composition(root, package)
         destination = package / "utilities.py"
-        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+        selection = (destination, c.Infra.FacadeFamily.U)
+        with infra.rope_workspace(root) as workspace:
             initial = tm.ok(
                 FlextInfraCodegenLazyInit.plan_candidate(
                     root,
                     declared_files=(),
-                    snapshot=snapshot,
-                    selection=(destination, c.Infra.FacadeFamily.U),
+                    snapshot=workspace.snapshot,
+                    selection=selection,
                 )
             )
             with u.Infra.facade_source_project(root, declared_files=initial) as binding:
@@ -276,30 +300,8 @@ class TestsFlextInfraRecursiveFamilyFacades:
                         for base in namespace.get_superclasses()
                     )
                 )
-            planned = tm.ok(
-                u.Infra.plan_component_facades(
-                    root,
-                    declared_files=initial,
-                    snapshot=snapshot,
-                    planners=(
-                        FlextInfraCodegenLazyInit.plan_candidate,
-                        u.Infra.facade_source_project,
-                    ),
-                    selection=(destination, c.Infra.FacadeFamily.U),
-                )
-            )
-            repeated = tm.ok(
-                u.Infra.plan_component_facades(
-                    root,
-                    declared_files=planned,
-                    snapshot=snapshot,
-                    planners=(
-                        FlextInfraCodegenLazyInit.plan_candidate,
-                        u.Infra.facade_source_project,
-                    ),
-                    selection=(destination, c.Infra.FacadeFamily.U),
-                )
-            )
+            planned = tm.ok(cls._project(workspace, initial, selection))
+            repeated = tm.ok(cls._project(workspace, planned, selection))
             tm.that(
                 {plan.path: (plan.before, plan.desired_content) for plan in repeated},
                 eq={plan.path: (plan.before, plan.desired_content) for plan in planned},
@@ -488,7 +490,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
         tm.fail(sentinel.exists())
         tm.that(
             u.Tests.run_lazy_init_probe(
-                f"from {package.name} import c, t, p, m, u\n"
+                f"from {package.name} import c, p, t, p, m, u\n"
                 "print(c.Domain.LEFT + c.Domain.RIGHT)\n"
                 "print(t.Domain.Left.__value__ is str)\n"
                 "class Left(p.Domain.Left):\n"

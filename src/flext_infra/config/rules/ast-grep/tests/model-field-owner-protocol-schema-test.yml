@@ -1,0 +1,22 @@
+id: model-field-owner-protocol-schema
+valid:
+  - |
+    class FlextInfraModelsCheck:
+        class Plan(FlextInfraModelsBase.FrozenModel):
+            name: FlextInfraModelsBase.NonEmptyText
+            nested: FlextInfraModelsCheck.Outer.Inner
+            kinds: ClassVar[FlextInfraModelsCheck.Kind]
+            factory: type[FlextInfraModelsCheck.Item]
+  - |
+    class FlextInfraModelsCheck:
+        class Plan(FlextInfraModelsBase.FrozenModel):
+            item: Annotated[p.Infra.Item, t.schema_for_model(FlextInfraModelsCheck.Item)]
+invalid:
+  - |
+    class FlextInfraModelsCheck:
+        class Plan(FlextInfraModelsBase.FrozenModel):
+            item: FlextInfraModelsCheck.Issue
+  - |
+    class FlextInfraModelsCheck:
+        class Plan(FlextInfraModelsBase.FrozenModel):
+            items: tuple[FlextInfraModelsCensus.Object, ...]

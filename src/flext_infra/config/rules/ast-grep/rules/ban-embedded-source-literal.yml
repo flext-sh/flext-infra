@@ -11,9 +11,15 @@
 # the line, or followed by `,` or `as`), `from X import`, `def`, `async def`,
 # `class` or `print(`. Assignment-only text is not matched: it cannot be told
 # apart from TOML, INI or env data; prose such as "import failed: ..." is not
-# a statement. An implicit concatenation whose fragments carry three or more
-# line breaks is a file body assembled line by line and is matched in any
-# language (this absorbs the former ban-embedded-code-string shape).
+# a statement. The premise is Python source, in every literal shape: an
+# implicit concatenation is matched only when its fragments carry a Python
+# statement, never by its line-break count, so key=value report and log text
+# assembled line by line stays outside (operator ruling 2026-11-01). A
+# concatenation assembles code fragment by fragment, often with `{...}`
+# placeholders for names and indentation, so its Python statements also
+# include `def {name}(`, `class {name}`, `return`/`raise`/`assert`/`yield`,
+# a compound-statement header (`if x:`, `for a in b:`, `with x:`, `try:`,
+# `if (`) and a decorator line.
 # Docstrings and bare string statements are documentation, not embedded
 # source. Detection only: the owning template or fixture file is chosen per
 # site, so no fix is offered.
@@ -30,17 +36,26 @@ utils:
     all:
       - regex: "\\\\n|\\n"
       - regex: '(?m)(?:^|\\n|["''])[ \t]*(?:from [A-Za-z_][\w.]* import |import [A-Za-z_][\w.]*[ \t]*(?:,|as\b|\\n|$|["''])|(?:async )?def [A-Za-z_]\w*\(|class [A-Za-z_]\w*[(:]|print\()'
+  # Python statements of code assembled fragment by fragment: a fragment
+  # opens (optionally after a `{...}` indentation placeholder) with a
+  # definition or import whose names may hold placeholders (`def {name}(`,
+  # `class Published{x}:`, `from .{leaf} import`, `import {package}`), a
+  # dunder assignment (`__all__ = `), a simple statement keyword ending its
+  # line, a compound-statement header ending in `:` at the line end, opening
+  # `(` at the line end or carrying a one-line body, or a decorator line. Prose (`class stem
+  # for ...`, `with retained trivia in X:` closing a fragment), JSON values
+  # (`"assert used"`) and key=value text (`return-code=0`) carry none.
+  embedded-python-fragment:
+    all:
+      - regex: "\\\\n|\\n"
+      - regex: '(?m)(?:^|\\n|["''])[ \t]*(?:\{[^{}\n"'']*\})?[ \t]*(?:(?:async )?def (?:\w|\{[^{}\n"'']*\})+\(|class (?:\w|\{[^{}\n"'']*\})+[ \t]*[(:]|from (?:\.|(?:\w|\{[^{}\n"'']*\}))+ import |import (?:\w|\{[^{}\n"'']*\})(?:[\w.]|\{[^{}\n"'']*\})*[ \t]*(?:,|as\b|\\n|["'']|$)|__[a-z]+__[ \t]*(?::[^=\n"'']*)?=|(?:return|raise|assert|yield)(?:[ \t][^\n"'']*)?\\n|(?:if|elif|while|for|with|except) [^\n"'']*:[ \t]*\\n|(?:try|else|finally):[ \t]*\\n|(?:if|elif|else|while|for|with|try|except|finally)\b[^\n"'']*:[ \t]*(?:pass|return|raise|import|from|continue|break)\b|(?:if|elif|while) \([ \t]*\\n|@[A-Za-z_][\w.]*(?:\(|\\n))'
 rule:
   any:
     - all:
         - kind: concatenated_string
-        - matches: embedded-source-text
-    # A file body assembled one line per literal (three or more line breaks
-    # across the fragments) is embedded source whatever its language; formatter
-    # splits of one message carry no line breaks and stay outside.
-    - all:
-        - kind: concatenated_string
-        - regex: '(?s)(\\n["''].*){3,}'
+        - any:
+            - matches: embedded-source-text
+            - matches: embedded-python-fragment
     - all:
         - kind: string
         - not:

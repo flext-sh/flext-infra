@@ -46,8 +46,8 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
     @classmethod
     def git_status(
         cls,
-        request: m.Infra.GitStatusRequest,
-    ) -> p.Result[m.Infra.GitStatusReport]:
+        request: p.Infra.GitStatusRequest,
+    ) -> p.Result[p.Infra.GitStatusReport]:
         """Capture porcelain status for one repository.
 
         The report carries the lifecycle porcelain (registered nested worktrees
@@ -55,7 +55,7 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
         the same lines; administrative worktrees are never repository change.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitStatusReport]``.
+            The resulting ``p.Result[p.Infra.GitStatusReport]``.
 
         """
         repo_path = request.repo_root.expanduser().resolve()
@@ -70,13 +70,13 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
                     repo.git.status("--porcelain", "--untracked-files=all"),
                 )
         except GitCommandError as exc:
-            return r[m.Infra.GitStatusReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitStatusReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitStatusReport].fail(
+            return r[p.Infra.GitStatusReport].fail(
                 f"git status failed: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitStatusReport].ok(
+        return r[p.Infra.GitStatusReport].ok(
             m.Infra.GitStatusReport(
                 repo_root=repo_path,
                 porcelain=lifecycle,
@@ -87,23 +87,23 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
     @classmethod
     def git_repository_head(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitOidReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Capture the current repository HEAD as a typed oid report.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitOidReport]``.
+            The resulting ``p.Result[p.Infra.GitOidReport]``.
 
         """
         oid = cls._git_head_oid(request.repo_root)
         if oid.failure:
-            return r[m.Infra.GitOidReport].from_failure(oid)
-        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid.value))
+            return r[p.Infra.GitOidReport].from_failure(oid)
+        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid.value))
 
     @classmethod
     def git_changed_paths(
         cls,
-        request: m.Infra.GitRepoRequest,
+        request: p.Infra.GitRepoRequest,
     ) -> p.Result[Sequence[Path]]:
         """Return literal staged, unstaged, and untracked paths without resolving links.
 
@@ -154,8 +154,8 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
     @classmethod
     def git_has_staged_changes(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Return whether the index carries changes staged for the next commit.
 
         ``git diff --cached --quiet`` exits 0 with nothing staged and 1 with a
@@ -177,17 +177,17 @@ class FlextInfraUtilitiesGitWorktreeStatus(FlextInfraUtilitiesGitRepo):
                 with_exceptions=False,
             )
         except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to inspect staged state: {exc}",
                 exception=exc,
             )
         if status == 0:
-            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+            return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         if status == 1:
-            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
-        return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].fail(
             f"git diff --cached --quiet exited {status}: {repo_path}",
         )
 

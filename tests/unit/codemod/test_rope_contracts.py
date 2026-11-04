@@ -6,22 +6,454 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib.util
 import runpy
+import shutil
+import sys
 from contextlib import redirect_stderr
 from io import StringIO
+from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import get_protocol_members
 
 import pytest
 
+from flext_infra import transformers
 from tests import c, m, p, t, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraRopeContractCatalog:
     """Validate rule ownership, catalogue composition and public export retirement."""
+
+    @staticmethod
+    def test_native_source_module_matches_its_runtime_protocol(tmp_path: Path) -> None:
+        """The real Rope module satisfies the provider port at runtime."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "native.py"
+        path.write_text("value = 1\n", encoding=c.DEFAULT_ENCODING)
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+        missing = tuple(
+            name
+            for name in get_protocol_members(p.Infra.RopeSourceModule)
+            if not hasattr(module, name)
+        )
+        tm.that(missing, empty=True)
+        tm.that(isinstance(module, p.Infra.RopeSourceModule), eq=True)
+
+    @staticmethod
+    def test_provider_module_enters_source_binding_collector(tmp_path: Path) -> None:
+        """Inventory a real flext-core provider through the typed source port.
+
+        Raises:
+            RuntimeError: If flext-core source package is unavailable.
+
+        """
+        provider_spec = importlib.util.find_spec("flext_core")
+        if provider_spec is None or provider_spec.submodule_search_locations is None:
+            msg = "flext-core source package is unavailable"
+            raise RuntimeError(msg)
+        source_package = Path(next(iter(provider_spec.submodule_search_locations)))
+        root = tmp_path / "provider-project"
+        source_root = root / "src"
+        source_root.mkdir(parents=True)
+        shutil.copytree(
+            source_package.resolve(),
+            source_root / "flext_core",
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
+        with u.Infra.facade_source_project(root, project_roots=(source_root,)) as (
+            project,
+            _sources,
+        ):
+            resource = tm.not_none(project.get_resource("src/flext_core/handlers.py"))
+            provider = u.Infra.require_source_module(project.get_pymodule(resource))
+            tm.that(isinstance(provider, p.Infra.RopeSourceModule), eq=True)
+            spec = m.Infra.SourceBindingCollectorSpec(
+                module="flext_core.handlers",
+                provider=provider,
+                package="flext_core",
+                source_owned=project.source_owned(Path(resource.real_path)),
+                definitions={},
+                lexical={},
+            )
+            resolver = u.Infra.source_member_resolver(project, sources={})
+            binding = resolver(
+                m.Infra.SourceClassReference(
+                    target="flext_core.handlers",
+                    attributes=("FlextHandlers",),
+                )
+            )
+        tm.that(spec.provider is provider, eq=True)
+        tm.that(
+            binding.get_object()
+            is provider.get_attribute("FlextHandlers").get_object(),
+            eq=True,
+        )
+
+    @staticmethod
+    def test_source_export_reader_uses_binding_index_contract(tmp_path: Path) -> None:
+        """Read explicit exports through the installed Rope binding-index API."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "exports.py"
+        path.write_text("__all__ = ('First', 'Second')\n", encoding=c.DEFAULT_ENCODING)
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            tm.that(
+                u.Infra.module_assignment_strings_source(module, c.Infra.DUNDER_ALL),
+                eq=("First", "Second"),
+            )
+
+    @staticmethod
+    def test_pydantic_field_facade_transfer_preserves_runtime_and_refuses_conflicts(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Preview the Core Field transfer with native identity and no source writes."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from typing import Annotated\n"
+            "from flext_core import m\n"
+            "from flext_infra import u\n"
+            "# Retained model-field metadata.\n"
+            "class Payload(m.BaseModel):\n"
+            "    value: Annotated[str, u.Field(min_length=2, description='Retained')]\n"
+            "evidence = (Payload(value='ok').model_dump_json(), "
+            "Payload.model_json_schema())\n"
+        )
+        rule = m.Infra.RopeContractRule(
+            id="consumer-core-pydantic-field-facade",
+            pattern="${field}(${arguments})",
+            goal="u.Field(${arguments})",
+            arguments={
+                "field": "name=flext_core._models.pydantic.FlextModelsPydantic.Field"
+            },
+            imports={"u": "from flext_core import u"},
+            bindings={
+                "u.Field": "flext_core._models.pydantic.FlextModelsPydantic.Field"
+            },
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, (rule,)))
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(updated, contains="from flext_core import u")
+        tm.fail("from flext_infra import u" in updated)
+        tm.that(updated, contains="# Retained model-field metadata.")
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, (rule,))),
+            empty=True,
+        )
+        conflicting = source.replace(
+            "class Payload(m.BaseModel):",
+            "other = u.empty\nclass Payload(m.BaseModel):",
+        )
+        with pytest.raises(
+            ValueError,
+            match=rf"{rule.id}: destination u\.Field is shadowed",
+        ):
+            u.Infra.plan_contract_rules(workspace, {path: conflicting}, (rule,))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
+
+    @staticmethod
+    def test_contract_scope_selects_exact_distribution_module_and_reaches_fixed_point(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """Change the declared Pydantic module and leave its sibling untouched."""
+        workspace, consumer = rope_contract_consumer
+        scoped = consumer.with_name("config_models.py")
+        sibling = consumer.with_name("other_models.py")
+        source = "from pydantic import TypeAdapter\nvalue = TypeAdapter(str)\n"
+        scoped.write_text(source, encoding=c.DEFAULT_ENCODING)
+        sibling.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rule = m.Infra.RopeContractRule(
+            id="scoped-pydantic-adapter",
+            pattern="${adapter}(${contract})",
+            goal="u.type_adapter(t.TypeForm(${contract}))",
+            arguments={"adapter": "name=pydantic.TypeAdapter"},
+            imports={"u": "from flext_core import u", "t": "from flext_core import t"},
+            bindings={
+                "u.type_adapter": "pydantic.TypeAdapter",
+                "t.TypeForm": "typing_extensions.TypeForm",
+            },
+            scope=m.Infra.RopeContractScope(
+                targets=(
+                    m.Infra.RopeContractScopeTarget(
+                        distribution="flext-test-project",
+                        module="flext_test_project.config_models",
+                    ),
+                )
+            ),
+        )
+        edits = tm.ok(
+            u.Infra.plan_contract_rules(
+                workspace, {scoped: source, sibling: source}, (rule,)
+            )
+        )
+        tm.that(len(edits), eq=1)
+        tm.that(edits[0].file_path, eq=scoped)
+        tm.that(edits[0].updated_source, contains="u.type_adapter")
+        tm.that(sibling.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        tm.that(
+            tm.ok(
+                u.Infra.plan_contract_rules(
+                    workspace,
+                    {scoped: edits[0].updated_source, sibling: source},
+                    (rule,),
+                )
+            ),
+            empty=True,
+        )
+
+    @staticmethod
+    def test_contract_scope_refuses_noncanonical_or_duplicate_targets() -> None:
+        """Scope data is validated before it can widen a Rope planning pass."""
+        with pytest.raises(m.ValidationError, match="canonical PEP 503"):
+            m.Infra.RopeContractScopeTarget(
+                distribution="Flext_Grpc", module="flext_grpc.config_models"
+            )
+        target = m.Infra.RopeContractScopeTarget(
+            distribution="flext-grpc", module="flext_grpc.config_models"
+        )
+        with pytest.raises(m.ValidationError, match="targets must be unique"):
+            m.Infra.RopeContractScope(targets=(target, target))
+
+    @staticmethod
+    @pytest.mark.parametrize("operation", ["lower", "upper"])
+    def test_semantic_dry_run_validates_the_real_staged_consumer_without_effects(
+        tmp_path: Path, operation: str
+    ) -> None:
+        """Explicit preview validation accepts or rejects actual consumer execution."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        source = "def normalize(value: str) -> str: return value.strip()\n"
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+        candidate = source.replace("value.strip()", f"value.strip().{operation}()")
+        observations: list[Path] = []
+
+        def validate(view_root: Path) -> p.Result[bool]:
+            """Execute the staged module through the real interpreter.
+
+            Returns:
+                The native process verdict with its original execution failure.
+
+            """
+            observations.append(view_root)
+            return u.Cli.run(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        f"from {package.name}.consumer import normalize; "
+                        "assert normalize(' AbC ') == 'abc'"
+                    ),
+                ),
+                cwd=view_root,
+                options=m.Cli.ProcessOptions(
+                    env={"PYTHONPATH": str(view_root / c.Infra.DEFAULT_SRC_DIR)},
+                ),
+            ).map(lambda consumer: u.Cli.process_succeeded(consumer.outcome))
+
+        preview = (
+            transformers.FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
+                (
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=path,
+                        before=before,
+                        desired_content=candidate.encode(c.DEFAULT_ENCODING),
+                        desired_mode=before.mode,
+                    ),
+                ),
+                repository_root=root,
+                options=m.Infra.SemanticPublicationOptions(validator=validate),
+                publish=False,
+            )
+        )
+        tm.that(preview.success, eq=operation == "lower")
+        tm.that(len(observations), eq=1)
+        tm.fail(observations[0] == root)
+        tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("condition", "typing_guard"),
+        [
+            ("checking", True),
+            ("typing.TYPE_CHECKING is True", True),
+            ("flag", False),
+            ("flag and enabled", False),
+            ("len(()) > 0", False),
+            ("False", False),
+        ],
+    )
+    def test_native_import_cleanup_authenticates_only_typing_guards(
+        tmp_path: Path, condition: str, *, typing_guard: bool
+    ) -> None:
+        """Ordinary conditions never enter the native identifier-only resolver."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "guarded.py"
+        source = (
+            "from typing import TYPE_CHECKING as checking\n"
+            "import typing\n"
+            "flag = enabled = True\n"
+            f"if {condition}:\n"
+            "    from contextlib import nullcontext\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            imports = u.Infra.native_import_infos(project, module)
+        tm.that(
+            any(
+                item.get_import_statement() == "from contextlib import nullcontext"
+                for item in imports
+            ),
+            eq=typing_guard,
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    def test_annotation_owner_preserves_existing_runtime_protocol(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """An existing native protocol remains the canonical annotation owner."""
+        workspace, path = rope_contract_consumer
+        source = (
+            "from __future__ import annotations\n"
+            "from flext_cli import p\n"
+            "def consume(value: p.Cli.AtomicFileState): return value\n"
+        )
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rule = m.Infra.RopeContractRule(
+            id="preserve-protocol-owner",
+            pattern="${receiver}.${member}",
+            goal="p.Cli.${member}",
+            arguments={},
+            annotation_member_source="p.Cli",
+            bindings={"p.Cli": "flext_cli.protocols.FlextCliProtocols.Cli"},
+            annotation_only=True,
+            scope=m.Infra.RopeContractScope(
+                targets=(
+                    m.Infra.RopeContractScopeTarget(
+                        distribution=workspace.repository_root.name,
+                        module=f"{path.parent.name}.{path.stem}",
+                    ),
+                )
+            ),
+        )
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))),
+            empty=True,
+        )
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("source", "target_owner", "message"),
+        [
+            (
+                (
+                    "from flext_cli import m, p\n"
+                    "def consume(value: m.Cli.AtomicFileState): return value\n"
+                ),
+                "flext_core.protocols.FlextProtocols",
+                "has no member in declared owner",
+            ),
+            (
+                (
+                    "from flext_cli import m, p\n"
+                    "def consume(value: m.Cli.Missing): return value\n"
+                ),
+                "flext_cli.protocols.FlextCliProtocols.Cli",
+                "model annotation source is undeclared",
+            ),
+            (
+                (
+                    "from missing_model_package import m\n"
+                    "from flext_cli import p\n"
+                    "def consume(value: m.Cli.AtomicFileState): return value\n"
+                ),
+                "flext_cli.protocols.FlextCliProtocols.Cli",
+                "source namespace .* is unknown",
+            ),
+        ],
+    )
+    def test_annotation_owner_refuses_unproven_native_members(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+        source: str,
+        target_owner: str,
+        message: str,
+    ) -> None:
+        """Missing model or protocol declarations never produce a guessed edit."""
+        workspace, path = rope_contract_consumer
+        source = "from __future__ import annotations\n" + source
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rule = m.Infra.RopeContractRule(
+            id="strict-protocol-owner",
+            pattern="${receiver}.${member}",
+            goal="p.Cli.${member}",
+            arguments={},
+            annotation_member_source="m.Cli",
+            bindings={
+                "m.Cli": "flext_cli.models.FlextCliModels.Cli",
+                "p.Cli": target_owner,
+            },
+            annotation_only=True,
+            scope=m.Infra.RopeContractScope(
+                targets=(
+                    m.Infra.RopeContractScopeTarget(
+                        distribution=workspace.repository_root.name,
+                        module=f"{path.parent.name}.{path.stem}",
+                    ),
+                )
+            ),
+        )
+        with pytest.raises(ValueError, match=message):
+            u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    def test_annotation_owner_catalog_rejects_model_typing() -> None:
+        """Model destinations fail at catalogue admission, before Rope planning."""
+        with pytest.raises(m.ValidationError, match="cannot produce model typing"):
+            m.Infra.RopeContractRule(
+                id="prohibited-model-owner",
+                pattern="${receiver}.${member}",
+                goal="m.Cli.${member}",
+                arguments={},
+                annotation_member_source="p.Cli",
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize("pattern", ["p.Cli.${member}", "${receiver}.${member}"])
+    def test_annotation_owner_catalog_rejects_unbound_templates(pattern: str) -> None:
+        """Protocol templates require scoped source and destination identities."""
+        with pytest.raises(m.ValidationError, match="native source and bound target"):
+            m.Infra.RopeContractRule(
+                id="unbound-protocol-owner",
+                pattern=pattern,
+                goal="p.Cli.${member}",
+                arguments={},
+                annotation_member_source="m.Cli",
+                annotation_only=True,
+            )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -84,10 +516,9 @@ class TestsFlextInfraRopeContractCatalog:
             tm.ok(restored.phase is rule.phase)
             tm.that(type(rule.phase), eq=c.Infra.SemanticCutoverPhase)
             tm.that(type(rule.operation), eq=c.Infra.RopeContractOperation)
-            tm.ok(
-                all(
-                    isinstance(kind, c.Infra.RopeScopeKind) for kind in rule.scope_kinds
-                )
+            tm.that(
+                {type(kind) for kind in rule.scope_kinds},
+                eq={c.Infra.RopeScopeKind} if rule.scope_kinds else set(),
             )
             payload["phase"] = "".join(c.Infra.SemanticCutoverPhase)
             with pytest.raises(ValueError, match="phase"):

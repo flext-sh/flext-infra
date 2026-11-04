@@ -86,9 +86,11 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
                 root,
                 planned_sources={barrel: candidate},
             ) as (project, contents):
-                rendered = tm.not_none(
-                    u.Infra.render_utility_facade(
-                        package, family=family, project=project, sources=contents
+                rendered = tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, family=family, project=project, sources=contents
+                        )
                     )
                 )
                 projections.append(rendered)
@@ -97,9 +99,11 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
                 root,
                 planned_sources={barrel: candidate, facade: rendered},
             ) as (project, contents):
-                tm.that(
-                    u.Infra.render_utility_facade(
-                        package, family=family, project=project, sources=contents
+                tm.ok(
+                    tm.not_none(
+                        u.Infra.render_utility_facade(
+                            package, family=family, project=project, sources=contents
+                        )
                     ),
                     eq=rendered,
                 )
@@ -176,13 +180,9 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
             tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
             for path in sources
         )
-        cause = (
-            "unresolved imported module:"
-            if ownership == "unresolved-external"
-            else "Facade base has no source owner:.*MissingOwner"
-        )
+        unresolved = provider if ownership == "unresolved-external" else "MissingOwner"
         if ownership == "declared-alias":
-            rendered = tm.not_none(u.Infra.render_utility_facade(package))
+            rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
             tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
             candidate = tmp_path / "candidate" / package.name
             for path, source in sources.items():
@@ -197,8 +197,10 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
                 cwd=candidate.parent,
             )
         else:
-            with pytest.raises(ValueError, match=cause):
-                u.Infra.render_utility_facade(package)
+            tm.fail(
+                tm.not_none(u.Infra.render_utility_facade(package)),
+                has=unresolved,
+            )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
     def test_owner_inheriting_a_sourceless_stdlib_module_orders_natively(
@@ -242,10 +244,10 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         }
         for path, source in sources.items():
             self._write(path, source)
-        rendered = tm.not_none(u.Infra.render_utility_facade(package))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        tm.that(u.Infra.render_utility_facade(package), eq=rendered)
+        tm.ok(tm.not_none(u.Infra.render_utility_facade(package)), eq=rendered)
         result = tm.ok(
             u.Cli.run_raw(
                 (
@@ -334,14 +336,16 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
         before = tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True))
-        updated = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        updated = tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="p")))
 
         tm.that(
             tm.ok(u.Cli.atomic_read_binary_file_state(facade, required=True)),
             eq=before,
         )
         self._write(facade, updated)
-        tm.that(u.Infra.render_utility_facade(package, family="p"), eq=updated)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p")), eq=updated
+        )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         result = tm.ok(
             u.Cli.run_raw(
@@ -455,9 +459,11 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         family = u.Infra.facade_family_declared_by(facade.name)
         service.module = f"{package.name}.{family.directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
-        updated = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        updated = tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="p")))
         self._write(facade, updated)
-        tm.that(u.Infra.render_utility_facade(package, family="p"), eq=updated)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p")), eq=updated
+        )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         output = tm.ok(
             u.Cli.run_raw(
@@ -537,9 +543,14 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         service.module = f"{package.name}._protocols"
         tm.ok(u.Tests.materialize_lazy_init(service))
         if managed:
-            rendered = tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+            rendered = tm.ok(
+                tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+            )
             self._write(facade, rendered)
-            tm.that(u.Infra.render_utility_facade(package, family="p"), eq=rendered)
+            tm.ok(
+                tm.not_none(u.Infra.render_utility_facade(package, family="p")),
+                eq=rendered,
+            )
             tree = ast.parse(rendered)
             tm.that(
                 any(
@@ -551,8 +562,12 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
                 eq=False,
             )
             return
-        with pytest.raises(ValueError, match="ambiguous protocol class attribute"):
-            u.Infra.render_utility_facade(package, family="p")
+        # An authored facade keeps its declared annotation; it is never
+        # rewritten into an unproven alias of another contract.
+        tm.that(
+            tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="p"))),
+            has=(f"{published}: type[PayloadOwner.{actual}] = PayloadOwner.{actual}"),
+        )
 
     def test_generated_empty_subclass_yields_to_declared_model_owner(
         self,
@@ -584,9 +599,13 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        )
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package, family="m"), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m")), eq=rendered
+        )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -670,9 +689,14 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        )
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package, family=family), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family=family)),
+            eq=rendered,
+        )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
@@ -769,7 +793,9 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
             "m.Sample.ToolchainPayload()\n"
             "completed = True\n",
         )
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+        )
         self._write(facade, rendered)
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         entrypoint = root / "consume.py"
@@ -790,7 +816,9 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
             eq=True,
             msg=result.stderr or result.stdout,
         )
-        tm.that(u.Infra.render_utility_facade(package, family="m"), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="m")), eq=rendered
+        )
 
     @pytest.mark.parametrize("family", ["p", "m"])
     @pytest.mark.parametrize("compact", [False, True])
@@ -832,9 +860,14 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         service = u.Tests.create_lazy_init_service(root)
         service.module = f"{package.name}.{directory}"
         tm.ok(u.Tests.materialize_lazy_init(service))
-        rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        )
         self._write(facade, rendered)
-        tm.that(u.Infra.render_utility_facade(package, family=family), eq=rendered)
+        tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family=family)),
+            eq=rendered,
+        )
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"

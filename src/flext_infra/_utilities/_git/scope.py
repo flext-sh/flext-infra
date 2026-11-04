@@ -12,12 +12,12 @@ from pathlib import Path
 
 from flext_infra import c, m
 from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitSemanticIdentity,
-    FlextInfraUtilitiesGitSemanticIndex,
 )
 
 
-class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitSemanticIndex):
+class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitRepo):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     class ScopeFacts:

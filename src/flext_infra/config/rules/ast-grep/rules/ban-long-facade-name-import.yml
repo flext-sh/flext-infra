@@ -12,11 +12,6 @@ severity: error
 files:
   - "**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/__init__.py"
   - "**/api.py"
   - "**/base.py"

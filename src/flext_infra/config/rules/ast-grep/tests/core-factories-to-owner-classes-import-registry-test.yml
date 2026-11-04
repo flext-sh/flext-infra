@@ -1,0 +1,26 @@
+id: core-factories-to-owner-classes-import-registry
+# `valid` MUST NOT match: the binding is present at module level, or no
+# owner-class constructor is used.
+valid:
+  - |
+    from __future__ import annotations
+
+    from flext_core import FlextRegistry
+
+    registry = FlextRegistry.create()
+  - |
+    from __future__ import annotations
+
+    registry = u.registry_plugin_key("plugins")
+# `invalid` MUST match: `FlextRegistry.create` without the binding.
+invalid:
+  - |
+    from __future__ import annotations
+
+    registry = FlextRegistry.create()
+  - |
+    from __future__ import annotations
+
+    from flext_core import c, u
+
+    registry: p.Registry = Field(default_factory=FlextRegistry.create)

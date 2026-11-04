@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.codegen import FlextInfraCodegenFixer
-from tests import c, m, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraCodegenAutofixWorkspace:
@@ -24,7 +24,7 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         project: Path,
         *,
         package_name: str = "test_proj",
-    ) -> m.Infra.ProjectInfo:
+    ) -> p.Infra.ProjectInfo:
         return u.Tests.create_project_info(
             project,
             name=project.name,

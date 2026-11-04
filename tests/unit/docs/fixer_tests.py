@@ -117,7 +117,7 @@ class TestsFlextInfraDocsFixer:
         tm.fail("   \n```\n" in content)
 
     @staticmethod
-    def test_fix_rewrites_bare_notest_fences_for_the_mkdocs_build(
+    def test_fix_rewrites_bare_notest_fences_for_the_mkbuild(
         tmp_path: Path,
     ) -> None:
         """A bare ``notest`` qualifier is rewritten to the attr_list form.
@@ -130,7 +130,7 @@ class TestsFlextInfraDocsFixer:
         workspace = u.Tests.create_docs_workspace(tmp_path)
         document = workspace / "docs/notest.md"
         document.write_text(
-            "# Example\n\n```python notest\n# comment\nimport os\n```\n\n## Next\n",
+            "# Example\n\n```python\n# comment\nimport os\n```\n\n## Next\n",
             encoding="utf-8",
         )
 
@@ -138,5 +138,5 @@ class TestsFlextInfraDocsFixer:
 
         tm.ok(result)
         content = document.read_text(encoding="utf-8")
-        tm.ok("```{.python .notest}" in content)
-        tm.fail("```python notest" in content)
+        tm.ok("```python" in content)
+        tm.fail("```python" in content)

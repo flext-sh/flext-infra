@@ -15,7 +15,7 @@ import pytest
 
 from flext_infra import FlextInfraConfig, config, infra, settings
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraDynamicEnvironmentCutover:
@@ -239,7 +239,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             )
 
     @staticmethod
-    def _finding(path: Path, access: str) -> m.Infra.ModOccurrence:
+    def _finding(path: Path, access: str) -> p.Infra.ModOccurrence:
         (rule,) = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[
             c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT
         ]

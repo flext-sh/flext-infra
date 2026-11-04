@@ -9,18 +9,16 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import m, u
-from flext_infra.docs import (
-    FlextInfraDocAuditorMixin,
+from flext_infra import m, p, u
+from flext_infra.docs import FlextInfraDocServiceBase
+from flext_infra.docs._auditor import (
     FlextInfraDocsAuditorChecks,
     FlextInfraDocsAuditorReport,
-    FlextInfraDocServiceBase,
 )
+from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraDocAuditor(
@@ -53,12 +51,12 @@ class FlextInfraDocAuditor(
         *,
         projects: Sequence[str] | None = None,
         output_dir: Path | str | None = None,
-        params: m.Infra.AuditScopeParams | None = None,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+        params: p.Infra.AuditScopeParams | None = None,
+    ) -> p.Result[Sequence[p.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocsPhaseReport]]``.
 
         """
         resolved_params = (
@@ -78,10 +76,10 @@ class FlextInfraDocAuditor(
 
     def audit_scope(
         self,
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
-        params: m.Infra.AuditScopeParams,
-    ) -> m.Infra.DocsPhaseReport:
+        params: p.Infra.AuditScopeParams,
+    ) -> p.Infra.DocsPhaseReport:
         """Audit one scope and persist the standard reports.
 
         Returns:

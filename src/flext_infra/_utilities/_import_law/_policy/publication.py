@@ -30,8 +30,8 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+from flext_infra._utilities._rope.runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 
 
@@ -95,7 +95,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                 for letter, family in (
                     FlextInfraUtilitiesCodegenNamespace.facade_families().items()
                 )
-                if family.directory in relative.parts[:-1]
+                # A family package is a direct child of the namespace.
+                if (len(relative.parts) > 1 and relative.parts[0] == family.directory)
                 or (len(relative.parts) == 1 and relative.stem == family.module)
             ),
             None,
@@ -104,7 +105,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
     @classmethod
     def lazy_source(
         cls,
-        scope: m.Infra.ImportLawScope,
+        scope: p.Infra.ImportLawScope,
         module: str,
         name: str,
         *,
@@ -138,7 +139,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
     @classmethod
     def _declared_subpackage_source(
         cls,
-        scope: m.Infra.ImportLawScope,
+        scope: p.Infra.ImportLawScope,
         module: str,
         name: str,
         *,
@@ -204,7 +205,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                     additional_source_folders=None,
                 )
             ) as bound_project:
-                native = FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
+                native = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                     bound_project.get_pymodule(
                         FlextInfraUtilitiesRopeRuntime.file_resource_at(
                             bound_project, source_path
@@ -259,7 +260,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
     @classmethod
     def _declared_ancestors(
         cls,
-        scope: m.Infra.ImportLawScope,
+        scope: p.Infra.ImportLawScope,
         identities: t.StrTuple,
         *,
         sources: Mapping[Path, str] | None = None,
@@ -329,7 +330,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
     @classmethod
     def _declaration_identity(
         cls,
-        scope: m.Infra.ImportLawScope,
+        scope: p.Infra.ImportLawScope,
         module: str,
         name: str,
         seen: frozenset[str],
@@ -412,7 +413,6 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
 
         Raises:
             ValueError: If the method needs facade dispatch or is not published.
-            TypeError: If the source declaration is not a module AST.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntime
@@ -427,9 +427,6 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             msg = f"model utility has no source owner: {qualified}"
             raise ValueError(msg)
         tree = holder.get_ast()
-        if not isinstance(tree, ast.Module):
-            msg = f"model utility has no source declaration: {qualified}"
-            raise TypeError(msg)
         declarations = [
             (owner, method)
             for owner in tree.body
@@ -457,7 +454,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             raise ValueError(msg)
         public_module = holder.get_name().rpartition(".")[0]
         exported_owner = cls.resolve_declared_binding(
-            project, public_module, owner.name, Path(project.root.real_path), {}
+            project, (public_module, owner.name), Path(project.root.real_path), {}
         )
         exported = (
             exported_owner.get_object().get_attributes().get(method.name)
@@ -556,7 +553,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         cls,
         project: p.Infra.RopeProject,
         rule: p.Infra.RopeContractRule,
-        frame: tuple[m.Infra.ImportLawScope, p.Infra.RopePyModule],
+        frame: tuple[p.Infra.ImportLawScope, p.Infra.RopePyModule],
         sources: Mapping[Path, str],
     ) -> p.Infra.RopeContractRule:
         """Rewrite eligible bindings without changing unrelated imports.
@@ -593,7 +590,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         cls,
         project: p.Infra.RopeProject,
         identity: str,
-        frame: tuple[m.Infra.ImportLawScope, p.Infra.RopePyModule],
+        frame: tuple[p.Infra.ImportLawScope, p.Infra.RopePyModule],
         sources: Mapping[Path, str],
     ) -> tuple[str, str, str | None, str] | None:
         """Resolve one published family binding into its consumer spelling.
@@ -602,7 +599,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             Local spelling, member, publication package and declared owner.
 
         Raises:
-            ValueError: If a destination has no lazy publication.
+            ValueError: If a destination has no lazy publication for the consumer.
 
         """
         context, module = frame
@@ -619,7 +616,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         ).partition(".")
         if not separator or owner not in (
             FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(provider)
+                FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(provider)
             )
         ):
             return None
@@ -637,7 +634,10 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         if package is None and not FlextInfraUtilitiesRopeRuntime.same_name(
             owner_binding, module.get_scope().get_names().get(local)
         ):
-            message = f"{identity}: same-family destination has no lazy publication"
+            message = (
+                f"{identity}: same-family destination has no lazy publication "
+                f"for consumer {context.file_path} ({context.module})"
+            )
             raise ValueError(message)
         return local, member, package, owner
 
@@ -647,7 +647,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
         project: p.Infra.RopeProject,
         identity: str,
         binding: p.Infra.RopePyName,
-        context: m.Infra.ImportLawScope,
+        context: p.Infra.ImportLawScope,
         path: Path,
     ) -> bool:
         """Check family ownership and the model-to-utility static boundary.

@@ -2,7 +2,10 @@
 
 A root namespace inherits the facade letters of its facade parents: the
 nearest parent that declares a letter wins, else the nearest that serves it
-through its effective published surface. The public root also publishes its
+through its effective published surface. A letter is a published name its
+declaring module binds to a class; the project's own root declarations also
+propagate, while a foreign parent's values and the lazy owner's machinery
+never do. The public root also publishes its
 manifest-declared upstream facets after native identity verification.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -21,14 +24,14 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesPythonModel,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesLazyInitLetters:
     """Elect inherited facade letters over one lazy-init run."""
 
     @staticmethod
-    def lazy_init_text(run: m.Infra.LazyInitRun, path: Path) -> str | None:
+    def lazy_init_text(run: p.Infra.LazyInitRun, path: Path) -> str | None:
         """Return one source through the run's view, ``None`` when absent.
 
         Returns:
@@ -40,7 +43,7 @@ class FlextInfraUtilitiesLazyInitLetters:
 
     @staticmethod
     def lazy_init_public_root(
-        run: m.Infra.LazyInitRun, project_root: Path
+        run: p.Infra.LazyInitRun, project_root: Path
     ) -> Path | None:
         """Return the project's declared public ``src`` package directory.
 
@@ -63,8 +66,8 @@ class FlextInfraUtilitiesLazyInitLetters:
     @classmethod
     def lazy_init_resolve_aliases(
         cls,
-        run: m.Infra.LazyInitRun,
-        context: m.Infra.LazyInitPackageContext,
+        run: p.Infra.LazyInitRun,
+        context: p.Infra.LazyInitPackageContext,
         lazy_map: t.MutableLazyAliasMap,
     ) -> None:
         """Inherit facade letters of a root namespace from its facade parents.
@@ -101,10 +104,8 @@ class FlextInfraUtilitiesLazyInitLetters:
             )
             is not None
         }
-        direct = (
-            *cls.lazy_init_parent_packages(run, pkg_dir),
-            run.index.project_package_by_root.get(str(project), ""),
-        )
+        root_package = run.index.project_package_by_root.get(str(project), "")
+        direct = (*cls.lazy_init_parent_packages(run, pkg_dir), root_package)
         election = tuple(
             name
             for name in cls._lazy_init_facade_chain(run, direct, within=project)
@@ -113,8 +114,12 @@ class FlextInfraUtilitiesLazyInitLetters:
         letters = dict.fromkeys(
             name
             for package in cls._lazy_init_facade_chain(run, direct, within=None)
+            if package != current
             for name in sorted(cls._lazy_init_package_names(run, package))
-            if name.isidentifier() and name.islower() and not name.startswith("_")
+            if name.isidentifier()
+            and name.islower()
+            and not name.startswith("_")
+            and cls._lazy_init_inherits(run, (package, name), root_package)
         )
         for letter in letters:
             existing = lazy_map.get(letter)
@@ -122,22 +127,20 @@ class FlextInfraUtilitiesLazyInitLetters:
                 existing is not None and existing[0] != current
             ):
                 continue
+            publishers = tuple(
+                package
+                for package in election
+                if letter in cls._lazy_init_package_names(run, package)
+                and cls._lazy_init_inherits(run, (package, letter), root_package)
+            )
             owner = next(
                 (
                     package
-                    for package in election
+                    for package in publishers
                     if letter in cls._lazy_init_declared_letters(run, package)
-                    and letter in cls._lazy_init_package_names(run, package)
                 ),
                 "",
-            ) or next(
-                (
-                    package
-                    for package in election
-                    if letter in cls._lazy_init_package_names(run, package)
-                ),
-                "",
-            )
+            ) or next(iter(publishers), "")
             if owner:
                 lazy_map[letter] = (owner, letter)
             elif existing is not None:
@@ -148,8 +151,8 @@ class FlextInfraUtilitiesLazyInitLetters:
     @classmethod
     def _lazy_init_inherited_facets(
         cls,
-        run: m.Infra.LazyInitRun,
-        context: m.Infra.LazyInitPackageContext,
+        run: p.Infra.LazyInitRun,
+        context: p.Infra.LazyInitPackageContext,
         lazy_map: t.MutableLazyAliasMap,
         local_owners: set[str],
     ) -> None:
@@ -200,8 +203,8 @@ class FlextInfraUtilitiesLazyInitLetters:
     @classmethod
     def _lazy_init_imported_facets(
         cls,
-        run: m.Infra.LazyInitRun,
-        context: m.Infra.LazyInitPackageContext,
+        run: p.Infra.LazyInitRun,
+        context: p.Infra.LazyInitPackageContext,
         upstream: str,
     ) -> Sequence[str]:
         """Identify consumer imports bound to the declared upstream facets.
@@ -233,9 +236,186 @@ class FlextInfraUtilitiesLazyInitLetters:
                     imported.append(name)
         return imported
 
+    @classmethod
+    def _lazy_init_inherits(
+        cls,
+        run: p.Infra.LazyInitRun,
+        target: tuple[str, str],
+        root_package: str,
+    ) -> bool:
+        """Return whether a root namespace inherits one published name.
+
+        A root namespace inherits facade letters from its whole facade chain,
+        and its project's own root declarations; anything a foreign parent
+        merely re-publishes (singletons, functions) is that parent's surface,
+        never this namespace's. The lazy owner's declarations are the runtime
+        machinery every generated initializer imports from that owner, so
+        they are never inherited exports.
+
+        Returns:
+            Whether the name is a facade letter or declared by the own root.
+
+        """
+        module, letter = cls._lazy_init_declaration(run, target)
+        if module == c.Infra.LAZY_BOOTSTRAP_MODULE:
+            return False
+        return letter or (
+            bool(root_package)
+            and (module == root_package or module.startswith(f"{root_package}."))
+        )
+
+    @classmethod
+    def _lazy_init_declaration(
+        cls, run: p.Infra.LazyInitRun, target: tuple[str, str]
+    ) -> tuple[str, bool]:
+        """Return the module that binds a published name and its letter status.
+
+        The publication route is followed through this run's plans and the
+        static import bindings of every initializer it crosses until the module
+        that binds the name itself; that module's own letter derivation
+        (``python_model_letters``: an exported alias of a class) decides.
+
+        A route has no declaration (``""``) when it ends at a package this run
+        plans without that name, or at a generated initializer that no longer
+        binds it: those surfaces are projections this generation owns, never
+        declaration owners, so a stale projection elsewhere cannot resurrect
+        what they dropped.
+
+        Returns:
+            The declaring module name, ``""`` without one, and whether it
+            declares a facade letter; resolved once per run when final.
+
+        """
+        cached = run.declarations.get(target)
+        if cached is not None:
+            return cached
+        declaration, final = cls._lazy_init_route_declaration(run, target)
+        if final:
+            run.declarations[target] = declaration
+        return declaration
+
+    @classmethod
+    def _lazy_init_route_declaration(
+        cls, run: p.Infra.LazyInitRun, target: tuple[str, str]
+    ) -> tuple[tuple[str, bool], bool]:
+        """Walk one publication route for ``_lazy_init_declaration``.
+
+        A route is final when every indexed package it crosses is already
+        planned: plans never change once decided and every other source is
+        fixed for the run, so only such a route may be remembered.
+
+        Returns:
+            The declaring module name (``""`` without one) with its letter
+            status, and whether the route is final.
+
+        Raises:
+            ValueError: If the route is cyclic or an authored module publishes
+                a name it never binds.
+
+        """
+        seen: set[tuple[str, str]] = set()
+        final = True
+        while target not in seen:
+            seen.add(target)
+            module_name, attribute = target
+            package_dir, path = cls._lazy_init_source(run, module_name)
+            plan = run.plans.get(package_dir) if package_dir is not None else None
+            final = final and (
+                plan is not None or str(package_dir) not in run.index.packages_by_dir
+            )
+            if plan is not None and (
+                plan.action
+                not in {c.Infra.LazyInitAction.WRITE, c.Infra.LazyInitAction.RETAIN}
+                or attribute not in plan.exports
+            ):
+                return ("", False), final
+            route = (
+                plan.lazy_map.get(attribute) or plan.eager_dunders.get(attribute)
+                if plan is not None
+                else None
+            )
+            if route is not None and route != target:
+                target = route
+                continue
+            declaration, target = cls._lazy_init_module_binding(run, target, path)
+            if declaration is not None:
+                return declaration, final
+        msg = f"lazy-init cyclic publication: {target}"
+        raise ValueError(msg)
+
+    @classmethod
+    def _lazy_init_module_binding(
+        cls, run: p.Infra.LazyInitRun, target: tuple[str, str], path: Path
+    ) -> tuple[tuple[str, bool] | None, tuple[str, str]]:
+        """Read one route hop at the module source that publishes the name.
+
+        Returns:
+            The declaration when this module ends the route (``None`` when it
+            re-exports), and the next hop of the route.
+
+        Raises:
+            ValueError: If an authored module publishes a name it never binds.
+
+        """
+        python = FlextInfraUtilitiesPythonModel
+        module_name, attribute = target
+        module = python.python_model_module_at(run.model, path, module_name)
+        if python.python_model_defines(module, attribute):
+            return (
+                module_name,
+                attribute in python.python_model_letters(module),
+            ), target
+        imported = module.imports.get(attribute, "")
+        if imported and (
+            imported in run.model.module_files
+            or cls._lazy_init_package_dir(run, imported)[0] is not None
+        ):
+            # ``from pkg import sub`` binds the submodule itself: the
+            # module is its own declaration, never a facade letter.
+            return (imported, False), target
+        provider, name = imported.rpartition(".")[::2]
+        if not provider:
+            text = cls.lazy_init_text(run, path)
+            if text is not None and text.startswith(c.Infra.AUTOGEN_HEADER):
+                return ("", False), target
+            msg = f"lazy-init published name has no static binding: {target}"
+            raise ValueError(msg)
+        return None, (provider, name)
+
+    @staticmethod
+    def _lazy_init_source(
+        run: p.Infra.LazyInitRun, module_name: str
+    ) -> tuple[Path | None, Path]:
+        """Return a module's package directory, if any, and its source file.
+
+        This run's index answers its own modules; one election through the
+        native project answers every other module.
+
+        Returns:
+            The package directory (``None`` for a plain module) and the file.
+
+        Raises:
+            ValueError: If the module resolves to no source.
+
+        """
+        package_dir = run.index.package_dir_by_name.get(module_name)
+        if package_dir is not None:
+            return package_dir, package_dir / c.Infra.INIT_PY
+        indexed = run.model.module_files.get(module_name)
+        if indexed is not None:
+            return None, indexed
+        elected = run.model.source_project.find_module(module_name)
+        if elected is None:
+            msg = f"lazy-init published module resolves to no source: {module_name}"
+            raise ValueError(msg)
+        found = Path(elected.real_path)
+        return (
+            (found, found / c.Infra.INIT_PY) if elected.is_folder() else (None, found)
+        )
+
     @staticmethod
     def _lazy_init_facet_binding(
-        run: m.Infra.LazyInitRun, target: tuple[str, str]
+        run: p.Infra.LazyInitRun, target: tuple[str, str]
     ) -> p.Infra.RopePyName:
         """Resolve the effective publication route through the run's native engine.
 
@@ -291,7 +471,7 @@ class FlextInfraUtilitiesLazyInitLetters:
 
     @classmethod
     def _lazy_init_facade_chain(
-        cls, run: m.Infra.LazyInitRun, packages: Sequence[str], *, within: Path | None
+        cls, run: p.Infra.LazyInitRun, packages: Sequence[str], *, within: Path | None
     ) -> Sequence[str]:
         """Expand facade parents breadth-first, nearest first.
 
@@ -319,7 +499,7 @@ class FlextInfraUtilitiesLazyInitLetters:
 
     @classmethod
     def lazy_init_parent_packages(
-        cls, run: m.Infra.LazyInitRun, pkg_dir: Path
+        cls, run: p.Infra.LazyInitRun, pkg_dir: Path
     ) -> Sequence[str]:
         """Return the facade parents declared by ``constants.py`` class bases.
 
@@ -346,7 +526,7 @@ class FlextInfraUtilitiesLazyInitLetters:
 
     @classmethod
     def _lazy_init_constants_parents(
-        cls, run: m.Infra.LazyInitRun, path: Path, current: str, seen: set[Path]
+        cls, run: p.Infra.LazyInitRun, path: Path, current: str, seen: set[Path]
     ) -> Sequence[str]:
         """Follow ``*Constants`` class bases, recursing into same-package owners.
 
@@ -411,7 +591,7 @@ class FlextInfraUtilitiesLazyInitLetters:
 
     @staticmethod
     def _lazy_init_package_dir(
-        run: m.Infra.LazyInitRun, package: str
+        run: p.Infra.LazyInitRun, package: str
     ) -> tuple[Path | None, bool]:
         """Return a package's directory and whether this run indexes it.
 
@@ -435,7 +615,7 @@ class FlextInfraUtilitiesLazyInitLetters:
 
     @classmethod
     def _lazy_init_declared_letters(
-        cls, run: m.Infra.LazyInitRun, package: str
+        cls, run: p.Infra.LazyInitRun, package: str
     ) -> frozenset[str]:
         """Return the facade letters a package's own modules declare.
 
@@ -475,7 +655,7 @@ class FlextInfraUtilitiesLazyInitLetters:
 
     @classmethod
     def _lazy_init_package_names(
-        cls, run: m.Infra.LazyInitRun, package: str
+        cls, run: p.Infra.LazyInitRun, package: str
     ) -> frozenset[str]:
         """Return a parent's effective published names, never candidate declarations.
 

@@ -14,13 +14,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.docs import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraDocServer(FlextInfraDocServiceBase):
@@ -39,11 +37,11 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
         *,
         projects: Sequence[str] | None = None,
         output_dir: Path | str | None = None,
-    ) -> p.Result[Sequence[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[Sequence[p.Infra.DocsPhaseReport]]:
         """Serve the single matching docs scope (blocks until stopped).
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.DocsPhaseReport]]``.
+            The resulting ``p.Result[Sequence[p.Infra.DocsPhaseReport]]``.
 
         """
         scopes_result = u.Infra.build_scopes(
@@ -52,23 +50,23 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
             output_dir=output_dir or c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         )
         if scopes_result.failure:
-            return r[Sequence[m.Infra.DocsPhaseReport]].from_failure(scopes_result)
+            return r[Sequence[p.Infra.DocsPhaseReport]].from_failure(scopes_result)
         servable = [
             scope
             for scope in scopes_result.value
             if (scope.path / "mkdocs.yml").exists()
         ]
         if not servable:
-            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[p.Infra.DocsPhaseReport]].fail(
                 "no docs scope with mkdocs.yml; run `docs generate` first",
             )
         if len(servable) > 1:
             names = ", ".join(scope.name for scope in servable)
-            return r[Sequence[m.Infra.DocsPhaseReport]].fail(
+            return r[Sequence[p.Infra.DocsPhaseReport]].fail(
                 "serve targets exactly one scope; narrow with --project "
                 f"(candidates: {names})",
             )
-        return r[Sequence[m.Infra.DocsPhaseReport]].ok([
+        return r[Sequence[p.Infra.DocsPhaseReport]].ok([
             self._serve_scope(servable[0]),
         ])
 
@@ -90,7 +88,7 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
             failure_predicate=lambda report: report.result == c.Infra.ResultStatus.FAIL,
         )
 
-    def _serve_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
+    def _serve_scope(self, scope: p.Infra.DocScope) -> p.Infra.DocsPhaseReport:
         """Serve one scope through the docs build utilities (blocking).
 
         Returns:
@@ -102,7 +100,7 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
             project=scope.name,
             dev_addr=self.dev_addr,
         )
-        report: m.Infra.DocsPhaseReport = u.Infra.docs_serve_mkdocs(
+        report: p.Infra.DocsPhaseReport = u.Infra.docs_serve_mkdocs(
             scope,
             dev_addr=self.dev_addr,
             livereload=self.livereload,

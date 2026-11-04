@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, t
+from flext_infra import m, p, t
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraBatchGateSourceDrift:
@@ -19,10 +19,10 @@ class TestsFlextInfraBatchGateSourceDrift:
     @staticmethod
     def _finding(
         path: Path,
-        state: m.Cli.AtomicFileState | None,
+        state: p.Cli.AtomicFileState | None,
         *,
         actionable: bool,
-    ) -> m.Infra.ModOccurrence:
+    ) -> p.Infra.ModOccurrence:
         start = b'value = "before"'.index(b"before")
         offsets: t.JsonDict = {"start": start, "end": start + len(b"before")}
         return m.Infra.ModOccurrence(

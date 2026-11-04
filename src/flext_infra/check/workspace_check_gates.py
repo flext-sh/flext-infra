@@ -11,7 +11,7 @@ import time
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from flext_cli import cli
 
@@ -20,7 +20,7 @@ from flext_infra.check import FlextInfraWorkspaceCheckUnion
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
-    from flext_infra.gates import FlextInfraGate
+    from flext_infra.gates import FlextInfraGates
 
 
 class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
@@ -29,15 +29,14 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
     _repository_root: Path
     _registry: FlextInfraGateRegistry
     _default_reports_dir: Path
-    _gate_logger: ClassVar[p.Logger] = u.fetch_logger(__name__)
 
     def _run_single_project(
         self,
-        target: m.Infra.CheckProjectTarget,
+        target: p.Infra.CheckProjectTarget,
         resolved_gates: Sequence[str],
-        ctx: m.Infra.GateContext,
-        previous: m.Infra.ProjectResult | None = None,
-    ) -> m.Infra.ProjectResult:
+        ctx: p.Infra.GateContext,
+        previous: p.Infra.ProjectResult | None = None,
+    ) -> p.Infra.ProjectResult:
         """Check one project after the loop has validated its target.
 
         Returns:
@@ -65,10 +64,10 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     def _run_prerequisite_checks(
         self,
-        projects: Sequence[m.Infra.CheckProjectTarget],
+        projects: Sequence[p.Infra.CheckProjectTarget],
         gates: Sequence[str],
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.LoopOutcome:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.LoopOutcome:
         """Use the native bounded signal wave for independent read-only checks.
 
         Returns:
@@ -85,38 +84,47 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         }
         for project_ctx in contexts.values():
             u.Cli.ensure_dir(project_ctx.reports_dir).unwrap()
-        jobs = tuple(
-            (target, gate)
-            for target in projects
-            for gate in self._gate_instances(
-                tuple(
-                    gate_id
-                    for gate_id in gates
-                    if ctx.selected_files or gate_id in target.applicable_gates
-                ),
-                mutating=False,
+        u.Cli.info(f"check: prerequisite planning start projects={len(projects)}")
+        jobs_by_gate: dict[
+            str, list[tuple[p.Infra.CheckProjectTarget, p.Infra.Gate]]
+        ] = {}
+        for target in projects:
+            requested = tuple(
+                gate_id
+                for gate_id in gates
+                if ctx.selected_files or gate_id in target.applicable_gates
             )
-        )
-        outcomes = u.Cli.run_in_signal_wave(
-            tuple(
-                partial(
-                    self._run_gate_stage,
-                    gate,
-                    target.path,
-                    contexts[target.path],
-                    results[target.path].gates,
-                )
-                for target, gate in jobs
-            ),
-            max_workers=self._gate_parallelism(len(jobs)),
-        )
-        for (target, gate), outcome in zip(jobs, outcomes, strict=True):
-            execution = results[target.path].gates[gate.gate_id]
-            if execution.result.passed:
-                outcome.unwrap()
-            self._report_gate_execution(gate.gate_id, execution)
-            if ctx.check_progress is not None:
-                ctx.check_progress(target.path, results[target.path])
+            for gate in self._gate_instances(requested, mutating=False):
+                jobs_by_gate.setdefault(gate.gate_id, []).append((target, gate))
+        u.Cli.info(f"check: prerequisite planning complete gates={len(jobs_by_gate)}")
+        for gate_id in gates:
+            jobs = tuple(jobs_by_gate.get(gate_id, ()))
+            if not jobs:
+                continue
+            u.Cli.info(
+                f"check: prerequisite wave start gate={gate_id} jobs={len(jobs)}"
+            )
+            outcomes = u.Cli.run_in_signal_wave(
+                tuple(
+                    partial(
+                        self._run_gate_stage,
+                        gate,
+                        target.path,
+                        contexts[target.path],
+                        results[target.path].gates,
+                    )
+                    for target, gate in jobs
+                ),
+                max_workers=self._prerequisite_parallelism(gate_id, len(jobs)),
+            )
+            u.Cli.info(f"check: prerequisite wave complete gate={gate_id}")
+            for (target, gate), outcome in zip(jobs, outcomes, strict=True):
+                execution = results[target.path].gates[gate.gate_id]
+                if execution.result.passed:
+                    outcome.unwrap()
+                self._report_gate_execution(gate.gate_id, execution)
+                if ctx.check_progress is not None:
+                    ctx.check_progress(target.path, results[target.path])
         return m.Infra.LoopOutcome(
             results=tuple(results.values()),
             failed=sum(
@@ -128,13 +136,13 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     def _run_project_phase(
         self,
-        projects: Sequence[m.Infra.CheckProjectTarget],
+        projects: Sequence[p.Infra.CheckProjectTarget],
         resolved_gates: Sequence[str],
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         *,
         fail_fast: bool,
-        previous: m.Infra.LoopOutcome | None = None,
-    ) -> m.Infra.LoopOutcome:
+        previous: p.Infra.LoopOutcome | None = None,
+    ) -> p.Infra.LoopOutcome:
         """Execute gate checks across projects, collecting results and timing.
 
         Retain the interrupted project's result before stopping the invocation.
@@ -224,7 +232,22 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         reserved_bytes = u.Infra.mypy_resource_limit().memory_limit_bytes
         return max(1, min(stage_count, physical_bytes // reserved_bytes))
 
-    def _gate_ctx(self, reports_dir: Path | None = None) -> m.Infra.GateContext:
+    @staticmethod
+    def _prerequisite_parallelism(gate_id: str, stage_count: int) -> int:
+        """Elect gate-aware concurrency without reducing admission coverage.
+
+        Returns:
+            The worker count for the gate's complete project wave.
+
+        """
+        if gate_id == c.Infra.PYREFLY:
+            return min(
+                stage_count,
+                config.Infra.codegen.make.check_prerequisite_pyrefly_workers,
+            )
+        return FlextInfraWorkspaceCheckGates._gate_parallelism(stage_count)
+
+    def _gate_ctx(self, reports_dir: Path | None = None) -> p.Infra.GateContext:
         """Gate ctx.
 
         Returns:
@@ -242,8 +265,8 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         project_dir: Path,
         reports_dir: Path | None = None,
         *,
-        ctx: m.Infra.GateContext | None = None,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext | None = None,
+    ) -> p.Infra.GateExecution:
         """Run gate.
 
         Returns:
@@ -277,9 +300,9 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         self,
         project_dir: Path,
         gates: Sequence[str],
-        ctx: m.Infra.GateContext,
-        previous: m.Infra.ProjectResult | None = None,
-    ) -> m.Infra.ProjectResult:
+        ctx: p.Infra.GateContext,
+        previous: p.Infra.ProjectResult | None = None,
+    ) -> p.Infra.ProjectResult:
         """Run gates for one project and retain every executed gate in order.
 
         Read-only gates share no mutable state, so they run concurrently
@@ -335,7 +358,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         gates: Sequence[str],
         *,
         mutating: bool,
-    ) -> Sequence[FlextInfraGate]:
+    ) -> Sequence[FlextInfraGates]:
         """Create every requested gate before any of them runs.
 
         Returns:
@@ -345,7 +368,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             ValueError: If a gate is unregistered or a selected repair is unsupported.
 
         """
-        instances: MutableSequence[FlextInfraGate] = []
+        instances: MutableSequence[FlextInfraGates] = []
         for gate_id in gates:
             gate_instance = self._registry.create(gate_id, self._repository_root)
             if gate_instance is None:
@@ -359,11 +382,11 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     def _run_concurrent_stages(
         self,
-        instances: Sequence[FlextInfraGate],
+        instances: Sequence[FlextInfraGates],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         executions: MutableMapping[str, m.Infra.GateExecution],
-    ) -> Mapping[str, p.Result[m.Cli.PipelineResult]]:
+    ) -> Mapping[str, p.Result[p.Cli.PipelineResult]]:
         """Run read-only gate stages concurrently in one signal wave.
 
         The main thread owns operator-signal forwarding; each stage receives
@@ -389,7 +412,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         }
 
     @staticmethod
-    def _report_gate_execution(gate_id: str, execution: m.Infra.GateExecution) -> None:
+    def _report_gate_execution(gate_id: str, execution: p.Infra.GateExecution) -> None:
         """Report one gate's verdict and, when it is not clean, its receipt."""
         u.Cli.gate_result(
             gate_id,
@@ -413,12 +436,12 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     def _run_gate_stage(
         self,
-        gate_instance: FlextInfraGate,
+        gate_instance: FlextInfraGates,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         executions: MutableMapping[str, m.Infra.GateExecution],
         signal_wave: p.Cli.SignalWave | None,
-    ) -> p.Result[m.Cli.PipelineResult]:
+    ) -> p.Result[p.Cli.PipelineResult]:
         """Run one gate stage through the public CLI pipeline.
 
         A stage run inside a concurrent wave receives that wave, so its child
@@ -440,14 +463,14 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         return cli.pipeline(
             (stage,),
             context=m.Cli.PipelineStageContext(repository_root=project_dir),
-            logger=self._gate_logger,
+            logger=self.logger,
         )
 
     def _make_gate_handler(
         self,
-        gate_instance: FlextInfraGate,
+        gate_instance: FlextInfraGates,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         gates_sink: MutableMapping[str, m.Infra.GateExecution],
     ) -> p.Cli.PipelineStage:
         """Build a pipeline stage handler that executes a single gate.
@@ -465,18 +488,18 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         def _handler(
             _pipeline_ctx: p.Cli.PipelineStageContext,
             /,
-        ) -> p.Result[m.Cli.PipelineStageResult]:
+        ) -> p.Result[p.Cli.PipelineStageResult]:
             """Run the gate and record its execution in the sink.
 
             Returns:
-                The resulting ``p.Result[m.Cli.PipelineStageResult]``.
+                The resulting ``p.Result[p.Cli.PipelineStageResult]``.
 
             """
             del _pipeline_ctx
             gate_ctx = ctx.model_copy()
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
             gates_sink[gate_id] = execution
-            self._gate_logger.info(
+            self.logger.info(
                 "gate_executed",
                 project=project_name,
                 gate=gate_id,
@@ -484,11 +507,11 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                 elapsed=execution.result.duration,
             )
             if not execution.result.passed:
-                return r[m.Cli.PipelineStageResult].fail(
+                return r[p.Cli.PipelineStageResult].fail(
                     f"{gate_id} failed for {project_name} "
                     f"with {len(execution.issues)} findings",
                 )
-            return r[m.Cli.PipelineStageResult].ok(
+            return r[p.Cli.PipelineStageResult].ok(
                 m.Cli.PipelineStageResult(
                     stage_id=gate_id,
                     status=c.Cli.PipelineStageStatus.OK,
@@ -500,10 +523,10 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     @staticmethod
     def _execute_gate(
-        gate_instance: FlextInfraGate,
+        gate_instance: FlextInfraGates,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Dispatch exactly the requested repair or read-only operation.
 
         A gate without a repair contract cannot substitute a read-only check.

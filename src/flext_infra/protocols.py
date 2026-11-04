@@ -1,11 +1,7 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Protocol definitions for flext-infra utilities and services.
+"""Structural contracts projected from source model declarations.
 
-Defines structural contracts (runtime-checkable Protocols) for orchestration,
-command execution, validation, and reporting services used across the
-infrastructure layer.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
+Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
@@ -15,36 +11,101 @@ from flext_cli import FlextCliProtocols
 
 from flext_infra._protocols import (
     FlextInfraProtocolsBase,
+    FlextInfraProtocolsCensus,
     FlextInfraProtocolsCheck,
+    FlextInfraProtocolsCodegen,
+    FlextInfraProtocolsCodemod,
+    FlextInfraProtocolsConfig,
     FlextInfraProtocolsDeps,
+    FlextInfraProtocolsDepsToml,
+    FlextInfraProtocolsDepsToolConfig,
+    FlextInfraProtocolsDepsToolConfigLinters,
+    FlextInfraProtocolsDepsToolConfigProject,
+    FlextInfraProtocolsDepsToolConfigProjectMise,
+    FlextInfraProtocolsDepsToolConfigTypeCheckers,
     FlextInfraProtocolsDocs,
+    FlextInfraProtocolsDocsCollection,
+    FlextInfraProtocolsDocsGeneration,
+    FlextInfraProtocolsDuplication,
+    FlextInfraProtocolsEnforcementCatalog,
+    FlextInfraProtocolsGates,
+    FlextInfraProtocolsGit,
+    FlextInfraProtocolsLayout,
+    FlextInfraProtocolsMiseToolchain,
+    FlextInfraProtocolsMiseToolchainBase,
+    FlextInfraProtocolsMiseToolchainRepair,
+    FlextInfraProtocolsMixins,
+    FlextInfraProtocolsProjectArtifacts,
+    FlextInfraProtocolsProjectGitignore,
     FlextInfraProtocolsPromoted,
+    FlextInfraProtocolsRefactor,
+    FlextInfraProtocolsRefactorAstGrep,
+    FlextInfraProtocolsRefactorNamespaceEnforcer,
+    FlextInfraProtocolsRelease,
     FlextInfraProtocolsRope,
+    FlextInfraProtocolsRopeMove,
     FlextInfraProtocolsRopeRuntime,
-    FlextInfraProtocolsWorkspaceSnapshot,
+    FlextInfraProtocolsScan,
+    FlextInfraProtocolsSettings,
+    FlextInfraProtocolsSonarcloud,
+    FlextInfraProtocolsTestmon,
+    FlextInfraProtocolsTransformers,
+    FlextInfraProtocolsValidate,
+    FlextInfraProtocolsWorkspace,
+    FlextInfraProtocolsWorktree,
 )
 
 
 class FlextInfraProtocols(FlextCliProtocols):
-    """Structural contracts for flext-infra utilities and services.
-
-    All parent protocols (Result, Config, DI, Service, etc.) are inherited
-    transparently from ``FlextProtocols`` via FLEXT. Infra-specific utility
-    protocols live as nested classes below.
-    """
+    """Structural contracts for flext-infra."""
 
     class Infra(
-        FlextInfraProtocolsCheck,
-        FlextInfraProtocolsDeps,
-        FlextInfraProtocolsDocs,
-        FlextInfraProtocolsPromoted,
-        FlextInfraProtocolsRopeRuntime,
-        FlextInfraProtocolsRope,
         FlextInfraProtocolsBase,
-        FlextInfraProtocolsWorkspaceSnapshot,
+        FlextInfraProtocolsCensus,
+        FlextInfraProtocolsCheck,
+        FlextInfraProtocolsCodegen,
+        FlextInfraProtocolsCodemod,
+        FlextInfraProtocolsConfig,
+        FlextInfraProtocolsDeps,
+        FlextInfraProtocolsDepsToml,
+        FlextInfraProtocolsDepsToolConfig,
+        FlextInfraProtocolsDepsToolConfigLinters,
+        FlextInfraProtocolsDepsToolConfigProject,
+        FlextInfraProtocolsDepsToolConfigProjectMise,
+        FlextInfraProtocolsDepsToolConfigTypeCheckers,
+        FlextInfraProtocolsDocs,
+        FlextInfraProtocolsDocsCollection,
+        FlextInfraProtocolsDocsGeneration,
+        FlextInfraProtocolsDuplication,
+        FlextInfraProtocolsEnforcementCatalog,
+        FlextInfraProtocolsGates,
+        FlextInfraProtocolsGit,
+        FlextInfraProtocolsLayout,
+        FlextInfraProtocolsMiseToolchain,
+        FlextInfraProtocolsMiseToolchainBase,
+        FlextInfraProtocolsMiseToolchainRepair,
+        FlextInfraProtocolsMixins,
+        FlextInfraProtocolsProjectArtifacts,
+        FlextInfraProtocolsProjectGitignore,
+        FlextInfraProtocolsPromoted,
+        FlextInfraProtocolsRefactor,
+        FlextInfraProtocolsRefactorAstGrep,
+        FlextInfraProtocolsRefactorNamespaceEnforcer,
+        FlextInfraProtocolsRelease,
+        FlextInfraProtocolsRope,
+        FlextInfraProtocolsRopeMove,
+        FlextInfraProtocolsRopeRuntime,
+        FlextInfraProtocolsScan,
+        FlextInfraProtocolsSettings,
+        FlextInfraProtocolsSonarcloud,
+        FlextInfraProtocolsTestmon,
+        FlextInfraProtocolsTransformers,
+        FlextInfraProtocolsValidate,
+        FlextInfraProtocolsWorkspace,
+        FlextInfraProtocolsWorktree,
     ):
-        """Infra-specific structural protocol definitions."""
+        """Aggregate source-derived protocol contracts."""
 
 
 p = FlextInfraProtocols
-__all__: list[str] = ["FlextInfraProtocols", "FlextInfraProtocolsBase", "p"]
+__all__: list[str] = ["FlextInfraProtocols", "p"]

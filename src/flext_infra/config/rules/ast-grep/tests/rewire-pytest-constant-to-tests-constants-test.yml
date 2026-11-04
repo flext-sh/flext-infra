@@ -1,10 +1,18 @@
+# Fixture owner sets: fixture-utils/library-member-owner-pytest-{c,t,u}.yml.
+# Lower-case members only; class members belong to the class-constant document.
 id: rewire-pytest-constant-to-tests-constants
 valid:
+  - |
+    code = pytest.ExitCode.OK
   - |
     @c.Tests.MARK.slow
     def test_value() -> None: ...
   - |
-    code = pytest.ExitCode.OK
+    value = pytest.approx(1.0)
+  - |
+    pytest.skip("not executed")
+  - |
+    pytest.fail("contract broken")
 invalid:
   - |
     @pytest.mark.slow

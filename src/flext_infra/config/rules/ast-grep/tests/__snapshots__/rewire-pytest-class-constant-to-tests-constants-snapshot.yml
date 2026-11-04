@@ -16,3 +16,22 @@ snapshots:
       style: secondary
       start: 14
       end: 22
+  "try:\n    run()\nexcept pytest.UsageError:\n    raise\n":
+    fixed: |
+      try:
+          run()
+      except c.Tests.UsageError:
+          raise
+    labels:
+    - source: pytest.UsageError
+      style: primary
+      start: 22
+      end: 39
+    - source: pytest
+      style: secondary
+      start: 22
+      end: 28
+    - source: UsageError
+      style: secondary
+      start: 29
+      end: 39

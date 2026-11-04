@@ -18,10 +18,16 @@ from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitMutationScope,
     FlextInfraUtilitiesGitRequirementSource,
     FlextInfraUtilitiesGitScope,
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitSemanticIndex,
+    FlextInfraUtilitiesGitSemanticLane,
+    FlextInfraUtilitiesGitSemanticPaths,
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitSemanticRefs,
     FlextInfraUtilitiesGitSemanticSubmodule,
+    FlextInfraUtilitiesGitSemanticWorktree,
     FlextInfraUtilitiesGitStateCapture,
     FlextInfraUtilitiesGitWorktree,
-    FlextInfraUtilitiesGitWorktreeDiscovery,
 )
 
 
@@ -34,13 +40,20 @@ class FlextInfraUtilitiesGit(
     FlextInfraUtilitiesGitSemanticSubmodule,
     FlextInfraUtilitiesGitLaneHygiene,
     FlextInfraUtilitiesGitStateCapture,
-    FlextInfraUtilitiesGitWorktreeDiscovery,
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitSemanticIndex,
+    FlextInfraUtilitiesGitSemanticLane,
+    FlextInfraUtilitiesGitSemanticPaths,
+    FlextInfraUtilitiesGitSemanticPublish,
+    FlextInfraUtilitiesGitSemanticRefs,
+    FlextInfraUtilitiesGitSemanticWorktree,
 ):
-    """Canonical Git owner for flext-infra: scope + worktree + checkpoint/patch.
+    """Canonical Git owner for flext-infra: every Git part composed flat.
 
-    Removal and semantic publication share the refs/preflight owner below both
-    effect boundaries. Compose removal here, not below refs: otherwise the
-    removal owner cannot call the shared guard without an import cycle.
+    A part inherits only the parts whose protected helpers it calls and reaches
+    another part's public operation through that owner (removal calls
+    ``FlextInfraUtilitiesGitSemanticRefs.git_verify_lane``), so the parts stay
+    shallow and only this owner composes them all.
     """
 
     @staticmethod

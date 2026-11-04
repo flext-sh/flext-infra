@@ -1,0 +1,10 @@
+id: rewire-protocol-model-root
+valid:
+  - "def dump(model: p.BaseModel) -> None: ..."
+  - "value: p.Infra.Model"
+  - "value: m.Model"
+invalid:
+  - "def dump(model: p.Model) -> None: ..."
+  - "items: Sequence[p.Model[t.JsonDict]]"
+  - "class StagedFile(FlextProtocols.Model, Protocol): ..."
+  - "class Spec(FlextCliProtocols.Model, Protocol): ..."

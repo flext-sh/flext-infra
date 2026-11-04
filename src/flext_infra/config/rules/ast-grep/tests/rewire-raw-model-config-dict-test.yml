@@ -1,24 +1,26 @@
 id: rewire-raw-model-config-dict
-# `valid` MUST NOT match: already a ConfigDict call, a dict in a module that does
-# not bind `m`, or another name assigned a dict.
+# `valid` MUST NOT match: already a ConfigDict call, or another name assigned a
+# dict. Fixtures carry no file scope: the models family and layer zero are
+# scoped out only in a native stage.
 valid:
-  - |
-    from flext_core import m
-    class Spec(m.FrozenModel):
-        model_config = m.ConfigDict(frozen=True)
-  - |
-    class Spec:
-        model_config = {"frozen": True}
-  - |
-    from flext_core import m
-    settings = {"frozen": True}
-# `invalid` MUST match: raw dict configs in modules that bind `m`.
+- |
+  from flext_core import m
+  class Spec(m.FrozenModel):
+      model_config = m.ConfigDict(frozen=True)
+- |
+  from flext_core import m
+  settings = {"frozen": True}
+# `invalid` MUST match: raw dict configs, whether or not the module binds `m`
+# yet (the generated import header binds it).
 invalid:
-  - |
-    from flext_core import m
-    class Spec(m.FrozenModel):
-        model_config = {"frozen": False}
-  - |
-    from flext_core import m
-    class Spec(m.FrozenModel):
-        model_config: ClassVar = {"populate_by_name": True, "extra": "forbid"}
+- |
+  from flext_core import m
+  class Spec(m.FrozenModel):
+      model_config = {"frozen": False}
+- |
+  from flext_core import m
+  class Spec(m.FrozenModel):
+      model_config: ClassVar = {"populate_by_name": True, "extra": "forbid"}
+- |
+  class Spec:
+      model_config = {"frozen": True}

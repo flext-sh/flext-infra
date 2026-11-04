@@ -40,9 +40,7 @@ def _provision_edited_sample(
 @pytest.mark.usefixtures("provisioned_workspace")
 class TestsFlextInfraUtilitiesProtectedEdit:
     @staticmethod
-    @pytest.mark.parametrize(
-        "mode", ["empty", "malformed", "signal", "timeout", "launch"]
-    )
+    @pytest.mark.parametrize("mode", ["empty", "malformed", "signal", "timeout"])
     def test_native_lint_failure_never_becomes_a_diagnostic_zero(
         tmp_path: Path,
         mode: str,
@@ -54,12 +52,9 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             "signal": "import os, signal; os.kill(os.getpid(), signal.SIGTERM)",
             "timeout": "import time; time.sleep(30)",
         }
-        command = (
-            (str(tmp_path / "absent-lint-executable"),)
-            if mode == "launch"
-            else (sys.executable, "-c", programs[mode])
+        executed = u.Cli.run_raw(
+            (sys.executable, "-c", programs[mode]), cwd=tmp_path, timeout=1
         )
-        executed = u.Cli.run_raw(command, cwd=tmp_path, timeout=1)
         receipt = u.Infra.lint_gate_result(c.Infra.RUFF, executed)
         tm.that(receipt.errors, eq=())
         tm.ok(receipt.execution_error is not None)
@@ -72,26 +67,30 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             ),
             eq={},
         )
-        if executed.failure:
-            tm.that(receipt.output, eq=None)
-            tm.that(receipt.execution_error, eq=executed.error)
-            tm.that(receipt.error_code, eq=executed.error_code)
-            tm.that(receipt.error_data, eq=executed.error_data)
-            if executed.exception is not None:
-                tm.that(receipt.error_traceback or "", has=str(executed.exception))
-        else:
-            tm.ok(receipt.output is not None)
-            if receipt.output is not None:
-                tm.that(
-                    receipt.output.outcome.model_dump(),
-                    eq={
-                        "raw_return_code": executed.value.outcome.raw_return_code,
-                        "timed_out": executed.value.outcome.timed_out,
-                        "forwarded_signal": executed.value.outcome.forwarded_signal,
-                    },
-                )
-                tm.that(receipt.output.stdout, eq=executed.value.stdout)
-                tm.that(receipt.output.stderr, eq=executed.value.stderr)
+        output = tm.not_none(receipt.output)
+        tm.that(
+            output.outcome.model_dump(),
+            eq={
+                "raw_return_code": executed.value.outcome.raw_return_code,
+                "timed_out": executed.value.outcome.timed_out,
+                "forwarded_signal": executed.value.outcome.forwarded_signal,
+            },
+        )
+        tm.that(output.stdout, eq=executed.value.stdout)
+        tm.that(output.stderr, eq=executed.value.stderr)
+
+    @staticmethod
+    def test_lint_launch_failure_propagates_its_native_cause(
+        tmp_path: Path,
+    ) -> None:
+        """A tool that never launched stops the gate with its original exception."""
+        executed = u.Cli.run_raw(
+            (str(tmp_path / "absent-lint-executable"),), cwd=tmp_path, timeout=1
+        )
+        cause = tm.not_none(executed.exception)
+        with u.Tests.raises(type(cause)) as raised:
+            u.Infra.lint_gate_result(c.Infra.RUFF, executed)
+        tm.ok(raised.value is cause)
 
     @staticmethod
     def test_configuration_failure_is_not_cached_as_clean_lint(
@@ -164,8 +163,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             tm.fail(u.Cli.process_succeeded(receipt.output.outcome))
         tm.that(u.Infra.lint_new_errors(snapshot, snapshot), eq={})
 
-    @staticmethod
     @pytest.fixture
+    @staticmethod
     def provisioned_workspace(
         tmp_path: Path,
     ) -> None:

@@ -16,8 +16,8 @@ from git import GitCommandError
 
 from flext_infra import c, p, r
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitWorktreeDiscovery,
     FlextInfraUtilitiesGitWorktreeIO,
+    FlextInfraUtilitiesGitWorktreeStatus,
 )
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesGitWorktreeMaterialization(
-    FlextInfraUtilitiesGitWorktreeDiscovery,
+    FlextInfraUtilitiesGitWorktreeStatus,
 ):
     """Own worktree materialization operations."""
 

@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -19,12 +18,15 @@ if TYPE_CHECKING:
     from flext_infra._utilities._git.attestation_evidence import (
         FlextInfraUtilitiesGitAttestationEvidence,
     )
-    from flext_infra._utilities._git.gitignore import FlextInfraUtilitiesGitignore
+    from flext_infra._utilities._git.ignore import FlextInfraUtilitiesGitignore
     from flext_infra._utilities._git.lane_hygiene import (
         FlextInfraUtilitiesGitLaneHygiene,
     )
     from flext_infra._utilities._git.mutation_scope import (
         FlextInfraUtilitiesGitMutationScope,
+    )
+    from flext_infra._utilities._git.physical_scope import (
+        FlextInfraUtilitiesGitPhysicalScope,
     )
     from flext_infra._utilities._git.remote import FlextInfraUtilitiesGitRemote
     from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
@@ -109,6 +111,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitAttestationEvidence",
     "FlextInfraUtilitiesGitLaneHygiene",
     "FlextInfraUtilitiesGitMutationScope",
+    "FlextInfraUtilitiesGitPhysicalScope",
     "FlextInfraUtilitiesGitRemote",
     "FlextInfraUtilitiesGitRepo",
     "FlextInfraUtilitiesGitRequirementSource",
@@ -145,11 +148,12 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
-        "FlextInfraUtilitiesGitAttestationEvidence": ".attestation_evidence",
+    {
         "FlextInfraUtilitiesGitAttestation": ".attestation",
+        "FlextInfraUtilitiesGitAttestationEvidence": ".attestation_evidence",
         "FlextInfraUtilitiesGitLaneHygiene": ".lane_hygiene",
         "FlextInfraUtilitiesGitMutationScope": ".mutation_scope",
+        "FlextInfraUtilitiesGitPhysicalScope": ".physical_scope",
         "FlextInfraUtilitiesGitRemote": ".remote",
         "FlextInfraUtilitiesGitRepo": ".repo",
         "FlextInfraUtilitiesGitRequirementSource": ".requirement_source",
@@ -169,18 +173,18 @@ install_lazy_exports(
         "FlextInfraUtilitiesGitStateSnapshot": ".state_snapshot",
         "FlextInfraUtilitiesGitStateTransition": ".state_transition",
         "FlextInfraUtilitiesGitStateTrees": ".state_trees",
+        "FlextInfraUtilitiesGitWorktree": ".worktree",
         "FlextInfraUtilitiesGitWorktreeCheckpoint": ".worktree_checkpoint",
         "FlextInfraUtilitiesGitWorktreeDiscovery": ".worktree_discovery",
         "FlextInfraUtilitiesGitWorktreeFacts": ".worktree_facts",
         "FlextInfraUtilitiesGitWorktreeIO": ".worktree_io",
-        "FlextInfraUtilitiesGitWorktreeMaterialization": (".worktree_materialization"),
+        "FlextInfraUtilitiesGitWorktreeMaterialization": ".worktree_materialization",
         "FlextInfraUtilitiesGitWorktreeMeasure": ".worktree_measure",
-        "FlextInfraUtilitiesGitWorktree": ".worktree",
         "FlextInfraUtilitiesGitWorktreePatch": ".worktree_patch",
         "FlextInfraUtilitiesGitWorktreeRemoval": ".worktree_removal",
         "FlextInfraUtilitiesGitWorktreeRoots": ".worktree_roots",
         "FlextInfraUtilitiesGitWorktreeStatus": ".worktree_status",
-        "FlextInfraUtilitiesGitignore": ".gitignore",
-    }),
+        "FlextInfraUtilitiesGitignore": ".ignore",
+    },
     public_exports=__all__,
 )

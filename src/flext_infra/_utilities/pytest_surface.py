@@ -20,6 +20,10 @@ class FlextInfraUtilitiesPytest:
 
         approx = staticmethod(pytest.approx)
         exit = staticmethod(pytest.exit)
+        # ``skip`` is a pytest outcome object called like a function (its
+        # class declares ``__call__``), so ``u`` owns it beside ``exit``.
+        # ``fail`` is not published: ``u.Tests`` inherits this class ahead of
+        # its result matchers, and the matcher ``fail`` owns that name.
         fixture = staticmethod(pytest.fixture)
         # ``pytest.hookimpl`` is a pluggy ``HookimplMarker`` instance, not a
         # function: it is not a descriptor, so wrapping it in ``staticmethod``
@@ -31,6 +35,7 @@ class FlextInfraUtilitiesPytest:
         monkeypatch_context = staticmethod(pytest.MonkeyPatch.context)
         param = staticmethod(pytest.param)
         raises = staticmethod(pytest.raises)
+        skip = staticmethod(pytest.skip)
         warns = staticmethod(pytest.warns)
 
 

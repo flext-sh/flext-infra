@@ -10,18 +10,18 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra import c, p, u
+from flext_infra.gates import FlextInfraGates
 
 
-class FlextInfraRuffGate(FlextInfraGate):
+class FlextInfraGatesRuffGate(FlextInfraGates):
     """Own the environment facts every Ruff-backed gate shares."""
 
     @override
     def _check_env(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Mapping[str, str]:
         """Keep native cache writes outside authenticated source candidates.
 
@@ -37,4 +37,4 @@ class FlextInfraRuffGate(FlextInfraGate):
         }
 
 
-__all__: list[str] = ["FlextInfraRuffGate"]
+__all__: list[str] = ["FlextInfraGatesRuffGate"]

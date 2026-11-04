@@ -9,26 +9,27 @@ from __future__ import annotations
 from git import GitCommandError, Repo
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIndex
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitRepo,
+    FlextInfraUtilitiesGitSemanticRefs,
+)
 
 
-class FlextInfraUtilitiesGitSemanticWorktree(
-    FlextInfraUtilitiesGitSemanticIndex,
-):
+class FlextInfraUtilitiesGitSemanticWorktree(FlextInfraUtilitiesGitRepo):
     """Own semantic worktree operations."""
 
     @classmethod
     def git_add_lane_worktree(
         cls,
-        request: m.Infra.GitWorktreeAddRequest,
-    ) -> p.Result[m.Infra.GitTextReport]:
+        request: p.Infra.GitWorktreeAddRequest,
+    ) -> p.Result[p.Infra.GitTextReport]:
         """Add a development lane worktree for an existing or new branch.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitTextReport]``.
+            The resulting ``p.Result[p.Infra.GitTextReport]``.
 
         """
-        admitted = cls.git_verify_lane(
+        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
             m.Infra.GitLaneVerificationRequest(
                 repo_root=request.repo_root,
                 operation="create",
@@ -36,23 +37,23 @@ class FlextInfraUtilitiesGitSemanticWorktree(
             ),
         )
         if admitted.failure:
-            return r[m.Infra.GitTextReport].from_failure(admitted)
+            return r[p.Infra.GitTextReport].from_failure(admitted)
         try:
             repo = cls._repo(request.repo_root)
             text = cls._git_add_worktree_args(repo, request)
         except GitCommandError as exc:
-            return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitTextReport].fail(
+            return r[p.Infra.GitTextReport].fail(
                 f"failed to add worktree for {request.branch}: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
+        return r[p.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @staticmethod
     def _git_add_worktree_args(
         repo: Repo,
-        request: m.Infra.GitWorktreeAddRequest,
+        request: p.Infra.GitWorktreeAddRequest,
     ) -> str:
         """Select and execute the correct ``git worktree add`` variant.
 
@@ -86,8 +87,8 @@ class FlextInfraUtilitiesGitSemanticWorktree(
     @classmethod
     def git_attach_branch_at_head(
         cls,
-        request: m.Infra.GitBranchRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitBranchRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Point ``branch`` at HEAD and attach HEAD to it without moving the tree.
 
         A detached checkout carries real work, so it is attached by rewriting the
@@ -97,20 +98,20 @@ class FlextInfraUtilitiesGitSemanticWorktree(
         when it does, a failure to set it escapes like any other.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
             cls._force_attach_branch_at_head(request)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to attach {request.branch} at HEAD: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
-    def _force_attach_branch_at_head(cls, request: m.Infra.GitBranchRequest) -> None:
+    def _force_attach_branch_at_head(cls, request: p.Infra.GitBranchRequest) -> None:
         """Force-create the branch at HEAD and set its upstream when present."""
         repo = cls._repo(request.repo_root)
         repo.git.branch("--quiet", "-f", request.branch, "HEAD")

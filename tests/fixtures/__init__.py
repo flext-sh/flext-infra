@@ -7,42 +7,26 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-import re
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
 
-__all__: tuple[str, ...] = ()
+if TYPE_CHECKING:
+    from tests.fixtures.imported_model_collision import TestsImportedModelCollision
+    from tests.fixtures.imported_model_reference import TestsImportedModelReference
+
+
+__all__: tuple[str, ...] = (
+    "TestsImportedModelCollision",
+    "TestsImportedModelReference",
+)
 
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({}),
+    {
+        "TestsImportedModelCollision": ".imported_model_collision",
+        "TestsImportedModelReference": ".imported_model_reference",
+    },
     public_exports=__all__,
 )

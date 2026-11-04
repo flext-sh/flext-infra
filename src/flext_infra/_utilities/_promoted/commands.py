@@ -106,7 +106,7 @@ class FlextInfraUtilitiesPromotedCommands(FlextInfraUtilitiesPromotedWorkspace):
         params_raw = data.get(key.PARAMS, [])
         if not isinstance(params_raw, list):
             cls.promoted_fail(message.PARAMS_NOT_LIST, path=path)
-        params: MutableSequence[m.Infra.PromotedParam] = []
+        params: MutableSequence[p.Infra.PromotedParam] = []
         for item in params_raw:
             if not isinstance(item, dict):
                 cls.promoted_fail(message.PARAMS_NOT_TABLE, path=path)

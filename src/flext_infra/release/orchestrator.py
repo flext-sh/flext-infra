@@ -73,7 +73,7 @@ class FlextInfraReleaseOrchestrator(
         match ctx.phase:
             case c.Infra.ReleasePhase.PLAN:
 
-                def planned(_plan: m.Infra.ReleasePlan) -> bool:
+                def planned(_plan: p.Infra.ReleasePlan) -> bool:
                     return True
 
                 return self.phase_plan(ctx).map(planned)
@@ -86,7 +86,7 @@ class FlextInfraReleaseOrchestrator(
             case c.Infra.ReleasePhase.PUBLISH:
                 return self.phase_publish(ctx)
 
-    def phase_version(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
+    def phase_version(self, ctx: p.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Open or update the release pull request for the planned version.
 
         Returns:
@@ -127,8 +127,8 @@ class FlextInfraReleaseOrchestrator(
 
     def _stamp_release(
         self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-        plan: m.Infra.ReleasePlan,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+        plan: p.Infra.ReleasePlan,
     ) -> p.Result[bool]:
         """Write the version SSOT, settle its projections, then the release notes.
 
@@ -172,7 +172,7 @@ class FlextInfraReleaseOrchestrator(
         return u.Infra.update_changelog(root, plan.next, plan.tag, notes)
 
     @classmethod
-    def phase_tag(cls, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
+    def phase_tag(cls, ctx: p.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Tag the merged release commit; idempotent when the tag already points here.
 
         Returns:

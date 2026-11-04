@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra._utilities._import_law.normalization import (
-    FlextInfraUtilitiesImportLawNormalization,
-)
+from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawNormalization
 
 
 class FlextInfraUtilitiesImportLaw(FlextInfraUtilitiesImportLawNormalization):

@@ -10,15 +10,11 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import m, p
-from flext_infra._utilities._rope.rope_class_move import (
+from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeClassMove,
-)
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
-)
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesTypesSemanticNesting,
@@ -33,7 +29,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
     @classmethod
     def _prepared_helper_source(
         cls,
-        move: m.Infra.ResolvedClassMove,
+        move: p.Infra.ResolvedClassMove,
         project: p.Infra.RopeProject,
         path: Path,
         source: str,
@@ -54,7 +50,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         resource = project.get_resource(path.relative_to(root).as_posix())
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -80,10 +76,10 @@ class FlextInfraUtilitiesSemanticHelperReferences(
     @classmethod
     def _helper_move_plan(
         cls,
-        request: m.Infra.ClassMoveRequest,
+        request: p.Infra.ClassMoveRequest,
         *,
         sources: Mapping[Path, str],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
 
         project = request.rope_project
         root = Path(project.root.real_path)
@@ -132,7 +128,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
 
     @staticmethod
     def _move_prepared_helper(
-        move: m.Infra.ResolvedClassMove,
+        move: p.Infra.ResolvedClassMove,
         prepared: MutableMapping[Path, str],
         quoted_imports: Mapping[Path, str],
     ) -> None:
@@ -208,7 +204,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
 
     @staticmethod
     def _rebind_origin_imports(
-        move: m.Infra.ResolvedClassMove,
+        move: p.Infra.ResolvedClassMove,
         snapshot: p.Infra.RopeProject,
         prepared: MutableMapping[Path, str],
     ) -> None:
@@ -333,7 +329,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
     @classmethod
     def _moved_quoted_source(
         cls,
-        move: m.Infra.ResolvedClassMove,
+        move: p.Infra.ResolvedClassMove,
         resource: p.Infra.RopeResource,
         source: str,
         *,
@@ -345,7 +341,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
         project = request.rope_project
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
-            FlextInfraUtilitiesTypesRopeRuntime.require_file_resource(
+            FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
                 resource, resource.path
             ),
         )
@@ -382,7 +378,7 @@ class FlextInfraUtilitiesSemanticHelperReferences(
     @classmethod
     def _original_helper_imports(
         cls,
-        move: m.Infra.ResolvedClassMove,
+        move: p.Infra.ResolvedClassMove,
         resource: p.Infra.RopeResource,
         source: str,
         original: p.Infra.RopePyModule,

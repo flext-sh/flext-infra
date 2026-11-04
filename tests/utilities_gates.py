@@ -12,14 +12,14 @@ from typing import TYPE_CHECKING
 
 from flext_infra import infra
 from flext_infra.deps import FlextInfraConfigFixer
-from tests import c, m, tm
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
+from tests import c, m, p, tm
+from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
 
 if TYPE_CHECKING:
-    from flext_infra.gates.base_gate import FlextInfraGate
+    from flext_infra.gates.base_gate import FlextInfraGates
 
 
-class TestsFlextInfraUtilitiesGatesMixin:
+class TestsFlextInfraUtilitiesGates:
     """Typed quality-gate execution and enforcement fixture helpers."""
 
     @staticmethod
@@ -37,7 +37,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         reports_dir: Path | None = None,
         *,
         fail_fast: bool = c.Infra.CHECK_FAIL_FAST_DEFAULT,
-    ) -> m.Infra.GateContext:
+    ) -> p.Infra.GateContext:
         """Build the standard check-mode gate context for one root.
 
         ``reports_dir`` defaults to the root; a checker run publishes its
@@ -55,13 +55,13 @@ class TestsFlextInfraUtilitiesGatesMixin:
 
     @staticmethod
     def check_gate_asserting(
-        gate_class: type[FlextInfraGate],
+        gate_class: type[FlextInfraGates],
         tmp_path: Path,
         project_dir: Path,
         *,
         passed: bool,
         issues_len: int,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Check one gate once, asserting its pass state and issue count.
 
         Returns:
@@ -71,7 +71,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         gate = gate_class(tmp_path)
         result = gate.check(
             project_dir,
-            TestsFlextInfraUtilitiesGatesMixin.gate_context(tmp_path),
+            TestsFlextInfraUtilitiesGates.gate_context(tmp_path),
         )
         tm.that(result.result.passed, eq=passed)
         tm.that(len(result.issues), eq=issues_len)
@@ -83,8 +83,8 @@ class TestsFlextInfraUtilitiesGatesMixin:
         project: str = "p",
         *,
         passed: bool = True,
-        issues: Sequence[m.Infra.Issue] | None = None,
-    ) -> m.Infra.GateExecution:
+        issues: Sequence[p.Infra.Issue] | None = None,
+    ) -> p.Infra.GateExecution:
         """Create a typed quality-gate execution fixture.
 
         The native outcome follows the findings, as a completed tool run
@@ -97,7 +97,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         """
         findings = tuple(issues or ())
         return m.Infra.GateExecution.model_validate({
-            "result": m.Infra.GateResult(
+            "result": p.Infra.GateResult(
                 gate=gate,
                 project=project,
                 passed=passed,
@@ -119,7 +119,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         column: int = 1,
         code: str = "E1",
         message: str = "Error",
-    ) -> m.Infra.Issue:
+    ) -> p.Infra.Issue:
         """Create a typed quality issue fixture.
 
         Returns:
@@ -139,7 +139,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     def make_project(
         name: str = "p",
         gates: Mapping[str, m.Infra.GateExecution] | None = None,
-    ) -> m.Infra.ProjectResult:
+    ) -> p.Infra.ProjectResult:
         """Create a typed project-result fixture.
 
         Returns:
@@ -149,9 +149,9 @@ class TestsFlextInfraUtilitiesGatesMixin:
         resolved_gates: Mapping[str, m.Infra.GateExecution] = (
             gates
             if gates is not None
-            else {"lint": TestsFlextInfraUtilitiesGatesMixin.create_gate_execution()}
+            else {"lint": TestsFlextInfraUtilitiesGates.create_gate_execution()}
         )
-        result: m.Infra.ProjectResult = m.Infra.ProjectResult.model_validate({
+        result: p.Infra.ProjectResult = m.Infra.ProjectResult.model_validate({
             "project": name,
             "gates": resolved_gates,
         })
@@ -162,7 +162,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         repository_root: Path,
         *,
         reports_dir: Path | None = None,
-    ) -> m.Infra.GateContext:
+    ) -> p.Infra.GateContext:
         """Provide the typed test helper `create_gate_context`.
 
         Returns:
@@ -176,13 +176,13 @@ class TestsFlextInfraUtilitiesGatesMixin:
 
     @staticmethod
     def run_gate_check(
-        gate_class: type[FlextInfraGate],
+        gate_class: type[FlextInfraGates],
         repository_root: Path,
         project_dir: Path,
         *,
-        ctx: m.Infra.GateContext | None = None,
+        ctx: p.Infra.GateContext | None = None,
         reports_dir: Path | None = None,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Provide the typed test helper `run_gate_check`.
 
         Returns:
@@ -193,7 +193,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         return gate.check(
             project_dir,
             ctx
-            or TestsFlextInfraUtilitiesGatesMixin.create_gate_context(
+            or TestsFlextInfraUtilitiesGates.create_gate_context(
                 repository_root,
                 reports_dir=reports_dir,
             ),
@@ -205,8 +205,8 @@ class TestsFlextInfraUtilitiesGatesMixin:
         *,
         rules: Sequence[str],
         kinds: Sequence[str] | None = None,
-        options: m.Infra.CensusInput | None = None,
-    ) -> m.Infra.WorkspaceReport:
+        options: p.Infra.CensusInput | None = None,
+    ) -> p.Infra.WorkspaceReport:
         """Execute one refactor census and unwrap its successful report.
 
         Returns:
@@ -218,15 +218,15 @@ class TestsFlextInfraUtilitiesGatesMixin:
         values.update(repository_root=workspace, rules=rules)
         if kinds is not None:
             values["kinds"] = kinds
-        TestsFlextInfraUtilitiesToolingFixtureMixin.provision_checkout(workspace)
+        TestsFlextInfraUtilitiesToolingFixture.provision_checkout(workspace)
         return tm.ok(infra.census(m.Infra.CensusInput.model_validate(values)))
 
     @staticmethod
-    def census_violations(report: m.Infra.WorkspaceReport) -> list[m.Infra.Violation]:
+    def census_violations(report: p.Infra.WorkspaceReport) -> list[p.Infra.Violation]:
         """Flatten every per-project violation of one census report.
 
         Returns:
-            The resulting ``list[m.Infra.Violation]``.
+            The resulting ``list[p.Infra.Violation]``.
 
         """
         return [
@@ -234,4 +234,4 @@ class TestsFlextInfraUtilitiesGatesMixin:
         ]
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesGatesMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesGates"]

@@ -12,18 +12,24 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m
-from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFiles
+from flext_infra import c, config, m, p
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitStateFiles,
+    FlextInfraUtilitiesGitStateTrees,
+)
 
 
-class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
+class FlextInfraUtilitiesGitStateTransition(
+    FlextInfraUtilitiesGitStateFiles,
+    FlextInfraUtilitiesGitStateTrees,
+):
     """Accept only captured, baseline, or planned kind-transition absence."""
 
     @staticmethod
     def _state_baseline_file(
-        entry: m.Infra.GitWorktreeIndexEntry,
-        original: m.Infra.GitWorktreeFileState | None = None,
-    ) -> m.Infra.GitWorktreeFileState:
+        entry: p.Infra.GitWorktreeIndexEntry,
+        original: p.Infra.GitWorktreeFileState | None = None,
+    ) -> p.Infra.GitWorktreeFileState:
         permissions = (
             0
             if entry.mode == c.Infra.GIT_GITLINK_MODE_TEXT
@@ -48,11 +54,11 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     def _state_baseline_at(
         cls,
         root: Path,
-        entry: m.Infra.GitWorktreeIndexEntry,
-        original: m.Infra.GitWorktreeFileState | None,
+        entry: p.Infra.GitWorktreeIndexEntry,
+        original: p.Infra.GitWorktreeFileState | None,
         *,
         cleanup: bool,
-    ) -> m.Infra.GitWorktreeFileState:
+    ) -> p.Infra.GitWorktreeFileState:
         baseline = cls._state_baseline_file(entry, original)
         target = root / entry.path
         if (
@@ -81,10 +87,10 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def _state_allowed_files(
         cls,
-        original: m.Infra.GitWorktreeFileState | None,
-        baseline: m.Infra.GitWorktreeFileState | None,
-    ) -> tuple[m.Infra.GitWorktreeFileState | None, ...]:
-        allowed: list[m.Infra.GitWorktreeFileState | None] = [original, baseline]
+        original: p.Infra.GitWorktreeFileState | None,
+        baseline: p.Infra.GitWorktreeFileState | None,
+    ) -> tuple[p.Infra.GitWorktreeFileState | None, ...]:
+        allowed: list[p.Infra.GitWorktreeFileState | None] = [original, baseline]
         if (
             original is not None
             and baseline is not None
@@ -96,7 +102,7 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     @staticmethod
     def _state_require_encodable_symlinks(
         root: Path,
-        desired: Iterable[m.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState],
+        desired: Iterable[p.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState],
     ) -> None:
         """Require every desired symlink payload to decode as strict UTF-8."""
         for entry in desired:
@@ -112,14 +118,14 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
         cls,
         root: Path,
         path: Path,
-        current: m.Infra.GitWorktreeFileState | None,
+        current: p.Infra.GitWorktreeFileState | None,
         *,
         paths: Iterable[Path],
         desired: Mapping[
             Path,
             m.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState,
         ],
-    ) -> m.Infra.GitWorktreeFileState | None:
+    ) -> p.Infra.GitWorktreeFileState | None:
         """Return the working current state after obstruction and realize checks.
 
         Returns:
@@ -147,9 +153,9 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     def _state_require_path_content(
         cls,
         path: Path,
-        current: m.Infra.GitWorktreeFileState | None,
-        original: m.Infra.GitWorktreeFileState | None,
-        previous: m.Infra.GitWorktreeFileState | None,
+        current: p.Infra.GitWorktreeFileState | None,
+        original: p.Infra.GitWorktreeFileState | None,
+        previous: p.Infra.GitWorktreeFileState | None,
         *,
         cleanup: bool,
     ) -> None:
@@ -172,10 +178,10 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def _state_verify_transition(
         cls,
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
-        actual: m.Infra.GitWorktreeStateSnapshot,
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
+        actual: p.Infra.GitWorktreeStateSnapshot,
         root: Path,
-        baseline: Sequence[m.Infra.GitWorktreeIndexEntry],
+        baseline: Sequence[p.Infra.GitWorktreeIndexEntry],
         *,
         cleanup: bool,
     ) -> None:
@@ -229,11 +235,11 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def _state_preflight_transition(
         cls,
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
         root: Path,
         *,
         cleanup: bool,
-    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
+    ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
         actual = cls._state_snapshot(
             m.Infra.GitWorktreeStateRequest(repo_root=root, paths=snapshot.paths),
         )
@@ -247,9 +253,9 @@ class FlextInfraUtilitiesGitStateTransition(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def _state_materialize(
         cls,
-        snapshot: m.Infra.GitWorktreeStateSnapshot,
+        snapshot: p.Infra.GitWorktreeStateSnapshot,
         root: Path,
-        baseline: Sequence[m.Infra.GitWorktreeIndexEntry],
+        baseline: Sequence[p.Infra.GitWorktreeIndexEntry],
         *,
         cleanup: bool,
     ) -> None:

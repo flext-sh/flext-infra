@@ -23,7 +23,7 @@ class FlextInfraUtilitiesLogParser:
         repository_root: Path,
         *,
         reports_dir: Path,
-    ) -> p.Result[tuple[m.Infra.SarifResult, ...]]:
+    ) -> p.Result[tuple[p.Infra.SarifResult, ...]]:
         """Read the SARIF report ``check run`` wrote into typed findings.
 
         ``reports_dir`` is the exact invocation directory printed by ``check run``,
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesLogParser:
         No implicit latest report is selected from concurrent or historical runs.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.SarifResult, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.SarifResult, ...]]``.
 
         """
         report_dir = (
@@ -39,7 +39,7 @@ class FlextInfraUtilitiesLogParser:
         )
         sarif_path = report_dir / c.Infra.CHECK_REPORT_SARIF_FILENAME
         if not sarif_path.is_file():
-            return r[tuple[m.Infra.SarifResult, ...]].fail(
+            return r[tuple[p.Infra.SarifResult, ...]].fail(
                 f"check report not found: {sarif_path}",
             )
         return u.validate_value(

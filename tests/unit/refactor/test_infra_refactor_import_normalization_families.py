@@ -51,13 +51,13 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             )
         target = scripts / "run" / "media_source_stage.py"
         source = (
-            "from demo_pkg import c, m, u\n"
+            "from demo_pkg import c, m, p, u\n"
             "def stage(value: str) -> str:\n"
             "    return u.render(m.render(c.render(value)))\n"
         )
         target.write_text(source, encoding=c.DEFAULT_ENCODING)
         normalized = cls._normalize(project, target, source)
-        tm.that(normalized, has="from scripts import c, m, u")
+        tm.that(normalized, has="from scripts import c, m, p, u")
         target.write_text(normalized, encoding=c.DEFAULT_ENCODING)
         process = tm.ok(
             u.Cli.run(
@@ -75,32 +75,33 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             )
         )
         tm.ok(u.Cli.process_succeeded(process.outcome))
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=target, source=normalized
             ),
-            eq=None,
+            eq=normalized,
         )
 
     @classmethod
     def test_family_keeps_upstream_own_letter(cls, tmp_path: Path) -> None:
         """A family package keeps its own letter from the upstream namespace."""
         project, package = cls._project(tmp_path)
+        source = (
+            "from __future__ import annotations\n"
+            "\n"
+            "from flext_cli import m\n"
+            "\n"
+            "\n"
+            "class DemoRecord(m.ContractModel):\n"
+            "    name: str\n"
+        )
         result = u.Infra.normalize_import_source(
             project_root=project,
             file_path=package / "_models" / "record.py",
-            source=(
-                "from __future__ import annotations\n"
-                "\n"
-                "from flext_cli import m\n"
-                "\n"
-                "\n"
-                "class DemoRecord(m.ContractModel):\n"
-                "    name: str\n"
-            ),
+            source=source,
         )
 
-        tm.that(result, eq=None)
+        tm.ok(result, eq=source)
 
     @classmethod
     @pytest.mark.parametrize("local_alias", ["tm", "u", "payload_models"])
@@ -142,22 +143,21 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             f"-> '{local_alias}.Tests.User':\n"
             f"    return {local_alias}.Tests.User.model_validate(value.model_dump())\n"
         )
-        normalized = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=module,
-            source=source,
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=module,
+                source=source,
+            )
         )
-        module.write_text(
-            normalized if normalized is not None else source,
-            encoding="utf-8",
-        )
-        tm.that(
+        module.write_text(normalized, encoding="utf-8")
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=module,
                 source=module.read_text(encoding="utf-8"),
             ),
-            eq=None,
+            eq=module.read_text(encoding="utf-8"),
         )
         result = tm.ok(
             u.Cli.run(
@@ -166,7 +166,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                     "-c",
                     (
                         "from typing import get_type_hints; "
-                        "from flext_tests import m, tm; "
+                        "from flext_tests import m, p, tm; "
                         "from tests import c, m as local_m; "
                         "from tests.consumer import "
                         "ClassScope, build, local, local_models, sibling; "
@@ -249,12 +249,14 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                     source=source,
                 )
             return
-        normalized = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=package / "consumer.py",
-            source=source,
+        tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=package / "consumer.py",
+                source=source,
+            ),
+            eq=source,
         )
-        tm.that(normalized, eq=None)
 
         result = tm.ok(
             u.Cli.run(
@@ -325,13 +327,13 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "from demo_pkg.exceptions import FlextExceptionsFactories\n\n"
             "value = FlextExceptionsFactories\n"
         )
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=package / "consumer.py",
                 source=source,
             ),
-            eq=None,
+            eq=source,
         )
 
     @classmethod
@@ -496,18 +498,17 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             )
         )
         module.write_text(source, encoding="utf-8")
-        normalized = (
+        normalized = tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=source
             )
-            or source
         )
         module.write_text(normalized, encoding="utf-8")
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=normalized
             ),
-            eq=None,
+            eq=normalized,
         )
         imports = [
             node.module
@@ -591,11 +592,11 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             return
         normalized = cls._normalize(project, module, source)
         module.write_text(normalized, encoding="utf-8")
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=normalized
             ),
-            eq=None,
+            eq=normalized,
         )
         tm.that(
             sum(
@@ -642,22 +643,23 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "    CONFIG_FILENAMES: ClassVar[tuple[str, ...]] = ()\n"
             "    value: JsonValue = 'native'\n"
         )
-        result = u.Infra.normalize_import_source(
-            project_root=project,
-            file_path=package / "_config.py",
-            source=source,
+        normalized = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=package / "_config.py",
+                source=source,
+            )
         )
-        normalized = result if result is not None else source
         tm.that(normalized, has="from flext_core import FlextConfig")
         tm.that(normalized, has="from pydantic import JsonValue")
         tm.that(normalized, lacks="from demo_pkg import")
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=package / "_config.py",
                 source=normalized,
             ),
-            eq=None,
+            eq=normalized,
         )
         (package / "_config.py").write_text(normalized, encoding="utf-8")
         outcome = tm.ok(
@@ -704,12 +706,14 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "from typing import TYPE_CHECKING\n"
             + (f"if TYPE_CHECKING:\n    {statement}\n" if guarded else statement + "\n")
         )
-        with pytest.raises(ValueError, match="layer-zero module imports its own"):
+        tm.fail(
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=package / f"_{role}.py",
                 source=source,
-            )
+            ),
+            has="layer-zero module imports its own",
+        )
 
     @classmethod
     @pytest.mark.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
@@ -743,14 +747,16 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             if guarded
             else f"from demo_pkg import {letter} as own\n"
         )
-        with pytest.raises(ValueError, match="family imports its own facade"):
+        tm.fail(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=source
-            )
+            ),
+            has="family imports its own facade",
+        )
         native = f"from demo_pkg.{family.directory}.part import Declaration\n"
-        tm.that(
+        tm.ok(
             u.Infra.normalize_import_source(
                 project_root=project, file_path=directory / "base.py", source=native
             ),
-            eq=None,
+            eq=native,
         )

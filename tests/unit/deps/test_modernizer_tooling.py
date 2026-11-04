@@ -15,7 +15,8 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraConfig, check, config, deps
-from tests import c, m, t, tm, u
+from flext_infra.deps.phases import FlextInfraEnsureRuffConfigPhase
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerTooling:
@@ -35,7 +36,7 @@ class TestsFlextInfraDepsModernizerTooling:
 
     @staticmethod
     def _yaml_settings_payload(
-        document: m.Infra.ToolConfigDocument,
+        document: p.Infra.ToolConfigDocument,
     ) -> t.JsonDict:
         """Recreate YAML settings lists while retaining unrelated validated fields.
 
@@ -49,7 +50,7 @@ class TestsFlextInfraDepsModernizerTooling:
 
     @staticmethod
     def test_native_settings_yaml_pairs_validate_as_tuples(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """YAML-shaped lists become tuples without changing native option values."""
         payload = TestsFlextInfraDepsModernizerTooling._yaml_settings_payload(
@@ -95,7 +96,7 @@ class TestsFlextInfraDepsModernizerTooling:
 
     @staticmethod
     def test_stub_options_cannot_be_claimed_by_derived_settings(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Moving a forbidden native key to a derived layer grants no permission."""
         payload = {
@@ -148,7 +149,7 @@ class TestsFlextInfraDepsModernizerTooling:
     @staticmethod
     def test_source_paths_and_installed_dependency_typing_are_preserved(
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Search-path option names and installed third-party stubs stay legal."""
         paths: list[t.JsonValue] = [
@@ -234,7 +235,7 @@ class TestsFlextInfraDepsModernizerTooling:
         [[], ["option"], ["option", True, False], [1, True], ["", True], "ab"],
     )
     def test_native_settings_reject_invalid_pair_shapes(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
         pair: t.JsonValue,
     ) -> None:
         """Sequence normalization never repairs malformed native declarations."""
@@ -247,7 +248,7 @@ class TestsFlextInfraDepsModernizerTooling:
 
     @staticmethod
     def test_native_tool_configurations_round_trip_without_mutating_policy(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Every configured root remains valid native TOML with detached values."""
         original = deepcopy(tool_config_document.settings)
@@ -307,7 +308,7 @@ class TestsFlextInfraDepsModernizerTooling:
 
     @staticmethod
     def test_native_markdown_render_does_not_mutate_the_shared_policy(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Native option merging preserves the common projection's source values."""
         policy = tool_config_document.tools.markdown
@@ -324,7 +325,7 @@ class TestsFlextInfraDepsModernizerTooling:
 
     @staticmethod
     def test_native_tool_configuration_rejects_an_undeclared_root(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """An unavailable native root cannot become an empty successful policy."""
         roots = {table.partition(".")[0] for table in tool_config_document.settings}
@@ -496,11 +497,11 @@ class TestsFlextInfraDepsModernizerTooling:
 
     @staticmethod
     def _applied(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
         project_dir: Path,
         source: str = "",
         *,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> tuple[t.MutableJsonMapping, t.JsonMapping]:
         """Apply the Ruff phase twice to one named payload; return payload and ruff.
 
@@ -511,7 +512,7 @@ class TestsFlextInfraDepsModernizerTooling:
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
             u.Tests.toml_payload(f'[project]\nname = "{project_dir.name}"\n{source}'),
         )
-        phase = deps.FlextInfraEnsureRuffConfigPhase(
+        phase = FlextInfraEnsureRuffConfigPhase(
             tool_config_document,
             codegen=codegen,
         )
@@ -524,7 +525,7 @@ class TestsFlextInfraDepsModernizerTooling:
 
     @staticmethod
     def test_typecheck_policy_keeps_tracked_surfaces_visible(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Keep every tracked Python surface visible to all four analyzers."""
         tools = tool_config_document.tools
@@ -573,7 +574,7 @@ class TestsFlextInfraDepsModernizerTooling:
     def test_ruff_phase_sets_expected_state(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Render Ruff policy, drop stale sections, and converge on second apply."""
         ruff_policy = tool_config_document.tools.ruff
@@ -712,7 +713,7 @@ class TestsFlextInfraDepsModernizerTooling:
     def test_ruff_phase_skips_nonmember_workspace_namespaces(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """Exclude nonmember consumer namespaces from FLEXT first-party names."""
         repository_root = tmp_path / "workspace"

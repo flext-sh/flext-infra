@@ -1,9 +1,9 @@
 id: rewire-type-adapter-construction
 valid:
 - |
-  from flext_core import m, u
+  from flext_core import t, u
 
-  ADAPTER: m.TypeAdapter[int] = u.type_adapter(int)
+  ADAPTER: t.TypeAdapter[int] = u.type_adapter(int)
 - |
   from flext_core import m
 

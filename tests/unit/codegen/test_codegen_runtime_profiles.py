@@ -16,7 +16,7 @@ from packaging.requirements import Requirement
 from flext_infra import config, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraCodegenRuntimeProfiles:
@@ -128,7 +128,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         member: Path,
         *,
         composed: bool,
-    ) -> tuple[m.Infra.WorkspaceSpec, Mapping[Path, bytes]]:
+    ) -> tuple[p.Infra.WorkspaceSpec, Mapping[Path, bytes]]:
         """Snapshot the baseline workspace and the bytes conform must preserve.
 
         Returns:

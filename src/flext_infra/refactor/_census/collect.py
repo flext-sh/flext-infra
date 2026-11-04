@@ -6,16 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import m
-from flext_infra.refactor import (
+from flext_infra import m, p
+from flext_infra.refactor._census import (
     FlextInfraRefactorCensusProject,
     FlextInfraRefactorCensusRemoval,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraRefactorCensusCollect(
@@ -26,8 +21,8 @@ class FlextInfraRefactorCensusCollect(
 
     @staticmethod
     def project_name_for_module(
-        module: m.Infra.RopeModuleIndexEntry,
-        convention: m.Infra.RopeModuleConvention,
+        module: p.Infra.RopeModuleIndexEntry,
+        convention: p.Infra.RopeModuleConvention,
     ) -> str:
         """Resolve the project owning an inventoried module.
 
@@ -45,10 +40,10 @@ class FlextInfraRefactorCensusCollect(
     def _scan_module(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
-        module: m.Infra.RopeModuleIndexEntry,
-        scan_config: m.Infra.ScanConfig,
+        module: p.Infra.RopeModuleIndexEntry,
+        scan_config: p.Infra.ScanConfig,
         *,
-        findings: m.Infra.ScanFindings,
+        findings: p.Infra.ScanFindings,
     ) -> None:
         """Inventory one module, accumulating its selected objects per project.
 
@@ -81,9 +76,9 @@ class FlextInfraRefactorCensusCollect(
         rope: p.Infra.RopeWorkspaceDsl,
         *,
         source_preview: p.Infra.SourcePreview,
-        findings: m.Infra.ScanFindings,
-        scan_config: m.Infra.ScanConfig,
-    ) -> m.Infra.WorkspaceReport:
+        findings: p.Infra.ScanFindings,
+        scan_config: p.Infra.ScanConfig,
+    ) -> p.Infra.WorkspaceReport:
         """Aggregate per-project inventories into the workspace census report.
 
         In dry-run the removal candidates are previewed through the gates and

@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Protocol definitions for FLEXT infra tests.
 
 Provides TestsFlextInfraProtocols, extending TestsFlextProtocols with
@@ -15,12 +16,18 @@ from typing import Protocol, runtime_checkable
 from flext_tests import FlextTestsProtocols
 
 from flext_infra import FlextInfraProtocols
+from tests._protocols import TestsFlextInfraProtocolsBase
 
 
-class TestsFlextInfraProtocols(FlextTestsProtocols, FlextInfraProtocols):
+class TestsFlextInfraProtocols(
+    FlextTestsProtocols, FlextInfraProtocols, TestsFlextInfraProtocolsBase
+):
     """Protocol definitions for FLEXT infra tests."""
 
-    class Tests(FlextTestsProtocols.Tests):
+    class Tests(
+        FlextTestsProtocols.Tests,
+        TestsFlextInfraProtocolsBase,
+    ):
         """Tests use inherited flext-tests and production protocols."""
 
         @runtime_checkable

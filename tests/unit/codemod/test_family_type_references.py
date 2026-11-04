@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import ast
+import runpy
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra import infra
-from tests import c, p, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +21,147 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraFamilyTypeReferences:
     """Exercise the real Rope graph for generic bases and deferred annotations."""
+
+    @staticmethod
+    @pytest.mark.parametrize("protocol_imported", [False, True])
+    def test_nested_result_regions_publish_one_native_protocol_cutover(
+        tmp_path: Path,
+        *,
+        protocol_imported: bool,
+    ) -> None:
+        """Nested and declared regions produce disjoint, executable Rope edits."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        (package / c.Infra.INIT_PY).write_text(
+            "from flext_cli import p\n", encoding=c.DEFAULT_ENCODING
+        )
+        path = package / "consumer.py"
+        imports = "m, p, r, u" if protocol_imported else "m, r, u"
+        source = (
+            "from pathlib import Path\n"
+            f"from flext_cli import {imports}\n"
+            "state = u.Cli.atomic_read_binary_file_state(\n"
+            "    Path(__file__).resolve(), required=True).unwrap()\n"
+            "declared: r[m.Cli.AtomicFileState] = (\n"
+            "    r[m.Cli.AtomicFileState].ok(state))\n"
+            "nested = r[tuple[m.Cli.AtomicFileState, r[m.Cli.AtomicFileState]]]\n"
+            "constructor = m.Cli.AtomicFileState\n"
+            "literal = 'm.Cli.AtomicFileState'\n"
+            "parsed = m.Cli.AtomicFileState.model_validate_json(\n"
+            "    state.model_dump_json())\n"
+            "assert declared.value is state\n"
+            "assert isinstance(declared.value, p.Cli.AtomicFileState)\n"
+            "assert constructor is m.Cli.AtomicFileState\n"
+            "assert literal == 'm.Cli.AtomicFileState'\n"
+            "assert parsed == state\n"
+        )
+        if protocol_imported:
+            source += "retained: p.Cli.AtomicFileState = state\n"
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rule = m.Infra.RopeContractRule(
+            id="result-runtime-protocol-owner",
+            pattern="${receiver}.${member}",
+            goal="p.Cli.${member}",
+            arguments={},
+            annotation_member_source="m.Cli",
+            bindings={
+                "m.Cli": "flext_cli.models.FlextCliModels.Cli",
+                "p.Cli": "flext_cli.protocols.FlextCliProtocols.Cli",
+            },
+            annotation_only=True,
+            scope=m.Infra.RopeContractScope(
+                targets=(
+                    m.Infra.RopeContractScopeTarget(
+                        distribution=root.name,
+                        module=f"{package.name}.consumer",
+                    ),
+                )
+            ),
+        )
+        with infra.rope_workspace(root) as rope:
+            (edit,) = tm.ok(u.Infra.plan_contract_rules(rope, {path: source}, (rule,)))
+            tm.that(
+                tm.ok(
+                    u.Infra.plan_contract_rules(
+                        rope, {path: edit.updated_source}, (rule,)
+                    )
+                ),
+                empty=True,
+            )
+        tm.that(edit.updated_source, has="declared: r[p.Cli.AtomicFileState]")
+        tm.that(
+            edit.updated_source,
+            has="nested = r[tuple[p.Cli.AtomicFileState, r[p.Cli.AtomicFileState]]]",
+        )
+        tm.that(edit.updated_source, has="constructor = m.Cli.AtomicFileState")
+        tm.that(edit.updated_source, has="m.Cli.AtomicFileState.model_validate_json(")
+        tm.that(edit.updated_source, has="literal = 'm.Cli.AtomicFileState'")
+        if protocol_imported:
+            tm.that(edit.updated_source, has="retained: p.Cli.AtomicFileState = state")
+        candidate = package / "candidate.py"
+        candidate.write_text(edit.updated_source, encoding=c.DEFAULT_ENCODING)
+        runpy.run_path(str(candidate))
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            (
+                "from flext_core import r\nvalue = r['Domain.Item']\n",
+                ("Domain.Item",),
+            ),
+            (
+                (
+                    "from flext_core.result import FlextResult as Outcome\n"
+                    "value = Outcome[tuple['Domain.Item', int]]\n"
+                ),
+                ("Domain.Item",),
+            ),
+            (
+                (
+                    "from flext_core import r\n"
+                    "def consume(r):\n    return r['Domain.Item']\n"
+                ),
+                (),
+            ),
+            (
+                (
+                    "from flext_core import r\n"
+                    "def consume():\n    r = list\n    return r['Domain.Item']\n"
+                ),
+                (),
+            ),
+            ("value = list['Domain.Item']\n", ()),
+            (
+                "from flext_core import r\nvalue = r[str].ok('Domain.Item')\n",
+                (),
+            ),
+            (
+                (
+                    "from typing import Annotated\nfrom flext_core import m, r\n"
+                    "value = r[Annotated[str, m.Field(description='Domain.Item')]]\n"
+                ),
+                (),
+            ),
+        ],
+    )
+    def test_result_runtime_type_arguments_keep_native_identity(
+        tmp_path: Path, source: str, expected: tuple[str, ...]
+    ) -> None:
+        """Only real Core result subscriptions contribute quoted type arguments."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with infra.rope_workspace(root) as rope:
+            resource = tm.not_none(rope.resource(path))
+            module = u.Infra.resolve_pymodule(rope.rope_project, resource)
+            references = u.Infra.scoped_quoted_type_references(
+                source, rope.rope_project, module
+            )
+            tm.that(
+                tuple(expression for expression, _scope, _line in references),
+                eq=expected,
+            )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -203,7 +345,7 @@ class TestsFlextInfraFamilyTypeReferences:
             ):
                 tm.that(proposed[consumer], has=preserved)
             TestsFlextInfraFamilyTypeReferences._assert_string_payloads_preserved(
-                root, rope.rope_project, consumer, proposed
+                references, proposed[consumer]
             )
             for rewritten in (
                 "Container['Part.DomainItem']",
@@ -235,66 +377,40 @@ class TestsFlextInfraFamilyTypeReferences:
         tm.that(consumer.read_text(encoding="utf-8"), eq=references)
 
     @staticmethod
-    def _assert_string_payloads_preserved(
-        root: Path,
-        project: p.Infra.RopeProject,
-        consumer: Path,
-        proposed: Mapping[Path, str],
-    ) -> None:
-        """Compare payload bindings semantically in the original and candidate."""
-        original = u.Infra.resolve_pymodule(
-            project, project.get_file(consumer.relative_to(root).as_posix())
-        )
+    def _assert_string_payloads_preserved(original: str, candidate: str) -> None:
+        """Require the candidate to bind every module string payload verbatim."""
         payloads = TestsFlextInfraFamilyTypeReferences._string_assignments(original)
-        tm.that(set(payloads), eq={"LABEL", "TEXT"})
-        with u.Infra.facade_source_project(
-            root, planned_sources=proposed, source_project=project
-        ) as (candidate, _captured):
-            module = u.Infra.resolve_pymodule(
-                candidate,
-                candidate.get_file(consumer.relative_to(root).as_posix()),
-            )
-            tm.that(
-                set(TestsFlextInfraFamilyTypeReferences._string_assignments(module)),
-                eq=set(payloads),
-            )
-            finder = u.Infra.semantic_finder(module)
-            for name, literal in payloads.items():
-                tm.that(
-                    sum(
-                        module.source_code[first:last] == name
-                        for pattern in (
-                            f"${{target}} = {literal}",
-                            f"${{target}}: ${{annotation}} = {literal}",
-                        )
-                        for match in finder.get_matches(pattern)
-                        for first, last in (match.get_capture_region("target"),)
-                    ),
-                    eq=1,
-                )
+        tm.that({name for name, _literal in payloads}, eq={"LABEL", "TEXT"})
+        tm.that(
+            TestsFlextInfraFamilyTypeReferences._string_assignments(candidate),
+            eq=payloads,
+        )
 
     @staticmethod
-    def _string_assignments(module: p.Infra.RopePyModule) -> Mapping[str, str]:
-        """Capture string assignment expressions through the native matcher.
+    def _string_assignments(source: str) -> tuple[tuple[str, str | None], ...]:
+        """Read module-level string payload bindings with their exact spelling.
 
         Args:
-            module: The native module owning the immutable source view.
+            source: The module source whose top-level bindings are read.
 
         Returns:
-            Names and expressions for semantic matching in another source view.
+            Bound names and their literal source segments, in source order.
 
         """
-        source = module.source_code
-        finder = u.Infra.semantic_finder(module)
-        return {
-            source[first:last]: source[value_first:value_last]
-            for pattern in (
-                "${target} = ${payload}",
-                "${target}: ${annotation} = ${payload}",
-            )
-            for match in finder.get_matches(
-                pattern, {"payload": "type=__builtins__.str"}
-            )
-            for first, last in (match.get_capture_region("target"),)
-            for value_first, value_last in (match.get_capture_region("payload"),)
-        }
+        bindings: list[tuple[str, str | None]] = []
+        target: ast.expr
+        value: ast.expr | None
+        for node in ast.parse(source).body:
+            if isinstance(node, ast.Assign) and len(node.targets) == 1:
+                target, value = node.targets[0], node.value
+            elif isinstance(node, ast.AnnAssign):
+                target, value = node.target, node.value
+            else:
+                continue
+            if (
+                isinstance(target, ast.Name)
+                and isinstance(value, ast.Constant)
+                and isinstance(value.value, str)
+            ):
+                bindings.append((target.id, ast.get_source_segment(source, value)))
+        return tuple(bindings)

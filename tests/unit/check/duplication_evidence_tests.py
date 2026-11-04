@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
-from tests import m, tm
+from tests import m, p, tm
 
 
 class TestsFlextInfraDuplicationEvidence:
@@ -24,7 +24,7 @@ class TestsFlextInfraDuplicationEvidence:
         *,
         format_name: str = "python",
         mirror: bool = False,
-    ) -> m.Infra.JscpdReport:
+    ) -> p.Infra.JscpdReport:
         files = (root / "first.py", root / "second.py")
         for path in files:
             path.write_text(source, encoding="utf-8")
@@ -82,8 +82,8 @@ class TestsFlextInfraDuplicationEvidence:
     @staticmethod
     def _assess(
         root: Path,
-        report: m.Infra.JscpdReport,
-    ) -> m.Infra.DuplicationAssessment:
+        report: p.Infra.JscpdReport,
+    ) -> p.Infra.DuplicationAssessment:
         return FlextInfraDuplicationEvidence().assess(
             report,
             root,
@@ -123,13 +123,19 @@ class TestsFlextInfraDuplicationEvidence:
         tm.that(item.measures[0].lines, eq=1)
         tm.that(assessment.counts["raw_hard"], eq=1)
 
-    def test_import_only_has_no_authority_exemption(self, tmp_path: Path) -> None:
-        """Imports are not bodies but their activation effects remain unresolved."""
+    def test_import_only_carries_no_reviewable_behavior(self, tmp_path: Path) -> None:
+        """A span of imports alone has no retained body to review.
+
+        Import overlap keeps only spans with retained bodies above the
+        floors unresolved; a span whose retained tokens are empty is
+        classified by what remains, and the raw finding stays in evidence.
+        """
         assessment = self._assess(
             tmp_path, self._report(tmp_path, "import activates_plugin\n")
         )
         tm.that(assessment.candidates[0].measures[0].tokens, eq=0)
-        tm.that(assessment.candidates[0].disposition, eq="unresolved")
+        tm.that(assessment.candidates[0].disposition, eq="non_behavioral_only")
+        tm.that(assessment.counts["raw_hard"], eq=1)
 
     def test_future_and_docstring_only_is_structural(self, tmp_path: Path) -> None:
         """Removing syntax from measurement never removes its raw-hard finding."""
@@ -267,7 +273,7 @@ class TestsFlextInfraDuplicationEvidence:
     @staticmethod
     def _cross_root_report(
         project: Path, external: Path, source: str
-    ) -> m.Infra.JscpdReport:
+    ) -> p.Infra.JscpdReport:
         """One clone whose sides live under different declared checkout roots.
 
         Returns:

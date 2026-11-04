@@ -10,4 +10,29 @@ to repair authored declarations.
 | --- | --- | --- |
 {% for verb in verbs -%}
 | `{{ verb.name }}` | {{ verb.description | replace("|", "\\|") | replace("\n", " ") }} | {{ verb.arguments | join(", ") if verb.arguments else "—" }} |
-{% endfor -%}
+{% endfor %}
+
+## Test contract
+
+The public test operations and their selected modes are declared in the
+[Public Verb Matrix](#public-verb-matrix) and
+[ADR-029](../architecture/adr/029-always-working-one-complete-cycle.md#decision).
+Each operation retains the complete applicable inventory, its declared selection
+and same-scope green-check prerequisite. A run does not switch modes, prepend an
+undeclared execution, clear a cache or accept a file selector. CI and Git hooks
+consume their declared operation.
+
+The execution receipt preserves the collected inventory, applicability decisions,
+executed counts and original subprocess outcomes. Zero collection and an absent
+manifest remain failures. An empty incremental selection is accepted only as a typed
+Testmon cache hit with database integrity and complete inventory/deselection
+accounting; it is never reported as tests passed. The native inventory and manifest
+must agree; neither may silently expand into another target. Warnings remain visible
+in the native result.
+
+Connectivity tests follow the root environment and reachability prerequisites;
+availability skips never prove connectivity or production readiness. Once a service
+is available, authentication, protocol and assertion errors remain failures. Pure unit
+and integration tests stay active. Establish the implemented behavior through the real
+public consumer before changing tests, then validate it without mocks, tautologies,
+private-method assertions or copied configuration expectations.

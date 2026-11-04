@@ -14,16 +14,14 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitStatePublication,
+    FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitWorktreeIO,
 )
 
 
-class FlextInfraUtilitiesGitStateFiles(
-    FlextInfraUtilitiesGitStatePublication,
-):
+class FlextInfraUtilitiesGitStateFiles(FlextInfraUtilitiesGitRepo):
     """Consume CLI physical-state primitives under the shared writer lease."""
 
     @classmethod
@@ -89,8 +87,8 @@ class FlextInfraUtilitiesGitStateFiles(
         cls,
         root: Path,
         path: Path,
-        observed: m.Infra.GitWorktreeObservedFile,
-        allowed: Sequence[m.Infra.GitWorktreeFileState | None],
+        observed: p.Infra.GitWorktreeObservedFile,
+        allowed: Sequence[p.Infra.GitWorktreeFileState | None],
     ) -> None:
         """Hash the observed bytes and accept only an allowed captured state.
 
@@ -183,8 +181,8 @@ class FlextInfraUtilitiesGitStateFiles(
         cls,
         root: Path,
         path: Path,
-        desired: m.Infra.GitWorktreeFileState | None,
-        allowed: Sequence[m.Infra.GitWorktreeFileState | None],
+        desired: p.Infra.GitWorktreeFileState | None,
+        allowed: Sequence[p.Infra.GitWorktreeFileState | None],
     ) -> None:
 
         destination = root / path

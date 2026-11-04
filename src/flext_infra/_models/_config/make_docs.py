@@ -11,8 +11,8 @@ from typing import Annotated, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra import c, p, t
+from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
 class FlextInfraModelsConfigMakeDocs:
@@ -60,7 +60,11 @@ class FlextInfraModelsConfigMakeDocs:
 
         contract_guide: Annotated[
             Path | None,
-            m.Field(description="Canonical guide with the generated Make contract section"),
+            m.Field(
+                description=(
+                    "Canonical guide with the generated Make contract section"
+                ),
+            ),
         ] = None
         actions: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -81,7 +85,12 @@ class FlextInfraModelsConfigMakeDocs:
             m.Field(description="Repository-relative docs reports directory"),
         ]
         overview_preview_limits: Annotated[
-            FlextInfraModelsConfigMakeDocs.DocsOverviewPreviewLimitsSpec,
+            Annotated[
+                p.Infra.DocsOverviewPreviewLimitsSpec,
+                t.schema_for_model(
+                    FlextInfraModelsConfigMakeDocs.DocsOverviewPreviewLimitsSpec
+                ),
+            ],
             m.Field(description="Maximum preview sizes for generated API overviews"),
         ]
         cross_project_relative_link_pattern: Annotated[

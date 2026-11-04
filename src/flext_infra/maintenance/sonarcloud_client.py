@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
+class FlextInfraMaintenanceSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
     """Derive one project identity and authenticate without persisting secrets."""
 
     @staticmethod
@@ -35,7 +35,7 @@ class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
         """
         if settings.Infra.sonar_token is None:
             return r[t.SecretStr].ok(t.SecretStr(""))
-        validated = FlextInfraSonarcloudClient.required_token()
+        validated = FlextInfraMaintenanceSonarcloudClient.required_token()
         if validated.failure:
             return r[t.SecretStr].from_failure(validated)
         return r[t.SecretStr].ok(validated.value)
@@ -117,4 +117,4 @@ class FlextInfraSonarcloudClient[TResult: t.JsonPayload](s[TResult]):
         )
 
 
-__all__: list[str] = ["FlextInfraSonarcloudClient"]
+__all__: list[str] = ["FlextInfraMaintenanceSonarcloudClient"]

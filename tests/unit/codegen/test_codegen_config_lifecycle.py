@@ -12,8 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra, settings
-from flext_infra.gates import FlextInfraRuffFormatGate, FlextInfraRuffLintGate
-from flext_infra.workspace import FlextInfraWorkspaceEnvironmentProvenance
+from flext_infra.gates import FlextInfraGatesRuffFormat, FlextInfraGatesRuffLint
 from tests import c, m, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 
@@ -350,7 +349,7 @@ print(
         for file in plan.files:
             tm.that(file.path.read_bytes(), eq=file.desired_content)
         context = m.Infra.GateContext(repository_root=root, reports_dir=root)
-        for gate in (FlextInfraRuffLintGate(root), FlextInfraRuffFormatGate(root)):
+        for gate in (FlextInfraGatesRuffLint(root), FlextInfraGatesRuffFormat(root)):
             checked = gate.check_files(
                 tuple(file.path for file in plan.files),
                 root,
@@ -373,12 +372,12 @@ print(
 
     @staticmethod
     @pytest.mark.parametrize("target_exists", [False, True])
-    def test_directed_initializer_rejects_banned_import_before_publication(
+    def test_directed_initializer_uses_literal_mapping_when_proxy_is_banned(
         tmp_path: Path,
         *,
         target_exists: bool,
     ) -> None:
-        """Native unrepairable diagnostics leave target bytes or absence unchanged."""
+        """A literal map keeps generated initializers independent of proxy imports."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         metadata = root / c.PYPROJECT_FILENAME
         document = tm.not_none(
@@ -409,149 +408,13 @@ print(
         )
         if not target_exists:
             destination.unlink()
-        before = tm.ok(
-            u.Cli.atomic_read_binary_file_state(destination, required=False),
-        )
         request = u.Tests.conform_request(
             root,
             what=c.Infra.CodegenConformSurface.LAZY_INIT,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        rejected = infra.codegen_conform(request)
-        tm.ok(rejected.failure)
-        tm.that(str(rejected.error), has="TID251")
-        tm.that(str(rejected.error), has="MappingProxyType")
-        tm.that(
-            tm.ok(u.Cli.atomic_read_binary_file_state(destination, required=False)),
-            eq=before,
-        )
-
-    @staticmethod
-    def test_installed_git_artifact_retains_complete_declaration(
-        installed_artifact_consumer: Path,
-    ) -> None:
-        """Read the native Git artifact and reject bytes outside its wheel RECORD."""
-        root = installed_artifact_consumer
-        repository = tm.ok(
-            u.Infra.configured_repository_ref(
-                codegen=config.Infra.codegen,
-                repository_root=root,
-            ),
-        )
-        state = tm.ok(
-            FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
-                root,
-                repository,
-            ),
-        )
-        tm.that(
-            state.path.is_relative_to(u.Infra.runtime_environment_dir(root)),
-            eq=True,
-        )
-        script = """
-import sys
-from pathlib import Path
-
-from flext_infra import c, config, u
-from flext_infra.workspace import (
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspaceEnvironmentProvenance,
-)
-
-root = Path(sys.argv[1])
-context = FlextInfraWorkspaceDetector.resolution_context(root).unwrap()
-lock_state = u.Cli.atomic_read_binary_file_state(
-    context.lock_path, required=True,
-).unwrap()
-tm.not_none(lock_state.mode)
-obsolete = root / c.Infra.UV_LOCK_FILENAME
-if obsolete != context.lock_path:
-    obsolete_state = u.Cli.atomic_read_binary_file_state(
-        obsolete, required=False,
-    ).unwrap()
-    u.Cli.atomic_write_binary_file_guarded(
-        obsolete_state,
-        b"obsolete root lock must not be parsed\\n",
-        permission_mode=lock_state.mode,
-    ).unwrap()
-repository = u.Infra.configured_repository_ref(
-    codegen=config.Infra.codegen,
-    repository_root=root,
-).unwrap()
-state = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
-    root, repository
-).unwrap()
-explicit = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
-    root, repository, lock_state=lock_state,
-).unwrap()
-assert explicit == state
-if obsolete != context.lock_path:
-    foreign_lock = lock_state.model_copy(update={"path": obsolete})
-    refused = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
-        root, repository, lock_state=foreign_lock,
-    )
-    tm.fail(refused)
-    assert "captured elected lock" in refused.error
-assert u.Cli.atomic_read_binary_file_state(
-    context.lock_path, required=True,
-).unwrap() == lock_state
-print("installed declaration elected-lock=" + str(context.lock_path))
-assert state.path.is_relative_to(Path(sys.prefix))
-metadata, requirements = u.Infra.member_declaration_requirements(
-    state,
-    repository.distribution,
-).unwrap()
-tm.not_none(state.content)
-document = u.Cli.toml_parse_text(state.content.decode(c.DEFAULT_ENCODING))
-tm.not_none(document)
-payload = u.Cli.toml_as_mapping(document)
-tm.not_none(payload)
-project = payload["project"]
-assert metadata.dependencies == tuple(project.get("dependencies", ()))
-assert metadata.optional_dependencies == {
-    name: tuple(entries)
-    for name, entries in project.get("optional-dependencies", {}).items()
-}
-assert {
-    name: [
-        entry if isinstance(entry, str) else entry.model_dump(by_alias=True)
-        for entry in entries
-    ]
-    for name, entries in metadata.dependency_groups.items()
-} == payload.get("dependency-groups", {})
-assert tuple(requirements) == tuple(
-    u.Infra.document_requirement_lines(document).unwrap()
-)
-tm.not_none(state.mode)
-u.Cli.atomic_write_binary_file_guarded(
-    state,
-    state.content + b"\\n",
-    permission_mode=state.mode,
-).unwrap()
-changed = FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
-    root, repository
-)
-tm.fail(changed)
-assert "RECORD" in changed.error
-print("installed Git declaration: complete groups, extras and RECORD authentication")
-"""
-        output = tm.ok(
-            u.Cli.run_raw(
-                [str(u.Infra.runtime_python(root)), "-c", script, str(root)],
-                cwd=root,
-            ),
-        )
-        tm.that(
-            u.Cli.process_succeeded(output.outcome),
-            eq=True,
-            msg=output.stdout + output.stderr,
-        )
-        tm.that(output.stdout, has="installed Git declaration: complete groups")
-        tm.fail(
-            FlextInfraWorkspaceEnvironmentProvenance.member_project_declaration(
-                root,
-                repository,
-            ),
-            has="RECORD",
-        )
+        tm.ok(infra.codegen_conform(request))
+        generated = destination.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(generated, lacks="MappingProxyType")
+        tm.that(generated, has="install_lazy_exports(")

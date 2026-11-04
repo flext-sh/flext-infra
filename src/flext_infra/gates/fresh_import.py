@@ -15,15 +15,15 @@ import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra import c, p, u
+from flext_infra.gates import FlextInfraGates
 from flext_infra.validate import FlextInfraValidateFreshImport
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FlextInfraFreshImportGate(FlextInfraGate):
+class FlextInfraGatesFreshImport(FlextInfraGates):
     """Fresh-process import gate over the checkout's own package."""
 
     gate_id: ClassVar[str] = c.Infra.FRESH_IMPORT
@@ -32,7 +32,7 @@ class FlextInfraFreshImportGate(FlextInfraGate):
     requires_python_targets: ClassVar[bool] = True
 
     @override
-    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
+    def selected_for(self, project_dir: Path, ctx: p.Infra.GateContext) -> bool:
         """Select a project that publishes an importable package layout.
 
         The canonical layout owner reads project metadata; no copied workspace
@@ -51,8 +51,8 @@ class FlextInfraFreshImportGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Import the project's package and entry points in fresh processes.
 
         Returns:
@@ -80,8 +80,8 @@ class FlextInfraFreshImportGate(FlextInfraGate):
         self,
         files: Sequence[Path],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Validate package imports when a source file selects this gate.
 
         The import contract belongs to the published package, not an individual
@@ -101,4 +101,4 @@ class FlextInfraFreshImportGate(FlextInfraGate):
         return self.check(project_dir, ctx)
 
 
-__all__: list[str] = ["FlextInfraFreshImportGate"]
+__all__: list[str] = ["FlextInfraGatesFreshImport"]

@@ -8,14 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.deps._modernizer import FlextInfraPyprojectModernizerTooling
-from flext_infra.gates.lint_freeze import FlextInfraLintConfigFreezeGate
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
@@ -145,7 +140,7 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
 
     def _resolved_source_migration(
         self,
-    ) -> p.Result[tuple[m.Infra.GitSourceReferenceMigration, ...]]:
+    ) -> p.Result[tuple[p.Infra.GitSourceReferenceMigration, ...]]:
         """Resolve the requested Git reference migration options.
 
         Returns:
@@ -153,7 +148,7 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
             first option validation failure.
 
         """
-        result_type = r[tuple[m.Infra.GitSourceReferenceMigration, ...]]
+        result_type = r[tuple[p.Infra.GitSourceReferenceMigration, ...]]
         source_options = (
             self.git_source_url_prefix,
             self.git_source_ref_from,
@@ -191,7 +186,7 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
         scanned: p.Result[
             tuple[
                 Mapping[str, Sequence[str]],
-                Sequence[m.Infra.PyprojectDocumentState],
+                Sequence[p.Infra.PyprojectDocumentState],
                 Sequence[Path],
             ]
         ],
@@ -221,12 +216,6 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
             return 1
         if migrated or dry_run or self.skip_check:
             return 0
-        for note in FlextInfraLintConfigFreezeGate.refresh_catalog(
-            self.root,
-            states,
-            invalid_paths=invalid_paths,
-        ):
-            u.Cli.info(note)
         return self._run_build_check(states, invalid_paths=invalid_paths)
 
     @staticmethod
@@ -257,7 +246,7 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
         root_pyproject: Path,
         *,
         include_root: bool,
-    ) -> p.Result[m.Infra.PyprojectDocumentState]:
+    ) -> p.Result[p.Infra.PyprojectDocumentState]:
         """Read and validate the root document state for the requested scope.
 
         Returns:
@@ -275,21 +264,21 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
                 )
             except c.EXC_TYPE_VALIDATION as exc:
                 u.Cli.error(str(exc))
-                return r[m.Infra.PyprojectDocumentState].fail(str(exc), exception=exc)
+                return r[p.Infra.PyprojectDocumentState].fail(str(exc), exception=exc)
         return root_state
 
     def _scan_documents(
         self,
         ordered: Sequence[Path],
-        root_state: p.Result[m.Infra.PyprojectDocumentState],
+        root_state: p.Result[p.Infra.PyprojectDocumentState],
         root_pyproject: Path,
         *,
         dry_run: bool,
-        source_migration: m.Infra.GitSourceReferenceMigration | None = None,
+        source_migration: p.Infra.GitSourceReferenceMigration | None = None,
     ) -> p.Result[
         tuple[
             Mapping[str, Sequence[str]],
-            Sequence[m.Infra.PyprojectDocumentState],
+            Sequence[p.Infra.PyprojectDocumentState],
             Sequence[Path],
         ]
     ]:
@@ -302,12 +291,12 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
         outcome = r[
             tuple[
                 Mapping[str, Sequence[str]],
-                Sequence[m.Infra.PyprojectDocumentState],
+                Sequence[p.Infra.PyprojectDocumentState],
                 Sequence[Path],
             ]
         ]
         violations: MutableMapping[str, Sequence[str]] = {}
-        states: MutableSequence[m.Infra.PyprojectDocumentState] = []
+        states: MutableSequence[p.Infra.PyprojectDocumentState] = []
         invalid_paths: MutableSequence[Path] = []
         drift_reported = False
         # A migration run never pins development floors: the declared set is
@@ -366,7 +355,7 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
 
     def _rewrite_constraints(
         self,
-        root_state: m.Infra.PyprojectDocumentState,
+        root_state: p.Infra.PyprojectDocumentState,
         *,
         dry_run: bool,
     ) -> int:
@@ -474,9 +463,9 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
 
     def _published_constraint_floors(
         self,
-        root_state: m.Infra.PyprojectDocumentState,
+        root_state: p.Infra.PyprojectDocumentState,
         changes: Sequence[str],
-        before: m.Cli.AtomicFileState,
+        before: p.Cli.AtomicFileState,
     ) -> int:
         """Publish the rewritten requirement floors atomically.
 
@@ -519,7 +508,7 @@ class FlextInfraPyprojectModernizerRun(FlextInfraPyprojectModernizerTooling):
 
     @staticmethod
     def _run_build_check(
-        states: Sequence[m.Infra.PyprojectDocumentState],
+        states: Sequence[p.Infra.PyprojectDocumentState],
         *,
         invalid_paths: Sequence[Path],
     ) -> int:

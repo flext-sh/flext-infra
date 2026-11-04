@@ -7,9 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableSequence, Sequence
-from typing import TYPE_CHECKING, Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated
 
-from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, r, t, u
+from flext_infra import FlextInfraProjectSelectionServiceBase, c, config, m, p, r, t, u
 from flext_infra._models.deps import (
     GitSourceRefFromField,
     GitSourceRefToField,
@@ -25,13 +25,10 @@ from flext_infra.deps.phases import (
     FlextInfraInjectCommentsPhase,
     FlextInfraToolTablesPhase,
 )
-from flext_infra.gates.lint_freeze import FlextInfraLintConfigFreezeGate
 from flext_infra.refactor import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraPyprojectModernizerDocument(
@@ -116,7 +113,7 @@ class FlextInfraPyprojectModernizerDocument(
         path: Path,
         *,
         source: str | None = None,
-    ) -> p.Result[m.Infra.PyprojectDocumentState]:
+    ) -> p.Result[p.Infra.PyprojectDocumentState]:
         """Parse one pyproject once into one validated plain payload state.
 
         Args:
@@ -124,15 +121,15 @@ class FlextInfraPyprojectModernizerDocument(
             source: Optional raw content of the pyproject file.
 
         Returns:
-            The resulting ``p.Result[m.Infra.PyprojectDocumentState]``.
+            The resulting ``p.Result[p.Infra.PyprojectDocumentState]``.
 
         Raises:
             ValueError: If the project document has no captured content.
 
 
         """
-        result_type = r[m.Infra.PyprojectDocumentState]
-        before: m.Cli.AtomicFileState | None = None
+        result_type = r[p.Infra.PyprojectDocumentState]
+        before: p.Cli.AtomicFileState | None = None
         if source is None:
             read = u.Cli.atomic_read_binary_file_state(path, required=True)
             if read.failure:
@@ -209,18 +206,16 @@ class FlextInfraPyprojectModernizerDocument(
             changes.append("removed empty poetry group container")
         return changes
 
-    _last_migration_render: ClassVar[p.Result[str] | None] = None
-
     def _apply_source_migration(
         self,
-        state: m.Infra.PyprojectDocumentState,
-        source_migration: m.Infra.GitSourceReferenceMigration,
-    ) -> p.Result[Sequence[str]] | None:
+        state: p.Infra.PyprojectDocumentState,
+        source_migration: p.Infra.GitSourceReferenceMigration,
+    ) -> p.Result[Sequence[str]]:
         """Rewrite Git source references; produce the migration render.
 
         Returns:
-            The early result when migration yields no change, or ``None``
-            when the caller should proceed with the migration render.
+            The migration failure, the unchanged empty result when migration
+            yields no change, or the migration render.
 
         """
         migrated = u.Infra.rewrite_git_source_references(
@@ -231,23 +226,22 @@ class FlextInfraPyprojectModernizerDocument(
         if not migrated.value:
             state.rendered = state.original_rendered
             return r[Sequence[str]].ok(())
-        self._last_migration_render = self._render_document_state(
+        return self._render_document_state(
             state,
             migrated.value,
             skip_comments=True,
             format_source=False,
             preserve_layout=True,
         )
-        return None
 
     def _process_document_state(
         self,
-        state: m.Infra.PyprojectDocumentState,
+        state: p.Infra.PyprojectDocumentState,
         *,
         canonical_dev: Sequence[str],
         dry_run: bool,
         skip_comments: bool,
-        source_migration: m.Infra.GitSourceReferenceMigration | None = None,
+        source_migration: p.Infra.GitSourceReferenceMigration | None = None,
     ) -> p.Result[Sequence[str]]:
         """Run every phase over one discovered state; write unless ``dry_run``.
 
@@ -266,10 +260,7 @@ class FlextInfraPyprojectModernizerDocument(
 
         """
         if source_migration is not None:
-            early = self._apply_source_migration(state, source_migration)
-            if early is not None:
-                return early
-            rendered = self._last_migration_render
+            rendered = self._apply_source_migration(state, source_migration)
         else:
             rendered = self._render_declared_state(
                 state,
@@ -287,9 +278,6 @@ class FlextInfraPyprojectModernizerDocument(
                     f"{state.pyproject_path}"
                 )
                 raise ValueError(message)
-            observations = FlextInfraLintConfigFreezeGate.require_projection(
-                self.root, state
-            )
             published = u.Infra.publish_codegen_plans(
                 self.root,
                 (
@@ -301,7 +289,6 @@ class FlextInfraPyprojectModernizerDocument(
                         desired_mode=state.before.mode,
                         owner=c.Infra.CLI_GROUP_DEPS,
                     ),
-                    *observations,
                 ),
             )
             if published.failure:
@@ -312,7 +299,7 @@ class FlextInfraPyprojectModernizerDocument(
 
     def _render_declared_state(
         self,
-        state: m.Infra.PyprojectDocumentState,
+        state: p.Infra.PyprojectDocumentState,
         *,
         canonical_dev: Sequence[str],
         skip_comments: bool,
@@ -352,12 +339,12 @@ class FlextInfraPyprojectModernizerDocument(
 
     def _apply_document_phases(
         self,
-        state: m.Infra.PyprojectDocumentState,
+        state: p.Infra.PyprojectDocumentState,
         *,
         canonical_dev: Sequence[str],
-        topology: m.Infra.PyprojectDeclaredTopology,
-        codegen: m.Infra.CodegenConfigSpec,
-        tool_config: m.Infra.ToolConfigDocument | None = None,
+        topology: p.Infra.PyprojectDeclaredTopology,
+        codegen: p.Infra.CodegenConfigSpec,
+        tool_config: p.Infra.ToolConfigDocument | None = None,
     ) -> Sequence[str]:
         """Run every managed phase, in order, over one parsed payload.
 
@@ -476,7 +463,7 @@ class FlextInfraPyprojectModernizerDocument(
 
     def _render_document_state(
         self,
-        state: m.Infra.PyprojectDocumentState,
+        state: p.Infra.PyprojectDocumentState,
         changes: Sequence[str],
         *,
         skip_comments: bool,

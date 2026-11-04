@@ -22,7 +22,7 @@ from flext_infra.refactor import (
     FlextInfraWrapperRootNamespaceRefactor,
 )
 from flext_infra.services import FlextInfraCliModProgress
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 
 
 class FlextInfraRefactorRoutes:
@@ -30,7 +30,7 @@ class FlextInfraRefactorRoutes:
 
     @staticmethod
     def execute_rename_plan(
-        request: m.Infra.SemanticRenamePlanCommand,
+        request: p.Infra.SemanticRenamePlanCommand,
     ) -> p.Result[t.Cli.ResultValue]:
         """Write an inventory-derived artifact, never a caller-authored source map.
 
@@ -51,7 +51,7 @@ class FlextInfraRefactorRoutes:
 
     @staticmethod
     def execute_rename_preview(
-        request: m.Infra.SemanticRenamePreviewCommand,
+        request: p.Infra.SemanticRenamePreviewCommand,
     ) -> p.Result[t.Cli.ResultValue]:
         """Read the artifact through the same mod consumer and native staging port.
 
@@ -70,7 +70,7 @@ class FlextInfraRefactorRoutes:
 
     @staticmethod
     def execute_move_module(
-        request: m.Infra.ModuleMoveCommand,
+        request: p.Infra.ModuleMoveCommand,
     ) -> p.Result[t.Cli.ResultValue]:
         """Move a source module through the public workspace and semantic engine.
 
@@ -79,67 +79,73 @@ class FlextInfraRefactorRoutes:
 
         Raises:
             ValueError: If exact-file facts or effects escape the declared repository.
+            FileNotFoundError: If a source or selected destination directory is absent.
+            FileExistsError: If the destination already exists.
 
         """
         root = request.repository_root.resolve()
         with infra.rope_workspace(root) as workspace:
+            if workspace.rope_repository_root.resolve() != root:
+                msg = "module move requires the native repository owner root"
+                raise ValueError(msg)
+            source = (root / request.source_file).resolve()
             if request.destination_file is not None:
-                if workspace.rope_repository_root.resolve() != root:
-                    msg = "exact module move requires the native repository owner root"
-                    raise ValueError(msg)
-                source = (root / request.source_file).resolve()
                 target = (root / request.destination_file).resolve()
-                if not source.is_relative_to(root) or not target.is_relative_to(root):
-                    msg = "exact module move owners escape the declared repository"
-                    raise ValueError(msg)
-                states = tuple(
-                    u.Cli.atomic_read_binary_file_state(
-                        resource.real_path, required=True
-                    ).unwrap()
-                    for resource in workspace.rope_project.get_python_files()
-                )
-                plans = u.Infra.plan_module_move(
-                    workspace.rope_project,
-                    source,
-                    destination_file=target,
-                    inputs=(
-                        {
-                            state.path: state.content.decode(c.DEFAULT_ENCODING)
-                            for state in states
-                            if state.content is not None
-                        },
-                        states,
-                    ),
-                )
-                if any(not plan.path.is_relative_to(root) for plan in plans):
-                    msg = "exact module move effects escape the declared repository"
-                    raise ValueError(msg)
-                publication = FlextInfraTransformersSemanticPublication
-                published = publication.publish_semantic_artifact_plans(
-                    plans,
-                    repository_root=root,
-                    options=m.Infra.SemanticPublicationOptions(
-                        projection_roots=(root,),
-                    ),
-                )
-                if published.failure:
-                    return r[t.Cli.ResultValue].from_failure(published)
             elif request.destination_directory is not None:
-                target = u.Infra.move_module(
-                    workspace.rope_project,
-                    request.source_file,
-                    request.destination_directory,
-                )
+                directory = (root / request.destination_directory).resolve()
+                if not directory.is_dir():
+                    raise FileNotFoundError(directory)
+                target = directory / source.name
             else:
                 return r[t.Cli.ResultValue].fail(
                     "module move requires one validated destination"
                 )
+            if not source.is_relative_to(root) or not target.is_relative_to(root):
+                msg = "module move owners escape the declared repository"
+                raise ValueError(msg)
+            if not source.is_file():
+                raise FileNotFoundError(source)
+            if target.exists():
+                raise FileExistsError(target)
+            states = tuple(
+                u.Cli.atomic_read_binary_file_state(
+                    resource.real_path, required=True
+                ).unwrap()
+                for resource in workspace.rope_project.get_python_files()
+            )
+            plans = u.Infra.plan_module_move(
+                workspace.rope_project,
+                source,
+                destination_file=target,
+                inputs=(
+                    {
+                        state.path: state.content.decode(c.DEFAULT_ENCODING)
+                        for state in states
+                        if state.content is not None
+                    },
+                    states,
+                ),
+            )
+            if plans.failure:
+                return r[t.Cli.ResultValue].from_failure(plans)
+            if any(not plan.path.is_relative_to(root) for plan in plans.value):
+                return r[t.Cli.ResultValue].fail(
+                    "module move effects escape the declared repository"
+                )
+            publication = FlextInfraTransformersSemanticPublication
+            published = publication.publish_semantic_artifact_plans(
+                plans.value,
+                repository_root=root,
+                options=m.Infra.SemanticPublicationOptions(projection_roots=(root,)),
+            )
+            if published.failure:
+                return r[t.Cli.ResultValue].from_failure(published)
         cli.display_text(str(target))
         return r[t.Cli.ResultValue].ok(value=True)
 
     @staticmethod
     def execute_apply_renames(
-        request: m.Infra.ApplyRenamesInput,
+        request: p.Infra.ApplyRenamesInput,
     ) -> p.Result[t.Cli.ResultValue]:
         """Display the real rename result and preserve pending-work failure.
 
@@ -170,7 +176,7 @@ class FlextInfraRefactorRoutes:
 
     @staticmethod
     def execute_mod_text(
-        request: m.Infra.ModTextCommand,
+        request: p.Infra.ModTextCommand,
     ) -> p.Result[t.Cli.ResultValue]:
         """Replay the declared text rules without entering Rope or AST phases.
 
@@ -182,7 +188,7 @@ class FlextInfraRefactorRoutes:
 
     @staticmethod
     def execute_mod_text_candidate(
-        request: m.Infra.ModTextCommand,
+        request: p.Infra.ModTextCommand,
     ) -> p.Result[t.Cli.ResultValue]:
         """Replay a manifest-declared candidate with the healthy provider.
 
@@ -192,7 +198,7 @@ class FlextInfraRefactorRoutes:
         """
         return infra.mod_text_candidate(request)
 
-    refactor_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = (
+    refactor_routes: ClassVar[tuple[p.Cli.ResultCommandRoute, ...]] = (
         m.Cli.ResultCommandRoute(
             name="rename-plan",
             help_text=(
@@ -253,8 +259,9 @@ class FlextInfraRefactorRoutes:
         m.Cli.ResultCommandRoute(
             name="mod",
             help_text=(
-                "Apply ast-grep, semantic and text rules to a proven fixed point; "
-                "make check owns the lint and type verdicts"
+                "Check or fix one theme (--laws, --rule-ids, --rule or "
+                "--rename-plan) to a proven fixed point; an unselected run is "
+                "refused (ADR-028 Decision 18 item 2)"
             ),
             model_cls=m.Infra.ModCommand,
             handler=execute_mod,
@@ -284,9 +291,8 @@ class FlextInfraRefactorRoutes:
             name="ast",
             help_text=(
                 "Run the ast engine standalone: ast-grep cascade plus "
-                "sed-by-list cascade (scan report; --apply reaches the "
-                "mechanical fixed point); --rules selects exact CSV AST IDs "
-                "only, over the complete governed corpus"
+                "sed-by-list cascade over the complete governed catalog "
+                "(scan report; --apply reaches the mechanical fixed point)"
             ),
             model_cls=FlextInfraCodemodAstScan,
             handler=FlextInfraCodemodAstScan.execute_command,

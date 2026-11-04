@@ -13,11 +13,11 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m, p, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra.gates import FlextInfraGates
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
-class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
+class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
     """Retain each existing runtime owner's native process exactly once."""
 
     gate_id: ClassVar[str] = c.Infra.RUNTIME_INTEGRITY
@@ -28,8 +28,8 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
         name: str,
         command: Sequence[str],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Run one native owner and retain its unmodified causal outcome.
 
         Returns:
@@ -70,9 +70,9 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
         name: str,
         command: Sequence[str],
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         signal_wave: p.Cli.SignalWave,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Run one native owner as a task of the gate's concurrent wave.
 
         Returns:
@@ -88,8 +88,8 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
 
     @override
     def check(
-        self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+        self, project_dir: Path, ctx: p.Infra.GateContext
+    ) -> p.Infra.GateExecution:
         """Execute the original owners through this check invocation.
 
         Returns:
@@ -200,4 +200,4 @@ class FlextInfraRuntimeIntegrityGate(FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraRuntimeIntegrityGate"]
+__all__: list[str] = ["FlextInfraGatesRuntimeIntegrity"]

@@ -34,7 +34,7 @@ class FlextInfraNamespaceValidator(s[bool]):
             return r[bool].from_failure(report_result)
         return r[bool].ok(report_result.value.passed)
 
-    def build_report(self) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self) -> p.Result[p.Infra.ValidationReport]:
         """Scan the project with the rule engine and report its findings.
 
         Each violation reads ``[<rule-id>] <file>:<line> — <message>``. The
@@ -42,20 +42,20 @@ class FlextInfraNamespaceValidator(s[bool]):
         declarations never suppress findings in other active Python sources.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ValidationReport]``.
+            The resulting ``p.Result[p.Infra.ValidationReport]``.
 
         """
         project_root = self.repository_root.resolve()
         scanned = FlextInfraModGateEngine.scan(project_root, fix=False)
         if scanned.failure:
-            return r[m.Infra.ValidationReport].from_failure(scanned)
+            return r[p.Infra.ValidationReport].from_failure(scanned)
         violations = tuple(
             f"[{entry.rule_id}] {entry.file.as_posix()}:"
             f"{self._line(entry)} — {self._message(entry)}"
             for entry in scanned.value.entries
         )
         passed = not violations
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=passed,
                 violations=violations,
@@ -68,7 +68,7 @@ class FlextInfraNamespaceValidator(s[bool]):
         )
 
     @staticmethod
-    def _line(entry: m.Infra.ModScanFinding) -> int:
+    def _line(entry: p.Infra.ModScanFinding) -> int:
         """Return the 1-based starting line of one finding.
 
         Returns:
@@ -86,7 +86,7 @@ class FlextInfraNamespaceValidator(s[bool]):
         return line + 1
 
     @staticmethod
-    def _message(entry: m.Infra.ModScanFinding) -> str:
+    def _message(entry: p.Infra.ModScanFinding) -> str:
         """Return the rule's message for one finding.
 
         Returns:

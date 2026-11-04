@@ -24,7 +24,7 @@ class TestsFlextInfraLockfilePolicyProjection:
             c.Infra.MISE_LOCK_FILENAME,
         ],
     )
-    def test_rendered_gitignore_tracks_dependency_locks(
+    def test_rendered_ignore_tracks_dependency_locks(
         profile: c.Infra.MakeProfile,
         lock_filename: str,
     ) -> None:
@@ -50,7 +50,7 @@ class TestsFlextInfraLockfilePolicyProjection:
             "mise.test.local.lock",
         ],
     )
-    def test_rendered_gitignore_keeps_local_mise_state_untracked(
+    def test_rendered_ignore_keeps_local_mise_state_untracked(
         profile: c.Infra.MakeProfile,
         relative_path: str,
     ) -> None:

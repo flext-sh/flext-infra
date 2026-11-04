@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""accessor package.
+"""Flext Infra.refactor. Accessor package.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -35,12 +34,12 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "FlextInfraRefactorAccessorExpression": ".expression",
         "FlextInfraRefactorAccessorOrigin": ".origin",
         "FlextInfraRefactorAccessorReport": ".report",
         "FlextInfraRefactorAccessorRewrite": ".rewrite",
         "FlextInfraRefactorAccessorWarnings": ".warnings",
-    }),
+    },
     public_exports=__all__,
 )

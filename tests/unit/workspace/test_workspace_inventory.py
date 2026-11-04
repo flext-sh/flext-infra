@@ -38,6 +38,7 @@ class TestsFlextInfraWorkspaceInventory:
                 )
                 | {"repository": {"workspace_inventory_command": command}},
             ),
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
         )
 
         discovered = u.Infra.discover_external_consumers(tmp_path, inputs)

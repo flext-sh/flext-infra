@@ -35,31 +35,32 @@ from libcst.metadata import (
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesPrivateImportFacades,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.rope_runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+)
+from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
-from flext_infra._utilities._rope.rope_runtime_refactors import (
+from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
-from flext_infra._utilities._rope.rope_runtime_types import (
-    FlextInfraUtilitiesTypesRopeRuntime,
+from flext_infra._utilities._rope.runtime_types import (
+    FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope.rope_source_bases_runtime import (
+from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
 from flext_infra._utilities._semantic_cutover import (
+    FlextInfraUtilitiesSemanticComposition,
     FlextInfraUtilitiesSemanticCutoverFacadeBaseCst,
     FlextInfraUtilitiesSemanticCutoverFacadeOwners,
-)
-from flext_infra._utilities._semantic_cutover.composition import (
-    FlextInfraUtilitiesSemanticComposition,
 )
 
 if TYPE_CHECKING:
@@ -254,7 +255,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             for base in declaration.bases:
                 expression = base.value if isinstance(base, ast.Subscript) else base
                 inherited = cls._behavior_base_identity(
-                    modules, owner_module, expression, project=project
+                    modules,
+                    owner_module,
+                    expression,
+                    project=project,
+                    before=declaration.lineno,
                 )
                 if inherited is not None:
                     bases.append(inherited)
@@ -273,6 +278,42 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         return linearize(identity, frozenset())
 
     @classmethod
+    def _facade_base_name_identity(
+        cls,
+        modules: Mapping[str, tuple[str, bool]],
+        module: str,
+        name: str,
+        *,
+        project: p.Infra.RopeProject,
+        before: int | None,
+    ) -> tuple[str, str] | None:
+        """Resolve a base name through the binding in force at its class statement.
+
+        Returns:
+            The declared base identity, or no source-backed class.
+
+        """
+        if before is not None:
+            source, is_package = modules[module]
+            package = module if is_package else module.rpartition(".")[0]
+            target, declared = cls._facade_binding_state(
+                source, module, name, package, before=before
+            )
+            if declared:
+                return module, name
+            if target is not None:
+                return (
+                    None
+                    if ".".join(target) in modules
+                    else cls._facade_declared_class(
+                        modules, *target, frozenset(), project=project
+                    )
+                )
+        return cls._facade_declared_class(
+            modules, module, name, frozenset(), project=project
+        )
+
+    @classmethod
     def _behavior_base_identity(
         cls,
         modules: Mapping[str, tuple[str, bool]],
@@ -280,8 +321,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         expression: ast.expr,
         *,
         project: p.Infra.RopeProject,
+        before: int | None = None,
     ) -> tuple[str, str] | None:
         """Resolve a base's declared class, including imported-module attributes.
+
+        ``before`` is the class statement's line: names resolve to the binding
+        in force where the base expression is evaluated.
 
         Returns:
             The declared base identity, or no source-backed class.
@@ -291,8 +336,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         """
         if isinstance(expression, ast.Name):
-            return cls._facade_declared_class(
-                modules, module, expression.id, frozenset(), project=project
+            return cls._facade_base_name_identity(
+                modules, module, expression.id, project=project, before=before
             )
         if isinstance(expression, ast.Attribute) and isinstance(
             expression.value, ast.Name
@@ -300,7 +345,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             source, is_package = modules[module]
             package = module if is_package else module.rpartition(".")[0]
             target, _declared = cls._facade_binding_state(
-                source, module, expression.value.id, package
+                source, module, expression.value.id, package, before=before
             )
             if target is not None and ".".join(target) in modules:
                 return cls._facade_declared_class(
@@ -382,6 +427,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         """
         contextual: MutableMapping[str, tuple[str, bool]] = {}
+        declared_at: MutableMapping[str, Path] = {}
         for path, source in sources.items():
             if c.Infra.DEFAULT_SRC_DIR in path.parts:
                 continue
@@ -395,9 +441,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 parts[:-1] if path.name == c.Infra.INIT_PY else (*parts[:-1], path.stem)
             )
             if module in contextual:
-                msg = f"ambiguous contextual behavior module identity: {module}"
+                msg = (
+                    f"ambiguous contextual behavior module identity: {module} "
+                    f"({declared_at[module]} and {path})"
+                )
                 raise ValueError(msg)
             contextual[module] = (source, path.name == c.Infra.INIT_PY)
+            declared_at[module] = path
         modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(sources)
         modules.update(contextual)
         return modules
@@ -427,8 +477,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 continue
             tree = ast.parse(source)
             exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesTypesRopeRuntime.require_source_module(
-                    source_project.get_module(module)
+                FlextInfraUtilitiesRopeRuntimeTypes.require_declared_source_module(
+                    source_project, module
                 )
             )
             for declaration in tree.body:
@@ -640,13 +690,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         *,
         native_project: p.Infra.RopeProject,
         source_project: p.Infra.RopeProject,
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Resolve removed typing behavior to its unique declared utility owner.
 
         Internal consumers depend on the lower owner, never the utility facade
         that composes them. External consumers keep the public facade contract.
-        Their manifest owners are resolved inside the authenticated graph, not
-        restricted to the producer repository selected for publication.
+        Their owners are the governed repositories the workspace declares
+        (ADR-024), not restricted to the producer selected for publication.
         No retired class or method-name registry participates in discovery.
 
         Returns:
@@ -657,11 +707,22 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         """
         owners: MutableMapping[Path, MutableMapping[Path, str]] = {}
+        # Repository membership is declared once, by the workspace's
+        # .gitmodules (ADR-024): each consumer belongs to the deepest governed
+        # repository containing it, never to a manifest probed in a view.
+        repository = Path(source_project.root.real_path).resolve()
+        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
+            repository, source_project=source_project
+        ).unwrap()
+        governed = sorted(
+            (repository, *(repository / item.path for item in declared)),
+            key=lambda root: len(root.parts),
+            reverse=True,
+        )
         for path, source in sources.items():
-            owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
-                Path(source_project.root.real_path),
-                path,
-                source_project=source_project,
+            resolved = path.resolve()
+            owner = next(
+                (root for root in governed if resolved.is_relative_to(root)), None
             )
             if owner is None:
                 msg = f"behavior consumer project owner is unresolved: {path}"
@@ -672,7 +733,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             for path, source in sources.items()
             if c.Infra.DEFAULT_SRC_DIR in path.parts
         }
-        edits: list[m.Infra.SemanticMigrationEdit] = []
+        edits: list[p.Infra.SemanticMigrationEdit] = []
         for project_root, owner_sources in owners.items():
             modules = cls.behavior_source_modules({**production, **owner_sources})
             with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
@@ -718,13 +779,13 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if planned.failure:
                 return planned
             edits.extend(planned.value)
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
 
     @classmethod
     def _behavior_reference_target(
         cls,
         qualified: str,
-        request: m.Infra.SemanticBehaviorRewriteRequest,
+        request: p.Infra.SemanticBehaviorRewriteRequest,
         lineage: Sequence[tuple[str, str]],
         *,
         project: p.Infra.RopeProject,
@@ -810,7 +871,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def rewrite_behavior_consumer(
         cls,
-        request: m.Infra.SemanticBehaviorRewriteRequest,
+        request: p.Infra.SemanticBehaviorRewriteRequest,
         *,
         native_project: p.Infra.RopeProject,
         source_project: p.Infra.RopeProject,
@@ -918,7 +979,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _rewrite_behavior_references(
         cls,
-        request: m.Infra.SemanticBehaviorRewriteRequest,
+        request: p.Infra.SemanticBehaviorRewriteRequest,
         tree: ast.Module,
         resolve: Callable[[str], tuple[str, str, str] | None],
         obsolete: set[tuple[str, str]],
@@ -1025,7 +1086,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _lower_behavior_targets(
         cls,
-        request: m.Infra.SemanticBehaviorRewriteRequest,
+        request: p.Infra.SemanticBehaviorRewriteRequest,
         effective: tuple[str, str] | None,
         member: str,
         identities: set[tuple[str, str]],
@@ -1058,7 +1119,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
     @classmethod
     def _behavior_consumer_outcome(
         cls,
-        request: m.Infra.SemanticBehaviorRewriteRequest,
+        request: p.Infra.SemanticBehaviorRewriteRequest,
         source: str,
         changes: Sequence[str],
         *,
@@ -1119,7 +1180,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         qualified = f"{imported_module}.{imported_name}"
         binding = runtime.qualified_name(project, qualified)
         receiver = binding.get_object()
-        if not FlextInfraUtilitiesTypesRopeRuntime.py_class(receiver) or not (
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_class(receiver) or not (
             runtime.same_name(
                 binding,
                 runtime.resolve_symbol(
@@ -1139,7 +1200,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             owner = scope.pyobject
             if (
                 scope.get_kind() != c.Infra.RopeScopeKind.CLASS
-                or not FlextInfraUtilitiesTypesRopeRuntime.py_class(owner)
+                or not FlextInfraUtilitiesRopeRuntimeTypes.py_class(owner)
                 or receiver not in owner.get_superclasses()
             ):
                 continue
@@ -1280,8 +1341,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-        findings: Sequence[m.Infra.ModOccurrence],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+        findings: Sequence[p.Infra.ModOccurrence],
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Close distinct import-base and MRO-composition laws in one candidate.
 
         Returns:
@@ -1307,7 +1368,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             return composed
         for edit in composed.value:
             working[edit.file_path] = edit.updated_source
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -1325,12 +1386,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         root: Path,
         sources: Mapping[Path, str],
-        findings: Sequence[m.Infra.ModOccurrence],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+        findings: Sequence[p.Infra.ModOccurrence],
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan the class-name base for every facade the detector selected.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
 
         """
         selected = frozenset((root / finding.file).resolve() for finding in findings)
@@ -1345,7 +1406,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             )
         }
         if not shapes:
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(())
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
         modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(sources)
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:

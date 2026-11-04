@@ -10,7 +10,7 @@ import stat
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraCodemodSnapshotReconciler:
@@ -34,7 +34,7 @@ class FlextInfraCodemodSnapshotReconciler:
         raise ValueError(msg)
 
     @classmethod
-    def fixture_directories(cls, config_root: Path) -> m.Infra.ModFixtureDirectories:
+    def fixture_directories(cls, config_root: Path) -> p.Infra.ModFixtureDirectories:
         """Resolve only declared fixture directories without crossing symlinks.
 
         Returns:
@@ -44,7 +44,7 @@ class FlextInfraCodemodSnapshotReconciler:
         return cls._configuration_directories(config_root, fixtures=True)
 
     @classmethod
-    def scanner_directories(cls, config_root: Path) -> m.Infra.ModFixtureDirectories:
+    def scanner_directories(cls, config_root: Path) -> p.Infra.ModFixtureDirectories:
         """Resolve the native scanner's declared rule and utility directories.
 
         Returns:
@@ -59,7 +59,7 @@ class FlextInfraCodemodSnapshotReconciler:
         config_root: Path,
         *,
         fixtures: bool,
-    ) -> m.Infra.ModFixtureDirectories:
+    ) -> p.Infra.ModFixtureDirectories:
         """Read one configuration through the shared declared-directory owner.
 
         Returns:

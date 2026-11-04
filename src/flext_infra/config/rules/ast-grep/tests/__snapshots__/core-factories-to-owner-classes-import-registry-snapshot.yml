@@ -1,0 +1,52 @@
+id: core-factories-to-owner-classes-import-registry
+snapshots:
+  "from __future__ import annotations\n\nfrom flext_core import c, u\n\nregistry: p.Registry = Field(default_factory=FlextRegistry.create)\n":
+    fixed: |
+      from __future__ import annotations
+      
+      from flext_core import FlextRegistry
+      
+      from flext_core import c, u
+      
+      registry: p.Registry = Field(default_factory=FlextRegistry.create)
+    labels:
+    - source: from __future__ import annotations
+      style: primary
+      start: 0
+      end: 34
+    - source: FlextRegistry.create
+      style: secondary
+      start: 110
+      end: 130
+    - source: |
+        from __future__ import annotations
+        
+        from flext_core import c, u
+        
+        registry: p.Registry = Field(default_factory=FlextRegistry.create)
+      style: secondary
+      start: 0
+      end: 132
+  "from __future__ import annotations\n\nregistry = FlextRegistry.create()\n":
+    fixed: |
+      from __future__ import annotations
+      
+      from flext_core import FlextRegistry
+      
+      registry = FlextRegistry.create()
+    labels:
+    - source: from __future__ import annotations
+      style: primary
+      start: 0
+      end: 34
+    - source: FlextRegistry.create
+      style: secondary
+      start: 47
+      end: 67
+    - source: |
+        from __future__ import annotations
+        
+        registry = FlextRegistry.create()
+      style: secondary
+      start: 0
+      end: 70

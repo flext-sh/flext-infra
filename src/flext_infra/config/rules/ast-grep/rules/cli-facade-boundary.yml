@@ -87,9 +87,52 @@ metadata:
   consumers_of: flext-cli
 rule:
   pattern: sys.exit($$$ARGS)
+  all:
+    - not:
+        has:
+          field: arguments
+          has:
+            kind: string
+    - inside:
+        kind: module
+        stopBy: end
+        has:
+          stopBy: end
+          matches: cli-imported-from-flext-cli
+fix: cli.exit($$$ARGS)
 message: >-
   Process exit belongs to flext-cli: end a command through cli.exit(), never
   sys.exit().
+---
+# The same law where the token fix cannot apply: the module does not bind the
+# public `cli` facade (the emitted `cli.` would be undefined), or the exit
+# carries a message string that `cli.exit(code: int)` does not accept.
+id: ban-sys-exit-call-without-cli-binding
+language: python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  consumers_of: flext-cli
+rule:
+  pattern: sys.exit($$$ARGS)
+  any:
+    - has:
+        field: arguments
+        has:
+          kind: string
+    - inside:
+        kind: module
+        stopBy: end
+        not:
+          has:
+            stopBy: end
+            matches: cli-imported-from-flext-cli
+message: >-
+  where: this `sys.exit(...)`. why: process exit belongs to flext-cli. fix:
+  bind `from flext_cli import cli` and pass an integer code so `make mod`
+  rewrites it to `cli.exit(code)`; a message belongs to the raised failure,
+  not to the exit.
 ---
 id: ban-direct-serialization-call
 language: python

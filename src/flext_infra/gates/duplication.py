@@ -10,22 +10,19 @@ import socket
 import time
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 from urllib.parse import urlsplit
 
-from flext_infra import c, config, m, r, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
 from flext_infra.gates import (
     FlextInfraDuplicationEvidence,
     FlextInfraDuplicationReport,
-    FlextInfraGate,
+    FlextInfraGates,
 )
 
-if TYPE_CHECKING:
-    from flext_infra import p
 
-
-class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
+class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
     """Report every clone owned by one project from a fresh scan of that project.
 
     R2 extension: consumer+family scope via [tool.flext.project] config keys;
@@ -45,8 +42,8 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Run and validate jscpd, then expose every owned clone as an error.
 
         Returns:
@@ -69,28 +66,41 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         report, issues, tool_failed = self._report_issues(scan, project_dir)
         skipped_roots = self._absent_comparison_note(project_dir)
         not_executed = self._semantic_not_executed_reason()
+        overlay_note = self._overlay_note(project_dir)
         evidence = self._publish_raw_receipt(
             ctx,
             "\n".join(
                 part
-                for part in (scan.stdout, scan.stderr, not_executed, skipped_roots)
+                for part in (
+                    scan.stdout,
+                    scan.stderr,
+                    not_executed,
+                    skipped_roots,
+                    overlay_note,
+                )
                 if part
             ),
         )
+        assessment: p.Infra.DuplicationAssessment | None = None
         if report is not None and overrides.success:
-            issues = (
-                *issues,
-                *self._assessment_issues(
-                    (report, overrides.value),
-                    project_dir,
-                    evidence,
-                    (
-                        f"return_code={scan.outcome.raw_return_code}; "
-                        f"timed_out={scan.outcome.timed_out}; "
-                        f"signal={scan.outcome.forwarded_signal}; "
-                        f"{not_executed}; {skipped_roots}".rstrip("; ")
-                    ),
+            assessment_failures, assessment = self._publish_assessment(
+                (report, overrides.value),
+                project_dir,
+                evidence,
+                (
+                    f"return_code={scan.outcome.raw_return_code}; "
+                    f"timed_out={scan.outcome.timed_out}; "
+                    f"signal={scan.outcome.forwarded_signal}; "
+                    f"{not_executed}; {skipped_roots}".rstrip("; ")
                 ),
+            )
+            issues = (
+                *(
+                    self._blocking_issues(report, issues, assessment, project_dir)
+                    if assessment is not None
+                    else issues
+                ),
+                *assessment_failures,
             )
         outcome = (
             c.Infra.ToolOutcome.ERROR
@@ -124,7 +134,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         self,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
-    ) -> tuple[m.Infra.JscpdReport | None, tuple[m.Infra.Issue, ...], bool]:
+    ) -> tuple[p.Infra.JscpdReport | None, tuple[p.Infra.Issue, ...], bool]:
         """Parse the native report into owned clones plus any tool failure.
 
         A non-findings exit, or a findings exit whose report holds no clone,
@@ -134,14 +144,14 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
             The parsed report, its issues, and whether the tool itself failed.
 
         """
-        report: m.Infra.JscpdReport | None = None
+        report: p.Infra.JscpdReport | None = None
         try:
             if scan.stdout.strip():
                 report = FlextInfraDuplicationEvidence.parse(scan.stdout)
             parsed = self._issues_from_report(project_dir, report)
         except ValueError as exc:
-            parsed = r[tuple[m.Infra.Issue, ...]].fail(str(exc), exception=exc)
-        issues: tuple[m.Infra.Issue, ...] = (
+            parsed = r[tuple[p.Infra.Issue, ...]].fail(str(exc), exception=exc)
+        issues: tuple[p.Infra.Issue, ...] = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
         empty_failure = (
@@ -154,17 +164,18 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
             issues = (*issues, self._tool_failure_issue(scan))
         return report, issues, tool_failed
 
-    def _assessment_issues(
+    def _publish_assessment(
         self,
-        assessed: tuple[m.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
+        assessed: tuple[p.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
         project_dir: Path,
-        evidence: m.Infra.GateOutputReceipt,
+        evidence: p.Infra.GateOutputReceipt,
         execution: str,
-    ) -> tuple[m.Infra.Issue, ...]:
+    ) -> tuple[tuple[p.Infra.Issue, ...], m.Infra.DuplicationAssessment | None]:
         """Publish the duplication assessment beside its receipt.
 
         Returns:
-            The assessment's own failures; none when it is clean.
+            The assessment's own failure issues and the published assessment
+            (``None`` when the source analysis itself failed).
 
         """
         report, overrides = assessed
@@ -177,24 +188,89 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
                 execution=execution,
             )
         except (OSError, ValueError) as exc:
-            return (self._failure_issue(f"duplication assessment: {exc}"),)
+            failure = (self._failure_issue(f"duplication assessment: {exc}"),)
+            return failure, None
         u.Cli.atomic_write_text_file(
             evidence.path.with_suffix(".assessment.json"),
             assessment.model_dump_json(indent=2),
         ).unwrap()
+        analysis_failures: tuple[p.Infra.Issue, ...] = ()
         if assessment.counts.get("analysis_error", 0):
-            return (
+            analysis_failures = (
                 self._failure_issue(
                     "duplication assessment contains source analysis errors; "
                     "see assessment receipt",
                 ),
             )
-        return ()
+        return analysis_failures, assessment
+
+    def _blocking_issues(
+        self,
+        report: p.Infra.JscpdReport,
+        issues: tuple[p.Infra.Issue, ...],
+        assessment: p.Infra.DuplicationAssessment,
+        project_dir: Path,
+    ) -> tuple[p.Infra.Issue, ...]:
+        """Keep every raw clone issue the assessment holds behavioral.
+
+        The assessment vocabulary already declares which spans carry no
+        reviewable behavior: only removable syntax, or retained bodies below
+        the selected floor. Those clones stay in the lossless assessment
+        receipt with their disposition and never vanish from evidence; they
+        stop failing the gate because there is no duplicated behavior to
+        repair. Import overlap alone never reaches this filter: a clone
+        whose retained bodies reach both floors stays ``unresolved`` and
+        blocking.
+
+        Returns:
+            The resulting behavioral issues, aligned with the raw duplicates.
+
+        """
+        blocking = {
+            candidate.canonical_index
+            if candidate.canonical_index == candidate.index
+            else candidate.index
+            for candidate in assessment.candidates
+            if candidate.disposition
+            not in {"non_behavioral_only", "below_existing_behavior_floor"}
+        }
+        aligned: list[int] = []
+        seen_pairs: set[str] = set()
+        for index, duplicate in enumerate(report.duplicates):
+            sides = (duplicate.first_file, duplicate.second_file)
+            spans = tuple(self._typed_side_span_key(side) for side in sides)
+            if spans[0] == spans[1]:
+                continue
+            if not any(Path(side.name).is_relative_to(project_dir) for side in sides):
+                continue
+            pair = "|".join(sorted(spans))
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+            aligned.append(index)
+        return tuple(
+            issues[issue_index]
+            for issue_index, duplicate_index in enumerate(aligned)
+            if duplicate_index in blocking
+        )
+
+    @staticmethod
+    def _typed_side_span_key(side: p.Infra.JscpdFile) -> str:
+        """Return one typed clone side's raw-issue span identity.
+
+        Returns:
+            The resulting ``<file>:<start>:<end>`` key.
+
+        """
+        raw = side.name
+        file_name, separator, _language = raw.rpartition(":")
+        name = file_name if separator and file_name and "." in file_name else raw
+        return f"{name}:{side.start_location.line}:{side.end_location.line}"
 
     def _scan_project(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         *,
         fleet_enabled: bool = False,
     ) -> p.Cli.CommandOutput:
@@ -385,7 +461,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
     @staticmethod
     def _read_project_config(
         project_dir: Path,
-    ) -> p.Result[m.Infra.ProjectDuplicationOverrides]:
+    ) -> p.Result[p.Infra.ProjectDuplicationOverrides]:
         """Read ``[tool.flext.project.duplication]`` from pyproject.toml.
 
         Why: a malformed manifest is a declared error, never an empty config —
@@ -395,33 +471,94 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         it legitimately yields the default overrides.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ProjectDuplicationOverrides]``.
+            The resulting ``p.Result[p.Infra.ProjectDuplicationOverrides]``.
 
         """
         pyproject_path = project_dir / c.PYPROJECT_FILENAME
         if not pyproject_path.is_file():
-            return r[m.Infra.ProjectDuplicationOverrides].ok(
+            return r[p.Infra.ProjectDuplicationOverrides].ok(
                 m.Infra.ProjectDuplicationOverrides(),
             )
         loaded = u.Cli.config_load(pyproject_path, expand_env=False)
         if loaded.failure:
-            return r[m.Infra.ProjectDuplicationOverrides].fail(
+            return r[p.Infra.ProjectDuplicationOverrides].fail(
                 f"invalid project manifest ({pyproject_path}): {loaded.error}",
             )
         tool = u.Cli.json_as_mapping(loaded.value.data).get("tool", {})
         flext = u.Cli.json_as_mapping(tool).get("flext", {})
         project = u.Cli.json_as_mapping(flext).get("project", {})
         duplication = u.Cli.json_as_mapping(project).get("duplication", {})
-        validated: p.Result[m.Infra.ProjectDuplicationOverrides] = u.validate_value(
+        validated: p.Result[p.Infra.ProjectDuplicationOverrides] = u.validate_value(
             m.Infra.ProjectDuplicationOverrides,
             u.Cli.json_as_mapping(duplication),
         )
         if validated.failure:
-            return r[m.Infra.ProjectDuplicationOverrides].fail_op(
+            return r[p.Infra.ProjectDuplicationOverrides].fail_op(
                 f"[tool.flext.project.duplication] validation ({pyproject_path})",
                 validated.error,
             )
-        return r[m.Infra.ProjectDuplicationOverrides].ok(validated.value)
+        return r[p.Infra.ProjectDuplicationOverrides].ok(validated.value)
+
+    @classmethod
+    def _project_overlay(
+        cls,
+        project_dir: Path,
+    ) -> p.Result[p.Infra.JscpdProjectOverlay]:
+        """Read ``Infra.tooling.tools.jscpd`` from the project tooling overlay.
+
+        The overlay has the same nesting as the packaged ``tooling.yaml``.
+        An absent file, or a nesting level the overlay does not declare, is a
+        typed absence (an empty overlay); a declared level that violates the
+        schema fails loud instead of being silently ignored.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.JscpdProjectOverlay]``.
+
+        """
+        tooling = project_dir / "config" / "tooling.yaml"
+        if not tooling.is_file():
+            return r[p.Infra.JscpdProjectOverlay].ok(m.Infra.JscpdProjectOverlay())
+        loaded = u.Cli.yaml_safe_load(tooling)
+        if loaded.failure:
+            return r[p.Infra.JscpdProjectOverlay].fail(
+                f"invalid project tooling overlay ({tooling}): {loaded.error}",
+            )
+        current: t.JsonValue = dict(loaded.value)
+        for key in ("Infra", "tooling", "tools", "jscpd"):
+            if not isinstance(current, dict):
+                return r[p.Infra.JscpdProjectOverlay].fail(
+                    f"project tooling.yaml level above {key!r} is not a mapping "
+                    f"({tooling})",
+                )
+            if key not in current:
+                return r[p.Infra.JscpdProjectOverlay].ok(m.Infra.JscpdProjectOverlay())
+            current = current[key]
+        validated = u.validate_value(
+            m.Infra.JscpdProjectOverlay,
+            u.Cli.json_as_mapping(current),
+        )
+        if validated.failure:
+            return r[p.Infra.JscpdProjectOverlay].fail_op(
+                f"project tooling.yaml jscpd overlay validation ({tooling})",
+                validated.error,
+            )
+        return r[p.Infra.JscpdProjectOverlay].ok(validated.value)
+
+    def _overlay_note(self, project_dir: Path) -> str:
+        """Record merged project overlay exclusions beside the receipt.
+
+        What the gate skipped must stay visible: the note names the merged
+        count. An invalid overlay already fails the render, so it is never
+        silently swallowed here.
+
+        Returns:
+            The note, or an empty string when the overlay declares nothing.
+
+        """
+        overlay = self._project_overlay(project_dir)
+        if overlay.failure or not overlay.value.ignore:
+            return ""
+        return f"jscpd project overlay merged: {len(overlay.value.ignore)} globs"
 
     def _declared_duplication_trees(self) -> p.Result[Sequence[str]]:
         """Read duplication scope from the target's selected repository delta.
@@ -439,10 +576,11 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
     def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
 
-        R2: Reads thresholds from [tool.flext.project] config SSOT.
-        A generated-at-scan-time projection, never a second hand-edited
-        source; regenerating with unchanged constants produces byte-identical
-        content (idempotent).
+        R2: Reads thresholds from [tool.flext.project] config SSOT and the
+        operator-authorized scan exclusions from the project tooling overlay
+        (``config/tooling.yaml``). A generated-at-scan-time projection, never
+        a second hand-edited source; regenerating with unchanged constants
+        produces byte-identical content (idempotent).
 
         Returns:
             The resulting ``p.Result[Path]``.
@@ -452,6 +590,9 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         if project_config.failure:
             return r[Path].from_failure(project_config)
         overrides = project_config.value
+        overlay = self._project_overlay(project_dir)
+        if overlay.failure:
+            return r[Path].from_failure(overlay)
         passes = config.Infra.tooling.tools.jscpd
         # The embedding pass runs wherever its declared host answers; in CI
         # it is typed NOT EXECUTED, and a locally unreachable host is typed
@@ -467,7 +608,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
                 name: tuple(extensions)
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
-            ignore=self._derived_ignore_patterns(),
+            ignore=(*self._derived_ignore_patterns(), *overlay.value.ignore),
             ignorePattern=passes.ignore_patterns,
             minLines=overrides.min_lines,
             minTokens=overrides.min_tokens,
@@ -554,7 +695,7 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
 
     @staticmethod
     def _comparison_roots(
-        overrides: m.Infra.ProjectDuplicationOverrides,
+        overrides: p.Infra.ProjectDuplicationOverrides,
     ) -> tuple[Sequence[Path], Sequence[str]]:
         """Resolve declared external comparison roots against the filesystem.
 
@@ -672,4 +813,4 @@ class FlextInfraDuplicationGate(FlextInfraDuplicationReport, FlextInfraGate):
         )
 
 
-__all__: list[str] = ["FlextInfraDuplicationGate"]
+__all__: list[str] = ["FlextInfraGatesDuplication"]

@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, m, p, t
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraUpgOwnedDependencyPin:
@@ -75,7 +75,7 @@ class TestsFlextInfraUpgOwnedDependencyPin:
     @staticmethod
     def _conform(
         source: str,
-        flext_line: m.Infra.WorkspaceIntegrationSpec | None = None,
+        flext_line: p.Infra.WorkspaceIntegrationSpec | None = None,
     ) -> p.Result[str]:
         toolchain = config.Infra.codegen.toolchain
         workspace = u.Tests.workspace_spec(u.Tests.repository_ref("consumer"))

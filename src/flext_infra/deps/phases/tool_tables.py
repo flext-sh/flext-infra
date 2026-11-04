@@ -22,13 +22,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeProjects
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
-)
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._pyproject.toml_phases import (
     FlextInfraUtilitiesPyprojectTomlPhases,
 )
-from flext_infra._utilities._rope.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraToolTablesPhase:
@@ -36,9 +34,9 @@ class FlextInfraToolTablesPhase:
 
     def __init__(
         self,
-        tool_config: m.Infra.ToolConfigDocument,
+        tool_config: p.Infra.ToolConfigDocument,
         *,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Capture the canonical tooling document projected into each table."""
         self._tool_config = tool_config
@@ -177,7 +175,7 @@ class FlextInfraToolTablesPhase:
         })
 
     @staticmethod
-    def _native_phase(tool: str, payload: t.JsonDict) -> m.Infra.DepsToml.PhaseConfig:
+    def _native_phase(tool: str, payload: t.JsonDict) -> p.Infra.DepsToml.PhaseConfig:
         """Replace a governed native table through the shared TOML primitive.
 
         Returns:
@@ -193,7 +191,7 @@ class FlextInfraToolTablesPhase:
 
     def _mypy_phase(
         self, mypy_search_paths: Sequence[str]
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    ) -> p.Infra.DepsToml.PhaseConfig:
         """Combine native options with the Mypy execution policy.
 
         Returns:
@@ -223,7 +221,7 @@ class FlextInfraToolTablesPhase:
         ]
         return self._native_phase(c.Infra.MYPY, payload)
 
-    def _pytest_phase(self) -> m.Infra.DepsToml.PhaseConfig:
+    def _pytest_phase(self) -> p.Infra.DepsToml.PhaseConfig:
         """Project native pytest options and its shared operational vocabulary.
 
         Returns:
@@ -261,7 +259,7 @@ class FlextInfraToolTablesPhase:
         options[c.Infra.FLEXT_MAKE_CI_VALUE] = ci.value
         return self._native_phase(c.Infra.PYTEST, payload)
 
-    def _vulture_phase(self, path: Path) -> m.Infra.DepsToml.PhaseConfig:
+    def _vulture_phase(self, path: Path) -> p.Infra.DepsToml.PhaseConfig:
         """Filter declared native roots through the workspace participation owner.
 
         Returns:
@@ -282,7 +280,7 @@ class FlextInfraToolTablesPhase:
 
     def _deptry_phase(
         self, path: Path, repository_namespace_packages: Sequence[str]
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    ) -> p.Infra.DepsToml.PhaseConfig:
         """Add target-owned namespaces to the elected native options.
 
         Returns:
@@ -330,7 +328,7 @@ class FlextInfraToolTablesPhase:
         path: Path,
         repository_namespace_packages: Sequence[str],
         mypy_search_paths: Sequence[str],
-    ) -> Sequence[m.Infra.DepsToml.PhaseConfig]:
+    ) -> Sequence[p.Infra.DepsToml.PhaseConfig]:
         """Compose declarative tables and the registered semantic owners.
 
         Returns:
@@ -356,7 +354,7 @@ class FlextInfraToolTablesPhase:
             )
             for root in sorted({table.partition(".")[0] for table in tables})
         }
-        native_phases: list[m.Infra.DepsToml.PhaseConfig] = []
+        native_phases: list[p.Infra.DepsToml.PhaseConfig] = []
         for table in tables:
             path_parts = table.split(".")
             image = native_roots[path_parts[0]]

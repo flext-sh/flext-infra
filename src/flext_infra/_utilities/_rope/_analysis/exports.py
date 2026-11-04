@@ -9,10 +9,10 @@ from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
-from flext_infra._utilities._rope.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisExports:
@@ -21,7 +21,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
     @staticmethod
     def scope_definitions(
         pymodule: t.Infra.RopePyModule,
-    ) -> Sequence[m.Infra.ScopeDefinition]:
+    ) -> Sequence[p.Infra.ScopeDefinition]:
         """Return every def/class scope in a module via rope's semantic tree.
 
         Uses ``PyModule.get_scope()`` and recursive ``PyScope.get_scopes()`` —
@@ -34,7 +34,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
         """
         root_scope = pymodule.get_scope()
-        definitions: MutableSequence[m.Infra.ScopeDefinition] = []
+        definitions: MutableSequence[p.Infra.ScopeDefinition] = []
         FlextInfraUtilitiesRopeAnalysisExports._collect_scope_definitions(
             scope=root_scope,
             is_module_level=True,
@@ -47,7 +47,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         *,
         scope: t.Infra.RopeScope,
         is_module_level: bool,
-        definitions: MutableSequence[m.Infra.ScopeDefinition],
+        definitions: MutableSequence[p.Infra.ScopeDefinition],
     ) -> None:
         """Recurse the rope scope tree, appending one entry per child scope."""
         for child in scope.get_scopes():
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
     def module_export_names_source(
         source_module: p.Infra.RopeSourceModule,
         *,
-        export_options: m.Infra.ExportOptions | None = None,
+        export_options: p.Infra.ExportOptions | None = None,
     ) -> Sequence[str]:
         """Return module-local exports from one parsed source snapshot.
 

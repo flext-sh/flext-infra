@@ -12,6 +12,8 @@ valid:
     result = factory("T")
 invalid:
   - type Payload = dict[str, int]
+  - type _Private = int
+  - _T = TypeVar("_T")
   - type Box[T] = list[T]
   - "Alias: TypeAlias = int"
   - "Alias: typing.TypeAlias = int"

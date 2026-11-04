@@ -1,0 +1,24 @@
+id: model-type-not-protocol
+valid:
+- |
+  from flext_core import p, t
+  def dump(value: p.BaseModel) -> p.BaseModel:
+      return value
+- |
+  from flext_core import t
+  def parse[M: t.BaseModelType](model_cls: t.ModelClass[M]) -> M:
+      return model_cls.model_validate({})
+invalid:
+- |
+  from flext_core import p, t
+  def parse[M: p.BaseModel](model_cls: t.ModelClass[M]) -> M:
+      return model_cls.model_validate({})
+- |
+  from flext_core import p, t
+  def schema(model: type[p.BaseModel]) -> None:
+      model.model_json_schema()
+- |
+  from flext_core import p, t
+  from typing import ClassVar
+  class E:
+      params_cls: ClassVar[t.ModelClass[p.BaseModel] | None] = None

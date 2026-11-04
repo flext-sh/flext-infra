@@ -31,7 +31,7 @@ from flext_infra import c, m, p, r
 class FlextInfraUtilitiesGitRepo:
     """Git repository opener with GitPython native OO API."""
 
-    _publication_index: ClassVar[ContextVar[m.Infra.GitIndexScope | None]] = ContextVar(
+    _publication_index: ClassVar[ContextVar[p.Infra.GitIndexScope | None]] = ContextVar(
         "flext_infra_git_publication_index", default=None
     )
 
@@ -49,14 +49,14 @@ class FlextInfraUtilitiesGitRepo:
     @staticmethod
     def _registered_worktree_entries(
         porcelain: str,
-    ) -> tuple[m.Infra.GitWorktreeEntry, ...]:
+    ) -> tuple[p.Infra.GitWorktreeEntry, ...]:
         """Parse one ``worktree list --porcelain`` document into typed entries.
 
         Returns:
-            The resulting ``tuple[m.Infra.GitWorktreeEntry, ...],``.
+            The resulting ``tuple[p.Infra.GitWorktreeEntry, ...],``.
 
         """
-        entries: list[m.Infra.GitWorktreeEntry] = []
+        entries: list[p.Infra.GitWorktreeEntry] = []
         path: Path | None = None
         head: str | None = None
         branch: str | None = None
@@ -102,7 +102,7 @@ class FlextInfraUtilitiesGitRepo:
         cls,
         repo: Repo,
         porcelain: str,
-    ) -> tuple[m.Infra.GitWorktreeEntry, ...]:
+    ) -> tuple[p.Infra.GitWorktreeEntry, ...]:
         """Bind a storage-only primary row to Git-proven checkout identity.
 
         Returns:

@@ -40,6 +40,21 @@ class FlextInfraConstantsCodegen(
     ))
     "Surfaces planned for one exact module destination, never repository fans."
 
+    IMPORT_NORMALIZATION_DEGRADED_MESSAGE: ClassVar[str] = (
+        "import normalization degraded sources count={count}; recorded in "
+        "runtime diagnostics, violations owned by the check gates"
+    )
+    "Aggregate degradation row for one normalization cohort."
+
+    IMPORT_NORMALIZATION_DEGRADED_SOURCE: ClassVar[str] = "degraded {entry}"
+    "Per-source degradation row rendered under the aggregate row."
+
+    NAMESPACE_ROLE_DEGRADED_MESSAGE: ClassVar[str] = (
+        "facade component excluded for an undeclared namespace role "
+        "target={target} base={base}; check gates own the violation"
+    )
+    "Degradation row for one facade component with unadmissible storage."
+
     SELF_SCOPE_SURFACES: ClassVar[
         frozenset[FlextInfraConstantsConfig.CodegenConformSurface]
     ] = frozenset((
@@ -130,6 +145,8 @@ class FlextInfraConstantsCodegen(
         ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),
     )
     "Runtime singleton modules for src/: (filename, class_suffix, base_class, doc)."
+    PROTOCOL_GENERATED_STEM: ClassVar[str] = "generated_models"
+    """Module stem of a generated protocol mirror (``<stem>_<route token>``)."""
     VIOLATION_PATTERN: ClassVar[t.RegexPattern] = re.compile(
         r"\[(?P<rule>[a-z0-9][a-z0-9-]*)\]\s+"
         r"(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)",

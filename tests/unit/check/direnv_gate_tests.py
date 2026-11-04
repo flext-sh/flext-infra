@@ -11,19 +11,19 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.gates.direnv import FlextInfraDirenvGate
+from flext_infra.gates.direnv import FlextInfraGatesDirenv
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
-from tests import c, m, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 class TestsFlextInfraDirenvGate:
-    """Tests for ``FlextInfraDirenvGate``."""
+    """Tests for ``FlextInfraGatesDirenv``."""
 
     @staticmethod
-    def allowed_check(root: Path) -> m.Infra.GateExecution:
+    def allowed_check(root: Path) -> p.Infra.GateExecution:
         """Check one workspace whose ``.envrc`` the real direnv approved.
 
         Returns:
@@ -32,7 +32,7 @@ class TestsFlextInfraDirenvGate:
         """
         allow = (c.Infra.CLI_DIRENV, "allow", str(root))
         tm.ok(u.Cli.run_checked(allow, cwd=root))
-        execution = FlextInfraDirenvGate(root).check(root, u.Tests.gate_context(root))
+        execution = FlextInfraGatesDirenv(root).check(root, u.Tests.gate_context(root))
         tm.ok(u.Cli.run_checked((c.Infra.CLI_DIRENV, "deny", str(root)), cwd=root))
         return execution
 
@@ -41,7 +41,7 @@ class TestsFlextInfraDirenvGate:
         root: Path,
         envrc: str,
         code: str,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Write ``envrc``, run the gate, and require it to fail with ``code``.
 
         Returns:
@@ -49,7 +49,7 @@ class TestsFlextInfraDirenvGate:
 
         """
         _ = (root / c.Infra.ENVRC_FILENAME).write_text(envrc, encoding="utf-8")
-        execution = FlextInfraDirenvGate(root).check(
+        execution = FlextInfraGatesDirenv(root).check(
             root,
             u.Tests.gate_context(root),
         )
@@ -58,7 +58,7 @@ class TestsFlextInfraDirenvGate:
         return execution
 
     @staticmethod
-    def issue_codes(execution: m.Infra.GateExecution) -> Sequence[str]:
+    def issue_codes(execution: p.Infra.GateExecution) -> Sequence[str]:
         """Return the issue codes one gate execution reported, in order.
 
         Returns:
@@ -69,7 +69,7 @@ class TestsFlextInfraDirenvGate:
 
     @staticmethod
     def messages(
-        violations: tuple[m.Infra.EnvironmentContractViolation, ...],
+        violations: tuple[p.Infra.EnvironmentContractViolation, ...],
     ) -> Sequence[str]:
         """Render typed violations exactly as the gate reports them.
 
@@ -249,7 +249,7 @@ class TestsFlextInfraDirenvGate:
                 self.stale_section,
                 encoding="utf-8",
             )
-            execution = FlextInfraDirenvGate(tmp_path).check(
+            execution = FlextInfraGatesDirenv(tmp_path).check(
                 tmp_path,
                 u.Tests.gate_context(tmp_path),
             )
@@ -279,7 +279,7 @@ class TestsFlextInfraDirenvGate:
         @staticmethod
         def test_workspace_without_envrc_cannot_pass(tmp_path: Path) -> None:
             """A selected gate with no inputs cannot establish acceptance."""
-            execution = FlextInfraDirenvGate(tmp_path).check(
+            execution = FlextInfraGatesDirenv(tmp_path).check(
                 tmp_path,
                 u.Tests.gate_context(tmp_path),
             )

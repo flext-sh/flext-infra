@@ -11,14 +11,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import m, u
-from flext_infra.gates import FlextInfraGate
+from flext_infra import m, p, u
+from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraScannerGate(FlextInfraGate):
+class FlextInfraGatesScanner(FlextInfraGates):
     """Mixin for gates that detect per-file issues via a rope-backed scanner.
 
     Subclasses provide ``scan_error_message`` and implement
@@ -33,8 +33,8 @@ class FlextInfraScannerGate(FlextInfraGate):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Scan all Python files in ``project_dir`` and report detected issues.
 
         Returns:
@@ -79,15 +79,15 @@ class FlextInfraScannerGate(FlextInfraGate):
         file_path: Path,
         project_dir: Path,
         rope_project: t.Infra.RopeProject,
-    ) -> Sequence[m.Infra.Issue]:
+    ) -> Sequence[p.Infra.Issue]:
         """Override in subclass to detect issues for a single file.
 
         Returns:
-            The resulting ``Sequence[m.Infra.Issue]``.
+            The resulting ``Sequence[p.Infra.Issue]``.
 
         """
         _ = file_path, project_dir, rope_project
         return ()
 
 
-__all__: list[str] = ["FlextInfraScannerGate"]
+__all__: list[str] = ["FlextInfraGatesScanner"]

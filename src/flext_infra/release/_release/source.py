@@ -10,7 +10,7 @@ import tarfile
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
-from flext_infra.release import FlextInfraReleaseReleaseArtifact
+from flext_infra.release._release import FlextInfraReleaseReleaseArtifact
 
 
 class FlextInfraReleaseReleaseSource(FlextInfraReleaseReleaseArtifact):
@@ -22,14 +22,14 @@ class FlextInfraReleaseReleaseSource(FlextInfraReleaseReleaseArtifact):
         project_path: Path,
         stage_path: Path,
         gitleaks_config: Path,
-    ) -> p.Result[tuple[m.Infra.SourceSnapshot, str]]:
+    ) -> p.Result[tuple[p.Infra.SourceSnapshot, str]]:
         """Extract committed HEAD; scan, return identity + license digest.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.SourceSnapshot, str]]``.
+            The resulting ``p.Result[tuple[p.Infra.SourceSnapshot, str]]``.
 
         """
-        result_type = r[tuple[m.Infra.SourceSnapshot, str]]
+        result_type = r[tuple[p.Infra.SourceSnapshot, str]]
         snapshot = cls._committed_snapshot(project_path)
         if snapshot.failure:
             return result_type.from_failure(snapshot)
@@ -46,14 +46,14 @@ class FlextInfraReleaseReleaseSource(FlextInfraReleaseReleaseArtifact):
         return result_type.ok((snapshot.value, license_digest.value))
 
     @staticmethod
-    def _committed_snapshot(project_path: Path) -> p.Result[m.Infra.SourceSnapshot]:
+    def _committed_snapshot(project_path: Path) -> p.Result[p.Infra.SourceSnapshot]:
         """Read HEAD once without consuming or changing working-tree or index bytes.
 
         Returns:
             The committed source identity and its reproducible epoch.
 
         """
-        result_type = r[m.Infra.SourceSnapshot]
+        result_type = r[p.Infra.SourceSnapshot]
         identity = u.Cli.capture(
             [
                 c.Infra.GIT,
@@ -72,7 +72,7 @@ class FlextInfraReleaseReleaseSource(FlextInfraReleaseReleaseArtifact):
             return result_type.fail(
                 f"commit epoch is not an integer for {project_path}: {epoch}",
             )
-        snapshot: p.Result[m.Infra.SourceSnapshot] = u.validate_value(
+        snapshot: p.Result[p.Infra.SourceSnapshot] = u.validate_value(
             m.Infra.SourceSnapshot,
             {"commit_oid": oid, "source_date_epoch": int(epoch)},
         )

@@ -149,14 +149,10 @@ class TestsFlextInfraGitIdentitySubmodules:
         tm.ok(identity.is_submodule)
         tm.ok(identity.is_attached_submodule)
 
-    def test_linked_worktree_of_submodule_keeps_primary_identity(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """A linked submodule lane resolves facts through its shared Git config."""
-        parent = self._superproject(tmp_path)
+    @staticmethod
+    def _assert_detached_lane(parent: Path, lane: Path) -> None:
+        """Add a lane of the parent's ``vendored`` member and check its facts."""
         primary = parent / "vendored"
-        lane = tmp_path / "vendored-lane"
         tm.ok(
             u.Cli.run_checked([
                 c.Infra.GIT,
@@ -179,6 +175,26 @@ class TestsFlextInfraGitIdentitySubmodules:
         tm.ok(identity.is_worktree)
         tm.ok(identity.is_submodule)
         tm.fail(identity.is_attached_submodule)
+
+    def test_linked_worktree_of_submodule_keeps_primary_identity(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A linked submodule lane resolves facts through its shared Git config."""
+        parent = self._superproject(tmp_path)
+        self._assert_detached_lane(parent, tmp_path / "vendored-lane")
+
+    def test_linked_worktree_inside_superproject_is_not_attached(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A lane placed below the superproject directory is still detached.
+
+        Attachment is Git's own superproject report for the working tree;
+        a directory that merely sits inside the superproject is not a gitlink.
+        """
+        parent = self._superproject(tmp_path)
+        self._assert_detached_lane(parent, parent / ".worktrees" / "vendored-lane")
 
     def test_absorbed_submodule_with_git_dir_is_still_a_submodule(
         self,

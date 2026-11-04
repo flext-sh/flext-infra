@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from tests import m, r, tm, u
+from flext_infra.docs.generator import FlextInfraDocGenerator, p
+from tests import r, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,7 +38,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         tm.fail(destination.exists())
         tm.ok(
             u.Tests.materialize_codegen_plans(
-                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans),
+                r[tuple[p.Infra.CodegenFilePlan, ...]].ok(plans),
             ),
         )
         index = destination.parent / "README.md"
@@ -107,7 +107,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         tm.ok(deleted.path.exists())
         tm.ok(
             u.Tests.materialize_codegen_plans(
-                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans),
+                r[tuple[p.Infra.CodegenFilePlan, ...]].ok(plans),
             ),
         )
         tm.fail(deleted.path.exists())

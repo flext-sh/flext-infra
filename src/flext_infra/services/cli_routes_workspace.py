@@ -10,8 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import flext_infra
-from flext_infra import c, check, m, p, r, t, u, workspace
-from flext_infra.docs import FlextInfraDocAuditor, FlextInfraDocValidator
+from flext_infra import c, check, docs, m, p, r, t, u, workspace
 
 
 class FlextInfraWorkspaceRoutes:
@@ -38,7 +37,7 @@ class FlextInfraWorkspaceRoutes:
 
     @staticmethod
     def _tests(
-        params: m.Infra.WorkspaceTestsRequest,
+        params: p.Infra.WorkspaceTestsRequest,
         *,
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
@@ -61,7 +60,7 @@ class FlextInfraWorkspaceRoutes:
 
     @classmethod
     def _tests_full(
-        cls, params: m.Infra.WorkspaceTestsRequest
+        cls, params: p.Infra.WorkspaceTestsRequest
     ) -> p.Cli.ErasedCommandResult:
         """Run one complete native suite without Testmon or an incremental pre-run.
 
@@ -101,7 +100,7 @@ class FlextInfraWorkspaceRoutes:
     @classmethod
     def _capture_gate(
         cls,
-        params: m.Infra.GateCaptureRequest,
+        params: p.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Retain the original checker process and return its unchanged status."""
         root = params.repository_root.expanduser().resolve()
@@ -111,7 +110,7 @@ class FlextInfraWorkspaceRoutes:
     @classmethod
     def _check(
         cls,
-        params: m.Infra.GateCaptureRequest,
+        params: p.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Run every read-only validation of the check verb in one process.
 
@@ -154,7 +153,7 @@ class FlextInfraWorkspaceRoutes:
             )
             if lanes.failure:
                 return r[bool].from_failure(lanes)
-        for service in (FlextInfraDocValidator, FlextInfraDocAuditor):
+        for service in (docs.FlextInfraDocValidator, docs.FlextInfraDocAuditor):
             documented = service(
                 repository_root=root,
                 output_dir=make.docs.reports_dir,
@@ -166,8 +165,8 @@ class FlextInfraWorkspaceRoutes:
 
     @staticmethod
     def _captured_gate_status(
-        params: m.Infra.GateCaptureRequest,
-        inputs: m.Infra.CodegenInputs,
+        params: p.Infra.GateCaptureRequest,
+        inputs: p.Infra.CodegenInputs,
     ) -> int:
         """Capture the original checker once and return its unchanged status.
 
@@ -203,7 +202,7 @@ class FlextInfraWorkspaceRoutes:
         return captured.process.raw_return_code
 
     @staticmethod
-    def release_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def release_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the release group's native model and handler bindings.
 
         Returns:
@@ -221,10 +220,10 @@ class FlextInfraWorkspaceRoutes:
         ))
 
     @classmethod
-    def workspace_routes(cls) -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def workspace_routes(cls) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the workspace group's native model and handler bindings.
 
-        The two routes that format their JSON payload stay explicit; every
+        The routes that format their JSON payload stay explicit; every
         other route is one data row of the shared route-table builder.
 
         Returns:
@@ -244,6 +243,17 @@ class FlextInfraWorkspaceRoutes:
                 help_text="Authenticate a retained and integrated Git checkpoint",
                 model_cls=m.Infra.GitLaneOwnershipRequest,
                 handler=flext_infra.FlextInfraGitService.lane_ownership,
+                success_formatter=cls._payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
+                name=c.Infra.FLEET_GAPS_ROUTE_NAME,
+                help_text=(
+                    "Report every declared repository's hygiene gaps (dirty paths, "
+                    "open PRs, unmerged branches, violation counts, standards "
+                    "presence) and publish the receipt"
+                ),
+                model_cls=workspace.FlextInfraWorkspaceFleetGaps,
+                handler=workspace.FlextInfraWorkspaceFleetGaps.execute_command,
                 success_formatter=cls._payload_json_formatter,
             ),
             *u.Infra.result_routes((
@@ -342,17 +352,6 @@ class FlextInfraWorkspaceRoutes:
                     "Publish this workspace's flext-infra to every member",
                     workspace.FlextInfraWorkspacePropagation,
                     flext_infra.infra.workspace_propagate,
-                    None,
-                ),
-                (
-                    c.Infra.FLEET_GAPS_ROUTE_NAME,
-                    (
-                        "Report every declared repository's hygiene gaps (dirty paths, "
-                        "open PRs, unmerged branches, violation counts, standards "
-                        "presence) and publish the receipt"
-                    ),
-                    workspace.FlextInfraWorkspaceFleetGaps,
-                    workspace.FlextInfraWorkspaceFleetGaps.execute_command,
                     None,
                 ),
             )),

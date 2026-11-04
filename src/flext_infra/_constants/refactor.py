@@ -53,6 +53,16 @@ class FlextInfraConstantsRefactor:
     "Exact structured mod evidence schema version."
     MOD_SCAN_SOURCE_DRIFT_ERROR_CODE: ClassVar[str] = "MOD_SCAN_SOURCE_DRIFT"
     "Typed failure code: one finding's source bytes changed during scanning."
+    MOD_FAILURE_MODULE_KEY: ClassVar[str] = "module_path"
+    (
+        "``error_data`` key a mod planner sets to attribute its failure to one"
+        " source module; the loop quarantines that module and continues."
+    )
+    MOD_WRITTEN_FILES_KEY: ClassVar[str] = "written_files"
+    (
+        "``error_data`` key the shared publisher sets when its failure follows"
+        " files it already wrote; such a failure is never external drift."
+    )
     MOD_SCAN_REPORT_MODE: ClassVar[int] = 0o644
     "Canonical permission bits for structured mod evidence."
     ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH: ClassVar[Path] = (
@@ -205,26 +215,31 @@ class FlextInfraConstantsRefactor:
         repairs its findings, and the namespace phase runs that relocation
         over what the rule captured:
 
-        - ``protocol`` / ``typing-alias``: move the declaration ``$NAME`` to
-          its family owner;
+        - ``family-declaration``: move the declaration ``$NAME`` (a typing
+          alias, a Protocol or any other class, a function, or a static or
+          class method) to the module of facade family ``$FAMILY`` that
+          carries the declaring module's domain, rewiring every consumer;
         - ``future-annotations``: add the future import to the file;
         - ``module-import``: hoist the matched import statement to the
           module import block;
         - ``package-root-import``: rebind ``$NAME`` from ``$MODULE`` to that
           module's top-level package;
         - ``own-package-import``: rebind ``$NAME`` from ``$MODULE`` to the
-          project's own package;
-        - ``facade-class``: move class ``$NAME`` to the module of facade
-          family ``$FAMILY``.
+          project's own package.
         """
 
-        PROTOCOL = "protocol"
-        TYPING_ALIAS = "typing-alias"
+        FAMILY_DECLARATION = "family-declaration"
         FUTURE_ANNOTATIONS = "future-annotations"
         MODULE_IMPORT = "module-import"
         PACKAGE_ROOT_IMPORT = "package-root-import"
         OWN_PACKAGE_IMPORT = "own-package-import"
-        FACADE_CLASS = "facade-class"
+
+    @unique
+    class RopeFunctionKind(StrEnum):
+        """Native Rope kinds of a method a family relocation transfers whole."""
+
+        STATICMETHOD = "staticmethod"
+        CLASSMETHOD = "classmethod"
 
     PRIMITIVE_OWNER_OPERAND_COUNT: ClassVar[int] = 2
     "Exact operand count of a primitive owner: its module and public expression."
@@ -304,6 +319,7 @@ class FlextInfraConstantsRefactor:
 
         DECLARATION_RELOCATION = "declaration-relocation"
         CLASS_NESTING = "class-nesting"
+        EXTERNAL_MODEL_OWNER = "external-model-owner"
         CONSTANT_CONSUMERS = FlextInfraConstantsCensus.CensusRule.CONSTANT_CONSUMERS
         CONTRACT_NORMALIZATION = "contract-normalization"
         COMPAT_ALIAS = "compat-alias"
@@ -318,6 +334,7 @@ class FlextInfraConstantsRefactor:
         SemanticCutoverPhase.DECLARATION_RELOCATION: (
             "ban-nested-payload-outside-models",
         ),
+        SemanticCutoverPhase.CLASS_NESTING: ("ban-loose-module-object",),
         SemanticCutoverPhase.COMPAT_ALIAS: ("ban-compat-alias",),
         SemanticCutoverPhase.PRIVATE_IMPORT: ("ban-private-import",),
         SemanticCutoverPhase.FACADE_BASE: (
@@ -407,15 +424,18 @@ class FlextInfraConstantsRefactor:
         "**/_protocols/**",
         "**/protocols.py",
     )
+    # The pytest tests-tier delta (flext-law, ADR-028 p.6): `conftest.py` and
+    # the modules directly in a declared scenario data root declare pytest
+    # fixtures and hooks, so they import pytest and name its types directly.
+    # The scenario roots come from codegen.exclusions.scenario_data_roots.
+    CODEMOD_TESTS_TIER_DELTA_SUFFIX: ClassVar[str] = "tests-tier"
+    CODEMOD_CONFTEST_GLOB: ClassVar[str] = "**/conftest.py"
     # Generated rule shape that inserts the canonical package import of names
     # a module uses bare without binding them: 'import-header--<package>'.
     CODEMOD_IMPORT_HEADER_SHAPE: ClassVar[str] = "import-header"
     # Generated rule shape that reaches a member through its package import
     # instead of a module object: 'module-member--<package>'.
     CODEMOD_MODULE_MEMBER_SHAPE: ClassVar[str] = "module-member"
-    # Generated rule shape that rebinds a one-name import from a module to the
-    # nearest package publishing the name: 'deep-import--<package>'.
-    CODEMOD_DEEP_IMPORT_SHAPE: ClassVar[str] = "deep-import"
     # Provider of a project's rendered rules and utilities, materialized as a
     # native sgconfig root under MOD_NATIVE_STAGE_RELATIVE_PATH/<provider> and
     # elected into the rule plan after the catalogs.
@@ -424,10 +444,6 @@ class FlextInfraConstantsRefactor:
     # the project's layer-zero and isolated-execution files:
     # 'ban-ambient-environ-read--<package>'.
     CODEMOD_AMBIENT_ENVIRON_SHAPE: ClassVar[str] = "ban-ambient-environ-read"
-    # Generated rule shape that drops a bare runtime facade alias used as a
-    # class base outside the facade families and api.py:
-    # 'ban-facade-alias-base--<package>'.
-    CODEMOD_FACADE_ALIAS_BASE_SHAPE: ClassVar[str] = "ban-facade-alias-base"
     # Issue code of a module the project's runtime import graph places in a
     # cycle (ENFORCE-006); the graph, not a syntax rule, decides it.
     CODEMOD_IMPORT_CYCLE_CODE: ClassVar[str] = "ban-cyclic-import"
@@ -452,7 +468,10 @@ class FlextInfraConstantsRefactor:
     CODEMOD_FACADE_PACKAGE_UTILITY: ClassVar[str] = "facade-package"
     CODEMOD_LOCAL_ALIAS_UTILITY: ClassVar[str] = "local-alias"
     CODEMOD_RUNTIME_ALIAS_UTILITY: ClassVar[str] = "runtime-alias"
-    CODEMOD_PACKAGE_EXPORT_UTILITY: ClassVar[str] = "package-export"
+    CODEMOD_PACKAGE_PUBLISHED_IMPORT_UTILITY: ClassVar[str] = "package-published-import"
+    "Stable utility: a from-import module path its parent package fully publishes."
+    CODEMOD_OWNING_PACKAGE_EXPORT_UTILITY: ClassVar[str] = "owning-package-export"
+    "Stable utility: an imported name its import's exact package declares in __all__."
     CODEMOD_COMPOSE_MODULE_UTILITY: ClassVar[str] = "compose-module"
     # File scopes a catalog rule names under metadata.scope; the generated
     # provider publishes them in its scopes file.
@@ -487,23 +506,21 @@ class FlextInfraConstantsRefactor:
     CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: ClassVar[str] = "family-without-base"
     CODEMOD_FAMILY_BASE_SCOPE: ClassVar[str] = "family-base-file"
     CODEMOD_FAMILY_ROLE_SCOPE: ClassVar[str] = "family-role"
+    CODEMOD_COMPOSITION_ROOT_SCOPE: ClassVar[str] = "composition-root"
+    "File scope: the package-root composition module `<package>/api.py`."
     CODEMOD_CLASS_STEM_SCOPE_PREFIX: ClassVar[str] = "class-stem-"
     CODEMOD_FAMILY_PEER_SCOPE_PREFIX: ClassVar[str] = "family-peer-"
     CODEMOD_MODEL_CLASS_SCOPE_PREFIX: ClassVar[str] = "model-class-"
     CODEMOD_IMPLEMENTATION_OWNER_SCOPE_PREFIX: ClassVar[str] = "implementation-owner-"
     CODEMOD_LIBRARY_MEMBER_OWNER_UTILITY_PREFIX: ClassVar[str] = "library-member-owner-"
     CODEMOD_GENERIC_SPECIALIZATION_UTILITY: ClassVar[str] = "generic-specialization"
+    CODEMOD_PROTOCOL_MODEL_PATH_UTILITY: ClassVar[str] = "protocol-model-path"
+    "Stable utility: a dotted path `p` publishes as a protocol and `m` as its model twin."
+    CODEMOD_MODEL_SDK_TYPE_UTILITY: ClassVar[str] = "model-sdk-type-name"
+    "Stable utility: a library type name `t` owns that `p` or `m` re-spells."
     CODEMOD_PAYLOAD_CLASS_SCOPE_PREFIX: ClassVar[str] = "payload-class-"
     CODEMOD_INCOMPLETE_COMPOSITION_SCOPE_PREFIX: ClassVar[str] = (
         "incomplete-composition-"
-    )
-    # Catalog utility a generated import rule embeds to skip annotation-only
-    # imports under `if TYPE_CHECKING:`.
-    # An import statement binding exactly one plain name, so a rewrite of the
-    # module path never drops another imported name.
-    CODEMOD_SINGLE_NAME_IMPORT_REGEX: ClassVar[str] = (
-        r"^from\s+[A-Za-z0-9_.]+\s+import\s+"
-        r"(?:[A-Za-z_][A-Za-z0-9_]*|\(\s*[A-Za-z_][A-Za-z0-9_]*\s*,?\s*\))$"
     )
     # Universal catalog utility the generated shapes embed as their local
     # utility: an identifier that binds a name in its module.

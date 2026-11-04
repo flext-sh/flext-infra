@@ -15,8 +15,8 @@ class FlextInfraUtilitiesGitLaneHygiene:
 
     @staticmethod
     def git_lane_facts(
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitLaneFacts]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitLaneFacts]:
         """Capture stash OIDs and every local/configured-remote reference.
 
         There is no integration-base election, ancestry test, ownership judgement,
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesGitLaneHygiene:
 
         """
         errors: list[str] = []
-        refs: list[m.Infra.GitLaneRef] = []
+        refs: list[p.Infra.GitLaneRef] = []
         stash_oids: tuple[str, ...] = ()
         stashes = FlextInfraUtilitiesGitSemanticRefs.git_stash_oids(request)
         if stashes.failure:
@@ -51,7 +51,7 @@ class FlextInfraUtilitiesGitLaneHygiene:
                 m.Infra.GitLaneRef(name=f"{namespace}/{name}", oid=oid)
                 for name, oid in heads.value.heads.items()
             )
-        return r[m.Infra.GitLaneFacts].ok(
+        return r[p.Infra.GitLaneFacts].ok(
             m.Infra.GitLaneFacts(
                 repo_root=request.repo_root,
                 stash_oids=stash_oids,

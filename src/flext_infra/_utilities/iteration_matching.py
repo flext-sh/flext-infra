@@ -12,10 +12,8 @@ import re
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities import (
-    FlextInfraUtilitiesGit,
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
+from flext_infra._utilities._git import FlextInfraUtilitiesGitScope
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,9 +21,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraUtilitiesIterationMatching(
-    FlextInfraUtilitiesGit,
-):
+class FlextInfraUtilitiesIterationMatching(FlextInfraUtilitiesGitScope):
     """Static helpers for matching files by include/exclude glob patterns."""
 
     @classmethod

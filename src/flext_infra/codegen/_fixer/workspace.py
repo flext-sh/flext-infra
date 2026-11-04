@@ -9,14 +9,12 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
-from flext_infra.codegen import FlextInfraCodegenFixerPasses
+from flext_infra import c, m, p, u
+from flext_infra.codegen._fixer import FlextInfraCodegenFixerPasses
 from flext_infra.refactor import FlextInfraNamespaceEnforcer
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
@@ -36,7 +34,7 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
         project: p.Infra.ProjectInfo,
         *,
         enforce_namespace: Callable[[str], m.Infra.WorkspaceEnforcementReport],
-    ) -> m.Infra.AutoFixResult:
+    ) -> p.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project.
 
         Returns:
@@ -71,11 +69,11 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
         self,
         *,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> Sequence[m.Infra.AutoFixResult]:
+    ) -> Sequence[p.Infra.AutoFixResult]:
         """Run auto-fix on selected projects.
 
         Returns:
-            The resulting ``Sequence[m.Infra.AutoFixResult]``.
+            The resulting ``Sequence[p.Infra.AutoFixResult]``.
 
         """
         if projects is not None:
@@ -90,7 +88,7 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
             )
         enforcer = FlextInfraNamespaceEnforcer(repository_root=self.repository_root)
 
-        def enforce_namespace(project_name: str) -> m.Infra.WorkspaceEnforcementReport:
+        def enforce_namespace(project_name: str) -> p.Infra.WorkspaceEnforcementReport:
             return enforcer.enforce(
                 apply=True,
                 project_names=(project_name,),
