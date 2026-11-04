@@ -405,9 +405,7 @@ class FlextInfraUtilitiesCodemodNative:
         return frozenset().union(
             *(
                 cls._matched_utilities(document).difference(
-                    document["utils"]
-                    if isinstance(document.get("utils"), Mapping)
-                    else ()
+                    local if isinstance(local := document.get("utils"), Mapping) else ()
                 )
                 for document in documents
             )
