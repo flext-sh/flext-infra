@@ -21,7 +21,7 @@ constraints = [
 ]
 overrides = [
     { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev" },
-    { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev" },
+    { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=fecd87b760913a1076541495935dffa4e1cdc96e" },
     { name = "flext-tests", git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev" },
     { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=d56a179adcb2a8d932d96e742cdc42abebaf3885" },
 ]
@@ -434,7 +434,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#141607f7360a0a543613cbfadd753038020d2fe4" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=fecd87b760913a1076541495935dffa4e1cdc96e#fecd87b760913a1076541495935dffa4e1cdc96e" }
 dependencies = [
     { name = "annotated-types" },
     { name = "packaging" },
@@ -538,7 +538,7 @@ dev = [
 requires-dist = [
     { name = "defusedxml", specifier = ">=0.7.1" },
     { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev" },
-    { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev" },
+    { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=fecd87b760913a1076541495935dffa4e1cdc96e" },
     { name = "gitdb", specifier = ">=4.0.12" },
     { name = "gitpython", specifier = ">=3.2.1" },
     { name = "jinja2", specifier = ">=3.1.6" },
