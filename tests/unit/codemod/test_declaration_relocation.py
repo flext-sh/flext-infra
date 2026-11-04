@@ -24,6 +24,29 @@ class TestsFlextInfraDeclarationRelocation:
     """Exercise real Rope bindings and preserve the original source inventory."""
 
     @staticmethod
+    def test_catalog_owner_inside_the_workspace_owns_its_contract(
+        tmp_path: Path,
+    ) -> None:
+        """An in-workspace catalogue owner never resolves to the superproject."""
+        root = tmp_path / "workspace"
+        owner = root / "member"
+        owner.mkdir(parents=True)
+        rule = m.Infra.RopeContractRule(
+            id="catalog-owner-contract",
+            pattern="a",
+            goal="b",
+            arguments={},
+            owner_root=owner,
+        )
+        with infra.rope_workspace(root) as rope:
+            resolved = u.Infra.contract_rule_root(
+                root,
+                rule,
+                source_project=rope.rope_project,
+            )
+        tm.that(resolved, eq=owner)
+
+    @staticmethod
     @pytest.mark.parametrize("lazy", [False, True])
     @pytest.mark.parametrize("consumer_name", ["_config.py", "_settings.py"])
     def test_settings_imports_do_not_promote_family_payload_to_layer_zero(

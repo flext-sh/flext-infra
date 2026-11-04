@@ -163,6 +163,7 @@ class FlextInfraModelsConfigRefactorCampaigns:
                     "semantic:test-namespace-import": "test-namespace-import",
                     "semantic:test-assert-to-matcher": "test-assert-to-matcher",
                     "semantic:compat-alias": "compat-alias",
+                    "semantic:contract-normalization": "contract-normalization",
                 }
                 if (
                     self.id not in phases

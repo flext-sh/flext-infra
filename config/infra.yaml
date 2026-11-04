@@ -35,6 +35,9 @@ Infra:
       - id: semantic:compat-alias
         kind: semantic
         phase: compat-alias
+      - id: semantic:contract-normalization
+        kind: semantic
+        phase: contract-normalization
       - id: callback:import-normalization
         kind: callback
         callback: import-normalization
