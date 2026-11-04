@@ -15,7 +15,7 @@ from flext_cli import u
 from typing_extensions import TypeForm
 
 from flext_infra import p, r, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from flext_infra._utilities import FlextInfraUtilitiesBase
 
 
 class FlextInfraUtilitiesNativeTooling(FlextInfraUtilitiesBase):
