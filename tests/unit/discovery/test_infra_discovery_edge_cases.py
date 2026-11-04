@@ -131,7 +131,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     @staticmethod
     @pytest.mark.parametrize("nested_manifest", [False, True])
     @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
-    def test_nearest_manifest_owns_nested_source_layout(
+    def test_nearest_manifest_owns_nestedsource_layout(
         tmp_path: Path, suffix: str, *, nested_manifest: bool
     ) -> None:
         """A nested src tree belongs to the closest declared project."""

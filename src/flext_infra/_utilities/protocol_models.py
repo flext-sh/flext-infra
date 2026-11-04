@@ -231,9 +231,14 @@ class FlextInfraUtilitiesModelsProtocol:
                 source_project,
                 package_name=package_name,
             )
-            pkg = projection.source_package_name
-            if projection.package is not None and pkg:
-                projection._source_model_facade_owners(projection.package, pkg)
+            layout = projection.source_layout()
+            if layout is not None:
+                package_dir, class_stem, pkg = layout
+                projection.package = package_dir
+                projection.package_name = pkg
+                projection.class_stem = class_stem
+                projection.source_package_name = pkg
+                projection.source_model_facade_owners(package_dir, pkg)
                 routes.update(projection.source_model_protocol_routes)
         except (ValueError, KeyError, AttributeError):
             pass
@@ -252,9 +257,9 @@ class FlextInfraUtilitiesModelsProtocol:
         projection = cls._ModelProtocolProjection(
             repository_root.expanduser().resolve(), source_project
         )
-        primary = projection._source_layout()
+        primary = projection.source_layout()
         return (
-            *(layout[2] for layout in projection._namespace_source_layouts()),
+            *(layout[2] for layout in projection.namespacesource_layouts()),
             *(() if primary is None else (primary[2],)),
         )
 
@@ -277,7 +282,7 @@ class FlextInfraUtilitiesModelsProtocol:
         ) as binding:
             project = binding[0]
             projection = cls._ModelProtocolProjection(root, project)
-            primary = projection._source_layout()
+            primary = projection.source_layout()
             # Only the source-bootstrap owner (flext-infra's own protocol family)
             # projects ahead of the surfaces: its engine imports those holders.
             # A consumer's projection is planned by the lazy-init surface, in the
@@ -300,10 +305,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 ]
             ] = []
             for package_name, namespace_package in (
-                *(
-                    (layout[2], True)
-                    for layout in projection._namespace_source_layouts()
-                ),
+                *((layout[2], True) for layout in projection.namespacesource_layouts()),
                 *(() if primary is None else ((primary[2], False),)),
             ):
                 part = cls._bootstrap_package_sources(
@@ -468,7 +470,7 @@ class FlextInfraUtilitiesModelsProtocol:
         projection = cls._ModelProtocolProjection(
             root, project, package_name=package_name
         )
-        layout = projection._source_layout()
+        layout = projection.source_layout()
         if layout is None:
             return r[
                 tuple[
@@ -768,7 +770,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: The reference is not one public local domain owner.
 
             """
-            layout = self._source_layout()
+            layout = self.source_layout()
             if layout is None or len(reference.attributes) != 1:
                 message = "domain projection requires one declared holder"
                 raise ValueError(message)
@@ -905,7 +907,7 @@ class FlextInfraUtilitiesModelsProtocol:
             """
             self.source_field_cache.clear()
             result_type = r[Mapping[Path, str]]
-            layout = self._source_layout()
+            layout = self.source_layout()
             if layout is None:
                 return result_type.ok({})
             package_dir, class_stem, package_name = layout
@@ -1924,7 +1926,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     )
                     if root_annotation is not None:
                         self.source_model_root_annotations[route] = root_annotation
-            self.source_model_facade_protocols = self._source_model_facade_owners(
+            self.source_model_facade_protocols = self.source_model_facade_owners(
                 package_dir, package_name
             )
             self._source_unpublished_protocol_owners()
@@ -2341,7 +2343,7 @@ class FlextInfraUtilitiesModelsProtocol:
                             )
             return exports
 
-        def _source_model_facade_owners(
+        def source_model_facade_owners(
             self, _package_dir: Path, package_name: str
         ) -> dict[str, str]:
             """Index facade inheritance using native declaring identities.
@@ -2520,7 +2522,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 else ()
             )
 
-        def _source_layout(self) -> tuple[Path, str, str] | None:
+        def source_layout(self) -> tuple[Path, str, str] | None:
             """Return the bound package layout, else the primary distribution one.
 
             Returns:
@@ -2530,18 +2532,18 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: The bound package is not a declared layout.
 
             """
-            primary = self._primary_source_layout()
+            primary = self._primarysource_layout()
             if self._bound_package_name is None or (
                 primary is not None and primary[2] == self._bound_package_name
             ):
                 return primary
-            for layout in self._namespace_source_layouts():
+            for layout in self.namespacesource_layouts():
                 if layout[2] == self._bound_package_name:
                     return layout
             msg = f"package is not a declared model layout: {self._bound_package_name}"
             raise ValueError(msg)
 
-        def _namespace_source_layouts(self) -> tuple[tuple[Path, str, str], ...]:
+        def namespacesource_layouts(self) -> tuple[tuple[Path, str, str], ...]:
             """Discover declared namespace packages that own a models facade.
 
             A package qualifies when it holds both ``models.py`` and a ``_models``
@@ -2595,10 +2597,10 @@ class FlextInfraUtilitiesModelsProtocol:
                         directory.relative_to(self.repository_root).parts
                     )
                     layouts.append((directory, class_stem, package_name))
-            layouts.extend(self._internal_tier_source_layouts())
+            layouts.extend(self._internal_tiersource_layouts())
             return tuple(sorted(layouts, key=operator.itemgetter(2)))
 
-        def _internal_tier_source_layouts(self) -> tuple[tuple[Path, str, str], ...]:
+        def _internal_tiersource_layouts(self) -> tuple[tuple[Path, str, str], ...]:
             """Discover internal tiers (``tests``, ``examples``...) owning models.
 
             Internal tiers are detected, never declared: every direct child
@@ -2646,7 +2648,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 layouts.append((directory, class_stem, child))
             return tuple(layouts)
 
-        def _primary_source_layout(self) -> tuple[Path, str, str] | None:
+        def _primarysource_layout(self) -> tuple[Path, str, str] | None:
             """Discover the package solely from the overlaid pyproject source.
 
             Returns:
@@ -4578,7 +4580,7 @@ class FlextInfraUtilitiesModelsProtocol:
             # A package that declares no facade module for the letter inherits it
             # from the primary package (generator law point 5).
             if not self._source_declares_facade(letter):
-                primary = self._primary_source_layout()
+                primary = self._primarysource_layout()
                 if primary is not None and primary[2] != self.source_package_name:
                     return primary[2]
             providers: set[str] = set()

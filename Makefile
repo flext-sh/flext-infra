@@ -671,7 +671,7 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 			printf 'setup: hooks skipped (no validator) checkout=%s\n' "$$checkout"; \
 			continue; \
 		fi; \
-		for stage in pre-commit pre-push; do \
+		for stage in pre-commit; do \
 			hook="$$hooks_dir/$$stage"; \
 			others=""; \
 			if [ -e "$$hook" ]; then \

@@ -10,9 +10,10 @@ import ast
 import re
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from flext_infra import m, p, r
+from flext_infra._utilities import protocol_models
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeModulePatch,
@@ -22,9 +23,6 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 class FlextInfraUtilitiesSemanticModelFieldContracts(
@@ -119,19 +117,14 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
             Mapping from model class route to public protocol route.
 
         """
-        from flext_infra._utilities.protocol_models import (
-            FlextInfraUtilitiesModelsProtocol,
-        )
-
         routes: dict[str, str] = {}
-        pkg_names = (
-            FlextInfraUtilitiesModelsProtocol.protocol_model_package_names(
-                workspace.repository_root, workspace.rope_project
-            )
+        protocol = protocol_models.FlextInfraUtilitiesModelsProtocol
+        pkg_names = protocol.protocol_model_package_names(
+            workspace.repository_root, workspace.rope_project
         )
         for package_name in pkg_names:
             routes.update(
-                FlextInfraUtilitiesModelsProtocol.protocol_model_routes_from_source(
+                protocol.protocol_model_routes_from_source(
                     workspace.repository_root,
                     workspace.rope_project,
                     package_name=package_name,

@@ -1904,13 +1904,13 @@ if TYPE_CHECKING:
         return value
 
     def model_protocol_379(
-        value: (FlextInfraModels.Infra.MarkdownRenderSpec),
-    ) -> FlextInfraProtocols.Infra.MarkdownRenderSpec:
+        value: (FlextInfraModels.Infra.MarkdownProjectedBlock),
+    ) -> FlextInfraProtocols.Infra.MarkdownProjectedBlock:
         return value
 
     def model_protocol_380(
-        value: (FlextInfraModels.Infra.MarkdownProjectedBlock),
-    ) -> FlextInfraProtocols.Infra.MarkdownProjectedBlock:
+        value: (FlextInfraModels.Infra.MarkdownRenderSpec),
+    ) -> FlextInfraProtocols.Infra.MarkdownRenderSpec:
         return value
 
     def model_protocol_381(
@@ -2150,1507 +2150,1507 @@ if TYPE_CHECKING:
     ) -> FlextInfraProtocols.Infra.ModuleSkeletonRenderContext:
         return value
 
-    def model_protocol_429(
+    def model_protocol_428(
         value: (FlextInfraModels.Infra.MutationLockSpec),
     ) -> FlextInfraProtocols.Infra.MutationLockSpec:
         return value
 
-    def model_protocol_430(
+    def model_protocol_429(
         value: (FlextInfraModels.Infra.MypyCacheSpec),
     ) -> FlextInfraProtocols.Infra.MypyCacheSpec:
         return value
 
-    def model_protocol_431(
+    def model_protocol_430(
         value: (FlextInfraModels.Infra.MypyConfig),
     ) -> FlextInfraProtocols.Infra.MypyConfig:
         return value
 
-    def model_protocol_432(
+    def model_protocol_431(
         value: (FlextInfraModels.Infra.MypyDiagnostic),
     ) -> FlextInfraProtocols.Infra.MypyDiagnostic:
         return value
 
-    def model_protocol_433(
+    def model_protocol_432(
         value: (FlextInfraModels.Infra.MypyInvocation),
     ) -> FlextInfraProtocols.Infra.MypyInvocation:
         return value
 
-    def model_protocol_434(
+    def model_protocol_433(
         value: (FlextInfraModels.Infra.MypyOverrideConfig),
     ) -> FlextInfraProtocols.Infra.MypyOverrideConfig:
         return value
 
-    def model_protocol_435(
+    def model_protocol_434(
         value: (FlextInfraModels.Infra.MypyResourceLimit),
     ) -> FlextInfraProtocols.Infra.MypyResourceLimit:
         return value
 
-    def model_protocol_436(
+    def model_protocol_435(
         value: (FlextInfraModels.Infra.NamespaceModulePolicy),
     ) -> FlextInfraProtocols.Infra.NamespaceModulePolicy:
         return value
 
-    def model_protocol_437(
+    def model_protocol_436(
         value: (FlextInfraModels.Infra.NamespaceRelocationRequest),
     ) -> FlextInfraProtocols.Infra.NamespaceRelocationRequest:
         return value
 
-    def model_protocol_438(
+    def model_protocol_437(
         value: (FlextInfraModels.Infra.NamespaceRelocationState),
     ) -> FlextInfraProtocols.Infra.NamespaceRelocationState:
         return value
 
-    def model_protocol_439(
+    def model_protocol_438(
         value: (FlextInfraModels.Infra.NamespaceSelectionMixin),
     ) -> FlextInfraProtocols.Infra.NamespaceSelectionMixin:
         return value
 
-    def model_protocol_440(
+    def model_protocol_439(
         value: (FlextInfraModels.Infra.NamespaceValidateCommand),
     ) -> FlextInfraProtocols.Infra.NamespaceValidateCommand:
         return value
 
-    def model_protocol_441(
+    def model_protocol_440(
         value: (FlextInfraModels.Infra.NativeBindingEvidence),
     ) -> FlextInfraProtocols.Infra.NativeBindingEvidence:
         return value
 
-    def model_protocol_442(
+    def model_protocol_441(
         value: (FlextInfraModels.Infra.NativeCodeEvidence),
     ) -> FlextInfraProtocols.Infra.NativeCodeEvidence:
         return value
 
-    def model_protocol_443(
+    def model_protocol_442(
         value: (FlextInfraModels.Infra.NativeFunctionObservationContext),
     ) -> FlextInfraProtocols.Infra.NativeFunctionObservationContext:
         return value
 
-    def model_protocol_444(
+    def model_protocol_443(
         value: (FlextInfraModels.Infra.NativeImportObservation),
     ) -> FlextInfraProtocols.Infra.NativeImportObservation:
         return value
 
-    def model_protocol_445(
+    def model_protocol_444(
         value: (FlextInfraModels.Infra.NativeImportReference),
     ) -> FlextInfraProtocols.Infra.NativeImportReference:
         return value
 
-    def model_protocol_446(
+    def model_protocol_445(
         value: (FlextInfraModels.Infra.NativeImportRequest),
     ) -> FlextInfraProtocols.Infra.NativeImportRequest:
         return value
 
-    def model_protocol_447(
+    def model_protocol_446(
         value: (FlextInfraModels.Infra.NativeObservationContext),
     ) -> FlextInfraProtocols.Infra.NativeObservationContext:
         return value
 
-    def model_protocol_448(
+    def model_protocol_447(
         value: (FlextInfraModels.Infra.NestedClassPathMixin),
     ) -> FlextInfraProtocols.Infra.NestedClassPathMixin:
         return value
 
-    def model_protocol_449(
+    def model_protocol_448(
         value: (FlextInfraModels.Infra.NonNegativeLineMixin),
     ) -> FlextInfraProtocols.Infra.NonNegativeLineMixin:
         return value
 
-    def model_protocol_450(
+    def model_protocol_449(
         value: (FlextInfraModels.Infra.Object),
     ) -> FlextInfraProtocols.Infra.Object:
         return value
 
-    def model_protocol_451(
+    def model_protocol_450(
         value: (FlextInfraModels.Infra.OperatorAuthorization),
     ) -> FlextInfraProtocols.Infra.OperatorAuthorization:
         return value
 
-    def model_protocol_452(
+    def model_protocol_451(
         value: (FlextInfraModels.Infra.PackagedDataSelection),
     ) -> FlextInfraProtocols.Infra.PackagedDataSelection:
         return value
 
-    def model_protocol_453(
+    def model_protocol_452(
         value: (FlextInfraModels.Infra.ParseFailureViolation),
     ) -> FlextInfraProtocols.Infra.ParseFailureViolation:
         return value
 
-    def model_protocol_454(
+    def model_protocol_453(
         value: (FlextInfraModels.Infra.ParsedPythonModule),
     ) -> FlextInfraProtocols.Infra.ParsedPythonModule:
         return value
 
-    def model_protocol_455(
+    def model_protocol_454(
         value: (FlextInfraModels.Infra.PipCheckReport),
     ) -> FlextInfraProtocols.Infra.PipCheckReport:
         return value
 
-    def model_protocol_456(
+    def model_protocol_455(
         value: (FlextInfraModels.Infra.PlanCollectionBundle),
     ) -> FlextInfraProtocols.Infra.PlanCollectionBundle:
         return value
 
-    def model_protocol_457(
+    def model_protocol_456(
         value: (FlextInfraModels.Infra.PlanCollectionConfig),
     ) -> FlextInfraProtocols.Infra.PlanCollectionConfig:
         return value
 
-    def model_protocol_458(
+    def model_protocol_457(
         value: (FlextInfraModels.Infra.PlanCollectionCoverage),
     ) -> FlextInfraProtocols.Infra.PlanCollectionCoverage:
         return value
 
-    def model_protocol_459(
+    def model_protocol_458(
         value: (FlextInfraModels.Infra.PlanCollectionManifest),
     ) -> FlextInfraProtocols.Infra.PlanCollectionManifest:
         return value
 
-    def model_protocol_460(
+    def model_protocol_459(
         value: (FlextInfraModels.Infra.PlanCollectionOwnedArtifact),
     ) -> FlextInfraProtocols.Infra.PlanCollectionOwnedArtifact:
         return value
 
-    def model_protocol_461(
+    def model_protocol_460(
         value: (FlextInfraModels.Infra.PlanCollectionRevision),
     ) -> FlextInfraProtocols.Infra.PlanCollectionRevision:
         return value
 
-    def model_protocol_462(
+    def model_protocol_461(
         value: (FlextInfraModels.Infra.PlanCollectionSource),
     ) -> FlextInfraProtocols.Infra.PlanCollectionSource:
         return value
 
-    def model_protocol_463(
+    def model_protocol_462(
         value: (FlextInfraModels.Infra.PlanCollectionTimestamp),
     ) -> FlextInfraProtocols.Infra.PlanCollectionTimestamp:
         return value
 
-    def model_protocol_464(
+    def model_protocol_463(
         value: (FlextInfraModels.Infra.PositiveLineMixin),
     ) -> FlextInfraProtocols.Infra.PositiveLineMixin:
         return value
 
-    def model_protocol_465(
+    def model_protocol_464(
         value: (FlextInfraModels.Infra.PrivateImportRewritePlan),
     ) -> FlextInfraProtocols.Infra.PrivateImportRewritePlan:
         return value
 
-    def model_protocol_466(
+    def model_protocol_465(
         value: (FlextInfraModels.Infra.ProcessExit),
     ) -> FlextInfraProtocols.Infra.ProcessExit:
         return value
 
-    def model_protocol_467(
+    def model_protocol_466(
         value: (FlextInfraModels.Infra.ProfileSpec),
     ) -> FlextInfraProtocols.Infra.ProfileSpec:
         return value
 
-    def model_protocol_468(
+    def model_protocol_467(
         value: (FlextInfraModels.Infra.ProjectClassification),
     ) -> FlextInfraProtocols.Infra.ProjectClassification:
         return value
 
-    def model_protocol_469(
+    def model_protocol_468(
         value: (FlextInfraModels.Infra.ProjectConfigDocument),
     ) -> FlextInfraProtocols.Infra.ProjectConfigDocument:
         return value
 
-    def model_protocol_470(
+    def model_protocol_469(
         value: (FlextInfraModels.Infra.ProjectDependencyReport),
     ) -> FlextInfraProtocols.Infra.ProjectDependencyReport:
         return value
 
-    def model_protocol_471(
+    def model_protocol_470(
         value: (FlextInfraModels.Infra.ProjectDuplicationOverrides),
     ) -> FlextInfraProtocols.Infra.ProjectDuplicationOverrides:
         return value
 
-    def model_protocol_472(
+    def model_protocol_471(
         value: (FlextInfraModels.Infra.ProjectEnforcementReport),
     ) -> FlextInfraProtocols.Infra.ProjectEnforcementReport:
         return value
 
-    def model_protocol_473(
+    def model_protocol_472(
         value: (FlextInfraModels.Infra.ProjectEntryNameMixin),
     ) -> FlextInfraProtocols.Infra.ProjectEntryNameMixin:
         return value
 
-    def model_protocol_474(
+    def model_protocol_473(
         value: (FlextInfraModels.Infra.ProjectGitignoreConfig),
     ) -> FlextInfraProtocols.Infra.ProjectGitignoreConfig:
         return value
 
-    def model_protocol_475(
+    def model_protocol_474(
         value: (FlextInfraModels.Infra.ProjectGitignorePreservedBlock),
     ) -> FlextInfraProtocols.Infra.ProjectGitignorePreservedBlock:
         return value
 
-    def model_protocol_476(
+    def model_protocol_475(
         value: (FlextInfraModels.Infra.ProjectInfo),
     ) -> FlextInfraProtocols.Infra.ProjectInfo:
         return value
 
-    def model_protocol_477(
+    def model_protocol_476(
         value: (FlextInfraModels.Infra.ProjectManagedArtifactsConfig),
     ) -> FlextInfraProtocols.Infra.ProjectManagedArtifactsConfig:
         return value
 
-    def model_protocol_478(
+    def model_protocol_477(
         value: (FlextInfraModels.Infra.ProjectManagedArtifactsFragment),
     ) -> FlextInfraProtocols.Infra.ProjectManagedArtifactsFragment:
         return value
 
-    def model_protocol_479(
+    def model_protocol_478(
         value: (FlextInfraModels.Infra.ProjectManagedArtifactsResolution),
     ) -> FlextInfraProtocols.Infra.ProjectManagedArtifactsResolution:
         return value
 
-    def model_protocol_480(
+    def model_protocol_479(
         value: (FlextInfraModels.Infra.ProjectManagedArtifactsSnapshot),
     ) -> FlextInfraProtocols.Infra.ProjectManagedArtifactsSnapshot:
         return value
 
-    def model_protocol_481(
+    def model_protocol_480(
         value: (FlextInfraModels.Infra.ProjectMetadataState),
     ) -> FlextInfraProtocols.Infra.ProjectMetadataState:
         return value
 
-    def model_protocol_482(
+    def model_protocol_481(
         value: (FlextInfraModels.Infra.ProjectMiseConfig),
     ) -> FlextInfraProtocols.Infra.ProjectMiseConfig:
         return value
 
-    def model_protocol_483(
+    def model_protocol_482(
         value: (FlextInfraModels.Infra.ProjectMiseTool),
     ) -> FlextInfraProtocols.Infra.ProjectMiseTool:
         return value
 
-    def model_protocol_484(
+    def model_protocol_483(
         value: (FlextInfraModels.Infra.ProjectNameMixin),
     ) -> FlextInfraProtocols.Infra.ProjectNameMixin:
         return value
 
-    def model_protocol_485(
+    def model_protocol_484(
         value: (FlextInfraModels.Infra.ProjectNamesListMixin),
     ) -> FlextInfraProtocols.Infra.ProjectNamesListMixin:
         return value
 
-    def model_protocol_486(
+    def model_protocol_485(
         value: (FlextInfraModels.Infra.ProjectNamesOptionalMixin),
     ) -> FlextInfraProtocols.Infra.ProjectNamesOptionalMixin:
         return value
 
-    def model_protocol_487(
+    def model_protocol_486(
         value: (FlextInfraModels.Infra.ProjectPackagingDeclaration),
     ) -> FlextInfraProtocols.Infra.ProjectPackagingDeclaration:
         return value
 
-    def model_protocol_488(
+    def model_protocol_487(
         value: (FlextInfraModels.Infra.ProjectPyprojectState),
     ) -> FlextInfraProtocols.Infra.ProjectPyprojectState:
         return value
 
-    def model_protocol_489(
+    def model_protocol_488(
         value: (FlextInfraModels.Infra.ProjectRenderContext),
     ) -> FlextInfraProtocols.Infra.ProjectRenderContext:
         return value
 
-    def model_protocol_490(
+    def model_protocol_489(
         value: (FlextInfraModels.Infra.ProjectReport),
     ) -> FlextInfraProtocols.Infra.ProjectReport:
         return value
 
-    def model_protocol_491(
+    def model_protocol_490(
         value: (FlextInfraModels.Infra.ProjectResult),
     ) -> FlextInfraProtocols.Infra.ProjectResult:
         return value
 
-    def model_protocol_492(
+    def model_protocol_491(
         value: (FlextInfraModels.Infra.ProjectSpec),
     ) -> FlextInfraProtocols.Infra.ProjectSpec:
         return value
 
-    def model_protocol_493(
+    def model_protocol_492(
         value: (FlextInfraModels.Infra.PromotedAliasTarget),
     ) -> FlextInfraProtocols.Infra.PromotedAliasTarget:
         return value
 
-    def model_protocol_494(
+    def model_protocol_493(
         value: (FlextInfraModels.Infra.PromotedCommand),
     ) -> FlextInfraProtocols.Infra.PromotedCommand:
         return value
 
-    def model_protocol_495(
+    def model_protocol_494(
         value: (FlextInfraModels.Infra.PromotedParam),
     ) -> FlextInfraProtocols.Infra.PromotedParam:
         return value
 
-    def model_protocol_496(
+    def model_protocol_495(
         value: (FlextInfraModels.Infra.PromotedWorkspaceSpec),
     ) -> FlextInfraProtocols.Infra.PromotedWorkspaceSpec:
         return value
 
-    def model_protocol_497(
+    def model_protocol_496(
         value: (FlextInfraModels.Infra.ProtectedFileEditRequest),
     ) -> FlextInfraProtocols.Infra.ProtectedFileEditRequest:
         return value
 
-    def model_protocol_498(
+    def model_protocol_497(
         value: (FlextInfraModels.Infra.ProtectedSourceWriteRequest),
     ) -> FlextInfraProtocols.Infra.ProtectedSourceWriteRequest:
         return value
 
-    def model_protocol_499(
+    def model_protocol_498(
         value: (FlextInfraModels.Infra.ProtectedSourceWritesRequest),
     ) -> FlextInfraProtocols.Infra.ProtectedSourceWritesRequest:
         return value
 
-    def model_protocol_500(
+    def model_protocol_499(
         value: (FlextInfraModels.Infra.ProviderIdentitySpec),
     ) -> FlextInfraProtocols.Infra.ProviderIdentitySpec:
         return value
 
-    def model_protocol_501(
+    def model_protocol_500(
         value: (FlextInfraModels.Infra.PruneAction),
     ) -> FlextInfraProtocols.Infra.PruneAction:
         return value
 
-    def model_protocol_502(
+    def model_protocol_501(
         value: (FlextInfraModels.Infra.PrunePlan),
     ) -> FlextInfraProtocols.Infra.PrunePlan:
         return value
 
-    def model_protocol_503(
+    def model_protocol_502(
         value: (FlextInfraModels.Infra.PyprojectAnalyzerContext),
     ) -> FlextInfraProtocols.Infra.PyprojectAnalyzerContext:
         return value
 
-    def model_protocol_504(
+    def model_protocol_503(
         value: (FlextInfraModels.Infra.PyprojectDeclaredTopology),
     ) -> FlextInfraProtocols.Infra.PyprojectDeclaredTopology:
         return value
 
-    def model_protocol_505(
+    def model_protocol_504(
         value: (FlextInfraModels.Infra.PyprojectDocumentState),
     ) -> FlextInfraProtocols.Infra.PyprojectDocumentState:
         return value
 
-    def model_protocol_506(
+    def model_protocol_505(
         value: (FlextInfraModels.Infra.PyreflyConfig),
     ) -> FlextInfraProtocols.Infra.PyreflyConfig:
         return value
 
-    def model_protocol_507(
+    def model_protocol_506(
         value: (FlextInfraModels.Infra.PyreflyConfig.PathRulesConfig),
     ) -> FlextInfraProtocols.Infra.PyreflyConfigPathRulesConfig:
         return value
 
-    def model_protocol_508(
+    def model_protocol_507(
         value: (FlextInfraModels.Infra.PyreflyDiagnostic),
     ) -> FlextInfraProtocols.Infra.PyreflyDiagnostic:
         return value
 
-    def model_protocol_509(
+    def model_protocol_508(
         value: (FlextInfraModels.Infra.PyreflyReport),
     ) -> FlextInfraProtocols.Infra.PyreflyReport:
         return value
 
-    def model_protocol_510(
+    def model_protocol_509(
         value: (FlextInfraModels.Infra.PyrightConfig),
     ) -> FlextInfraProtocols.Infra.PyrightConfig:
         return value
 
-    def model_protocol_511(
+    def model_protocol_510(
         value: (FlextInfraModels.Infra.PyrightConfig.ExecutionEnvironment),
     ) -> FlextInfraProtocols.Infra.PyrightConfigExecutionEnvironment:
         return value
 
-    def model_protocol_512(
+    def model_protocol_511(
         value: (FlextInfraModels.Infra.PyrightConfig.PathRulesConfig),
     ) -> FlextInfraProtocols.Infra.PyrightConfigPathRulesConfig:
         return value
 
-    def model_protocol_513(
+    def model_protocol_512(
         value: (FlextInfraModels.Infra.PyrightDiagnostic),
     ) -> FlextInfraProtocols.Infra.PyrightDiagnostic:
         return value
 
-    def model_protocol_514(
+    def model_protocol_513(
         value: (FlextInfraModels.Infra.PyrightPosition),
     ) -> FlextInfraProtocols.Infra.PyrightPosition:
         return value
 
-    def model_protocol_515(
+    def model_protocol_514(
         value: (FlextInfraModels.Infra.PyrightRange),
     ) -> FlextInfraProtocols.Infra.PyrightRange:
         return value
 
-    def model_protocol_516(
+    def model_protocol_515(
         value: (FlextInfraModels.Infra.PyrightReport),
     ) -> FlextInfraProtocols.Infra.PyrightReport:
         return value
 
-    def model_protocol_517(
+    def model_protocol_516(
         value: (FlextInfraModels.Infra.PyrightSummary),
     ) -> FlextInfraProtocols.Infra.PyrightSummary:
         return value
 
-    def model_protocol_518(
+    def model_protocol_517(
         value: (FlextInfraModels.Infra.PytestCollectionManifest),
     ) -> FlextInfraProtocols.Infra.PytestCollectionManifest:
         return value
 
-    def model_protocol_519(
+    def model_protocol_518(
         value: (FlextInfraModels.Infra.PytestConfig),
     ) -> FlextInfraProtocols.Infra.PytestConfig:
         return value
 
-    def model_protocol_520(
+    def model_protocol_519(
         value: (FlextInfraModels.Infra.PytestDiagnostics),
     ) -> FlextInfraProtocols.Infra.PytestDiagnostics:
         return value
 
-    def model_protocol_521(
+    def model_protocol_520(
         value: (FlextInfraModels.Infra.PytestInvocation),
     ) -> FlextInfraProtocols.Infra.PytestInvocation:
         return value
 
-    def model_protocol_522(
+    def model_protocol_521(
         value: (FlextInfraModels.Infra.PytestMarkdownAttempt),
     ) -> FlextInfraProtocols.Infra.PytestMarkdownAttempt:
         return value
 
-    def model_protocol_523(
+    def model_protocol_522(
         value: (FlextInfraModels.Infra.PytestMarkdownCollection),
     ) -> FlextInfraProtocols.Infra.PytestMarkdownCollection:
         return value
 
-    def model_protocol_524(
+    def model_protocol_523(
         value: (FlextInfraModels.Infra.PytestMarkdownItem),
     ) -> FlextInfraProtocols.Infra.PytestMarkdownItem:
         return value
 
-    def model_protocol_525(
+    def model_protocol_524(
         value: (FlextInfraModels.Infra.PytestMarkdownOrigin),
     ) -> FlextInfraProtocols.Infra.PytestMarkdownOrigin:
         return value
 
-    def model_protocol_526(
+    def model_protocol_525(
         value: (FlextInfraModels.Infra.PytestMarkdownReconciliation),
     ) -> FlextInfraProtocols.Infra.PytestMarkdownReconciliation:
         return value
 
-    def model_protocol_527(
+    def model_protocol_526(
         value: (FlextInfraModels.Infra.PytestPhaseOutcome),
     ) -> FlextInfraProtocols.Infra.PytestPhaseOutcome:
         return value
 
-    def model_protocol_528(
+    def model_protocol_527(
         value: (FlextInfraModels.Infra.PytestReportEvent),
     ) -> FlextInfraProtocols.Infra.PytestReportEvent:
         return value
 
-    def model_protocol_529(
+    def model_protocol_528(
         value: (FlextInfraModels.Infra.PytestRunContext),
     ) -> FlextInfraProtocols.Infra.PytestRunContext:
         return value
 
-    def model_protocol_530(
+    def model_protocol_529(
         value: (FlextInfraModels.Infra.PytestSelectionPlan),
     ) -> FlextInfraProtocols.Infra.PytestSelectionPlan:
         return value
 
-    def model_protocol_531(
+    def model_protocol_530(
         value: (FlextInfraModels.Infra.PytestWarningEvent),
     ) -> FlextInfraProtocols.Infra.PytestWarningEvent:
         return value
 
-    def model_protocol_532(
+    def model_protocol_531(
         value: (FlextInfraModels.Infra.PytestWorkerCeiling),
     ) -> FlextInfraProtocols.Infra.PytestWorkerCeiling:
         return value
 
-    def model_protocol_533(
+    def model_protocol_532(
         value: (FlextInfraModels.Infra.PythonEnvironmentObservation),
     ) -> FlextInfraProtocols.Infra.PythonEnvironmentObservation:
         return value
 
-    def model_protocol_534(
+    def model_protocol_533(
         value: (FlextInfraModels.Infra.PythonModelRun),
     ) -> FlextInfraProtocols.Infra.PythonModelRun:
         return value
 
-    def model_protocol_535(
+    def model_protocol_534(
         value: (FlextInfraModels.Infra.PythonModuleFacts),
     ) -> FlextInfraProtocols.Infra.PythonModuleFacts:
         return value
 
-    def model_protocol_536(
+    def model_protocol_535(
         value: (FlextInfraModels.Infra.PythonModuleFactsDraft),
     ) -> FlextInfraProtocols.Infra.PythonModuleFactsDraft:
         return value
 
-    def model_protocol_537(
+    def model_protocol_536(
         value: (FlextInfraModels.Infra.QltyRenderSpec),
     ) -> FlextInfraProtocols.Infra.QltyRenderSpec:
         return value
 
-    def model_protocol_538(
+    def model_protocol_537(
         value: (FlextInfraModels.Infra.QualityGateCheck),
     ) -> FlextInfraProtocols.Infra.QualityGateCheck:
         return value
 
-    def model_protocol_539(
+    def model_protocol_538(
         value: (FlextInfraModels.Infra.QualityGateProjectFinding),
     ) -> FlextInfraProtocols.Infra.QualityGateProjectFinding:
         return value
 
-    def model_protocol_540(
+    def model_protocol_539(
         value: (FlextInfraModels.Infra.ReadMixin),
     ) -> FlextInfraProtocols.Infra.ReadMixin:
         return value
 
-    def model_protocol_541(
+    def model_protocol_540(
         value: (FlextInfraModels.Infra.RefactorConfigSpec),
     ) -> FlextInfraProtocols.Infra.RefactorConfigSpec:
         return value
 
-    def model_protocol_542(
+    def model_protocol_541(
         value: (FlextInfraModels.Infra.RefactorCsvCampaignsSpec),
     ) -> FlextInfraProtocols.Infra.RefactorCsvCampaignsSpec:
         return value
 
-    def model_protocol_543(
+    def model_protocol_542(
         value: (FlextInfraModels.Infra.RefactorNamespaceEnforceInput),
     ) -> FlextInfraProtocols.Infra.RefactorNamespaceEnforceInput:
         return value
 
-    def model_protocol_544(
+    def model_protocol_543(
         value: (FlextInfraModels.Infra.RefactorProjectInfo),
     ) -> FlextInfraProtocols.Infra.RefactorProjectInfo:
         return value
 
-    def model_protocol_545(
+    def model_protocol_544(
         value: (FlextInfraModels.Infra.ReferenceSite),
     ) -> FlextInfraProtocols.Infra.ReferenceSite:
         return value
 
-    def model_protocol_546(
+    def model_protocol_545(
         value: (FlextInfraModels.Infra.ReleaseAutomationOverrideSpec),
     ) -> FlextInfraProtocols.Infra.ReleaseAutomationOverrideSpec:
         return value
 
-    def model_protocol_547(
+    def model_protocol_546(
         value: (FlextInfraModels.Infra.ReleaseAutomationSpec),
     ) -> FlextInfraProtocols.Infra.ReleaseAutomationSpec:
         return value
 
-    def model_protocol_548(
+    def model_protocol_547(
         value: (FlextInfraModels.Infra.ReleaseOptions),
     ) -> FlextInfraProtocols.Infra.ReleaseOptions:
         return value
 
-    def model_protocol_549(
+    def model_protocol_548(
         value: (FlextInfraModels.Infra.ReleasePhaseDispatchConfig),
     ) -> FlextInfraProtocols.Infra.ReleasePhaseDispatchConfig:
         return value
 
-    def model_protocol_550(
+    def model_protocol_549(
         value: (FlextInfraModels.Infra.ReleasePlan),
     ) -> FlextInfraProtocols.Infra.ReleasePlan:
         return value
 
-    def model_protocol_551(
+    def model_protocol_550(
         value: (FlextInfraModels.Infra.ReleasePolicySpec),
     ) -> FlextInfraProtocols.Infra.ReleasePolicySpec:
         return value
 
-    def model_protocol_552(
+    def model_protocol_551(
         value: (FlextInfraModels.Infra.ReleaseRunCommand),
     ) -> FlextInfraProtocols.Infra.ReleaseRunCommand:
         return value
 
-    def model_protocol_553(
+    def model_protocol_552(
         value: (FlextInfraModels.Infra.RemovalCandidate),
     ) -> FlextInfraProtocols.Infra.RemovalCandidate:
         return value
 
-    def model_protocol_554(
+    def model_protocol_553(
         value: (FlextInfraModels.Infra.RemovalPreviewOptions),
     ) -> FlextInfraProtocols.Infra.RemovalPreviewOptions:
         return value
 
-    def model_protocol_555(
+    def model_protocol_554(
         value: (FlextInfraModels.Infra.RenameCampaignSpec),
     ) -> FlextInfraProtocols.Infra.RenameCampaignSpec:
         return value
 
-    def model_protocol_556(
+    def model_protocol_555(
         value: (FlextInfraModels.Infra.RepositoryConformTarget),
     ) -> FlextInfraProtocols.Infra.RepositoryConformTarget:
         return value
 
-    def model_protocol_557(
+    def model_protocol_556(
         value: (FlextInfraModels.Infra.RepositoryDeclarationInputs),
     ) -> FlextInfraProtocols.Infra.RepositoryDeclarationInputs:
         return value
 
-    def model_protocol_558(
+    def model_protocol_557(
         value: (FlextInfraModels.Infra.RepositoryDelta),
     ) -> FlextInfraProtocols.Infra.RepositoryDelta:
         return value
 
-    def model_protocol_559(
+    def model_protocol_558(
         value: (FlextInfraModels.Infra.RepositoryDeltaSpec),
     ) -> FlextInfraProtocols.Infra.RepositoryDeltaSpec:
         return value
 
-    def model_protocol_560(
+    def model_protocol_559(
         value: (FlextInfraModels.Infra.RepositoryPolicyOverlaySpec),
     ) -> FlextInfraProtocols.Infra.RepositoryPolicyOverlaySpec:
         return value
 
-    def model_protocol_561(
+    def model_protocol_560(
         value: (FlextInfraModels.Infra.RepositoryRef),
     ) -> FlextInfraProtocols.Infra.RepositoryRef:
         return value
 
-    def model_protocol_562(
+    def model_protocol_561(
         value: (FlextInfraModels.Infra.RepositoryRootPathMixin),
     ) -> FlextInfraProtocols.Infra.RepositoryRootPathMixin:
         return value
 
-    def model_protocol_563(
+    def model_protocol_562(
         value: (FlextInfraModels.Infra.RepositorySourceSpec),
     ) -> FlextInfraProtocols.Infra.RepositorySourceSpec:
         return value
 
-    def model_protocol_564(
+    def model_protocol_563(
         value: (FlextInfraModels.Infra.RepositoryWorktree),
     ) -> FlextInfraProtocols.Infra.RepositoryWorktree:
         return value
 
-    def model_protocol_565(
+    def model_protocol_564(
         value: (FlextInfraModels.Infra.RequiredNonNegativeLineMixin),
     ) -> FlextInfraProtocols.Infra.RequiredNonNegativeLineMixin:
         return value
 
-    def model_protocol_566(
+    def model_protocol_565(
         value: (FlextInfraModels.Infra.RequirementsProvenance),
     ) -> FlextInfraProtocols.Infra.RequirementsProvenance:
         return value
 
-    def model_protocol_567(
+    def model_protocol_566(
         value: (FlextInfraModels.Infra.ResolvedClassMove),
     ) -> FlextInfraProtocols.Infra.ResolvedClassMove:
         return value
 
-    def model_protocol_568(
+    def model_protocol_567(
         value: (FlextInfraModels.Infra.Result),
     ) -> FlextInfraProtocols.Infra.Result:
         return value
 
-    def model_protocol_569(
+    def model_protocol_568(
         value: (FlextInfraModels.Infra.RetiredProjectionSpec),
     ) -> FlextInfraProtocols.Infra.RetiredProjectionSpec:
         return value
 
-    def model_protocol_570(
+    def model_protocol_569(
         value: (FlextInfraModels.Infra.Root),
     ) -> FlextInfraProtocols.Infra.Root:
         return value
 
-    def model_protocol_571(
+    def model_protocol_570(
         value: (FlextInfraModels.Infra.RopeAttributeReadProof),
     ) -> FlextInfraProtocols.Infra.RopeAttributeReadProof:
         return value
 
-    def model_protocol_572(
+    def model_protocol_571(
         value: (FlextInfraModels.Infra.RopeContractOrigin),
     ) -> FlextInfraProtocols.Infra.RopeContractOrigin:
         return value
 
-    def model_protocol_573(
+    def model_protocol_572(
         value: (FlextInfraModels.Infra.RopeContractRule),
     ) -> FlextInfraProtocols.Infra.RopeContractRule:
         return value
 
-    def model_protocol_574(
+    def model_protocol_573(
         value: (FlextInfraModels.Infra.RopeContractRules),
     ) -> FlextInfraProtocols.Infra.RopeContractRules:
         return value
 
-    def model_protocol_575(
+    def model_protocol_574(
         value: (FlextInfraModels.Infra.RopeContractScope),
     ) -> FlextInfraProtocols.Infra.RopeContractScope:
         return value
 
-    def model_protocol_576(
+    def model_protocol_575(
         value: (FlextInfraModels.Infra.RopeContractScopeTarget),
     ) -> FlextInfraProtocols.Infra.RopeContractScopeTarget:
         return value
 
-    def model_protocol_577(
+    def model_protocol_576(
         value: (FlextInfraModels.Infra.RopeInventoryRecordInput),
     ) -> FlextInfraProtocols.Infra.RopeInventoryRecordInput:
         return value
 
-    def model_protocol_578(
+    def model_protocol_577(
         value: (FlextInfraModels.Infra.RopeMethodTransfer),
     ) -> FlextInfraProtocols.Infra.RopeMethodTransfer:
         return value
 
-    def model_protocol_579(
+    def model_protocol_578(
         value: (FlextInfraModels.Infra.RopeModuleConvention),
     ) -> FlextInfraProtocols.Infra.RopeModuleConvention:
         return value
 
-    def model_protocol_580(
+    def model_protocol_579(
         value: (FlextInfraModels.Infra.RopeModuleIndexEntry),
     ) -> FlextInfraProtocols.Infra.RopeModuleIndexEntry:
         return value
 
-    def model_protocol_581(
+    def model_protocol_580(
         value: (FlextInfraModels.Infra.RopePackageIndexEntry),
     ) -> FlextInfraProtocols.Infra.RopePackageIndexEntry:
         return value
 
-    def model_protocol_582(
+    def model_protocol_581(
         value: (FlextInfraModels.Infra.RopeProjectElection),
     ) -> FlextInfraProtocols.Infra.RopeProjectElection:
         return value
 
-    def model_protocol_583(
+    def model_protocol_582(
         value: (FlextInfraModels.Infra.RopeProjectLayout),
     ) -> FlextInfraProtocols.Infra.RopeProjectLayout:
         return value
 
-    def model_protocol_584(
+    def model_protocol_583(
         value: (FlextInfraModels.Infra.RopeRenameOptions),
     ) -> FlextInfraProtocols.Infra.RopeRenameOptions:
         return value
 
-    def model_protocol_585(
+    def model_protocol_584(
         value: (FlextInfraModels.Infra.RopeRestructureRequest),
     ) -> FlextInfraProtocols.Infra.RopeRestructureRequest:
         return value
 
-    def model_protocol_586(
+    def model_protocol_585(
         value: (FlextInfraModels.Infra.RopeSignatureAddition),
     ) -> FlextInfraProtocols.Infra.RopeSignatureAddition:
         return value
 
-    def model_protocol_587(
+    def model_protocol_586(
         value: (FlextInfraModels.Infra.RopeSignatureRemoval),
     ) -> FlextInfraProtocols.Infra.RopeSignatureRemoval:
         return value
 
-    def model_protocol_588(
+    def model_protocol_587(
         value: (FlextInfraModels.Infra.RopeSourceImport),
     ) -> FlextInfraProtocols.Infra.RopeSourceImport:
         return value
 
-    def model_protocol_589(
+    def model_protocol_588(
         value: (FlextInfraModels.Infra.RopeWorkspaceIndex),
     ) -> FlextInfraProtocols.Infra.RopeWorkspaceIndex:
         return value
 
-    def model_protocol_590(
+    def model_protocol_589(
         value: (FlextInfraModels.Infra.RopeWorkspaceSession),
     ) -> FlextInfraProtocols.Infra.RopeWorkspaceSession:
         return value
 
-    def model_protocol_591(
+    def model_protocol_590(
         value: (FlextInfraModels.Infra.RuffCacheSpec),
     ) -> FlextInfraProtocols.Infra.RuffCacheSpec:
         return value
 
-    def model_protocol_592(
+    def model_protocol_591(
         value: (FlextInfraModels.Infra.RuffConfig),
     ) -> FlextInfraProtocols.Infra.RuffConfig:
         return value
 
-    def model_protocol_593(
+    def model_protocol_592(
         value: (FlextInfraModels.Infra.RuffLintConfig),
     ) -> FlextInfraProtocols.Infra.RuffLintConfig:
         return value
 
-    def model_protocol_594(
+    def model_protocol_593(
         value: (FlextInfraModels.Infra.RuffProjectFacts),
     ) -> FlextInfraProtocols.Infra.RuffProjectFacts:
         return value
 
-    def model_protocol_595(
+    def model_protocol_594(
         value: (FlextInfraModels.Infra.RuleDeltaOptions),
     ) -> FlextInfraProtocols.Infra.RuleDeltaOptions:
         return value
 
-    def model_protocol_596(
+    def model_protocol_595(
         value: (FlextInfraModels.Infra.RunCommand),
     ) -> FlextInfraProtocols.Infra.RunCommand:
         return value
 
-    def model_protocol_597(
+    def model_protocol_596(
         value: (FlextInfraModels.Infra.RuntimeDependencyInputs),
     ) -> FlextInfraProtocols.Infra.RuntimeDependencyInputs:
         return value
 
-    def model_protocol_598(
+    def model_protocol_597(
         value: (FlextInfraModels.Infra.RuntimeDependencyPlan),
     ) -> FlextInfraProtocols.Infra.RuntimeDependencyPlan:
         return value
 
-    def model_protocol_599(
+    def model_protocol_598(
         value: (FlextInfraModels.Infra.RuntimeDependencyProvider),
     ) -> FlextInfraProtocols.Infra.RuntimeDependencyProvider:
         return value
 
-    def model_protocol_600(
+    def model_protocol_599(
         value: (FlextInfraModels.Infra.SarifLocation),
     ) -> FlextInfraProtocols.Infra.SarifLocation:
         return value
 
-    def model_protocol_601(
+    def model_protocol_600(
         value: (FlextInfraModels.Infra.SarifReport),
     ) -> FlextInfraProtocols.Infra.SarifReport:
         return value
 
-    def model_protocol_602(
+    def model_protocol_601(
         value: (FlextInfraModels.Infra.SarifResult),
     ) -> FlextInfraProtocols.Infra.SarifResult:
         return value
 
-    def model_protocol_603(
+    def model_protocol_602(
         value: (FlextInfraModels.Infra.SarifRule),
     ) -> FlextInfraProtocols.Infra.SarifRule:
         return value
 
-    def model_protocol_604(
+    def model_protocol_603(
         value: (FlextInfraModels.Infra.SarifRun),
     ) -> FlextInfraProtocols.Infra.SarifRun:
         return value
 
-    def model_protocol_605(
+    def model_protocol_604(
         value: (FlextInfraModels.Infra.ScaffoldBuildSpec),
     ) -> FlextInfraProtocols.Infra.ScaffoldBuildSpec:
         return value
 
-    def model_protocol_606(
+    def model_protocol_605(
         value: (FlextInfraModels.Infra.ScaffoldConfigBaseSpec),
     ) -> FlextInfraProtocols.Infra.ScaffoldConfigBaseSpec:
         return value
 
-    def model_protocol_607(
+    def model_protocol_606(
         value: (FlextInfraModels.Infra.ScaffoldDependencyProfileSpec),
     ) -> FlextInfraProtocols.Infra.ScaffoldDependencyProfileSpec:
         return value
 
-    def model_protocol_608(
+    def model_protocol_607(
         value: (FlextInfraModels.Infra.ScaffoldDirRequest),
     ) -> FlextInfraProtocols.Infra.ScaffoldDirRequest:
         return value
 
-    def model_protocol_609(
+    def model_protocol_608(
         value: (FlextInfraModels.Infra.ScaffoldGitignoreSectionSpec),
     ) -> FlextInfraProtocols.Infra.ScaffoldGitignoreSectionSpec:
         return value
 
-    def model_protocol_610(
+    def model_protocol_609(
         value: (FlextInfraModels.Infra.ScaffoldPingExampleSpec),
     ) -> FlextInfraProtocols.Infra.ScaffoldPingExampleSpec:
         return value
 
-    def model_protocol_611(
+    def model_protocol_610(
         value: (FlextInfraModels.Infra.ScaffoldProjectSpec),
     ) -> FlextInfraProtocols.Infra.ScaffoldProjectSpec:
         return value
 
-    def model_protocol_612(
+    def model_protocol_611(
         value: (FlextInfraModels.Infra.ScaffoldResult),
     ) -> FlextInfraProtocols.Infra.ScaffoldResult:
         return value
 
-    def model_protocol_613(
+    def model_protocol_612(
         value: (FlextInfraModels.Infra.ScaffoldSpec),
     ) -> FlextInfraProtocols.Infra.ScaffoldSpec:
         return value
 
-    def model_protocol_614(
+    def model_protocol_613(
         value: (FlextInfraModels.Infra.ScanConfig),
     ) -> FlextInfraProtocols.Infra.ScanConfig:
         return value
 
-    def model_protocol_615(
+    def model_protocol_614(
         value: (FlextInfraModels.Infra.ScanFindings),
     ) -> FlextInfraProtocols.Infra.ScanFindings:
         return value
 
-    def model_protocol_616(
+    def model_protocol_615(
         value: (FlextInfraModels.Infra.ScanResult),
     ) -> FlextInfraProtocols.Infra.ScanResult:
         return value
 
-    def model_protocol_617(
+    def model_protocol_616(
         value: (FlextInfraModels.Infra.ScanViolation),
     ) -> FlextInfraProtocols.Infra.ScanViolation:
         return value
 
-    def model_protocol_618(
+    def model_protocol_617(
         value: (FlextInfraModels.Infra.SccFile),
     ) -> FlextInfraProtocols.Infra.SccFile:
         return value
 
-    def model_protocol_619(
+    def model_protocol_618(
         value: (FlextInfraModels.Infra.SccLanguage),
     ) -> FlextInfraProtocols.Infra.SccLanguage:
         return value
 
-    def model_protocol_620(
+    def model_protocol_619(
         value: (FlextInfraModels.Infra.SccReport),
     ) -> FlextInfraProtocols.Infra.SccReport:
         return value
 
-    def model_protocol_621(
+    def model_protocol_620(
         value: (FlextInfraModels.Infra.SchemaRecord),
     ) -> FlextInfraProtocols.Infra.SchemaRecord:
         return value
 
-    def model_protocol_622(
+    def model_protocol_621(
         value: (FlextInfraModels.Infra.ScopeDefinition),
     ) -> FlextInfraProtocols.Infra.ScopeDefinition:
         return value
 
-    def model_protocol_623(
+    def model_protocol_622(
         value: (FlextInfraModels.Infra.ScopeMixin),
     ) -> FlextInfraProtocols.Infra.ScopeMixin:
         return value
 
-    def model_protocol_624(
+    def model_protocol_623(
         value: (FlextInfraModels.Infra.ScriptDispatchSpec),
     ) -> FlextInfraProtocols.Infra.ScriptDispatchSpec:
         return value
 
-    def model_protocol_625(
+    def model_protocol_624(
         value: (FlextInfraModels.Infra.SemanticBehaviorOwners),
     ) -> FlextInfraProtocols.Infra.SemanticBehaviorOwners:
         return value
 
-    def model_protocol_626(
+    def model_protocol_625(
         value: (FlextInfraModels.Infra.SemanticBehaviorResolution),
     ) -> FlextInfraProtocols.Infra.SemanticBehaviorResolution:
         return value
 
-    def model_protocol_627(
+    def model_protocol_626(
         value: (FlextInfraModels.Infra.SemanticBehaviorRewriteRequest),
     ) -> FlextInfraProtocols.Infra.SemanticBehaviorRewriteRequest:
         return value
 
-    def model_protocol_628(
+    def model_protocol_627(
         value: (FlextInfraModels.Infra.SemanticFilePlan),
     ) -> FlextInfraProtocols.Infra.SemanticFilePlan:
         return value
 
-    def model_protocol_629(
+    def model_protocol_628(
         value: (FlextInfraModels.Infra.SemanticMigrationEdit),
     ) -> FlextInfraProtocols.Infra.SemanticMigrationEdit:
         return value
 
-    def model_protocol_630(
+    def model_protocol_629(
         value: (FlextInfraModels.Infra.SemanticPublicationOptions),
     ) -> FlextInfraProtocols.Infra.SemanticPublicationOptions:
         return value
 
-    def model_protocol_631(
+    def model_protocol_630(
         value: (FlextInfraModels.Infra.SemanticRenameDecision),
     ) -> FlextInfraProtocols.Infra.SemanticRenameDecision:
         return value
 
-    def model_protocol_632(
+    def model_protocol_631(
         value: (FlextInfraModels.Infra.SemanticRenamePlan),
     ) -> FlextInfraProtocols.Infra.SemanticRenamePlan:
         return value
 
-    def model_protocol_633(
+    def model_protocol_632(
         value: (FlextInfraModels.Infra.SemanticRenamePlanCommand),
     ) -> FlextInfraProtocols.Infra.SemanticRenamePlanCommand:
         return value
 
-    def model_protocol_634(
+    def model_protocol_633(
         value: (FlextInfraModels.Infra.SemanticRenamePreviewCommand),
     ) -> FlextInfraProtocols.Infra.SemanticRenamePreviewCommand:
         return value
 
-    def model_protocol_635(
+    def model_protocol_634(
         value: (FlextInfraModels.Infra.SemanticRenameSelection),
     ) -> FlextInfraProtocols.Infra.SemanticRenameSelection:
         return value
 
-    def model_protocol_636(
+    def model_protocol_635(
         value: (FlextInfraModels.Infra.SemanticRenameSelections),
     ) -> FlextInfraProtocols.Infra.SemanticRenameSelections:
         return value
 
-    def model_protocol_637(
+    def model_protocol_636(
         value: (FlextInfraModels.Infra.SemanticSourcePlan),
     ) -> FlextInfraProtocols.Infra.SemanticSourcePlan:
         return value
 
-    def model_protocol_638(
+    def model_protocol_637(
         value: (FlextInfraModels.Infra.ShortestFormCensus),
     ) -> FlextInfraProtocols.Infra.ShortestFormCensus:
         return value
 
-    def model_protocol_639(
+    def model_protocol_638(
         value: (FlextInfraModels.Infra.SkillReportContext),
     ) -> FlextInfraProtocols.Infra.SkillReportContext:
         return value
 
-    def model_protocol_640(
+    def model_protocol_639(
         value: (FlextInfraModels.Infra.SkillRuleEvaluationContext),
     ) -> FlextInfraProtocols.Infra.SkillRuleEvaluationContext:
         return value
 
-    def model_protocol_641(
+    def model_protocol_640(
         value: (FlextInfraModels.Infra.SmellsConfig),
     ) -> FlextInfraProtocols.Infra.SmellsConfig:
         return value
 
-    def model_protocol_642(
+    def model_protocol_641(
         value: (FlextInfraModels.Infra.SonarcloudAuthentication),
     ) -> FlextInfraProtocols.Infra.SonarcloudAuthentication:
         return value
 
-    def model_protocol_643(
+    def model_protocol_642(
         value: (FlextInfraModels.Infra.SonarcloudIssue),
     ) -> FlextInfraProtocols.Infra.SonarcloudIssue:
         return value
 
-    def model_protocol_644(
+    def model_protocol_643(
         value: (FlextInfraModels.Infra.SonarcloudIssueExclusionSpec),
     ) -> FlextInfraProtocols.Infra.SonarcloudIssueExclusionSpec:
         return value
 
-    def model_protocol_645(
+    def model_protocol_644(
         value: (FlextInfraModels.Infra.SonarcloudIssueFieldValue),
     ) -> FlextInfraProtocols.Infra.SonarcloudIssueFieldValue:
         return value
 
-    def model_protocol_646(
+    def model_protocol_645(
         value: (FlextInfraModels.Infra.SonarcloudIssuePaging),
     ) -> FlextInfraProtocols.Infra.SonarcloudIssuePaging:
         return value
 
-    def model_protocol_647(
+    def model_protocol_646(
         value: (FlextInfraModels.Infra.SonarcloudIssueSearch),
     ) -> FlextInfraProtocols.Infra.SonarcloudIssueSearch:
         return value
 
-    def model_protocol_648(
+    def model_protocol_647(
         value: (FlextInfraModels.Infra.SonarcloudRenderSpec),
     ) -> FlextInfraProtocols.Infra.SonarcloudRenderSpec:
         return value
 
-    def model_protocol_649(
+    def model_protocol_648(
         value: (FlextInfraModels.Infra.SonarcloudSetting),
     ) -> FlextInfraProtocols.Infra.SonarcloudSetting:
         return value
 
-    def model_protocol_650(
+    def model_protocol_649(
         value: (FlextInfraModels.Infra.SonarcloudSettingsPlan),
     ) -> FlextInfraProtocols.Infra.SonarcloudSettingsPlan:
         return value
 
-    def model_protocol_651(
+    def model_protocol_650(
         value: (FlextInfraModels.Infra.SonarcloudSettingsValues),
     ) -> FlextInfraProtocols.Infra.SonarcloudSettingsValues:
         return value
 
-    def model_protocol_652(
+    def model_protocol_651(
         value: (FlextInfraModels.Infra.SonarcloudSettingsWriteRequest),
     ) -> FlextInfraProtocols.Infra.SonarcloudSettingsWriteRequest:
         return value
 
-    def model_protocol_653(
+    def model_protocol_652(
         value: (FlextInfraModels.Infra.SonarcloudSpec),
     ) -> FlextInfraProtocols.Infra.SonarcloudSpec:
         return value
 
-    def model_protocol_654(
+    def model_protocol_653(
         value: (FlextInfraModels.Infra.SourceBindingCollectorSpec),
     ) -> FlextInfraProtocols.Infra.SourceBindingCollectorSpec:
         return value
 
-    def model_protocol_655(
+    def model_protocol_654(
         value: (FlextInfraModels.Infra.SourceBindingInventoryRequest),
     ) -> FlextInfraProtocols.Infra.SourceBindingInventoryRequest:
         return value
 
-    def model_protocol_656(
+    def model_protocol_655(
         value: (FlextInfraModels.Infra.SourceClassDefinition),
     ) -> FlextInfraProtocols.Infra.SourceClassDefinition:
         return value
 
-    def model_protocol_657(
+    def model_protocol_656(
         value: (FlextInfraModels.Infra.SourceClassReference),
     ) -> FlextInfraProtocols.Infra.SourceClassReference:
         return value
 
-    def model_protocol_658(
+    def model_protocol_657(
         value: (FlextInfraModels.Infra.SourceRewrite),
     ) -> FlextInfraProtocols.Infra.SourceRewrite:
         return value
 
-    def model_protocol_659(
+    def model_protocol_658(
         value: (FlextInfraModels.Infra.SourceScanRequest),
     ) -> FlextInfraProtocols.Infra.SourceScanRequest:
         return value
 
-    def model_protocol_660(
+    def model_protocol_659(
         value: (FlextInfraModels.Infra.SourceScanSpec),
     ) -> FlextInfraProtocols.Infra.SourceScanSpec:
         return value
 
-    def model_protocol_661(
+    def model_protocol_660(
         value: (FlextInfraModels.Infra.SourceSnapshot),
     ) -> FlextInfraProtocols.Infra.SourceSnapshot:
         return value
 
-    def model_protocol_662(
+    def model_protocol_661(
         value: (FlextInfraModels.Infra.StageSourceOptions),
     ) -> FlextInfraProtocols.Infra.StageSourceOptions:
         return value
 
-    def model_protocol_663(
+    def model_protocol_662(
         value: (FlextInfraModels.Infra.StageSourcePlan),
     ) -> FlextInfraProtocols.Infra.StageSourcePlan:
         return value
 
-    def model_protocol_664(
+    def model_protocol_663(
         value: (FlextInfraModels.Infra.StaticTextRenderSpec),
     ) -> FlextInfraProtocols.Infra.StaticTextRenderSpec:
         return value
 
-    def model_protocol_665(
+    def model_protocol_664(
         value: (FlextInfraModels.Infra.StubAnalysisReport),
     ) -> FlextInfraProtocols.Infra.StubAnalysisReport:
         return value
 
-    def model_protocol_666(
+    def model_protocol_665(
         value: (FlextInfraModels.Infra.SubprojectLoadContext),
     ) -> FlextInfraProtocols.Infra.SubprojectLoadContext:
         return value
 
-    def model_protocol_667(
+    def model_protocol_666(
         value: (FlextInfraModels.Infra.SubscriptRebind),
     ) -> FlextInfraProtocols.Infra.SubscriptRebind:
         return value
 
-    def model_protocol_668(
+    def model_protocol_667(
         value: (FlextInfraModels.Infra.SummaryStats),
     ) -> FlextInfraProtocols.Infra.SummaryStats:
         return value
 
-    def model_protocol_669(
+    def model_protocol_668(
         value: (FlextInfraModels.Infra.SymbolInfo),
     ) -> FlextInfraProtocols.Infra.SymbolInfo:
         return value
 
-    def model_protocol_670(
+    def model_protocol_669(
         value: (FlextInfraModels.Infra.TemplateDeclarationSpec),
     ) -> FlextInfraProtocols.Infra.TemplateDeclarationSpec:
         return value
 
-    def model_protocol_671(
+    def model_protocol_670(
         value: (FlextInfraModels.Infra.TemplateEntrySpec),
     ) -> FlextInfraProtocols.Infra.TemplateEntrySpec:
         return value
 
-    def model_protocol_672(
+    def model_protocol_671(
         value: (FlextInfraModels.Infra.TemplatesSpec),
     ) -> FlextInfraProtocols.Infra.TemplatesSpec:
         return value
 
-    def model_protocol_673(
+    def model_protocol_672(
         value: (FlextInfraModels.Infra.TestModuleSkeletonRenderContext),
     ) -> FlextInfraProtocols.Infra.TestModuleSkeletonRenderContext:
         return value
 
-    def model_protocol_674(
+    def model_protocol_673(
         value: (FlextInfraModels.Infra.TestmonCachePolicySpec),
     ) -> FlextInfraProtocols.Infra.TestmonCachePolicySpec:
         return value
 
-    def model_protocol_675(
+    def model_protocol_674(
         value: (FlextInfraModels.Infra.TestmonCachePublication),
     ) -> FlextInfraProtocols.Infra.TestmonCachePublication:
         return value
 
-    def model_protocol_676(
+    def model_protocol_675(
         value: (FlextInfraModels.Infra.TestmonCacheState),
     ) -> FlextInfraProtocols.Infra.TestmonCacheState:
         return value
 
-    def model_protocol_677(
+    def model_protocol_676(
         value: (FlextInfraModels.Infra.TestmonRunAccounting),
     ) -> FlextInfraProtocols.Infra.TestmonRunAccounting:
         return value
 
-    def model_protocol_678(
+    def model_protocol_677(
         value: (FlextInfraModels.Infra.Tier0ImportAnalysis),
     ) -> FlextInfraProtocols.Infra.Tier0ImportAnalysis:
         return value
 
-    def model_protocol_679(
+    def model_protocol_678(
         value: (FlextInfraModels.Infra.TomlsortConfig),
     ) -> FlextInfraProtocols.Infra.TomlsortConfig:
         return value
 
-    def model_protocol_680(
+    def model_protocol_679(
         value: (FlextInfraModels.Infra.ToolConfigDocument),
     ) -> FlextInfraProtocols.Infra.ToolConfigDocument:
         return value
 
-    def model_protocol_681(
+    def model_protocol_680(
         value: (FlextInfraModels.Infra.ToolConfigTools),
     ) -> FlextInfraProtocols.Infra.ToolConfigTools:
         return value
 
-    def model_protocol_682(
+    def model_protocol_681(
         value: (FlextInfraModels.Infra.ToolchainSpec),
     ) -> FlextInfraProtocols.Infra.ToolchainSpec:
         return value
 
-    def model_protocol_683(
+    def model_protocol_682(
         value: (FlextInfraModels.Infra.ToolingContextRequest),
     ) -> FlextInfraProtocols.Infra.ToolingContextRequest:
         return value
 
-    def model_protocol_684(
+    def model_protocol_683(
         value: (FlextInfraModels.Infra.ToolingInputs),
     ) -> FlextInfraProtocols.Infra.ToolingInputs:
         return value
 
-    def model_protocol_685(
+    def model_protocol_684(
         value: (FlextInfraModels.Infra.ToolingRuntimeContext),
     ) -> FlextInfraProtocols.Infra.ToolingRuntimeContext:
         return value
 
-    def model_protocol_686(
+    def model_protocol_685(
         value: (FlextInfraModels.Infra.TrackerAuthorization),
     ) -> FlextInfraProtocols.Infra.TrackerAuthorization:
         return value
 
-    def model_protocol_687(
+    def model_protocol_686(
         value: (FlextInfraModels.Infra.TransformStep),
     ) -> FlextInfraProtocols.Infra.TransformStep:
         return value
 
-    def model_protocol_688(
+    def model_protocol_687(
         value: (FlextInfraModels.Infra.UvEnvironmentPlan),
     ) -> FlextInfraProtocols.Infra.UvEnvironmentPlan:
         return value
 
-    def model_protocol_689(
+    def model_protocol_688(
         value: (FlextInfraModels.Infra.UvOverrideEntries),
     ) -> FlextInfraProtocols.Infra.UvOverrideEntries:
         return value
 
-    def model_protocol_690(
+    def model_protocol_689(
         value: (FlextInfraModels.Infra.UvOverridePackage),
     ) -> FlextInfraProtocols.Infra.UvOverridePackage:
         return value
 
-    def model_protocol_691(
+    def model_protocol_690(
         value: (FlextInfraModels.Infra.UvResolutionSpec),
     ) -> FlextInfraProtocols.Infra.UvResolutionSpec:
         return value
 
-    def model_protocol_692(
+    def model_protocol_691(
         value: (FlextInfraModels.Infra.UvScopedOverride),
     ) -> FlextInfraProtocols.Infra.UvScopedOverride:
         return value
 
-    def model_protocol_693(
+    def model_protocol_692(
         value: (FlextInfraModels.Infra.ValidationReport),
     ) -> FlextInfraProtocols.Infra.ValidationReport:
         return value
 
-    def model_protocol_694(
+    def model_protocol_693(
         value: (FlextInfraModels.Infra.VersionTagMixin),
     ) -> FlextInfraProtocols.Infra.VersionTagMixin:
         return value
 
-    def model_protocol_695(
+    def model_protocol_694(
         value: (FlextInfraModels.Infra.Violation),
     ) -> FlextInfraProtocols.Infra.Violation:
         return value
 
-    def model_protocol_696(
+    def model_protocol_695(
         value: (FlextInfraModels.Infra.ViolationKey),
     ) -> FlextInfraProtocols.Infra.ViolationKey:
         return value
 
-    def model_protocol_697(
+    def model_protocol_696(
         value: (FlextInfraModels.Infra.ViolationsEngineCoverage),
     ) -> FlextInfraProtocols.Infra.ViolationsEngineCoverage:
         return value
 
-    def model_protocol_698(
+    def model_protocol_697(
         value: (FlextInfraModels.Infra.ViolationsRuleDelta),
     ) -> FlextInfraProtocols.Infra.ViolationsRuleDelta:
         return value
 
-    def model_protocol_699(
+    def model_protocol_698(
         value: (FlextInfraModels.Infra.ViolationsRuleEvaluation),
     ) -> FlextInfraProtocols.Infra.ViolationsRuleEvaluation:
         return value
 
-    def model_protocol_700(
+    def model_protocol_699(
         value: (FlextInfraModels.Infra.ViolationsSweepReport),
     ) -> FlextInfraProtocols.Infra.ViolationsSweepReport:
         return value
 
-    def model_protocol_701(
+    def model_protocol_700(
         value: (FlextInfraModels.Infra.ViolationsSweepSources),
     ) -> FlextInfraProtocols.Infra.ViolationsSweepSources:
         return value
 
-    def model_protocol_702(
+    def model_protocol_701(
         value: (FlextInfraModels.Infra.ViolationsSweepStage),
     ) -> FlextInfraProtocols.Infra.ViolationsSweepStage:
         return value
 
-    def model_protocol_703(
+    def model_protocol_702(
         value: (FlextInfraModels.Infra.ViolationsTotals),
     ) -> FlextInfraProtocols.Infra.ViolationsTotals:
         return value
 
-    def model_protocol_704(
+    def model_protocol_703(
         value: (FlextInfraModels.Infra.WorkspaceBeadsServerSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceBeadsServerSpec:
         return value
 
-    def model_protocol_705(
+    def model_protocol_704(
         value: (FlextInfraModels.Infra.WorkspaceBootstrapDependencies),
     ) -> FlextInfraProtocols.Infra.WorkspaceBootstrapDependencies:
         return value
 
-    def model_protocol_706(
+    def model_protocol_705(
         value: (FlextInfraModels.Infra.WorkspaceDependencyReport),
     ) -> FlextInfraProtocols.Infra.WorkspaceDependencyReport:
         return value
 
-    def model_protocol_707(
+    def model_protocol_706(
         value: (FlextInfraModels.Infra.WorkspaceEnforcementReport),
     ) -> FlextInfraProtocols.Infra.WorkspaceEnforcementReport:
         return value
 
-    def model_protocol_708(
+    def model_protocol_707(
         value: (FlextInfraModels.Infra.WorkspaceExclusionSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceExclusionSpec:
         return value
 
-    def model_protocol_709(
+    def model_protocol_708(
         value: (FlextInfraModels.Infra.WorkspaceIntegrationSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceIntegrationSpec:
         return value
 
-    def model_protocol_710(
+    def model_protocol_709(
         value: (FlextInfraModels.Infra.WorkspaceManifestSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceManifestSpec:
         return value
 
-    def model_protocol_711(
+    def model_protocol_710(
         value: (FlextInfraModels.Infra.WorkspaceOperationApplicability),
     ) -> FlextInfraProtocols.Infra.WorkspaceOperationApplicability:
         return value
 
-    def model_protocol_712(
+    def model_protocol_711(
         value: (FlextInfraModels.Infra.WorkspaceOperationReceipt),
     ) -> FlextInfraProtocols.Infra.WorkspaceOperationReceipt:
         return value
 
-    def model_protocol_713(
+    def model_protocol_712(
         value: (FlextInfraModels.Infra.WorkspaceOperationReport),
     ) -> FlextInfraProtocols.Infra.WorkspaceOperationReport:
         return value
 
-    def model_protocol_714(
+    def model_protocol_713(
         value: (FlextInfraModels.Infra.WorkspaceOperationTarget),
     ) -> FlextInfraProtocols.Infra.WorkspaceOperationTarget:
         return value
 
-    def model_protocol_715(
+    def model_protocol_714(
         value: (FlextInfraModels.Infra.WorkspaceProjectContext),
     ) -> FlextInfraProtocols.Infra.WorkspaceProjectContext:
         return value
 
-    def model_protocol_716(
+    def model_protocol_715(
         value: (FlextInfraModels.Infra.WorkspaceReport),
     ) -> FlextInfraProtocols.Infra.WorkspaceReport:
         return value
 
-    def model_protocol_717(
+    def model_protocol_716(
         value: (FlextInfraModels.Infra.WorkspaceRequest),
     ) -> FlextInfraProtocols.Infra.WorkspaceRequest:
         return value
 
-    def model_protocol_718(
+    def model_protocol_717(
         value: (FlextInfraModels.Infra.WorkspaceRuntimeContext),
     ) -> FlextInfraProtocols.Infra.WorkspaceRuntimeContext:
         return value
 
-    def model_protocol_719(
+    def model_protocol_718(
         value: (FlextInfraModels.Infra.WorkspaceSnapshot),
     ) -> FlextInfraProtocols.Infra.WorkspaceSnapshot:
         return value
 
-    def model_protocol_720(
+    def model_protocol_719(
         value: (FlextInfraModels.Infra.WorkspaceSnapshotSource),
     ) -> FlextInfraProtocols.Infra.WorkspaceSnapshotSource:
         return value
 
-    def model_protocol_721(
+    def model_protocol_720(
         value: (FlextInfraModels.Infra.WorkspaceSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceSpec:
         return value
 
-    def model_protocol_722(
+    def model_protocol_721(
         value: (FlextInfraModels.Infra.WorkspaceTestsRequest),
     ) -> FlextInfraProtocols.Infra.WorkspaceTestsRequest:
         return value
 
-    def model_protocol_723(
+    def model_protocol_722(
         value: (FlextInfraModels.Infra.WorktreeCandidate),
     ) -> FlextInfraProtocols.Infra.WorktreeCandidate:
         return value
 
-    def model_protocol_724(
+    def model_protocol_723(
         value: (FlextInfraModels.Infra.WorktreeFact),
     ) -> FlextInfraProtocols.Infra.WorktreeFact:
         return value
 
-    def model_protocol_725(
+    def model_protocol_724(
         value: (FlextInfraModels.Infra.WorktreeFactsPolicy),
     ) -> FlextInfraProtocols.Infra.WorktreeFactsPolicy:
         return value
 
-    def model_protocol_726(
+    def model_protocol_725(
         value: (FlextInfraModels.Infra.WorktreeFactsQuery),
     ) -> FlextInfraProtocols.Infra.WorktreeFactsQuery:
         return value
 
-    def model_protocol_727(
+    def model_protocol_726(
         value: (FlextInfraModels.Infra.WorktreesReport),
     ) -> FlextInfraProtocols.Infra.WorktreesReport:
         return value
 
-    def model_protocol_728(
+    def model_protocol_727(
         value: (FlextInfraModels.Infra.WrapperRewriteAccumulator),
     ) -> FlextInfraProtocols.Infra.WrapperRewriteAccumulator:
         return value
 
-    def model_protocol_729(
+    def model_protocol_728(
         value: (FlextInfraModels.Infra.WriteMixin),
     ) -> FlextInfraProtocols.Infra.WriteMixin:
         return value

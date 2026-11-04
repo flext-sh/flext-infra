@@ -1828,6 +1828,9 @@ class FlextInfraCodemodSemanticApply(
 
         """
         if phase in {
+            # The model-field contract cure is owned by the repository being
+            # modified: a consumer run must not plan edits in its siblings.
+            c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
             c.Infra.SemanticCutoverPhase.MODEL_FIELDS,
             c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,
             c.Infra.SemanticCutoverPhase.MODULE_END,
