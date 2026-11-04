@@ -212,7 +212,6 @@ class FlextInfraMaintenanceClean(s[int]):
             c.Infra.BEADS_DIRNAME,
             c.Infra.JOURNAL_NAME,
             c.Infra.MISE_LOCK_JOURNAL_FILENAME,
-            c.Infra.CODEGEN_TRANSACTION_LOCK_FILENAME,
             codegen.make.testmon_cache.database_filename,
         })
 
@@ -256,7 +255,7 @@ class FlextInfraMaintenanceClean(s[int]):
             ValueError: When the target is protected ownership or runtime state.
 
         """
-        lock_suffix = Path(c.Infra.CODEGEN_TRANSACTION_LOCK_FILENAME).suffix
+        lock_suffix = c.Infra.LOCK_FILE_SUFFIX
         database = codegen.make.testmon_cache.database_filename
         if (
             not target.is_relative_to(root)

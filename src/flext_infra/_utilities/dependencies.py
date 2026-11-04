@@ -274,8 +274,9 @@ class FlextInfraUtilitiesDependencies(
     ) -> p.Result[bool]:
         """Publish only the calculated runtime list against unchanged source states.
 
-        The caller owns the repository mutation lease. Locks remain owned by upg.
-        Unresolved import suppliers reject the plan before any publication work.
+        This owner holds its own publication lease, so a caller never wraps the
+        scan, the plan and the write in one long lock. Unresolved import
+        suppliers reject the plan before any publication work.
 
         Returns:
             Whether the original target declaration changed.
@@ -286,31 +287,43 @@ class FlextInfraUtilitiesDependencies(
                 "runtime import requires one authored, installed, locked supplier: "
                 + ", ".join(plan.unresolved_modules),
             )
-        u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
-        unchanged = cls._verified_deptry_sources(
-            plan.source,
-            moment="before publication",
-        )
-        if unchanged.failure:
-            return r[bool].from_failure(unchanged)
-        if plan.before.content is None:
-            return r[bool].fail(f"dependency declaration is absent: {plan.before.path}")
-        document = u.Cli.toml_parse_text(plan.before.content.decode(c.DEFAULT_ENCODING))
-        if document is None:
-            return r[bool].fail(f"invalid dependency declaration: {plan.before.path}")
-        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
-        if project is None:
-            return r[bool].fail(f"project declaration is absent: {plan.before.path}")
-        changed = u.Cli.toml_sync_string_list(
-            project, c.Infra.DEPENDENCIES, plan.dependencies
-        )
-        if changed:
-            u.Cli.atomic_write_binary_file_guarded(
-                plan.before,
-                document.as_string().encode(c.DEFAULT_ENCODING),
-                permission_mode=plan.before.mode,
-            ).unwrap()
-        return r[bool].ok(changed)
+        lease = u.Infra.mutation_lock_path(plan.before.path.parent)
+        if lease.failure:
+            return r[bool].from_failure(lease)
+        with u.Cli.file_changes_lock(lease.value):
+            u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
+            unchanged = cls._verified_deptry_sources(
+                plan.source,
+                moment="before publication",
+            )
+            if unchanged.failure:
+                return r[bool].from_failure(unchanged)
+            if plan.before.content is None:
+                return r[bool].fail(
+                    f"dependency declaration is absent: {plan.before.path}"
+                )
+            document = u.Cli.toml_parse_text(
+                plan.before.content.decode(c.DEFAULT_ENCODING)
+            )
+            if document is None:
+                return r[bool].fail(
+                    f"invalid dependency declaration: {plan.before.path}"
+                )
+            project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+            if project is None:
+                return r[bool].fail(
+                    f"project declaration is absent: {plan.before.path}"
+                )
+            changed = u.Cli.toml_sync_string_list(
+                project, c.Infra.DEPENDENCIES, plan.dependencies
+            )
+            if changed:
+                u.Cli.atomic_write_binary_file_guarded(
+                    plan.before,
+                    document.as_string().encode(c.DEFAULT_ENCODING),
+                    permission_mode=plan.before.mode,
+                ).unwrap()
+            return r[bool].ok(changed)
 
     @staticmethod
     def project_dev_groups_from_payload(

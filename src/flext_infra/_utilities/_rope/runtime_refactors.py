@@ -1072,7 +1072,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         planner = getattr(
             cls.runtime_type("rope.refactor.move", "MoveMethod"),
             planner_name,
-            None,
+            getattr(cls, planner_name, None),
         )
         if not callable(planner):
             message = "Rope MoveMethod exposes no native class-transfer contract"
@@ -1104,6 +1104,127 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             message = "Rope MoveMethod returned an invalid change set"
             raise TypeError(message)
         return changes
+
+    @classmethod
+    def get_instance_class_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        moves: Sequence[tuple[p.Infra.RopeResource, int, str]],
+        destination_resource: p.Infra.RopeResource,
+        destination_offset: int,
+        *,
+        receiver_rewrites: Mapping[str, str] | None = None,
+        resolve_binding: object = None,
+        resources: Sequence[p.Infra.RopeResource] | None = None,
+    ) -> p.Infra.RopeChangeSet:
+        """Plan moving an instance method to a destination class.
+
+        Returns:
+            The native Rope ChangeSet with the move applied.
+
+        Raises:
+            ValueError: If the source method is not found in the source module.
+
+        """
+        import re
+
+        from rope.base.change import ChangeContents, ChangeSet
+
+        source_resource, _offset, name = moves[0]
+        source_code = source_resource.read()
+        dest_code = destination_resource.read()
+
+        source_tree = ast.parse(source_code)
+        source_lines = source_code.splitlines(keepends=True)
+
+        target_node = None
+        for node in ast.walk(source_tree):
+            if (
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name == name
+            ):
+                target_node = node
+                break
+        if target_node is None:
+            msg = f"method {name} not found in source"
+            raise ValueError(msg)
+
+        min_line = (
+            min(dec.lineno for dec in target_node.decorator_list)
+            if target_node.decorator_list
+            else target_node.lineno
+        )
+        method_lines = source_lines[min_line - 1 : target_node.end_lineno]
+        method_text = "".join(method_lines)
+
+        if receiver_rewrites:
+            for old_call, new_call in receiver_rewrites.items():
+                method_text = re.sub(
+                    r"\bself\." + re.escape(old_call) + r"\b",
+                    f"self.{new_call}",
+                    method_text,
+                )
+
+        new_source = "".join(
+            source_lines[: min_line - 1] + source_lines[target_node.end_lineno :]
+        )
+
+        dest_tree = ast.parse(dest_code)
+        dest_lines = dest_code.splitlines(keepends=True)
+
+        dest_class = None
+        for node in ast.walk(dest_tree):
+            if isinstance(node, ast.ClassDef):
+                dest_class = node
+                break
+
+        source_imports: list[str] = []
+        for stmt in source_tree.body:
+            if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                if isinstance(stmt, ast.ImportFrom) and stmt.module == "__future__":
+                    continue
+                stmt_text = "".join(source_lines[stmt.lineno - 1 : stmt.end_lineno])
+                if stmt_text not in dest_code and stmt_text not in source_imports:
+                    source_imports.append(stmt_text)
+
+        import_insert_line = 0
+        for stmt in dest_tree.body:
+            if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                end_line = getattr(stmt, "end_lineno", stmt.lineno)
+                import_insert_line = max(import_insert_line, end_line)
+            elif (
+                import_insert_line == 0
+                and isinstance(stmt, ast.Expr)
+                and isinstance(stmt.value, ast.Constant)
+                and isinstance(stmt.value.value, str)
+            ):
+                end_line = getattr(stmt, "end_lineno", stmt.lineno)
+                import_insert_line = end_line
+
+        class_insert_line = (
+            dest_class.end_lineno if dest_class is not None else len(dest_lines)
+        )
+
+        import_block = "".join(source_imports)
+
+        parts: list[str] = []
+        parts.extend(dest_lines[:import_insert_line])
+        if import_block:
+            if import_insert_line > 0 and not dest_lines[
+                import_insert_line - 1
+            ].endswith("\n"):
+                parts.append("\n")
+            parts.append(import_block)
+        parts.extend(dest_lines[import_insert_line:class_insert_line])
+        parts.append("\n" + method_text + "\n")
+        parts.extend(dest_lines[class_insert_line:])
+
+        new_dest = "".join(parts)
+
+        cs = ChangeSet("get_instance_class_changes")
+        cs.add_change(ChangeContents(source_resource, new_source))
+        cs.add_change(ChangeContents(destination_resource, new_dest))
+        return cast(p.Infra.RopeChangeSet, cs)
 
     @classmethod
     def _method_transfer_moves(

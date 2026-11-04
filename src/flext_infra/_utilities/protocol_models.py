@@ -211,6 +211,35 @@ class FlextInfraUtilitiesModelsProtocol:
         return {**rendered, **seeds}
 
     @classmethod
+    def protocol_model_routes_from_source(
+        cls,
+        repository_root: Path,
+        source_project: p.Infra.RopeProject,
+        *,
+        package_name: str | None = None,
+    ) -> Mapping[str, str]:
+        """Obtain model class routes mapped to public protocol routes without publishing.
+
+        Returns:
+            Mapping from model class route (e.g. 'pkg._models.Foo') to public protocol route ('p.Foo').
+
+        """
+        routes: dict[str, str] = {}
+        try:
+            projection = cls._ModelProtocolProjection(
+                repository_root.expanduser().resolve(),
+                source_project,
+                package_name=package_name,
+            )
+            pkg = projection.source_package_name
+            if projection.package is not None and pkg:
+                projection._source_model_facade_owners(projection.package, pkg)
+                routes.update(projection.source_model_protocol_routes)
+        except (ValueError, KeyError, AttributeError):
+            pass
+        return routes
+
+    @classmethod
     def protocol_model_package_names(
         cls, repository_root: Path, source_project: p.Infra.RopeProject
     ) -> tuple[str, ...]:
