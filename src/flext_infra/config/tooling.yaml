@@ -534,6 +534,8 @@ Infra:
         # invocation; in-flight cases may report after the stop, which the
         # declaring consumer accepts by declaring.
         parallel-worker-overrides:
+          merges:
+            workers: 4
           cosmos-docgen:
             workers: 4
           # The measured ceiling for this suite; higher ceilings regressed the
