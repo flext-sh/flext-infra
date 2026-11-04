@@ -188,13 +188,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             the contract does not select one.
 
         """
-        if contract.destinations == self._editor_markdown_destinations():
-            return self._plan_existing_editor(
-                target,
-                workspace,
-                codegen,
-                destinations=contract.destinations,
-            )
         if contract.destinations == self._editor_destinations(codegen):
             return self._plan_existing_editor(target, workspace, codegen)
         destinations = contract.destinations

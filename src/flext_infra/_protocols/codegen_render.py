@@ -536,17 +536,12 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
     @runtime_checkable
-    class MarkdownLintRenderSpec(FlextCliProtocols.BaseModel, Protocol):
+    class MarkdownRenderSpec(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
         def native_config(self) -> str:
             """Native Markdown TOML derived from the shared policy."""
-            ...
-
-        @property
-        def exclude(self) -> t.StrTuple:
-            """Declared non-documentation path patterns."""
             ...
 
     @runtime_checkable

@@ -4,6 +4,22 @@ valid:
   from flext_core import p, t
   def dump(value: p.BaseModel) -> p.BaseModel:
       return value
+- |
+  from collections.abc import Callable
+  from flext_core import p, t
+  def run(
+      value: p.BaseModel | None,
+      nxt: Callable[[p.BaseModel], int],
+      args: tuple[t.LogPositionalValue[p.BaseModel], ...],
+  ) -> tuple[p.BaseModel, dict[str, int]]:
+      return value, {}
+- |
+  from flext_core import t
+  def parse[M: t.BaseModelType](model: type[t.BaseModelType]) -> t.ModelClass[M]:
+      return model
+- |
+  from flext_core import t
+  alias = t.BaseModelType
 invalid:
 - |
   from flext_core import p, t
@@ -18,3 +34,12 @@ invalid:
   from typing import ClassVar
   class E:
       params_cls: ClassVar[t.ModelClass[p.BaseModel] | None] = None
+- |
+  from flext_core import t
+  def resolve(params: t.BaseModelType | None) -> tuple[t.BaseModelType, int]:
+      return params, 0
+- |
+  from typing import TypeIs
+  from flext_core import t
+  def guard(value: t.JsonValue) -> TypeIs[t.BaseModelType]:
+      return True

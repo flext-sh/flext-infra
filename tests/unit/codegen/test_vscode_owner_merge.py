@@ -846,143 +846,72 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         )
 
 
-class TestsFlextInfraMarkdownEditorProjection:
-    """Prove the editor Markdown policy is one derived projection of the SSOT."""
+class TestsFlextInfraMarkdownEditorRetirement:
+    """rumdl is the only Markdown engine; markdownlint never reaches the editor."""
+
+    APPLIES_TO: str = "markdownlint.appliesTo"
+    RETIRED: tuple[str, ...] = (
+        "markdownlint.config",
+        "markdownlint.lintWorkspaceGlobs",
+    )
 
     @staticmethod
-    def _governed_root(tmp_path: Path, name: str) -> Path:
+    def governed_root(tmp_path: Path) -> Path:
         """Materialize one minimal governed root for editor rendering.
 
         Returns:
             The declared repository root.
 
         """
-        root = tmp_path / name
+        root = tmp_path / "markdown-editor"
         directory = root / c.CONFIG_DIR_NAME
         directory.mkdir(parents=True)
         tm.ok(
             u.Cli.yaml_dump(
                 directory / c.Infra.CODEGEN_CONFIG_FILENAME,
-                {
-                    "Infra": {
-                        "codegen": {"repository": {"kind": "internal"}},
-                    },
-                },
+                {"Infra": {"codegen": {"repository": {"kind": "internal"}}}},
             ),
         )
         tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         return root
 
     @staticmethod
-    def test_editor_configuration_reads_common_rules_only() -> None:
-        """The derivation copies the common MD* rules and no native surface."""
-        markdown = config.Infra.tooling.tools.markdown
-        derived = u.Infra.markdown_editor_configuration(markdown)
-        tm.that(
-            derived,
-            eq={"default": markdown.default_enabled, **dict(markdown.rules)},
-        )
-        common = dict(markdown.rules)
-        native_only = {name for name, _value in markdown.native_rules} - common.keys()
-        tm.that(native_only & derived.keys(), eq=set())
-        tm.fail("reflow" in u.Cli.json_as_mapping(derived["MD013"]))
-
-    @staticmethod
-    def test_render_projects_derived_markdownlint_config(tmp_path: Path) -> None:
-        """Rendered settings carry the SSOT-derived markdownlint policy."""
-        root = TestsFlextInfraMarkdownEditorProjection._governed_root(
-            tmp_path,
-            "markdown-projection",
-        )
-        rendered = tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root))
-        document = u.Tests.json_payload(rendered)
-        expected = u.Infra.markdown_editor_configuration(
-            config.Infra.tooling.tools.markdown
-        )
-        tm.that(
-            document[c.Infra.MARKDOWNLINT_CONFIG_SETTING],
-            eq=expected,
-        )
-
-    @staticmethod
-    def test_workspace_globs_derive_from_markdown_excludes(tmp_path: Path) -> None:
-        """The editor scope is the codegen exclusion projection, not a copy."""
-        root = TestsFlextInfraMarkdownEditorProjection._governed_root(
-            tmp_path,
-            "markdown-scope",
-        )
-        rendered = tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root))
-        document = u.Tests.json_payload(rendered)
-        expected = [
-            *(f"!{pattern}" for pattern in config.Infra.codegen.markdown_exclude_globs),
-            c.Infra.MARKDOWN_DOCUMENT_GLOB,
-        ]
-        tm.that(
-            document[c.Infra.MARKDOWNLINT_WORKSPACE_GLOBS_SETTING],
-            eq=expected,
-        )
-
-    @staticmethod
-    def test_render_replaces_stale_markdownlint_config(tmp_path: Path) -> None:
-        """A stale editor policy converges to the canonical derived value."""
-        root = TestsFlextInfraMarkdownEditorProjection._governed_root(
-            tmp_path,
-            "markdown-converge",
-        )
+    def test_render_silences_markdownlint_and_strips_its_policy(
+        tmp_path: Path,
+    ) -> None:
+        """Stale markdownlint keys converge away; an installed extension is off."""
+        retirement = TestsFlextInfraMarkdownEditorRetirement
+        root = retirement.governed_root(tmp_path)
         settings_path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
         settings_path.parent.mkdir(parents=True)
-        retired = {**dict(config.Infra.tooling.tools.markdown.rules), "MD9999": False}
         _ = settings_path.write_text(
             tm.ok(
-                u.Cli.json_dumps({c.Infra.MARKDOWNLINT_CONFIG_SETTING: retired}),
+                u.Cli.json_dumps({
+                    "markdownlint.config": {"default": True, "MD013": False},
+                    "markdownlint.lintWorkspaceGlobs": ["**/*.md"],
+                })
             ),
             encoding=c.DEFAULT_ENCODING,
         )
+
         rendered = tm.ok(FlextInfraCodegenConform.Generate.render_vscode_settings(root))
         document = u.Tests.json_payload(rendered)
+
+        tm.that(set(retirement.RETIRED) & document.keys(), eq=set())
+        tm.that(document[retirement.APPLIES_TO], eq="noFiles")
         tm.that(
-            document[c.Infra.MARKDOWNLINT_CONFIG_SETTING],
-            eq=u.Infra.markdown_editor_configuration(
-                config.Infra.tooling.tools.markdown
-            ),
+            u.Cli.json_as_mapping(document["[markdown]"])["editor.defaultFormatter"],
+            eq="rvben.rumdl",
         )
 
     @staticmethod
-    def test_derived_config_is_never_a_portable_delta(tmp_path: Path) -> None:
-        """An identical live policy produces no delta; a custom one is dropped."""
-        root = TestsFlextInfraMarkdownEditorProjection._governed_root(
-            tmp_path,
-            "markdown-delta",
-        )
-        spec = tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(root))
-        expected = u.Infra.markdown_editor_configuration(
-            config.Infra.tooling.tools.markdown
-        )
-        identical = tm.ok(
-            FlextInfraCodegenConform.Generate.vscode_declaration_delta(
-                root,
-                {c.Infra.MARKDOWNLINT_CONFIG_SETTING: expected},
-                spec=spec,
-            ),
-        )
-        tm.that(identical.values, eq={})
-        custom = tm.ok(
-            FlextInfraCodegenConform.Generate.vscode_declaration_delta(
-                root,
-                {c.Infra.MARKDOWNLINT_CONFIG_SETTING: {"default": False}},
-                spec=spec,
-            ),
-        )
-        tm.that(custom.values, eq={})
-        composed = tm.ok(
-            FlextInfraCodegenConform.Generate.compose_vscode_delta(spec, custom)
-        )
-        rendered = tm.ok(
-            FlextInfraCodegenConform.Generate.render_vscode_settings(
-                root, spec=composed
-            )
-        )
-        tm.that(
-            u.Tests.json_payload(rendered)[c.Infra.MARKDOWNLINT_CONFIG_SETTING],
-            eq=expected,
-        )
+    def test_markdownlint_ignore_projection_is_retired() -> None:
+        """Generation removes the old ignore projection instead of rendering it."""
+        codegen = config.Infra.codegen
+        retired = {
+            Path(entry if isinstance(entry, str) else entry.path).as_posix()
+            for entry in codegen.retired_projections
+        }
+        rendered = {entry.destination for entry in codegen.templates.entries}
+        tm.that(".markdownlintignore" in retired, eq=True)
+        tm.that(".markdownlintignore" in rendered, eq=False)

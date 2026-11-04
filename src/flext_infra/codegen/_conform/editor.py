@@ -87,8 +87,6 @@ class FlextInfraCodegenConformEditor(
         target: p.Infra.RepositoryConformTarget,
         workspace: p.Infra.WorkspaceSpec,
         codegen: p.Infra.CodegenConfigSpec,
-        *,
-        destinations: frozenset[str] | None = None,
     ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
         """Bind editor projections to the declarations read in this request.
 
@@ -101,12 +99,7 @@ class FlextInfraCodegenConformEditor(
         if loaded.failure:
             return result_type.from_failure(loaded)
         codegen = loaded.value.spec
-        all_destinations = self._editor_destinations(codegen)
-        selected = (
-            all_destinations
-            if destinations is None
-            else all_destinations & destinations
-        )
+        selected = self._editor_destinations(codegen)
         original = self._editor_snapshots(target.root, selected)
         if original.failure:
             return result_type.from_failure(original)

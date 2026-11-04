@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
@@ -30,35 +29,6 @@ class FlextInfraProtocolsGitWorktreeState:
         @property
         def git_dir(self) -> Path | None:
             """Validated worktree Git directory, absent only for file scopes."""
-            ...
-
-    @runtime_checkable
-    class MutationLockHolder(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def pid(self) -> int:
-            """Process that holds the lock."""
-            ...
-
-        @property
-        def operation(self) -> str:
-            """Operation the holder runs under the lock."""
-            ...
-
-        @property
-        def root(self) -> Path:
-            """Mutation root the holder writes."""
-            ...
-
-        @property
-        def acquired_at(self) -> datetime:
-            """UTC instant the lock was acquired."""
-            ...
-
-        @property
-        def released_at(self) -> datetime | None:
-            """UTC instant the holder released; none while held."""
             ...
 
     @runtime_checkable

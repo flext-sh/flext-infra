@@ -56,7 +56,7 @@ class TestsFlextInfraLazyInitRuntime:
         testing.mkdir()
         declaration = testing / "constants.py"
         declaration.write_text(
-            ("from flext_owne_tests import c\n" if imported_alias else "")
+            ("from flext_owned_tests.constants import c\n" if imported_alias else "")
             + f"class Tests{layout.class_stem}Constants:\n"
             + (
                 f"    __all__ = ('Tests{layout.class_stem}Constants', 'c')\n"
@@ -447,7 +447,7 @@ class TestsFlextInfraLazyInitRuntime:
                 "print('flext_owned_tests' not in sys.modules)\n"
                 "print('tests.constants' not in sys.modules)\n"
                 f"from tests.constants import Tests{layout.class_stem}Constants\n"
-                "from flext_owne_tests import c as expected\n"
+                "from flext_owned_tests.constants import c as expected\n"
                 "print(generated.c is expected)\n"
                 f"print(generated.Tests{layout.class_stem}Constants "
                 f"is Tests{layout.class_stem}Constants)\n"

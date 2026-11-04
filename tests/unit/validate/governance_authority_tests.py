@@ -63,10 +63,9 @@ class TestsFlextInfraGovernanceAuthority:
         tm.that(line_length, eq=u.Infra.docs_markdown_line_length(config.Infra.tooling))
 
     def test_markdown_projection_follows_the_typed_policy(self) -> None:
-        """The single native projection preserves common rules and overrides."""
+        """The single rumdl projection preserves every declared rule."""
         policy = u.Infra.load_tooling_inputs(self.ROOT).unwrap().document.tools.markdown
-        common = u.Infra.configuration_pairs(policy.rules)
-        overrides = u.Infra.configuration_pairs(policy.native_rules)
+        rules = u.Infra.configuration_pairs(policy.rules)
         native = u.Tests.toml_payload(
             (self.ROOT / c.Infra.MARKDOWN_CONFIG_FILENAME).read_text(encoding="utf-8")
         )
@@ -80,17 +79,11 @@ class TestsFlextInfraGovernanceAuthority:
         tm.that(global_options.get("extend-enable"), eq=["MD060"])
         md013 = u.Tests.toml_mapping(native["MD013"])
         tm.that({"strict", "stern"} & set(md013), eq=set())
-        elected = {**common, **overrides}
-        for name, value in elected.items():
-            if name == "default":
-                continue
+        for name, value in rules.items():
             if isinstance(value, bool):
                 tm.that(name in disabled, eq=not value)
             else:
-                expected = u.Tests.toml_mapping(value)
-                if name in common and u.mapping(common[name]):
-                    expected = {**u.Tests.toml_mapping(common[name]), **expected}
-                tm.that(native[name], eq=expected)
+                tm.that(native[name], eq=u.Tests.toml_mapping(value))
         for name, options in policy.native_settings:
             for key, value in u.Tests.toml_mapping(options).items():
                 tm.that(u.Tests.toml_mapping(native[name])[key], eq=value)

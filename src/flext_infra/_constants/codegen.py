@@ -70,7 +70,6 @@ class FlextInfraConstantsCodegen(
         FlextInfraConstantsConfig.CodegenConformSurface.MARKDOWN,
         FlextInfraConstantsConfig.CodegenConformSurface.PYPROJECT,
         FlextInfraConstantsConfig.CodegenConformSurface.EDITOR,
-        FlextInfraConstantsConfig.CodegenConformSurface.EDITOR_MARKDOWN,
     ))
     "Self-owned configuration is planned against the declared repository target."
 

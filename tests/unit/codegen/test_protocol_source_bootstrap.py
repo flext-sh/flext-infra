@@ -730,8 +730,8 @@ class TestsProtocolSourceBootstrap:
             "class FlextInfraProtocolsC:\n    pass\n", encoding="utf-8"
         )
         (protocol_root / "a.py").write_text(
-            "from flext_infra_protocols import FlextInfraProtocolsB\n"
-            "from flext_infra_protocols import FlextInfraProtocolsC\n\n"
+            "from flext_infra._protocols.b import FlextInfraProtocolsB\n"
+            "from flext_infra._protocols.c import FlextInfraProtocolsC\n\n"
             "class FlextInfraProtocolsA("
             "FlextInfraProtocolsB, FlextInfraProtocolsC):\n"
             "    pass\n",
@@ -807,7 +807,7 @@ class TestsProtocolSourceBootstrap:
                 "-c",
                 (
                     "from flext_infra.protocols import p; "
-                    "from flext_infra_protocols import "
+                    "from flext_infra._protocols.alpha import "
                     "FlextInfraProtocolsAlpha; "
                     "assert p.Infra.Unique is FlextInfraProtocolsAlpha.Unique; "
                     "assert not hasattr(p.Infra, 'm')"
@@ -935,12 +935,12 @@ class TestsProtocolSourceBootstrap:
         protocol_root.mkdir(parents=True)
         (protocol_root.parent / "__init__.py").touch()
         (protocol_root / "left.py").write_text(
-            "from flext_infra_protocols import FlextInfraProtocolsRight\n"
+            "from flext_infra._protocols.right import FlextInfraProtocolsRight\n"
             "class FlextInfraProtocolsLeft(FlextInfraProtocolsRight):\n    pass\n",
             encoding="utf-8",
         )
         (protocol_root / "right.py").write_text(
-            "from flext_infra_protocols import FlextInfraProtocolsLeft\n"
+            "from flext_infra._protocols.left import FlextInfraProtocolsLeft\n"
             "class FlextInfraProtocolsRight(FlextInfraProtocolsLeft):\n    pass\n",
             encoding="utf-8",
         )
@@ -1000,7 +1000,7 @@ class TestsProtocolSourceBootstrap:
                 "-c",
                 (
                     "from flext_infra.protocols import p; "
-                    "from flext_infra_protocols import "
+                    "from flext_infra._protocols.workspace import "
                     "FlextInfraProtocolsWorkspace; "
                     "assert p.Infra.ProjectInfo is "
                     "FlextInfraProtocolsWorkspace.ProjectInfo; "

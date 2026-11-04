@@ -1,0 +1,16 @@
+id: rewire-yaml-text-read-to-path-reader
+valid:
+# Path-based owners, and text parsers fed by text that is not a file read.
+- documents = u.Cli.yaml_load_documents(rule).unwrap()
+- payload = u.Cli.yaml_safe_load(config).unwrap()
+- documents = u.Cli.yaml_parse_documents(observed.content.decode("utf-8")).unwrap()
+- payload = u.Cli.yaml_parse(text).unwrap()
+- payload = u.Cli.json_parse(path.read_text(encoding="utf-8"))
+invalid:
+- |
+  documents = u.Cli.yaml_parse_documents(
+      u.Cli.files_read_text(test_file).unwrap()
+  ).unwrap()
+- payload = u.Cli.yaml_parse(config.read_text(encoding=c.DEFAULT_ENCODING))
+- payload = u.Cli.yaml_parse(u.Cli.files_read_text(config).unwrap()).unwrap()
+- documents = u.Cli.yaml_parse_documents(rule.read_text())

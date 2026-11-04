@@ -54,6 +54,10 @@
 **/target/**
 **/tests/fixtures/**
 **/venv/**
+.github/agents/**
+.github/hooks/**
+.github/instructions/**
+.github/skills/**
 .zcode/**
 CHANGELOG.md
 CLAUDE.md

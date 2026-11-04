@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -31,23 +30,6 @@ class FlextInfraModelsGitWorktreeState:
                     "Validated worktree Git directory, absent only for file scopes"
                 ),
             ),
-        ]
-
-    class MutationLockHolder(m.ContractModel):
-        """Writer that holds one mutation scope's lock, recorded beside it."""
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-        pid: Annotated[int, m.Field(description="Process that holds the lock")]
-        operation: Annotated[
-            str, m.Field(description="Operation the holder runs under the lock")
-        ]
-        root: Annotated[Path, m.Field(description="Mutation root the holder writes")]
-        acquired_at: Annotated[
-            datetime, m.Field(description="UTC instant the lock was acquired")
-        ]
-        released_at: Annotated[
-            datetime | None,
-            m.Field(description="UTC instant the holder released; none while held"),
         ]
 
     class GitWorktreeCheckpointPublication(m.ContractModel):

@@ -198,7 +198,6 @@ class FlextInfraProtocolsDepsToolConfig:
         default_enabled: bool
         extend_enable: t.StrTuple
         rules: t.Infra.SettingsPairs
-        native_rules: t.Infra.SettingsPairs
         native_settings: t.Infra.SettingsPairs
 
     @runtime_checkable

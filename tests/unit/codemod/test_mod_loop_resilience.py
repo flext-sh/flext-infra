@@ -291,8 +291,7 @@ class TestsFlextInfraModLoopResilience:
             [
                 message
                 for message in progress.messages
-                if "discarded after external change" in message
-                and str(alpha) in message
+                if "observed external change" in message and str(alpha) in message
             ],
             empty=False,
         )

@@ -415,6 +415,10 @@ exclude = [
   "**/target/**",
   "**/tests/fixtures/**",
   "**/venv/**",
+  ".github/agents/**",
+  ".github/hooks/**",
+  ".github/instructions/**",
+  ".github/skills/**",
 ]
 extraPaths = ["src", "."]
 include = ["conftest.py", "src", "tests"]

@@ -107,7 +107,6 @@ class FlextInfraConstantsConfig:
         DEPENDENCIES = "dependencies"
         DOCS_CONFIG = "docs-config"
         EDITOR = "editor"
-        EDITOR_MARKDOWN = "editor-markdown"
         ENVRC = "envrc"
         FACADES = "facades"
         LAZY_INIT = "lazy-init"

@@ -767,6 +767,10 @@ class FlextInfraModelsConfigArtifact(
                     }
                     | {f"**/{name}/**" for name in self.check_excluded_dirs}
                     | {f"**/{root}/**" for root in self.exclusions.scenario_data_roots}
+                    | {
+                        f"{c.Infra.GITHUB_DIRNAME}/{name}/**"
+                        for name in c.Infra.GITHUB_AGENT_PROJECTION_DIRS
+                    }
                 )
             )
 

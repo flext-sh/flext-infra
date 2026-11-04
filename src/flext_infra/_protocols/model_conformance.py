@@ -1904,8 +1904,8 @@ if TYPE_CHECKING:
         return value
 
     def model_protocol_379(
-        value: (FlextInfraModels.Infra.MarkdownLintRenderSpec),
-    ) -> FlextInfraProtocols.Infra.MarkdownLintRenderSpec:
+        value: (FlextInfraModels.Infra.MarkdownRenderSpec),
+    ) -> FlextInfraProtocols.Infra.MarkdownRenderSpec:
         return value
 
     def model_protocol_380(
@@ -2148,11 +2148,6 @@ if TYPE_CHECKING:
     def model_protocol_427(
         value: (FlextInfraModels.Infra.ModuleSkeletonRenderContext),
     ) -> FlextInfraProtocols.Infra.ModuleSkeletonRenderContext:
-        return value
-
-    def model_protocol_428(
-        value: (FlextInfraModels.Infra.MutationLockHolder),
-    ) -> FlextInfraProtocols.Infra.MutationLockHolder:
         return value
 
     def model_protocol_429(

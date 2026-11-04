@@ -309,11 +309,17 @@ class FlextInfraUtilitiesCodemodNative:
                     )
                 },
             )
-            utilities: Mapping[str, t.JsonMapping] = (
-                cls.native_utilities(snapshot, root, spec.producers)
+            required = (
+                None
                 if rule_ids is None
-                or cls._references_generated_utilities((*catalog, *rules.values()))
-                else MappingProxyType({})
+                else cls._referenced_generated_utilities((*catalog, *rules.values()))
+            )
+            utilities: Mapping[str, t.JsonMapping] = (
+                MappingProxyType({})
+                if required is not None and not required
+                else cls.native_utilities(
+                    snapshot, root, spec.producers, required=required
+                )
             )
             rendered = m.Infra.CodemodNativeGenerated(
                 utilities=utilities, rules=rules, scopes=scopes
@@ -383,26 +389,28 @@ class FlextInfraUtilitiesCodemodNative:
         )
 
     @classmethod
-    def _references_generated_utilities(
+    def _referenced_generated_utilities(
         cls, documents: Sequence[t.JsonMapping]
-    ) -> bool:
-        """Whether selected rule documents call a utility outside their own.
+    ) -> frozenset[str]:
+        """Collect the utilities selected rule documents call outside their own.
 
         A native ``matches`` reference resolves to a utility the document
         declares itself (``utils``) or to one a provider publishes; the
-        producers emit the latter, so they run only when a selected document
-        references one.
+        producers emit the latter, so only these identities need producing.
 
         Returns:
-            Whether any document references a non-local utility.
+            Every non-local utility identity the documents reference.
 
         """
-        return any(
-            references.difference(
-                document["utils"] if isinstance(document.get("utils"), Mapping) else ()
+        return frozenset().union(
+            *(
+                cls._matched_utilities(document).difference(
+                    document["utils"]
+                    if isinstance(document.get("utils"), Mapping)
+                    else ()
+                )
+                for document in documents
             )
-            for document in documents
-            if (references := cls._matched_utilities(document))
         )
 
     @classmethod
@@ -1021,11 +1029,18 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         producers: Sequence[str],
+        *,
+        required: frozenset[str] | None = None,
     ) -> Mapping[str, t.JsonMapping]:
-        """Run every registered producer and merge its utilities by id.
+        """Run the registered producers in order and merge their utilities by id.
+
+        ``required`` names the utilities a selection references: production
+        stops once every required utility, and every utility those reference
+        in turn, is emitted, so an exact selection never pays for producers it
+        does not read. ``None`` runs every producer.
 
         Returns:
-            Every utility document keyed by its utility id.
+            The produced utility documents keyed by their utility id.
 
         Raises:
             TypeError: If a producer is not a declared utility producer.
@@ -1034,7 +1049,10 @@ class FlextInfraUtilitiesCodemodNative:
         """
         documents: dict[str, t.JsonMapping] = {}
         adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
+        pending = None if required is None else set(required)
         for name in producers:
+            if pending is not None and pending.issubset(documents):
+                break
             producer = getattr(cls, name, None)
             if not callable(producer):
                 msg = f"ast-grep utility producer is not declared: {name}"
@@ -1050,6 +1068,8 @@ class FlextInfraUtilitiesCodemodNative:
                 documents[utility_id] = cls.codemod_native_utility_document(
                     utility_id, rule
                 )
+                if pending is not None and utility_id in pending:
+                    pending.update(cls._matched_utilities(rule))
         return MappingProxyType(dict(sorted(documents.items())))
 
 

@@ -621,13 +621,7 @@ class FlextInfraModelsDepsToolConfig(
         ] = ()
         rules: Annotated[
             t.Infra.SettingsPairs,
-            m.Field(description="Ordered rules supported by both Markdown tools."),
-        ]
-        native_rules: Annotated[
-            t.Infra.SettingsPairs,
-            m.Field(
-                description="Native Markdown rule overrides for the execution tool."
-            ),
+            m.Field(description="Ordered rumdl rules and their options."),
         ]
         native_settings: Annotated[
             t.Infra.SettingsPairs,
@@ -638,7 +632,6 @@ class FlextInfraModelsDepsToolConfig(
         def _validate_rule_ids(self) -> Self:
             for table_name, names in (
                 ("rules", [name for name, _value in self.rules]),
-                ("native_rules", [name for name, _value in self.native_rules]),
                 ("extend-enable", list(self.extend_enable)),
             ):
                 invalid = sorted({
@@ -665,11 +658,7 @@ class FlextInfraModelsDepsToolConfig(
                 if table.split(".", 1)[0] in c.Infra.MARKDOWN_GENERATOR_OWNED_TABLES
             })
             duplicated = sorted({table for table in tables if tables.count(table) > 1})
-            disabled = {
-                name
-                for name, value in (*self.rules, *self.native_rules)
-                if value is False
-            }
+            disabled = {name for name, value in self.rules if value is False}
             contradictory = sorted(set(self.extend_enable) & disabled)
             if owned or duplicated or contradictory:
                 msg = (

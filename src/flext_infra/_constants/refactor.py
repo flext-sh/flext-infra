@@ -390,6 +390,11 @@ class FlextInfraConstantsRefactor:
     CODEMOD_PACKAGE_EXPORTS_UTILITY: ClassVar[str] = "exports"
     # Generated utility id of the project's facade-family private packages.
     CODEMOD_FACADE_FAMILY_PACKAGE_UTILITY: ClassVar[str] = "facade-family-package"
+    # The same packages spelled without their separator ('<root>_<family>'),
+    # a module that never exists.
+    CODEMOD_COLLAPSED_FACADE_FAMILY_PACKAGE_UTILITY: ClassVar[str] = (
+        "collapsed-facade-family-package"
+    )
     # Generated rule shape that rewires an inline type set to the constant
     # declaring it: 'type-set--<constant path>'.
     CODEMOD_TYPE_SET_SHAPE: ClassVar[str] = "type-set"

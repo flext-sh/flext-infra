@@ -239,10 +239,13 @@ Infra:
         # `rules` a strict allowlist; the fleet keeps rumdl's complete default
         # set and declares every intentional configuration below.
         default-enabled: true
-        # Opt-in rule activated on top of the default set. MD060 is the
-        # canonical table formatter; it is configured in native_rules because
-        # its aligned form is a rumdl-owned formatting surface.
+        # MD060 (aligned tables, repaired by `rumdl fmt`) is opt-in in rumdl.
         extend-enable: [ MD060 ]
+        # rumdl is the ONE Markdown engine: CLI (make fmt/fix/check) and editor
+        # (rvben.rumdl reads the generated .rumdl.toml for diagnostics and
+        # formatting). It implements every markdownlint rule (MD001-MD060)
+        # plus MD061+, so markdownlint is retired everywhere (codegen.yaml
+        # retires .markdownlintignore and silences the extension).
         rules:
         # Wave 1 (active): every rule here is either repaired by `rumdl fmt`
         # (`make fmt`) or was already enforced, so the policy lands together
@@ -253,6 +256,7 @@ Infra:
         - [ MD001, true ]
         - [ MD003, { style: atx } ]
         - [ MD004, { style: dash } ]
+        - [ MD007, { indent: 2 } ]
           # MD013 prose and code lengths are THE markdown line contract for
           # both rumdl surfaces: `rumdl check` (markdown gate, `make fix`) and
           # `rumdl fmt` (markdown-format gate, `make fmt`) read this one rule
@@ -275,11 +279,12 @@ Infra:
             # leniency as headings.
             code_block_line_length: 200
             tables: false
+            reflow: false
         - [ MD022, true ]
         - [ MD023, true ]
         - [ MD024, { siblings_only: true } ]
-        - [ MD025, { level: 1, front-matter-title: title } ]
-        # one_or_ordered (markdownlint default) accepts lazy `1. 1. 1.` and
+        - [ MD025, { level: 1, front_matter_title: title } ]
+        # one_or_ordered accepts lazy `1. 1. 1.` and
         # sequential numbering, consistent per list; `ordered` produced 3057
         # findings with no repair value (inventory 2026-11-04, flext-2vrgl).
         - [ MD029, { style: one_or_ordered } ]
@@ -295,12 +300,7 @@ Infra:
         - [ MD050, { style: asterisk } ]
         - [ MD051, false ]
         - [ MD055, { style: leading_and_trailing } ]
-        native_rules:
-        # rumdl-only options: markdownlint has no reflow and owns no aligned
-        # table formatter. Keeping both here makes the execution-only surface
-        # explicit instead of silently diverging from the editor policy.
         # MD057 (relative link targets) has no repair: wave 2 with MD051.
-        - [ MD013, { reflow: false } ]
         - [ MD057, false ]
         - [ MD060, { style: aligned } ]
         native_settings:

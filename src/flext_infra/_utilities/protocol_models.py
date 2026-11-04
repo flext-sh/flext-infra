@@ -3392,18 +3392,16 @@ class FlextInfraUtilitiesModelsProtocol:
                 and "._" not in statement.module
                 and not self._source_within_package(statement.module, package_name)
             )
-            for statement in tuple(statements):
-                if isinstance(statement, ast.If) and (
-                    (
-                        isinstance(statement.test, ast.Name)
-                        and statement.test.id == "TYPE_CHECKING"
-                    )
-                    or (
-                        isinstance(statement.test, ast.Attribute)
-                        and statement.test.attr == "TYPE_CHECKING"
-                    )
-                ):
-                    statements.extend(statement.body)
+            # A TYPE_CHECKING body is visited too, so its imports reach the
+            # projected annotations.
+            statements.extend(
+                nested
+                for statement in tuple(statements)
+                if isinstance(statement, ast.If)
+                and ast.unparse(statement.test).rpartition(".")[2] == "TYPE_CHECKING"
+                for nested in statement.body
+            )
+            for statement in statements:
                 if isinstance(statement, ast.Import):
                     names = [
                         alias

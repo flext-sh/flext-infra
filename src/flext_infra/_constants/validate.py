@@ -111,17 +111,12 @@ class FlextInfraConstantsSharedInfra:
     FOLLOW_SUPERPROJECT_BRANCH: ClassVar[str] = "."
     GITIGNORE: ClassVar[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: ClassVar[str] = ".pre-commit-config.yaml"
+    "Hook-config projection whose presence decides whether a checkout runs hooks."
     MARKDOWN_CONFIG_FILENAME: ClassVar[str] = ".rumdl.toml"
-    MARKDOWNLINT_IGNORE_FILENAME: ClassVar[str] = ".markdownlintignore"
-    "Generated markdown lint/format projections (SSOT: tooling.tools.markdown)."
+    "The one Markdown projection (SSOT: tooling.tools.markdown), read by rumdl."
     MARKDOWN_RULE_ID_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^MD\d{3}$")
     MARKDOWN_GENERATOR_OWNED_TABLES: ClassVar[frozenset[str]] = frozenset({"global"})
     "Native tables the renderer owns; a project declaration cannot replace them."
-    MARKDOWN_DOCUMENT_GLOB: ClassVar[str] = (
-        "**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}"
-    )
-    "Canonical Markdown document selection shared by rumdl and the editor."
-    "Hook-config projection whose presence decides whether a checkout runs hooks."
     SONARCLOUD_PROPERTIES_FILENAME: ClassVar[str] = ".sonarcloud.properties"
     "Generated SonarCloud automatic-analysis scope (SSOT: codegen.sonarcloud)."
     SONARCLOUD_ISSUE_IGNORE_KEY: ClassVar[str] = "sonar.issue.ignore.multicriteria"

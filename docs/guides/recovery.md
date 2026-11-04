@@ -97,14 +97,14 @@ Independent native field-schema checks include the declaring class's PEP 695
 type parameters in its lexical namespace. This preserves actual generic identities;
 it neither skips generic fields nor admits an unresolved annotation name.
 
-| Owner | Failure mechanism | Required correction |
-| --- | --- | --- |
-| Protocol source inventory | A top facade's MRO omits holders composed by nested namespaces | Authenticate the declaring source export and native owner identity |
-| Domain and aggregate projection | Existing sibling holders lose inherited contracts; flat re-publication adds conflicting ancestor bases | Preserve holder bodies and compose nearest native owners once |
-| Source import completion | Root and declaration-module imports bind the same facade twice | Authenticate their identity and retain one provider |
-| Native field-schema admission | A generic field's forward reference loses its lexical type parameters | Bind the actual class parameters before native schema verification; preserve unknown-name failures |
-| Native declaration retirement | Walking every qualifier treats an unrelated full attribute chain as a use of the retiring member | Resolve complete carrier chains while retaining dynamic-owner rejection |
-| Retirement resolution | Repeated lexical resolution re-enters native inference | Memoize only within the same captured module proof, then discard the cache |
+| Owner                           | Failure mechanism                                                                                      | Required correction                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Protocol source inventory       | A top facade's MRO omits holders composed by nested namespaces                                         | Authenticate the declaring source export and native owner identity                                 |
+| Domain and aggregate projection | Existing sibling holders lose inherited contracts; flat re-publication adds conflicting ancestor bases | Preserve holder bodies and compose nearest native owners once                                      |
+| Source import completion        | Root and declaration-module imports bind the same facade twice                                         | Authenticate their identity and retain one provider                                                |
+| Native field-schema admission   | A generic field's forward reference loses its lexical type parameters                                  | Bind the actual class parameters before native schema verification; preserve unknown-name failures |
+| Native declaration retirement   | Walking every qualifier treats an unrelated full attribute chain as a use of the retiring member       | Resolve complete carrier chains while retaining dynamic-owner rejection                            |
+| Retirement resolution           | Repeated lexical resolution re-enters native inference                                                 | Memoize only within the same captured module proof, then discard the cache                         |
 
 Acceptance requires positive and negative static witnesses, cold imports of the staged
 and published artifacts, and fixed-point generation. Compilation, a completed source

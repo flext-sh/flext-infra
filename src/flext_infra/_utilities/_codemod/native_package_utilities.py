@@ -315,9 +315,12 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
         The family directories come from the facade-family declarations, so a
         layer-zero singleton module (``pkg._settings``) is not a family package.
+        The same computation yields the collapsed spelling ``<root>_<family>``
+        (separator dropped), a module that never exists.
 
         Returns:
-            The ``facade-family-package`` utility rule of the project.
+            The ``facade-family-package`` and
+            ``collapsed-facade-family-package`` utility rules of the project.
 
         """
         del snapshot
@@ -336,6 +339,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
         return {
             c.Infra.CODEMOD_FACADE_FAMILY_PACKAGE_UTILITY: {
                 "regex": rf"^(?:{packages})\.(?:{families})(?:[.\s]|$)"
+            },
+            c.Infra.CODEMOD_COLLAPSED_FACADE_FAMILY_PACKAGE_UTILITY: {
+                "regex": rf"^(?:{packages})(?:{families})$"
             },
         }
 

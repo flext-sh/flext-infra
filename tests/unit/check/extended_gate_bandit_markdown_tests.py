@@ -516,10 +516,14 @@ class TestsFlextInfraBanditAndMarkdownGates:
             apply_fixes=True,
         )
 
+        draft = project_dir / "draft.md"
+        draft.write_text("# Draft   \n\n[gone](missing.md)\n", encoding="utf-8")
+
         result = FlextInfraGatesMarkdown(tmp_path).fix(project_dir, context)
 
         tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq="# Title\n")
+        tm.that(draft.read_text(encoding="utf-8").splitlines()[0], eq="# Draft")
         _ = u.Tests.check_gate_asserting(
             FlextInfraGatesMarkdown,
             tmp_path,

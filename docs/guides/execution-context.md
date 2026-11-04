@@ -4798,10 +4798,10 @@ members retain their own generation pass while remaining native import providers
 Dependent child initializers and the root family facade belong to that same
 candidate before runtime acceptance.
 
-| Infra declaration | FLEXT architectural declaration |
-| --- | --- |
-| This subproject's Workspace snapshot and analysis engine section. | [ADR-028 Decision 17](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) |
-| ADR backlink to this exact Infra section. | [ADR-028 bidirectional traceability](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) |
+| Infra declaration                                                 | FLEXT architectural declaration                                                                                                   |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| This subproject's Workspace snapshot and analysis engine section. | [ADR-028 Decision 17](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md)                |
+| ADR backlink to this exact Infra section.                         | [ADR-028 bidirectional traceability](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) |
 
 ### Single-Project Repository Snapshot and Memoized Facts (ADR-028)
 
