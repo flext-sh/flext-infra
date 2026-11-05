@@ -158,7 +158,39 @@ class FlextInfraModelsConfigWorkspace:
                 raise ValueError(msg)
             return values
 
-    class RepositoryDeltaSpec(CandidateDependenciesSpec):
+    class RepositoryParticipationSpec(CandidateDependenciesSpec):
+        """Own lifecycle participation in the fleet contracts and generators."""
+
+        beads_enabled: Annotated[
+            bool,
+            m.Field(description="Repository participates in the Beads contract"),
+        ] = True
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(description="Repository consumes the Gas City runtime contract"),
+        ] = True
+        ci_enabled: Annotated[
+            bool,
+            m.Field(description="Repository projects its canonical CI surface"),
+        ] = True
+        ci_matrix_auto_run: Annotated[
+            bool,
+            m.Field(description="Repository enables automatic CI matrix execution"),
+        ] = False
+        state: Annotated[
+            FlextInfraConstantsConfig.RepositoryState,
+            m.Field(description="Own lifecycle participation policy"),
+        ] = FlextInfraConstantsConfig.RepositoryState.ACTIVE
+        read_only: Annotated[
+            bool,
+            m.Field(description="Repository rejects generated mutations"),
+        ] = False
+        publishes_release: Annotated[
+            bool,
+            m.Field(description="Repository declares the generated release protocol"),
+        ] = False
+
+    class RepositoryDeltaSpec(RepositoryParticipationSpec):
         """Own repository differences; Git and project metadata own identity.
 
         The effective codegen configuration composes this declaration from the
@@ -206,22 +238,6 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraModelsConfigWorkspace.RefactorConfigSpec | None,
             m.Field(description="Own refactor file-selection declaration"),
         ] = None
-        beads_enabled: Annotated[
-            bool,
-            m.Field(description="Repository participates in the Beads contract"),
-        ] = True
-        gascity_enabled: Annotated[
-            bool,
-            m.Field(description="Repository consumes the Gas City runtime contract"),
-        ] = True
-        ci_enabled: Annotated[
-            bool,
-            m.Field(description="Repository projects its canonical CI surface"),
-        ] = True
-        ci_matrix_auto_run: Annotated[
-            bool,
-            m.Field(description="Repository enables automatic CI matrix execution"),
-        ] = False
         codegen: Annotated[
             FlextInfraConstantsConfig.CodegenKind,
             m.Field(description="Own canonical generation policy"),
@@ -237,18 +253,6 @@ class FlextInfraModelsConfigWorkspace:
                 ),
             ),
         ] = None
-        state: Annotated[
-            FlextInfraConstantsConfig.RepositoryState,
-            m.Field(description="Own lifecycle participation policy"),
-        ] = FlextInfraConstantsConfig.RepositoryState.ACTIVE
-        read_only: Annotated[
-            bool,
-            m.Field(description="Repository rejects generated mutations"),
-        ] = False
-        publishes_release: Annotated[
-            bool,
-            m.Field(description="Repository declares the generated release protocol"),
-        ] = False
         uv_link_mode: Annotated[
             Literal["clone", "copy", "hardlink", "symlink"] | None,
             m.Field(description="Own uv installation link-mode declaration"),

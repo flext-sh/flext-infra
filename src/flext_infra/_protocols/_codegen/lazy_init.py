@@ -69,8 +69,22 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
         @property
+        def class_members(self) -> Mapping[str, Sequence[str]]:
+            """Names each defined class body binds, in order."""
+            ...
+
+        @property
         def values(self) -> Mapping[str, str]:
             """Source text of each assigned top-level value."""
+            ...
+
+        @property
+        def runtime_imports(self) -> frozenset[str]:
+            """Structural member projected from the owning model.
+
+            Absolute top-level packages imported at module scope outside type-
+            checking guards.
+            """
             ...
 
     @runtime_checkable
@@ -99,6 +113,11 @@ class FlextInfraProtocolsCodegenLazyInit:
         @property
         def class_exports(self) -> dict[str, Sequence[str] | None]:
             """Class-level exports so far."""
+            ...
+
+        @property
+        def class_members(self) -> dict[str, Sequence[str]]:
+            """Class body bindings so far."""
             ...
 
         @property
@@ -231,6 +250,15 @@ class FlextInfraProtocolsCodegenLazyInit:
 
             Importable direct child packages recorded as metadata; their symbols are
             not reexported by an ancestor.
+            """
+            ...
+
+        @property
+        def deferred_members(self) -> Mapping[str, Sequence[str]]:
+            """Structural member projected from the owning model.
+
+            Member names of each class export whose module imports a declared
+            deferred distribution; it loads on first member use.
             """
             ...
 
@@ -412,6 +440,15 @@ class FlextInfraProtocolsCodegenLazyInit:
             """Ambiguous export ownership findings."""
             ...
 
+        @property
+        def deferred_imports(self) -> dict[Path, frozenset[str]]:
+            """Structural member projected from the owning model.
+
+            Import packages of each project's declared deferred distributions,
+            observed once per project.
+            """
+            ...
+
     @runtime_checkable
     class RopeProjectLayout(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
@@ -508,6 +545,15 @@ class FlextInfraProtocolsCodegenLazyInit:
         @property
         def lazy_export_mapping(self) -> t.NonEmptyStr:
             """Literal elected export-to-target installer argument."""
+            ...
+
+        @property
+        def deferred_members_mapping(self) -> str:
+            """Structural member projected from the owning model.
+
+            Line-prefixed ``deferred_members`` installer argument; empty when the
+            package defers no export.
+            """
             ...
 
     @runtime_checkable

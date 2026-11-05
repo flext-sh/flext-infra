@@ -175,7 +175,46 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
     @runtime_checkable
-    class RepositoryDeltaSpec(CandidateDependenciesSpec, Protocol):
+    class RepositoryParticipationSpec(CandidateDependenciesSpec, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def beads_enabled(self) -> bool:
+            """Repository participates in the Beads contract."""
+            ...
+
+        @property
+        def gascity_enabled(self) -> bool:
+            """Repository consumes the Gas City runtime contract."""
+            ...
+
+        @property
+        def ci_enabled(self) -> bool:
+            """Repository projects its canonical CI surface."""
+            ...
+
+        @property
+        def ci_matrix_auto_run(self) -> bool:
+            """Repository enables automatic CI matrix execution."""
+            ...
+
+        @property
+        def state(self) -> FlextInfraConstantsConfig.RepositoryState:
+            """Own lifecycle participation policy."""
+            ...
+
+        @property
+        def read_only(self) -> bool:
+            """Repository rejects generated mutations."""
+            ...
+
+        @property
+        def publishes_release(self) -> bool:
+            """Repository declares the generated release protocol."""
+            ...
+
+    @runtime_checkable
+    class RepositoryDeltaSpec(RepositoryParticipationSpec, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -228,26 +267,6 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
         @property
-        def beads_enabled(self) -> bool:
-            """Repository participates in the Beads contract."""
-            ...
-
-        @property
-        def gascity_enabled(self) -> bool:
-            """Repository consumes the Gas City runtime contract."""
-            ...
-
-        @property
-        def ci_enabled(self) -> bool:
-            """Repository projects its canonical CI surface."""
-            ...
-
-        @property
-        def ci_matrix_auto_run(self) -> bool:
-            """Repository enables automatic CI matrix execution."""
-            ...
-
-        @property
         def codegen(self) -> FlextInfraConstantsConfig.CodegenKind:
             """Own canonical generation policy."""
             ...
@@ -264,21 +283,6 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
         @property
-        def state(self) -> FlextInfraConstantsConfig.RepositoryState:
-            """Own lifecycle participation policy."""
-            ...
-
-        @property
-        def read_only(self) -> bool:
-            """Repository rejects generated mutations."""
-            ...
-
-        @property
-        def publishes_release(self) -> bool:
-            """Repository declares the generated release protocol."""
-            ...
-
-        @property
         def uv_link_mode(
             self,
         ) -> Literal["clone", "copy", "hardlink", "symlink"] | None:
@@ -288,6 +292,15 @@ class FlextInfraProtocolsConfigWorkspace:
         @property
         def duplication_trees(self) -> tuple[t.NonEmptyStr, ...]:
             """Own additional duplication-analysis trees."""
+            ...
+
+        @property
+        def deferred_distributions(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Own costly third-party distributions: a lazy export whose module imports
+            one at module scope loads on first member use.
+            """
             ...
 
         @property
