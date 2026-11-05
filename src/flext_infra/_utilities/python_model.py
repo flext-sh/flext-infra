@@ -324,9 +324,7 @@ class FlextInfraUtilitiesPythonModel:
         return tuple(bound)
 
     @classmethod
-    def _python_model_runtime_imports(
-        cls, body: Sequence[ast.stmt]
-    ) -> frozenset[str]:
+    def _python_model_runtime_imports(cls, body: Sequence[ast.stmt]) -> frozenset[str]:
         """Return the absolute top-level packages a scope imports at runtime.
 
         A type-checking guard's body never executes; its ``else`` branch does.

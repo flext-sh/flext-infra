@@ -37,9 +37,15 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
 
         """
         return (
-            root / c.Infra.DEFAULT_SRC_DIR / "flext_demo" / "_capability" / c.Infra.INIT_PY
+            root
+            / c.Infra.DEFAULT_SRC_DIR
+            / "flext_demo"
+            / "_capability"
+            / c.Infra.INIT_PY
         ).read_text(encoding=c.DEFAULT_ENCODING)
 
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
     def test_declared_distribution_defers_its_importing_export(
         self,
         deferred_capability_project: Path,
@@ -53,6 +59,8 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
         tm.that(self._initializer(root), has=self._DEFERRED_BLOCK)
 
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
     def test_undeclared_project_defers_nothing(
         self,
         deferred_capability_project: Path,
@@ -63,6 +71,8 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         tm.that(self._initializer(root), lacks="deferred_members")
 
     @staticmethod
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
     def test_declared_distribution_without_import_package_fails(
         deferred_capability_project: Path,
     ) -> None:

@@ -473,7 +473,8 @@ class FlextInfraUtilitiesLazyInitPlan:
             return known
         artifacts = FlextInfraUtilitiesProjectManagedArtifacts
         declared = frozenset(
-            artifacts.load_repository_declaration_inputs(
+            artifacts
+            .load_repository_declaration_inputs(
                 project_root, source_project=run.model.source_project
             )
             .unwrap()
@@ -541,7 +542,10 @@ class FlextInfraUtilitiesLazyInitPlan:
                 raise ValueError(msg)
             members.update(
                 dict.fromkeys(
-                    member
+                    # A class-private name lives in the class namespace mangled.
+                    f"_{name.lstrip('_')}{member}"
+                    if member.startswith("__")
+                    else member
                     for member in facts.class_members[name]
                     if not (member.startswith("__") and member.endswith("__"))
                 )
