@@ -290,11 +290,39 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(ini["minversion"], eq=expected["minversion"])
         tm.that(ini["flext_slow_timeout_seconds"], eq=str(policy.slow_timeout_seconds))
         tm.that(ini["python_classes"], eq=expected["python_classes"])
-        tm.that(ini["addopts"], eq=expected["addopts"])
+        tm.that(
+            ini["addopts"],
+            eq=[
+                *expected["addopts"],
+                *(
+                    f"--ignore={root}"
+                    for root in config.Infra.codegen.exclusions.scenario_data_roots
+                ),
+            ],
+        )
+        tm.that(ini, lacks="norecursedirs")
         tm.that(
             set(u.Tests.strings(ini["markers"])),
             eq={"custom: custom marker", *policy.standard_markers},
         )
+
+    def test_pytest_preserves_declared_norecursedirs(self, tmp_path: Path) -> None:
+        """Retain a project override without deriving it from analyzer ignores."""
+        tooling = config.Infra.tooling
+        configured = tooling.model_copy(
+            update={
+                "settings": {
+                    **tooling.settings,
+                    "pytest.ini_options": (
+                        *tooling.settings["pytest.ini_options"],
+                        ("norecursedirs", [".hypothesis", "custom"]),
+                    ),
+                },
+            },
+        )
+        payload, _ = self._applied(tmp_path, tool_config=configured)
+        ini = self._table(payload, "pytest", "ini_options")
+        tm.that(ini["norecursedirs"], eq=[".hypothesis", "custom"])
 
     @staticmethod
     def test_projected_slow_timeout_key_is_registered_by_the_loaded_plugin(
