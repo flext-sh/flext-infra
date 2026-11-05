@@ -274,5 +274,48 @@ class TestsFlextInfraUtilitiesToml:
         result: Sequence[str] = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
         return result
 
+    @staticmethod
+    def json_rows(payload: t.JsonMapping, key: str) -> list[t.JsonDict]:
+        """Narrow one payload sequence key into its mutable row mappings.
+
+        Model dumps reach ``model_validate`` fixtures as ``JsonValue`` trees;
+        a payload test that rewrites one declared row list narrows it once
+        here and works on typed mappings afterwards.
+
+        Returns:
+            The resulting ``list[t.JsonDict]``.
+
+        Raises:
+            TypeError: If payload key is not a sequence of row mappings.
+
+        """
+        rows = payload[key]
+        if not isinstance(rows, list):
+            msg = "payload key must hold a sequence of rows"
+            raise TypeError(msg)
+        return [u.json_dict_adapter().validate_python(row) for row in rows]
+
+    @staticmethod
+    def json_strings(value: t.JsonValue) -> tuple[str, ...]:
+        """Narrow one payload value into its declared string sequence.
+
+        Returns:
+            The resulting ``tuple[str, ...]``.
+
+        Raises:
+            TypeError: If payload value is not a sequence of strings.
+
+        """
+        if not isinstance(value, list):
+            msg = "payload value must hold a sequence of strings"
+            raise TypeError(msg)
+        strings: list[str] = []
+        for item in value:
+            if not isinstance(item, str):
+                msg = "payload sequence must hold strings"
+                raise TypeError(msg)
+            strings.append(item)
+        return tuple(strings)
+
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesToml"]
