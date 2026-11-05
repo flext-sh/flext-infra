@@ -1735,6 +1735,19 @@ class FlextInfraUtilitiesFacadeComponents:
             for scope in provider.get_scope().get_scopes()
         ):
             return False
+        # A namespace holder binding its part classes as attributes composes
+        # them exactly like nested declarations do. A class-body ``X = X``
+        # reads ``X`` from the module scope, where Rope's inference of the
+        # class-scope name does not look.
+        module_names = provider.get_module().get_scope().get_names()
+        if any(
+            isinstance(statement, ast.Assign)
+            and isinstance(statement.value, ast.Name)
+            and (bound := module_names.get(statement.value.id)) is not None
+            and types.py_class(bound.get_object())
+            for statement in provider.get_ast().body
+        ):
+            return False
         methods = tuple(
             scope.pyobject
             for scope in provider.get_scope().get_scopes()
@@ -1745,9 +1758,20 @@ class FlextInfraUtilitiesFacadeComponents:
             for method in methods
         ):
             return True
+        # Instance behavior inherited from an upstream facade the provider
+        # extends is that facade's, not a local instance surface.
+        project_root = Path(provider.get_module().get_resource().project.root.real_path)
+
+        def local(value: p.Infra.RopePyObject) -> bool:
+            resource = value.get_module().get_resource()
+            return resource is not None and Path(resource.real_path).is_relative_to(
+                project_root
+            )
+
         inherited_instance = any(
             types.py_function(value := attribute.get_object())
             and value.get_kind() not in {"classmethod", "staticmethod"}
+            and local(value)
             and not any(
                 (existing := base.get_attributes().get(name)) is not None
                 and existing.get_object() is value

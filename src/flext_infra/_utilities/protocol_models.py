@@ -2515,6 +2515,14 @@ class FlextInfraUtilitiesModelsProtocol:
                 declarations.extend(
                     ast.unparse(method) for method in self.source_methods(node, classes)
                 )
+                # A member named ``property`` rebinds the builtin for every later
+                # statement of the class body, so it is declared last.
+                declarations.sort(
+                    key=lambda declaration: declaration.startswith((
+                        "@property\ndef property(",
+                        "property:",
+                    ))
+                )
                 copy_base = self._source_copy_capability(
                     self._source_model_class(node, classes), destination, owner
                 )
@@ -2838,8 +2846,17 @@ class FlextInfraUtilitiesModelsProtocol:
                     fields[projection.declaration.target.id] = projection
             root_type = self.source_model_root_annotations.get(route)
             if root_type is not None:
+                # The root type is a base subscript, evaluated in the scope
+                # that encloses the model class.
                 root_structural = self._source_structural_annotation(
-                    root_type, tree, node, declarations
+                    root_type,
+                    tree,
+                    node,
+                    declarations,
+                    lexical=self
+                    ._source_model_class(node, declarations)
+                    .get_scope()
+                    .parent,
                 )
                 fields["root"] = _SourceFieldProjection(
                     declaration=ast.AnnAssign(
@@ -3340,8 +3357,13 @@ class FlextInfraUtilitiesModelsProtocol:
             tree: ast.Module,
             model: ast.ClassDef,
             classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            *,
+            lexical: p.Infra.RopeScope | None = None,
         ) -> ast.expr:
             """Project a source annotation into a covariant structural read contract.
+
+            ``lexical`` names the scope a model base expression is evaluated in
+            (the class enclosing the model), instead of the model's own body.
 
             The semantic projector already treats ``Annotated`` as its value
             type. Mirror that contract in the source bootstrap so Pydantic
@@ -3373,7 +3395,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 @override
                 def visit_Name(self, node: ast.Name) -> ast.AST:
                     protocol_route = self_owner._source_protocol_member(
-                        node.id, tree, model, classes
+                        node.id, tree, model, classes, scope=lexical
                     )
                     if protocol_route is None:
                         return node
@@ -3385,7 +3407,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 @override
                 def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
                     protocol_route = self_owner._source_protocol_member(
-                        ast.unparse(node), tree, model, classes
+                        ast.unparse(node), tree, model, classes, scope=lexical
                     )
                     if protocol_route is not None:
                         return ast.copy_location(
