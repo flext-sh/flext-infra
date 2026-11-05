@@ -65,15 +65,6 @@ above are not declared with `autouse=True`.
 ```python
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from flext_core import FlextSettings
 from flext_tests import FlextTestsSettings, tm
 

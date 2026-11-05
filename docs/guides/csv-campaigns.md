@@ -2,11 +2,11 @@
 
 <!-- TOC START -->
 
-- [Declarative Text Rules and Candidate Bootstrap (`make mod-text`)](#declarative-text-rules-and-candidate-bootstrap-make-mod-text)
-- [Semantic Identity Migrations (`ast-grep` and `Rope`)](#semantic-identity-migrations-ast-grep-and-rope)
-- [CSV Rename Campaign Circuit (`make mod`)](#csv-rename-campaign-circuit-make-mod)
+- [Declarative Text Rules and Candidate Bootstrap](#declarative-text-rules-and-candidate-bootstrap)
+- [Semantic Identity Migrations (ast-grep and Rope)](#semantic-identity-migrations-ast-grep-and-rope)
+- [CSV Rename Campaign Circuit (make mod)](#csv-rename-campaign-circuit-make-mod)
 - [Nested Payload Relocation](#nested-payload-relocation)
-- [Binding Campaigns and Definition Renames (`apply-renames`)](#binding-campaigns-and-definition-renames-apply-renames)
+- [Binding Campaigns and Definition Renames (apply-renames)](#binding-campaigns-and-definition-renames-apply-renames)
 - [Workspace Snapshot, Globs, and Transaction Acceptance](#workspace-snapshot-globs-and-transaction-acceptance)
 
 <!-- TOC END -->
