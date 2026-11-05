@@ -977,10 +977,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
             )
         )
         documents.update(
-            cls._codemod_letter_module_object_documents(
-                facade_packages,
-                tuple(sorted(name for name in facts.exports if "." not in name)),
-            )
+            cls._codemod_letter_module_object_documents(facade_packages, facts.exports)
         )
         return documents
 
@@ -1296,7 +1293,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
     @classmethod
     def _codemod_letter_module_object_documents(
-        cls, facade_packages: Sequence[str], exporting_roots: Sequence[str]
+        cls, facade_packages: Sequence[str], exports: Mapping[str, Sequence[str]]
     ) -> Mapping[str, t.JsonMapping]:
         """Read a published name bound by name, never through a package object.
 
@@ -1345,10 +1342,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     "kind": "attribute",
                     "all": [
                         {
-                            "has": {
-                                "field": "object",
-                                "kind": "identifier",
+                            "has": cls._codemod_module_object_receiver({
                                 "pattern": "$PACKAGE",
+                                "not": {"regex": r"\."},
                                 "any": [
                                     {"matches": c.Infra.CODEMOD_OWN_PACKAGE_UTILITY},
                                     {
@@ -1357,7 +1353,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                                         )
                                     },
                                 ],
-                            }
+                            })
                         },
                         {
                             "has": {
@@ -1372,6 +1368,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 "fix": "$NAME",
             }
         }
+        documents.update(cls._codemod_letter_alias_documents(utils, local))
         for package in facade_packages:
             alias = f"{shape}{separator}letter-module-alias{separator}{package}"
             documents[alias] = {
@@ -1389,11 +1386,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     "kind": "attribute",
                     "all": [
                         {
-                            "has": {
-                                "field": "object",
-                                "kind": "identifier",
-                                "regex": f"^{re.escape(package)}$",
-                            }
+                            "has": cls._codemod_module_object_receiver({
+                                "regex": f"^{re.escape(package)}$"
+                            })
                         },
                         {"has": {"field": "attribute", "pattern": "$NAME"}},
                         local,
@@ -1417,7 +1412,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 ),
                 "fix": f"$ANCHOR\nfrom {package} import $LETTER as $USED",
             }
-        for package in exporting_roots:
+        documents.update(cls._codemod_name_module_load_document(utils, local, exports))
+        for package in sorted(name for name in exports if "." not in name):
+            exact: t.JsonDict = {"regex": f"^{re.escape(package)}$"}
             published = f"{shape}{separator}name-module-object{separator}{package}"
             documents[published] = {
                 "id": published,
@@ -1447,11 +1444,105 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 "rule": {
                     "kind": "attribute",
                     "all": [
+                        {"has": cls._codemod_module_object_receiver(exact)},
+                        {"has": {"field": "attribute", "pattern": "$NAME"}},
+                        {"not": local},
+                    ],
+                },
+                "fix": "$NAME",
+            }
+            documents.update(cls._codemod_dead_module_load_document(package))
+        return documents
+
+    @staticmethod
+    def _codemod_module_load(package: t.JsonDict) -> t.JsonDict:
+        """A literal ``import_module("<package>")`` call loading a module object.
+
+        ``package`` tests the loaded module name, a root or a subpackage.
+
+        Returns:
+            The native rule of the call.
+
+        """
+        return {
+            "kind": "call",
+            "all": [
+                {
+                    "has": {
+                        "field": "function",
+                        "regex": r"^(?:importlib\.)?import_module$",
+                    }
+                },
+                {
+                    "has": {
+                        "field": "arguments",
+                        "has": {
+                            "kind": "string",
+                            "nthChild": 1,
+                            "has": {"kind": "string_content", **package},
+                        },
+                    }
+                },
+            ],
+        }
+
+    @classmethod
+    def _codemod_name_module_load_document(
+        cls,
+        utils: t.JsonMapping,
+        local: t.JsonDict,
+        exports: Mapping[str, Sequence[str]],
+    ) -> Mapping[str, t.JsonMapping]:
+        """Bind a name read through a dynamically loaded module below a root.
+
+        ``import_module("pkg.sub").Name`` and ``import_module("pkg.sub.mod")
+        .Name`` read ``Name``, which the header then binds from its declaring
+        package; a root itself belongs to ``name-module-object``. One document
+        covers every package: per-package documents would multiply the native
+        rule count.
+
+        Returns:
+            The one document keyed by id.
+
+        """
+        packages = sorted(exports)
+        roots = [name for name in packages if "." not in name]
+        alternatives = "|".join(map(re.escape, packages))
+        rule_id = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR.join((
+            c.Infra.CODEMOD_IMPORT_HEADER_SHAPE,
+            "name-module-load",
+        ))
+        names = sorted({name for package in packages for name in exports[package]})
+        return {
+            rule_id: {
+                "id": rule_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": (
+                    "`$NAME` read through the dynamically loaded `$PACKAGE` object: "
+                    "import it by name."
+                ),
+                "ignores": [f"**/{c.Infra.INIT_PY}"],
+                "utils": dict(utils),
+                "constraints": {
+                    "NAME": {
+                        "all": [
+                            cls.codemod_exact_names_rule(names),
+                            {"not": {"regex": "^[a-z]$"}},
+                            {"not": {"regex": "^__.+__$"}},
+                        ]
+                    }
+                },
+                "rule": {
+                    "kind": "attribute",
+                    "all": [
                         {
                             "has": {
                                 "field": "object",
-                                "kind": "identifier",
-                                "regex": f"^{re.escape(package)}$",
+                                **cls._codemod_module_load({
+                                    "pattern": "$PACKAGE",
+                                    "regex": rf"^(?:{alternatives})(?:\.\w+)?$",
+                                    "not": cls.codemod_exact_names_rule(roots),
+                                }),
                             }
                         },
                         {"has": {"field": "attribute", "pattern": "$NAME"}},
@@ -1460,7 +1551,190 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 },
                 "fix": "$NAME",
             }
-        return documents
+        }
+
+    @classmethod
+    def _codemod_module_object_receiver(cls, package: t.JsonDict) -> t.JsonDict:
+        """The ``object`` of an attribute read through a package module object.
+
+        ``pkg.X``, ``import_module("pkg").X`` and ``root.X`` under an enclosing
+        ``root = import_module("pkg")`` all read ``X`` through the package
+        object; ``package`` tests the package name.
+
+        Returns:
+            The native ``has`` rule of the attribute's object.
+
+        """
+        load = cls._codemod_module_load(package)
+        return {
+            "field": "object",
+            "any": [
+                {"kind": "identifier", **package},
+                load,
+                {
+                    "kind": "identifier",
+                    "pattern": "$ROOT",
+                    **cls._codemod_enclosing_scope(cls._codemod_name_alias(load)),
+                },
+            ],
+        }
+
+    @staticmethod
+    def _codemod_name_alias(right: t.JsonDict) -> t.JsonDict:
+        """``$ROOT = <right>``: a local name bound to another object.
+
+        Returns:
+            The native rule of the assignment.
+
+        """
+        return {
+            "kind": "assignment",
+            "all": [
+                {"has": {"field": "left", "kind": "identifier", "pattern": "$ROOT"}},
+                {"has": {"field": "right", **right}},
+            ],
+        }
+
+    @classmethod
+    def _codemod_unread_alias(cls, right: t.JsonDict) -> t.JsonDict:
+        """A statement ``$ROOT = <right>`` whose name nothing reads afterwards.
+
+        Returns:
+            The native rule of the statement's contents.
+
+        """
+        return {
+            "has": cls._codemod_name_alias(right),
+            "not": cls._codemod_enclosing_scope({
+                "kind": "identifier",
+                "pattern": "$ROOT",
+                "not": {"inside": {"kind": "assignment", "field": "left"}},
+            }),
+        }
+
+    @classmethod
+    def _codemod_letter_alias_documents(
+        cls, utils: t.JsonMapping, local: t.JsonDict
+    ) -> Mapping[str, t.JsonMapping]:
+        """Read a facade letter by name, never through a local alias of it.
+
+        ``models = m`` followed by ``models.Tests.X`` reads ``m.Tests.X``, and
+        the alias, once unread, is dropped. Only a letter the module binds by
+        import qualifies; a locally bound one-letter name is no facade.
+
+        Returns:
+            The read and removal documents keyed by id.
+
+        """
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        shape = c.Infra.CODEMOD_IMPORT_HEADER_SHAPE
+        letter: t.JsonDict = {
+            "kind": "identifier",
+            "pattern": "$NAME",
+            "regex": "^[a-z]$",
+        }
+        ignores = [f"**/{c.Infra.INIT_PY}"]
+        read = f"{shape}{separator}letter-local-alias"
+        unread = f"{shape}{separator}dead-letter-alias"
+        return {
+            read: {
+                "id": read,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": (
+                    "Letter `$NAME` read through its local alias `$ROOT`: read "
+                    "the letter by name."
+                ),
+                "ignores": ignores,
+                "utils": dict(utils),
+                "rule": {
+                    "kind": "attribute",
+                    "all": [
+                        {
+                            "has": {
+                                "field": "object",
+                                "kind": "identifier",
+                                "pattern": "$ROOT",
+                                **cls._codemod_enclosing_scope(
+                                    cls._codemod_name_alias(letter)
+                                ),
+                            }
+                        },
+                        {"has": {"field": "attribute", "pattern": "$ATTR"}},
+                        {"not": local},
+                    ],
+                },
+                "fix": "$NAME.$ATTR",
+            },
+            unread: {
+                "id": unread,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": "Local alias `$ROOT` of the letter `$NAME` is never read.",
+                "ignores": ignores,
+                "rule": {
+                    "kind": "expression_statement",
+                    "inside": {"kind": "function_definition", "stopBy": "end"},
+                    **cls._codemod_unread_alias(letter),
+                },
+                "fix": "",
+            },
+        }
+
+    @staticmethod
+    def _codemod_enclosing_scope(descendant: t.JsonDict) -> t.JsonDict:
+        """Inside a function or module holding ``descendant`` at any depth.
+
+        Returns:
+            The native ``inside`` rule.
+
+        """
+        return {
+            "inside": {
+                "stopBy": "end",
+                "any": [{"kind": "module"}, {"kind": "function_definition"}],
+                "has": {"stopBy": "end", **descendant},
+            }
+        }
+
+    @classmethod
+    def _codemod_dead_module_load_document(
+        cls, package: str
+    ) -> Mapping[str, t.JsonMapping]:
+        """Drop a dynamic load of ``package`` inside itself that nothing reads.
+
+        Once every read through the loaded object binds its name, the bare
+        ``import_module("pkg")`` statement and an unread ``root = ...`` alias
+        are no-ops: a module of ``pkg`` runs only after ``pkg`` is imported.
+
+        Returns:
+            The one removal document keyed by id.
+
+        """
+        rule_id = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR.join((
+            c.Infra.CODEMOD_IMPORT_HEADER_SHAPE,
+            "dead-module-load",
+            package,
+        ))
+        load = cls._codemod_module_load({"regex": f"^{re.escape(package)}$"})
+        return {
+            rule_id: {
+                "id": rule_id,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": (
+                    f"`{package}` is loaded dynamically inside itself and the "
+                    "object is never read."
+                ),
+                "metadata": {"enforce": ["ENFORCE-003"]},
+                "files": [f"**/{package}/**/*.py"],
+                "rule": {
+                    "kind": "expression_statement",
+                    "any": [
+                        {"all": [{"has": load}, {"not": {"has": {"nthChild": 2}}}]},
+                        cls._codemod_unread_alias(load),
+                    ],
+                },
+                "fix": "",
+            }
+        }
 
     @classmethod
     def _codemod_header_rule(cls, names: Sequence[str]) -> t.JsonDict:
