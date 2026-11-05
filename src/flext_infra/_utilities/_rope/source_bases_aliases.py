@@ -16,6 +16,7 @@ from flext_core import build_lazy_import_map
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
@@ -95,17 +96,21 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         if key in cls._export_bindings_memo:
             return dict(cls._export_bindings_memo[key])
         aliases: dict[str, m.Infra.SourceClassReference] = {}
+        owners = ("flext_core", "flext_core.lazy")
+        installer = "install_lazy_exports"
+        # A Rope scope evaluates every structural attribute of its module, so a
+        # candidate initializer is read semantically only after its own import
+        # table binds the installer: one that never imports it declares no
+        # native lazy export, and a third-party package is never evaluated.
+        if not cls._imports_installer(project, parsed, owners, installer):
+            cls._export_bindings_memo[key] = aliases
+            return {}
         for node in ast.walk(parsed.get_ast()):
             if not isinstance(node, ast.Call):
                 continue
             scope = parsed.get_scope().get_inner_scope_for_line(node.lineno)
             if scope.get_kind() != c.Infra.RopeScopeKind.MODULE or not (
-                cls._native_alias_callable(
-                    node.func,
-                    scope,
-                    ("flext_core", "flext_core.lazy"),
-                    "install_lazy_exports",
-                )
+                cls._native_alias_callable(node.func, scope, owners, installer)
             ):
                 continue
             mapping = cls._call_alias_source(source, node, parsed)
@@ -121,6 +126,33 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                 )
         cls._export_bindings_memo[key] = aliases
         return dict(aliases)
+
+    @staticmethod
+    def _imports_installer(
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+        owners: Sequence[str],
+        installer: str,
+    ) -> bool:
+        """Prove from the module's import statements alone that it binds the installer.
+
+        Returns:
+            Whether an absolute from-import binds ``installer`` from an owner.
+
+        """
+        imports = FlextInfraUtilitiesRopeImports
+        return any(
+            imports.import_statement_module_name(statement) in owners
+            and any(
+                name == installer
+                for name, _ in imports.import_statement_names_and_aliases(statement)
+            )
+            for statement in imports.import_statements(
+                FlextInfraUtilitiesRopeRuntimeModules.module_imports_for_pymodule(
+                    project, module
+                )
+            )
+        )
 
     @staticmethod
     def _parsed_initializer(

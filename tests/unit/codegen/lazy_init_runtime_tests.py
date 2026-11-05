@@ -294,6 +294,36 @@ class TestsFlextInfraLazyInitRuntime:
             )
 
     @staticmethod
+    def test_third_party_initializer_elects_no_provider_without_evaluation(
+        fixture_tree: p.Tests.FixtureTree,
+    ) -> None:
+        """An initializer that never imports the installer is not read semantically.
+
+        Provider election visits every runtime dependency; a third-party module
+        whose body Rope cannot evaluate must still elect no lazy export.
+        """
+        project = fixture_tree("third-party-initializer")
+        initializer = project / "vendored" / c.Infra.INIT_PY
+        source = initializer.read_text(encoding=c.Infra.ENCODING_DEFAULT)
+        with infra.rope_workspace(project) as workspace:
+            module = u.Infra.resolve_pymodule(
+                workspace.rope_project,
+                workspace.rope_project.get_file(
+                    initializer.relative_to(project).as_posix()
+                ),
+            )
+            tm.that(
+                u.Infra.lazy_export_bindings(
+                    "vendored",
+                    initializer,
+                    source,
+                    project=workspace.rope_project,
+                    pymodule=module,
+                ),
+                eq={},
+            )
+
+    @staticmethod
     @pytest.mark.parametrize(
         ("source", "expected"),
         [
