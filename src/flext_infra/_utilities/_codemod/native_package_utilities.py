@@ -291,13 +291,19 @@ class FlextInfraUtilitiesCodemodNativePackage:
     def codemod_package_export_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> Mapping[str, t.JsonMapping]:
-        """One ``exports--<dotted package>`` utility per package of the project.
+        """One ``exports--<dotted package>`` utility per package the project reads.
+
+        The utilities come from the same workspace facts the import-header
+        renderer receives: the project's own packages plus each declared FLEXT
+        provider. ``name-module-object--<provider>`` then rewrites a provider
+        read such as ``flext_core.FlextLazyMember`` to the bare name, which
+        the header binds from that provider.
 
         Returns:
             The package export utilities rendered from the export facts.
 
         """
-        facts = cls.codemod_package_export_facts(snapshot, project)
+        facts = cls.codemod_workspace_export_facts(snapshot, project)
         return {
             f"{c.Infra.CODEMOD_PACKAGE_EXPORTS_UTILITY}"
             f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}": (
