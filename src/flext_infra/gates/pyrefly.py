@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, p, u
+from flext_infra import c, config, m, p, u
 from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
@@ -197,6 +197,17 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
             ),
             issues,
         )
+
+    @staticmethod
+    @override
+    def _findings_exit_codes() -> tuple[int, ...]:
+        """Exit statuses with which Pyrefly reports its findings.
+
+        Returns:
+            The findings statuses declared for Pyrefly in the tooling config.
+
+        """
+        return config.Infra.tooling.tools.pyrefly.findings_exit_codes
 
 
 __all__: list[str] = ["FlextInfraGatesPyrefly"]
