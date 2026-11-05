@@ -13,8 +13,23 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import api, d, e, h, r, td, tf, tk, tm, x
+    from flext_tests import (
+        api,
+        config,
+        d,
+        e,
+        h,
+        install_local_packages,
+        r,
+        settings,
+        td,
+        tf,
+        tk,
+        tm,
+        x,
+    )
 
+    from flext_infra import cli, infra, main
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
     from tests.constants_scan import TestsFlextInfraConstantsScanMixin
@@ -68,13 +83,19 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesWorkspaceFixtureMixin",
     "api",
     "c",
+    "cli",
+    "config",
     "d",
     "e",
     "h",
+    "infra",
+    "install_local_packages",
     "m",
+    "main",
     "p",
     "r",
     "s",
+    "settings",
     "t",
     "td",
     "tf",
@@ -111,13 +132,19 @@ install_lazy_exports(
         "TestsFlextInfraUtilitiesWorkspaceFixtureMixin": ".utilities_fixture_workspace",
         "api": "flext_tests",
         "c": ".constants",
+        "cli": "flext_infra",
+        "config": "flext_tests",
         "d": "flext_tests",
         "e": "flext_tests",
         "h": "flext_tests",
+        "infra": "flext_infra",
+        "install_local_packages": "flext_tests",
         "m": ".models",
+        "main": "flext_infra",
         "p": ".protocols",
         "r": "flext_tests",
         "s": ".base",
+        "settings": "flext_tests",
         "t": ".typings",
         "td": "flext_tests",
         "tf": "flext_tests",

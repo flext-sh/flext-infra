@@ -158,6 +158,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         changes = cls.normalized_codegen_changes(plans)
         if changes.failure:
             return result_type.from_failure(changes)
+        cls._trace_codegen_destinations(changes.value)
         published = u.Cli.publish_file_changes(
             changes.value,
             lock_path=lock.value,
@@ -181,6 +182,22 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if any(path.name == c.PYPROJECT_FILENAME for path in published.value):
             u.read_project_document_cached.cache_clear()
         return published
+
+    @staticmethod
+    def _trace_codegen_destinations(
+        changes: t.SequenceOf[m.Cli.FileChange],
+    ) -> None:
+        """Trace overlapping publication plans without changing their effects."""
+        destinations = Counter(change.path for change in changes)
+        for index, change in enumerate(changes):
+            if destinations[change.path] > 1:
+                content_changed = change.desired_content != change.before.content
+                u.Cli.debug(
+                    f"codegen publication: target={change.path} "
+                    f"plan={index} occurrences={destinations[change.path]} "
+                    f"content_changed={content_changed} "
+                    f"mode_changed={change.desired_mode != change.before.mode}"
+                )
 
     @staticmethod
     def _prune_emptied_directories(

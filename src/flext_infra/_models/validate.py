@@ -289,6 +289,8 @@ class FlextInfraModelsCore:
         from JSON strings; JSON serialization still publishes its string value.
         """
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
         execution_mode: c.Infra.PytestExecutionMode = m.Field(
             description="Canonical test operation for this report directory",
         )

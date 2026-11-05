@@ -11,7 +11,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -320,6 +322,146 @@ class TestsFlextInfraMiseToolchainProof:
         keys = config.Infra.codegen.toolchain.tool_keys.values()
 
         tm.that([key for key in keys if key.startswith("npm:")], eq=[])
+
+    @classmethod
+    def _native_uv_graph(cls, root: Path) -> t.JsonDict:
+        """Resolve a dependency graph through the installed native UV executable.
+
+        Returns:
+            A Mise lock referencing the real, offline-resolved sidecar.
+
+        """
+        directory = root / "sidecars" / "environment"
+        directory.mkdir(parents=True)
+        (directory / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "native-graph-proof"\nversion = "1.0.0"\n'
+            'requires-python = ">=3.13"\ndependencies = []\n',
+            encoding="utf-8",
+        )
+        uv = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, cls._repository_root()))
+        resolved = tm.ok(
+            u.Cli.run_raw(
+                (
+                    str(uv),
+                    "lock",
+                    "--offline",
+                    "--no-config",
+                    "--no-python-downloads",
+                    "--python",
+                    sys.executable,
+                    "--project",
+                    str(directory),
+                ),
+                cwd=directory,
+                timeout=c.Infra.TIMEOUT_SHORT,
+            )
+        )
+        tm.ok(u.Cli.process_succeeded(resolved.outcome))
+        digest = hashlib.sha256(
+            (directory / c.Infra.UV_LOCK_FILENAME).read_bytes()
+        ).hexdigest()
+        reference: t.JsonDict = {
+            "path": str(directory.relative_to(root)),
+            "digest": f"sha256:{digest}",
+        }
+        locked: t.JsonDict = {"version": cls._native_version(), "uv": reference}
+        versions: list[t.JsonValue] = [locked]
+        tools: t.JsonDict = {cls.TOOL: versions}
+        return {"tools": tools}
+
+    @pytest.mark.parametrize("newline", ["\n", "\r\n"])
+    def test_native_uv_graph_identity_uses_the_portable_digest(
+        self, tmp_path: Path, newline: str
+    ) -> None:
+        """An authentic graph proves a tool without per-platform asset checksums."""
+        lock = self._native_uv_graph(tmp_path)
+        graph = tmp_path / "sidecars" / "environment" / c.Infra.UV_LOCK_FILENAME
+        original = graph.read_text(encoding="utf-8")
+        graph.write_bytes(original.replace("\n", newline).encode("utf-8"))
+
+        identity = tm.ok(
+            FlextInfraCodegenMiseToolchainProof.lock_identity(
+                self._entry(),
+                lock,
+                tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform()),
+                repository_root=tmp_path,
+            )
+        )
+
+        tm.that(identity[0], eq=self._native_version())
+        tm.that(
+            identity[1],
+            eq=f"sha256:{hashlib.sha256(original.encode('utf-8')).hexdigest()}",
+        )
+
+    @pytest.mark.parametrize(
+        "filename", [c.PYPROJECT_FILENAME, c.Infra.UV_LOCK_FILENAME]
+    )
+    def test_native_uv_graph_requires_both_native_inputs(
+        self, tmp_path: Path, filename: str
+    ) -> None:
+        """A missing sidecar input fails before any installation proof."""
+        lock = self._native_uv_graph(tmp_path)
+        (tmp_path / "sidecars" / "environment" / filename).unlink()
+
+        result = FlextInfraCodegenMiseToolchainProof.lock_identity(
+            self._entry(),
+            lock,
+            tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform()),
+            repository_root=tmp_path,
+        )
+
+        tm.that(tm.fail(result), has=filename)
+
+    def test_native_uv_graph_rejects_edited_bytes(self, tmp_path: Path) -> None:
+        """Even syntactically valid edits cannot retain the previous graph identity."""
+        lock = self._native_uv_graph(tmp_path)
+        graph = tmp_path / "sidecars" / "environment" / c.Infra.UV_LOCK_FILENAME
+        graph.write_text(
+            graph.read_text(encoding="utf-8") + "\n# edited\n", encoding="utf-8"
+        )
+
+        result = FlextInfraCodegenMiseToolchainProof.lock_identity(
+            self._entry(),
+            lock,
+            tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform()),
+            repository_root=tmp_path,
+        )
+
+        tm.that(tm.fail(result), has="digest mismatch")
+
+    def test_native_uv_graph_requires_its_repository_context(
+        self, tmp_path: Path
+    ) -> None:
+        """Relative graph pointers cannot be interpreted against an implicit cwd."""
+        result = FlextInfraCodegenMiseToolchainProof.lock_identity(
+            self._entry(),
+            self._native_uv_graph(tmp_path),
+            tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform()),
+        )
+
+        tm.that(tm.fail(result), has="requires its repository root")
+
+    def test_asset_checksum_proof_does_not_consume_uv_sidecars(
+        self, tmp_path: Path
+    ) -> None:
+        """Traditional assets retain platform checksums even with a graph nearby."""
+        directory = tmp_path / "sidecars" / "environment"
+        directory.mkdir(parents=True)
+        (directory / c.Infra.UV_LOCK_FILENAME).write_text(
+            "invalid native graph\n", encoding="utf-8"
+        )
+
+        identity = tm.ok(
+            FlextInfraCodegenMiseToolchainProof.lock_identity(
+                self._entry(),
+                self._lock(),
+                tm.ok(FlextInfraCodegenMiseToolchainProof.current_platform()),
+                repository_root=tmp_path,
+            )
+        )
+
+        tm.that(identity, eq=(self._native_version(), self.CHECKSUM))
 
     @staticmethod
     def test_generation_retires_the_prettier_projections(tmp_path: Path) -> None:

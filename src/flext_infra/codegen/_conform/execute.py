@@ -276,7 +276,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         """
         result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
         owned = tuple(
-            repository.name
+            repository.path.as_posix()
             for repository in plan.repositories
             if repository.path == Path()
         )

@@ -57,7 +57,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         cls._stdlib_backing_cache[target] = backing or ""
         return backing
 
-    _stdlib_backing_cache: t.StrDict | None = None
+    _stdlib_backing_cache: ClassVar[t.StrDict | None] = None
     _export_bindings_memo: ClassVar[
         dict[tuple[str, str, str], t.MappingKV[str, m.Infra.SourceClassReference]]
     ] = {}

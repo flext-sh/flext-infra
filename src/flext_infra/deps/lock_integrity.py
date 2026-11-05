@@ -166,7 +166,9 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         ).flat_map(
             lambda preview: u.Cli.toml_read_json(
                 runtime_root / c.Infra.MISE_LOCK_FILENAME,
-            ).flat_map(lambda lock: cls._selected_mise_tools(preview, lock)),
+            ).flat_map(
+                lambda lock: cls._selected_mise_tools(preview, lock, runtime_root)
+            ),
         )
 
     @classmethod
@@ -174,6 +176,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         cls,
         preview: str,
         lock: t.JsonMapping,
+        runtime_root: Path,
     ) -> p.Result[t.StrSequence]:
         """Merge the previewed version changes with the platform gaps.
 
@@ -184,7 +187,7 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         changes = u.type_adapter(tuple[m.Infra.MiseLockChange, ...]).validate_json(
             preview,
         )
-        return cls._incomplete_mise_tools(lock).map(
+        return cls._incomplete_mise_tools(lock, runtime_root).map(
             lambda incomplete: tuple(
                 dict.fromkeys((*(change.name for change in changes), *incomplete)),
             ),
@@ -217,7 +220,54 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
         ).map(lambda _output: True)
 
     @staticmethod
-    def _incomplete_mise_tools(lock: t.JsonMapping) -> p.Result[t.StrSequence]:
+    def native_uv_identity(
+        locked: t.JsonMapping,
+        runtime_root: Path | None,
+    ) -> p.Result[str]:
+        """Verify the portable native graph, whose digest replaces platform assets.
+
+        Mise v2026.10.3 stores a UV graph as ``uv = {path, digest}``.
+        The directory contains both native inputs; its digest authenticates the
+        LF-normalized ``uv.lock``. Installation remains Mise's responsibility.
+
+        Returns:
+            The verified graph digest, or the first missing/corrupt input.
+
+        """
+        if runtime_root is None:
+            return r[str].fail(
+                "native dependency graph proof requires its repository root",
+            )
+        reference = u.type_adapter(m.Infra.MiseNativeUvLockReference).validate_python(
+            locked["uv"],
+        )
+        directory = runtime_root / reference.path
+        project = u.Cli.toml_read_json(directory / c.PYPROJECT_FILENAME)
+        if project.failure:
+            return r[str].from_failure(project)
+        lock_path = directory / c.Infra.UV_LOCK_FILENAME
+        graph = u.Cli.toml_read_json(lock_path)
+        if graph.failure:
+            return r[str].from_failure(graph)
+        u.type_adapter(m.Infra.LockedEnvironment).validate_python(graph.value)
+        text = u.Cli.files_read_text(lock_path)
+        if text.failure:
+            return r[str].from_failure(text)
+        normalized = text.value.replace("\r\n", "\n")
+        actual = f"sha256:{u.Cli.sha256_content(normalized)}"
+        if actual != reference.digest:
+            return r[str].fail(
+                f"{lock_path}: native dependency graph digest mismatch: "
+                f"expected {reference.digest}, measured {actual}",
+            )
+        return r[str].ok(actual)
+
+    @classmethod
+    def _incomplete_mise_tools(
+        cls,
+        lock: t.JsonMapping,
+        runtime_root: Path,
+    ) -> p.Result[t.StrSequence]:
         """Name every locked tool lacking a table for a declared platform.
 
         Returns:
@@ -233,19 +283,23 @@ class FlextInfraLockIntegrityVerifier(FlextInfraServiceBase[bool]):
             c.Infra.MISE_LOCK_PLATFORM_KEY.format(platform=platform)
             for platform in config.Infra.codegen.toolchain.mise_lockfile_platforms
         )
-        return r[t.StrSequence].ok(
-            tuple(
-                name
-                for name, versions in locked.items()
-                if isinstance(versions, Sequence)
-                and not isinstance(versions, str)
-                and any(
-                    not isinstance(version, Mapping) or key not in version
-                    for version in versions
-                    for key in platforms
+        incomplete: list[str] = []
+        for name, versions in locked.items():
+            if not isinstance(versions, Sequence) or isinstance(versions, str):
+                return r[t.StrSequence].fail(
+                    f"{c.Infra.MISE_LOCK_FILENAME}: invalid version tables for {name}",
                 )
-            )
-        )
+            for version in versions:
+                if isinstance(version, Mapping) and "uv" in version:
+                    identity = cls.native_uv_identity(version, runtime_root)
+                    if identity.failure:
+                        return r[t.StrSequence].from_failure(identity)
+                elif not isinstance(version, Mapping) or any(
+                    key not in version for key in platforms
+                ):
+                    incomplete.append(name)
+                    break
+        return r[t.StrSequence].ok(tuple(incomplete))
 
     @staticmethod
     def _native_uv(

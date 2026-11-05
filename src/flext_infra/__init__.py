@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_cli import d, e, h, r, x
+    from flext_cli import cli, d, e, h, main, r, x
 
     from flext_infra.__version__ import (
         FlextInfraVersion,
@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from flext_infra._preview_wiring import FlextInfraPreviewWiring
     from flext_infra._pytest_clock import FlextInfraPytestClock
     from flext_infra._pytest_collection import FlextInfraPytestCollection
+    from flext_infra._pytest_entry import FlextInfraPytestEntry
     from flext_infra._pytest_profile_child import FlextInfraPytestProfileChild
     from flext_infra._settings import FlextInfraSettings, settings
     from flext_infra.api import FlextInfra, infra
@@ -69,6 +70,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsBase",
     "FlextInfraPytestClock",
     "FlextInfraPytestCollection",
+    "FlextInfraPytestEntry",
     "FlextInfraPytestProfile",
     "FlextInfraPytestProfileChild",
     "FlextInfraServiceBase",
@@ -86,12 +88,14 @@ __all__: tuple[str, ...] = (
     "__version__",
     "__version_info__",
     "c",
+    "cli",
     "config",
     "d",
     "e",
     "h",
     "infra",
     "m",
+    "main",
     "p",
     "r",
     "s",
@@ -122,6 +126,7 @@ install_lazy_exports(
         "FlextInfraProtocolsBase": ".protocols",
         "FlextInfraPytestClock": "._pytest_clock",
         "FlextInfraPytestCollection": "._pytest_collection",
+        "FlextInfraPytestEntry": "._pytest_entry",
         "FlextInfraPytestProfile": ".pytest_profile",
         "FlextInfraPytestProfileChild": "._pytest_profile_child",
         "FlextInfraServiceBase": ".base",
@@ -138,12 +143,14 @@ install_lazy_exports(
         "__url__": ".__version__",
         "__version_info__": ".__version__",
         "c": ".constants",
+        "cli": "flext_cli",
         "config": "._config",
         "d": "flext_cli",
         "e": "flext_cli",
         "h": "flext_cli",
         "infra": ".api",
         "m": ".models",
+        "main": "flext_cli",
         "p": ".protocols",
         "r": "flext_cli",
         "s": ".base",

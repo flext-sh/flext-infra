@@ -426,6 +426,21 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Selectors already proven before this entry."),
         ]
 
+    class MiseNativeUvLockReference(m.FrozenModel):
+        """Mise's portable UV dependency graph pointer in a native lock."""
+
+        path: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Sidecar directory relative to its native lockfile."),
+        ]
+        digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[0-9a-f]{64}$",
+                description="SHA-256 identity of the sidecar's LF-normalized uv.lock.",
+            ),
+        ]
+
     class MiseLockChange(m.FrozenModel):
         """One locked-version change native ``mise lock --dry-run --json`` reports."""
 

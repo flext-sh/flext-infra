@@ -33,6 +33,7 @@ from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen import FlextInfraCodegenExecutionBase
+from flext_infra.deps import FlextInfraLockIntegrityVerifier
 
 
 class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
@@ -93,6 +94,8 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         entry: m.Infra.MiseToolEntry,
         lock: t.JsonMapping,
         platform_name: str,
+        *,
+        repository_root: Path | None = None,
     ) -> p.Result[t.StrPair]:
         """Step 1: the locked version and checksum of one declared tool.
 
@@ -120,6 +123,11 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
                 f"{entry.name}: mise.lock pins {version!r}, the toolchain requests "
                 f"{requested}; run make upg",
             )
+        if "uv" in locked.value:
+            return FlextInfraLockIntegrityVerifier.native_uv_identity(
+                locked.value,
+                repository_root,
+            ).map(lambda digest: (version, digest))
         if not entry.lock_checksum:
             return r[t.StrPair].ok((version, ""))
         section = locked.value.get(
@@ -271,6 +279,8 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
         lock: t.JsonMapping,
         platform_name: str,
         location: t.Pair[Path, Path],
+        *,
+        repository_root: Path | None = None,
     ) -> p.Result[str]:
         """Prove one tool from its resolved (install root, binary), in order.
 
@@ -278,7 +288,9 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             The receipt line, or the first defect.
 
         """
-        identity = cls.lock_identity(entry, lock, platform_name)
+        identity = cls.lock_identity(
+            entry, lock, platform_name, repository_root=repository_root
+        )
         if identity.failure:
             return r[str].from_failure(identity)
         version, checksum = identity.value
@@ -325,7 +337,12 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
 
         """
         entry = options.entry
-        identity = self.lock_identity(entry, options.lock, options.platform_name)
+        identity = self.lock_identity(
+            entry,
+            options.lock,
+            options.platform_name,
+            repository_root=self.repository_root,
+        )
         if identity.failure:
             return r[str].from_failure(identity)
         version, checksum = identity.value
@@ -391,6 +408,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecutionBase[bool]):
             probe_entry,
             options.lock,
             options.platform_name,
+            repository_root=self.repository_root,
         )
         if probe_identity.failure:
             return result_type.from_failure(probe_identity)

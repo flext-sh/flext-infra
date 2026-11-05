@@ -192,6 +192,13 @@ class FlextInfraModelsRope:
             t.VariadicTuple[FlextInfraModelsRope.SourceClassReference],
             m.Field(description="Ordered base references of the declaration"),
         ]
+        declared_base_count: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                description="Explicit AST bases, before synthesized generic ancestry",
+            ),
+        ]
         members: Annotated[
             t.MappingKV[str, FlextInfraModelsRope.SourceClassReference | None],
             m.Field(description="Member name to shadowing reference mapping"),

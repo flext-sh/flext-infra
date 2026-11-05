@@ -658,7 +658,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             library, _separator, letter = identity.removeprefix(prefix).rpartition("-")
             utilities[identity] = cls._fact_exact_names(
                 FlextInfraUtilitiesFacadeMembers.library_members_owned_by(
-                    library, letter
+                    library, letter, source_project=snapshot.engine
                 )
             )
         if cls._catalog_references(c.Infra.CODEMOD_GENERIC_SPECIALIZATION_UTILITY):

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack, nullcontext
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
@@ -59,6 +60,174 @@ class TestsFlextInfraFacadeAuthoredRuntime:
 
 class TestsFlextInfraGeneratedRuntime:
     """Execute generated candidates through their real public consumers."""
+
+    @staticmethod
+    def test_distinct_layer_namespaces_preserve_public_ownership(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """Infrastructure owns its namespaces before the domain adds its own."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        framework = package.parent / "reference_framework"
+        contracts = root / "infra" / "contracts"
+        pulumi = root / "infra" / "pulumi" / "lib"
+        scripts = root / "scripts"
+        sources = {
+            framework / c.Infra.INIT_PY: (
+                "class FrameworkModels:\n"
+                "    class Ldap:\n"
+                "        class Entry:\n"
+                "            marker = 'ldap'\n"
+                "m = FrameworkModels\n"
+            ),
+        }
+        layers = (
+            (contracts, "reference_framework", "ContractsModels", "InfraContracts"),
+            (pulumi, "infra.contracts", "PulumiModels", "InfraPulumi"),
+            (package, "infra.pulumi.lib", "DomainModels", "AlgarOudMig"),
+            (scripts, package.name, "ScriptsModels", "AlgarOudMig"),
+        )
+        for directory, upstream, facade_name, namespace in layers:
+            owner = f"{facade_name}Part"
+            entity = f"{facade_name}Entry"
+            inherited = "m.AlgarOudMig, " if directory == scripts else ""
+            sources[directory / c.Infra.INIT_PY] = "from .models import m\n"
+            sources[directory / "_models" / c.Infra.INIT_PY] = (
+                f"from .owner import {owner}\n__all__ = ['{owner}']\n"
+            )
+            sources[directory / "_models" / "owner.py"] = (
+                f"class {owner}:\n"
+                f"    class {entity}:\n"
+                f"        marker = '{namespace}'\n"
+                f"__all__ = ['{owner}']\n"
+            )
+            sources[directory / "models.py"] = (
+                f"from {upstream} import m\n"
+                f"from ._models import {owner}\n"
+                f"class {facade_name}(m):\n"
+                f"    class {namespace}({inherited}{owner}):\n"
+                f'        """Own the {namespace} declarations."""\n'
+                f"m = {facade_name}\n"
+                f"__all__ = ['{facade_name}', 'm']\n"
+            )
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        for directory, _upstream, _facade_name, _namespace in layers:
+            rendered = tm.not_none(
+                u.Infra.render_utility_facade(directory, family="m")
+            )
+            tm.ok(u.Cli.atomic_write_text_file(directory / "models.py", rendered))
+        native_consumer(
+            f"sys.path[:0] = [{str(root)!r}, {str(package.parent)!r}]\n"
+            "from reference_framework import m as framework\n"
+            "from infra.contracts import m as contracts\n"
+            "from infra.pulumi.lib import m as pulumi\n"
+            f"from {package.name} import m as domain\n"
+            "from scripts import m as scripts\n"
+            "assert issubclass(contracts, framework)\n"
+            "assert issubclass(pulumi, contracts)\n"
+            "assert issubclass(domain, pulumi)\n"
+            "assert issubclass(scripts, domain)\n"
+            "assert pulumi.Ldap.Entry is framework.Ldap.Entry\n"
+            "assert domain.InfraContracts is contracts.InfraContracts\n"
+            "assert domain.InfraPulumi is pulumi.InfraPulumi\n"
+            "assert scripts.AlgarOudMig.DomainModelsEntry "
+            "is domain.AlgarOudMig.DomainModelsEntry\n"
+            "assert domain.InfraContracts.ContractsModelsEntry "
+            "is contracts.InfraContracts.ContractsModelsEntry\n"
+            "assert domain.InfraPulumi.PulumiModelsEntry "
+            "is pulumi.InfraPulumi.PulumiModelsEntry\n"
+            "assert contracts.InfraContracts.ContractsModelsEntry.marker "
+            "== 'InfraContracts'\n"
+            "assert pulumi.InfraPulumi.PulumiModelsEntry.marker == 'InfraPulumi'\n"
+            "assert domain.AlgarOudMig.DomainModelsEntry.marker == 'AlgarOudMig'\n"
+            "assert scripts.AlgarOudMig.ScriptsModelsEntry.marker == 'AlgarOudMig'\n"
+            "assert contracts.InfraContracts.ContractsModelsEntry.__module__ "
+            "== 'infra.contracts._models.owner'\n"
+            "assert pulumi.InfraPulumi.PulumiModelsEntry.__module__ "
+            "== 'infra.pulumi.lib._models.owner'\n"
+            "assert domain.AlgarOudMig.DomainModelsEntry.__module__ "
+            f"== '{package.name}._models.owner'\n"
+            "assert scripts.AlgarOudMig.ScriptsModelsEntry.__module__ "
+            "== 'scripts._models.owner'\n"
+            "assert not hasattr(contracts, 'InfraPulumi')\n"
+            "assert not hasattr(contracts, 'AlgarOudMig')\n"
+            "assert not hasattr(pulumi, 'AlgarOudMig')\n",
+            cwd=root,
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("family", ["m", "u"])
+    @pytest.mark.parametrize("generic", [False, True])
+    def test_internal_namespace_provider_keeps_declaration_time_aliases(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+        family: Literal["m", "u"],
+        *,
+        generic: bool,
+    ) -> None:
+        """Publish ordered bases without confusing final aliases with their origins."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        provider = root / "infra" / "pulumi" / "lib"
+        specification = u.Infra.facade_families()[family]
+        facade = package / f"{specification.module}.py"
+        owners = package / specification.directory
+        parameters = "[T]" if generic else ""
+        sources = {
+            provider / c.Infra.INIT_PY: (
+                f"from .{specification.module} import Provider, {family}\n"
+            ),
+            provider / f"{specification.module}.py": (
+                "class Provider:\n"
+                "    class Demo:\n"
+                "        provider_marker = 'internal-namespace'\n"
+                f"{family} = Provider\n"
+                f"__all__ = ['Provider', '{family}']\n"
+            ),
+            owners / c.Infra.INIT_PY: (
+                "from .owner import Derived\n__all__ = ['Derived']\n"
+            ),
+            owners / "owner.py": (
+                "class Base:\n"
+                "    base_marker = 'base'\n"
+                "class Derived(Base):\n"
+                "    derived_marker = 'derived'\n"
+                "__all__ = ['Derived']\n"
+            ),
+            facade: (
+                f"from infra.pulumi.lib import {family}\n"
+                f"from {package.name}.{specification.directory}.owner "
+                "import Base, Derived\n"
+                f"class Consumer({family}):\n"
+                f"    class Demo{parameters}({family}.Demo, Base, Derived):\n"
+                "        local_marker = 'consumer'\n"
+                f"{family} = Consumer\n"
+                f"__all__ = ['Consumer', '{family}']\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rendered = tm.not_none(u.Infra.render_utility_facade(package, family=family))
+        tm.ok(u.Cli.atomic_write_text_file(facade, rendered))
+        tm.that(u.Infra.render_utility_facade(package, family=family), eq=rendered)
+        native_consumer(
+            f"sys.path[:0] = [{str(root)!r}, {str(package.parent)!r}]\n"
+            f"from infra.pulumi.lib import {family} as provider\n"
+            f"from {package.name}.{specification.module} "
+            f"import {family} as consumer\n"
+            "assert provider.__module__.startswith('infra.pulumi.lib.')\n"
+            "assert consumer is not provider\n"
+            "assert issubclass(consumer, provider)\n"
+            "assert issubclass(consumer.Demo, provider.Demo)\n"
+            "assert consumer.Demo.provider_marker == 'internal-namespace'\n"
+            "assert consumer.Demo.local_marker == 'consumer'\n"
+            "assert consumer.Demo.base_marker == 'base'\n"
+            "assert consumer.Demo.derived_marker == 'derived'\n"
+            + ("assert len(consumer.Demo.__type_params__) == 1\n" if generic else ""),
+            cwd=root,
+        )
 
     @staticmethod
     @pytest.mark.parametrize("depth", [1, 2])

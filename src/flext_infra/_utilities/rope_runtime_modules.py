@@ -25,6 +25,32 @@ class FlextInfraUtilitiesRopeRuntimeModules(
     """Resolve lexical identities and construct Rope module/import objects."""
 
     @staticmethod
+    def _source_import_binding(
+        binding: p.Infra.RopePyName,
+    ) -> p.Infra.RopePyName | None:
+        """Follow native imported names to their declaring source binding.
+
+        Returns:
+            The declared binding, or None for an unresolved or cyclic import.
+
+        """
+        imported: set[int] = set()
+        while isinstance(binding, p.Infra.RopeImportedName):
+            if id(binding) in imported:
+                return None
+            imported.add(id(binding))
+            supplier = (
+                binding.imported_module
+                .get_object()
+                .get_attributes()
+                .get(binding.imported_name)
+            )
+            if supplier is None:
+                return None
+            binding = supplier
+        return binding
+
+    @staticmethod
     def definition_location(
         binding: t.Infra.RopePyName,
     ) -> t.Pair[t.Infra.RopeParsedModule | None, int | None]:
@@ -68,26 +94,14 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             TypeError: If the native module does not expose a Python syntax tree.
 
         """
-        imported: set[int] = set()
-        while isinstance(binding, p.Infra.RopeImportedName):
-            if id(binding) in imported:
-                return None
-            imported.add(id(binding))
-            supplier = (
-                binding.imported_module
-                .get_object()
-                .get_attributes()
-                .get(binding.imported_name)
-            )
-            if supplier is None:
-                return None
-            binding = supplier
+        supplier = cls._source_import_binding(binding)
         if (
-            not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
-            or binding.assignments
+            supplier is None
+            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
+            or supplier.assignments
         ):
             return None
-        module, _line = cls.definition_location(binding)
+        module, _line = cls.definition_location(supplier)
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             return None
         tree = module.get_ast()
@@ -101,9 +115,45 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             lexical = cls.scope_at(module, cls.source_offset(module.source_code, node))
             # TypeAlias bindings intentionally have no inferred assignment or
             # line in Rope. Only the source token's exact identity proves them.
-            if cls.resolve_symbol(lexical, node.name) is binding:
+            if cls.resolve_symbol(lexical, node.name) is supplier:
                 declarations.append((node, lexical))
         return declarations[0] if len(declarations) == 1 else None
+
+    @classmethod
+    def annotation_assignment_outer_type(
+        cls, project: p.Infra.RopeProject, binding: p.Infra.RopePyName
+    ) -> t.Pair[p.Infra.RopePyName, bool] | None:
+        """Resolve a generic's native identity and whether it is the value.
+
+        Returns:
+            The lexical outer identity and RHS provenance, or None when the
+            assignment has no resolved generic expression.
+
+        """
+        supplier = cls._source_import_binding(binding)
+        if (
+            supplier is None
+            or not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(supplier)
+            or len(supplier.assignments) != 1
+        ):
+            return None
+        assignment = supplier.assignments[0]
+        assigned = assignment.ast_node
+        annotation = assignment.type_hint
+        module, _line = cls.definition_location(supplier)
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            return None
+        if isinstance(annotation, ast.Subscript):
+            expression = annotation
+            from_value = False
+        elif isinstance(assigned, ast.Subscript):
+            expression = assigned
+            from_value = True
+        else:
+            return None
+        scope = cls.scope_at(module, cls.source_offset(module.source_code, expression))
+        origin = cls.annotation_origin(project, expression, scope)
+        return (origin, from_value) if origin is not None else None
 
     @classmethod
     def annotation_origin(

@@ -10,16 +10,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import FlextTestsModels
+from flext_tests import m
 
 from flext_infra import FlextInfraModels
 from tests._models import TestsFlextInfraModelsBase
 
 
-class TestsFlextInfraModels(FlextTestsModels, FlextInfraModels):
+class TestsFlextInfraModels(m, FlextInfraModels):
     """Infra test models extending flext-tests and production models."""
 
-    class Tests(TestsFlextInfraModelsBase, FlextTestsModels.Tests):
+    class Tests(TestsFlextInfraModelsBase, m.Tests):
         """Tests use inherited flext-tests and production infra models."""
 
 

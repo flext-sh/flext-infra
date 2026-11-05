@@ -120,6 +120,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         spec.definitions[identity] = m.Infra.SourceClassDefinition(
             identity=identity,
             bases=bases,
+            declared_base_count=len(node.bases),
             members=members,
         )
         bindings[node.name] = m.Infra.SourceClassReference(
@@ -493,6 +494,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         spec.definitions[owner.target] = m.Infra.SourceClassDefinition(
             identity=definition.identity,
             bases=definition.bases,
+            declared_base_count=definition.declared_base_count,
             members=members,
         )
         return True

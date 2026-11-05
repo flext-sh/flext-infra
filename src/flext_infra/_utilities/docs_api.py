@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesDocsApi:
     """Extract public package metadata, exports, modules, and docstring issues."""
 
-    _ALIAS_EXPORTS: t.StrSequence = (
+    _ALIAS_EXPORTS: ClassVar[t.StrSequence] = (
         "c",
         "d",
         "e",

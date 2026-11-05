@@ -19,10 +19,12 @@ if TYPE_CHECKING:
     from flext_infra.deps._detector_runtime_steps import (
         FlextInfraDependencyDetectorRuntimeSteps,
     )
-    from flext_infra.deps._modernizer import (
-        FlextInfraPyprojectModernizerBase,
+    from flext_infra.deps._modernizer.base import FlextInfraPyprojectModernizerBase
+    from flext_infra.deps._modernizer.document import (
         FlextInfraPyprojectModernizerDocument,
-        FlextInfraPyprojectModernizerRun,
+    )
+    from flext_infra.deps._modernizer.run import FlextInfraPyprojectModernizerRun
+    from flext_infra.deps._modernizer.tooling import (
         FlextInfraPyprojectModernizerTooling,
     )
     from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
@@ -33,15 +35,19 @@ if TYPE_CHECKING:
     from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
     from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
     from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-    from flext_infra.deps.phases import (
+    from flext_infra.deps.phases.consolidate_groups import (
         FlextInfraConsolidateGroupsPhase,
-        FlextInfraEnsurePackagingPhase,
-        FlextInfraEnsurePyreflyConfigPhase,
-        FlextInfraEnsurePyrightConfigPhase,
-        FlextInfraEnsureRuffConfigPhase,
-        FlextInfraInjectCommentsPhase,
-        FlextInfraToolTablesPhase,
     )
+    from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
+    from flext_infra.deps.phases.ensure_pyrefly import (
+        FlextInfraEnsurePyreflyConfigPhase,
+    )
+    from flext_infra.deps.phases.ensure_pyright import (
+        FlextInfraEnsurePyrightConfigPhase,
+    )
+    from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+    from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
+    from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
 
 
 __all__: tuple[str, ...] = (

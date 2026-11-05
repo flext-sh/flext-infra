@@ -22,12 +22,12 @@
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
 - Main facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandPayloadMixin`,
   `FlextInfraConfig`, `FlextInfraConformWiring`, `FlextInfraConstants`,
-  `FlextInfraGitLanes`, `FlextInfraGitService` (+17 more)
+  `FlextInfraGitLanes`, `FlextInfraGitService` (+18 more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
 - Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraCommandPayloadMixin`,
   `FlextInfraConfig`, `FlextInfraConformWiring`, `FlextInfraConstants`,
   `FlextInfraGitLanes`, `FlextInfraGitService`, `FlextInfraModels`,
-  `FlextInfraPreviewWiring` (+18 more)
+  `FlextInfraPreviewWiring` (+19 more)
 - Exported module shortcuts: _none_
 - Generated module pages: `14`
 

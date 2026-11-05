@@ -13,6 +13,8 @@ from pathlib import Path
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities import (
+    FlextInfraUtilitiesIterationDirectory,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeSourceBasesAliases,
@@ -27,19 +29,24 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
     @classmethod
     def source_member_binding(
-        cls, project: p.Infra.RopeProject, qualified: str
+        cls,
+        project: p.Infra.RopeProject,
+        qualified: str | m.Infra.SourceClassReference,
+        *,
+        sources: t.MappingKV[str, t.Pair[Path, str]] | None = None,
     ) -> p.Infra.RopePyName:
         """Resolve the first declared member along its authenticated native C3 order.
 
-        Native resolution failures propagate without changing their cause.
+        Typed base references resolve the class itself. Planned sources retain
+        their original mapping; native resolution failures propagate unchanged.
 
         Returns:
             The member binding belonging to the exact source or external owner.
 
         """
-        return cls._RuntimeBaseResolver(project, {}, (), None).source_member_binding(
-            qualified
-        )
+        return cls._RuntimeBaseResolver(
+            project, sources if sources is not None else {}, (), None
+        ).source_member_binding(qualified)
 
     @staticmethod
     def merge_class_lineages[TIdentity: str | t.Pair[str, str]](
@@ -142,7 +149,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return False
             return True
 
-        def source_member_binding(self, qualified: str) -> p.Infra.RopePyName:
+        def source_member_binding(
+            self, qualified: str | m.Infra.SourceClassReference
+        ) -> p.Infra.RopePyName:
             """Read a member from the first native declaration in the source MRO.
 
             Returns:
@@ -152,6 +161,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 ValueError: If an owner scope or declared member cannot be proven.
 
             """
+            if isinstance(qualified, m.Infra.SourceClassReference):
+                return self._source_class_binding(qualified)
             receiver, _, member = qualified.rpartition(".")
             identity = self._resolve(self._root_reference(receiver))
             for ancestor in self._linearize(identity):
@@ -177,6 +188,53 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return binding
             msg = f"model utility has no declared binding: {qualified}"
             raise ValueError(msg)
+
+        def _source_class_binding(
+            self, qualified: m.Infra.SourceClassReference
+        ) -> p.Infra.RopePyName:
+            """Resolve the native class declaration before reading its members.
+
+            Returns:
+                The proven binding of the declared source class.
+
+            Raises:
+                ValueError: If the native resource or scope has another identity.
+
+            """
+            self._prepare_ordering()
+            identity = self._resolve(qualified)
+            self._linearize(identity)
+            if identity in self._external:
+                return self._class_bindings[identity]
+            module_name, class_name, line = identity.rsplit(":", 2)
+            declared = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
+                self._project.get_module(module_name)
+            )
+            if module_name in self._sources:
+                path, source = self._sources[module_name]
+                resource = declared.get_resource()
+                if resource is None or resource.real_path != str(path):
+                    msg = f"Source class resource does not identify owner: {identity}"
+                    raise ValueError(msg)
+                declared = FlextInfraUtilitiesRopeRuntime.build_string_module(
+                    self._project,
+                    source,
+                    resource=resource,
+                )
+            scope = declared.get_scope().get_inner_scope_for_line(int(line))
+            parent = scope.parent
+            if (
+                scope.get_start() != int(line)
+                or scope.pyobject.get_name() != class_name.rsplit(".", 1)[-1]
+                or parent is None
+            ):
+                msg = f"native class scope does not identify source owner: {identity}"
+                raise ValueError(msg)
+            binding = parent.get_defined_names().get(scope.pyobject.get_name())
+            if binding is None or binding.get_object() is not scope.pyobject:
+                msg = f"Ambiguous source class binding: {identity}"
+                raise ValueError(msg)
+            return binding
 
         def __init__(
             self,
@@ -210,6 +268,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 str, m.Infra.SourceClassReference
             ] = {}
             self._external: t.MutableMappingKV[str, t.Infra.RopePyObject] = {}
+            self._class_bindings: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
             self._linearizations: t.MutableMappingKV[str, t.StrTuple] = {}
             self._active: set[str] = set()
             self._resolved_memo: t.MutableMappingKV[str, str] = {}
@@ -236,6 +295,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def class_order(
             self,
             declarations: t.SequenceOf[m.Infra.SourceClassReference],
+            *,
+            declaration_context: t.Pair[m.Infra.SourceClassReference, t.StrSequence]
+            | None = None,
         ) -> t.StrTuple:
             """Order declared owners from their authoritative source ancestry.
 
@@ -247,6 +309,26 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             self._prepare_ordering()
+            if declaration_context is not None:
+                namespace, spellings = declaration_context
+                definition = self._definitions[self._resolve(namespace)]
+                original = dict(
+                    zip(
+                        spellings,
+                        definition.bases[: definition.declared_base_count],
+                        strict=True,
+                    )
+                )
+                declarations = tuple(
+                    m.Infra.SourceClassReference(
+                        target=original[item.qualified_base].target,
+                        attributes=original[item.qualified_base].attributes,
+                        qualified_base=item.qualified_base,
+                    )
+                    if item.qualified_base in original
+                    else item
+                    for item in declarations
+                )
             identities = tuple(self._resolve(item) for item in declarations)
             if len(set(identities)) != len(identities):
                 message = "Duplicate declared facade owner"
@@ -286,6 +368,30 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     if identity in anchored
                 )
                 for item in declarations
+            )
+
+        def class_base_bindings(
+            self, declaration: m.Infra.SourceClassReference
+        ) -> t.VariadicTuple[p.Infra.RopePyName]:
+            """Resolve declared bases using their captured lexical bindings.
+
+            Returns:
+                Native class bindings in the declaration's original base order.
+
+            Raises:
+                ValueError: If the declaration has no owned source definition.
+
+            """
+            self._prepare_ordering()
+            identity = self._resolve(declaration)
+            self._linearize(identity)
+            definition = self._definitions.get(identity)
+            if definition is None:
+                message = f"Class has no captured base declarations: {identity}"
+                raise ValueError(message)
+            return tuple(
+                self._source_class_binding(base)
+                for base in definition.bases[: definition.declared_base_count]
             )
 
         def _prepare_ordering(self) -> None:
@@ -541,11 +647,61 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     f"External class has no source declaration: {value.get_name()}"
                 )
                 raise ValueError(message)
-            name = module.get_name()
+            name = self._provider_module_name(module)
             line = scope.get_start()
             if name in self._modules:
                 return self._declared_pyclass_identity(value, module, name, line)
             return self._inventory_pyclass_identity(name, module, line)
+
+        def _provider_module_name(self, module: t.Infra.RopeSemanticModule) -> str:
+            """Resolve owned namespace identities through project discovery.
+
+            Returns:
+                The owned import identity or the external SDK module identity.
+
+            """
+            path = self._owned_provider_path(module)
+            if path is None:
+                return module.get_name()
+            root = Path(self._project.root.real_path)
+            package = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
+                path.parent,
+                project_root=root,
+                source_project=self._project,
+            )
+            return ".".join(
+                part
+                for part in (
+                    package,
+                    "" if path.name == c.Infra.INIT_PY else path.stem,
+                )
+                if part
+            )
+
+        def _owned_provider_path(
+            self, module: t.Infra.RopeSemanticModule
+        ) -> Path | None:
+            """Elect source ownership without admitting ignored installed packages.
+
+            Returns:
+                The governed source path, or None for an external provider.
+
+            """
+            declaring = module.get_module()
+            if not FlextInfraUtilitiesRopeRuntime.source_module(declaring):
+                return None
+            resource = declaring.get_resource()
+            if resource is None:
+                return None
+            path = Path(resource.real_path)
+            root = Path(self._project.root.real_path)
+            if not path.is_relative_to(root) or (
+                FlextInfraUtilitiesIterationDirectory.source_scan_ignored_path(
+                    root, path
+                )
+            ):
+                return None
+            return path
 
         def _declared_pyclass_identity(
             self,
@@ -691,6 +847,34 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 module = self._project.get_module(imported.module_name, folder)
             return FlextInfraUtilitiesRopeRuntime.require_semantic_module(module)
 
+        def _owned_provider_inventory(
+            self, module: t.Infra.RopeSemanticModule
+        ) -> str | None:
+            """Capture the completed lexical bindings of an owned provider.
+
+            Returns:
+                The qualified module name, or None for an external provider.
+
+            """
+            declaring = module.get_module()
+            owned_path = self._owned_provider_path(module)
+            if owned_path is None or not FlextInfraUtilitiesRopeRuntime.source_module(
+                declaring
+            ):
+                return None
+            module_name = self._provider_module_name(module)
+            if module_name not in self._modules:
+                self._modules[module_name] = self._inventory(
+                    module_name,
+                    (owned_path, declaring.source_code),
+                    provider=declaring,
+                )
+                self._namespaces.update(
+                    ".".join(module_name.split(".")[:index])
+                    for index in range(1, len(module_name.split(".")) + 1)
+                )
+            return module_name
+
         def _provider_reference(
             self,
             module: t.Infra.RopeSemanticModule,
@@ -708,6 +892,17 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     as a class base, or cycles through provider reexports.
 
             """
+            module_name = self._owned_provider_inventory(module)
+            if module_name is not None:
+                return self._resolve(
+                    m.Infra.SourceClassReference(
+                        target=module_name,
+                        attributes=attributes,
+                        qualified_base=".".join((module_name, *attributes)),
+                    ),
+                    visiting,
+                    depth + 1,
+                )
             if depth > c.Infra.ROPE_WALK_DEPTH_BUDGET:
                 message = (
                     f"Unresolved external base: {module.get_name()} at depth {depth}"
@@ -743,17 +938,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                         visiting | {target},
                         depth + 1,
                     )
-            try:
-                binding = module.get_attribute(name)
-            except (
-                FlextInfraUtilitiesRopeRuntime.rope_attribute_not_found_error_types()
-            ) as exc:
-                resource = module.get_resource()
-                exc.add_note(
-                    f"Provider base reference: {target}; source="
-                    f"{resource.real_path if resource is not None else '<native>'}"
-                )
-                raise
+            binding = self._provider_attribute(module, name, target)
             if isinstance(binding, p.Infra.RopeImportedName):
                 return self._provider_imported_name_reference(
                     binding,
@@ -774,6 +959,28 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 binding, tuple(remaining), visiting, depth
             )
 
+        @staticmethod
+        def _provider_attribute(
+            module: t.Infra.RopeSemanticModule, name: str, target: str
+        ) -> p.Infra.RopePyName:
+            """Read a provider binding, annotating its unchanged native exception.
+
+            Returns:
+                The declared native binding.
+
+            """
+            try:
+                return module.get_attribute(name)
+            except (
+                FlextInfraUtilitiesRopeRuntime.rope_attribute_not_found_error_types()
+            ) as exc:
+                resource = module.get_resource()
+                exc.add_note(
+                    f"Provider base reference: {target}; source="
+                    f"{resource.real_path if resource is not None else '<native>'}"
+                )
+                raise
+
         def _provider_value_reference(
             self,
             binding: p.Infra.RopePyName,
@@ -793,6 +1000,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 # reaches the class attribute through the instance's type.
                 value = value.get_type()
             identity = self._external_identity(value)
+            if identity in self._external and binding.get_object() is value:
+                self._class_bindings[identity] = binding
             for attribute in remaining:
                 identity = self._member(identity, attribute, depth + 1, visiting)
             return identity
@@ -1322,7 +1531,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 value = self._external[ancestor]
                 external_members = value.get_attributes()
                 if name in external_members:
-                    return self._external_identity(external_members[name].get_object())
+                    binding = external_members[name]
+                    resolved = self._external_identity(binding.get_object())
+                    if resolved in self._external:
+                        self._class_bindings[resolved] = binding
+                    return resolved
             message = f"Missing inherited class member: {identity}.{name}"
             raise ValueError(message)
 
@@ -1350,11 +1563,30 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             )
 
     @classmethod
+    def source_class_base_bindings(
+        cls,
+        project: p.Infra.RopeProject,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+        declaration: m.Infra.SourceClassReference,
+    ) -> t.VariadicTuple[p.Infra.RopePyName]:
+        """Resolve every class base at its original lexical declaration.
+
+        Returns:
+            The ordered authenticated native class bindings.
+
+        """
+        return cls._RuntimeBaseResolver(project, sources, (), None).class_base_bindings(
+            declaration
+        )
+
+    @classmethod
     def source_class_order(
         cls,
         project: p.Infra.RopeProject,
         sources: t.MappingKV[str, t.Pair[Path, str]],
         declarations: t.SequenceOf[m.Infra.SourceClassReference],
+        *,
+        declaration_context: t.Pair[m.Infra.SourceClassReference, t.StrSequence],
     ) -> t.StrTuple:
         """Order declared owners by their strict source-backed C3.
 
@@ -1365,7 +1597,10 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             The declaration spellings in consistent precedence order.
 
         """
-        return cls.source_class_orders(project, sources, (declarations,))[0]
+        return cls._RuntimeBaseResolver(project, sources, (), None).class_order(
+            declarations,
+            declaration_context=declaration_context,
+        )
 
     @classmethod
     def source_class_orders(
