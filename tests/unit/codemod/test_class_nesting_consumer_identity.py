@@ -9,6 +9,8 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
+import flext_core
+
 from flext_infra import infra
 from tests import c, tm, u
 from tests.unit.codemod.class_nesting_owner_support import (
