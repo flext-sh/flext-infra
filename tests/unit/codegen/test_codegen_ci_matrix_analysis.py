@@ -9,8 +9,6 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, tm, u
@@ -18,7 +16,7 @@ from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixS
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraCodegenCiMatrixAnalysis(TestsFlextInfraCodegenCiMatrixSupport):
     """Prove static analysis and container source visibility contracts."""
 

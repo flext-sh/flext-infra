@@ -11,16 +11,14 @@ import pstats
 import sys
 from pathlib import Path
 
-import pytest
-
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCProfileCli:
     """Exercise native CLI processes independently of report rendering."""
 
     @staticmethod
-    @pytest.mark.usefixtures("profiling_enabled")
+    @c.Tests.MARK.usefixtures("profiling_enabled")
     def test_cli_profiles_retain_each_run_and_measure_startup(tmp_path: Path) -> None:
         """Repeated public CLI launches preserve raw runs including CLI imports."""
         output = tmp_path / "profile.pstats"
@@ -56,8 +54,8 @@ class TestsFlextInfraCProfileCli:
                 tm.that(rendered.getvalue(), has="(<module>)")
 
     @staticmethod
-    @pytest.mark.usefixtures("profiling_enabled")
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.usefixtures("profiling_enabled")
+    @c.Tests.MARK.parametrize(
         "arguments",
         [("--help",), ("validate", "cprofile-report", "--invalid-profile-option")],
     )
@@ -93,7 +91,7 @@ class TestsFlextInfraCProfileCli:
             )
 
     @staticmethod
-    @pytest.mark.usefixtures("profiling_enabled")
+    @c.Tests.MARK.usefixtures("profiling_enabled")
     def test_profile_publication_failure_keeps_the_original_cli_exception(
         tmp_path: Path,
     ) -> None:

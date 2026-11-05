@@ -12,8 +12,6 @@ import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
-import pytest
-
 from flext_infra._protocols_bootstrap import (
     consolidate_protocol_owners,
     normalize_model_alias_source,
@@ -23,7 +21,7 @@ from flext_infra._protocols_bootstrap import (
     publish_protocol_facades,
 )
 from flext_infra._utilities import FlextInfraUtilitiesModelsProtocol
-from tests import p, tm
+from tests import c, p, t, tm, u
 
 
 class TestsProtocolSourceBootstrap:
@@ -281,7 +279,7 @@ class TestsProtocolSourceBootstrap:
         compile(normalized, "<native-protocol-base>", "exec")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("future", "runtime"), [(True, False), (True, True), (False, False)]
     )
     def test_preserves_declared_facade_origin_and_runtime_uses(
@@ -349,9 +347,9 @@ class TestsProtocolSourceBootstrap:
             "        def name(self) -> str: ...\n"
         )
         filename = str(tmp_path / "decorators.py")
-        with pytest.raises(SyntaxError) as original:
+        with u.Tests.raises(SyntaxError) as original:
             compile(source, filename, "exec")
-        with pytest.raises(SyntaxError) as projected:
+        with u.Tests.raises(SyntaxError) as projected:
             normalize_protocol_source(
                 source, package_name="flext_infra", filename=filename
             )
@@ -360,7 +358,7 @@ class TestsProtocolSourceBootstrap:
 
     @staticmethod
     def test_installs_only_declared_infra_holder_members(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        tmp_path: Path, monkeypatch: t.Tests.MonkeyPatch
     ) -> None:
         """A same-named CLI member cannot be projected onto the Infra facade."""
         root = tmp_path / "repository"
@@ -422,7 +420,7 @@ class TestsProtocolSourceBootstrap:
 
     @staticmethod
     def test_installs_target_member_on_cli_facade(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        tmp_path: Path, monkeypatch: t.Tests.MonkeyPatch
     ) -> None:
         """A CLI source projection publishes only through ``p.Cli``."""
         root = tmp_path / "repository"
@@ -464,7 +462,7 @@ class TestsProtocolSourceBootstrap:
 
     @staticmethod
     def test_installs_core_root_member_without_artificial_namespace(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        tmp_path: Path, monkeypatch: t.Tests.MonkeyPatch
     ) -> None:
         """Core model contracts publish directly through its root ``p`` facade."""
         root = tmp_path / "repository"
@@ -945,7 +943,7 @@ class TestsProtocolSourceBootstrap:
             encoding="utf-8",
         )
 
-        with pytest.raises(ValueError, match="cyclic protocol holder inheritance"):
+        with u.Tests.raises(ValueError, match="cyclic protocol holder inheritance"):
             publish_protocol_facades(root)
 
     @staticmethod
@@ -1126,7 +1124,7 @@ class TestsProtocolSourceBootstrap:
             "        name: str\n"
         )
 
-        with pytest.raises(ValueError, match="incompatible legacy protocol contract"):
+        with u.Tests.raises(ValueError, match="incompatible legacy protocol contract"):
             consolidate_protocol_owners(
                 root,
                 {workspace.relative_to(root): projected},

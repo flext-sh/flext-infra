@@ -12,8 +12,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import m, p, tm, u
 
@@ -24,7 +22,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraFreshImport:
     """Fresh-process import smoke test suite."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def v() -> FlextInfraValidateFreshImport:
         """Shared validator instance.

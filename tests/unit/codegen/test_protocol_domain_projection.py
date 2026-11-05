@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from tests import m, p, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsProtocolDomainProjection:
@@ -89,7 +87,7 @@ class TestsProtocolDomainProjection:
         return root, package
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "metadata_fields",
         [
             "        @property\n        def required(self) -> str: ...\n",
@@ -121,7 +119,7 @@ class TestsProtocolDomainProjection:
                 ).get_object()
                 resource = tm.not_none(declaration.get_module().get_resource())
                 tm.that(Path(resource.real_path), eq=package / source)
-            with pytest.raises(ValueError, match="non-equivalent public Protocol"):
+            with u.Tests.raises(ValueError, match="non-equivalent public Protocol"):
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(
@@ -147,7 +145,7 @@ class TestsProtocolDomainProjection:
         )
 
     @classmethod
-    @pytest.mark.parametrize("target", ["pydantic", "models"])
+    @c.Tests.MARK.parametrize("target", ["pydantic", "models"])
     def test_selection_rejects_owner_outside_public_domain(
         cls, tmp_path: Path, target: str
     ) -> None:
@@ -160,7 +158,7 @@ class TestsProtocolDomainProjection:
         )
         with (
             u.Infra.facade_source_project(root) as binding,
-            pytest.raises(ValueError, match="domain"),
+            u.Tests.raises(ValueError, match="domain"),
         ):
             u.Infra.protocol_model_sources_from_source(
                 root,

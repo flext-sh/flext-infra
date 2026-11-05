@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, tm, u
 
 
@@ -62,7 +60,7 @@ class TestsFlextInfraDistributionIdentity:
             sites.append(str(site))
         with (
             tm.scope(python_paths=sites),
-            pytest.raises(ValueError, match="duplicate installed distribution"),
+            u.Tests.raises(ValueError, match="duplicate installed distribution"),
             u.Infra.codemod_workspace_snapshot(tmp_path) as snapshot,
         ):
             u.Infra.codemod_rule_plan(snapshot)
@@ -93,7 +91,7 @@ class TestsFlextInfraDistributionIdentity:
             )
         with (
             tm.scope(python_paths=(str(site),)),
-            pytest.raises(
+            u.Tests.raises(
                 ValueError,
                 match=(
                     r"^cyclic dependency graph: catalog-cycle-first -> "

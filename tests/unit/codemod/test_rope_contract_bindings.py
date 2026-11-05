@@ -13,8 +13,6 @@ import tokenize
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from tests import c, m, p, tm, u
 
@@ -26,8 +24,8 @@ class TestsFlextInfraRopeContractBindings:
     """Prove lexical identity and execution order without publishing unsafe edits."""
 
     @staticmethod
-    @pytest.mark.parametrize("carrier", ["model", "function"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("carrier", ["model", "function"])
+    @c.Tests.MARK.parametrize(
         ("imports", "metadata", "variant"),
         [
             (
@@ -181,7 +179,7 @@ class TestsFlextInfraRopeContractBindings:
         tm.that(after, eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "default",
         [
             "'ready'",
@@ -226,7 +224,7 @@ class TestsFlextInfraRopeContractBindings:
         tm.that(after["preserved_dump_member"], eq=True)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("default", "error"),
         [
             ("Field(default_factory=produce)", "default factory"),
@@ -260,12 +258,12 @@ class TestsFlextInfraRopeContractBindings:
             for rule in u.Infra.declared_contract_rules(workspace.repository_root)
             if rule.id == "pydantic-exhaustive-strenum-annotation"
         )
-        with pytest.raises(ValueError, match=error):
+        with u.Tests.raises(ValueError, match=error):
             u.Infra.plan_contract_rules(workspace, {path: source}, rules)
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("annotation", "defaulted"),
         [
             ("Choice[StateAlias.READY, StateAlias.FAILED]", True),
@@ -349,7 +347,7 @@ class TestsFlextInfraRopeContractBindings:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("annotation", "consumer", "evidence"),
         [
             ("Literal[State.READY]", "", "Payload.model_json_schema()"),
@@ -460,7 +458,7 @@ class TestsFlextInfraRopeContractBindings:
             for rule in u.Infra.declared_contract_rules(workspace.repository_root)
             if rule.id == "pydantic-exhaustive-strenum-annotation"
         )
-        with pytest.raises(ValueError, match="native string field identity"):
+        with u.Tests.raises(ValueError, match="native string field identity"):
             u.Infra.plan_contract_rules(workspace, {path: source}, rules)
 
     @staticmethod
@@ -575,7 +573,7 @@ class TestsFlextInfraRopeContractBindings:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "statement",
         [
             "assert (retained := predicate(value)) is not None",
@@ -655,7 +653,7 @@ class TestsFlextInfraRopeContractBindings:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "source",
         [
             "assert True; effect()\n",
@@ -679,7 +677,7 @@ class TestsFlextInfraRopeContractBindings:
         """Unsupported native slices fail before an edit or a source write exists."""
         workspace, path = rope_contract_consumer
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(ValueError, match="complete standalone statement"):
+        with u.Tests.raises(ValueError, match="complete standalone statement"):
             u.Infra.plan_contract_rules(
                 workspace,
                 {path: source},
@@ -688,7 +686,7 @@ class TestsFlextInfraRopeContractBindings:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "source",
         [
             "AssertionError = ValueError\nassert True\n",
@@ -712,7 +710,7 @@ class TestsFlextInfraRopeContractBindings:
         """LOAD_ASSERTION_ERROR must not become a shadowed lexical constructor."""
         workspace, path = rope_contract_consumer
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(ValueError, match="requires unshadowed builtins"):
+        with u.Tests.raises(ValueError, match="requires unshadowed builtins"):
             u.Infra.plan_contract_rules(
                 workspace,
                 {path: source},
@@ -721,7 +719,7 @@ class TestsFlextInfraRopeContractBindings:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "source",
         [
             *(
@@ -783,7 +781,7 @@ class TestsFlextInfraRopeContractBindings:
         u.Tests.prove_contract_migration(rope_contract_consumer, source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("argument", "expression"),
         [
             ("()", "()"),
@@ -841,7 +839,7 @@ class TestsFlextInfraRopeContractBindings:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "arguments",
         [
             "description='Required'",
@@ -883,11 +881,11 @@ class TestsFlextInfraRopeContractBindings:
         )
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         if arguments in {"(), default=()", "default=(), default_factory=tuple"}:
-            with pytest.raises(TypeError):
+            with u.Tests.raises(TypeError):
                 runpy.run_path(str(path))
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "annotation",
         [
             "Type()",
@@ -934,7 +932,7 @@ class TestsFlextInfraRopeContractBindings:
             for rule in u.Infra.declared_contract_rules(workspace.repository_root)
             if rule.id == "pydantic-required-field-metadata"
         )
-        with pytest.raises(ValueError, match="cannot reorder authored calls"):
+        with u.Tests.raises(ValueError, match="cannot reorder authored calls"):
             u.Infra.plan_contract_rules(workspace, {path: source}, rules)
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
@@ -1005,7 +1003,7 @@ class TestsFlextInfraRopeContractBindings:
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
-        with pytest.raises(ValueError, match="shadow"):
+        with u.Tests.raises(ValueError, match="shadow"):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
                 rope_workspace=rope,
@@ -1045,7 +1043,7 @@ class TestsFlextInfraRopeContractBindings:
         tm.ok(runpy.run_path(str(path))["evidence"])
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "diagnostic"),
         [
             (
@@ -1090,7 +1088,7 @@ class TestsFlextInfraRopeContractBindings:
         rope, path = rope_contract_consumer
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
-        with pytest.raises(ValueError, match=diagnostic):
+        with u.Tests.raises(ValueError, match=diagnostic):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
                 rope_workspace=rope,

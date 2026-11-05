@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, tm, u
 
 
@@ -119,7 +117,7 @@ class TestsFlextInfraOwnMethodMro:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "reason"),
         [
             (
@@ -152,7 +150,7 @@ class TestsFlextInfraOwnMethodMro:
         module.write_text(source, encoding=c.DEFAULT_ENCODING)
         with (
             u.Infra.facade_source_project(root) as (project, _sources),
-            pytest.raises(ValueError, match=reason),
+            u.Tests.raises(ValueError, match=reason),
         ):
             u.Infra.rewrite_own_method_mro_calls(
                 source, source_project=project, file_path=module

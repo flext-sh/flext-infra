@@ -9,17 +9,11 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
-
-import pytest
 
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodDuplicateApply, FlextInfraModGateEngine
 from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseDuplicateApply
 from tests import c, m, p, t, tm, u
-
-if TYPE_CHECKING:
-    from flext_infra import p, t
 
 _CORE_CONSTANT = "SHARED_LIMIT = 42\n"
 _SIDE_CONSTANT = "SHARED_LIMIT = 42\n"
@@ -353,20 +347,20 @@ class TestsFlextInfraCodemodDuplicateApply:
             eq=before,
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "source",
         [
-            pytest.param(
+            u.Tests.param(
                 "def str(value):\n"
                 "    return value + 'custom'\n\n"
                 "LIMIT = str('value')\n",
                 id="shadowed-constructor",
             ),
-            pytest.param(
+            u.Tests.param(
                 "LIMIT = str.upper('value')\n",
                 id="attribute-call",
             ),
-            pytest.param(
+            u.Tests.param(
                 "LIMIT = 42\nLIMIT = 99\n",
                 id="rebound-module-definition",
             ),

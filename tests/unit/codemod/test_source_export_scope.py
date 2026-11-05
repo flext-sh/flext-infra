@@ -8,20 +8,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraSourceExportScope:
     """Exercise both export verdicts through the real public AST command."""
 
     @staticmethod
-    @pytest.mark.parametrize("exported", [False, True])
+    @c.Tests.MARK.parametrize("exported", [False, True])
     def test_suite_export_policy_preserves_source_publication(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         *,
         exported: bool,
     ) -> None:

@@ -12,7 +12,7 @@ from typing import Never
 import pytest
 
 from flext_infra import FlextInfraCli, docs
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraPresentationWorkflow:
@@ -60,7 +60,7 @@ class TestsFlextInfraPresentationWorkflow:
         msg = "documentation selected a Python generation factory"
         tm.reject(msg)
 
-    @pytest.mark.parametrize("projection", [None, "en", "pt-BR"])
+    @c.Tests.MARK.parametrize("projection", [None, "en", "pt-BR"])
     def test_generate_projects_metadata_and_portuguese_docs_in_one_publication(
         self, tmp_path: Path, projection: str | None
     ) -> None:
@@ -110,10 +110,10 @@ class TestsFlextInfraPresentationWorkflow:
         tm.that((path.read_bytes(), (project / "README.md").read_bytes()), eq=first)
         tm.that(sum(report.changed_files for report in second), eq=0)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "invalid", ["authorial", "projection", "namespace", "custom"]
     )
-    @pytest.mark.parametrize("selected", ["flext-a", "flext-b"])
+    @c.Tests.MARK.parametrize("selected", ["flext-a", "flext-b"])
     def test_invalid_metadata_fails_before_any_selected_project_write(
         self, tmp_path: Path, invalid: str, selected: str
     ) -> None:
@@ -205,7 +205,7 @@ class TestsFlextInfraPresentationWorkflow:
         )
 
     def test_public_cli_json_includes_written_metadata_without_source_content(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, tmp_path: Path, capsys: t.Tests.CaptureFixture[str]
     ) -> None:
         """The unchanged public route emits its committed typed report, not bool."""
         _workspace, project, _generator = self._workspace(tmp_path)
@@ -244,8 +244,8 @@ class TestsFlextInfraPresentationWorkflow:
         tm.that(captured.out, lacks='"desired_content"')
         tm.that(captured.out, lacks='"source_states"')
 
-    @pytest.mark.parametrize("entry", ["generate", c.ContextScope.REQUEST, "execute"])
-    @pytest.mark.parametrize("failed_project", ["flext-a", "flext-b"])
+    @c.Tests.MARK.parametrize("entry", ["generate", c.ContextScope.REQUEST, "execute"])
+    @c.Tests.MARK.parametrize("failed_project", ["flext-a", "flext-b"])
     def test_terminal_failure_retains_only_preceding_committed_effects(
         self, tmp_path: Path, entry: str, failed_project: str
     ) -> None:
@@ -317,7 +317,7 @@ class TestsFlextInfraPresentationWorkflow:
         tm.that(encoded, lacks='"desired_content"')
         tm.that(encoded, lacks='"source_states"')
 
-    @pytest.mark.parametrize("entry", [c.ContextScope.REQUEST, "execute"])
+    @c.Tests.MARK.parametrize("entry", [c.ContextScope.REQUEST, "execute"])
     def test_service_success_retains_the_existing_report_collection(
         self, tmp_path: Path, entry: str
     ) -> None:

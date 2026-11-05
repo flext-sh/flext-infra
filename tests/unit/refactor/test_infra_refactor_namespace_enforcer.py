@@ -9,12 +9,9 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import m
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -61,7 +58,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         target = pkg / "consumer.py"
         source = b"from __future__ import annotations\nimport os as operating\n"
         target.write_bytes(source)
-        with pytest.raises(ValueError, match="requires one owned module"):
+        with u.Tests.raises(ValueError, match="requires one owned module"):
             FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
                 apply=True,
                 module=f"{pkg.name}.missing",
@@ -144,7 +141,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.fail((pkg / "typings.py").exists())
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain(
         tmp_path: Path,
     ) -> None:
@@ -516,7 +513,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         u.Tests.declare_workspace_projects(workspace, ("healthy-proj", "broken-proj"))
         u.Tests.provision_checkout(workspace)
 
-        with pytest.raises(TypeError, match="must be a boolean"):
+        with u.Tests.raises(TypeError, match="must be a boolean"):
             FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(apply=True)
 
         tm.fail((healthy_pkg / "_protocols" / "service.py").exists())
@@ -647,7 +644,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(FlextInfraNamespaceEnforcer.render_text(published), has=rule_id)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_namespace_workspace_counts_bracket_all_projects_without_double_counting(
         tmp_path: Path,
     ) -> None:

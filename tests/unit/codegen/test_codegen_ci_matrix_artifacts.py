@@ -9,17 +9,15 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra._utilities._codemod.native_utilities import (
     FlextInfraUtilitiesCodemodNative,
 )
-from tests import c, tm, u
+from tests import c, t, tm, u
 from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupport):
     """Prove generated dependency, distro and host workflow artifacts."""
 
@@ -60,7 +58,7 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
     @staticmethod
     def test_selected_static_rule_skips_generated_scope_producers(
         mod_workspace: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch: t.Tests.MonkeyPatch,
     ) -> None:
         """An authored selection does not build generated scope facts."""
         root = mod_workspace.absolute()
@@ -97,7 +95,7 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
     @staticmethod
     def test_selected_generated_rule_retains_scopes_and_unselected_rendering_is_full(
         mod_workspace: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch: t.Tests.MonkeyPatch,
     ) -> None:
         """Generated selections retain scope facts; no selection remains complete."""
         root = mod_workspace.absolute()

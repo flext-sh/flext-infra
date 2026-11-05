@@ -14,11 +14,9 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenFixer
-from tests import p, tm, u
+from tests import c, p, tm, u
 
 
 def _reports_import_cycle(result: p.Infra.AutoFixResult) -> bool:
@@ -68,11 +66,11 @@ class TestsFlextInfraCodegenFixerCycleProof:
     def test_missing_repository_propagates_discovery_failure(tmp_path: Path) -> None:
         """A missing repository cannot produce a successful empty fix report."""
         missing = tmp_path / "missing"
-        with pytest.raises(RuntimeError, match=str(missing)):
+        with u.Tests.raises(RuntimeError, match=str(missing)):
             FlextInfraCodegenFixer(repository_root=missing).fix_workspace()
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_auto_fix_flags_modules_in_a_runtime_cycle(
         tmp_path: Path, session_runtime: p.Tests.SessionRuntime
     ) -> None:
@@ -102,7 +100,7 @@ class TestsFlextInfraCodegenFixerCycleProof:
         tm.that(flagged, has="cycle_pkg.beta")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_auto_fix_passes_an_acyclic_tree(
         tmp_path: Path, session_runtime: p.Tests.SessionRuntime
     ) -> None:

@@ -10,8 +10,8 @@ from pathlib import Path
 from time import monotonic
 from typing import TYPE_CHECKING, ClassVar, override
 
-import flext_infra
 from flext_infra import (
+    FlextInfraGitService,
     c,
     check,
     codegen,
@@ -184,7 +184,7 @@ class FlextInfra(
         """
         ownership = request.ownership
         if request.checkpoint_ref is not None:
-            selected = flext_infra.FlextInfraGitService.lane_ownership(
+            selected = FlextInfraGitService.lane_ownership(
                 m.Infra.GitLaneOwnershipRequest(
                     repo_root=request.root,
                     checkpoint_ref=request.checkpoint_ref,

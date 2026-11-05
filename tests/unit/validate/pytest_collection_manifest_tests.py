@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, tm, u
 
@@ -77,7 +75,7 @@ class TestsFlextInfraPytestCollectionManifest:
         )
         return (project / "models-loaded.txt").read_text(encoding="utf-8")
 
-    @pytest.mark.parametrize("reportlog", [False, True])
+    @c.Tests.MARK.parametrize("reportlog", [False, True])
     def test_unrequested_manifest_never_imports_the_model_facade(
         self,
         tmp_path: Path,
@@ -88,7 +86,7 @@ class TestsFlextInfraPytestCollectionManifest:
         tm.that(self._collect(tmp_path, reportlog=reportlog), eq="False")
         tm.that(list(tmp_path.glob("*.json")), eq=[])
 
-    @pytest.mark.parametrize("reportlog", [False, True])
+    @c.Tests.MARK.parametrize("reportlog", [False, True])
     def test_runner_requested_manifest_publishes_the_collected_items(
         self,
         tmp_path: Path,
@@ -144,7 +142,7 @@ class TestsFlextInfraPytestCollectionManifest:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_real_markdown_first_cause_and_monitor_cleanup(
         cached_runner_project: Path,
     ) -> None:
@@ -215,7 +213,7 @@ class TestsFlextInfraPytestCollectionManifest:
         tm.that(attempt.first_exception_type, eq=None)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_missing_collection_manifest_preserves_file_failure(
         cached_runner_project: Path,
     ) -> None:
@@ -230,5 +228,5 @@ class TestsFlextInfraPytestCollectionManifest:
         )
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
 
-        with pytest.raises(FileNotFoundError, match=r"testmon-selection\.json"):
+        with u.Tests.raises(FileNotFoundError, match=r"testmon-selection\.json"):
             runner.execute()

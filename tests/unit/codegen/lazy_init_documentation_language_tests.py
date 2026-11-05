@@ -11,8 +11,6 @@ import io
 import tokenize
 from pathlib import Path
 
-import pytest
-
 from tests import c, tm, u
 
 
@@ -48,7 +46,7 @@ class TestsFlextInfraLazyInitDocumentationLanguage:
         tm.that(tokens[0], eq=tokens[1])
 
     @staticmethod
-    @pytest.mark.parametrize("bootstrap", [False, True])
+    @c.Tests.MARK.parametrize("bootstrap", [False, True])
     def test_project_locale_round_trip_changes_only_docstrings(
         tmp_path: Path, *, bootstrap: bool
     ) -> None:
@@ -131,7 +129,7 @@ class TestsFlextInfraLazyInitDocumentationLanguage:
         tm.that((package / c.Infra.INIT_PY).read_bytes(), eq=b"")
 
     @staticmethod
-    @pytest.mark.parametrize("invalid", ["yaml", "locale"])
+    @c.Tests.MARK.parametrize("invalid", ["yaml", "locale"])
     def test_invalid_declaration_fails_without_writes(
         tmp_path: Path, invalid: str
     ) -> None:
@@ -156,14 +154,14 @@ class TestsFlextInfraLazyInitDocumentationLanguage:
             encoding=c.DEFAULT_ENCODING,
         )
         before = (package / c.Infra.INIT_PY).read_bytes()
-        with pytest.raises(
+        with u.Tests.raises(
             u.Yaml.YAMLError if invalid == "yaml" else c.ValidationError
         ):
             u.Tests.create_lazy_init_service(root).plan_files()
         tm.that((package / c.Infra.INIT_PY).read_bytes(), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize("changed", [False, True])
+    @c.Tests.MARK.parametrize("changed", [False, True])
     def test_publication_rejects_edited_destination_and_converges(
         tmp_path: Path, *, changed: bool
     ) -> None:

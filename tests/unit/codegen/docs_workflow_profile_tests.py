@@ -9,8 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_infra import config, m
-from tests import c, p, tm, u
+from flext_infra import config
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraCodegenDocsWorkflowProfile:

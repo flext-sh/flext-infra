@@ -9,11 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m
 from flext_infra.deps import FlextInfraDependencyDetectionService
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDepsDetectorInit:
@@ -41,7 +38,7 @@ class TestsFlextInfraDepsDetectorInit:
         tm.ok(params.no_fail)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "members",
         [(), ("flext-a",), ("flext-a", "flext-b", "flext-c")],
     )

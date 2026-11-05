@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraConfig
 from tests import c, e, m, tm, u
 
@@ -72,7 +70,7 @@ class TestsFlextInfraConfigLocalOverrides:
         )
         payload = baseline.model_dump(exclude_computed_fields=True)
         payload.pop("check_prerequisite_pyrefly_workers")
-        with pytest.raises(
+        with u.Tests.raises(
             e.PydanticValidationError,
             match="check_prerequisite_pyrefly_workers",
         ):

@@ -8,15 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from tests import c, tm, u
 
 _TRANSACTION_MARKER = "-transaction-"
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraCodegenConformNoTransactionWorktrees:
     """Conform mutates the repository in place; no detached sibling may survive.
 

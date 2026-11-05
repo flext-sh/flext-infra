@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -21,7 +19,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
     """Every initializer publishes its owning modules' declared contract."""
 
     @staticmethod
-    @pytest.mark.parametrize("subpackage_first", [False, True])
+    @c.Tests.MARK.parametrize("subpackage_first", [False, True])
     def test_shipped_bootstrap_packages_publish_their_declared_classes(
         *, subpackage_first: bool
     ) -> None:
@@ -100,8 +98,8 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         tm.that(output.stdout, has="declared bootstrap exports resolved")
 
     @staticmethod
-    @pytest.mark.parametrize("class_name", ["PublishedOwner", "DifferentDeclaredType"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("class_name", ["PublishedOwner", "DifferentDeclaredType"])
+    @c.Tests.MARK.parametrize(
         "module_name",
         [
             "owner",

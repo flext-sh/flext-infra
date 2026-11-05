@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests import m, p, tm
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraBuilder:
     """Core build invocation tests."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def builder() -> FlextInfraDocBuilder:
         """Provide the public documentation builder service.
@@ -47,7 +47,7 @@ class TestsFlextInfraBuilder:
         tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "kwargs",
         [
             {"projects": ["test-project"]},
@@ -77,7 +77,7 @@ class TestsFlextInfraBuilder:
                     pytest.fail(f"invalid projects test case: {invalid_projects!r}")
 
     @staticmethod
-    @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
+    @c.Tests.MARK.parametrize("status", ["OK", "FAIL", "SKIP"])
     def test_build_report_result_field_values(
         status: str,
         tmp_path: Path,

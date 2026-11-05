@@ -9,8 +9,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, tm, u
 
@@ -19,7 +17,7 @@ class TestsFlextInfraLintRecipes:
     """Each recipe derives its repair from the source the finding points at."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "code",
         [
             code
@@ -37,7 +35,7 @@ class TestsFlextInfraLintRecipes:
         code: str,
     ) -> None:
         """Reject a whole-module recipe instead of silently returning its input."""
-        with pytest.raises(ValueError, match=code) as failure:
+        with u.Tests.raises(ValueError, match=code) as failure:
             TestsFlextInfraLintRecipes._apply(
                 "import os\n",
                 (code, 1, "A gate-owned repair is required"),
@@ -317,10 +315,10 @@ class TestsFlextInfraLintRecipes:
             ),
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "findings", "expected"),
         [
-            pytest.param(
+            u.Tests.param(
                 "class Sample:\n"
                 '    """Define the sample."""\n'
                 "\n"
@@ -340,7 +338,7 @@ class TestsFlextInfraLintRecipes:
                 "        ...\n",
                 id="inline-protocol-suite",
             ),
-            pytest.param(
+            u.Tests.param(
                 "class Sample:\n"
                 "    def __call__[T](\n"
                 "        self,\n"
@@ -362,7 +360,7 @@ class TestsFlextInfraLintRecipes:
                 "        ...\n",
                 id="wrapped-generic-signature",
             ),
-            pytest.param(
+            u.Tests.param(
                 "class Sample:\n    def __call__(self) -> int: ...\n",
                 (
                     (
@@ -437,7 +435,7 @@ class TestsFlextInfraLintRecipes:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "license_id",
         config.Infra.codegen.scaffold.project.supported_licenses,
     )
@@ -494,7 +492,7 @@ class TestsFlextInfraLintRecipes:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "license_id",
         config.Infra.codegen.scaffold.project.supported_licenses,
     )
@@ -517,7 +515,7 @@ class TestsFlextInfraLintRecipes:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("license_id", "cause"),
         [
             ("LicenseRef-Unsupported", "unsupported scaffold license"),
@@ -532,7 +530,7 @@ class TestsFlextInfraLintRecipes:
         """No supported license is picked for a project that declares none."""
         TestsFlextInfraLintRecipes._write_manifest(tmp_path, license_id=license_id)
 
-        with pytest.raises(ValueError, match=cause) as failure:
+        with u.Tests.raises(ValueError, match=cause) as failure:
             u.Infra.copyright_notice(tmp_path)
 
         tm.that(str(failure.value), has=cause)
@@ -674,14 +672,14 @@ class TestsFlextInfraLintRecipes:
             "        assert value\n"
         )
 
-        with pytest.raises(ValueError, match="comment or continuation"):
+        with u.Tests.raises(ValueError, match="comment or continuation"):
             TestsFlextInfraLintRecipes._unused_receiver(source, "test_note")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "line", "method"),
         [
-            pytest.param(
+            u.Tests.param(
                 "class Base:\n"
                 "    def hook(self) -> int:\n"
                 "        return 1\n"
@@ -694,7 +692,7 @@ class TestsFlextInfraLintRecipes:
                 "hook",
                 id="overridden-base-hook",
             ),
-            pytest.param(
+            u.Tests.param(
                 "class Base:\n"
                 "    def hook(self) -> int:\n"
                 "        return id(self)\n"
@@ -707,7 +705,7 @@ class TestsFlextInfraLintRecipes:
                 "hook",
                 id="parent-method-override",
             ),
-            pytest.param(
+            u.Tests.param(
                 "class Sample(Base):\n"
                 "    def run(self) -> int:\n"
                 "        return super().run() + 1\n",
@@ -731,7 +729,7 @@ class TestsFlextInfraLintRecipes:
         tm.that(repaired, eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("service_base", sorted(c.Infra.SERVICE_BASE_ROOTS))
+    @c.Tests.MARK.parametrize("service_base", sorted(c.Infra.SERVICE_BASE_ROOTS))
     def test_static_method_recipe_retains_service_operation_findings(
         service_base: str,
     ) -> None:

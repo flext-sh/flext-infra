@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import FlextInfraConfig, config, m
+from flext_infra import FlextInfraConfig, config
 from flext_infra.codegen import FlextInfraCodegenLayout, FlextInfraCodegenMakeBootstrap
-from tests import c, t, tm, u
+from tests import c, m, t, tm, u
 from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
 
 
@@ -155,8 +153,8 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tm.ok(tracked.failure)
 
     @classmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("directory_suffix", ["", "-lane"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("directory_suffix", ["", "-lane"])
     def test_rendered_ignore_satisfies_layout_additions(
         cls,
         tmp_path: Path,

@@ -9,14 +9,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, infra, settings
 from flext_infra.gates import FlextInfraGatesRuffFormat, FlextInfraGatesRuffLint
 from tests import c, m, tm, u
 from tests.unit.codegen import test_codegen_ci_matrix
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraCodegenConfigLifecycle:
@@ -371,7 +369,7 @@ print(
         tm.ok(u.Cli.atomic_verify_binary_file_states(before))
 
     @staticmethod
-    @pytest.mark.parametrize("target_exists", [False, True])
+    @c.Tests.MARK.parametrize("target_exists", [False, True])
     def test_directed_initializer_uses_literal_mapping_when_proxy_is_banned(
         tmp_path: Path,
         *,

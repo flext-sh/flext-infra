@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import codemod, infra
 from tests import c, tm, u
 
@@ -22,7 +20,7 @@ class TestsFlextInfraDeclarationImportConsumers:
     """Keep real external utility behavior, aliases and lexical shadows."""
 
     @staticmethod
-    @pytest.mark.parametrize("entrypoint", ["value", "forwarded"])
+    @c.Tests.MARK.parametrize("entrypoint", ["value", "forwarded"])
     def test_ordinary_static_calls_do_not_elect_delegation_descriptors(
         tmp_path: Path,
         entrypoint: str,
@@ -60,7 +58,7 @@ class TestsFlextInfraDeclarationImportConsumers:
         tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
 
     @staticmethod
-    @pytest.mark.parametrize("binding", ["Service", "c"])
+    @c.Tests.MARK.parametrize("binding", ["Service", "c"])
     def test_constants_phase_elects_native_roles_without_inventing_facades(
         tmp_path: Path,
         binding: str,
@@ -82,7 +80,7 @@ class TestsFlextInfraDeclarationImportConsumers:
         }
         with infra.rope_workspace(root) as rope:
             if binding == "c":
-                with pytest.raises(
+                with u.Tests.raises(
                     ValueError, match="unresolved constant import chain"
                 ):
                     u.Infra.plan_semantic_cutover(
@@ -144,7 +142,7 @@ class TestsFlextInfraDeclarationImportConsumers:
         tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=sources[consumer])
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "from flext_cli import u as first, u as second\n",

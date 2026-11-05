@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import pytest
-
-from tests import t, u
+from tests import c, t, u
 
 
 class TestsFlextInfraNativeCallableAdmission:
@@ -84,7 +82,7 @@ assert module.execute() is original_hook
         )
 
     @staticmethod
-    @pytest.mark.parametrize("expression", ["value", "Consumer.offset + value"])
+    @c.Tests.MARK.parametrize("expression", ["value", "Consumer.offset + value"])
     def test_unrelated_generated_function_is_not_a_class_state_writer(
         real_python_package: t.DirectoryPath,
         expression: t.StrictStr,
@@ -193,8 +191,8 @@ assert compared.success, compared.error
         )
 
     @staticmethod
-    @pytest.mark.parametrize("storage", ["dict", "slots"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("storage", ["dict", "slots"])
+    @c.Tests.MARK.parametrize(
         ("defect", "expected"),
         [("none", 7), ("state", 15), ("implementation", -1), ("replacement", 15)],
     )
@@ -296,7 +294,7 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "behavior",
         [
             (

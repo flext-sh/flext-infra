@@ -9,13 +9,11 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraModCliRoute:
     """Exercise reporter behavior only through exported CLI and utility facades.
 
@@ -26,7 +24,7 @@ class TestsFlextInfraModCliRoute:
     @staticmethod
     def test_jsonl_keeps_unicode_separators_inside_native_captures(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """JSONL separates records at LF, preserving Unicode inside JSON strings."""
         source = 'value = "\u2028🚦"\n'
@@ -57,7 +55,7 @@ class TestsFlextInfraModCliRoute:
     @staticmethod
     def test_assert_rewrite_proves_matcher_binding_at_each_occurrence(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A local shadow blocks emission while an unrelated scope stays eligible."""
         source = mod_workspace / "tests" / "assertions.py"
@@ -100,7 +98,7 @@ class TestsFlextInfraModCliRoute:
     @staticmethod
     def test_workspace_rule_ownership_matches_member_scan(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Shared scans exempt the declared library owner, never its consumers."""
         rule_id = "ban-direct-pydantic-import"
@@ -168,7 +166,7 @@ class TestsFlextInfraModCliRoute:
     @staticmethod
     def _run_mod_scan(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> tuple[int, m.Infra.ModScanEvidence, str, str]:
         """Run one ``refactor mod`` scan and capture its receipt artifacts.
 
@@ -196,7 +194,7 @@ class TestsFlextInfraModCliRoute:
     @staticmethod
     def test_receipt_is_complete_and_replaced_by_zero_scan(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Test receipt is complete and replaced by zero scan."""
         report_path = mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
@@ -286,7 +284,7 @@ class TestsFlextInfraModCliRoute:
     @staticmethod
     def test_apply_preserves_generated_artifacts_and_rejects_missing_runtime(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A real rewrite never turns an unprovisioned runtime into acceptance."""
         actionable_path = mod_workspace / "actionable.py"
@@ -329,7 +327,7 @@ class TestsFlextInfraModCliRoute:
     @staticmethod
     def test_apply_repeats_new_actionable_rule_cascades_until_fixed_point(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Carry findings exposed by one rewrite into the next apply iteration."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))

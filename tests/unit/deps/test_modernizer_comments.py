@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import u
 from flext_infra.deps.phases import FlextInfraInjectCommentsPhase
-from tests import c, tm
+from tests import c, tm, u
 
 
 class TestsFlextInfraDepsModernizerComments:

@@ -8,10 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import t
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraReleaseCheckoutCredentials:
@@ -156,7 +153,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         publish_env = u.Cli.JSON_MAPPING_ADAPTER.validate_python(publish["env"])
         tm.that("LANE_CHECKPOINT_REF" in publish_env, eq=False)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         (c.HandlerType.EVENT, "selection", "succeeds", "release"),
         [
             ("push", ("", ""), True, False),
@@ -327,7 +324,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
             eq=candidate,
         )
 
-    @pytest.mark.parametrize("publish_index", [False, True])
+    @c.Tests.MARK.parametrize("publish_index", [False, True])
     def test_index_policy_controls_publication_and_oidc(
         self,
         *,

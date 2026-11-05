@@ -9,8 +9,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, p, t, tm, u
 
@@ -81,7 +79,7 @@ class TestsModelProtocolCallableContracts:
         ast.parse(generated, filename="generated-payload.py")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("frozen", "typed_config"), [(False, True), (True, True), (True, False)]
     )
     def test_authored_methods_and_copy_port_preserve_native_behavior(
@@ -280,7 +278,7 @@ class TestsModelProtocolCallableContracts:
         tm.that("Request" in vars(holder), eq=True)
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "failure", "message"),
         [
             (
@@ -323,7 +321,7 @@ class TestsModelProtocolCallableContracts:
         before = {path: path.read_bytes() for path in package.rglob("*.py")}
         with (
             u.Infra.facade_source_project(root) as binding,
-            pytest.raises(failure, match=message),
+            u.Tests.raises(failure, match=message),
         ):
             u.Infra.protocol_model_sources_from_source(root, binding[0])
         tm.that({path: path.read_bytes() for path in before}, eq=before)
@@ -476,13 +474,13 @@ class TestsModelProtocolCallableContracts:
         before = {path: path.read_bytes() for path in package.rglob("*.py")}
         with (
             u.Infra.facade_source_project(root) as binding,
-            pytest.raises(ValueError, match="competing generated Protocol route"),
+            u.Tests.raises(ValueError, match="competing generated Protocol route"),
         ):
             u.Infra.protocol_model_sources_from_source(root, binding[0])
         tm.that({path: path.read_bytes() for path in before}, eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("language", "model_text", "evidence_text"),
         [
             ("en", "Source-derived structural", "Static instance-to-protocol"),

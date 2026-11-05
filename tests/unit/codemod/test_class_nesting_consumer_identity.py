@@ -9,9 +9,6 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-import pytest
-from flext_core import c, u
-
 from flext_infra import infra
 from tests import c, tm, u
 from tests.unit.codemod.class_nesting_owner_support import (
@@ -25,7 +22,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraClassNestingConsumerIdentity(TestsFlextInfraClassNestingSupport):
     """Native aliases, framework hooks and consumers follow the nested owner."""
 
-    @pytest.mark.parametrize("module_kind", ["ordinary", "utilities", "typings"])
+    @c.Tests.MARK.parametrize("module_kind", ["ordinary", "utilities", "typings"])
     def test_pep695_aliases_preserve_lazy_values_and_generic_scope(
         self,
         tmp_path: Path,
@@ -125,7 +122,7 @@ class TestsFlextInfraClassNestingConsumerIdentity(TestsFlextInfraClassNestingSup
         tm.that(after, eq=before)
         tm.that(residue, eq={})
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("stem", "declaration"),
         [
             ("conftest", "def configure() -> None:\n    pass\n"),

@@ -16,8 +16,6 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import get_protocol_members
 
-import pytest
-
 from flext_infra import transformers
 from tests import c, m, p, t, tm, u
 
@@ -158,7 +156,7 @@ class TestsFlextInfraRopeContractCatalog:
             "class Payload(m.BaseModel):",
             "other = u.empty\nclass Payload(m.BaseModel):",
         )
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError,
             match=rf"{rule.id}: destination u\.Field is shadowed",
         ):
@@ -218,18 +216,18 @@ class TestsFlextInfraRopeContractCatalog:
     @staticmethod
     def test_contract_scope_refuses_noncanonical_or_duplicate_targets() -> None:
         """Scope data is validated before it can widen a Rope planning pass."""
-        with pytest.raises(m.ValidationError, match="canonical PEP 503"):
+        with u.Tests.raises(m.ValidationError, match="canonical PEP 503"):
             m.Infra.RopeContractScopeTarget(
                 distribution="Flext_Grpc", module="flext_grpc.config_models"
             )
         target = m.Infra.RopeContractScopeTarget(
             distribution="flext-grpc", module="flext_grpc.config_models"
         )
-        with pytest.raises(m.ValidationError, match="targets must be unique"):
+        with u.Tests.raises(m.ValidationError, match="targets must be unique"):
             m.Infra.RopeContractScope(targets=(target, target))
 
     @staticmethod
-    @pytest.mark.parametrize("operation", ["lower", "upper"])
+    @c.Tests.MARK.parametrize("operation", ["lower", "upper"])
     def test_semantic_dry_run_validates_the_real_staged_consumer_without_effects(
         tmp_path: Path, operation: str
     ) -> None:
@@ -288,7 +286,7 @@ class TestsFlextInfraRopeContractCatalog:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("condition", "typing_guard"),
         [
             ("checking", True),
@@ -365,7 +363,7 @@ class TestsFlextInfraRopeContractCatalog:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "target_owner", "message"),
         [
             (
@@ -425,14 +423,14 @@ class TestsFlextInfraRopeContractCatalog:
                 )
             ),
         )
-        with pytest.raises(ValueError, match=message):
+        with u.Tests.raises(ValueError, match=message):
             u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
     def test_annotation_owner_catalog_rejects_model_typing() -> None:
         """Model destinations fail at catalogue admission, before Rope planning."""
-        with pytest.raises(m.ValidationError, match="cannot produce model typing"):
+        with u.Tests.raises(m.ValidationError, match="cannot produce model typing"):
             m.Infra.RopeContractRule(
                 id="prohibited-model-owner",
                 pattern="${receiver}.${member}",
@@ -442,10 +440,10 @@ class TestsFlextInfraRopeContractCatalog:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("pattern", ["p.Cli.${member}", "${receiver}.${member}"])
+    @c.Tests.MARK.parametrize("pattern", ["p.Cli.${member}", "${receiver}.${member}"])
     def test_annotation_owner_catalog_rejects_unbound_templates(pattern: str) -> None:
         """Protocol templates require scoped source and destination identities."""
-        with pytest.raises(m.ValidationError, match="native source and bound target"):
+        with u.Tests.raises(m.ValidationError, match="native source and bound target"):
             m.Infra.RopeContractRule(
                 id="unbound-protocol-owner",
                 pattern=pattern,
@@ -456,7 +454,7 @@ class TestsFlextInfraRopeContractCatalog:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "source",
         [
             "__all__ = ['u']; side_effect()\n",
@@ -479,7 +477,7 @@ class TestsFlextInfraRopeContractCatalog:
                     project.get_resource(path.relative_to(root).as_posix())
                 )
             )
-            with pytest.raises(ValueError, match=r"__all__|exports"):
+            with u.Tests.raises(ValueError, match=r"__all__|exports"):
                 u.Infra.remove_runtime_alias_export(module, alias="u")
 
     @staticmethod
@@ -521,11 +519,11 @@ class TestsFlextInfraRopeContractCatalog:
                 eq={c.Infra.RopeScopeKind} if rule.scope_kinds else set(),
             )
             payload["phase"] = "".join(c.Infra.SemanticCutoverPhase)
-            with pytest.raises(ValueError, match="phase"):
+            with u.Tests.raises(ValueError, match="phase"):
                 m.Infra.RopeContractRule.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize("field", ["operation", "phase", "scope_kinds"])
+    @c.Tests.MARK.parametrize("field", ["operation", "phase", "scope_kinds"])
     def test_python_rules_reject_document_tokens_without_ingress_context(
         field: str,
     ) -> None:
@@ -543,7 +541,7 @@ class TestsFlextInfraRopeContractCatalog:
             tuple(serialized[field]) if field == "scope_kinds" else serialized[field]
         )
 
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             m.Infra.RopeContractRule.model_validate(payload)
 
     @staticmethod
@@ -614,12 +612,12 @@ class TestsFlextInfraRopeContractCatalog:
             "    arguments: {}\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        with pytest.raises(ValueError, match="duplicate Rope contract rule"):
+        with u.Tests.raises(ValueError, match="duplicate Rope contract rule"):
             u.Infra.declared_contract_rules(tmp_path)
 
     @staticmethod
-    @pytest.mark.parametrize("asynchronous", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("asynchronous", [False, True])
+    @c.Tests.MARK.parametrize(
         "rejected", ["", "callback", "prototype", "snapshot", "default", "decorator"]
     )
     def test_native_delegation_contract(
@@ -740,7 +738,7 @@ class TestsFlextInfraRopeContractCatalog:
         )
         tm.that(len(rules), eq=1)
         if asynchronous and not rejected:
-            with pytest.raises(ValueError, match="async prototype"):
+            with u.Tests.raises(ValueError, match="async prototype"):
                 u.Infra.plan_contract_rules(workspace, {path: source}, rules)
             tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
             return
@@ -748,7 +746,7 @@ class TestsFlextInfraRopeContractCatalog:
             decorated = runpy.run_path(str(path)) if rejected == "decorator" else None
             if decorated is not None:
                 tm.that(decorated["decorator_events"], eq=["decorate"])
-            with pytest.raises(
+            with u.Tests.raises(
                 ValueError,
                 match=r"delegation|descriptor|prototype|port|default|callback|async",
             ):
@@ -789,8 +787,8 @@ class TestsFlextInfraRopeConstructorContracts:
     """Preserve constructor targets, injected ports and native adapter behavior."""
 
     @staticmethod
-    @pytest.mark.parametrize("readonly", [False, True])
-    @pytest.mark.parametrize("chained", [False, True])
+    @c.Tests.MARK.parametrize("readonly", [False, True])
+    @c.Tests.MARK.parametrize("chained", [False, True])
     def test_constructor_target_preserves_arguments_and_noncall_references(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         *,
@@ -895,7 +893,7 @@ class TestsFlextInfraRopeConstructorContracts:
             call_target="service",
             missing_keywords=("registry",),
         )
-        with pytest.raises(ValueError, match="expanded keywords"):
+        with u.Tests.raises(ValueError, match="expanded keywords"):
             u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
@@ -924,7 +922,7 @@ class TestsFlextInfraRopeTypePositionContracts:
     """Distinguish quoted type references from Literal and Annotated payload data."""
 
     @staticmethod
-    @pytest.mark.parametrize("alias", [False, True])
+    @c.Tests.MARK.parametrize("alias", [False, True])
     def test_quoted_type_positions_require_explicit_declaring_source_repair(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         *,
@@ -945,7 +943,7 @@ class TestsFlextInfraRopeTypePositionContracts:
             f"    values: {annotation} = Field(default_factory=list)\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(ValueError, match="fix the declaring source"):
+        with u.Tests.raises(ValueError, match="fix the declaring source"):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
                 rope_workspace=workspace,
@@ -980,7 +978,7 @@ class TestsFlextInfraRopeLoggingContracts:
     """Preserve logger identity, emission contracts and CLI diagnostic effects."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "factory"),
         [
             ("from logging import getLogger as acquire", "acquire"),
@@ -1057,7 +1055,7 @@ class TestsFlextInfraRopeLoggingContracts:
         tm.fail(declaration in updated)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "source",
         [
             (
@@ -1152,7 +1150,7 @@ class TestsFlextInfraRopeLoggingContracts:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "emission",
         [
             "logger.log(logging.WARNING, 'numeric contract')",
@@ -1177,7 +1175,7 @@ class TestsFlextInfraRopeLoggingContracts:
             f"{emission}\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError, match=r"unproven native logging|proven string message"
         ):
             u.Infra.plan_semantic_cutover(
@@ -1188,7 +1186,7 @@ class TestsFlextInfraRopeLoggingContracts:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("factory_arguments", ["'contract.bound'", ""])
+    @c.Tests.MARK.parametrize("factory_arguments", ["'contract.bound'", ""])
     def test_structlog_bound_context_and_stdout_are_not_collapsed(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         factory_arguments: str,
@@ -1246,7 +1244,7 @@ class TestsFlextInfraRopeLoggingContracts:
             handler.close()
 
     @staticmethod
-    @pytest.mark.parametrize("implementation", ["_native_logging", "moved_logging"])
+    @c.Tests.MARK.parametrize("implementation", ["_native_logging", "moved_logging"])
     def test_factory_contract_keeps_only_the_native_backend_unrewritten(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         implementation: str,
@@ -1349,7 +1347,9 @@ class TestsFlextInfraRopeLoggingContracts:
             "logger.info('authored %s', u)\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(ValueError, match=r"destination u.fetch_logger is shadowed"):
+        with u.Tests.raises(
+            ValueError, match=r"destination u.fetch_logger is shadowed"
+        ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
                 rope_workspace=workspace,
@@ -1358,7 +1358,7 @@ class TestsFlextInfraRopeLoggingContracts:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("literal", [True, False])
+    @c.Tests.MARK.parametrize("literal", [True, False])
     def test_cli_result_error_retires_only_literal_verbose_flags(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         *,
@@ -1423,7 +1423,7 @@ class TestsFlextInfraRopeLoggingContracts:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("expression", ["detail()", "settings.verbose", "verbose"])
+    @c.Tests.MARK.parametrize("expression", ["detail()", "settings.verbose", "verbose"])
     def test_cli_result_error_never_discards_authored_argument_evaluation(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, t.Infra.RopeSourcePath],
         expression: str,
@@ -1436,7 +1436,7 @@ class TestsFlextInfraRopeLoggingContracts:
             f"    cli.Cli.commands_emit_result_error(result, verbose={expression})\n"
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError, match="cannot discard authored evaluation of verbose"
         ):
             u.Infra.plan_semantic_cutover(

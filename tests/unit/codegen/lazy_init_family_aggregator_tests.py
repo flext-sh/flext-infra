@@ -20,8 +20,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, tm, u
 
 
@@ -29,7 +27,7 @@ class TestsFlextInfraLazyInitFamilyAggregator:
     """A multi-name aggregator module never wins family/alias ownership."""
 
     @staticmethod
-    @pytest.mark.parametrize("part_name", ["FlextScope", "FlextScopePart03"])
+    @c.Tests.MARK.parametrize("part_name", ["FlextScope", "FlextScopePart03"])
     def test_private_split_preserves_public_wrapper(
         tmp_path: Path, part_name: str
     ) -> None:

@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, t, tm, u
 from tests.unit.codegen.pyproject_conform_support import (
@@ -329,7 +327,7 @@ exclude-dependencies = [{exclusion}]
         )
 
     @staticmethod
-    @pytest.mark.parametrize("members", [(), ("fixture-member",)])
+    @c.Tests.MARK.parametrize("members", [(), ("fixture-member",)])
     def test_scaffold_pyrefly_policy_matches_ssot_and_converges(
         tmp_path: Path,
         members: Sequence[str],
@@ -377,7 +375,7 @@ exclude-dependencies = [{exclusion}]
         )
 
     @staticmethod
-    @pytest.mark.parametrize("selection", ["reordered", "subset", "empty"])
+    @c.Tests.MARK.parametrize("selection", ["reordered", "subset", "empty"])
     def test_pyrefly_policy_preserves_valid_diagnostic_selections(
         selection: str,
     ) -> None:

@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, p, tm, u
 
@@ -18,7 +16,7 @@ class TestsFlextInfraConcreteMixinShells:
     """Report declaration-only shells; keep protocols, abstract and overloads."""
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_inline_shells_preserve_native_declaration_identities(
         mod_workspace: Path,
         native_consumer: p.Tests.NativeConsumer,

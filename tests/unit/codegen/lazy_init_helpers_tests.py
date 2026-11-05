@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 import flext_infra
 from tests import c, tm, u
 
@@ -19,7 +17,7 @@ class TestsFlextInfraLazyInitHelpers:
     """Validate lazy-init through the public service surface only."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("relative", "expected"),
         [
             ("src/test_pkg/__init__.py", "test_pkg"),
@@ -64,7 +62,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has='"m"')
 
     @staticmethod
-    @pytest.mark.parametrize("generated_init", [False, True])
+    @c.Tests.MARK.parametrize("generated_init", [False, True])
     def test_non_flext_root_respects_initializer_ownership(
         tmp_path: Path,
         *,

@@ -9,11 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
-from flext_infra import s
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, m, t, tm, u
+from tests import c, m, s, t, tm, u
 
 
 class TestsFlextInfraServiceBaseAlias:
@@ -74,7 +71,7 @@ class TestsFlextInfraServiceBaseAlias:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("value", "expected"),
         [
             (None, None),
@@ -125,7 +122,7 @@ class TestsFlextInfraServiceBaseAlias:
         tm.that(u.Infra.resolve_repository_root_or_cwd(), eq=service.root)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "value",
         [None, "", "   ", " result/../reports ", Path("reports")],
     )
@@ -153,9 +150,9 @@ class TestsFlextInfraServiceBaseAlias:
             tm.that(service.output_dir, eq=supplied.resolve())
 
     @staticmethod
-    @pytest.mark.parametrize("apply", [False, True])
-    @pytest.mark.parametrize("check", [False, True])
-    @pytest.mark.parametrize("dry_run", [False, True])
+    @c.Tests.MARK.parametrize("apply", [False, True])
+    @c.Tests.MARK.parametrize("check", [False, True])
+    @c.Tests.MARK.parametrize("dry_run", [False, True])
     def test_command_write_mode_is_request_local(
         *,
         apply: bool,

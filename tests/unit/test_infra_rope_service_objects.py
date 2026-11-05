@@ -9,10 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-import pytest
-
-import flext_infra
-from tests import c, m, tm, u
+from tests import c, infra, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +50,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             The resulting ``MutableMapping[str, m.Infra.Object]``.
 
         """
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             return {
                 item.name: item
                 for item in rope.objects(module_path, include_local_scopes=False)
@@ -77,7 +74,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             docstring="Models.",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             projects = rope.projects()
             tm.that(len(projects), eq=1)
             tm.that(projects[0].name, eq="flext-demo")
@@ -110,7 +107,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             '"""Api."""\n\n__all__: list[str] = ["FlextDemo"]\n\n'
             "class FlextDemo:\n    pass\n",
         )
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             layout = tm.not_none(rope.layout(repository_root))
             policy = rope.convention(api_path).module_policy
         tm.that(policy.expected_alias, none=True)
@@ -142,7 +139,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             ),
             encoding="utf-8",
         )
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             tm.that(
                 any(entry.file_path == module_path for entry in rope.modules()),
                 eq=True,
@@ -183,7 +180,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             ),
             encoding="utf-8",
         )
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             tm.that({item.name for item in rope.objects(module_path)}, eq={"first"})
             module_path.write_text(
                 (
@@ -216,7 +213,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         changed_source = "class Changed:\n    pass\n"
         module_path.write_text(original_source, encoding=c.DEFAULT_ENCODING)
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             original_semantic = rope.semantic(module_path)
             tm.that(rope.source(module_path), eq=original_source)
             tm.that(
@@ -242,7 +239,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("move_existing", [False, True])
+    @c.Tests.MARK.parametrize("move_existing", [False, True])
     def test_workspace_refresh_exposes_created_and_moved_modules(
         tmp_path: Path,
         *,
@@ -260,7 +257,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         destination_dir = package_root / "services"
         destination_path = destination_dir / "service.py"
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             project = rope.rope_project
             tm.that(rope.module(original_path), none=False)
             tm.that(rope.module(destination_path), none=True)
@@ -316,7 +313,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         consumer_path = package_root / "consumer.py"
         import_target = "flext_demo.service.PublicService"
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             tm.that(rope.import_dependents(import_target), eq=())
             consumer_path.write_text(
                 "from flext_demo.service import PublicService\n",
@@ -350,7 +347,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         }
         source_mode = tm.not_none(observed[provider].mode)
         planned_provider = "class PlannedProvider:\n    pass\n"
-        with flext_infra.infra.rope_workspace(root) as workspace:
+        with infra.rope_workspace(root) as workspace:
             project = workspace.rope_project
             tm.that(
                 tuple(item.name for item in workspace.objects(provider)),
@@ -429,7 +426,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
                 ),
                 eq=(consumer,),
             )
-            with pytest.raises(FileNotFoundError):
+            with u.Tests.raises(FileNotFoundError):
                 workspace.source(provider)
             workspace.bind_candidate(declared_files=())
             tm.that(workspace.module(moved), none=True)
@@ -458,7 +455,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         )
         observed = tm.ok(u.Cli.atomic_read_binary_file_state(provider))
         planned = "class PlannedProvider:\n    pass\n"
-        with flext_infra.infra.rope_workspace(root) as workspace:
+        with infra.rope_workspace(root) as workspace:
             workspace.bind_candidate(
                 declared_files=(
                     m.Infra.CodegenFilePlan(
@@ -476,7 +473,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             foreign.replace(provider)
             replacement = tm.ok(u.Cli.atomic_read_binary_file_state(provider))
             tm.fail(u.Cli.atomic_verify_binary_file_states((observed,)))
-            with pytest.raises(ValueError, match="captured state"):
+            with u.Tests.raises(ValueError, match="captured state"):
                 workspace.bind_candidate(
                     declared_files=(
                         m.Infra.CodegenFilePlan(
@@ -513,7 +510,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             "m = FlextModelsDemo\n"
             "__all__ = ['FlextModelsDemo', 'm']\n"
         )
-        with flext_infra.infra.rope_workspace(root) as workspace:
+        with infra.rope_workspace(root) as workspace:
             tm.that(tm.not_none(workspace.layout(root)).runtime_aliases, eq=())
             workspace.bind_candidate(
                 declared_files=(
@@ -546,7 +543,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         )
         pyproject_path = repository_root / c.PYPROJECT_FILENAME
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             tm.that(rope.projects()[0].name, eq=repository_root.name)
             original_layout = tm.not_none(rope.layout(repository_root))
             tm.that(original_layout.runtime_aliases, eq=())
@@ -573,7 +570,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             tm.that(layout.runtime_aliases, eq=("m",))
 
     @staticmethod
-    @pytest.mark.parametrize("validate_project", [False, True])
+    @c.Tests.MARK.parametrize("validate_project", [False, True])
     def test_workspace_refresh_can_preserve_reverted_name_indexes(
         tmp_path: Path,
         *,
@@ -604,7 +601,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
         )
         import_target = "flext_demo.service.first"
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             original_workspace_index = rope.workspace_index
             original_projects = rope.projects()
             original_layout = rope.layout(repository_root)
@@ -653,8 +650,8 @@ class TestsFlextInfraInfraRopeServiceObjects:
         module_path.write_text("def first(:\n", encoding=c.DEFAULT_ENCODING)
 
         with (
-            flext_infra.infra.rope_workspace(repository_root) as rope,
-            pytest.raises(SyntaxError) as parse_error,
+            infra.rope_workspace(repository_root) as rope,
+            u.Tests.raises(SyntaxError) as parse_error,
         ):
             rope.objects(module_path)
 
@@ -680,10 +677,10 @@ class TestsFlextInfraInfraRopeServiceObjects:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             _ = rope.workspace_index
             module_path.unlink()
-            with pytest.raises(FileNotFoundError, match=r"service\.py"):
+            with u.Tests.raises(FileNotFoundError, match=r"service\.py"):
                 rope.name_index()
 
     @staticmethod
@@ -716,10 +713,10 @@ class TestsFlextInfraInfraRopeServiceObjects:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             _ = rope.name_index()
             consumer_path.unlink()
-            with pytest.raises(FileNotFoundError, match=r"consumer\.py"):
+            with u.Tests.raises(FileNotFoundError, match=r"consumer\.py"):
                 rope.objects(service_path, include_local_scopes=False)
 
     @staticmethod
@@ -751,7 +748,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
             encoding="utf-8",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             objects = {
                 item.scope_path: item
                 for item in rope.objects(module_path, include_local_scopes=False)
@@ -836,7 +833,7 @@ class TestsFlextInfraRopeReferenceClassification:
             encoding="utf-8",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             objects = {
                 item.scope_path: item
                 for item in rope.objects(producer_path, include_local_scopes=False)
@@ -889,7 +886,7 @@ class TestsFlextInfraRopeReferenceClassification:
             encoding="utf-8",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             objects = {
                 item.scope_path: item
                 for item in rope.objects(shared_path, include_local_scopes=False)
@@ -919,7 +916,7 @@ class TestsFlextInfraRopeReferenceClassification:
             encoding="utf-8",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             objects = {
                 item.scope_path: item
                 for item in rope.objects(module_path, include_local_scopes=False)

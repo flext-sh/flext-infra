@@ -10,8 +10,6 @@ import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, p, tm, u
 
@@ -19,13 +17,13 @@ from tests import c, p, tm, u
 # item starts; each scenario provisions its own physical environment frozen
 # from those resolved dependency locks.
 # Make test-full owns these external installer and Git integration scenarios.
-pytestmark = [pytest.mark.slow, pytest.mark.remote]
+pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
 
 class TestsFlextInfraCodegenSetupSubmodules:
     """Tests for ``FlextInfraCodegenSetupSubmodules``."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def generated_project_template(
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -390,7 +388,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
             eq=configured_url,
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "member_branch",
         ["declared-dev", "feature/lane", "local-work"],
     )

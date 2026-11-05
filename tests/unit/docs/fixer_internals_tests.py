@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from tests import c, tm, u
 
@@ -40,7 +38,7 @@ class TestsFlextInfraFixerInternals:
         """Test docs maybe fix link rejects http."""
         target = f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid"
 
-        with pytest.raises(ValueError, match="use HTTPS"):
+        with u.Tests.raises(ValueError, match="use HTTPS"):
             u.Infra.docs_maybe_fix_link(tmp_path / "README.md", target)
 
     @staticmethod
@@ -53,7 +51,7 @@ class TestsFlextInfraFixerInternals:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("separator", ["\n", "\n\n", "\n\n\n"])
+    @c.Tests.MARK.parametrize("separator", ["\n", "\n\n", "\n\n\n"])
     def test_fix_keeps_closing_fence_on_its_own_line(
         tmp_path: Path,
         separator: str,

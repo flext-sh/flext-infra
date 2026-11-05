@@ -9,10 +9,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import FlextInfraCli, FlextInfraConfig, infra, m
-from tests import c, tm, u
+from flext_infra import FlextInfraCli, FlextInfraConfig, infra
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraRenameCampaignMod:
@@ -45,8 +43,8 @@ class TestsFlextInfraRenameCampaignMod:
         tm.that(compat, none=False)
         tm.that(compat.phase, eq="compat-alias")
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("apply", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("apply", [False, True])
     def test_public_mod_consumes_declared_text_campaign(
         self,
         mod_workspace: Path,
@@ -105,7 +103,7 @@ class TestsFlextInfraRenameCampaignMod:
         tm.that(consumer.stdout, eq="campaign_token\n")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_public_mod_renames_only_declared_field_binding(
         mod_workspace: Path,
     ) -> None:
@@ -233,8 +231,8 @@ class TestsFlextInfraRenameCampaignMod:
             tm.that(second.occurrences, eq=0)
             tm.that(guide.read_bytes(), eq=first)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("csv", "roots"),
         [
             ("../outside.csv", ()),
@@ -281,8 +279,8 @@ class TestsFlextInfraRenameCampaignMod:
         )
         tm.that(guide.read_text(encoding="utf-8"), eq="A campaign_token paragraph.\n")
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("escape", ["driver", "root"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("escape", ["driver", "root"])
     def test_public_mod_rejects_symlink_escape_before_publication(
         self,
         mod_workspace: Path,
@@ -331,12 +329,12 @@ class TestsFlextInfraRenameCampaignMod:
         tm.that(result.stdout + result.stderr, has=expected)
         tm.that(guide.read_text(encoding="utf-8"), eq="A campaign_token paragraph.\n")
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("selector", ["csv:campaign", "csv:unknown"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("selector", ["csv:campaign", "csv:unknown"])
     def test_public_selected_rule_rejects_ambiguous_and_unknown_owners(
         self,
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         selector: str,
     ) -> None:
         """All declared domains participate before any selected owner executes."""

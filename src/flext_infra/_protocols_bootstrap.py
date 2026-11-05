@@ -25,9 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, override
 
-from flext_cli import u
-
-from flext_infra import m
+from flext_infra import m, u
 from flext_infra._utilities._git import FlextInfraUtilitiesGitPhysicalScope
 
 if TYPE_CHECKING:

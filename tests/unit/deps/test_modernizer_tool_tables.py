@@ -10,7 +10,6 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import config
@@ -137,7 +136,7 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(changes, empty=True)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "plugins",
         [(), ("custom.plugin",), ("pydantic.mypy", "pydantic.v1.mypy")],
     )
@@ -154,11 +153,11 @@ class TestsFlextInfraDepsModernizerToolTables:
                 ("plugins", list(plugins)),
             ),
         }
-        with pytest.raises(e.PydanticValidationError, match=r"pydantic\.mypy"):
+        with u.Tests.raises(e.PydanticValidationError, match=r"pydantic\.mypy"):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("enable_unrelated", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("enable_unrelated", [False, True])
     def test_mypy_projected_policy_keeps_plugin_and_unsuspended_errors(
         self,
         tmp_path: Path,
@@ -301,7 +300,7 @@ class TestsFlextInfraDepsModernizerToolTables:
 
     @staticmethod
     def test_projected_slow_timeout_key_is_registered_by_the_loaded_plugin(
-        pytestconfig: pytest.Config,
+        pytestconfig: t.Tests.Config,
     ) -> None:
         """The ini key the pytest table projects is one the flext-tests plugin owns.
 
@@ -313,7 +312,7 @@ class TestsFlextInfraDepsModernizerToolTables:
             truth=True,
         )
 
-    @pytest.mark.parametrize("follow_untyped", [False, True])
+    @c.Tests.MARK.parametrize("follow_untyped", [False, True])
     def test_mypy_source_analysis_override_round_trips_policy(
         self,
         tmp_path: Path,

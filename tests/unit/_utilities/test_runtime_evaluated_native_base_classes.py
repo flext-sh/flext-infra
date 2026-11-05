@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from tests import c, m, tm, u
 
@@ -18,7 +16,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
     """Native ancestry, provider metadata and aliases keep declared lineage."""
 
     @staticmethod
-    @pytest.mark.parametrize("propagated", [False, True])
+    @c.Tests.MARK.parametrize("propagated", [False, True])
     def test_sibling_declaration_requires_a_propagated_native_import(
         tmp_path: Path, *, propagated: bool
     ) -> None:
@@ -73,7 +71,7 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                     eq=(reference.qualified_base,),
                 )
             else:
-                with pytest.raises(ValueError, match="does not declare Target"):
+                with u.Tests.raises(ValueError, match="does not declare Target"):
                     u.Infra.source_class_order(
                         workspace.rope_project, sources, (reference,)
                     )
@@ -87,5 +85,5 @@ class TestsFlextInfraRuntimeEvaluatedNativeBaseClasses:
                 eq=["preserved"],
             )
         else:
-            with pytest.raises(AssertionError, match="cannot import name 'Target'"):
+            with u.Tests.raises(AssertionError, match="cannot import name 'Target'"):
                 u.Tests.run_lazy_init_probe(probe, python_paths=(str(package.parent),))

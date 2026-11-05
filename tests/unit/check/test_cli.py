@@ -11,8 +11,6 @@ from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli, config
 from flext_infra.check import FlextInfraWorkspaceChecker
 from tests import c, m, tm, u
@@ -68,7 +66,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         ])
         tm.fail(result, has=f"duplicate gate '{c.Infra.LINT}'")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "expected_exit"),
         [("value = 1\n", 0), ("def broken(:\n", 1)],
         ids=["passing_project", "failing_project"],
@@ -122,7 +120,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         tm.that(exit_code, eq=1)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "entrypoint",
         [("flext-infra",), (sys.executable, "-m", "flext_infra")],
         ids=["installed_console", "module"],
@@ -151,7 +149,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         tm.that(output.outcome.raw_return_code, eq=c.Cli.EXIT_CODE_FAILURE)
         tm.that(output.stdout + output.stderr, has=f"unknown gate '{gate}'")
 
-    @pytest.mark.parametrize("reports_directory", [None, "artifacts/check"])
+    @c.Tests.MARK.parametrize("reports_directory", [None, "artifacts/check"])
     def test_run_cli_handles_multiple_projects(
         self,
         tmp_path: Path,
@@ -200,9 +198,9 @@ class TestsFlextInfraWorkspaceCheckCli:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(c.ProcessingMode.PARALLEL, [False, True])
-    @pytest.mark.parametrize("directory_option", [None, "--reports-dir"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(c.ProcessingMode.PARALLEL, [False, True])
+    @c.Tests.MARK.parametrize("directory_option", [None, "--reports-dir"])
     def test_real_cli_invocations_preserve_independent_reports(
         tmp_path: Path,
         *,
@@ -270,8 +268,8 @@ class TestsFlextInfraWorkspaceCheckCli:
             tm.that(receipt.read_text(encoding="utf-8"), has=findings[0].message)
 
     @staticmethod
-    @pytest.mark.parametrize("residual", [False, True])
-    @pytest.mark.parametrize("workspace_member", [False, True])
+    @c.Tests.MARK.parametrize("residual", [False, True])
+    @c.Tests.MARK.parametrize("workspace_member", [False, True])
     def test_run_cli_file_apply_rejects_before_effects(
         tmp_path: Path,
         *,
@@ -311,7 +309,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         tm.that(selected.read_bytes(), eq=before)
         tm.that(unselected.read_text(encoding="utf-8"), eq="import os\n")
 
-    @pytest.mark.parametrize("residual", [False, True])
+    @c.Tests.MARK.parametrize("residual", [False, True])
     def test_run_cli_fix_accepts_only_native_clean_output(
         self,
         tmp_path: Path,

@@ -8,18 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
-from flext_infra import config, gates, m, u
-from tests import c
+from flext_infra import config, gates
+from tests import c, m, u
 
 
 class TestsFlextInfraMypyBudget:
     """Verify policy validation and the public checker execution contract."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "budget",
         [c.ParserBooleanToken.ZERO, "-1", c.ParserBooleanToken.TRUE, "1.5", "'12'"],
     )
@@ -31,12 +30,12 @@ class TestsFlextInfraMypyBudget:
             f"        timeout_seconds: {budget}\n",
             encoding="utf-8",
         )
-        with pytest.raises((TypeError, ValueError)):
+        with u.Tests.raises((TypeError, ValueError)):
             u.Infra.mypy_resource_limit_for_project(tmp_path)
 
     @staticmethod
-    @pytest.mark.parametrize("field", ["timeout_seconds", "max_timeout_seconds"])
-    @pytest.mark.parametrize("value", [0, -1, True, 1.5, "12"])
+    @c.Tests.MARK.parametrize("field", ["timeout_seconds", "max_timeout_seconds"])
+    @c.Tests.MARK.parametrize("value", [0, -1, True, 1.5, "12"])
     def test_policy_requires_positive_integer_seconds(
         field: str,
         value: float | str,
@@ -45,7 +44,7 @@ class TestsFlextInfraMypyBudget:
         policy = config.Infra.tooling.tools.mypy
         payload = policy.model_dump(by_alias=True)
         payload[field] = value
-        with pytest.raises(ValueError, match=r"greater than 0|valid integer"):
+        with u.Tests.raises(ValueError, match=r"greater than 0|valid integer"):
             type(policy).model_validate(payload)
 
     @staticmethod
@@ -54,7 +53,7 @@ class TestsFlextInfraMypyBudget:
         policy = config.Infra.tooling.tools.mypy
         payload = policy.model_dump(by_alias=True)
         payload["timeout_seconds"] = policy.max_timeout_seconds + 1
-        with pytest.raises(ValueError, match="default timeout exceeds"):
+        with u.Tests.raises(ValueError, match="default timeout exceeds"):
             type(policy).model_validate(payload)
 
     @staticmethod

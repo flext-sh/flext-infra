@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, tm, u
 
 
@@ -17,7 +15,7 @@ class TestsFlextInfraSnapshotSourceOwnership:
     """Member ordering never changes the nearest real source owner."""
 
     @staticmethod
-    @pytest.mark.parametrize("reverse_members", [False, True])
+    @c.Tests.MARK.parametrize("reverse_members", [False, True])
     def test_nested_and_equal_depth_members_keep_authenticated_sources(
         tmp_path: Path, *, reverse_members: bool
     ) -> None:
@@ -49,6 +47,6 @@ class TestsFlextInfraSnapshotSourceOwnership:
         outside = root / "outside.py"
         outside.write_text("VALUE = 'outside'\n", encoding=c.DEFAULT_ENCODING)
         with u.Infra.workspace_snapshot(root, (package,)) as snapshot:
-            with pytest.raises(ValueError, match="outside every member"):
+            with u.Tests.raises(ValueError, match="outside every member"):
                 u.Infra.workspace_source(snapshot, outside)
             tm.fail(outside in snapshot.sources)

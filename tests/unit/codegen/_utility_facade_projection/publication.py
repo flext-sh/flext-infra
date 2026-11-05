@@ -11,8 +11,6 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-import pytest
-
 from tests import c, m, p, tm, u
 from tests.unit.codegen._utility_facade_projection.owner_publication import (
     UtilityFacadeOwnerPublication,
@@ -22,8 +20,8 @@ from tests.unit.codegen._utility_facade_projection.owner_publication import (
 class UtilityFacadePublication(UtilityFacadeOwnerPublication):
     """Exercise public facade publication and native contract identities."""
 
-    @pytest.mark.parametrize("family", ["u", "m"])
-    @pytest.mark.parametrize("departure", ["absent", "moved", "unpublished"])
+    @c.Tests.MARK.parametrize("family", ["u", "m"])
+    @c.Tests.MARK.parametrize("departure", ["absent", "moved", "unpublished"])
     def test_departed_generated_owner_ignores_barrel_export_freshness(
         self,
         tmp_path: Path,
@@ -125,7 +123,7 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "ownership",
         [
             "authored-facade",
@@ -267,7 +265,7 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout.strip(), eq="['registry-value']")
 
-    @pytest.mark.parametrize("multiline", [False, True])
+    @c.Tests.MARK.parametrize("multiline", [False, True])
     def test_protocol_annotation_projects_owner_and_converges(
         self,
         tmp_path: Path,
@@ -366,10 +364,10 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
-    @pytest.mark.parametrize("multiline", [False, True])
-    @pytest.mark.parametrize("organizer_protocol", [False, True])
-    @pytest.mark.parametrize("import_alias", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("multiline", [False, True])
+    @c.Tests.MARK.parametrize("organizer_protocol", [False, True])
+    @c.Tests.MARK.parametrize("import_alias", [False, True])
+    @c.Tests.MARK.parametrize(
         "owner_state", [(False, False), (False, True), (True, False), (True, True)]
     )
     def test_protocol_owner_precedes_terminal_protocol_base(
@@ -495,12 +493,12 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout.strip(), eq="protocol-proven")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("published", "actual"),
         [("AclAllow", "AclTarget"), ("RegistryBound", "ServerReference")],
     )
-    @pytest.mark.parametrize("managed", [False, True])
-    @pytest.mark.parametrize("collision", [False, True])
+    @c.Tests.MARK.parametrize("managed", [False, True])
+    @c.Tests.MARK.parametrize("collision", [False, True])
     def test_protocol_projection_rejects_unproven_renamed_contract(
         self,
         tmp_path: Path,
@@ -615,8 +613,8 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
             cwd=root,
         )
 
-    @pytest.mark.parametrize("family", ["p", "m"])
-    @pytest.mark.parametrize("annotation", ["none", "matching", "unresolved"])
+    @c.Tests.MARK.parametrize("family", ["p", "m"])
+    @c.Tests.MARK.parametrize("annotation", ["none", "matching", "unresolved"])
     def test_generated_contract_aliases_use_canonical_inherited_declarations(
         self,
         native_consumer: p.Tests.NativeConsumer,
@@ -820,9 +818,9 @@ class UtilityFacadePublication(UtilityFacadeOwnerPublication):
             tm.not_none(u.Infra.render_utility_facade(package, family="m")), eq=rendered
         )
 
-    @pytest.mark.parametrize("family", ["p", "m"])
-    @pytest.mark.parametrize("compact", [False, True])
-    @pytest.mark.parametrize("generated", [False, True])
+    @c.Tests.MARK.parametrize("family", ["p", "m"])
+    @c.Tests.MARK.parametrize("compact", [False, True])
+    @c.Tests.MARK.parametrize("generated", [False, True])
     def test_class_alias_removal_obeys_effective_diamond_owner(
         self,
         native_consumer: p.Tests.NativeConsumer,

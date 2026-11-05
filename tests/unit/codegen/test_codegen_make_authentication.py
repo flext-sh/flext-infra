@@ -9,12 +9,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
+from flext_infra import config
+from tests import c, m, p, tm, u
 
-from flext_infra import config, m
-from tests import c, p, tm, u
-
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraCodegenMakeAuthentication:
@@ -108,7 +106,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("alias", ["GH_TOKEN", "MISE_GITHUB_TOKEN"])
+    @c.Tests.MARK.parametrize("alias", ["GH_TOKEN", "MISE_GITHUB_TOKEN"])
     def test_make_promotes_an_alias_when_github_token_is_absent(
         tmp_path: Path,
         alias: str,
@@ -144,7 +142,7 @@ class TestsFlextInfraCodegenMakeAuthentication:
         tm.that(process.stdout, has="gh-config-override=yes")
 
     @staticmethod
-    @pytest.mark.parametrize("verb", ["status", "help", "clean"])
+    @c.Tests.MARK.parametrize("verb", ["status", "help", "clean"])
     def test_local_verbs_need_no_credential(tmp_path: Path, verb: str) -> None:
         """Local public verbs complete without a GitHub credential."""
         project_root, _ = u.Tests.render_make_environment(
@@ -174,8 +172,8 @@ class TestsFlextInfraCodegenMakeAuthentication:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("verb", ["setup", "upg"])
-    @pytest.mark.parametrize("local_ci", [False, True])
+    @c.Tests.MARK.parametrize("verb", ["setup", "upg"])
+    @c.Tests.MARK.parametrize("local_ci", [False, True])
     def test_network_bootstrap_retains_credential_failure_before_first_lock(
         tmp_path: Path,
         verb: str,

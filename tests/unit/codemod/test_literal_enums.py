@@ -9,16 +9,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
-from tests import c, m, p, t, tm
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraLiteralEnums:
     """Prove enum identities and wire behavior through the public phase."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("imports", "qualifier"),
         [
             ("from typing import Literal", "Literal"),
@@ -140,7 +138,7 @@ class TestsFlextInfraLiteralEnums:
         constant_candidate(sources, ())
 
     @staticmethod
-    @pytest.mark.parametrize("case", ["shadowed", "ambiguous"])
+    @c.Tests.MARK.parametrize("case", ["shadowed", "ambiguous"])
     def test_competing_enum_bindings_fail_before_publication(
         constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
@@ -177,5 +175,5 @@ class TestsFlextInfraLiteralEnums:
             if case == "shadowed"
             else "literal annotation has ambiguous enum owners"
         )
-        with pytest.raises(ValueError, match=message):
+        with u.Tests.raises(ValueError, match=message):
             constant_candidate(sources, ())

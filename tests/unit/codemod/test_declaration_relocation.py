@@ -11,7 +11,6 @@ import sys
 from pathlib import Path
 
 import flext_tests
-import pytest
 
 from flext_infra import infra
 from tests import c, m, tm, u
@@ -47,8 +46,8 @@ class TestsFlextInfraDeclarationRelocation:
         tm.that(resolved, eq=owner)
 
     @staticmethod
-    @pytest.mark.parametrize("lazy", [False, True])
-    @pytest.mark.parametrize("consumer_name", ["_config.py", "_settings.py"])
+    @c.Tests.MARK.parametrize("lazy", [False, True])
+    @c.Tests.MARK.parametrize("consumer_name", ["_config.py", "_settings.py"])
     def test_settings_imports_do_not_promote_family_payload_to_layer_zero(
         tmp_path: Path,
         consumer_name: str,
@@ -234,7 +233,7 @@ class TestsFlextInfraDeclarationRelocation:
             tm.that(len(findings), eq=1)
 
     @staticmethod
-    @pytest.mark.parametrize("existing_imports", [False, True])
+    @c.Tests.MARK.parametrize("existing_imports", [False, True])
     def test_move_preserves_payloads_and_is_immutable_idempotent(
         tmp_path: Path,
         *,
@@ -335,7 +334,7 @@ class TestsFlextInfraDeclarationRelocation:
         tm.ok(u.Cli.process_succeeded(consumer.outcome))
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("body", "base"),
         [
             (
@@ -377,7 +376,7 @@ class TestsFlextInfraDeclarationRelocation:
         )
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="runtime import cycle"),
+            u.Tests.raises(ValueError, match="runtime import cycle"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
@@ -434,7 +433,7 @@ class TestsFlextInfraDeclarationRelocation:
         consumer.write_text(sources[consumer], encoding="utf-8")
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="shadowed quoted type destination"),
+            u.Tests.raises(ValueError, match="shadowed quoted type destination"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
@@ -497,14 +496,14 @@ class TestsFlextInfraDeclarationRelocation:
             del sys.modules[spec.name]
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("dependency", "annotation", "shadow"),
         [
             ("from decimal import Decimal as Amount", "Amount", "Amount"),
             ("import decimal as amounts", "amounts.Decimal", "amounts"),
         ],
     )
-    @pytest.mark.parametrize("conflict", [False, True])
+    @c.Tests.MARK.parametrize("conflict", [False, True])
     def test_guarded_dependency_public_consumer(
         tmp_path: Path,
         dependency: str,
@@ -532,7 +531,7 @@ class TestsFlextInfraDeclarationRelocation:
             path.write_text(source, encoding="utf-8")
         with infra.rope_workspace(root) as rope:
             if conflict:
-                with pytest.raises(ValueError, match="conflicting dependency"):
+                with u.Tests.raises(ValueError, match="conflicting dependency"):
                     u.Infra.plan_semantic_cutover(
                         c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                         rope_workspace=rope,

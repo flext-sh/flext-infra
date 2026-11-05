@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
 from flext_infra import config
 from tests import c, tm, u
 
@@ -16,8 +14,8 @@ class TestsFlextInfraLockfilePolicyProjection:
     """Every profile commits the locks `make upg` writes (operator 2026-09-24)."""
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize(
         "lock_filename",
         [
             c.Infra.UV_LOCK_FILENAME,
@@ -40,8 +38,8 @@ class TestsFlextInfraLockfilePolicyProjection:
         tm.ok(u.Tests.is_tracked_under(rendered, lock_filename))
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize(
         "relative_path",
         [
             ".mise/cache/download.tar.gz",

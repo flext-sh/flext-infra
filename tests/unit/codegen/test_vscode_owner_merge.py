@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraConfig, config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
@@ -181,7 +179,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that(again, eq={"Infra": {"values": {"nested": ["first"]}}})
         tm.that(values["nested"], eq=["first"])
         malformed = b"Infra: [\n"
-        with pytest.raises(u.Yaml.YAMLError):
+        with u.Tests.raises(u.Yaml.YAMLError):
             u.Infra.read_codegen_config_document(malformed)
         corrected = tm.ok(
             u.Infra.read_codegen_config_document(
@@ -191,7 +189,7 @@ class TestsFlextInfraVscodeOwnerMerge:
         tm.that(corrected, eq={"Infra": {"values": {"nested": ["second"]}}})
 
     @staticmethod
-    @pytest.mark.parametrize("replacement", [["child", "parent"], []])
+    @c.Tests.MARK.parametrize("replacement", [["child", "parent"], []])
     def test_portable_declaration_replaces_lists_in_exact_order(
         tmp_path: Path,
         replacement: t.JsonValue,
@@ -378,7 +376,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
     """Prove the vscode owner merge publishes through generation and Git."""
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_generation_plans_missing_versioned_editor_settings(
         tmp_path: Path,
     ) -> None:
@@ -409,7 +407,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_editor_generation_creates_missing_directory_and_converges(
         tmp_path: Path,
     ) -> None:
@@ -496,7 +494,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         )
         tm.fail(rejected)
         tm.that(rejected.exception, is_=ValueError, msg=rejected.error)
-        with pytest.raises(ValueError, match="settings") as raised:
+        with u.Tests.raises(ValueError, match="settings") as raised:
             rejected.unwrap()
         tm.ok(raised.value is rejected.exception)
         tm.that(settings_path.read_text(encoding=c.DEFAULT_ENCODING), eq=rendered)

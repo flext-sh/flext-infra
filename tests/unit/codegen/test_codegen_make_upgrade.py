@@ -11,10 +11,8 @@ import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, p
-from tests import c, r, tm, u
+from flext_infra import config
+from tests import c, p, r, tm, u
 
 
 class TestsFlextInfraCodegenMakeUpgrade:
@@ -95,9 +93,9 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
 
     @staticmethod
-    @pytest.mark.remote
-    @pytest.mark.slow
-    @pytest.mark.parametrize("verb", ["setup", "upg"])
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("verb", ["setup", "upg"])
     def test_setup_preserves_the_resolved_native_locks(
         tmp_path: Path,
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -155,8 +153,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(environment_prefix, eq=managed_prefix)
 
     @staticmethod
-    @pytest.mark.remote
-    @pytest.mark.slow
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.slow
     def test_native_upg_repairs_the_generated_self_source_before_resolution(
         tmp_path: Path,
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -198,8 +196,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(source, eq={"workspace": True})
 
     @staticmethod
-    @pytest.mark.remote
-    @pytest.mark.slow
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.slow
     def test_setup_rejects_invalid_lock_without_syncing_dependencies(
         tmp_path: Path,
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -235,8 +233,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
 
     @staticmethod
-    @pytest.mark.remote
-    @pytest.mark.slow
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.slow
     def test_failed_native_upg_resolution_preserves_the_previous_lock(
         tmp_path: Path,
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -266,8 +264,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.ok(bool(upgraded.stderr.strip()))
         tm.that(lock.read_bytes(), eq=previous_lock)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("profile", list(c.Infra.MakeProfile))
     def test_only_upg_resolves_and_cold_setup_preserves_immutable_sources(
         self,
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -374,8 +372,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("profile", list(c.Infra.MakeProfile))
     def test_setup_holds_no_lock_verdict_and_audit_owns_it(
         tmp_path: Path,
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -428,13 +426,13 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.that(view.read_bytes(), eq=drifted_manifest)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "generated_make_template",
         [c.Infra.MakeProfile.STANDALONE],
         indirect=True,
     )
-    @pytest.mark.remote
-    @pytest.mark.slow
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.slow
     def test_native_shared_workspace_guard_stops_before_uv_lock(
         tmp_path: Path,
         generated_make_template: tuple[c.Infra.MakeProfile, Path],
@@ -484,8 +482,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         tm.fail(workspace_lock.exists())
 
     @staticmethod
-    @pytest.mark.remote
-    @pytest.mark.slow
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.slow
     def test_failed_member_hook_prevents_containing_root_upgrade(
         tmp_path: Path,
         generated_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -540,8 +538,8 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
 
     @staticmethod
-    @pytest.mark.remote
-    @pytest.mark.slow
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.slow
     def test_member_upgrade_reconciles_runtime_before_failing_hook(
         tmp_path: Path,
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],

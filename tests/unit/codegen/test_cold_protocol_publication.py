@@ -10,8 +10,6 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra._protocols_bootstrap import plan_protocol_facades
 from tests import p, tm, u
 
@@ -169,7 +167,7 @@ class TestsColdProtocolPublication:
                 encoding="utf-8",
             )
         before = {path: path.read_bytes() for path in (root / "src").rglob("*.py")}
-        with pytest.raises(ValueError, match="inconsistent C3"):
+        with u.Tests.raises(ValueError, match="inconsistent C3"):
             plan_protocol_facades(root)
         tm.that({path: path.read_bytes() for path in before}, eq=before)
         (protocols / "left.py").unlink()
@@ -182,5 +180,5 @@ class TestsColdProtocolPublication:
             ),
             encoding="utf-8",
         )
-        with pytest.raises(ValueError, match="authenticated runtime declaration"):
+        with u.Tests.raises(ValueError, match="authenticated runtime declaration"):
             plan_protocol_facades(root)

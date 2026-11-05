@@ -18,8 +18,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
@@ -28,7 +26,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraWorkspaceMemberPropagation:

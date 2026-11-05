@@ -19,8 +19,6 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-import pytest
-
 import flext_infra
 from tests import c, tm
 
@@ -114,7 +112,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
             if line.startswith("\t") and "|| true" in line
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "scan_name",
         ["_interpreter_at_parse_time", "_silencing_lines"],
         ids=["no-interpreter-at-parse-time", "no-silenced-recipe-failure"],

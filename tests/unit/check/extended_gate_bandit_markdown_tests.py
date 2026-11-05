@@ -10,8 +10,6 @@ import shutil
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
-import pytest
-
 from flext_infra import config
 from flext_infra.gates import FlextInfraGatesBandit, FlextInfraGatesMarkdown
 from tests import c, m, tm, u
@@ -81,8 +79,8 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that({issue.code for issue in result.issues}, eq={"B101"})
 
     @staticmethod
-    @pytest.mark.parametrize("surface", config.Infra.source_scan.roots)
-    @pytest.mark.parametrize("files_only", [False, True])
+    @c.Tests.MARK.parametrize("surface", config.Infra.source_scan.roots)
+    @c.Tests.MARK.parametrize("files_only", [False, True])
     def test_bandit_findings_remain_blocking_on_every_code_surface(
         tmp_path: Path,
         surface: str,
@@ -128,7 +126,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that(result.issues[0].code, eq=c.Infra.ToolOutcome.ERROR.value)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "report",
         [
             "{}",
@@ -219,7 +217,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that(result.raw_output, lacks="Working...")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("markdown_text", "config_text", "findings_block", "codes"),
         [
             (HEADING_SKIP, "", True, ["MD001"]),
@@ -339,7 +337,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
         tm.that(inherited.issues[0].code, eq="MD013")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "owner_parts",
         [
             *sorted(

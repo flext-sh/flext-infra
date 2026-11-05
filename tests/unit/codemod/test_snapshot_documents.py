@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod import FlextInfraCodemodSnapshotReconciler
 from tests import c, tm, u
 
@@ -18,8 +16,8 @@ class TestsFlextInfraSnapshotDocuments:
     """Every declared document contributes its cases to the same owner."""
 
     @staticmethod
-    @pytest.mark.parametrize("empty_stream", [None, "", "# no documents\n"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("empty_stream", [None, "", "# no documents\n"])
+    @c.Tests.MARK.parametrize(
         ("block_header", "padding", "second_case"),
         [
             ("|", "", "second_case\n"),
@@ -94,7 +92,7 @@ class TestsFlextInfraSnapshotDocuments:
                 )
             )
         if empty_stream is not None:
-            with pytest.raises(TypeError, match="empty ast-grep rule-test"):
+            with u.Tests.raises(TypeError, match="empty ast-grep rule-test"):
                 FlextInfraCodemodSnapshotReconciler.stale_snapshots(
                     tmp_path,
                 )

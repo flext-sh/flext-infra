@@ -9,22 +9,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import pytest
-
-from flext_infra import (
-    FlextInfraCli,
-    FlextInfraGitService,
-    FlextInfraWorktreeService,
-    m,
-)
-from tests import c, tm, u
+from flext_infra import FlextInfraCli, FlextInfraGitService, FlextInfraWorktreeService
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
     @staticmethod
-    @pytest.mark.parametrize("index_mode", ["ordinary", "v4", "split"])
+    @c.Tests.MARK.parametrize("index_mode", ["ordinary", "v4", "split"])
     def test_retire_index_artifact_preserves_live_and_staged_siblings(
         tmp_path: Path,
         index_mode: str,
@@ -192,11 +185,11 @@ class TestsFlextInfraGitFacet:
         )
         tm.that(self._lane_bytes(repository), eq=before)
 
-    @pytest.mark.parametrize(c.ContextScope.OPERATION, ["verify", "create", "retire"])
+    @c.Tests.MARK.parametrize(c.ContextScope.OPERATION, ["verify", "create", "retire"])
     def test_verify_lane_refuses_legacy_stash_ref_without_effects(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         operation: str,
     ) -> None:
         """Seed an incident ref, never call any stash creation or apply command."""
@@ -218,11 +211,11 @@ class TestsFlextInfraGitFacet:
         tm.that(output.out + output.err, has="existing stash state")
         tm.that(self._lane_bytes(repository), eq=before)
 
-    @pytest.mark.parametrize("boundary", ["stale", "unabsorbed", "moved"])
+    @c.Tests.MARK.parametrize("boundary", ["stale", "unabsorbed", "moved"])
     def test_verify_lane_refuses_remote_drift_without_effects(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         boundary: str,
     ) -> None:
         """A changed live remote is not made current by a cached ancestry proof."""
@@ -275,7 +268,7 @@ class TestsFlextInfraGitFacet:
     def test_new_lane_requires_authoritative_ownership_without_touching_foreign_refs(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Foreign refs do not block verification or authorize a second own lane."""
         repository, _, _ = self._lane_repository(tmp_path)
@@ -338,11 +331,11 @@ class TestsFlextInfraGitFacet:
         tm.fail(lane.exists())
         tm.that(self._lane_bytes(repository), eq=before)
 
-    @pytest.mark.parametrize("integrated", [False, True])
+    @c.Tests.MARK.parametrize("integrated", [False, True])
     def test_retirement_refuses_clean_unmerged_or_unpreserved_candidate(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         *,
         integrated: bool,
     ) -> None:
@@ -404,11 +397,11 @@ class TestsFlextInfraGitFacet:
         tm.that(self._lane_bytes(repository), eq=before)
         tm.that(self._lane_bytes(lane), eq=lane_before)
 
-    @pytest.mark.parametrize("change", ["tracked", "staged", "untracked"])
+    @c.Tests.MARK.parametrize("change", ["tracked", "staged", "untracked"])
     def test_retirement_cli_preserves_every_dirty_layer(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         change: str,
     ) -> None:
         """Dirty refusal cannot refresh or overwrite the index or working bytes."""
@@ -438,7 +431,7 @@ class TestsFlextInfraGitFacet:
     def test_verify_lane_missing_declaration_is_not_a_guessed_branch(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A standalone remote that declares no default branch is refused.
 
@@ -501,7 +494,7 @@ class TestsFlextInfraGitFacet:
         repository = u.Tests.git_repository(tmp_path)
         (repository / c.GIT_DIR_NAME / "index").write_bytes(b"invalid index")
 
-        with pytest.raises(Exception, match="index"):
+        with u.Tests.raises(Exception, match="index"):
             u.Infra.git_tracked_scope_paths(repository)
 
     @staticmethod

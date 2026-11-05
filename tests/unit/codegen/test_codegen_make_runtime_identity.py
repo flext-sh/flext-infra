@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraCodegenMakeRuntimeIdentity:
@@ -93,7 +91,7 @@ class TestsFlextInfraCodegenMakeRuntimeIdentity:
         tm.that(result.stderr, has=["ModuleNotFoundError", namespace])
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         (
             "operational_status",
             "fail_preparation_diagnostic",

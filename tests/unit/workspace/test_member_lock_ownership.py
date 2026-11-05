@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
@@ -17,7 +15,7 @@ from flext_infra.workspace import (
 )
 from tests import c, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraWorkspaceMemberLockOwnership:
@@ -38,7 +36,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
         project = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "standalone")
         return project, project
 
-    @pytest.mark.parametrize("attached", [False, True])
+    @c.Tests.MARK.parametrize("attached", [False, True])
     def test_verification_uses_selected_owner_without_repair(
         self,
         tmp_path: Path,
@@ -60,7 +58,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
         tm.fail(context.lock_path.exists())
         tm.that(legacy.read_text(encoding="utf-8"), eq="package = []\n")
 
-    @pytest.mark.parametrize("attached", [False, True])
+    @c.Tests.MARK.parametrize("attached", [False, True])
     def test_conform_preserves_existing_locks(
         self,
         tmp_path: Path,
@@ -92,7 +90,7 @@ class TestsFlextInfraWorkspaceMemberLockOwnership:
         tm.ok(bool(generated.written_files))
         tm.that(tuple(path.read_bytes() for path in paths), eq=before)
 
-    @pytest.mark.parametrize("attached", [False, True])
+    @c.Tests.MARK.parametrize("attached", [False, True])
     def test_conform_does_not_create_missing_uv_lock(
         self,
         tmp_path: Path,

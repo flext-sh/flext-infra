@@ -8,17 +8,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraModelRoleAdmission:
     """Exercise the elected rule with real packages, models and project metadata."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "project_name",
         [
             "flext-core",
@@ -30,7 +28,7 @@ class TestsFlextInfraModelRoleAdmission:
             "algar-oud-mig",
         ],
     )
-    @pytest.mark.parametrize("surface", ["src", "namespace"])
+    @c.Tests.MARK.parametrize("surface", ["src", "namespace"])
     def test_model_role_follows_payload_identity_not_base_spelling(
         tmp_path: Path,
         project_name: str,

@@ -172,4 +172,4 @@ class TestsFlextInfraRefactorImportNormalizationRuntimeReads(
     @classmethod
     def test_tests_fail_is_the_result_matcher(cls) -> None:
         """``u.Tests.fail`` validates a failed result; pytest's outcome never wins."""
-        tm.that(u.Tests.fail(r[int].fail("boom"), has="boom"), eq="boom")
+        tm.that(tm.fail(r[int].fail("boom"), has="boom"), eq="boom")

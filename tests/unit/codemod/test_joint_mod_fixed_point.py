@@ -8,14 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import FlextInfraCli, u
+from flext_infra import FlextInfraCli
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, tm
+from tests import c, t, tm, u
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraJointModFixedPoint:
     """Exercise real configured rules through the public refactor CLI."""
 
@@ -170,7 +168,7 @@ class TestsFlextInfraJointModFixedPoint:
     def test_cross_phase_cycle_fails_without_a_fixed_point_claim(
         self,
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """AST and regex cannot alternate indefinitely or report a false fixed point."""
         self._rules(mod_workspace, cycle=True)
@@ -188,11 +186,11 @@ class TestsFlextInfraJointModFixedPoint:
         tm.that(console, has="cross-phase cycle")
         tm.that(console, lacks="fixed point verified")
 
-    @pytest.mark.parametrize("read_only_option", ["--dry-run", "--check"])
+    @c.Tests.MARK.parametrize("read_only_option", ["--dry-run", "--check"])
     def test_ast_apply_read_only_preserves_both_physical_sources(
         self,
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         read_only_option: str,
     ) -> None:
         """Read-only mode wins over apply before either mechanical cascade writes."""
@@ -240,7 +238,7 @@ class TestsFlextInfraJointModFixedPoint:
         tm.that(console, lacks="mechanical fixed point verified")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("option", "value"),
         [
             ("--module", "missing.module"),
@@ -252,7 +250,7 @@ class TestsFlextInfraJointModFixedPoint:
     )
     def test_ast_unimplemented_request_fails_before_full_corpus_effects(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         option: str,
         value: str,
     ) -> None:

@@ -27,7 +27,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         "typings": ["mypy"],
     }
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def doc() -> t.Cli.TomlDocument:
         """Provide a mutable TOML document fixture.
@@ -53,7 +53,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         return doc
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("raw", "expected"),
         [
             ("requests", "requests"),
@@ -71,7 +71,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(u.Infra.dep_name(raw), eq=expected)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("specs", "expected_length", "expected_names", "check_sorted"),
         [
             (["requests>=2.0", "django>=3.0"], 2, ["requests", "django"], False),
@@ -104,7 +104,7 @@ class TestsFlextInfraDepsModernizerHelpers:
             tm.ok(left < right)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("value", "expected"),
         [("test", "test"), (None, None), ({"key": "value"}, {"key": "value"})],
     )
@@ -123,7 +123,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(u.Cli.toml_unwrap_item(doc["key"]), eq="value")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("value", "expected"),
         [
             (u.Cli.toml_item_from_json_value(["a", "b", "c"]), ["a", "b", "c"]),
@@ -154,7 +154,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(u.Cli.toml_as_string_list(int_val), eq=())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("items", "expected"),
         [(["a", "b", "c"], 3), ([], 0), (["single"], 1)],
     )
@@ -163,7 +163,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(len(u.Cli.toml_array(items)), eq=expected)
 
     @staticmethod
-    @pytest.mark.parametrize("mode", ["new", "existing", "replace-non-table"])
+    @c.Tests.MARK.parametrize("mode", ["new", "existing", "replace-non-table"])
     def test_ensure_table(mode: str) -> None:
         """Verify ensure table."""
         parent = u.Cli.toml_table()
@@ -181,7 +181,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         _ = u.Cli.toml_ensure_table(parent, "key")
         tm.that(parent, has="key")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("optional_deps", "expected_dev", "expected_docs"),
         [
             (_FULL_OPTIONAL_DEPS, ["pytest"], ["sphinx"]),
@@ -207,7 +207,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         doc["project"] = {"name": "test"}
         tm.that(u.Infra.project_dev_groups(doc), eq={})
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("optional_deps", "expected_length", "expect_pytest"),
         [
             (_FULL_OPTIONAL_DEPS, 5, True),
@@ -278,7 +278,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(str(parsed.specifier), eq=f">={locked_version}")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "constraint",
         [
             "",
@@ -322,7 +322,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("separator", ["@", " @ ", "\t@\t"])
+    @c.Tests.MARK.parametrize("separator", ["@", " @ ", "\t@\t"])
     def test_rewrite_preserves_direct_reference(separator: str) -> None:
         """PEP 508 direct references remain source-owned regardless of whitespace."""
         requirement = (
@@ -337,8 +337,8 @@ class TestsFlextInfraDepsModernizerHelpers:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("requirement", ["example>=broken", "example; broken", ""])
+    @c.Tests.MARK.parametrize("requirement", ["example>=broken", "example; broken", ""])
     def test_rewrite_rejects_invalid_requirement(requirement: str) -> None:
         """Unresolved invalid declarations retain the native parser diagnostic."""
-        with pytest.raises(InvalidRequirement):
+        with u.Tests.raises(InvalidRequirement):
             u.Infra.rewrite_requirement_constraint(requirement, resolved_versions={})

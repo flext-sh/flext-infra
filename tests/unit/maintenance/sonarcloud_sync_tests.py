@@ -16,11 +16,9 @@ import sys
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.maintenance import FlextInfraMaintenanceSonarcloud
-from tests import c, p, t, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -125,7 +123,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         )
         return result.outcome.raw_return_code, result.stdout + result.stderr
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "origin",
         [
             "https://github.com/example-org/example-repo.git",
@@ -148,7 +146,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
             f"{self._REPOSITORY}",
         )
 
-    @pytest.mark.parametrize(c.Aggregation.COUNT, [None, 0, 1, 3])
+    @c.Tests.MARK.parametrize(c.Aggregation.COUNT, [None, 0, 1, 3])
     def test_plan_selects_reset_or_the_complete_property_set(
         self,
         count: int | None,
@@ -181,8 +179,8 @@ class TestsFlextInfraSonarcloudSettingsSync:
         tm.that(plan.api_url, eq=spec.api_url)
         tm.that(plan.timeout_seconds, eq=spec.api_timeout_seconds)
 
-    @pytest.mark.parametrize(c.Aggregation.COUNT, [0, 1, 3])
-    @pytest.mark.parametrize("inherited", [False, True])
+    @c.Tests.MARK.parametrize(c.Aggregation.COUNT, [0, 1, 3])
+    @c.Tests.MARK.parametrize("inherited", [False, True])
     def test_plan_matches_effective_server_values(
         self,
         count: int,
@@ -214,7 +212,7 @@ class TestsFlextInfraSonarcloudSettingsSync:
         )
         tm.fail(FlextInfraMaintenanceSonarcloud.in_sync_with(plan, extra))
 
-    @pytest.mark.parametrize(c.Aggregation.COUNT, [1, 3])
+    @c.Tests.MARK.parametrize(c.Aggregation.COUNT, [1, 3])
     def test_repeated_config_entries_fail_and_server_duplicates_require_a_write(
         self,
         count: int,

@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, tm, u
 
 
@@ -84,7 +82,7 @@ class TestsFlextInfraWorktreeRegistryIdentity:
             ),
         )
 
-    @pytest.mark.parametrize("absolute", [False, True])
+    @c.Tests.MARK.parametrize("absolute", [False, True])
     def test_linked_submodule_authenticates_its_configured_primary(
         self, tmp_path: Path, *, absolute: bool
     ) -> None:
@@ -131,7 +129,7 @@ class TestsFlextInfraWorktreeRegistryIdentity:
             eq=registry_before,
         )
 
-    @pytest.mark.parametrize("attached", [False, True])
+    @c.Tests.MARK.parametrize("attached", [False, True])
     def test_member_lane_uses_its_governing_superproject_declaration(
         self, tmp_path: Path, *, attached: bool
     ) -> None:
@@ -183,7 +181,7 @@ class TestsFlextInfraWorktreeRegistryIdentity:
 
         tm.that(resolved, eq=expected)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "defect",
         [
             "missing-config",
@@ -231,7 +229,7 @@ class TestsFlextInfraWorktreeRegistryIdentity:
         tm.ok(linked.is_dir())
 
     @staticmethod
-    @pytest.mark.parametrize("bare", [False, True])
+    @c.Tests.MARK.parametrize("bare", [False, True])
     def test_regular_and_bare_registries_preserve_native_identity(
         tmp_path: Path, *, bare: bool
     ) -> None:

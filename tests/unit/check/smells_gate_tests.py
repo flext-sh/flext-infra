@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.smells import FlextInfraGatesSmells
@@ -19,7 +17,7 @@ from tests import c, m, p, t, tm, u
 class TestsFlextInfraSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def smells_project(
         tmp_path: Path,
@@ -319,7 +317,7 @@ class TestsFlextInfraSmellsGate:
         tm.ok(execution.result.passed)
         tm.that(execution.issues, length=0)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "variation",
         ["current", "raised", "similar-only", "disabled"],
     )

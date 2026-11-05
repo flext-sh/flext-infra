@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import config, u
-from tests import c, p, r, t, tm
+from flext_infra import config
+from tests import c, p, r, t, tm, u
 
 
 class TestsFlextInfraUtilitiesToml:

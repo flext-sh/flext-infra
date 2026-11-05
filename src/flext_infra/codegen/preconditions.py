@@ -11,9 +11,7 @@ from json import dumps
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
-
-from flext_infra import c, config, m, p, r, workspace as workspace_services
+from flext_infra import c, config, m, p, r, u, workspace as workspace_services
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution

@@ -9,9 +9,7 @@ from __future__ import annotations
 import os
 import time
 
-import pytest
-
-from tests import tm, u
+from tests import c, tm, u
 from tests.unit.codegen.conftest import NativeLifecycle
 
 
@@ -19,7 +17,7 @@ class TestsNativeLifecycleLock:
     """Protect full setup/upg sequences without claiming to lease direct UV."""
 
     @staticmethod
-    @pytest.mark.parametrize("second_goal", ["setup", "upg"])
+    @c.Tests.MARK.parametrize("second_goal", ["setup", "upg"])
     def test_competing_workflows_do_not_interleave(
         native_lifecycle: NativeLifecycle,
         second_goal: str,

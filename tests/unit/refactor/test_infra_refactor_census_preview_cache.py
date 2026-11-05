@@ -10,9 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-import flext_infra
-from flext_infra import m
-from tests import c, tm, u
+from tests import c, infra, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -172,7 +170,7 @@ class TestsFlextInfraRefactorCensusPreview:
                 repository_root,
                 candidate,
                 options=m.Infra.RemovalPreviewOptions(gates=("lint",)),
-                source_preview=flext_infra.infra.source_preview(repository_root),
+                source_preview=infra.source_preview(repository_root),
             )
 
         tm.ok(preview)

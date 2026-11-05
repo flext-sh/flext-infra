@@ -11,8 +11,6 @@ import sys
 from collections.abc import MutableMapping
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, p, tm, u
 from tests.unit.codegen._utility_facade_projection.publication import (
     UtilityFacadePublication,
@@ -22,7 +20,7 @@ from tests.unit.codegen._utility_facade_projection.publication import (
 class UtilityFacadePlanning(UtilityFacadePublication):
     """Exercise source election, future owners and projection planning."""
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "exports",
         [
             "__all__ = ['c']\n",
@@ -168,7 +166,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
                 )
         return facade_plans
 
-    @pytest.mark.parametrize("scope", ["single", "independent", "collision"])
+    @c.Tests.MARK.parametrize("scope", ["single", "independent", "collision"])
     def test_future_exposure_uses_planned_owners(
         self, tmp_path: Path, scope: str
     ) -> None:
@@ -297,7 +295,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         tm.that(output.stdout.strip(), eq=expected_stdout)
         return rendered
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("import_statement", "consumer_name"),
         [
             ("from flext_sample import u", "batch_apply.py"),
@@ -419,7 +417,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
-    @pytest.mark.parametrize("member_path", ["provider", "libraries/provider"])
+    @c.Tests.MARK.parametrize("member_path", ["provider", "libraries/provider"])
     def test_declared_workspace_import_resolves_without_adopting_foreign_owner(
         self,
         tmp_path: Path,
@@ -764,7 +762,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             cwd=root,
         )
 
-    @pytest.mark.parametrize("virtual", [False, True])
+    @c.Tests.MARK.parametrize("virtual", [False, True])
     def test_rejects_owners_without_a_public_facade(
         self, tmp_path: Path, *, virtual: bool
     ) -> None:
@@ -790,7 +788,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             )
 
     @staticmethod
-    @pytest.mark.parametrize("present", [False, True])
+    @c.Tests.MARK.parametrize("present", [False, True])
     def test_empty_owner_directory_needs_no_facade(
         tmp_path: Path, *, present: bool
     ) -> None:
@@ -802,7 +800,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             (package / family.directory).mkdir()
         tm.that(u.Infra.render_utility_facade(package), eq=None)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "consumer_source",
         ["def invalid(:\n", "class TestInvalid(\n"],
     )
@@ -884,7 +882,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             msg=f"Initial projection: {rendered!r}\nRepeated projection: {repeated!r}",
         )
 
-    @pytest.mark.parametrize("generated", [True, False])
+    @c.Tests.MARK.parametrize("generated", [True, False])
     def test_initializer_ownership_controls_consumer_parsing(
         self,
         tmp_path: Path,
@@ -913,7 +911,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
             tm.that((package / "utilities.py").read_text(), eq=original)
         else:
-            with pytest.raises(SyntaxError):
+            with u.Tests.raises(SyntaxError):
                 u.Infra.render_utility_facade(package)
         tm.that(initializer.read_text(), eq=conflicted)
 
@@ -997,7 +995,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
             tm.not_none(u.Infra.render_utility_facade(package, family="c")), eq=rendered
         )
 
-    @pytest.mark.parametrize("owner_name", ["FlextSampleTypes", "CompleteTypeOwner"])
+    @c.Tests.MARK.parametrize("owner_name", ["FlextSampleTypes", "CompleteTypeOwner"])
     def test_type_facade_imports_its_owner_through_the_family_package(
         self,
         tmp_path: Path,
@@ -1089,7 +1087,7 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout.strip(), eq="str")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("bases", "exports"),
         [
             ("LocalOwner, UnknownExtraBase", "'PublicTypes', 't'"),
@@ -1126,6 +1124,8 @@ class UtilityFacadePlanning(UtilityFacadePublication):
         )
         with (
             u.Infra.facade_source_project(root) as (project, sources),
-            pytest.raises(ValueError, match=r"facade bases|facade base origin|exports"),
+            u.Tests.raises(
+                ValueError, match=r"facade bases|facade base origin|exports"
+            ),
         ):
             u.Infra.render_type_facade(package, facade, sources, project=project)

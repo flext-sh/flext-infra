@@ -10,22 +10,20 @@ import ast
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import c, infra
+from flext_infra import infra
 from flext_infra._models.codegen_toolchain import FlextInfraModelsCodegenToolchain
 from flext_infra._models.deps import FlextInfraModelsDeps
 from flext_infra._models.gates import FlextInfraModelsGates
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
 from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
-from tests import p, tm, u
+from tests import c, p, t, tm, u
 
 
 class TestsModelProtocolNativeMro:
     """Compare generated contracts with the real Pydantic consumer."""
 
     @staticmethod
-    @pytest.mark.parametrize("requested", ["visible", "foreign"])
+    @c.Tests.MARK.parametrize("requested", ["visible", "foreign"])
     def test_existing_narrow_port_retains_model_owner(
         tmp_path: Path, requested: str
     ) -> None:
@@ -62,7 +60,7 @@ class TestsModelProtocolNativeMro:
             tm.ok(u.Cli.atomic_write_text_file(path, content))
         with u.Infra.facade_source_project(root) as binding:
             if requested == "foreign":
-                with pytest.raises(ValueError, match="model contract collides"):
+                with u.Tests.raises(ValueError, match="model contract collides"):
                     u.Infra.protocol_model_sources_from_source(root, binding[0])
                 return
             projected = tm.ok(
@@ -114,7 +112,7 @@ class TestsModelProtocolNativeMro:
 
     @staticmethod
     def test_source_inventory_does_not_open_missing_protocol_model_facade(
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch: t.Tests.MonkeyPatch,
     ) -> None:
         """The real repository plans before its incomplete facade is importable."""
         root = Path(__file__).parents[3]
@@ -249,7 +247,7 @@ class TestsModelProtocolNativeMro:
     @staticmethod
     def test_generated_source_parse_error_identifies_owner_and_path() -> None:
         """Plan diagnostics identify the invalid generated Protocol artifact."""
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError,
             match=(
                 "generated Protocol source is invalid: "
@@ -312,7 +310,7 @@ class TestsModelProtocolNativeMro:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("bases", ["Left, Right", "Right, Left"])
+    @c.Tests.MARK.parametrize("bases", ["Left, Right", "Right, Left"])
     def test_diamond_override_matches_the_runtime_model(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
@@ -400,7 +398,7 @@ class TestsModelProtocolNativeMro:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("authored", [False, True])
+    @c.Tests.MARK.parametrize("authored", [False, True])
     def test_unpublished_models_mirror_module_and_preserve_authored_ports(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
@@ -515,7 +513,7 @@ class TestsModelProtocolNativeMro:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
         with (
             infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match="incompatible authored protocol contract"),
+            u.Tests.raises(ValueError, match="incompatible authored protocol contract"),
         ):
             tm.ok(u.Infra.protocol_model_sources(workspace))
         tm.that(destination.read_text(), eq=authored)

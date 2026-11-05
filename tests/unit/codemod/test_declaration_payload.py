@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraDeclarationPayload:
@@ -56,7 +54,7 @@ class TestsFlextInfraDeclarationPayload:
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("definition", "accepted"),
         [
             (
@@ -370,7 +368,7 @@ class TestsFlextInfraDeclarationPayload:
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("definition", "accepted"),
         [
             ("class Payload(Contract):\n    value: str\n", True),

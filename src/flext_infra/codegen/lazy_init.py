@@ -16,9 +16,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_cli import m, p, r, u
-
-from flext_infra import c
+from flext_infra import c, m, p, r, u
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._codegen import (
     FlextInfraModelsCodegenLazyInit,

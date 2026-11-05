@@ -9,8 +9,6 @@ from __future__ import annotations
 from json import dumps
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, t, tm, u
 
@@ -135,7 +133,7 @@ class TestsFlextInfraReleasePublish:
     def test_retargeted_tag_refuses_receipt_before_remote_effects(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Changing a candidate gitlink cannot publish an older member receipt."""
         workspace, report = self._built_workspace(tmp_path)
@@ -162,7 +160,7 @@ class TestsFlextInfraReleasePublish:
         tm.that(output.out + output.err, has="release source commit differs from tag")
 
     @staticmethod
-    @pytest.mark.parametrize("digest", [None, "sha256:" + "a" * 64])
+    @c.Tests.MARK.parametrize("digest", [None, "sha256:" + "a" * 64])
     def test_native_asset_inventory_accepts_nullable_digest(digest: str | None) -> None:
         """GitHub's absent native digest remains explicit, not a verified hash."""
         inventory = m.Infra.GithubReleaseAssets.model_validate_json(
@@ -187,7 +185,7 @@ class TestsFlextInfraReleasePublish:
     @staticmethod
     def test_index_request_cannot_override_policy(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """The public manual route rejects a forbidden destination before receipts."""
         workspace = u.Tests.create_release_workspace(tmp_path)

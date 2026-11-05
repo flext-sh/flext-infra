@@ -9,8 +9,6 @@ from __future__ import annotations
 from json import dumps
 from pathlib import Path
 
-import pytest
-
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceLockCompleteness,
@@ -54,7 +52,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("missing", ["name", "version", "source"])
+    @c.Tests.MARK.parametrize("missing", ["name", "version", "source"])
     def test_required_locked_identity_never_defaults(missing: str) -> None:
         """Collection defaults cannot turn an incomplete identity into a package."""
         package = m.Infra.LockedPackage.model_validate_json(
@@ -62,7 +60,7 @@ class TestsFlextInfraWorkspaceLockCompleteness:
             '"source":{"registry":"https://example.com/simple"}}'
         )
         payload = package.model_dump_json(by_alias=True, exclude={missing})
-        with pytest.raises(ValueError, match=missing):
+        with u.Tests.raises(ValueError, match=missing):
             m.Infra.LockedPackage.model_validate_json(payload)
 
     @staticmethod

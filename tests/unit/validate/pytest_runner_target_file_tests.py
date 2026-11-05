@@ -9,19 +9,17 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, t, tm, u
 
 
-@pytest.mark.unit
+@c.Tests.MARK.unit
 class TestsFlextInfraPytestTargetFile:
     """A declared file replaces the suite directory as the only node target."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("budgeted", "slow", "failure"),
         [
             (True, False, ""),
@@ -74,7 +72,7 @@ class TestsFlextInfraPytestTargetFile:
         status = tm.ok(runner.execute_file())
 
         tm.that(
-            status == pytest.ExitCode.OK.value,
+            status == c.Tests.ExitCode.OK.value,
             eq=bool(expected) and not failure,
         )
         if failure == "collection" or not expected:
@@ -158,7 +156,7 @@ class TestsFlextInfraPytestTargetFile:
         before = proof.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
         runner = u.Tests.PytestRunner.runner_for(root, target_file=relative)
 
-        tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
+        tm.that(tm.ok(runner.execute_file()), eq=c.Tests.ExitCode.OK.value)
 
         after = proof.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
         tm.that(after[: len(before)], eq=before)
@@ -204,7 +202,7 @@ class TestsFlextInfraPytestTargetFile:
         tm.that(outcome, eq="value-error")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_declared_file_operation_executes_fresh_tests(
         cached_runner_project: Path,
     ) -> None:
@@ -223,14 +221,14 @@ class TestsFlextInfraPytestTargetFile:
             cached_runner_project, target_file=relative
         )
         outcome = tm.ok(runner.execute_file())
-        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(outcome, eq=c.Tests.ExitCode.OK.value)
         tm.that(
             declared.with_suffix(".executed").read_text(encoding="utf-8"),
             eq="executed",
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_declared_file_rerun_over_a_warm_cache_executes_again(
         cached_runner_project: Path,
     ) -> None:
@@ -245,14 +243,14 @@ class TestsFlextInfraPytestTargetFile:
             runner = u.Tests.PytestRunner.runner_for(
                 cached_runner_project, target_file=relative
             )
-            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_file()), eq=c.Tests.ExitCode.OK.value)
             report = u.Tests.PytestRunner.summary(
                 cached_runner_project / cache.reports_directory
             )
             tm.that(report, has="executed=1\n")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_declared_file_edit_reruns_the_complete_file(
         cached_runner_project: Path,
     ) -> None:
@@ -273,7 +271,7 @@ class TestsFlextInfraPytestTargetFile:
             runner = u.Tests.PytestRunner.runner_for(
                 cached_runner_project, target_file=relative
             )
-            tm.that(tm.ok(runner.execute_file()), eq=pytest.ExitCode.OK.value)
+            tm.that(tm.ok(runner.execute_file()), eq=c.Tests.ExitCode.OK.value)
             report = u.Tests.PytestRunner.summary(
                 cached_runner_project / cache.reports_directory
             )

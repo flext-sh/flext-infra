@@ -135,7 +135,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         tm.that(graph, has="demo.live")
 
     @staticmethod
-    @pytest.mark.parametrize("reuse_config", [False, True])
+    @c.Tests.MARK.parametrize("reuse_config", [False, True])
     def test_generated_source_tree_is_outside_the_scan_targets(
         tmp_path: Path,
         *,
@@ -172,7 +172,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         tm.that(targets, lacks=generated.relative_to(project).as_posix())
 
     @staticmethod
-    @pytest.mark.parametrize("git_project", [False, True])
+    @c.Tests.MARK.parametrize("git_project", [False, True])
     def test_active_sources_share_one_inventory(
         tmp_path: Path,
         *,
@@ -283,7 +283,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         for target in ("arbitrary", live_paths[0].name, root_stub.name):
             tm.that(analyzer_roots, has=target)
             tm.that(u.Infra.namespace_scan_dirs(project), has=target)
-        with pytest.raises(ValueError, match="outside governed inventory"):
+        with u.Tests.raises(ValueError, match="outside governed inventory"):
             u.Infra.ast_grep_scan_targets(project, source_files=(outsiders[0],))
 
     @staticmethod
@@ -316,7 +316,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
                 tm.that(discovered, eq=tuple(sorted((nested, standalone))))
 
     @staticmethod
-    @pytest.mark.skipif(os.name != "posix", reason="Requires POSIX named pipes")
+    @c.Tests.MARK.skipif(os.name != "posix", reason="Requires POSIX named pipes")
     def test_special_files_do_not_enter_the_source_inventory(tmp_path: Path) -> None:
         """A Python suffix cannot turn a FIFO into a regular source file."""
         project = u.Tests.mk_project(
@@ -343,7 +343,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
     def test_unreadable_source_subtree_preserves_native_failure(tmp_path: Path) -> None:
         """Discovery cannot return a partial inventory after a native walk failure."""
         if os.name != "posix":
-            pytest.skip("NOT EXECUTED: POSIX directory permissions are required")
+            u.Tests.skip("NOT EXECUTED: POSIX directory permissions are required")
         project = u.Tests.mk_project(
             tmp_path,
             "unreadable-inventory",
@@ -356,11 +356,11 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
         blocked.chmod(0)
         try:
             if os.access(blocked, os.R_OK | os.X_OK):
-                pytest.skip(
+                u.Tests.skip(
                     "NOT EXECUTED: current identity can traverse "
                     "chmod-inaccessible trees"
                 )
-            with pytest.raises(PermissionError) as discovery_error:
+            with u.Tests.raises(PermissionError) as discovery_error:
                 u.Infra.discover_python_files(
                     project, workspace_excluded_top_dirs=frozenset()
                 )
@@ -380,7 +380,7 @@ class TestsFlextInfraCodemodImportCycleSourceScan:
                 )
             tm.that(exception.filename, eq=discovery_error.value.filename)
             tm.that(exception.errno, eq=errno.EACCES)
-            with pytest.raises(PermissionError) as unwrap_error:
+            with u.Tests.raises(PermissionError) as unwrap_error:
                 result.unwrap()
             tm.ok(unwrap_error.value is exception)
         finally:

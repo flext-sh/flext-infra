@@ -8,18 +8,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraSourceIntrospectionBoundary:
     """Keep source introspection distinct from runtime and generated artifacts."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("consumer", "expected_findings"),
         [
             (

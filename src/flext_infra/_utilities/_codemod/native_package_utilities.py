@@ -1196,15 +1196,10 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 ),
                 "ignores": [f"**/{c.Infra.INIT_PY}"],
                 "utils": dict(utils),
-                "constraints": {
-                    "PACKAGE": {
-                        "any": [
-                            {"matches": c.Infra.CODEMOD_OWN_PACKAGE_UTILITY},
-                            {"matches": c.Infra.CODEMOD_FACADE_PACKAGE_UTILITY},
-                        ]
-                    },
-                    "NAME": {"regex": "^[a-z]$"},
-                },
+                # The package and letter tests sit in the rule, before the
+                # module-wide ``local`` search: native constraints run only
+                # after a rule match, so that search would visit every
+                # attribute of every module.
                 "rule": {
                     "kind": "attribute",
                     "all": [
@@ -1213,9 +1208,23 @@ class FlextInfraUtilitiesCodemodNativePackage:
                                 "field": "object",
                                 "kind": "identifier",
                                 "pattern": "$PACKAGE",
+                                "any": [
+                                    {"matches": c.Infra.CODEMOD_OWN_PACKAGE_UTILITY},
+                                    {
+                                        "matches": (
+                                            c.Infra.CODEMOD_FACADE_PACKAGE_UTILITY
+                                        )
+                                    },
+                                ],
                             }
                         },
-                        {"has": {"field": "attribute", "pattern": "$NAME"}},
+                        {
+                            "has": {
+                                "field": "attribute",
+                                "pattern": "$NAME",
+                                "regex": "^[a-z]$",
+                            }
+                        },
                         {"not": local},
                     ],
                 },
@@ -1288,6 +1297,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
                                 )
                             },
                             {"not": {"regex": "^[a-z]$"}},
+                            # Module metadata (``pkg.__version__``) is an
+                            # attribute of the module object itself.
+                            {"not": {"regex": "^__.+__$"}},
                         ]
                     }
                 },

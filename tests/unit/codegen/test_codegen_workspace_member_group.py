@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
@@ -55,7 +53,7 @@ class TestsFlextInfraCodegenWorkspaceMemberGroup:
         tm.fail("PROJECT_INFRA_PYTHONPATH" in rendered)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_workspace_root_group_survives_conform_at_a_fixed_point(
         tmp_path: Path,
     ) -> None:

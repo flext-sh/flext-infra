@@ -11,8 +11,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
@@ -22,7 +20,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("project_name", "authored_root"),
         [("flext-alpha", "automation"), ("flext-beta", "quality_tools")],
     )
@@ -93,7 +91,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.fail(u.Infra.codegen_file_requires_effect(second))
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_selected_member_mod_text_owns_its_real_workspace_scope(
         tmp_path: Path,
     ) -> None:

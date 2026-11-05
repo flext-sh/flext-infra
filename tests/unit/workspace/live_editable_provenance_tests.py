@@ -10,11 +10,9 @@ import shutil
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from flext_infra.workspace import FlextInfraBindingService
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 from tests.unit.codegen.test_make_bootstrap_publication import (
     TestsMakeBootstrapPublication as _BootstrapWorkspace,
 )
@@ -254,7 +252,7 @@ class TestsLiveEditableProvenance:
     def test_selected_distribution_missing_dependency_blocks_receipt_publication(
         self,
         tmp_path: Path,
-        capfd: pytest.CaptureFixture[str],
+        capfd: t.Tests.CaptureFixture[str],
     ) -> None:
         """A receipt-bound requirement owner cannot excuse a missing dependency."""
         root, members = self._workspace(tmp_path)
@@ -319,7 +317,7 @@ class TestsLiveEditableProvenance:
         finally:
             shutil.rmtree(duplicate)
 
-    @pytest.mark.parametrize("defect", ["origin", "backpointer", "foreign_editable"])
+    @c.Tests.MARK.parametrize("defect", ["origin", "backpointer", "foreign_editable"])
     def test_live_editable_origin_still_rejects_foreign_identity(
         self,
         tmp_path: Path,

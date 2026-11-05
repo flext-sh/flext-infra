@@ -9,8 +9,6 @@ from __future__ import annotations
 from difflib import unified_diff
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, tm, u
 from tests.unit.pyproject_conform_topology_support import (
@@ -23,7 +21,7 @@ class TestsFlextInfraPyprojectConformOverlayOwnership(
 ):
     """Prove overlay-owned development entries are preserved and re-derived."""
 
-    @pytest.mark.parametrize("attached", [False, True])
+    @c.Tests.MARK.parametrize("attached", [False, True])
     def test_retired_development_requirements_do_not_reappear(
         self,
         *,

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import flext_infra
 from flext_infra import codegen
-from tests import c, m, tm, u
+from tests import FlextInfra, FlextInfraCli, c, infra, m, settings, tm, u
 
 
 class TestsFlextInfraPublicApi:
@@ -35,7 +35,7 @@ class TestsFlextInfraPublicApi:
     @staticmethod
     def test_conform_invocations_keep_independent_mutable_state(tmp_path: Path) -> None:
         """Each public invocation owns its mutable state without copying ports."""
-        ports = flext_infra.infra.codegen_conform_collaborators()
+        ports = infra.codegen_conform_collaborators()
         first = m.Infra.CodegenConformState(
             repository_root=tmp_path,
             ports=ports,
@@ -56,7 +56,7 @@ class TestsFlextInfraPublicApi:
         tmp_path: Path,
     ) -> None:
         """Public names stay API-bound while health remains a different operation."""
-        api = flext_infra.FlextInfra(repository_root=tmp_path)
+        api = FlextInfra(repository_root=tmp_path)
         before = tm.ok(api.execute())
         for root in (tmp_path / "first", tmp_path / "second"):
             generated = api.codegen_generate(
@@ -81,12 +81,12 @@ class TestsFlextInfraPublicApi:
     @staticmethod
     def test_model_mirror_has_no_public_handler_or_refactor_route() -> None:
         """The public API and CLI cannot recreate a model-shaped typing shadow."""
-        routes = flext_infra.FlextInfraCli.route_table_for(
+        routes = FlextInfraCli.route_table_for(
             c.Infra.CLI_GROUP_REFACTOR,
         )
         tm.that(any(route.name == "protocol-models" for route in routes), truth=False)
         tm.that(
-            hasattr(flext_infra.infra, "codegen_protocol_models"),
+            hasattr(infra, "codegen_protocol_models"),
             truth=False,
         )
 
@@ -95,7 +95,7 @@ class TestsFlextInfraPublicApi:
         tmp_path: Path,
     ) -> None:
         """Fresh public engines retain actual consumed capabilities by identity."""
-        api = flext_infra.FlextInfra.with_settings(flext_infra.settings)
+        api = FlextInfra.with_settings(settings)
         ports = api.codegen_conform_collaborators()
         runtime_settings = api.settings
         initial_context = api.context
@@ -133,7 +133,7 @@ class TestsFlextInfraPublicApi:
         tmp_path: Path,
     ) -> None:
         """Production CLI routes retain DTO classes and execute their real handlers."""
-        routes = flext_infra.FlextInfraCli.route_table_for(
+        routes = FlextInfraCli.route_table_for(
             c.Infra.CLI_GROUP_CODEGEN,
         )
         generated = next(route for route in routes if route.name == "generate")

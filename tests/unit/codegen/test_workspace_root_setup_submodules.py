@@ -16,7 +16,7 @@ import pytest
 from flext_infra import config
 from tests import c, m, p, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraWorkspaceRootSetupSubmodules:

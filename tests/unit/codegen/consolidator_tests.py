@@ -9,13 +9,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
 from flext_cli import m as cli_m
 
 from flext_infra.codegen import FlextInfraCodegenConsolidator
 from tests import c, m, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraCodegenConsolidator:
@@ -191,7 +190,7 @@ class TestsFlextInfraCodegenConsolidator:
         tm.that(updated_source, has="VALUE = c.DEMO_VALUE")
         tm.that(updated_source, has="from flext_demo import c")
 
-    @pytest.mark.parametrize("wrapper_segment", ["infra", "scripts", "tests"])
+    @c.Tests.MARK.parametrize("wrapper_segment", ["infra", "scripts", "tests"])
     def test_execute_apply_mode_scans_wrapper_surfaces(
         self,
         tmp_path: Path,
@@ -239,7 +238,7 @@ class TestsFlextInfraCodegenConsolidator:
         tm.that(constants_family_source, has='VALUE = "demo"')
         tm.that(constants_family_source, lacks="c.DEMO_VALUE")
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_execute_apply_mode_json_output(self, tmp_path: Path) -> None:
         """Test execute apply mode json output."""
         repository_root = self._build_consolidator_workspace(tmp_path)

@@ -6,16 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
-from tests import t, u
+from tests import c, t, u
 
 
 class TestsNativeObservationScaling:
     """Nested declaration inputs remain complete without repeated JSON escaping."""
 
     @staticmethod
-    @pytest.mark.parametrize("decorator", ["classmethod", "staticmethod"])
+    @c.Tests.MARK.parametrize("decorator", ["classmethod", "staticmethod"])
     def test_declared_writer_state_preserves_constant_and_code_checks(
         real_python_package: t.DirectoryPath,
         decorator: t.StrictStr,
