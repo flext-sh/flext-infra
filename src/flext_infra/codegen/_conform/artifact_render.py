@@ -20,7 +20,8 @@ from flext_infra.deps.phases import FlextInfraToolTablesPhase
 class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
     """Governed artifact rendering and project overlay composition."""
 
-    _project_contexts: dict[bool, m.Infra.ProjectRenderContext] | None = m.PrivateAttr(
+    _project_scope_active: bool = m.PrivateAttr(default=False)
+    _project_context: m.Infra.ProjectRenderContext | None = m.PrivateAttr(
         default=None
     )
 
@@ -36,10 +37,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         try:
-            self._project_contexts = {}
+            self._project_scope_active = True
             yield
         finally:
-            self._project_contexts = None
+            self._project_scope_active = False
+            self._project_context = None
 
     @staticmethod
     def render_artifact_source(
@@ -668,11 +670,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             context = resolver(render_inputs, destination)
             if context is not None:
                 return context
-        return self._project_or_pass_context(
-            render_inputs,
-            project_context,
-            destination=destination,
-        )
+        return self._project_or_pass_context(render_inputs, project_context)
 
     def _repo_config_context(
         self,
@@ -1051,8 +1049,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         self,
         render_inputs: m.Infra.CodegenRenderInputs,
         project_context: m.Infra.ProjectRenderContext | None,
-        *,
-        destination: str,
     ) -> p.Result[p.Model]:
         """Pass a supplied project context through, or derive one on demand.
 
@@ -1062,19 +1058,13 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         """
         if project_context is not None:
             return r[p.Model].ok(project_context)
-        scaffold_sources = destination != c.PYPROJECT_FILENAME
-        contexts = self._project_contexts
-        derived = None if contexts is None else contexts.get(scaffold_sources)
-        if derived is not None:
-            return r[p.Model].ok(derived)
-        context_result = self._project_render_context(
-            render_inputs,
-            scaffold_sources=scaffold_sources,
-        )
+        if self._project_context is not None:
+            return r[p.Model].ok(self._project_context)
+        context_result = self._project_render_context(render_inputs)
         if context_result.failure:
             return r[p.Model].from_failure(context_result)
-        if contexts is not None:
-            contexts[scaffold_sources] = context_result.value
+        if self._project_scope_active:
+            self._project_context = context_result.value
         return r[p.Model].ok(context_result.value)
 
     def _makefile_render_spec(

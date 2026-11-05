@@ -555,7 +555,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         render_inputs: m.Infra.CodegenRenderInputs,
         *,
         planned_data_files: Sequence[str] = (),
-        scaffold_sources: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates.
 
@@ -670,16 +669,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 alias=project.alias,
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
-                # Scaffolded facades extend the class each upstream letter names
-                # in the __all__ that declares it, never the letter itself.
-                upstream_facades=(
-                    u.Infra.facade_classes(
-                        project.upstream,
-                        source_root=repository_root,
-                    )
-                    if scaffold_sources
-                    else {}
-                ),
                 inherited_facets=project.inherited_facets,
                 root_packages=project.root_packages,
                 repository_namespace_packages=project.repository_namespace_packages,
