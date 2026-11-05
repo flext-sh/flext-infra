@@ -1349,23 +1349,27 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         """Observe the whole-catalog text and import-cycle verdicts.
 
         A selected theme (ADR-028 Decision 18 item 2) checks and fixes only
-        its own rules, so neither verdict belongs to it.
+        its own rules, so the whole-catalog text verdict does not belong to
+        it. The import law always runs, inside a selected run too: a theme
+        that binds a family's own letter at runtime closes an import cycle
+        (ENFORCE-006/ENFORCE-051), and that cycle blocks its fixed point.
 
         Returns:
-            The text report and the runtime import cycles; both empty for a
-            selected theme.
+            The text report (empty for a selected theme) and the runtime
+            import cycles.
 
         """
+        cycles = u.Infra.codemod_import_cycle_issues(self.repository_root)
         if self.focused:
             empty = m.Infra.ModTextReport(
                 findings=0, actionable=0, files=frozenset(), entries=()
             )
-            return empty, ()
+            return empty, cycles
         return (
             FlextInfraModTextGateEngine.scan(
                 self.repository_root, fix=False, validate_receipts=validate_receipts
             ).unwrap(),
-            u.Infra.codemod_import_cycle_issues(self.repository_root),
+            cycles,
         )
 
     def _verdict_message(

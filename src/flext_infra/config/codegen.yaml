@@ -142,9 +142,11 @@ Infra:
       # document claim must stay inside it) and claimed in the enforcement
       # catalog, so `refactor mod --laws` selects generated rules natively.
       renderers:
-      # The letter-binding law (ADR-028 Decision 10): own-letter and
-      # duplicate-origin (ENFORCE-051), foreign-origin (ENFORCE-003,
-      # ENFORCE-080), module-path (ENFORCE-003, ENFORCE-051).
+      # The letter-binding law (ADR-028 Decision 10): each removal claims the
+      # laws of the rebinding it pairs with. The family rebinding, own-letter
+      # and duplicate-origin removals claim none and receive every law below;
+      # foreign-origin and own-root claim ENFORCE-003 and ENFORCE-080;
+      # module-path claims ENFORCE-003 and ENFORCE-051.
       - name: codemod_import_header_rules
         facts: codemod_workspace_export_facts
         shapes: [ import-header ]

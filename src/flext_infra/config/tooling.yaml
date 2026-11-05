@@ -602,6 +602,9 @@ Infra:
         - "requires_engine: native check engine required by this test"
         # External-token gates never run inside
         # offline verification (`make test`); the runner records their exclusion.
+        # Under the Make CI token the incremental global scope (`make tests`)
+        # deselects them too: CI has neither Docker nor remote services, so they
+        # are reported NOT EXECUTED, never skipped (operator decision 2026-11-05).
         # `make test-full` runs locally only and executes every marker once,
         # without testmon and without any time limit. Existing external tests
         # retain their declared environment and authentication requirements.

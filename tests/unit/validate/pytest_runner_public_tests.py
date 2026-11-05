@@ -656,14 +656,19 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("ci_context", [False, True])
     def test_external_gate_markers_are_not_executed_offline(
         cached_runner_project: Path,
+        *,
+        ci_context: bool,
     ) -> None:
         """An external-token gate is deselected, never a KeyError, and reported.
 
         gate-budget/engineering-core: incremental verification records external
-        gates as not executed; the full verb owns their execution. The marker set is
-        the SSOT ``external-gate-markers``; every expectation derives from it.
+        gates as not executed; the full verb owns their execution. Under the Make
+        CI token the same deselection holds, so CI reports them as not executed
+        instead of skipping them at setup. The marker set is the SSOT
+        ``external-gate-markers``; every expectation derives from it.
         """
         pytest_policy = config.Infra.tooling.tools.pytest
         markers = pytest_policy.external_gate_markers
@@ -688,7 +693,9 @@ class TestsFlextInfraPytestRunner:
         )
 
         exit_code = tm.ok(
-            u.Tests.PytestRunner.runner_for(cached_runner_project).execute()
+            u.Tests.PytestRunner.runner_for(
+                cached_runner_project, ci_context=ci_context
+            ).execute()
         )
 
         tm.that(exit_code, eq=0)
