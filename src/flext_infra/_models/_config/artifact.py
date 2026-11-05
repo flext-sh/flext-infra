@@ -255,7 +255,9 @@ class FlextInfraModelsConfigArtifact(
         governed: Annotated[
             Annotated[
                 p.Infra.ManagedFileSpec,
-                t.schema_for_model(FlextInfraModelsConfigTemplates.ManagedFileSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigTemplates.ManagedFileSpec
+                ),
             ],
             m.Field(description="Declared governance for the artifact"),
         ]
@@ -266,7 +268,9 @@ class FlextInfraModelsConfigArtifact(
         vscode_spec: Annotated[
             Annotated[
                 p.Infra.CodegenVscodeSpec,
-                t.schema_for_model(FlextInfraModelsConfigTemplates.CodegenVscodeSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigTemplates.CodegenVscodeSpec
+                ),
             ]
             | None,
             m.Field(description="Declared vscode settings spec when present"),
@@ -355,7 +359,9 @@ class FlextInfraModelsConfigArtifact(
                 Annotated[
                     p.Infra.CodegenAstGrepRendererSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigArtifact.CodegenAstGrepRendererSpec
+                        lambda: (
+                            FlextInfraModelsConfigArtifact.CodegenAstGrepRendererSpec
+                        )
                     ),
                 ],
                 ...,
@@ -431,7 +437,7 @@ class FlextInfraModelsConfigArtifact(
                 Annotated[
                     p.Infra.CodegenArtifactSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigArtifact.CodegenArtifactSpec
+                        lambda: FlextInfraModelsConfigArtifact.CodegenArtifactSpec
                     ),
                 ],
                 ...,
@@ -1161,7 +1167,9 @@ class FlextInfraModelsConfigArtifact(
         spec: Annotated[
             Annotated[
                 p.Infra.RepositoryDeltaSpec,
-                t.schema_for_model(FlextInfraModelsConfigWorkspace.RepositoryDeltaSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigWorkspace.RepositoryDeltaSpec
+                ),
             ],
             m.Field(description="Validated repository declaration subsection"),
         ]
@@ -1187,7 +1195,9 @@ class FlextInfraModelsConfigArtifact(
         spec: Annotated[
             Annotated[
                 p.Infra.CodegenConfigSpec,
-                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenConfigSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenConfigSpec
+                ),
             ],
             m.Field(description="Validated effective repository codegen declaration"),
         ]
@@ -1330,7 +1340,9 @@ class FlextInfraModelsConfigArtifact(
         entry: Annotated[
             Annotated[
                 p.Infra.TemplateEntrySpec,
-                t.schema_for_model(FlextInfraModelsConfigTemplates.TemplateEntrySpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigTemplates.TemplateEntrySpec
+                ),
             ],
             m.Field(frozen=True, description="Catalog entry being rendered"),
         ]
@@ -1344,7 +1356,9 @@ class FlextInfraModelsConfigArtifact(
         project_context: Annotated[
             Annotated[
                 p.Infra.ProjectRenderContext,
-                t.schema_for_model(FlextInfraModelsConfigContexts.ProjectRenderContext),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.ProjectRenderContext
+                ),
             ]
             | None,
             m.Field(description="Project-scoped render context, when declared"),
@@ -1354,7 +1368,7 @@ class FlextInfraModelsConfigArtifact(
                 Annotated[
                     p.Infra.CodegenFilePlan,
                     t.schema_for_model(
-                        FlextInfraModelsCodegenTransaction.CodegenFilePlan
+                        lambda: FlextInfraModelsCodegenTransaction.CodegenFilePlan
                     ),
                 ],
                 ...,
@@ -1369,7 +1383,7 @@ class FlextInfraModelsConfigArtifact(
             Annotated[
                 p.Infra.RepositoryConformTarget,
                 t.schema_for_model(
-                    FlextInfraModelsConfigContexts.RepositoryConformTarget
+                    lambda: FlextInfraModelsConfigContexts.RepositoryConformTarget
                 ),
             ],
             m.Field(description="Conformance identity and root being rendered"),
@@ -1377,14 +1391,18 @@ class FlextInfraModelsConfigArtifact(
         workspace: Annotated[
             Annotated[
                 p.Infra.WorkspaceSpec,
-                t.schema_for_model(FlextInfraModelsConfigWorkspace.WorkspaceSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigWorkspace.WorkspaceSpec
+                ),
             ],
             m.Field(description="Workspace manifest governing the repository"),
         ]
         codegen: Annotated[
             Annotated[
                 p.Infra.CodegenConfigSpec,
-                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenConfigSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenConfigSpec
+                ),
             ],
             m.Field(description="Codegen contract the repository renders under"),
         ]
@@ -1392,7 +1410,7 @@ class FlextInfraModelsConfigArtifact(
             Annotated[
                 p.Infra.ToolingRuntimeContext,
                 t.schema_for_model(
-                    FlextInfraModelsDepsToolConfig.ToolingRuntimeContext
+                    lambda: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext
                 ),
             ]
             | None
@@ -1403,7 +1421,9 @@ class FlextInfraModelsConfigArtifact(
             Annotated[
                 p.Infra.ProjectManagedArtifactsSnapshot,
                 t.schema_for_model(
-                    FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsSnapshot
+                    lambda: (
+                        FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsSnapshot
+                    )
                 ),
             ],
             m.Field(
@@ -1446,7 +1466,7 @@ class FlextInfraModelsConfigArtifact(
                 Annotated[
                     p.Infra.CodegenFilePlan,
                     t.schema_for_model(
-                        FlextInfraModelsCodegenTransaction.CodegenFilePlan
+                        lambda: FlextInfraModelsCodegenTransaction.CodegenFilePlan
                     ),
                 ],
                 ...,
@@ -1462,7 +1482,9 @@ class FlextInfraModelsConfigArtifact(
         selected_inputs: Annotated[
             Annotated[
                 p.Infra.CodegenInputs,
-                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenInputs),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenInputs
+                ),
             ]
             | None,
             m.Field(
@@ -1473,14 +1495,18 @@ class FlextInfraModelsConfigArtifact(
         workspace: Annotated[
             Annotated[
                 p.Infra.WorkspaceSpec,
-                t.schema_for_model(FlextInfraModelsConfigWorkspace.WorkspaceSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigWorkspace.WorkspaceSpec
+                ),
             ],
             m.Field(description="Workspace governing the selection"),
         ]
         initial_workspace: Annotated[
             Annotated[
                 p.Infra.WorkspaceSpec,
-                t.schema_for_model(FlextInfraModelsConfigWorkspace.WorkspaceSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigWorkspace.WorkspaceSpec
+                ),
             ]
             | None,
             m.Field(description="Validated scaffold specification, when any"),
@@ -1489,7 +1515,7 @@ class FlextInfraModelsConfigArtifact(
             Annotated[
                 p.Infra.RepositoryConformTarget,
                 t.schema_for_model(
-                    FlextInfraModelsConfigContexts.RepositoryConformTarget
+                    lambda: FlextInfraModelsConfigContexts.RepositoryConformTarget
                 ),
             ],
             m.Field(description="Conform target of the invoking repository"),
@@ -1497,7 +1523,9 @@ class FlextInfraModelsConfigArtifact(
         repository: Annotated[
             Annotated[
                 p.Infra.RepositoryRef,
-                t.schema_for_model(FlextInfraModelsConfigContexts.RepositoryRef),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.RepositoryRef
+                ),
             ],
             m.Field(description="Repository this task plans"),
         ]
@@ -1558,7 +1586,9 @@ class FlextInfraModelsConfigArtifact(
                 Annotated[
                     p.Infra.CodegenPlanningFileEvidence,
                     t.schema_for_model(
-                        FlextInfraModelsConfigArtifact.CodegenPlanningFileEvidence
+                        lambda: (
+                            FlextInfraModelsConfigArtifact.CodegenPlanningFileEvidence
+                        )
                     ),
                 ],
                 ...,
@@ -1576,7 +1606,9 @@ class FlextInfraModelsConfigArtifact(
                 Annotated[
                     p.Infra.CodegenPlanningRepositoryEvidence,
                     t.schema_for_model(
-                        FlextInfraModelsConfigArtifact.CodegenPlanningRepositoryEvidence
+                        lambda: (
+                            FlextInfraModelsConfigArtifact.CodegenPlanningRepositoryEvidence
+                        )
                     ),
                 ],
                 ...,

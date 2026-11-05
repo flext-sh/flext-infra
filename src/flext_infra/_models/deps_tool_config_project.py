@@ -25,7 +25,9 @@ class FlextInfraModelsDepsToolConfigProject(
         Mise: Annotated[
             Annotated[
                 p.Infra.ProjectMiseConfig,
-                t.schema_for_model(FlextInfraModelsProjectArtifacts.ProjectMiseConfig),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsProjectArtifacts.ProjectMiseConfig
+                ),
             ]
             | None,
             m.Field(description="Mise section declared by this source"),
@@ -34,7 +36,7 @@ class FlextInfraModelsDepsToolConfigProject(
             Annotated[
                 p.Infra.ProjectGitignoreConfig,
                 t.schema_for_model(
-                    FlextInfraModelsProjectArtifacts.ProjectGitignoreConfig
+                    lambda: FlextInfraModelsProjectArtifacts.ProjectGitignoreConfig
                 ),
             ]
             | None,
@@ -47,7 +49,9 @@ class FlextInfraModelsDepsToolConfigProject(
         ManagedArtifacts: Annotated[
             p.Infra.ProjectManagedArtifactsFragment,
             t.schema_for_model(
-                FlextInfraModelsDepsToolConfigProject.ProjectManagedArtifactsFragment
+                lambda: (
+                    FlextInfraModelsDepsToolConfigProject.ProjectManagedArtifactsFragment
+                )
             ),
             m.Field(description="Project-local managed artifact configuration."),
         ]

@@ -1016,8 +1016,7 @@ _setup_lifecycle: _builtin_require_workspace
 # Check owns quality verdicts after provisioning.
 _setup_activated:
 	+@set -eu; \
-	case "$(strip $(CI)): $(CUSTOM_DECLARED_TARGETS) " in \
-		Y:*) ;; \
+	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-setup "*) $(SELF_MAKE) post-setup ;; \
 	esac
 ifneq ($(CI),Y)

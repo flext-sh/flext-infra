@@ -170,7 +170,9 @@ class FlextInfraModelsWorkspace:
         evidence: MutableSequence[
             Annotated[
                 p.Infra.NativeBindingEvidence,
-                t.schema_for_model(FlextInfraModelsWorkspace.NativeBindingEvidence),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.NativeBindingEvidence
+                ),
             ]
         ] = m.Field(
             default_factory=u.empty(
@@ -185,7 +187,9 @@ class FlextInfraModelsWorkspace:
             str,
             Annotated[
                 p.Infra.NativeBindingEvidence,
-                t.schema_for_model(FlextInfraModelsWorkspace.NativeBindingEvidence),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.NativeBindingEvidence
+                ),
             ],
         ] = m.Field(
             default_factory=u.empty(
@@ -396,7 +400,7 @@ class FlextInfraModelsWorkspace:
         modules: tuple[
             Annotated[
                 p.Infra.SourceClassReference,
-                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                t.schema_for_model(lambda: FlextInfraModelsRope.SourceClassReference),
             ],
             ...,
         ] = m.Field(
@@ -408,7 +412,9 @@ class FlextInfraModelsWorkspace:
         )
         source_authority: Annotated[
             p.Infra.CodegenSourceAuthority,
-            t.schema_for_model(FlextInfraModelsWorkspace.CodegenSourceAuthority),
+            t.schema_for_model(
+                lambda: FlextInfraModelsWorkspace.CodegenSourceAuthority
+            ),
         ] = m.Field(
             description="Cold authority for reference consumption, not publication",
         )
@@ -503,7 +509,7 @@ class FlextInfraModelsWorkspace:
             tuple[
                 Annotated[
                     p.Cli.AtomicFileState,
-                    t.schema_for_model(m.Cli.AtomicFileState),
+                    t.schema_for_model(lambda: m.Cli.AtomicFileState),
                 ],
                 ...,
             ],
@@ -531,7 +537,9 @@ class FlextInfraModelsWorkspace:
         runtime_context: Annotated[
             Annotated[
                 p.Infra.WorkspaceRuntimeContext,
-                t.schema_for_model(FlextInfraModelsWorkspace.WorkspaceRuntimeContext),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.WorkspaceRuntimeContext
+                ),
             ]
             | None,
             m.Field(description="Authenticated installed runtime association."),
@@ -567,7 +575,8 @@ class FlextInfraModelsWorkspace:
         issues: Annotated[
             tuple[
                 Annotated[
-                    p.Infra.Issue, t.schema_for_model(FlextInfraModelsCheck.Issue)
+                    p.Infra.Issue,
+                    t.schema_for_model(lambda: FlextInfraModelsCheck.Issue),
                 ],
                 ...,
             ],
@@ -611,7 +620,7 @@ class FlextInfraModelsWorkspace:
                 Annotated[
                     p.Infra.WorkspaceOperationReceipt,
                     t.schema_for_model(
-                        FlextInfraModelsWorkspace.WorkspaceOperationReceipt
+                        lambda: FlextInfraModelsWorkspace.WorkspaceOperationReceipt
                     ),
                 ],
                 ...,
@@ -643,7 +652,7 @@ class FlextInfraModelsWorkspace:
         workspace_beads: Annotated[
             Annotated[
                 p.Infra.BeadsProjectSpec,
-                t.schema_for_model(FlextInfraModelsConfig.BeadsProjectSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfig.BeadsProjectSpec),
             ]
             | None,
             m.Field(description="Workspace Beads ledger spec; absent disables routing"),
@@ -661,7 +670,9 @@ class FlextInfraModelsWorkspace:
         declared_member: Annotated[
             Annotated[
                 p.Infra.RepositoryRef,
-                t.schema_for_model(FlextInfraModelsConfigContexts.RepositoryRef),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.RepositoryRef
+                ),
             ]
             | None,
             m.Field(
@@ -696,7 +707,9 @@ class FlextInfraModelsWorkspace:
         identity: Annotated[
             Annotated[
                 p.Infra.GitIdentityReport,
-                t.schema_for_model(FlextInfraModelsGitIdentity.GitIdentityReport),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsGitIdentity.GitIdentityReport
+                ),
             ]
             | None,
             m.Field(description="Observed Git identity, absent outside a repository"),
@@ -704,7 +717,7 @@ class FlextInfraModelsWorkspace:
         workspace: Annotated[
             Annotated[
                 p.Infra.WorkspaceSpec,
-                t.schema_for_model(FlextInfraModelsConfig.WorkspaceSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfig.WorkspaceSpec),
             ]
             | None,
             m.Field(description="Governed workspace contract when declared"),
@@ -712,7 +725,9 @@ class FlextInfraModelsWorkspace:
         target: Annotated[
             Annotated[
                 p.Infra.RepositoryConformTarget,
-                t.schema_for_model(FlextInfraModelsConfig.RepositoryConformTarget),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfig.RepositoryConformTarget
+                ),
             ]
             | None,
             m.Field(description="Effective governed project properties"),
@@ -724,7 +739,9 @@ class FlextInfraModelsWorkspace:
         runtime: Annotated[
             Annotated[
                 p.Infra.WorkspaceRuntimeContext,
-                t.schema_for_model(FlextInfraModelsWorkspace.WorkspaceRuntimeContext),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.WorkspaceRuntimeContext
+                ),
             ]
             | None,
             m.Field(description="Physical environment and native resolver ownership"),
@@ -779,7 +796,9 @@ class FlextInfraModelsWorkspace:
         dir_info: Annotated[
             Annotated[
                 p.Infra.DirectUrlDirectoryInfo,
-                t.schema_for_model(FlextInfraModelsWorkspace.DirectUrlDirectoryInfo),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.DirectUrlDirectoryInfo
+                ),
             ]
             | None,
             m.Field(description="Directory metadata of a local install"),
@@ -791,7 +810,7 @@ class FlextInfraModelsWorkspace:
         vcs_info: (
             Annotated[
                 p.Infra.DirectUrlVcsInfo,
-                t.schema_for_model(FlextInfraModelsWorkspace.DirectUrlVcsInfo),
+                t.schema_for_model(lambda: FlextInfraModelsWorkspace.DirectUrlVcsInfo),
             ]
             | None
         ) = m.Field(
@@ -826,7 +845,9 @@ class FlextInfraModelsWorkspace:
         source: Annotated[
             Annotated[
                 p.Infra.LockedPackageSource,
-                t.schema_for_model(FlextInfraModelsWorkspace.LockedPackageSource),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.LockedPackageSource
+                ),
             ]
             | None,
             m.Field(description="Locked edge source when needed to disambiguate"),
@@ -849,7 +870,9 @@ class FlextInfraModelsWorkspace:
         source: Annotated[
             Annotated[
                 p.Infra.LockedPackageSource,
-                t.schema_for_model(FlextInfraModelsWorkspace.LockedPackageSource),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.LockedPackageSource
+                ),
             ],
             m.Field(description="Locked source identity"),
         ]
@@ -857,7 +880,9 @@ class FlextInfraModelsWorkspace:
             tuple[
                 Annotated[
                     p.Infra.LockedDependency,
-                    t.schema_for_model(FlextInfraModelsWorkspace.LockedDependency),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsWorkspace.LockedDependency
+                    ),
                 ],
                 ...,
             ],
@@ -868,7 +893,9 @@ class FlextInfraModelsWorkspace:
             tuple[
                 Annotated[
                     p.Infra.LockedDependency,
-                    t.schema_for_model(FlextInfraModelsWorkspace.LockedDependency),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsWorkspace.LockedDependency
+                    ),
                 ],
                 ...,
             ],
@@ -887,7 +914,9 @@ class FlextInfraModelsWorkspace:
             tuple[
                 Annotated[
                     p.Infra.LockedDependency,
-                    t.schema_for_model(FlextInfraModelsWorkspace.LockedDependency),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsWorkspace.LockedDependency
+                    ),
                 ],
                 ...,
             ],
@@ -914,7 +943,7 @@ class FlextInfraModelsWorkspace:
             tuple[
                 Annotated[
                     p.Infra.LockedPackage,
-                    t.schema_for_model(FlextInfraModelsWorkspace.LockedPackage),
+                    t.schema_for_model(lambda: FlextInfraModelsWorkspace.LockedPackage),
                 ],
                 ...,
             ],
@@ -933,7 +962,9 @@ class FlextInfraModelsWorkspace:
         dir_info: Annotated[
             Annotated[
                 p.Infra.DirectUrlDirectoryInfo,
-                t.schema_for_model(FlextInfraModelsWorkspace.DirectUrlDirectoryInfo),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.DirectUrlDirectoryInfo
+                ),
             ],
             m.Field(description="Editable directory metadata"),
         ]
@@ -976,7 +1007,9 @@ class FlextInfraModelsWorkspace:
             tuple[
                 Annotated[
                     p.Infra.FleetPullRequest,
-                    t.schema_for_model(FlextInfraModelsWorkspace.FleetPullRequest),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsWorkspace.FleetPullRequest
+                    ),
                 ],
                 ...,
             ],
@@ -1049,7 +1082,7 @@ class FlextInfraModelsWorkspace:
             tuple[
                 Annotated[
                     p.Infra.FleetRepoGaps,
-                    t.schema_for_model(FlextInfraModelsWorkspace.FleetRepoGaps),
+                    t.schema_for_model(lambda: FlextInfraModelsWorkspace.FleetRepoGaps),
                 ],
                 ...,
             ],

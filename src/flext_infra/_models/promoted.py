@@ -66,7 +66,7 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
             tuple[
                 Annotated[
                     p.Infra.PromotedParam,
-                    t.schema_for_model(FlextInfraModelsPromoted.PromotedParam),
+                    t.schema_for_model(lambda: FlextInfraModelsPromoted.PromotedParam),
                 ],
                 ...,
             ],

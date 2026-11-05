@@ -92,7 +92,9 @@ class FlextInfraModelsConfigRelease:
                 Annotated[
                     p.Infra.ReleaseAutomationOverrideSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigRelease.ReleaseAutomationOverrideSpec
+                        lambda: (
+                            FlextInfraModelsConfigRelease.ReleaseAutomationOverrideSpec
+                        )
                     ),
                 ],
             ],
@@ -195,7 +197,7 @@ class FlextInfraModelsConfigRelease:
                 Annotated[
                     p.Infra.BuildConstraintSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigRelease.BuildConstraintSpec
+                        lambda: FlextInfraModelsConfigRelease.BuildConstraintSpec
                     ),
                 ],
                 ...,

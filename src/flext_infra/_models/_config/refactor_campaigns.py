@@ -192,7 +192,9 @@ class FlextInfraModelsConfigRefactorCampaigns:
                 Annotated[
                     p.Infra.RenameCampaignSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec
+                        lambda: (
+                            FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec
+                        )
                     ),
                 ],
                 ...,
@@ -204,7 +206,7 @@ class FlextInfraModelsConfigRefactorCampaigns:
                 Annotated[
                     p.Infra.ModOwnerSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigRefactorCampaigns.ModOwnerSpec
+                        lambda: FlextInfraModelsConfigRefactorCampaigns.ModOwnerSpec
                     ),
                 ],
                 ...,

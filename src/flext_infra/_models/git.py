@@ -56,7 +56,9 @@ class FlextInfraModelsGit(
             None, exclude=True, description="Private native config value for projection"
         )
         process: Annotated[
-            Annotated[p.Cli.ProcessOutcome, t.schema_for_model(m.Cli.ProcessOutcome)],
+            Annotated[
+                p.Cli.ProcessOutcome, t.schema_for_model(lambda: m.Cli.ProcessOutcome)
+            ],
             m.Field(description="Original native query outcome"),
         ]
 
@@ -85,7 +87,9 @@ class FlextInfraModelsGit(
             tuple[
                 Annotated[
                     p.Infra.GitSigningConfigObservation,
-                    t.schema_for_model(FlextInfraModelsGit.GitSigningConfigObservation),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGit.GitSigningConfigObservation
+                    ),
                 ],
                 ...,
             ],
@@ -107,7 +111,7 @@ class FlextInfraModelsGit(
                 Annotated[
                     p.Infra.GitLanePullRequest,
                     t.schema_for_model(
-                        FlextInfraModelsGitLaneInputs.GitLanePullRequest
+                        lambda: FlextInfraModelsGitLaneInputs.GitLanePullRequest
                     ),
                 ],
                 ...,
@@ -119,7 +123,9 @@ class FlextInfraModelsGit(
             tuple[
                 Annotated[
                     p.Infra.GitLaneBead,
-                    t.schema_for_model(FlextInfraModelsGitLaneOwnership.GitLaneBead),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGitLaneOwnership.GitLaneBead
+                    ),
                 ],
                 ...,
             ]
@@ -151,7 +157,9 @@ class FlextInfraModelsGit(
             tuple[
                 Annotated[
                     p.Infra.GitLaneViolation,
-                    t.schema_for_model(FlextInfraModelsGitLaneInputs.GitLaneViolation),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGitLaneInputs.GitLaneViolation
+                    ),
                 ],
                 ...,
             ],
@@ -170,7 +178,9 @@ class FlextInfraModelsGit(
             tuple[
                 Annotated[
                     p.Infra.GitLaneRef,
-                    t.schema_for_model(FlextInfraModelsGitLaneInputs.GitLaneRef),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGitLaneInputs.GitLaneRef
+                    ),
                 ],
                 ...,
             ],
@@ -266,7 +276,7 @@ class FlextInfraModelsGit(
             tuple[
                 Annotated[
                     p.Infra.GitWorktreeEntry,
-                    t.schema_for_model(FlextInfraModelsGit.GitWorktreeEntry),
+                    t.schema_for_model(lambda: FlextInfraModelsGit.GitWorktreeEntry),
                 ],
                 ...,
             ],

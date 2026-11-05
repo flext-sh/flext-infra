@@ -10,12 +10,11 @@ import ast
 import operator
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import cache
-from inspect import getfile
+from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
-import flext_core
 from flext_cli import u
 from packaging.utils import canonicalize_name
 
@@ -111,6 +110,41 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     @cache
+    def core_package_exports() -> tuple[Path, Mapping[str, str]]:
+        """Read the core package directory and its published lazy map from source.
+
+        The core package is located through its import spec and its exports are
+        read statically from its generated initializer, never through the
+        package module object.
+
+        Returns:
+            The core package directory and each published name's target module.
+
+        Raises:
+            ValueError: The core package is not importable or declares its lazy
+                map indirectly.
+
+        """
+        spec = find_spec(c.Infra.PKG_CORE_UNDERSCORE)
+        locations = None if spec is None else spec.submodule_search_locations
+        if not locations:
+            msg = f"{c.Infra.PKG_CORE_UNDERSCORE} is not an importable package"
+            raise ValueError(msg)
+        core_dir = Path(next(iter(locations)))
+        targets, references = (
+            FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
+                (core_dir / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)
+            )
+        )
+        if references:
+            msg = f"{core_dir}: lazy map is declared through {', '.join(references)}"
+            raise ValueError(msg)
+        return core_dir, MappingProxyType({
+            name: module for module, names in targets for name in names
+        })
+
+    @staticmethod
+    @cache
     def facade_families() -> Mapping[str, m.Infra.FacadeFamily]:
         """Derive the facade families from the core package's declarations.
 
@@ -126,15 +160,33 @@ class FlextInfraUtilitiesCodegenNamespace:
             ValueError: If ``not bound``.
 
         """
-        core_dir = Path(getfile(flext_core)).parent
+        core_dir, published = FlextInfraUtilitiesCodegenNamespace.core_package_exports()
         bound: MutableMapping[str, tuple[str, str]] = {}
         for layer in config.Infra.tooling.lazy_init.import_layer_order:
-            facade = getattr(flext_core, layer, None)
-            if not isinstance(facade, type):
+            target = published.get(layer)
+            if target is None or not target.startswith("."):
                 continue
-            module = facade.__module__.rpartition(".")[2]
-            if (core_dir / f"_{module}").is_dir():
-                bound[layer] = (module, facade.__name__)
+            module = target.removeprefix(".")
+            source = core_dir / f"{module}{c.Infra.EXT_PYTHON}"
+            if not source.is_file() or not (core_dir / f"_{module}").is_dir():
+                continue
+            facade = next(
+                (
+                    statement.value.id
+                    for statement in ast.parse(
+                        source.read_text(encoding=c.DEFAULT_ENCODING)
+                    ).body
+                    if isinstance(statement, ast.Assign)
+                    and isinstance(statement.value, ast.Name)
+                    and any(
+                        isinstance(target_name, ast.Name) and target_name.id == layer
+                        for target_name in statement.targets
+                    )
+                ),
+                None,
+            )
+            if facade is not None:
+                bound[layer] = (module, facade)
         if not bound:
             msg = f"{c.Infra.PKG_CORE_UNDERSCORE} binds no facade family"
             raise ValueError(msg)

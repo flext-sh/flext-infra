@@ -90,7 +90,7 @@ class FlextInfraModelsGitWorktreeState:
             Annotated[
                 p.Infra.GitWorktreeIndexEntry,
                 t.schema_for_model(
-                    FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
+                    lambda: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
                 ),
             ]
             | None,
@@ -108,7 +108,7 @@ class FlextInfraModelsGitWorktreeState:
             Annotated[
                 p.Infra.GitWorktreeIndexEntry,
                 t.schema_for_model(
-                    FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
+                    lambda: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
                 ),
             ],
             m.Field(description="Required immutable preimage of the index entry"),
@@ -193,7 +193,7 @@ class FlextInfraModelsGitWorktreeState:
                 Annotated[
                     p.Infra.GitWorktreeIndexEntry,
                     t.schema_for_model(
-                        FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
+                        lambda: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
                     ),
                 ],
                 ...,
@@ -224,7 +224,7 @@ class FlextInfraModelsGitWorktreeState:
                 Annotated[
                     p.Infra.GitWorktreeIndexEntry,
                     t.schema_for_model(
-                        FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
+                        lambda: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
                     ),
                 ],
                 ...,
@@ -236,7 +236,7 @@ class FlextInfraModelsGitWorktreeState:
                 Annotated[
                     p.Infra.GitWorktreeFileState,
                     t.schema_for_model(
-                        FlextInfraModelsGitWorktreeState.GitWorktreeFileState
+                        lambda: FlextInfraModelsGitWorktreeState.GitWorktreeFileState
                     ),
                 ],
                 ...,
@@ -252,7 +252,7 @@ class FlextInfraModelsGitWorktreeState:
             Annotated[
                 p.Infra.GitWorktreeStateSnapshot,
                 t.schema_for_model(
-                    FlextInfraModelsGitWorktreeState.GitWorktreeStateSnapshot
+                    lambda: FlextInfraModelsGitWorktreeState.GitWorktreeStateSnapshot
                 ),
             ],
             m.Field(description="Original immutable ownership and state evidence"),
@@ -281,7 +281,7 @@ class FlextInfraModelsGitWorktreeState:
             Annotated[
                 p.Infra.GitWorktreeStateCheckpoint,
                 t.schema_for_model(
-                    FlextInfraModelsGitWorktreeState.GitWorktreeStateCheckpoint
+                    lambda: FlextInfraModelsGitWorktreeState.GitWorktreeStateCheckpoint
                 ),
             ],
             m.Field(
@@ -294,7 +294,9 @@ class FlextInfraModelsGitWorktreeState:
             Annotated[
                 p.Infra.GitWorktreeCheckpointPublication,
                 t.schema_for_model(
-                    FlextInfraModelsGitWorktreeState.GitWorktreeCheckpointPublication
+                    lambda: (
+                        FlextInfraModelsGitWorktreeState.GitWorktreeCheckpointPublication
+                    )
                 ),
             ],
             m.Field(description="Live independently retained checkpoint publication"),

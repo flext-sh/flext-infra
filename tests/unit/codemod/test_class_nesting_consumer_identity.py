@@ -9,8 +9,8 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-import flext_core
 import pytest
+from flext_core import c, u
 
 from flext_infra import infra
 from tests import c, tm, u

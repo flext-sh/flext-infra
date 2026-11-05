@@ -33,7 +33,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             tuple[
                 Annotated[
                     p.Infra.MakeVerbSpec,
-                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbSpec),
+                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
                 ],
                 ...,
             ],
@@ -54,7 +54,9 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             tuple[
                 Annotated[
                     p.Infra.RepositoryRef,
-                    t.schema_for_model(FlextInfraModelsConfigRepository.RepositoryRef),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigRepository.RepositoryRef
+                    ),
                 ],
                 ...,
             ],
@@ -69,7 +71,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         pytest: Annotated[
             Annotated[
                 p.Infra.PytestConfig,
-                t.schema_for_model(FlextInfraModelsDepsToolConfig.PytestConfig),
+                t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.PytestConfig),
             ],
             m.Field(description="Typed pytest execution policy"),
         ]
@@ -342,7 +344,9 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         uv_link_mode: t.NonEmptyStr = m.Field(description="Declared UV link mode")
         tooling_runtime: Annotated[
             p.Infra.ToolingRuntimeContext,
-            t.schema_for_model(FlextInfraModelsDepsToolConfig.ToolingRuntimeContext),
+            t.schema_for_model(
+                lambda: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext
+            ),
         ] = m.Field(
             description="Resolved tooling document required by project metadata"
         )
@@ -361,7 +365,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             Annotated[
                 p.Infra.DocsAuditOverridesSpec,
                 t.schema_for_model(
-                    FlextInfraModelsConfigContract.DocsAuditOverridesSpec
+                    lambda: FlextInfraModelsConfigContract.DocsAuditOverridesSpec
                 ),
             ],
             m.Field(
@@ -384,7 +388,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             Annotated[
                 p.Infra.WorkspaceIntegrationSpec,
                 t.schema_for_model(
-                    FlextInfraModelsConfigRepository.WorkspaceIntegrationSpec
+                    lambda: FlextInfraModelsConfigRepository.WorkspaceIntegrationSpec
                 ),
             ]
             | None,
@@ -462,7 +466,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         scaffold: Annotated[
             Annotated[
                 p.Infra.ScaffoldSpec,
-                t.schema_for_model(FlextInfraModelsConfigScaffold.ScaffoldSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfigScaffold.ScaffoldSpec),
             ],
             m.Field(description="New-project scaffold policy"),
         ]
@@ -471,7 +475,9 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 Annotated[
                     p.Infra.ScaffoldGitignoreSectionSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        lambda: (
+                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        )
                     ),
                 ],
                 ...,
@@ -494,7 +500,9 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         tooling: Annotated[
             Annotated[
                 p.Infra.ToolConfigDocument,
-                t.schema_for_model(FlextInfraModelsDepsToolConfig.ToolConfigDocument),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
+                ),
             ],
             m.Field(description="Canonical validated tooling policy"),
         ]
@@ -505,7 +513,9 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         beads: Annotated[
             Annotated[
                 p.Infra.BeadsProjectSpec,
-                t.schema_for_model(FlextInfraModelsConfigBeads.BeadsProjectSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigBeads.BeadsProjectSpec
+                ),
             ]
             | None,
             m.Field(description="Repository-local Beads identity when enabled"),
@@ -614,7 +624,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 Annotated[
                     p.Infra.ConsoleScriptSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigRepository.ConsoleScriptSpec
+                        lambda: FlextInfraModelsConfigRepository.ConsoleScriptSpec
                     ),
                 ],
                 ...,

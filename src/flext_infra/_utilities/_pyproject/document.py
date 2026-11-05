@@ -602,7 +602,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         flext_line: Annotated[
             Annotated[
                 p.Infra.WorkspaceIntegrationSpec,
-                t.schema_for_model(m.Infra.WorkspaceIntegrationSpec),
+                t.schema_for_model(lambda: m.Infra.WorkspaceIntegrationSpec),
             ]
             | None,
             m.Field(

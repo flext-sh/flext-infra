@@ -206,7 +206,7 @@ class FlextInfraModelsConfigRepository:
                 Annotated[
                     p.Infra.ConsoleScriptSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigRepository.ConsoleScriptSpec
+                        lambda: FlextInfraModelsConfigRepository.ConsoleScriptSpec
                     ),
                 ],
                 ...,
@@ -424,7 +424,7 @@ class FlextInfraModelsConfigRepository:
             tuple[
                 Annotated[
                     p.Infra.MakeVerbSpec,
-                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbSpec),
+                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
                 ],
                 ...,
             ],
@@ -438,7 +438,9 @@ class FlextInfraModelsConfigRepository:
         script_dispatch: Annotated[
             Annotated[
                 p.Infra.ScriptDispatchSpec,
-                t.schema_for_model(FlextInfraModelsConfigRepository.ScriptDispatchSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigRepository.ScriptDispatchSpec
+                ),
             ]
             | None,
             m.Field(
@@ -452,7 +454,9 @@ class FlextInfraModelsConfigRepository:
             tuple[
                 Annotated[
                     p.Infra.MakeVerbGroupSpec,
-                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbGroupSpec),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeVerbGroupSpec
+                    ),
                 ],
                 ...,
             ],
@@ -499,7 +503,9 @@ class FlextInfraModelsConfigRepository:
         repository: Annotated[
             Annotated[
                 p.Infra.RepositoryRef,
-                t.schema_for_model(FlextInfraModelsConfigRepository.RepositoryRef),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigRepository.RepositoryRef
+                ),
             ],
             m.Field(description="Declared immutable repository identity"),
         ]
@@ -516,7 +522,9 @@ class FlextInfraModelsConfigRepository:
         vscode_spec: Annotated[
             Annotated[
                 p.Infra.CodegenVscodeSpec,
-                t.schema_for_model(FlextInfraModelsConfigTemplates.CodegenVscodeSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigTemplates.CodegenVscodeSpec
+                ),
             ]
             | None,
             m.Field(description="Repository-rooted resolved editor declarations"),
@@ -534,7 +542,9 @@ class FlextInfraModelsConfigRepository:
         beads: Annotated[
             Annotated[
                 p.Infra.BeadsProjectSpec,
-                t.schema_for_model(FlextInfraModelsConfigBeads.BeadsProjectSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigBeads.BeadsProjectSpec
+                ),
             ]
             | None,
             m.Field(description="Repository-local Beads identity when enabled"),
@@ -542,7 +552,9 @@ class FlextInfraModelsConfigRepository:
         project: Annotated[
             Annotated[
                 p.Infra.ProjectSpec,
-                t.schema_for_model(FlextInfraModelsConfigRepository.ProjectSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigRepository.ProjectSpec
+                ),
             ]
             | None,
             m.Field(

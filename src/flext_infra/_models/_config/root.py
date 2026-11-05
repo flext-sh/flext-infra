@@ -34,35 +34,43 @@ class FlextInfraModelsConfigRoot:
         codegen: Annotated[
             Annotated[
                 p.Infra.CodegenConfigSpec,
-                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenConfigSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenConfigSpec
+                ),
             ],
             m.Field(description="Unified project and workspace codegen contract"),
         ]
         tooling: Annotated[
             Annotated[
                 p.Infra.ToolConfigDocument,
-                t.schema_for_model(FlextInfraModelsDepsToolConfig.ToolConfigDocument),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
+                ),
             ],
             m.Field(description="Validated lint, typecheck, and scaffold policy"),
         ]
         source_scan: Annotated[
             Annotated[
                 p.Infra.SourceScanSpec,
-                t.schema_for_model(FlextInfraModelsConfigStatic.SourceScanSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfigStatic.SourceScanSpec),
             ],
             m.Field(description="Production-only source discovery contract"),
         ]
         mutation_lock: Annotated[
             Annotated[
                 p.Infra.MutationLockSpec,
-                t.schema_for_model(FlextInfraModelsConfigStatic.MutationLockSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigStatic.MutationLockSpec
+                ),
             ],
             m.Field(description="Bounded wait for a mutation scope lock"),
         ]
         release: Annotated[
             Annotated[
                 p.Infra.ReleasePolicySpec,
-                t.schema_for_model(FlextInfraModelsConfigRelease.ReleasePolicySpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigRelease.ReleasePolicySpec
+                ),
             ],
             m.Field(description="Release protocol policy"),
         ]
@@ -70,7 +78,7 @@ class FlextInfraModelsConfigRoot:
             Annotated[
                 p.Infra.RefactorCsvCampaignsSpec,
                 t.schema_for_model(
-                    FlextInfraModelsConfigArtifact.RefactorCsvCampaignsSpec
+                    lambda: FlextInfraModelsConfigArtifact.RefactorCsvCampaignsSpec
                 ),
             ],
             m.Field(
@@ -87,7 +95,7 @@ class FlextInfraModelsConfigRoot:
 
         Infra: Annotated[
             p.Infra.Infra,
-            t.schema_for_model(FlextInfraModelsConfigRoot.Infra),
+            t.schema_for_model(lambda: FlextInfraModelsConfigRoot.Infra),
             m.Field(description="Validated flext-infra namespace"),
         ]
 

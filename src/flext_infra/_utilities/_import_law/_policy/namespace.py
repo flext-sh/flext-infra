@@ -14,8 +14,6 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Literal
 
-import flext_core
-
 from flext_infra import c, config, p
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
@@ -198,13 +196,16 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             TypeError: If the core package binds an alias to no class.
 
         """
+        _core_dir, published = (
+            FlextInfraUtilitiesCodegenNamespace.core_package_exports()
+        )
         modules: dict[str, str] = {}
         for alias, layer in config.Infra.tooling.lazy_init.layer_aliases.items():
-            facade = getattr(flext_core, alias, None)
-            if not isinstance(facade, type):
-                msg = f"core package binds no class to layer alias: {alias}"
+            target = published.get(alias)
+            if target is None or not target.startswith("."):
+                msg = f"core package binds no module to layer alias: {alias}"
                 raise TypeError(msg)
-            modules[facade.__module__.rpartition(".")[2]] = layer
+            modules[target.removeprefix(".")] = layer
         return MappingProxyType(modules)
 
     @classmethod

@@ -182,7 +182,9 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         )
         lint: Annotated[
             p.Infra.RuffLintConfig,
-            t.schema_for_model(FlextInfraModelsDepsToolConfigLinters.RuffLintConfig),
+            t.schema_for_model(
+                lambda: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig
+            ),
         ] = m.Field(
             description="Ruff lint configuration",
         )
@@ -257,7 +259,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 Annotated[
                     p.Infra.MypyOverrideConfig,
                     t.schema_for_model(
-                        FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig
+                        lambda: FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig
                     ),
                 ],
                 ...,

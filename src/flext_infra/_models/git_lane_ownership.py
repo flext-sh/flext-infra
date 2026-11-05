@@ -33,7 +33,9 @@ class FlextInfraModelsGitLaneOwnership(FlextInfraModelsGitLaneInputs):
         metadata: Annotated[
             Annotated[
                 p.Infra.GitLaneBeadMetadata,
-                t.schema_for_model(FlextInfraModelsGitLaneInputs.GitLaneBeadMetadata),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsGitLaneInputs.GitLaneBeadMetadata
+                ),
             ]
             | None,
             m.Field(description="Explicit branch/worktree ownership correlation"),
@@ -46,7 +48,7 @@ class FlextInfraModelsGitLaneOwnership(FlextInfraModelsGitLaneInputs):
             Annotated[
                 p.Infra.GitLaneCoordinationPolicy,
                 t.schema_for_model(
-                    FlextInfraModelsGitLaneInputs.GitLaneCoordinationPolicy
+                    lambda: FlextInfraModelsGitLaneInputs.GitLaneCoordinationPolicy
                 ),
             ],
             m.Field(description="Global coordination policy"),

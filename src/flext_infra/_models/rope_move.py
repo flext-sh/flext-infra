@@ -51,7 +51,7 @@ class FlextInfraModelsRopeMove:
         request: Annotated[
             Annotated[
                 p.Infra.ClassMoveRequest,
-                t.schema_for_model(FlextInfraModelsRopeMove.ClassMoveRequest),
+                t.schema_for_model(lambda: FlextInfraModelsRopeMove.ClassMoveRequest),
             ],
             m.Field(description="Prevalidated class-move request being planned"),
         ]

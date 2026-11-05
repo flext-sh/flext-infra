@@ -118,7 +118,9 @@ class FlextInfraModelsConfigWorkspace:
                 Annotated[
                     p.Infra.DependencyCommitSourceSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec
+                        lambda: (
+                            FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec
+                        )
                     ),
                 ],
                 ...,
@@ -338,9 +340,9 @@ class FlextInfraModelsConfigWorkspace:
             tuple[
                 str
                 | Annotated[
-                    FlextInfraModelsConfigWorkspace.DependencyGroupInclude,
+                    p.Infra.DependencyGroupInclude,
                     t.schema_for_model(
-                        FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                        lambda: FlextInfraModelsConfigWorkspace.DependencyGroupInclude
                     ),
                 ],
                 ...,
@@ -451,9 +453,9 @@ class FlextInfraModelsConfigWorkspace:
             tuple[
                 str
                 | Annotated[
-                    FlextInfraModelsConfigWorkspace.DependencyGroupInclude,
+                    p.Infra.DependencyGroupInclude,
                     t.schema_for_model(
-                        FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                        lambda: FlextInfraModelsConfigWorkspace.DependencyGroupInclude
                     ),
                 ],
                 ...,
@@ -739,7 +741,9 @@ class FlextInfraModelsConfigWorkspace:
                 Annotated[
                     p.Infra.HostWorkspaceInventoryEntry,
                     t.schema_for_model(
-                        FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry
+                        lambda: (
+                            FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry
+                        )
                     ),
                 ],
                 ...,

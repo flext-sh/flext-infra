@@ -43,7 +43,7 @@ class FlextInfraModelsDocs(
             Sequence[
                 Annotated[
                     p.Infra.DocsTocToken,
-                    t.schema_for_model(FlextInfraModelsDocs.DocsTocToken),
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsTocToken),
                 ]
             ],
             m.Field(description="Nested heading tokens"),
@@ -56,7 +56,7 @@ class FlextInfraModelsDocs(
             Sequence[
                 Annotated[
                     p.Infra.DocsTocToken,
-                    t.schema_for_model(FlextInfraModelsDocs.DocsTocToken),
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsTocToken),
                 ]
             ],
             m.Field(description="Rendered table of contents tokens"),
@@ -367,13 +367,13 @@ class FlextInfraModelsDocs(
         """Exact project/config objects plus derived public API analysis."""
 
         metadata: Annotated[
-            Annotated[p.ProjectMetadata, t.schema_for_model(m.ProjectMetadata)],
+            Annotated[p.ProjectMetadata, t.schema_for_model(lambda: m.ProjectMetadata)],
             m.Field(description="Exact canonical project metadata model"),
         ]
         repository: Annotated[
             Annotated[
                 p.Infra.RepositoryRef,
-                t.schema_for_model(FlextInfraModelsConfig.RepositoryRef),
+                t.schema_for_model(lambda: FlextInfraModelsConfig.RepositoryRef),
             ]
             | None,
             m.Field(description="Exact repository catalog model"),
@@ -404,7 +404,7 @@ class FlextInfraModelsDocs(
             tuple[
                 Annotated[
                     p.Infra.DocsExportBinding,
-                    t.schema_for_model(FlextInfraModelsDocs.DocsExportBinding),
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsExportBinding),
                 ],
                 ...,
             ],
@@ -489,7 +489,7 @@ class FlextInfraModelsDocs(
             Sequence[
                 Annotated[
                     p.Infra.DocsPhaseItemModel,
-                    t.schema_for_model(FlextInfraModelsDocs.DocsPhaseItemModel),
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsPhaseItemModel),
                 ]
             ],
             m.Field(description="Phase-specific item payloads"),

@@ -922,7 +922,12 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     ignores=[f"**/{c.Infra.INIT_PY}"],
                 )
             )
-        documents.update(cls._codemod_letter_module_object_documents(facade_packages))
+        documents.update(
+            cls._codemod_letter_module_object_documents(
+                facade_packages,
+                tuple(sorted(name for name in facts.exports if "." not in name)),
+            )
+        )
         return documents
 
     @staticmethod
@@ -1150,14 +1155,17 @@ class FlextInfraUtilitiesCodemodNativePackage:
 
     @classmethod
     def _codemod_letter_module_object_documents(
-        cls, facade_packages: Sequence[str]
+        cls, facade_packages: Sequence[str], exporting_roots: Sequence[str]
     ) -> Mapping[str, t.JsonMapping]:
-        """Read a facade letter bound by name, never through a package object.
+        """Read a published name bound by name, never through a package object.
 
         ``pkg.u.x`` becomes ``u.x`` and the header binds ``u`` from its owner.
         A module that declares the letter itself (a facade module) cannot bind
         the package's: it reads ``pkg_u`` instead, bound as ``from pkg import u
         as pkg_u``, the spelling facade modules compose upstream letters with.
+        Any other name a root package publishes (``pkg.Service``) follows the
+        same law: it is read as ``Service``, bound by ``from pkg import Service``
+        through the package's own ``exports--<pkg>`` utility.
 
         Returns:
             The letter-module-object documents keyed by id.
@@ -1258,6 +1266,46 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     rf"^{re.escape(package)}_[a-z]$"
                 ),
                 "fix": f"$ANCHOR\nfrom {package} import $LETTER as $USED",
+            }
+        for package in exporting_roots:
+            published = f"{shape}{separator}name-module-object{separator}{package}"
+            documents[published] = {
+                "id": published,
+                "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
+                "message": (
+                    f"`$NAME` read through the `{package}` module object: import "
+                    f"it by name, `from {package} import $NAME`."
+                ),
+                "ignores": [f"**/{c.Infra.INIT_PY}"],
+                "utils": dict(utils),
+                "constraints": {
+                    "NAME": {
+                        "all": [
+                            {
+                                "matches": (
+                                    f"{c.Infra.CODEMOD_PACKAGE_EXPORTS_UTILITY}"
+                                    f"{separator}{package}"
+                                )
+                            },
+                            {"not": {"regex": "^[a-z]$"}},
+                        ]
+                    }
+                },
+                "rule": {
+                    "kind": "attribute",
+                    "all": [
+                        {
+                            "has": {
+                                "field": "object",
+                                "kind": "identifier",
+                                "regex": f"^{re.escape(package)}$",
+                            }
+                        },
+                        {"has": {"field": "attribute", "pattern": "$NAME"}},
+                        {"not": local},
+                    ],
+                },
+                "fix": "$NAME",
             }
         return documents
 

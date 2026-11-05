@@ -250,7 +250,9 @@ class FlextInfraModelsConfigProvider:
                 Annotated[
                     p.Infra.CiPrivateSubmoduleDeployKeySpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec
+                        lambda: (
+                            FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec
+                        )
                     ),
                 ],
                 ...,

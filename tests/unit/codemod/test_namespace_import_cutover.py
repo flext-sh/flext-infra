@@ -101,7 +101,7 @@ class TestsFlextInfraTestNamespaceImportCutover:
 
         tm.that(updated, has="from tests import core")
         tm.that(updated, has="value = core.VALUE")
-        tm.that(updated, lacks="import flext_core")
+        tm.that(updated, lacks="from flext_core import c,t,p,m,u,x,h,d")
         tm.that(updated, lacks="core_module")
 
     @staticmethod

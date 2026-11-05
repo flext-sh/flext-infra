@@ -68,7 +68,7 @@ class FlextInfraModelsCodegenPipeline:
             tuple[
                 Annotated[
                     p.Infra.CodegenFilePlan,
-                    t.schema_for_model(FlextInfraModelsConfig.CodegenFilePlan),
+                    t.schema_for_model(lambda: FlextInfraModelsConfig.CodegenFilePlan),
                 ],
                 ...,
             ],
@@ -77,7 +77,7 @@ class FlextInfraModelsCodegenPipeline:
         environment: Annotated[
             Annotated[
                 p.Infra.UvEnvironmentPlan,
-                t.schema_for_model(FlextInfraModelsConfig.UvEnvironmentPlan),
+                t.schema_for_model(lambda: FlextInfraModelsConfig.UvEnvironmentPlan),
             ]
             | None,
             m.Field(description="uv environment plan of the repository"),
@@ -101,7 +101,7 @@ class FlextInfraModelsCodegenPipeline:
             tuple[
                 Annotated[
                     p.Infra.RepositoryRef,
-                    t.schema_for_model(FlextInfraModelsConfig.RepositoryRef),
+                    t.schema_for_model(lambda: FlextInfraModelsConfig.RepositoryRef),
                 ],
                 ...,
             ],
@@ -110,7 +110,7 @@ class FlextInfraModelsCodegenPipeline:
         workspace: Annotated[
             Annotated[
                 p.Infra.WorkspaceSpec,
-                t.schema_for_model(FlextInfraModelsConfig.WorkspaceSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfig.WorkspaceSpec),
             ],
             m.Field(description="Workspace governing the selection"),
         ]
@@ -118,7 +118,9 @@ class FlextInfraModelsCodegenPipeline:
             tuple[
                 Annotated[
                     p.Infra.UvEnvironmentPlan,
-                    t.schema_for_model(FlextInfraModelsConfig.UvEnvironmentPlan),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfig.UvEnvironmentPlan
+                    ),
                 ],
                 ...,
             ],
@@ -128,7 +130,7 @@ class FlextInfraModelsCodegenPipeline:
             tuple[
                 Annotated[
                     p.Infra.CodegenFilePlan,
-                    t.schema_for_model(FlextInfraModelsConfig.CodegenFilePlan),
+                    t.schema_for_model(lambda: FlextInfraModelsConfig.CodegenFilePlan),
                 ],
                 ...,
             ],
@@ -138,7 +140,7 @@ class FlextInfraModelsCodegenPipeline:
             Annotated[
                 p.Infra.CodegenRepositoryPlanOutcome,
                 t.schema_for_model(
-                    FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome
+                    lambda: FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome
                 ),
             ],
             ...,
@@ -153,7 +155,7 @@ class FlextInfraModelsCodegenPipeline:
         plan: Annotated[
             Annotated[
                 p.Infra.CodegenPlan,
-                t.schema_for_model(FlextInfraModelsCodegenPipeline.CodegenPlan),
+                t.schema_for_model(lambda: FlextInfraModelsCodegenPipeline.CodegenPlan),
             ],
             m.Field(description="The plan actually used by the producer"),
         ]
@@ -202,7 +204,8 @@ class FlextInfraModelsCodegenPipeline:
             dict[
                 Path,
                 Annotated[
-                    p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)
+                    p.Cli.AtomicFileState,
+                    t.schema_for_model(lambda: m.Cli.AtomicFileState),
                 ],
             ]
         ] = m.Field(
@@ -226,7 +229,7 @@ class FlextInfraModelsCodegenPipeline:
             tuple[
                 Annotated[
                     p.Infra.CodegenFilePlan,
-                    t.schema_for_model(FlextInfraModelsConfig.CodegenFilePlan),
+                    t.schema_for_model(lambda: FlextInfraModelsConfig.CodegenFilePlan),
                 ],
                 ...,
             ]
@@ -243,7 +246,7 @@ class FlextInfraModelsCodegenPipeline:
         initial_workspace: (
             Annotated[
                 p.Infra.WorkspaceSpec,
-                t.schema_for_model(FlextInfraModelsConfig.WorkspaceSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfig.WorkspaceSpec),
             ]
             | None
         ) = m.Field(

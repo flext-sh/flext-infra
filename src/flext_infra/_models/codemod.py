@@ -96,19 +96,23 @@ class FlextInfraModelsCodemod:
         signature_additions: Sequence[
             Annotated[
                 p.Infra.RopeSignatureAddition,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureAddition),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureAddition
+                ),
             ]
         ] = m.Field(default=(), description="Native additions in this same source pass")
         method_transfers: Sequence[
             Annotated[
                 p.Infra.RopeMethodTransfer,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeMethodTransfer),
+                t.schema_for_model(lambda: FlextInfraModelsCodemod.RopeMethodTransfer),
             ]
         ] = m.Field(default=(), description="Native transfers in this same source pass")
         signature_removals: Sequence[
             Annotated[
                 p.Infra.RopeSignatureRemoval,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureRemoval),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureRemoval
+                ),
             ]
         ] = m.Field(default=(), description="Native body and parameter retirements")
 
@@ -304,7 +308,9 @@ class FlextInfraModelsCodemod:
             Sequence[
                 Annotated[
                     p.Infra.RopeContractScopeTarget,
-                    t.schema_for_model(FlextInfraModelsCodemod.RopeContractScopeTarget),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCodemod.RopeContractScopeTarget
+                    ),
                 ]
             ],
             m.Field(min_length=1, description="Exact distribution/module target pairs"),
@@ -376,7 +382,7 @@ class FlextInfraModelsCodemod:
         scope: (
             Annotated[
                 p.Infra.RopeContractScope,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeContractScope),
+                t.schema_for_model(lambda: FlextInfraModelsCodemod.RopeContractScope),
             ]
             | None
         ) = m.Field(
@@ -617,7 +623,9 @@ class FlextInfraModelsCodemod:
             Sequence[
                 Annotated[
                     p.Infra.RopeContractRule,
-                    t.schema_for_model(FlextInfraModelsCodemod.RopeContractRule),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCodemod.RopeContractRule
+                    ),
                 ]
             ],
             m.Field(description="Ordered, identity-constrained Rope contract rules"),
@@ -625,19 +633,23 @@ class FlextInfraModelsCodemod:
         signature_additions: Sequence[
             Annotated[
                 p.Infra.RopeSignatureAddition,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureAddition),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureAddition
+                ),
             ]
         ] = m.Field(default=(), description="Ordered native required keyword additions")
         method_transfers: Sequence[
             Annotated[
                 p.Infra.RopeMethodTransfer,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeMethodTransfer),
+                t.schema_for_model(lambda: FlextInfraModelsCodemod.RopeMethodTransfer),
             ]
         ] = m.Field(default=(), description="Ordered native method ownership transfers")
         signature_removals: Sequence[
             Annotated[
                 p.Infra.RopeSignatureRemoval,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureRemoval),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureRemoval
+                ),
             ]
         ] = m.Field(default=(), description="Ordered native parameter retirements")
 

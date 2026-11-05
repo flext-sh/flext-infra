@@ -26,7 +26,7 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
 
     options: Annotated[
         p.Infra.CensusOptions,
-        t.schema_for_model(m.Infra.CensusOptions),
+        t.schema_for_model(lambda: m.Infra.CensusOptions),
     ] = m.Field(
         default_factory=m.Infra.CensusOptions,
         description="Validated census filters and report destinations",

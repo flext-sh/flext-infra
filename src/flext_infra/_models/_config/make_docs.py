@@ -88,7 +88,7 @@ class FlextInfraModelsConfigMakeDocs:
             Annotated[
                 p.Infra.DocsOverviewPreviewLimitsSpec,
                 t.schema_for_model(
-                    FlextInfraModelsConfigMakeDocs.DocsOverviewPreviewLimitsSpec
+                    lambda: FlextInfraModelsConfigMakeDocs.DocsOverviewPreviewLimitsSpec
                 ),
             ],
             m.Field(description="Maximum preview sizes for generated API overviews"),

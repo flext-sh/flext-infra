@@ -811,7 +811,7 @@ class FlextInfraModelsConfigMake(
         ruff: Annotated[
             Annotated[
                 p.Infra.MakeRuffSpec,
-                t.schema_for_model(FlextInfraModelsConfigMake.MakeRuffSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeRuffSpec),
             ],
             m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
         ]
@@ -845,7 +845,9 @@ class FlextInfraModelsConfigMake(
             tuple[
                 Annotated[
                     p.Infra.MakeWorkflowStepSpec,
-                    t.schema_for_model(FlextInfraModelsConfigMake.MakeWorkflowStepSpec),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
+                    ),
                 ],
                 ...,
             ],
@@ -856,7 +858,7 @@ class FlextInfraModelsConfigMake(
                 Annotated[
                     p.Infra.MakeLifecycleStepSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigMake.MakeLifecycleStepSpec
+                        lambda: FlextInfraModelsConfigMake.MakeLifecycleStepSpec
                     ),
                 ],
                 ...,
@@ -868,7 +870,7 @@ class FlextInfraModelsConfigMake(
         ci: Annotated[
             Annotated[
                 p.Infra.MakeCiSpec,
-                t.schema_for_model(FlextInfraModelsConfigMake.MakeCiSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeCiSpec),
             ],
             m.Field(description="Config-owned CI-only environment delta"),
         ]
@@ -956,7 +958,9 @@ class FlextInfraModelsConfigMake(
         testmon_cache_policy: Annotated[
             Annotated[
                 p.Infra.TestmonCachePolicySpec,
-                t.schema_for_model(FlextInfraModelsConfigMake.TestmonCachePolicySpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigMake.TestmonCachePolicySpec
+                ),
             ],
             m.Field(
                 description=(
@@ -968,7 +972,7 @@ class FlextInfraModelsConfigMake(
         mypy_cache: Annotated[
             Annotated[
                 p.Infra.MypyCacheSpec,
-                t.schema_for_model(FlextInfraModelsConfigMake.MypyCacheSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MypyCacheSpec),
             ],
             m.Field(
                 description="Project-keyed shared Mypy analysis cache policy",
@@ -977,7 +981,7 @@ class FlextInfraModelsConfigMake(
         ruff_cache: Annotated[
             Annotated[
                 p.Infra.RuffCacheSpec,
-                t.schema_for_model(FlextInfraModelsConfigMake.RuffCacheSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.RuffCacheSpec),
             ],
             m.Field(description="External project-keyed native Ruff cache policy"),
         ]
@@ -985,7 +989,7 @@ class FlextInfraModelsConfigMake(
             tuple[
                 Annotated[
                     p.Infra.MakeVerbSpec,
-                    t.schema_for_model(FlextInfraModelsConfigMake.MakeVerbSpec),
+                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
                 ],
                 ...,
             ],
@@ -1042,21 +1046,25 @@ class FlextInfraModelsConfigMake(
         clean: Annotated[
             Annotated[
                 p.Infra.MakeCleanSpec,
-                t.schema_for_model(FlextInfraModelsConfigMakeClean.MakeCleanSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigMakeClean.MakeCleanSpec
+                ),
             ],
             m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
             Annotated[
                 p.Infra.MakeDocsSpec,
-                t.schema_for_model(FlextInfraModelsConfigMakeDocs.MakeDocsSpec),
+                t.schema_for_model(lambda: FlextInfraModelsConfigMakeDocs.MakeDocsSpec),
             ],
             m.Field(description="Public documentation lifecycle policy"),
         ]
         custom_handler_policy: Annotated[
             Annotated[
                 p.Infra.CustomHandlerPolicy,
-                t.schema_for_model(FlextInfraModelsConfigMake.CustomHandlerPolicy),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigMake.CustomHandlerPolicy
+                ),
             ],
             m.Field(description="Private custom target policy"),
         ]
@@ -1066,7 +1074,7 @@ class FlextInfraModelsConfigMake(
                 Annotated[
                     p.Infra.CustomHandlerPolicyOverride,
                     t.schema_for_model(
-                        FlextInfraModelsConfigMake.CustomHandlerPolicyOverride
+                        lambda: FlextInfraModelsConfigMake.CustomHandlerPolicyOverride
                     ),
                 ],
             ],
@@ -1077,7 +1085,7 @@ class FlextInfraModelsConfigMake(
                 Annotated[
                     p.Infra.MakeProjectCheckGateSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigMake.MakeProjectCheckGateSpec
+                        lambda: FlextInfraModelsConfigMake.MakeProjectCheckGateSpec
                     ),
                 ],
                 ...,

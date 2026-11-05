@@ -179,7 +179,9 @@ class FlextInfraModelsRefactorGrep:
             tuple[
                 Annotated[
                     p.Infra.CodemodRule,
-                    t.schema_for_model(FlextInfraModelsRefactorGrep.CodemodRule),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRefactorGrep.CodemodRule
+                    ),
                 ],
                 ...,
             ],
@@ -189,7 +191,9 @@ class FlextInfraModelsRefactorGrep:
             tuple[
                 Annotated[
                     p.Infra.CodemodRuleset,
-                    t.schema_for_model(FlextInfraModelsRefactorGrep.CodemodRuleset),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRefactorGrep.CodemodRuleset
+                    ),
                 ],
                 ...,
             ],
@@ -411,7 +415,7 @@ class FlextInfraModelsRefactorGrep:
             Annotated[
                 p.Infra.AccessorMigrationChange,
                 t.schema_for_model(
-                    FlextInfraModelsRefactorGrep.AccessorMigrationChange
+                    lambda: FlextInfraModelsRefactorGrep.AccessorMigrationChange
                 ),
             ],
             ...,
@@ -423,7 +427,7 @@ class FlextInfraModelsRefactorGrep:
             Annotated[
                 p.Infra.AccessorMigrationChange,
                 t.schema_for_model(
-                    FlextInfraModelsRefactorGrep.AccessorMigrationChange
+                    lambda: FlextInfraModelsRefactorGrep.AccessorMigrationChange
                 ),
             ],
             ...,
@@ -494,7 +498,9 @@ class FlextInfraModelsRefactorGrep:
         files: tuple[
             Annotated[
                 p.Infra.AccessorMigrationFile,
-                t.schema_for_model(FlextInfraModelsRefactorGrep.AccessorMigrationFile),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactorGrep.AccessorMigrationFile
+                ),
             ],
             ...,
         ] = m.Field(

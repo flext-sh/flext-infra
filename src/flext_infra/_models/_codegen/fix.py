@@ -26,14 +26,23 @@ class FlextInfraModelsCodegenFix:
             MutableSequence[
                 Annotated[
                     p.Infra.CensusViolation,
-                    t.schema_for_model(FlextInfraModelsCodegenScaffold.CensusViolation),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCodegenScaffold.CensusViolation
+                    ),
                 ]
             ],
             m.Field(description="Fixed violations"),
         ] = m.Field(
             default_factory=u.empty(
                 t.TypeForm(
-                    MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation]
+                    MutableSequence[
+                        Annotated[
+                            p.Infra.CensusViolation,
+                            t.schema_for_model(
+                                lambda: FlextInfraModelsCodegenScaffold.CensusViolation
+                            ),
+                        ]
+                    ]
                 )
             )
         )
@@ -41,7 +50,9 @@ class FlextInfraModelsCodegenFix:
             MutableSequence[
                 Annotated[
                     p.Infra.CensusViolation,
-                    t.schema_for_model(FlextInfraModelsCodegenScaffold.CensusViolation),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCodegenScaffold.CensusViolation
+                    ),
                 ]
             ],
             m.Field(
@@ -50,7 +61,14 @@ class FlextInfraModelsCodegenFix:
         ] = m.Field(
             default_factory=u.empty(
                 t.TypeForm(
-                    MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation]
+                    MutableSequence[
+                        Annotated[
+                            p.Infra.CensusViolation,
+                            t.schema_for_model(
+                                lambda: FlextInfraModelsCodegenScaffold.CensusViolation
+                            ),
+                        ]
+                    ]
                 )
             )
         )
@@ -95,7 +113,7 @@ class FlextInfraModelsCodegenFix:
                 Annotated[
                     p.Infra.ConsolidatorFileResult,
                     t.schema_for_model(
-                        FlextInfraModelsCodegenFix.ConsolidatorFileResult
+                        lambda: FlextInfraModelsCodegenFix.ConsolidatorFileResult
                     ),
                 ]
             ],
@@ -229,19 +247,23 @@ class FlextInfraModelsCodegenFix:
         violations_fixed: MutableSequence[
             Annotated[
                 p.Infra.CensusViolation,
-                t.schema_for_model(FlextInfraModelsCodegenScaffold.CensusViolation),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenScaffold.CensusViolation
+                ),
             ]
         ] = m.Field(
-            default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
+            default_factory=list,
             description="List of violations that were fixed",
         )
         violations_skipped: MutableSequence[
             Annotated[
                 p.Infra.CensusViolation,
-                t.schema_for_model(FlextInfraModelsCodegenScaffold.CensusViolation),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenScaffold.CensusViolation
+                ),
             ]
         ] = m.Field(
-            default_factory=list[FlextInfraModelsCodegenScaffold.CensusViolation],
+            default_factory=list,
             description="List of violations that were skipped",
         )
         files_modified: MutableSet[str] = m.Field(

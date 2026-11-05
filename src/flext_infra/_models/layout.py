@@ -44,7 +44,7 @@ class FlextInfraModelsLayout:
             tuple[
                 Annotated[
                     p.Infra.LayoutMoveSpec,
-                    t.schema_for_model(FlextInfraModelsLayout.LayoutMoveSpec),
+                    t.schema_for_model(lambda: FlextInfraModelsLayout.LayoutMoveSpec),
                 ],
                 ...,
             ],
@@ -165,7 +165,7 @@ class FlextInfraModelsLayout:
                 Annotated[
                     p.Infra.LayoutProjectOverrideSpec,
                     t.schema_for_model(
-                        FlextInfraModelsLayout.LayoutProjectOverrideSpec
+                        lambda: FlextInfraModelsLayout.LayoutProjectOverrideSpec
                     ),
                 ],
             ],
@@ -208,7 +208,7 @@ class FlextInfraModelsLayout:
             tuple[
                 Annotated[
                     p.Infra.LayoutFinding,
-                    t.schema_for_model(FlextInfraModelsLayout.LayoutFinding),
+                    t.schema_for_model(lambda: FlextInfraModelsLayout.LayoutFinding),
                 ],
                 ...,
             ],
@@ -246,7 +246,9 @@ class FlextInfraModelsLayout:
             tuple[
                 Annotated[
                     p.Infra.LayoutProjectReport,
-                    t.schema_for_model(FlextInfraModelsLayout.LayoutProjectReport),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsLayout.LayoutProjectReport
+                    ),
                 ],
                 ...,
             ],

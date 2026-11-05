@@ -44,7 +44,8 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         )
         files: tuple[
             Annotated[
-                p.Infra.SccFile, t.schema_for_model(FlextInfraModelsGates.SccFile)
+                p.Infra.SccFile,
+                t.schema_for_model(lambda: FlextInfraModelsGates.SccFile),
             ],
             ...,
         ] = m.Field(alias="Files", description="Every scanned file in this language")
@@ -90,7 +91,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         error: Annotated[
             Annotated[
                 p.Infra.DeptryError,
-                t.schema_for_model(FlextInfraModelsGates.DeptryError),
+                t.schema_for_model(lambda: FlextInfraModelsGates.DeptryError),
             ],
             m.Field(description="Deptry rule and diagnostic message"),
         ]
@@ -103,7 +104,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         location: Annotated[
             Annotated[
                 p.Infra.DeptryLocation,
-                t.schema_for_model(FlextInfraModelsGates.DeptryLocation),
+                t.schema_for_model(lambda: FlextInfraModelsGates.DeptryLocation),
             ],
             m.Field(description="Diagnostic file and nullable source positions"),
         ]
@@ -131,15 +132,21 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         native: Annotated[
-            Annotated[p.Cli.CommandOutput, t.schema_for_model(m.Cli.CommandOutput)],
+            Annotated[
+                p.Cli.CommandOutput, t.schema_for_model(lambda: m.Cli.CommandOutput)
+            ],
             m.Field(description="Native deptry process completion and raw output"),
         ]
         settings: Annotated[
-            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ],
             m.Field(description="Consumed pyproject state"),
         ]
         report_state: Annotated[
-            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ],
             m.Field(description="Fresh native report state"),
         ]
         report_sha256: Annotated[
@@ -183,7 +190,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         runtime_dependency_inputs: Annotated[
             Annotated[
                 p.Infra.RuntimeDependencyInputs,
-                t.schema_for_model(FlextInfraModelsDeps.RuntimeDependencyInputs),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDeps.RuntimeDependencyInputs
+                ),
             ]
             | None,
             m.Field(
@@ -291,14 +300,14 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         start: Annotated[
             Annotated[
                 p.Infra.PyrightPosition,
-                t.schema_for_model(FlextInfraModelsGates.PyrightPosition),
+                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightPosition),
             ],
             m.Field(description="Diagnostic range start position"),
         ]
         end: Annotated[
             Annotated[
                 p.Infra.PyrightPosition,
-                t.schema_for_model(FlextInfraModelsGates.PyrightPosition),
+                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightPosition),
             ],
             m.Field(description="Diagnostic range end position"),
         ]
@@ -315,7 +324,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         range: Annotated[
             Annotated[
                 p.Infra.PyrightRange,
-                t.schema_for_model(FlextInfraModelsGates.PyrightRange),
+                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightRange),
             ]
             | None,
             m.Field(description="Diagnostic source range when available"),
@@ -356,13 +365,13 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         general_diagnostics: Sequence[
             Annotated[
                 p.Infra.PyrightDiagnostic,
-                t.schema_for_model(FlextInfraModelsGates.PyrightDiagnostic),
+                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightDiagnostic),
             ]
         ] = m.Field(alias="generalDiagnostics", description="Pyright diagnostics")
         summary: Annotated[
             Annotated[
                 p.Infra.PyrightSummary,
-                t.schema_for_model(FlextInfraModelsGates.PyrightSummary),
+                t.schema_for_model(lambda: FlextInfraModelsGates.PyrightSummary),
             ],
             m.Field(description="Completed analysis summary"),
         ]
@@ -424,7 +433,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             Sequence[
                 Annotated[
                     p.Infra.PyreflyDiagnostic,
-                    t.schema_for_model(FlextInfraModelsGates.PyreflyDiagnostic),
+                    t.schema_for_model(lambda: FlextInfraModelsGates.PyreflyDiagnostic),
                 ]
             ],
             m.Field(description="Native Pyrefly diagnostics"),
@@ -499,7 +508,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         test_selection: Annotated[
             Annotated[
                 p.Infra.GateTestIntent,
-                t.schema_for_model(FlextInfraModelsGates.GateTestIntent),
+                t.schema_for_model(lambda: FlextInfraModelsGates.GateTestIntent),
             ]
             | None,
             m.Field(description="Original test selection; absent for checker"),
@@ -549,7 +558,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         process: Annotated[
             p.Cli.ProcessOutcome,
-            t.schema_for_model(m.Cli.ProcessOutcome),
+            t.schema_for_model(lambda: m.Cli.ProcessOutcome),
             m.Field(description="Original Make process outcome, without normalization"),
         ]
         native_outcome: Annotated[
@@ -559,7 +568,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         intent: Annotated[
             Annotated[
                 p.Infra.GateExecutionIntent,
-                t.schema_for_model(FlextInfraModelsGates.GateExecutionIntent),
+                t.schema_for_model(lambda: FlextInfraModelsGates.GateExecutionIntent),
             ],
             m.Field(description="Portable original operation and selection"),
         ]
@@ -587,7 +596,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             tuple[
                 Annotated[
                     p.Infra.GateReportEvidence,
-                    t.schema_for_model(FlextInfraModelsGates.GateReportEvidence),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGates.GateReportEvidence
+                    ),
                 ],
                 ...,
             ],
@@ -658,7 +669,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         intent: Annotated[
             Annotated[
                 p.Infra.GateExecutionIntent,
-                t.schema_for_model(FlextInfraModelsGates.GateExecutionIntent),
+                t.schema_for_model(lambda: FlextInfraModelsGates.GateExecutionIntent),
             ],
             m.Field(description="Portable original operation and selection"),
         ]
@@ -676,7 +687,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         intent: Annotated[
             Annotated[
                 p.Infra.GateExecutionIntent,
-                t.schema_for_model(FlextInfraModelsGates.GateExecutionIntent),
+                t.schema_for_model(lambda: FlextInfraModelsGates.GateExecutionIntent),
             ],
             m.Field(description="Portable original operation and selection"),
         ]
@@ -736,20 +747,22 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         started: Annotated[
             Annotated[
                 p.Infra.GateCaptureStart,
-                t.schema_for_model(FlextInfraModelsGates.GateCaptureStart),
+                t.schema_for_model(lambda: FlextInfraModelsGates.GateCaptureStart),
             ],
             m.Field(description="Original pre-execution candidate checkpoint"),
         ]
         process: Annotated[
             p.Cli.ProcessOutcome,
-            t.schema_for_model(m.Cli.ProcessOutcome),
+            t.schema_for_model(lambda: m.Cli.ProcessOutcome),
             m.Field(description="Reaped original producer outcome"),
         ]
         reports: Annotated[
             tuple[
                 Annotated[
                     p.Infra.GateReportEvidence,
-                    t.schema_for_model(FlextInfraModelsGates.GateReportEvidence),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGates.GateReportEvidence
+                    ),
                 ],
                 ...,
             ],
@@ -767,7 +780,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
         process: Annotated[
             p.Cli.ProcessOutcome,
-            t.schema_for_model(m.Cli.ProcessOutcome),
+            t.schema_for_model(lambda: m.Cli.ProcessOutcome),
             m.Field(description="Reaped original producer outcome"),
         ]
         receipt: Annotated[
@@ -777,7 +790,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             tuple[
                 Annotated[
                     FlextInfraProtocolsCheck.Issue,
-                    t.schema_for_model(FlextInfraModelsCheck.Issue),
+                    t.schema_for_model(lambda: FlextInfraModelsCheck.Issue),
                 ],
                 ...,
             ],
@@ -821,7 +834,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         receipt: Annotated[
             Annotated[
                 p.Infra.GateReportEvidence,
-                t.schema_for_model(FlextInfraModelsGates.GateReportEvidence),
+                t.schema_for_model(lambda: FlextInfraModelsGates.GateReportEvidence),
             ],
             m.Field(
                 description="Original private producer receipt identity and digest"
@@ -837,7 +850,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             tuple[
                 Annotated[
                     p.Infra.GateCommandEvidence,
-                    t.schema_for_model(FlextInfraModelsGates.GateCommandEvidence),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGates.GateCommandEvidence
+                    ),
                 ],
                 ...,
             ],
